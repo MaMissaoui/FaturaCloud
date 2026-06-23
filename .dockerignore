@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+build
+.git
+.claude
+*.log
+*.local
+.env
+.env.*
+src/locales/*.mo
+src/locales/*.js

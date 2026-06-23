@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript"],
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "rules": {
+    "typescript/no-explicit-any": "off"
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "src-tauri/**",
+    "build/**",
+    "public/**"
+  ]
+}

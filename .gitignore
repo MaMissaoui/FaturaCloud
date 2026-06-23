@@ -1,0 +1,44 @@
+# Go
+go.sum
+
+# Build output
+dist/
+dist-ssr/
+
+# Frontend
+node_modules/
+package.json.md5
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Locales (compiled)
+src/locales/*.mo
+src/locales/*.js
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Sentry
+.env.sentry-build-plugin
+
+# Playwright screenshots/snapshots
+.playwright-mcp/

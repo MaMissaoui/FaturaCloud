@@ -1,0 +1,102 @@
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/MaMissaoui/fatura-cloud/db"
+)
+
+func (h *handler) listOrders(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	orders, err := h.db.GetOrders(orgID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, orders)
+}
+
+func (h *handler) getOrder(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	order, err := h.db.GetOrder(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if order == nil {
+		writeError(w, http.StatusNotFound, "order not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *handler) getOrderLineItems(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	items, err := h.db.GetOrderLineItems(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (h *handler) createOrder(w http.ResponseWriter, r *http.Request) {
+	var req db.CreateOrderRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	order, err := h.db.CreateOrder(req)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, order)
+}
+
+func (h *handler) updateOrder(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req db.UpdateOrderRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	order, err := h.db.UpdateOrder(id, req)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *handler) updateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	order, err := h.db.UpdateOrderStatus(id, body.Status)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *handler) deleteOrder(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	ok, err := h.db.DeleteOrder(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "order not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"deleted": true})
+}

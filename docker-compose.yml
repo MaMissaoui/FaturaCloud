@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - fatura_data:/data
+    environment:
+      - PORT=8080
+    restart: unless-stopped
+
+volumes:
+  fatura_data:
