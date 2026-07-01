@@ -79,7 +79,10 @@ func TestOrganizationCRUD(t *testing.T) {
 func TestClientCRUD(t *testing.T) {
 	d := newTestDB(t)
 
-	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
 
 	client, err := d.CreateClient(CreateClientRequest{
 		ID:             "client-1",
@@ -109,7 +112,10 @@ func TestClientCRUD(t *testing.T) {
 func TestInvoiceCRUD(t *testing.T) {
 	d := newTestDB(t)
 
-	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
 	client, _ := d.CreateClient(CreateClientRequest{
 		ID: "client-1", OrganizationID: org.ID, Name: ptr("Client"),
 	})
@@ -191,7 +197,10 @@ func TestInvoiceCRUD(t *testing.T) {
 func TestOrganizationCascadeDeletesClients(t *testing.T) {
 	d := newTestDB(t)
 
-	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
 	_, _ = d.CreateClient(CreateClientRequest{
 		ID: "client-1", OrganizationID: org.ID, Name: ptr("Client A"),
 	})

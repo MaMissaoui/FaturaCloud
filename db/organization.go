@@ -98,6 +98,10 @@ func (d *Database) GetOrganization(organizationID string) (*Organization, error)
 }
 
 func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organization, error) {
+	if req.Code == nil {
+		empty := ""
+		req.Code = &empty
+	}
 	_, err := d.DB.Exec(
 		`INSERT INTO organizations (
 			id, code, name, country, address, email, phone, website,
