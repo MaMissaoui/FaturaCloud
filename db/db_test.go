@@ -368,4 +368,53 @@ func TestDeliveryShipInsufficientStockBlocked(t *testing.T) {
 	}
 }
 
+func TestStandaloneDeliveryShipReducesStock(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	product, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-1", OrganizationID: org.ID, Name: "Gadget", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (initial stock): %v", err)
+	}
+
+	// No order involved — the line item picks the product directly.
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, DeliveryNumber: "DEL-0001",
+		DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Gadget", Quantity: 4},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
+	}
+	shipped, err := d.GetProduct(product.ID)
+	if err != nil || shipped.StockQuantity != 6 {
+		t.Fatalf("after ship: err=%v, stockQuantity=%v, want 6", err, shipped.StockQuantity)
+	}
+
+	items, err := d.GetDeliveryLineItems(delivery.ID)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("GetDeliveryLineItems: err=%v, len=%d", err, len(items))
+	}
+	if items[0].ProductID == nil || *items[0].ProductID != product.ID {
+		t.Fatalf("line item should carry productId directly: %+v", items[0])
+	}
+}
+
 func ptr[T any](v T) *T { return &v }

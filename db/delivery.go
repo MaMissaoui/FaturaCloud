@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -28,19 +29,20 @@ type OutboundDeliveryLineItem struct {
 	ID              string  `db:"id"              json:"id"`
 	DeliveryID      string  `db:"deliveryId"      json:"deliveryId"`
 	OrderLineItemID *string `db:"orderLineItemId" json:"orderLineItemId"`
+	ProductID       *string `db:"productId"       json:"productId"`
 	Description     string  `db:"description"     json:"description"`
 	Quantity        float64 `db:"quantity"        json:"quantity"`
 	Unit            *string `db:"unit"            json:"unit"`
 	Position        int     `db:"position"        json:"position"`
-	// Joined via orderLineItemId -> orderLineItems -> products; nil when the line
-	// isn't linked to an order line item or the product isn't stock-tracked.
-	ProductID      *string  `db:"productId"      json:"productId"`
+	// Joined from products via productId; nil when the line has no product
+	// (free-text line) or the product isn't stock-tracked.
 	StockEnabled   *int     `db:"stockEnabled"   json:"stockEnabled"`
 	AvailableStock *float64 `db:"availableStock" json:"availableStock"`
 }
 
 type CreateDeliveryLineItemRequest struct {
 	OrderLineItemID *string `json:"orderLineItemId"`
+	ProductID       *string `json:"productId"`
 	Description     string  `json:"description"`
 	Quantity        float64 `json:"quantity"`
 	Unit            *string `json:"unit"`
@@ -113,12 +115,10 @@ func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLi
 	items := []OutboundDeliveryLineItem{}
 	err := d.DB.Select(&items, `
 		SELECT dli.*,
-		       p.id AS productId,
 		       p.stockEnabled AS stockEnabled,
 		       p.stockQuantity AS availableStock
 		FROM outbound_delivery_line_items dli
-		LEFT JOIN orderLineItems oli ON dli.orderLineItemId = oli.id
-		LEFT JOIN products p ON oli.productId = p.id
+		LEFT JOIN products p ON dli.productId = p.id
 		WHERE dli.deliveryId = ?
 		ORDER BY dli.position ASC`,
 		deliveryID,
@@ -180,9 +180,9 @@ type deliveryStockLine struct {
 	AvailableStock float64 `db:"availableStock"`
 }
 
-// getShippableStockLines returns the delivery's line items that are linked (via
-// their order line item) to a stock-enabled product — the only lines that affect
-// inventory.
+// getShippableStockLines returns the delivery's line items that are linked to a
+// stock-enabled product (whether picked directly or copied from an order line
+// item) — the only lines that affect inventory.
 func getShippableStockLines(tx *sqlx.Tx, deliveryID string) ([]deliveryStockLine, error) {
 	lines := []deliveryStockLine{}
 	err := tx.Select(&lines, `
@@ -191,8 +191,7 @@ func getShippableStockLines(tx *sqlx.Tx, deliveryID string) ([]deliveryStockLine
 		       dli.quantity AS quantity,
 		       p.stockQuantity AS availableStock
 		FROM outbound_delivery_line_items dli
-		JOIN orderLineItems oli ON dli.orderLineItemId = oli.id
-		JOIN products p ON oli.productId = p.id
+		JOIN products p ON dli.productId = p.id
 		WHERE dli.deliveryId = ? AND p.stockEnabled = 1`,
 		deliveryID,
 	)
@@ -304,11 +303,18 @@ func (d *Database) replaceDeliveryLineItems(deliveryID string, items []CreateDel
 	}
 	for i, item := range items {
 		id, _ := gonanoid.New()
+		productID := item.ProductID
+		if productID == nil && item.OrderLineItemID != nil {
+			var resolved sql.NullString
+			if err := d.DB.Get(&resolved, `SELECT productId FROM orderLineItems WHERE id = ?`, *item.OrderLineItemID); err == nil && resolved.Valid {
+				productID = &resolved.String
+			}
+		}
 		_, err := d.DB.Exec(`
 			INSERT INTO outbound_delivery_line_items
-			  (id, deliveryId, orderLineItemId, description, quantity, unit, position)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			id, deliveryID, item.OrderLineItemID, item.Description, item.Quantity, item.Unit, i,
+			  (id, deliveryId, orderLineItemId, productId, description, quantity, unit, position)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			id, deliveryID, item.OrderLineItemID, productID, item.Description, item.Quantity, item.Unit, i,
 		)
 		if err != nil {
 			return fmt.Errorf("insert_delivery_line_item: %w", err)

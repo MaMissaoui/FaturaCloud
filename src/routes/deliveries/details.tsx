@@ -26,6 +26,7 @@ import { DeleteOutlined, FilePdfOutlined, PlusOutlined, SaveOutlined } from "@an
 import { pdf } from "@react-pdf/renderer";
 import dayjs from "dayjs";
 import find from "lodash/find";
+import map from "lodash/map";
 import { SaveFile, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { organizationAtom } from "src/atoms/organization";
@@ -294,6 +295,38 @@ const DeliveryDetails = () => {
               locale={{ emptyText: t`No line items` }}
               rowKey={(r) => r.index.toString()}
             >
+              <Table.Column
+                title={<Trans>Product</Trans>}
+                key="productId"
+                width={180}
+                render={(field) => (
+                  <Form.Item name={[field.name, "productId"]} noStyle>
+                    <Select
+                      allowClear
+                      showSearch
+                      style={{ width: "100%" }}
+                      placeholder={t`Optional`}
+                      optionFilterProp="children"
+                      onChange={(productId) => {
+                        const lineItems = form.getFieldValue("lineItems");
+                        const product = productId ? find(products, { id: productId }) : null;
+                        lineItems[field.name] = {
+                          ...lineItems[field.name],
+                          description: (product as any)?.name ?? lineItems[field.name]?.description,
+                          unit: (product as any)?.unit,
+                          stockEnabled: (product as any)?.stockEnabled,
+                          availableStock: (product as any)?.stockQuantity,
+                        };
+                        form.setFieldValue("lineItems", [...lineItems]);
+                      }}
+                    >
+                      {map(products, (p: any) => (
+                        <Option key={p.id} value={p.id}>{p.name}</Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                )}
+              />
               <Table.Column
                 title={<Trans>Description</Trans>}
                 key="description"
