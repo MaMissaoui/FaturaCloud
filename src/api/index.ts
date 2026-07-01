@@ -66,8 +66,16 @@ export const SaveFile = (defaultName: string, contents: Blob | Uint8Array) => {
   const a = document.createElement("a");
   a.href = href;
   a.download = defaultName;
+  a.rel = "noopener";
+  // The anchor must be in the DOM for the download to fire reliably (Safari/Firefox).
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(href);
+  // Defer cleanup: revoking the object URL synchronously after click() can race the
+  // browser's blob read, producing an empty/failed download that never reaches disk.
+  setTimeout(() => {
+    URL.revokeObjectURL(href);
+    a.remove();
+  }, 1000);
   return Promise.resolve(undefined);
 };
 
@@ -96,8 +104,13 @@ export const TriggerBackup = async (): Promise<string> => {
   const a = document.createElement("a");
   a.href = href;
   a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(href);
+  setTimeout(() => {
+    URL.revokeObjectURL(href);
+    a.remove();
+  }, 1000);
   return filename;
 };
 
