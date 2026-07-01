@@ -1,51 +1,12 @@
 import { Trans } from "@lingui/react/macro";
 import { I18nProvider } from "@lingui/react";
-import { Document, Font, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
 import { getFormattedNumber } from "src/utils/currencies";
 import { formatDate } from "src/utils/date";
 
-Font.register({
-  family: "Montserrat",
-  fonts: [
-    {
-      src: "/fonts/montserrat/Montserrat-Thin.ttf",
-      fontWeight: 100,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-ExtraLight.ttf",
-      fontWeight: 200,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-Light.ttf",
-      fontWeight: 300,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-Regular.ttf",
-      fontWeight: 400,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-Medium.ttf",
-      fontWeight: 500,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-SemiBold.ttf",
-      fontWeight: 600,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-Bold.ttf",
-      fontWeight: 700,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-ExtraBold.ttf",
-      fontWeight: 800,
-    },
-    {
-      src: "/fonts/montserrat/Montserrat-Black.ttf",
-      fontWeight: 900,
-    },
-  ],
-});
+const FONT = "Helvetica";
+const FONT_BOLD = "Helvetica-Bold";
 
 const styles = StyleSheet.create({
   container: {
@@ -54,32 +15,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   title: {
-    fontFamily: "Montserrat",
+    fontFamily: FONT_BOLD,
     fontSize: 24,
-    fontWeight: "semibold",
   },
   subtitle: {
-    fontFamily: "Montserrat",
+    fontFamily: FONT,
     fontSize: 12,
     marginBottom: 8,
   },
   text: {
-    fontFamily: "Montserrat",
+    fontFamily: FONT,
     fontSize: 10,
     marginBottom: 2,
   },
   smallText: {
-    fontFamily: "Montserrat",
+    fontFamily: FONT,
     fontSize: 8,
     marginBottom: 2,
   },
-  medium: {
-    fontFamily: "Montserrat",
-    fontWeight: "medium",
-  },
   bold: {
-    fontFamily: "Montserrat",
-    fontWeight: "bold",
+    fontFamily: FONT_BOLD,
   },
 
   /* Table */
@@ -107,7 +62,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
   },
   tableCol: {
-    fontFamily: "Montserrat",
+    fontFamily: FONT,
     fontSize: 8,
     padding: 8,
   },
@@ -118,7 +73,7 @@ const styles = StyleSheet.create({
     paddingRight: 0,
   },
   tableHeader: {
-    fontWeight: "medium",
+    fontFamily: FONT_BOLD,
   },
 
   /* Line items */
@@ -145,7 +100,7 @@ const styles = StyleSheet.create({
   },
 
   notes: {
-    fontFamily: "Montserrat",
+    fontFamily: FONT,
     fontSize: 8,
   },
 
@@ -279,7 +234,7 @@ const InvoicePDF = ({
                 {formatDate(invoice.date, dateFormat)}
               </Text>
               <Text style={[styles.smallText, { marginBottom: 8 }]}>
-                {formatDate(invoice.dueDate, dateFormat)}
+                {invoice.dueDate ? formatDate(invoice.dueDate, dateFormat) : "-"}
               </Text>
               {invoice.overdueCharge && (
                 <Text style={[styles.smallText, { marginBottom: 8 }]}>
