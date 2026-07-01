@@ -5,6 +5,18 @@ All notable changes to FaturaCloud will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Deliveries created from an order now pre-fill line items with the outstanding (not-yet-delivered) quantity per line, so a single order can be fulfilled across multiple full or partial deliveries
+- Marking a delivery as shipped validates and reduces inventory for stock-tracked products, rejecting the transition with a descriptive error if stock is insufficient; cancelling an already-shipped delivery restores it via a reversing stock movement, both referenced by the delivery number
+- Standalone deliveries (not linked to any order) can now pick a product per line item and get the same stock validation and movements as order-linked deliveries
+- Order line items show a "Delivered X / Y" indicator reflecting quantity already fulfilled across all deliveries
+- Deleting a shipped or delivered delivery is blocked — cancel it instead, which restores stock
+
+### Fixed
+- Creating an organization without a code no longer fails with a database constraint error
+
 ## [1.0.0] - 2026-06-23
 
 Initial release of FaturaCloud — a web-based invoicing application that runs as a
