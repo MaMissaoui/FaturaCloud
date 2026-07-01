@@ -79,6 +79,7 @@ import isNumber from "lodash/isNumber";
 import toNumber from "lodash/toNumber";
 
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
+import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { useDatePickerFormat } from "src/utils/date";
 import {
   invoiceIdAtom,
@@ -94,7 +95,7 @@ import ClientForm from "src/components/clients/form.tsx";
 import InvoicePDF from "src/components/invoices/pdf";
 import { currencies } from "src/utils/currencies";
 import { generateInvoiceNumber } from "src/utils/invoice";
-import { multiplyDecimal, divideDecimal, calculateTax, addDecimal } from "src/utils/currency";
+import { multiplyDecimal, divideDecimal, calculateTax, addDecimal, centsToUnits } from "src/utils/currency";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -295,6 +296,8 @@ const InvoiceDetails: React.FC = () => {
   const [invoice, setInvoice] = useAtom(invoiceAtom);
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
+  const products = useAtomValue(productsAtom);
+  const setProducts = useSetAtom(setProductsAtom);
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
@@ -321,6 +324,7 @@ const InvoiceDetails: React.FC = () => {
 
   useEffect(() => {
     setClients();
+    setProducts();
     setTaxRates();
     if (!isNew) {
       setInvoiceId(id || null);
@@ -330,7 +334,7 @@ const InvoiceDetails: React.FC = () => {
     return () => {
       setInvoiceId(null);
     };
-  }, [id, isNew, setClients, setInvoiceId, setTaxRates]);
+  }, [id, isNew, setClients, setProducts, setInvoiceId, setTaxRates]);
 
   // Navigate to the new invoice after successful creation
   useEffect(() => {
@@ -695,6 +699,46 @@ const InvoiceDetails: React.FC = () => {
                                     <TextArea rows={4} autoSize />
                                   </Form.Item>
                                 </DragHandleCell>
+                              )}
+                            />
+                            <Table.Column
+                              title={t`Product`}
+                              key="productId"
+                              width={180}
+                              render={(field) => (
+                                <Form.Item name={[field.name, "productId"]} noStyle>
+                                  <Select
+                                    allowClear
+                                    showSearch
+                                    style={{ width: "100%" }}
+                                    placeholder={t`Optional`}
+                                    optionFilterProp="children"
+                                    onChange={(productId) => {
+                                      const product = find(products, { id: productId });
+                                      if (product) {
+                                        const lineItems = form.getFieldValue("lineItems");
+                                        const quantity = get(lineItems[field.name], "quantity") || 1;
+                                        const unitPrice = centsToUnits((product as any).price ?? 0);
+                                        lineItems[field.name] = {
+                                          ...lineItems[field.name],
+                                          description: (product as any).name,
+                                          unitPrice,
+                                          total: multiplyDecimal(quantity, unitPrice),
+                                          ...((product as any).taxRateId
+                                            ? { taxRate: (product as any).taxRateId }
+                                            : {}),
+                                        };
+                                        form.setFieldValue("lineItems", [...lineItems]);
+                                      }
+                                    }}
+                                  >
+                                    {map(products, (p: any) => (
+                                      <Option key={p.id} value={p.id}>
+                                        {p.name}{p.sku ? ` (${p.sku})` : ""}
+                                      </Option>
+                                    ))}
+                                  </Select>
+                                </Form.Item>
                               )}
                             />
                             <Table.Column
