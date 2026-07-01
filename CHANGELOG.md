@@ -14,9 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Order line items show a "Delivered X / Y" indicator reflecting quantity already fulfilled across all deliveries
 - Deleting a shipped or delivered delivery is blocked — cancel it instead, which restores stock
 - Products now require a unique product code (SKU); the New Product form proposes one from the product name and adjusts it automatically if it collides with an existing code. Existing products without a code were backfilled. The code is now shown wherever products are selected (orders, deliveries, stock movements, inventory) and on order confirmation / delivery note PDFs
+- Invoice line items now have a product picker that fills in description, unit price, and default tax rate, matching orders and deliveries
 
 ### Fixed
 - Creating an organization without a code no longer fails with a database constraint error
+- The invoice PDF (both the download button and the in-place preview) always failed to render because it referenced font files that don't exist in the repo; it now uses the same built-in fonts as the order/delivery PDFs
+- An invoice PDF with no due date set showed "Invalid Date" instead of a blank/dash
 
 ## [1.0.0] - 2026-06-23
 
