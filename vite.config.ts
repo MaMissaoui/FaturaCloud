@@ -1,15 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 import { lingui } from "@lingui/vite-plugin";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
-export default defineConfig({
+export default defineConfig(async () => ({
   plugins: [
-    react({
-      babel: {
-        plugins: ["@lingui/babel-plugin-lingui-macro"],
-        presets: ["jotai-babel/preset"],
-      },
+    react(),
+    await babel({
+      plugins: ["@lingui/babel-plugin-lingui-macro"],
+      presets: ["jotai-babel/preset"],
     }),
     lingui(),
     sentryVitePlugin({
@@ -59,4 +59,4 @@ export default defineConfig({
     sourcemap: true,
     outDir: "dist",
   },
-});
+}));
