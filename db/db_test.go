@@ -2,6 +2,7 @@ package db
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -414,6 +415,41 @@ func TestStandaloneDeliveryShipReducesStock(t *testing.T) {
 	}
 	if items[0].ProductID == nil || *items[0].ProductID != product.ID {
 		t.Fatalf("line item should carry productId directly: %+v", items[0])
+	}
+}
+
+func TestProductCodeUniquePerOrganization(t *testing.T) {
+	d := newTestDB(t)
+
+	org1, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	org2, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-2"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	if _, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-1", OrganizationID: org1.ID, Name: "Widget", Type: "product", SKU: ptr("WIDGET-1"),
+	}); err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+
+	// Same code, same organization — rejected.
+	if _, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-2", OrganizationID: org1.ID, Name: "Widget Mini", Type: "product", SKU: ptr("WIDGET-1"),
+	}); err == nil {
+		t.Fatal("expected duplicate product code within an organization to be rejected")
+	} else if !strings.Contains(err.Error(), "product code already in use") {
+		t.Fatalf("expected a friendly duplicate-code error, got: %v", err)
+	}
+
+	// Same code, different organization — allowed.
+	if _, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-3", OrganizationID: org2.ID, Name: "Widget", Type: "product", SKU: ptr("WIDGET-1"),
+	}); err != nil {
+		t.Fatalf("expected same code in a different organization to succeed, got: %v", err)
 	}
 }
 

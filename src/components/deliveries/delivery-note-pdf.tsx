@@ -31,6 +31,7 @@ const styles = StyleSheet.create({
   colQty: { width: 80, textAlign: "right" },
   colUnit: { width: 60, textAlign: "right" },
   headerText: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 },
+  itemCode: { fontSize: 8, color: "#888", marginBottom: 1 },
   notes: { marginTop: 24 },
   notesLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
   notesText: { color: "#444", lineHeight: 1.6 },
@@ -129,7 +130,10 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
             return (
               <View key={item.id ?? idx} style={styles.tableRow}>
                 <Text style={styles.colNum}>{idx + 1}</Text>
-                <Text style={styles.colDesc}>{item.description}</Text>
+                <View style={styles.colDesc}>
+                  {item.sku && <Text style={styles.itemCode}>{item.sku}</Text>}
+                  <Text>{item.description}</Text>
+                </View>
                 <Text style={styles.colQty}>{qty % 1 === 0 ? String(qty) : qty.toFixed(2)}</Text>
                 <Text style={styles.colUnit}>{item.unit ?? ""}</Text>
               </View>

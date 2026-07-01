@@ -68,7 +68,7 @@ const Inventory = () => {
               value={productFilter}
             >
               {trackedProducts.map((p: any) => (
-                <Select.Option key={p.id} value={p.id}>{p.name}</Select.Option>
+                <Select.Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Select.Option>
               ))}
             </Select>
             <Link to="/inventory" state={{ movementModal: true }}>
@@ -127,7 +127,7 @@ const Inventory = () => {
                 const p = find(products, { id: productId });
                 return p ? (
                   <Link to="/products" state={{ productModal: true, productId }}>
-                    {(p as any).name}
+                    {(p as any).name}{(p as any).sku ? ` (${(p as any).sku})` : ""}
                   </Link>
                 ) : productId;
               }}

@@ -212,6 +212,7 @@ Schema conventions:
 - Dates stored as Unix timestamps in milliseconds
 - Organization logo stored as BLOB (raw bytes) — Go's `encoding/json` marshals `[]byte` as base64; the frontend calls `atob`/`btoa` accordingly
 - `products.type` is `"product"` | `"service"` (default `"service"`)
+- `products.sku` (labeled "Product code" in the UI) must be unique per organization — enforced by a `UNIQUE(organizationId, sku)` index, not a DB-level `NOT NULL` (SQLite can't add that retroactively without a table rebuild); required-ness is enforced in `api/products.go` and the frontend form instead. The New Product form proposes a code derived from the name, deduplicated against other products in the org
 - `stockMovements.quantity` is a **signed delta**: positive = stock in, negative = stock out/adjustment; `products.stockQuantity` is always `SUM(quantity)` over all movements and is recomputed inside a transaction on every insert/delete — never update it directly
 - `invoices.state` is unconstrained text; common values: `"draft"` | `"sent"` | `"paid"` | `"cancelled"`
 - `orders.status` is `"draft"` | `"confirmed"` | `"shipped"` | `"delivered"` | `"cancelled"`; transitions enforced client-side via `STATUS_TRANSITIONS` in `src/routes/orders/details.tsx`

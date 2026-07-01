@@ -36,6 +36,10 @@ func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if req.SKU == nil || *req.SKU == "" {
+		writeError(w, http.StatusBadRequest, "product code is required")
+		return
+	}
 	product, err := h.db.CreateProduct(req)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -49,6 +53,10 @@ func (h *handler) updateProduct(w http.ResponseWriter, r *http.Request) {
 	var req db.UpdateProductRequest
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.SKU == nil || *req.SKU == "" {
+		writeError(w, http.StatusBadRequest, "product code is required")
 		return
 	}
 	product, err := h.db.UpdateProduct(id, req)

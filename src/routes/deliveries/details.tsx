@@ -186,10 +186,15 @@ const DeliveryDetails = () => {
     const clientId = orderData ? (orderData as any).clientId : null;
     const clientData = clientId ? find(clients, { id: clientId }) : null;
 
+    const lineItemsForPdf = (values.lineItems ?? []).map((item: any) => ({
+      ...item,
+      sku: item.productId ? (find(products, { id: item.productId }) as any)?.sku : undefined,
+    }));
+
     const doc = (
       <DeliveryNotePDF
         delivery={deliveryData}
-        lineItems={values.lineItems ?? []}
+        lineItems={lineItemsForPdf}
         client={clientData}
         organization={organization}
         locale={i18n.locale}
@@ -321,7 +326,7 @@ const DeliveryDetails = () => {
                       }}
                     >
                       {map(products, (p: any) => (
-                        <Option key={p.id} value={p.id}>{p.name}</Option>
+                        <Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Option>
                       ))}
                     </Select>
                   </Form.Item>

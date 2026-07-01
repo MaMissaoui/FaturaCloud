@@ -170,6 +170,7 @@ const OrderDetails = () => {
     const lineItemsForPdf = (values.lineItems ?? []).map((item: any) => ({
       ...item,
       unitPrice: Math.round((item.unitPrice ?? 0) * 100),
+      sku: item.productId ? (find(products, { id: item.productId }) as any)?.sku : undefined,
     }));
 
     const doc = (
@@ -330,7 +331,7 @@ const OrderDetails = () => {
                       }}
                     >
                       {map(products, (p: any) => (
-                        <Option key={p.id} value={p.id}>{p.name}</Option>
+                        <Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Option>
                       ))}
                     </Select>
                   </Form.Item>

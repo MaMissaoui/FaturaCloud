@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, theme, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -13,6 +13,16 @@ import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 const submittingAtom = atom(false);
 
 const UNIT_OPTIONS = ["hour", "day", "week", "month", "piece", "kg", "g", "lb", "oz", "l", "ml", "m", "km"];
+
+// Derives a product code from its name (e.g. "Steel Bracket" -> "STEEL-BRACKET"),
+// appending "-2", "-3", ... if that code is already used by another product.
+const deriveProductCode = (name: string, existingCodes: Set<string>): string => {
+  const base = name.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "PRODUCT";
+  if (!existingCodes.has(base)) return base;
+  let suffix = 2;
+  while (existingCodes.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+};
 
 const Section = ({ children }: { children: React.ReactNode }) => {
   const { token } = theme.useToken();
@@ -36,6 +46,8 @@ const ProductForm = () => {
   const setProduct = useSetAtom(productAtom);
   const [submitting, setSubmitting] = useAtom(submittingAtom);
   const deleteProduct = useSetAtom(deleteProductAtom);
+  const [codeTouched, setCodeTouched] = useState(false);
+  const nameValue = Form.useWatch("name", form);
 
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
@@ -60,6 +72,20 @@ const ProductForm = () => {
       form.resetFields();
     }
   }, [isVisible, location.state, setProductId, form]);
+
+  // Reset the "did the user type their own code" flag each time the drawer
+  // opens for a brand-new product, so auto-propose kicks back in.
+  useEffect(() => {
+    if (isVisible && !productId) setCodeTouched(false);
+  }, [isVisible, productId]);
+
+  // Propose a code derived from the name for new products, unless the user
+  // has already typed one in themselves.
+  useEffect(() => {
+    if (productId || codeTouched || !nameValue) return;
+    const existingCodes = new Set(products.map((p: any) => p.sku).filter(Boolean));
+    form.setFieldValue("sku", deriveProductCode(nameValue, existingCodes));
+  }, [nameValue, productId, codeTouched, products, form]);
 
   useEffect(() => {
     if (product) {
@@ -166,8 +192,12 @@ const ProductForm = () => {
           <Input.TextArea rows={3} placeholder={t`Optional description or notes`} />
         </Form.Item>
 
-        <Form.Item name="sku" label={<Trans>SKU / Product code</Trans>}>
-          <Input placeholder={t`e.g. SVC-001`} />
+        <Form.Item
+          name="sku"
+          label={<Trans>SKU / Product code</Trans>}
+          rules={[{ required: true, message: t`Product code is required` }]}
+        >
+          <Input placeholder={t`e.g. SVC-001`} onChange={() => setCodeTouched(true)} />
         </Form.Item>
 
         <Section><Trans>Pricing</Trans></Section>

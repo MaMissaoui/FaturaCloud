@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standalone deliveries (not linked to any order) can now pick a product per line item and get the same stock validation and movements as order-linked deliveries
 - Order line items show a "Delivered X / Y" indicator reflecting quantity already fulfilled across all deliveries
 - Deleting a shipped or delivered delivery is blocked — cancel it instead, which restores stock
+- Products now require a unique product code (SKU); the New Product form proposes one from the product name and adjusts it automatically if it collides with an existing code. Existing products without a code were backfilled. The code is now shown wherever products are selected (orders, deliveries, stock movements, inventory) and on order confirmation / delivery note PDFs
 
 ### Fixed
 - Creating an organization without a code no longer fails with a database constraint error

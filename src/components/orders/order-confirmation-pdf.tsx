@@ -37,6 +37,7 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: 10, width: 80, textAlign: "right" },
   grandTotalLabel: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right", marginRight: 16 },
   grandTotalValue: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right" },
+  itemCode: { fontSize: 8, color: "#888", marginBottom: 1 },
   notes: { marginTop: 24 },
   notesLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
   notesText: { color: "#444", lineHeight: 1.6 },
@@ -140,7 +141,10 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
             return (
               <View key={item.id ?? idx} style={styles.tableRow}>
                 <Text style={styles.colNum}>{idx + 1}</Text>
-                <Text style={styles.colDesc}>{item.description}</Text>
+                <View style={styles.colDesc}>
+                  {item.sku && <Text style={styles.itemCode}>{item.sku}</Text>}
+                  <Text>{item.description}</Text>
+                </View>
                 <Text style={styles.colQty}>{qty % 1 === 0 ? String(qty) : qty.toFixed(2)}</Text>
                 <Text style={styles.colPrice}>{fmt(price)}</Text>
                 <Text style={styles.colTotal}>{fmt(qty * price)}</Text>

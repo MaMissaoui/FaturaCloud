@@ -66,7 +66,13 @@ export const productAtom = atom(
       }
     } catch (error) {
       console.error("Product operation failed:", error);
-      message.error(productId ? t`Product update failed` : t`Product creation failed`);
+      message.error(
+        error instanceof Error
+          ? error.message
+          : productId
+            ? t`Product update failed`
+            : t`Product creation failed`,
+      );
     }
   },
 );
