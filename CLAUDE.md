@@ -148,6 +148,7 @@ GET    /api/organizations/{orgId}/orders
 POST   /api/orders
 GET    /api/orders/{id}
 GET    /api/orders/{id}/line-items
+GET    /api/orders/{id}/delivered-quantities
 PUT    /api/orders/{id}
 PATCH  /api/orders/{id}/status
 DELETE /api/orders/{id}

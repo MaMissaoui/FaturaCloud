@@ -189,6 +189,8 @@ export const GetOrders = (organizationId: string) =>
   get<any[]>(`/organizations/${organizationId}/orders`);
 export const GetOrder = (id: string) => get<any>(`/orders/${id}`);
 export const GetOrderLineItems = (id: string) => get<any[]>(`/orders/${id}/line-items`);
+export const GetOrderDeliveredQuantities = (id: string) =>
+  get<Record<string, number>>(`/orders/${id}/delivered-quantities`);
 export const CreateOrder = (req: any) => post<any>("/orders", req);
 export const UpdateOrder = (id: string, req: any) => put<any>(`/orders/${id}`, req);
 export const UpdateOrderStatus = (id: string, status: string) =>

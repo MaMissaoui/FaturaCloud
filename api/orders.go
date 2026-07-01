@@ -41,6 +41,16 @@ func (h *handler) getOrderLineItems(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, items)
 }
 
+func (h *handler) getOrderDeliveredQuantities(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	quantities, err := h.db.GetOrderDeliveredQuantities(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, quantities)
+}
+
 func (h *handler) createOrder(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateOrderRequest
 	if err := decodeJSON(r, &req); err != nil {

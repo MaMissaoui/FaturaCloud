@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -31,6 +32,11 @@ type OutboundDeliveryLineItem struct {
 	Quantity        float64 `db:"quantity"        json:"quantity"`
 	Unit            *string `db:"unit"            json:"unit"`
 	Position        int     `db:"position"        json:"position"`
+	// Joined via orderLineItemId -> orderLineItems -> products; nil when the line
+	// isn't linked to an order line item or the product isn't stock-tracked.
+	ProductID      *string  `db:"productId"      json:"productId"`
+	StockEnabled   *int     `db:"stockEnabled"   json:"stockEnabled"`
+	AvailableStock *float64 `db:"availableStock" json:"availableStock"`
 }
 
 type CreateDeliveryLineItemRequest struct {
@@ -105,8 +111,16 @@ func (d *Database) GetDelivery(id string) (*OutboundDelivery, error) {
 
 func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLineItem, error) {
 	items := []OutboundDeliveryLineItem{}
-	err := d.DB.Select(&items,
-		`SELECT * FROM outbound_delivery_line_items WHERE deliveryId = ? ORDER BY position ASC`,
+	err := d.DB.Select(&items, `
+		SELECT dli.*,
+		       p.id AS productId,
+		       p.stockEnabled AS stockEnabled,
+		       p.stockQuantity AS availableStock
+		FROM outbound_delivery_line_items dli
+		LEFT JOIN orderLineItems oli ON dli.orderLineItemId = oli.id
+		LEFT JOIN products p ON oli.productId = p.id
+		WHERE dli.deliveryId = ?
+		ORDER BY dli.position ASC`,
 		deliveryID,
 	)
 	if err != nil {
@@ -158,15 +172,123 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 	return d.GetDelivery(id)
 }
 
-func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, error) {
-	_, err := d.DB.Exec(`UPDATE outbound_deliveries SET status = ? WHERE id = ?`, status, id)
+// deliveryStockLine is a delivery line item resolved to its stock-enabled product.
+type deliveryStockLine struct {
+	ProductID      string  `db:"productId"`
+	ProductName    string  `db:"productName"`
+	Quantity       float64 `db:"quantity"`
+	AvailableStock float64 `db:"availableStock"`
+}
+
+// getShippableStockLines returns the delivery's line items that are linked (via
+// their order line item) to a stock-enabled product — the only lines that affect
+// inventory.
+func getShippableStockLines(tx *sqlx.Tx, deliveryID string) ([]deliveryStockLine, error) {
+	lines := []deliveryStockLine{}
+	err := tx.Select(&lines, `
+		SELECT p.id AS productId,
+		       p.name AS productName,
+		       dli.quantity AS quantity,
+		       p.stockQuantity AS availableStock
+		FROM outbound_delivery_line_items dli
+		JOIN orderLineItems oli ON dli.orderLineItemId = oli.id
+		JOIN products p ON oli.productId = p.id
+		WHERE dli.deliveryId = ? AND p.stockEnabled = 1`,
+		deliveryID,
+	)
 	if err != nil {
+		return nil, fmt.Errorf("get_shippable_stock_lines: %w", err)
+	}
+	return lines, nil
+}
+
+// UpdateDeliveryStatus updates a delivery's status, reducing inventory when a
+// draft delivery is marked shipped (rejecting the transition if any stock-enabled
+// product doesn't have enough available stock) and restoring inventory when an
+// already-shipped delivery is cancelled.
+func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, error) {
+	current, err := d.GetDelivery(id)
+	if err != nil {
+		return nil, fmt.Errorf("update_delivery_status lookup: %w", err)
+	}
+
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("update_delivery_status begin: %w", err)
+	}
+	defer tx.Rollback()
+
+	switch {
+	case current.Status == "draft" && status == "shipped":
+		lines, err := getShippableStockLines(tx, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, line := range lines {
+			if line.Quantity > line.AvailableStock {
+				return nil, fmt.Errorf(
+					"insufficient stock for %q: available %.2f, requested %.2f",
+					line.ProductName, line.AvailableStock, line.Quantity,
+				)
+			}
+		}
+		for _, line := range lines {
+			movementID, _ := gonanoid.New()
+			if err := insertStockMovementTx(tx, CreateStockMovementRequest{
+				ID:             movementID,
+				OrganizationID: current.OrganizationID,
+				ProductID:      line.ProductID,
+				Type:           "out",
+				Quantity:       -line.Quantity,
+				Note:           ptrStr("Delivery " + current.DeliveryNumber),
+				Reference:      &current.DeliveryNumber,
+			}); err != nil {
+				return nil, fmt.Errorf("update_delivery_status reduce_stock: %w", err)
+			}
+		}
+
+	case current.Status == "shipped" && status == "cancelled":
+		lines, err := getShippableStockLines(tx, id)
+		if err != nil {
+			return nil, err
+		}
+		for _, line := range lines {
+			movementID, _ := gonanoid.New()
+			if err := insertStockMovementTx(tx, CreateStockMovementRequest{
+				ID:             movementID,
+				OrganizationID: current.OrganizationID,
+				ProductID:      line.ProductID,
+				Type:           "in",
+				Quantity:       line.Quantity,
+				Note:           ptrStr("Delivery " + current.DeliveryNumber + " cancelled"),
+				Reference:      &current.DeliveryNumber,
+			}); err != nil {
+				return nil, fmt.Errorf("update_delivery_status restore_stock: %w", err)
+			}
+		}
+	}
+
+	if _, err := tx.Exec(`UPDATE outbound_deliveries SET status = ? WHERE id = ?`, status, id); err != nil {
 		return nil, fmt.Errorf("update_delivery_status: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("update_delivery_status commit: %w", err)
 	}
 	return d.GetDelivery(id)
 }
 
+func ptrStr(s string) *string { return &s }
+
 func (d *Database) DeleteDelivery(id string) (bool, error) {
+	current, err := d.GetDelivery(id)
+	if err != nil {
+		return false, fmt.Errorf("delete_delivery lookup: %w", err)
+	}
+	if current.Status == "shipped" || current.Status == "delivered" {
+		return false, fmt.Errorf("cannot delete a %s delivery — cancel it instead", current.Status)
+	}
+
 	res, err := d.DB.Exec(`DELETE FROM outbound_deliveries WHERE id = ?`, id)
 	if err != nil {
 		return false, fmt.Errorf("delete_delivery: %w", err)

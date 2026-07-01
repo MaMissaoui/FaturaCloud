@@ -107,7 +107,7 @@ export const updateDeliveryStatusAtom = atom(
       message.success(t`Delivery status updated`);
     } catch (error) {
       console.error("Failed to update delivery status:", error);
-      message.error(t`Failed to update delivery status`);
+      message.error(error instanceof Error ? error.message : t`Failed to update delivery status`);
     }
   },
 );
@@ -124,6 +124,6 @@ export const deleteDeliveryAtom = atom(null, async (get, set, deliveryId: string
     }
   } catch (error) {
     console.error("Failed to delete delivery:", error);
-    message.error(t`Delivery deletion failed`);
+    message.error(error instanceof Error ? error.message : t`Delivery deletion failed`);
   }
 });

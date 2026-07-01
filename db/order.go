@@ -108,6 +108,33 @@ func (d *Database) GetOrderLineItems(orderID string) ([]OrderLineItem, error) {
 	return items, nil
 }
 
+// GetOrderDeliveredQuantities sums delivered quantity per orderLineItemId across
+// all non-cancelled deliveries for the given order — used to compute how much
+// of each line is still outstanding.
+func (d *Database) GetOrderDeliveredQuantities(orderID string) (map[string]float64, error) {
+	rows := []struct {
+		OrderLineItemID string  `db:"orderLineItemId"`
+		Delivered       float64 `db:"delivered"`
+	}{}
+	err := d.DB.Select(&rows, `
+		SELECT dli.orderLineItemId AS orderLineItemId, SUM(dli.quantity) AS delivered
+		FROM outbound_delivery_line_items dli
+		JOIN outbound_deliveries od ON dli.deliveryId = od.id
+		WHERE od.orderId = ? AND od.status != 'cancelled' AND dli.orderLineItemId IS NOT NULL
+		GROUP BY dli.orderLineItemId`,
+		orderID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_order_delivered_quantities: %w", err)
+	}
+
+	result := make(map[string]float64, len(rows))
+	for _, row := range rows {
+		result[row.OrderLineItemID] = row.Delivered
+	}
+	return result, nil
+}
+
 func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	tx, err := d.DB.Beginx()
 	if err != nil {

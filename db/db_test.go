@@ -216,4 +216,156 @@ func TestOrganizationCascadeDeletesClients(t *testing.T) {
 	}
 }
 
+func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	product, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-1", OrganizationID: org.ID, Name: "Widget", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (initial stock): %v", err)
+	}
+
+	order, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-1", OrganizationID: org.ID, OrderNumber: "ORD-0001", Status: "confirmed",
+		OrderDate: 1700000000000,
+		LineItems: []CreateOrderLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: 5, UnitPrice: 1000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder: %v", err)
+	}
+	orderLineItems, err := d.GetOrderLineItems(order.ID)
+	if err != nil || len(orderLineItems) != 1 {
+		t.Fatalf("GetOrderLineItems: err=%v, len=%d", err, len(orderLineItems))
+	}
+	orderLineItemID := orderLineItems[0].ID
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, OrderID: &order.ID, DeliveryNumber: "DEL-0001",
+		DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{OrderLineItemID: &orderLineItemID, Description: "Widget", Quantity: 5},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+
+	// Ship — should reduce stock and record a referenced "out" movement.
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
+	}
+	shipped, err := d.GetProduct(product.ID)
+	if err != nil || shipped.StockQuantity != 5 {
+		t.Fatalf("after ship: err=%v, stockQuantity=%v, want 5", err, shipped.StockQuantity)
+	}
+	movements, err := d.GetProductStockMovements(product.ID)
+	if err != nil || len(movements) != 2 {
+		t.Fatalf("GetProductStockMovements after ship: err=%v, len=%d, want 2", err, len(movements))
+	}
+	outMovement := findMovementByReference(movements, "DEL-0001", "out")
+	if outMovement == nil || outMovement.Quantity != -5 {
+		t.Fatalf("unexpected out movement: %+v", outMovement)
+	}
+
+	// Cancel the shipped delivery — should restore stock via a reversing "in" movement.
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "cancelled"); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(cancelled): %v", err)
+	}
+	restored, err := d.GetProduct(product.ID)
+	if err != nil || restored.StockQuantity != 10 {
+		t.Fatalf("after cancel: err=%v, stockQuantity=%v, want 10", err, restored.StockQuantity)
+	}
+	movements, err = d.GetProductStockMovements(product.ID)
+	if err != nil || len(movements) != 3 {
+		t.Fatalf("GetProductStockMovements after cancel: err=%v, len=%d, want 3", err, len(movements))
+	}
+	reversal := findMovementByReference(movements, "DEL-0001", "in")
+	if reversal == nil || reversal.Quantity != 5 {
+		t.Fatalf("unexpected reversing in movement: %+v", reversal)
+	}
+}
+
+func findMovementByReference(movements []StockMovement, reference, movementType string) *StockMovement {
+	for i := range movements {
+		if movements[i].Type == movementType && movements[i].Reference != nil && *movements[i].Reference == reference {
+			return &movements[i]
+		}
+	}
+	return nil
+}
+
+func TestDeliveryShipInsufficientStockBlocked(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	product, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-1", OrganizationID: org.ID, Name: "Widget", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 2,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (initial stock): %v", err)
+	}
+
+	order, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-1", OrganizationID: org.ID, OrderNumber: "ORD-0001", Status: "confirmed",
+		OrderDate: 1700000000000,
+		LineItems: []CreateOrderLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: 5, UnitPrice: 1000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder: %v", err)
+	}
+	orderLineItems, err := d.GetOrderLineItems(order.ID)
+	if err != nil || len(orderLineItems) != 1 {
+		t.Fatalf("GetOrderLineItems: err=%v, len=%d", err, len(orderLineItems))
+	}
+	orderLineItemID := orderLineItems[0].ID
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, OrderID: &order.ID, DeliveryNumber: "DEL-0001",
+		DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{OrderLineItemID: &orderLineItemID, Description: "Widget", Quantity: 5},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err == nil {
+		t.Fatal("expected shipping to be blocked by insufficient stock, got nil error")
+	}
+
+	unchanged, err := d.GetProduct(product.ID)
+	if err != nil || unchanged.StockQuantity != 2 {
+		t.Fatalf("stock should be untouched: err=%v, stockQuantity=%v, want 2", err, unchanged.StockQuantity)
+	}
+	stillDraft, err := d.GetDelivery(delivery.ID)
+	if err != nil || stillDraft.Status != "draft" {
+		t.Fatalf("delivery status should be unchanged: err=%v, status=%v, want draft", err, stillDraft.Status)
+	}
+}
+
 func ptr[T any](v T) *T { return &v }

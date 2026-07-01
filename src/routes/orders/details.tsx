@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router";
 import {
@@ -16,6 +16,7 @@ import {
   Select,
   Space,
   Table,
+  Tag,
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -38,7 +39,7 @@ import isString from "lodash/isString";
 import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import sum from "lodash/sum";
-import { SaveFile } from "src/api";
+import { SaveFile, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
@@ -89,6 +90,7 @@ const OrderDetails = () => {
   const deleteOrder = useSetAtom(deleteOrderAtom);
 
   const [form] = Form.useForm();
+  const [deliveredQuantities, setDeliveredQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setClients();
@@ -98,6 +100,18 @@ const OrderDetails = () => {
     }
     return () => { setOrderId(null); };
   }, [id, isNew, setClients, setProducts, setOrderId]);
+
+  // Track how much of each line item has already been delivered, so partial
+  // fulfillment is visible without opening every delivery for this order.
+  useEffect(() => {
+    if (isNew || !id) {
+      setDeliveredQuantities({});
+      return;
+    }
+    GetOrderDeliveredQuantities(id)
+      .then(setDeliveredQuantities)
+      .catch(() => setDeliveredQuantities({}));
+  }, [id, isNew]);
 
   // After create, navigate to the new order
   useEffect(() => {
@@ -359,6 +373,28 @@ const OrderDetails = () => {
                   </Form.Item>
                 )}
               />
+              {!isNew && (
+                <Table.Column
+                  title={<Trans>Delivered</Trans>}
+                  key="delivered"
+                  width={90}
+                  render={(field) => (
+                    <Form.Item shouldUpdate noStyle>
+                      {() => {
+                        const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
+                        const quantity = form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                        if (!itemId) return null;
+                        const delivered = deliveredQuantities[itemId] ?? 0;
+                        return (
+                          <Tag color={delivered >= quantity ? "success" : delivered > 0 ? "processing" : "default"}>
+                            {delivered} / {quantity}
+                          </Tag>
+                        );
+                      }}
+                    </Form.Item>
+                  )}
+                />
+              )}
               <Table.Column
                 key="remove"
                 width={40}

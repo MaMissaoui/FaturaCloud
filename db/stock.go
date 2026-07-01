@@ -1,10 +1,42 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
+
+// sqlExecer is satisfied by both *sqlx.DB and *sqlx.Tx, letting insertStockMovementTx
+// run either standalone or as part of a caller's larger transaction.
+type sqlExecer interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
+// insertStockMovementTx inserts a movement and recomputes the product's stockQuantity.
+// quantity must already be signed by the caller (+in, -out, ±adjustment delta).
+func insertStockMovementTx(exec sqlExecer, req CreateStockMovementRequest) error {
+	_, err := exec.Exec(
+		`INSERT INTO stockMovements (id, organizationId, productId, type, quantity, unitCost, note, reference)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.ID, req.OrganizationID, req.ProductID, req.Type,
+		req.Quantity, req.UnitCost, req.Note, req.Reference,
+	)
+	if err != nil {
+		return fmt.Errorf("insert_stock_movement: %w", err)
+	}
+
+	_, err = exec.Exec(
+		`UPDATE products SET stockQuantity = (
+		   SELECT COALESCE(SUM(quantity), 0) FROM stockMovements WHERE productId = ?
+		 ) WHERE id = ?`,
+		req.ProductID, req.ProductID,
+	)
+	if err != nil {
+		return fmt.Errorf("recompute_stock_quantity: %w", err)
+	}
+	return nil
+}
 
 // StockMovement mirrors the stockMovements table.
 // quantity is a signed delta: positive = stock increase, negative = stock decrease.
@@ -69,24 +101,8 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*StockMo
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(
-		`INSERT INTO stockMovements (id, organizationId, productId, type, quantity, unitCost, note, reference)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.ID, req.OrganizationID, req.ProductID, req.Type,
-		req.Quantity, req.UnitCost, req.Note, req.Reference,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create_stock_movement insert: %w", err)
-	}
-
-	_, err = tx.Exec(
-		`UPDATE products SET stockQuantity = (
-		   SELECT COALESCE(SUM(quantity), 0) FROM stockMovements WHERE productId = ?
-		 ) WHERE id = ?`,
-		req.ProductID, req.ProductID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create_stock_movement recompute: %w", err)
+	if err := insertStockMovementTx(tx, req); err != nil {
+		return nil, fmt.Errorf("create_stock_movement: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {

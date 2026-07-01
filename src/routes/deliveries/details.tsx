@@ -26,11 +26,12 @@ import { DeleteOutlined, FilePdfOutlined, PlusOutlined, SaveOutlined } from "@an
 import { pdf } from "@react-pdf/renderer";
 import dayjs from "dayjs";
 import find from "lodash/find";
-import { SaveFile } from "src/api";
+import { SaveFile, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { organizationAtom } from "src/atoms/organization";
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
+import { productsAtom, setProductsAtom } from "src/atoms/product";
 import {
   deliveryIdAtom,
   deliveryAtom,
@@ -74,6 +75,8 @@ const DeliveryDetails = () => {
   const setOrders = useSetAtom(setOrdersAtom);
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
+  const products = useAtomValue(productsAtom);
+  const setProducts = useSetAtom(setProductsAtom);
   const nextNumber = useAtomValue(nextDeliveryNumberAtom);
 
   const [deliveryId, setDeliveryId] = useAtom(deliveryIdAtom);
@@ -86,11 +89,52 @@ const DeliveryDetails = () => {
   useEffect(() => {
     setClients();
     setOrders();
+    setProducts();
     if (!isNew) {
       setDeliveryId(id ?? null);
     }
     return () => { setDeliveryId(null); };
-  }, [id, isNew, setClients, setOrders, setDeliveryId]);
+  }, [id, isNew, setClients, setOrders, setProducts, setDeliveryId]);
+
+  // When creating a delivery from an order, prefill line items with the
+  // quantity still outstanding (order quantity minus what's already been
+  // delivered by other non-cancelled deliveries) so full or partial
+  // fulfillment is just a matter of adjusting/removing lines.
+  useEffect(() => {
+    if (!isNew || !prefillOrderId) return;
+    let cancelled = false;
+    (async () => {
+      const [orderLineItems, delivered] = await Promise.all([
+        GetOrderLineItems(prefillOrderId),
+        GetOrderDeliveredQuantities(prefillOrderId),
+      ]);
+      if (cancelled) return;
+
+      const lineItems = (orderLineItems as any[])
+        .map((item) => ({
+          item,
+          remaining: item.quantity - (delivered[item.id] ?? 0),
+        }))
+        .filter(({ remaining }) => remaining > 0)
+        .map(({ item, remaining }) => {
+          const product = item.productId ? find(products, { id: item.productId }) : null;
+          return {
+            orderLineItemId: item.id,
+            description: item.description,
+            quantity: remaining,
+            unit: (product as any)?.unit,
+            productId: item.productId,
+            stockEnabled: (product as any)?.stockEnabled,
+            availableStock: (product as any)?.stockQuantity,
+          };
+        });
+
+      if (lineItems.length > 0) {
+        form.setFieldsValue({ lineItems });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isNew, prefillOrderId, products, form]);
 
   // After create, navigate to the new delivery
   useEffect(() => {
@@ -278,6 +322,26 @@ const DeliveryDetails = () => {
                 )}
               />
               <Table.Column
+                title={<Trans>Available stock</Trans>}
+                key="availableStock"
+                width={120}
+                render={(field) => (
+                  <Form.Item shouldUpdate noStyle>
+                    {() => {
+                      const stockEnabled = form.getFieldValue(["lineItems", field.name, "stockEnabled"]);
+                      if (!stockEnabled) return null;
+                      const available = form.getFieldValue(["lineItems", field.name, "availableStock"]) ?? 0;
+                      const requested = form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                      return (
+                        <Tag color={requested > available ? "error" : "default"}>
+                          {available}
+                        </Tag>
+                      );
+                    }}
+                  </Form.Item>
+                )}
+              />
+              <Table.Column
                 title={<Trans>Unit</Trans>}
                 key="unit"
                 width={110}
@@ -326,7 +390,7 @@ const DeliveryDetails = () => {
           >
             <Row align="middle" justify="space-between" style={{ height: 64 }}>
               <Col>
-                {!isNew && (
+                {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
                   <Popconfirm
                     title={t`Delete this delivery?`}
                     onConfirm={handleDelete}

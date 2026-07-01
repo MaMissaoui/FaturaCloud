@@ -113,6 +113,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("POST", "/api/orders", h.createOrder)
 	protected("GET", "/api/orders/{id}", h.getOrder)
 	protected("GET", "/api/orders/{id}/line-items", h.getOrderLineItems)
+	protected("GET", "/api/orders/{id}/delivered-quantities", h.getOrderDeliveredQuantities)
 	protected("PUT", "/api/orders/{id}", h.updateOrder)
 	protected("PATCH", "/api/orders/{id}/status", h.updateOrderStatus)
 	protected("DELETE", "/api/orders/{id}", h.deleteOrder)
