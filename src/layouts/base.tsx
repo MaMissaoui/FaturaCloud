@@ -20,6 +20,8 @@ import {
   LogoutOutlined,
   UserOutlined,
   ApartmentOutlined,
+  SunOutlined,
+  MoonOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -32,11 +34,12 @@ import map from "lodash/map";
 import take from "lodash/take";
 import toUpper from "lodash/toUpper";
 
-import { siderAtom, localeAtom } from "src/atoms/generic";
+import { siderAtom, localeAtom, themeAtom } from "src/atoms/generic";
 import { organizationsAtom, organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import { currentUserAtom, isAdminAtom } from "src/atoms/auth";
 import { Logout } from "src/api";
 import FeedbackModal from "src/components/feedback-modal";
+import Wordmark from "src/components/wordmark";
 import { dynamicActivate, locales } from "src/utils/lingui";
 
 const { Content, Header, Sider } = Layout;
@@ -49,7 +52,7 @@ export default function BaseLayout() {
 
   const [, contextHolder] = message.useMessage();
   const {
-    token: { colorBgContainer, borderRadiusLG },
+    token: { colorBgContainer, borderRadiusLG, colorBorderSecondary },
   } = theme.useToken();
 
   // Feedback modal state
@@ -68,6 +71,9 @@ export default function BaseLayout() {
 
   // Sider
   const [siderCollapsed, setSiderCollapsed] = useAtom(siderAtom);
+
+  // Color theme (light/dark)
+  const [themeMode, setThemeMode] = useAtom(themeAtom);
 
   // Auth
   const currentUser = useAtomValue(currentUserAtom);
@@ -117,18 +123,40 @@ export default function BaseLayout() {
   return (
     <Layout hasSider style={{ minHeight: "100vh", width: "100%" }}>
       <Sider
+        theme={themeMode}
         trigger={null}
         collapsible
         collapsed={siderCollapsed}
-        style={{ overflow: "auto", height: "100vh", position: "fixed", left: 0, top: 0, bottom: 0 }}
+        style={{
+          overflow: "auto",
+          height: "100vh",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          borderRight: `1px solid ${colorBorderSecondary}`,
+        }}
       >
-        <div className="logo" style={{ margin: siderCollapsed ? "8px 8px 16px" : "8px 16px 16px", textAlign: "center" }}>
-          <Link to="/invoices">
-            <img src={siderCollapsed ? "/logo-minimal.png" : "/logo-light.png"} alt="Fatura" style={{ width: siderCollapsed ? "100%" : "45%", height: "auto" }} />
+        <div className="logo" style={{ padding: siderCollapsed ? "16px 8px 12px" : "18px 16px 14px" }}>
+          <Link
+            to="/invoices"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: siderCollapsed ? "center" : "flex-start",
+              gap: 10,
+            }}
+          >
+            <img
+              src="/logo-minimal.png"
+              alt="FaturaCloud"
+              style={{ width: siderCollapsed ? 44 : 34, height: "auto", flexShrink: 0 }}
+            />
+            {!siderCollapsed && <Wordmark fontSize={19} />}
           </Link>
         </div>
         <Menu
-          theme="dark"
+          theme={themeMode}
           mode="inline"
           defaultOpenKeys={openKeys}
           defaultSelectedKeys={selectedKeys}
@@ -273,7 +301,6 @@ export default function BaseLayout() {
             }}
             style={{
               width: "100%",
-              color: "rgba(255, 255, 255, 0.65)",
               textAlign: "left",
             }}
           >
@@ -291,7 +318,7 @@ export default function BaseLayout() {
             zIndex: 1,
             padding: 0,
             background: colorBgContainer,
-            borderTop: "1px solid #f0f0f0",
+            borderBottom: `1px solid ${colorBorderSecondary}`,
           }}
         >
           <Row>
@@ -365,6 +392,12 @@ export default function BaseLayout() {
                     />
                   </Space>
                 )}
+                <Button
+                  type="text"
+                  icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
+                  onClick={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
+                  title={themeMode === "dark" ? t`Switch to light mode` : t`Switch to dark mode`}
+                />
                 <Select
                   variant="borderless"
                   style={{ marginRight: 24 }}

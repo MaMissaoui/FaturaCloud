@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Alert, Button, Card, Form, Input, Space, Typography } from "antd";
+import { Alert, Button, Card, Form, Input, Space, Typography, theme } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -9,8 +9,9 @@ import { useLingui } from "@lingui/react";
 
 import { Login } from "src/api";
 import { currentUserAtom } from "src/atoms/auth";
+import Wordmark from "src/components/wordmark";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function LoginPage() {
   useLingui();
@@ -18,6 +19,9 @@ export default function LoginPage() {
   const setCurrentUser = useSetAtom(currentUserAtom);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const {
+    token: { colorBgLayout },
+  } = theme.useToken();
 
   const onFinish = async (values: { email: string; password: string }) => {
     setError(null);
@@ -40,16 +44,16 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#f0f2f5",
+        background: colorBgLayout,
       }}
     >
       <Card style={{ width: 380, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
         <Space direction="vertical" size="large" style={{ width: "100%", textAlign: "center" }}>
           <div>
-            <img src="/logo-light.png" alt="FaturaCloud" style={{ height: 48, marginBottom: 8, filter: "invert(1) brightness(0)" }} />
-            <Title level={4} style={{ marginBottom: 4, marginTop: 0 }}>
-              FaturaCloud
-            </Title>
+            <img src="/logo-minimal.png" alt="FaturaCloud" style={{ height: 72, marginBottom: 14 }} />
+            <div style={{ marginBottom: 6 }}>
+              <Wordmark fontSize={26} />
+            </div>
             <Text type="secondary">
               <Trans>Sign in to your account</Trans>
             </Text>

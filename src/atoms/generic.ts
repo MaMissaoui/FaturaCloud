@@ -7,3 +7,7 @@ siderAtom.debugLabel = "siderAtom";
 
 export const localeAtom = atomWithStorage("locale", defaultLocale);
 localeAtom.debugLabel = "localeAtom";
+
+// Color theme: "light" | "dark", switchable at runtime, persisted
+export const themeAtom = atomWithStorage<"light" | "dark">("theme", "light");
+themeAtom.debugLabel = "themeAtom";

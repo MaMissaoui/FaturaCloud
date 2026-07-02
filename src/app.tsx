@@ -23,7 +23,7 @@ import "dayjs/locale/uk";
 
 import { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from "react-router";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, theme as antdTheme } from "antd";
 import enUS from "antd/locale/en_US";
 import enGB from "antd/locale/en_GB";
 import etEE from "antd/locale/et_EE";
@@ -41,7 +41,7 @@ import { I18nProvider } from "@lingui/react";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 
-import { localeAtom } from "src/atoms/generic";
+import { localeAtom, themeAtom } from "src/atoms/generic";
 import { dynamicActivate } from "src/utils/lingui";
 
 import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
@@ -86,8 +86,10 @@ const AppContent = () => {
 
   // Load locale
   const locale = useAtomValue(localeAtom);
+  const themeMode = useAtomValue(themeAtom);
 
   // Auth
+  const currentUser = useAtomValue(currentUserAtom);
   const setCurrentUser = useSetAtom(currentUserAtom);
 
   // Organizations
@@ -154,11 +156,14 @@ const AppContent = () => {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-fetch organizations whenever the authenticated user changes: on initial load with
+  // a stored token, and immediately after a fresh login (the token is not a reactive value,
+  // so without this the app would spin forever on "/" after logging in).
   useEffect(() => {
     if (getToken()) {
       setOrganizations();
     }
-  }, [setOrganizations]);
+  }, [setOrganizations, currentUser]);
 
   // Brief loading to prevent CSS flicker
   useEffect(() => {
@@ -169,9 +174,11 @@ const AppContent = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Redirect to index if no organization is selected and we're not on an allowed path
+  // Redirect to index if no organization is selected and we're not on an allowed path.
+  // "/login" must be allowed too, otherwise an unauthenticated visitor (no org) gets
+  // bounced /login -> / and stuck on the loading spinner instead of seeing the login page.
   useEffect(() => {
-    const allowedPathsWithoutOrg = ["/", "/organizations/new"];
+    const allowedPathsWithoutOrg = ["/", "/login", "/organizations/new"];
     const isAllowedPath = allowedPathsWithoutOrg.includes(location.pathname);
 
     if (organizationId === null && !isAllowedPath) {
@@ -179,26 +186,41 @@ const AppContent = () => {
     }
   }, [organizationId, navigate, location.pathname]);
 
-  // Show loading spinner briefly to prevent CSS flicker
-  if (isInitialLoading) {
-    return <Loading />;
-  }
-
   return (
     <ConfigProvider
       locale={antdLocale}
       theme={{
+        algorithm: themeMode === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           borderRadius: 2,
         },
+        // In dark mode, replace antd's legacy navy sider (#001529) with an elevated
+        // neutral grey so the sidebar harmonizes with the neutral-dark content while
+        // still standing out as the lightest surface against the black content gutters.
+        components:
+          themeMode === "dark"
+            ? {
+                Layout: { siderBg: "#1f1f1f", triggerBg: "#1f1f1f" },
+                Menu: {
+                  darkItemBg: "#1f1f1f",
+                  darkSubMenuItemBg: "#1f1f1f",
+                  darkPopupBg: "#1f1f1f",
+                },
+              }
+            : undefined,
       }}
     >
-      {import.meta.env.DEV && import.meta.env.VITE_JOTAI_DEVTOOLS_ENABLED === "true" && (
-        <Suspense fallback={null}>
-          <DevTools />
-        </Suspense>
-      )}
-      <I18nProvider i18n={i18n}>
+      {/* Brief loading spinner, inside ConfigProvider so it respects the theme (prevents CSS flicker) */}
+      {isInitialLoading ? (
+        <Loading />
+      ) : (
+        <>
+          {import.meta.env.DEV && import.meta.env.VITE_JOTAI_DEVTOOLS_ENABLED === "true" && (
+            <Suspense fallback={null}>
+              <DevTools />
+            </Suspense>
+          )}
+          <I18nProvider i18n={i18n}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Index />} />
@@ -240,7 +262,9 @@ const AppContent = () => {
             <Route path="users" element={<SettingsUsers />} />
           </Route>
         </Routes>
-      </I18nProvider>
+          </I18nProvider>
+        </>
+      )}
     </ConfigProvider>
   );
 };
