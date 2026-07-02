@@ -49,13 +49,14 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Auth
 	protected("GET", "/api/auth/me", h.me)
 
-	// Backup
+	// Backup — restore/replace operations are admin-only (they can wipe or swap the
+	// entire database); read-only listing and config remain available to any user.
 	protected("GET", "/api/backups", h.listBackups)
-	protected("POST", "/api/backups", h.triggerBackup)
-	protected("POST", "/api/backups/{name}/restore", h.restoreNamedBackup)
+	adminProtected("POST", "/api/backups", h.triggerBackup)
+	adminProtected("POST", "/api/backups/{name}/restore", h.restoreNamedBackup)
 	protected("GET", "/api/backup/config", h.getBackupConfig)
-	protected("PUT", "/api/backup/config", h.setBackupConfig)
-	protected("POST", "/api/restore", h.restoreDatabase)
+	adminProtected("PUT", "/api/backup/config", h.setBackupConfig)
+	adminProtected("POST", "/api/restore", h.restoreDatabase)
 
 	// Users (admin only)
 	adminProtected("GET", "/api/users", h.listUsers)

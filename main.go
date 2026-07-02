@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/api"
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -39,8 +40,20 @@ func main() {
 		log.Fatalf("Failed to create backup directory: %v", err)
 	}
 
+	// Treat the presence of the /data volume as "this is a real deployment" (Docker).
+	// In that case, refuse to start with insecure defaults so a production instance
+	// can never silently run with a forgeable JWT secret or the well-known admin password.
+	isProduction := false
+	if _, err := os.Stat("/data"); err == nil {
+		isProduction = true
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
+	if jwtSecret == "" || jwtSecret == defaultJWTSecret {
+		if isProduction {
+			log.Fatal("JWT_SECRET must be set to a strong secret in production — refusing to start with the default")
+		}
+		log.Println("WARNING: JWT_SECRET is unset — using the insecure default. Set JWT_SECRET before deploying.")
 		jwtSecret = defaultJWTSecret
 	}
 	adminEmail := os.Getenv("ADMIN_EMAIL")
@@ -49,6 +62,10 @@ func main() {
 	}
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
 	if adminPassword == "" {
+		if isProduction {
+			log.Fatal("ADMIN_PASSWORD must be set in production — refusing to start with the default password")
+		}
+		log.Println("WARNING: ADMIN_PASSWORD is unset — using the insecure default. Set ADMIN_PASSWORD before deploying.")
 		adminPassword = defaultAdminPassword
 	}
 
@@ -68,7 +85,17 @@ func main() {
 	}
 	addr := fmt.Sprintf(":%s", port)
 	log.Printf("FaturaCloud listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	// Explicit timeouts guard against slow-client (slowloris) resource exhaustion.
+	// WriteTimeout is generous because backup/restore stream large database files.
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      300 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }

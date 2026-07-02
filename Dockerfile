@@ -39,7 +39,15 @@ WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata
 
-COPY --from=backend /app/fatura-cloud .
+# Run as a non-root user. Pre-create /data (the SQLite volume) owned by that user so
+# the app can write to a fresh named volume without needing root.
+RUN addgroup -S fatura && adduser -S -G fatura fatura \
+    && mkdir -p /data \
+    && chown -R fatura:fatura /app /data
+
+COPY --from=backend --chown=fatura:fatura /app/fatura-cloud .
+
+USER fatura
 
 VOLUME ["/data"]
 EXPOSE 8080
