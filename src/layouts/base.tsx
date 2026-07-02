@@ -268,24 +268,28 @@ export default function BaseLayout() {
                   ),
                   key: "settings.tax-rates",
                 },
-                {
-                  icon: <DatabaseOutlined />,
-                  label: (
-                    <Link to="/settings/backup">
-                      <Trans>Backup</Trans>
-                    </Link>
-                  ),
-                  key: "settings.backup",
-                },
-                ...(isAdmin ? [{
-                  icon: <UserOutlined />,
-                  label: (
-                    <Link to="/settings/users">
-                      <Trans>Users</Trans>
-                    </Link>
-                  ),
-                  key: "settings.users",
-                }] : []),
+                ...(isAdmin
+                  ? [
+                      {
+                        icon: <DatabaseOutlined />,
+                        label: (
+                          <Link to="/settings/backup">
+                            <Trans>Backup</Trans>
+                          </Link>
+                        ),
+                        key: "settings.backup",
+                      },
+                      {
+                        icon: <UserOutlined />,
+                        label: (
+                          <Link to="/settings/users">
+                            <Trans>Users</Trans>
+                          </Link>
+                        ),
+                        key: "settings.users",
+                      },
+                    ]
+                  : []),
               ],
             },
           ]}
