@@ -123,8 +123,10 @@ export const deleteDeliveryAtom = atom(null, async (get, set, deliveryId: string
     } else {
       message.error(t`Delivery deletion failed`);
     }
+    return success;
   } catch (error) {
     console.error("Failed to delete delivery:", error);
     message.error(error instanceof Error ? error.message : t`Delivery deletion failed`);
+    return false;
   }
 });

@@ -150,8 +150,10 @@ export const deleteOrderAtom = atom(null, async (get, set, orderId: string) => {
     } else {
       message.error(t`Order deletion failed`);
     }
+    return success;
   } catch (error) {
     console.error("Failed to delete order:", error);
-    message.error(t`Order deletion failed`);
+    message.error(error instanceof Error ? error.message : t`Order deletion failed`);
+    return false;
   }
 });

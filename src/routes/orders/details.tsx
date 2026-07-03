@@ -143,8 +143,8 @@ const OrderDetails = () => {
 
   const handleDelete = async () => {
     if (!id || isNew) return;
-    await deleteOrder(id);
-    navigate("/orders");
+    const success = await deleteOrder(id);
+    if (success) navigate("/orders");
   };
 
   const handleStatusChange = async (next: string) => {
@@ -461,7 +461,7 @@ const OrderDetails = () => {
           >
             <Row align="middle" justify="space-between" style={{ height: 64 }}>
               <Col>
-                {!isNew && (
+                {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
                   <Popconfirm
                     title={t`Delete this order?`}
                     onConfirm={handleDelete}

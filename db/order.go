@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -231,6 +233,17 @@ func (d *Database) UpdateOrderStatus(orderID string, status string) (*Order, err
 }
 
 func (d *Database) DeleteOrder(orderID string) (bool, error) {
+	current, err := d.GetOrder(orderID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	if current.Status == "shipped" || current.Status == "delivered" {
+		return false, newValidationError("cannot delete a %s order — cancel it instead", current.Status)
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return false, fmt.Errorf("delete_order begin: %w", err)

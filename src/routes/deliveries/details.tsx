@@ -158,8 +158,8 @@ const DeliveryDetails = () => {
 
   const handleDelete = async () => {
     if (!id || isNew) return;
-    await deleteDelivery(id);
-    navigate("/deliveries");
+    const success = await deleteDelivery(id);
+    if (success) navigate("/deliveries");
   };
 
   const handleStatusChange = async (next: string) => {
