@@ -16,6 +16,17 @@ type handler struct {
 	version   string
 }
 
+// defaultMaxBody caps ordinary JSON request bodies (comfortably above the
+// largest legitimate payload — a base64-encoded organization logo — while
+// still guarding against unbounded-body memory exhaustion, including on the
+// unauthenticated login route). The database restore upload gets its own,
+// much larger limit since it streams a full SQLite file.
+const defaultMaxBody = 10 << 20 // 10MB
+
+func limitBody(limit int64, next http.HandlerFunc) http.Handler {
+	return http.MaxBytesHandler(next, limit)
+}
+
 // NewRouter wires all API routes and returns the mux.
 // The caller is responsible for mounting a static file handler at "/" for the
 // embedded frontend.
@@ -28,35 +39,40 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		version:   version,
 	}
 	go h.runScheduler()
+	go sweepLoginBuckets()
 
 	mux := http.NewServeMux()
 
 	// Public
-	mux.HandleFunc("GET /api/version", h.getVersion)
-	mux.HandleFunc("POST /api/auth/login", h.login)
-	mux.HandleFunc("POST /api/auth/logout", h.logout)
+	mux.Handle("GET /api/version", limitBody(defaultMaxBody, h.getVersion))
+	mux.Handle("POST /api/auth/login", limitBody(defaultMaxBody, h.login))
+	mux.Handle("POST /api/auth/logout", limitBody(defaultMaxBody, h.logout))
 
 	// Protected — all routes below require a valid JWT
 	auth := h.authMiddleware
 	adminOnly := h.adminOnly
 	protected := func(method, pattern string, handlerFn http.HandlerFunc) {
-		mux.Handle(method+" "+pattern, auth(http.HandlerFunc(handlerFn)))
+		mux.Handle(method+" "+pattern, auth(limitBody(defaultMaxBody, handlerFn)))
 	}
 	adminProtected := func(method, pattern string, handlerFn http.HandlerFunc) {
-		mux.Handle(method+" "+pattern, auth(adminOnly(http.HandlerFunc(handlerFn))))
+		mux.Handle(method+" "+pattern, auth(adminOnly(limitBody(defaultMaxBody, handlerFn))))
 	}
 
 	// Auth
 	protected("GET", "/api/auth/me", h.me)
 
-	// Backup — restore/replace operations are admin-only (they can wipe or swap the
-	// entire database); read-only listing and config remain available to any user.
-	protected("GET", "/api/backups", h.listBackups)
+	// Backup — the whole surface is admin-only; the sidebar already hides it
+	// from non-admins, so the API matches that boundary instead of only
+	// gating the state-changing operations.
+	adminProtected("GET", "/api/backups", h.listBackups)
 	adminProtected("POST", "/api/backups", h.triggerBackup)
 	adminProtected("POST", "/api/backups/{name}/restore", h.restoreNamedBackup)
-	protected("GET", "/api/backup/config", h.getBackupConfig)
+	adminProtected("GET", "/api/backup/config", h.getBackupConfig)
 	adminProtected("PUT", "/api/backup/config", h.setBackupConfig)
-	adminProtected("POST", "/api/restore", h.restoreDatabase)
+	// Restore uploads stream a full SQLite database file, so this route needs a
+	// much larger body limit than the default — matching restoreDatabase's own
+	// ParseMultipartForm cap.
+	mux.Handle("POST /api/restore", auth(adminOnly(limitBody(256<<20, h.restoreDatabase))))
 
 	// Users (admin only)
 	adminProtected("GET", "/api/users", h.listUsers)

@@ -37,6 +37,22 @@ func checkLoginRate(ip string) bool {
 	return b.count <= loginMaxAttempts
 }
 
+// sweepLoginBuckets periodically evicts expired rate-limit entries so
+// loginBuckets doesn't grow unbounded as distinct source IPs attempt to log in.
+func sweepLoginBuckets() {
+	for {
+		time.Sleep(loginWindow)
+		loginMu.Lock()
+		now := time.Now()
+		for ip, b := range loginBuckets {
+			if now.After(b.windowEnd) {
+				delete(loginBuckets, ip)
+			}
+		}
+		loginMu.Unlock()
+	}
+}
+
 func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	ip := r.RemoteAddr
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {

@@ -55,6 +55,8 @@ func main() {
 		}
 		log.Println("WARNING: JWT_SECRET is unset — using the insecure default. Set JWT_SECRET before deploying.")
 		jwtSecret = defaultJWTSecret
+	} else if isProduction && len(jwtSecret) < 32 {
+		log.Fatal("JWT_SECRET must be at least 32 characters in production — refusing to start with a weak secret")
 	}
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 	if adminEmail == "" {
@@ -89,7 +91,7 @@ func main() {
 	// WriteTimeout is generous because backup/restore stream large database files.
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           securityHeaders(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      300 * time.Second,
@@ -98,6 +100,17 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
+}
+
+// securityHeaders sets baseline defensive headers on every response, API and
+// embedded frontend alike.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // spaHandler serves static files from the embedded FS and falls back to
