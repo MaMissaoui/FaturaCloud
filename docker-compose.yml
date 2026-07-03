@@ -1,5 +1,10 @@
 services:
   app:
+    # Prebuilt multi-arch image (amd64 + arm64, works on Raspberry Pi as-is).
+    # The package is private, so run `docker login ghcr.io` before `docker
+    # compose pull` on a new host. `build: .` is kept so local dev can still
+    # do `docker compose up --build` from source instead.
+    image: ghcr.io/mamissaoui/fatura-cloud:${VERSION:-latest}
     build: .
     ports:
       - "8080:8080"
