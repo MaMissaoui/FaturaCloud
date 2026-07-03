@@ -393,9 +393,13 @@ const DeliveryDetails = () => {
                 key="remove"
                 width={40}
                 render={(field) => (
-                  <DeleteOutlined
-                    style={{ color: "#ff4d4f", cursor: "pointer" }}
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
                     onClick={() => remove(field.name)}
+                    aria-label={t`Remove line item`}
                   />
                 )}
               />

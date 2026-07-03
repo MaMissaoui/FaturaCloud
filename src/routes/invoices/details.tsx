@@ -863,9 +863,13 @@ const InvoiceDetails: React.FC = () => {
                               }}
                               render={(field) => (
                                 <>
-                                  <DeleteOutlined
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<DeleteOutlined />}
                                     onClick={() => remove(field.name)}
-                                    style={{ position: "absolute", top: 20, right: -20 }}
+                                    aria-label={t`Remove line item`}
+                                    style={{ position: "absolute", top: 12, right: -32 }}
                                   />
                                   <Form.Item
                                     name={[field.name, "total"]}
