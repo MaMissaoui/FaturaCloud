@@ -140,6 +140,16 @@ export const CreateOrganization = (req: any) => post<any>("/organizations", req)
 export const UpdateOrganization = (id: string, req: any) => put<any>(`/organizations/${id}`, req);
 export const DeleteOrganization = (id: string) =>
   del<{ deleted: boolean }>(`/organizations/${id}`).then((r) => r.deleted);
+export type OrganizationUsageCount = {
+  clients: number;
+  invoices: number;
+  products: number;
+  orders: number;
+  deliveries: number;
+  taxRates: number;
+};
+export const GetOrganizationUsageCount = (id: string) =>
+  get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
 
 // ---- Clients ----
 

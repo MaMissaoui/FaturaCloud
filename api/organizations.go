@@ -63,3 +63,13 @@ func (h *handler) deleteOrganization(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})
 }
+
+func (h *handler) getOrganizationUsageCount(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	counts, err := h.db.GetOrganizationUsageCount(id)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, counts)
+}

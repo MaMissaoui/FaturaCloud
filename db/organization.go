@@ -165,3 +165,33 @@ func (d *Database) DeleteOrganization(organizationID string) (bool, error) {
 	n, _ := res.RowsAffected()
 	return n > 0, nil
 }
+
+// OrganizationUsageCount reports how many records under each domain would be
+// cascade-deleted along with the organization, so the UI can warn about the
+// blast radius before the user confirms.
+type OrganizationUsageCount struct {
+	Clients    int64 `db:"clients"    json:"clients"`
+	Invoices   int64 `db:"invoices"   json:"invoices"`
+	Products   int64 `db:"products"   json:"products"`
+	Orders     int64 `db:"orders"     json:"orders"`
+	Deliveries int64 `db:"deliveries" json:"deliveries"`
+	TaxRates   int64 `db:"taxRates"   json:"taxRates"`
+}
+
+func (d *Database) GetOrganizationUsageCount(organizationID string) (*OrganizationUsageCount, error) {
+	var counts OrganizationUsageCount
+	err := d.DB.Get(&counts, `
+		SELECT
+			(SELECT COUNT(*) FROM clients WHERE organizationId = ?) AS clients,
+			(SELECT COUNT(*) FROM invoices WHERE organizationId = ?) AS invoices,
+			(SELECT COUNT(*) FROM products WHERE organizationId = ?) AS products,
+			(SELECT COUNT(*) FROM orders WHERE organizationId = ?) AS orders,
+			(SELECT COUNT(*) FROM outbound_deliveries WHERE organizationId = ?) AS deliveries,
+			(SELECT COUNT(*) FROM taxRates WHERE organizationId = ?) AS taxRates`,
+		organizationID, organizationID, organizationID, organizationID, organizationID, organizationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_organization_usage_count: %w", err)
+	}
+	return &counts, nil
+}

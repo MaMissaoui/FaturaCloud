@@ -7,6 +7,7 @@ import {
   Form,
   Input,
   InputNumber,
+  message,
   Popconfirm,
   Row,
   Select,
@@ -35,6 +36,8 @@ import {
   CreateOrganization,
   UpdateOrganization,
   DeleteOrganization,
+  GetOrganizationUsageCount,
+  type OrganizationUsageCount,
 } from "src/api";
 import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
 import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
@@ -55,6 +58,7 @@ export default function Organizations() {
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [usageCounts, setUsageCounts] = useState<Record<string, OrganizationUsageCount>>({});
 
   const [organizationId, setOrganizationId] = useAtom(organizationIdAtom);
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
@@ -132,13 +136,29 @@ export default function Organizations() {
   };
 
   const handleDelete = async (id: string) => {
-    await DeleteOrganization(id);
-    if (id === organizationId) {
-      const remaining = orgs.filter((o) => o.id !== id);
-      setOrganizationId(remaining.length > 0 ? remaining[0].id : null);
+    try {
+      await DeleteOrganization(id);
+      if (id === organizationId) {
+        const remaining = orgs.filter((o) => o.id !== id);
+        setOrganizationId(remaining.length > 0 ? remaining[0].id : null);
+      }
+      await fetchOrgs();
+      refreshGlobalOrgs();
+      message.success(t`Organization deleted`);
+    } catch (error) {
+      console.error("Failed to delete organization:", error);
+      message.error(error instanceof Error ? error.message : t`Organization deletion failed`);
     }
-    await fetchOrgs();
-    refreshGlobalOrgs();
+  };
+
+  const fetchUsageCount = async (id: string) => {
+    if (usageCounts[id]) return;
+    try {
+      const counts = await GetOrganizationUsageCount(id);
+      setUsageCounts((prev) => ({ ...prev, [id]: counts }));
+    } catch {
+      // Confirmation still works without the breakdown if this fails.
+    }
   };
 
   const isEdit = !!editingId;
@@ -220,21 +240,52 @@ export default function Organizations() {
           title=""
           key="actions"
           width={80}
-          render={(_: any, record: any) => (
-            <Popconfirm
-              title={t`Delete this organization?`}
-              onConfirm={(e) => { e?.stopPropagation(); handleDelete(record.id); }}
-              onCancel={(e) => e?.stopPropagation()}
-            >
-              <Button
-                size="small"
-                danger
-                onClick={(e) => e.stopPropagation()}
+          render={(_: any, record: any) => {
+            const counts = usageCounts[record.id];
+            const breakdown = counts
+              ? [
+                  [counts.clients, t`client(s)`],
+                  [counts.invoices, t`invoice(s)`],
+                  [counts.products, t`product(s)`],
+                  [counts.orders, t`order(s)`],
+                  [counts.deliveries, t`delivery(ies)`],
+                  [counts.taxRates, t`tax rate(s)`],
+                ].filter(([n]) => (n as number) > 0)
+              : [];
+            return (
+              <Popconfirm
+                title={t`Delete this organization?`}
+                description={
+                  breakdown.length > 0 ? (
+                    <div style={{ maxWidth: 260 }}>
+                      <div>
+                        <Trans>This will permanently delete:</Trans>
+                      </div>
+                      <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                        {breakdown.map(([n, label]) => (
+                          <li key={label as string}>{n} {label}</li>
+                        ))}
+                      </ul>
+                      <div><Trans>This cannot be undone.</Trans></div>
+                    </div>
+                  ) : (
+                    <Trans>This cannot be undone.</Trans>
+                  )
+                }
+                onOpenChange={(open) => { if (open) fetchUsageCount(record.id); }}
+                onConfirm={(e) => { e?.stopPropagation(); handleDelete(record.id); }}
+                onCancel={(e) => e?.stopPropagation()}
               >
-                <Trans>Delete</Trans>
-              </Button>
-            </Popconfirm>
-          )}
+                <Button
+                  size="small"
+                  danger
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Trans>Delete</Trans>
+                </Button>
+              </Popconfirm>
+            );
+          }}
         />
       </Table>
 

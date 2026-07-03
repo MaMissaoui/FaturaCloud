@@ -3,15 +3,11 @@ import { atomWithStorage } from "jotai/utils";
 import { message } from "antd";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
-import isEqual from "lodash/isEqual";
-import reject from "lodash/reject";
-import first from "lodash/first";
 import {
   GetOrganizations,
   GetOrganization,
   CreateOrganization,
   UpdateOrganization,
-  DeleteOrganization,
 } from "src/api";
 
 import { generateInvoiceNumber } from "src/utils/invoice";
@@ -138,33 +134,4 @@ export const nextInvoiceNumberAtom = atom(async (get) => {
 
   const counter = (organization.invoiceNumberCounter || 0) + 1;
   return generateInvoiceNumber(format, counter);
-});
-
-// Delete organization
-export const deleteOrganizationAtom = atom(null, async (get, set) => {
-  const organizationId = get(organizationIdAtom);
-
-  try {
-    const success = await DeleteOrganization(organizationId!);
-
-    if (success) {
-      // Remove organization from the list
-      const organizations: any = reject(get(organizationsAtom), (obj: any) =>
-        isEqual(obj.id, organizationId),
-      );
-      set(organizationsAtom, organizations);
-
-      const nextOrganization: any = first(organizations);
-      set(organizationIdAtom, organizations.length > 0 ? nextOrganization.id : null);
-      message.success(t`Organization deleted`);
-
-      // Reload the page to refresh with the new organization
-      window.location.reload();
-    } else {
-      message.error(t`Organization deletion failed`);
-    }
-  } catch (error) {
-    console.error("Failed to delete organization:", error);
-    message.error(t`Organization deletion failed`);
-  }
 });

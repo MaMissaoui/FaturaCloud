@@ -87,6 +87,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/organizations/{id}", h.getOrganization)
 	protected("PUT", "/api/organizations/{id}", h.updateOrganization)
 	protected("DELETE", "/api/organizations/{id}", h.deleteOrganization)
+	protected("GET", "/api/organizations/{id}/usage-count", h.getOrganizationUsageCount)
 
 	// Clients
 	protected("GET", "/api/organizations/{orgId}/clients", h.listClients)
