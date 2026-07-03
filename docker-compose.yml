@@ -12,6 +12,9 @@ services:
       - fatura_data:/data
     environment:
       - PORT=8080
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@fatura.cloud}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     restart: unless-stopped
 
 volumes:
