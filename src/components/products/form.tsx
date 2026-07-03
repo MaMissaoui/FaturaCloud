@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, theme, Typography } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
@@ -9,8 +9,6 @@ import get from "lodash/get";
 
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
-
-const submittingAtom = atom(false);
 
 const UNIT_OPTIONS = ["hour", "day", "week", "month", "piece", "kg", "g", "lb", "oz", "l", "ml", "m", "km"];
 
@@ -44,7 +42,7 @@ const ProductForm = () => {
   const [productId, setProductId] = useAtom(productIdAtom);
   const products = useAtomValue(productsAtom);
   const setProduct = useSetAtom(productAtom);
-  const [submitting, setSubmitting] = useAtom(submittingAtom);
+  const [submitting, setSubmitting] = useState(false);
   const deleteProduct = useSetAtom(deleteProductAtom);
   const [codeTouched, setCodeTouched] = useState(false);
   const nameValue = Form.useWatch("name", form);

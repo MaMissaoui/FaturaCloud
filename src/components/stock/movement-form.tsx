@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Button, Drawer, Form, Input, InputNumber, Select, Space, theme, Typography } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import get from "lodash/get";
@@ -9,8 +9,6 @@ import filter from "lodash/filter";
 
 import { productsAtom } from "src/atoms/product";
 import { createStockMovementAtom } from "src/atoms/stock";
-
-const submittingAtom = atom(false);
 
 const Section = ({ children }: { children: React.ReactNode }) => {
   const { token } = theme.useToken();
@@ -31,7 +29,7 @@ const MovementForm = () => {
 
   const products = useAtomValue(productsAtom);
   const createMovement = useSetAtom(createStockMovementAtom);
-  const [submitting, setSubmitting] = useAtom(submittingAtom);
+  const [submitting, setSubmitting] = useState(false);
 
   const trackedProducts = filter(products, (p: any) => p.stockEnabled);
 

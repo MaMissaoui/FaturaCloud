@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Button, Drawer, Form, Input, Popconfirm, Select, Space, theme, Typography } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
@@ -10,8 +10,6 @@ import { GetClientInvoiceCount } from "src/api";
 
 import { clientIdAtom, clientAtom, clientsAtom, deleteClientAtom } from "src/atoms/client";
 import { generateClientCode } from "src/utils/client";
-
-const submittingAtom = atom(false);
 
 const Section = ({ children }: { children: React.ReactNode }) => {
   const { token } = theme.useToken();
@@ -33,7 +31,7 @@ const ClientForm = () => {
   const [clientId, setClientId] = useAtom(clientIdAtom);
   const clients = useAtomValue(clientsAtom);
   const setClient = useSetAtom(clientAtom);
-  const [submitting, setSubmitting] = useAtom(submittingAtom);
+  const [submitting, setSubmitting] = useState(false);
   const deleteClient = useSetAtom(deleteClientAtom);
   const [invoiceCount, setInvoiceCount] = useState<number | null>(null);
 
