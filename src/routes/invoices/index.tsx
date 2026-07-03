@@ -115,29 +115,31 @@ const Invoices = () => {
       icon: <CopyOutlined />,
       onClick: () => handleDuplicateInvoice(invoice.id),
     },
-    {
-      type: "divider",
-    },
-    {
-      key: "delete",
-      label: (
-        <Popconfirm
-          title={t`Delete the invoice?`}
-          description={t`Are you sure to delete this invoice?`}
-          onConfirm={(e?: React.MouseEvent<HTMLElement>) => {
-            e?.stopPropagation();
-            handleDeleteInvoice(invoice.id);
-          }}
-          okText={t`Yes`}
-          cancelText={t`No`}
-        >
-          <span>
-            <DeleteOutlined /> <Trans>Delete</Trans>
-          </span>
-        </Popconfirm>
-      ),
-      onClick: (e) => e.domEvent.stopPropagation(),
-    },
+    ...(invoice.state !== "paid"
+      ? [
+          { type: "divider" as const },
+          {
+            key: "delete",
+            label: (
+              <Popconfirm
+                title={t`Delete the invoice?`}
+                description={t`Are you sure to delete this invoice?`}
+                onConfirm={(e?: React.MouseEvent<HTMLElement>) => {
+                  e?.stopPropagation();
+                  handleDeleteInvoice(invoice.id);
+                }}
+                okText={t`Yes`}
+                cancelText={t`No`}
+              >
+                <span>
+                  <DeleteOutlined /> <Trans>Delete</Trans>
+                </span>
+              </Popconfirm>
+            ),
+            onClick: (e: any) => e.domEvent.stopPropagation(),
+          },
+        ]
+      : []),
   ];
 
   return (

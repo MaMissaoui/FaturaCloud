@@ -87,7 +87,7 @@ func (h *handler) deleteInvoice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ok, err := h.db.DeleteInvoice(id)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})

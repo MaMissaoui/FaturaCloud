@@ -397,8 +397,8 @@ const InvoiceDetails: React.FC = () => {
   };
 
   const handleDelete = (id: string) => async () => {
-    await deleteInvoice(id);
-    navigate("/invoices");
+    const success = await deleteInvoice(id);
+    if (success) navigate("/invoices");
   };
 
   const handleDuplicate = (id: string) => async () => {
@@ -1037,7 +1037,7 @@ const InvoiceDetails: React.FC = () => {
                             <CopyOutlined /> <Trans>Duplicate</Trans>
                           </Button>
                         )}
-                        {id && !isNew && (
+                        {id && !isNew && currentInvoiceState !== "paid" && (
                           <Popconfirm
                             title={t`Delete the invoice?`}
                             description={t`Are you sure to delete this invoice?`}

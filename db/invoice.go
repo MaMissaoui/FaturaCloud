@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -236,6 +238,17 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 }
 
 func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
+	current, err := d.GetInvoice(invoiceID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	if current.State == "paid" {
+		return false, newValidationError("cannot delete a paid invoice — cancel it instead")
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return false, fmt.Errorf("delete_invoice begin: %w", err)

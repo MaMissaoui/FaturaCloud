@@ -177,9 +177,11 @@ export const deleteInvoiceAtom = atom(null, async (get, set, invoiceId: string) 
     } else {
       message.error(t`Invoice deletion failed`);
     }
+    return success;
   } catch (error) {
     console.error("Failed to delete invoice:", error);
-    message.error(t`Invoice deletion failed`);
+    message.error(error instanceof Error ? error.message : t`Invoice deletion failed`);
+    return false;
   }
 });
 
