@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Row, Space, Table, Tag, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -34,10 +34,12 @@ const Orders = () => {
   const orders = useAtomValue(ordersAtom);
   const setOrders = useSetAtom(setOrdersAtom);
   const [search, setSearch] = useAtom(searchAtom);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (location.pathname === "/orders") {
-      setOrders();
+      setLoading(true);
+      setOrders().finally(() => setLoading(false));
     }
   }, [location, setOrders]);
 
@@ -72,42 +74,57 @@ const Orders = () => {
 
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
-          <Table dataSource={filtered} pagination={false} rowKey="id">
+          <Table
+            dataSource={filtered}
+            pagination={false}
+            rowKey="id"
+            loading={loading}
+            onRow={(record: any) => ({
+              onClick: () => navigate(`/orders/${record.id}`),
+              style: { cursor: "pointer" },
+            })}
+          >
             <Table.Column
               title={<Trans>Order #</Trans>}
               key="orderNumber"
+              sorter={(a: any, b: any) => (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")}
               render={(o: any) => (
-                <Link to={`/orders/${o.id}`}>{o.orderNumber}</Link>
+                <Link to={`/orders/${o.id}`} onClick={(e) => e.stopPropagation()}>{o.orderNumber}</Link>
               )}
             />
             <Table.Column
               title={<Trans>Client</Trans>}
               dataIndex="clientName"
               key="clientName"
+              sorter={(a: any, b: any) => (a.clientName ?? "").localeCompare(b.clientName ?? "")}
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
+              sorter={(a: any, b: any) => (a.status ?? "").localeCompare(b.status ?? "")}
               render={statusTag}
             />
             <Table.Column
               title={<Trans>Order date</Trans>}
               dataIndex="orderDate"
               key="orderDate"
+              sorter={(a: any, b: any) => (a.orderDate ?? 0) - (b.orderDate ?? 0)}
               render={(v: number) => v ? new Date(v).toLocaleDateString() : "—"}
             />
             <Table.Column
               title={<Trans>Delivery date</Trans>}
               dataIndex="deliveryDate"
               key="deliveryDate"
+              sorter={(a: any, b: any) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
               render={(v: number | null) => v ? new Date(v).toLocaleDateString() : "—"}
             />
             <Table.Column
               title={<Trans>Tracking</Trans>}
               dataIndex="trackingNumber"
               key="trackingNumber"
+              sorter={(a: any, b: any) => (a.trackingNumber ?? "").localeCompare(b.trackingNumber ?? "")}
               render={(v: string | null) => v ?? "—"}
             />
           </Table>

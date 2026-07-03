@@ -41,7 +41,13 @@ const ClientForm = () => {
     if (!clientId) return null;
     const c = clients.find((x: any) => x.id === clientId);
     if (!c) return null;
-    return { ...c, emails: c.emails ? JSON.parse(c.emails) : [] };
+    let emails: string[] = [];
+    try {
+      emails = c.emails ? JSON.parse(c.emails) : [];
+    } catch {
+      emails = [];
+    }
+    return { ...c, emails };
   }, [clients, clientId]);
 
   const handleClose = () => {

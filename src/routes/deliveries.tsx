@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Input, Row, Space, Table, Tag, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -32,10 +32,12 @@ const Deliveries = () => {
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
   const [search, setSearch] = useAtom(searchAtom);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (location.pathname === "/deliveries") {
-      setDeliveries();
+      setLoading(true);
+      setDeliveries().finally(() => setLoading(false));
     }
   }, [location, setDeliveries]);
 
@@ -74,6 +76,7 @@ const Deliveries = () => {
         dataSource={filtered}
         pagination={false}
         rowKey="id"
+        loading={loading}
         onRow={(record: any) => ({
           onClick: () => navigate(`/deliveries/${record.id}`),
           style: { cursor: "pointer" },
@@ -93,6 +96,7 @@ const Deliveries = () => {
           title={<Trans>Order</Trans>}
           dataIndex="orderNumber"
           key="orderNumber"
+          sorter={(a: any, b: any) => (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")}
         />
         <Table.Column
           title={<Trans>Client</Trans>}
@@ -111,6 +115,7 @@ const Deliveries = () => {
           title={<Trans>Status</Trans>}
           dataIndex="status"
           key="status"
+          sorter={(a: any, b: any) => (a.status ?? "").localeCompare(b.status ?? "")}
           render={statusTag}
         />
       </Table>

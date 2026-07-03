@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, Outlet, useLocation } from "react-router";
+import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, Col, Input, Row, Space, Table, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { CalculatorOutlined, CheckSquareOutlined } from "@ant-design/icons";
@@ -21,6 +21,7 @@ const searchAtom = atom<string>("");
 function SettingsTaxRates() {
   useLingui();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
@@ -66,19 +67,28 @@ function SettingsTaxRates() {
 
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
-          <Table dataSource={filtered} pagination={false} rowKey="id">
+          <Table
+            dataSource={filtered}
+            pagination={false}
+            rowKey="id"
+            onRow={(record: any) => ({
+              onClick: () => navigate(`/settings/tax-rates/${record.id}`),
+              style: { cursor: "pointer" },
+            })}
+          >
             <Table.Column
               title={<Trans>Name</Trans>}
               key="name"
               sorter={(a: any, b: any) => a.name.localeCompare(b.name)}
               render={(tr) => (
-                <Link to={`/settings/tax-rates/${tr.id}`}>{tr.name}</Link>
+                <Link to={`/settings/tax-rates/${tr.id}`} onClick={(e) => e.stopPropagation()}>{tr.name}</Link>
               )}
             />
             <Table.Column
               title={<Trans>Description</Trans>}
               dataIndex="description"
               key="description"
+              sorter={(a: any, b: any) => (a.description ?? "").localeCompare(b.description ?? "")}
             />
             <Table.Column
               title={<Trans>Percentage</Trans>}
@@ -93,6 +103,7 @@ function SettingsTaxRates() {
               align="center"
               dataIndex="isDefault"
               key="isDefault"
+              sorter={(a: any, b: any) => (a.isDefault ? 1 : 0) - (b.isDefault ? 1 : 0)}
               render={(value) => (value ? <CheckSquareOutlined /> : "—")}
             />
           </Table>

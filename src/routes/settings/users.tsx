@@ -160,11 +160,13 @@ export default function SettingsUsers() {
           title={<Trans>Email</Trans>}
           dataIndex="email"
           key="email"
+          sorter={(a, b) => a.email.localeCompare(b.email)}
         />
         <Table.Column<UserRecord>
           title={<Trans>Role</Trans>}
           dataIndex="role"
           key="role"
+          sorter={(a, b) => a.role.localeCompare(b.role)}
           render={(role) =>
             role === "admin"
               ? <Tag color="red"><Trans>Admin</Trans></Tag>
@@ -175,6 +177,7 @@ export default function SettingsUsers() {
           title={<Trans>Active</Trans>}
           dataIndex="isActive"
           key="isActive"
+          sorter={(a, b) => a.isActive - b.isActive}
           render={(v, record) => (
             <Switch
               checked={v === 1}
@@ -189,6 +192,7 @@ export default function SettingsUsers() {
           title={<Trans>Last login</Trans>}
           dataIndex="lastLoginAt"
           key="lastLoginAt"
+          sorter={(a, b) => (a.lastLoginAt ?? 0) - (b.lastLoginAt ?? 0)}
           render={(v) => (v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—")}
         />
         <Table.Column<UserRecord>

@@ -118,12 +118,18 @@ const Inventory = () => {
               title={<Trans>Date</Trans>}
               dataIndex="createdAt"
               key="createdAt"
+              sorter={(a: any, b: any) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()}
               render={(v: string) => v ? new Date(v).toLocaleString() : "—"}
             />
             <Table.Column
               title={<Trans>Product</Trans>}
               dataIndex="productId"
               key="productId"
+              sorter={(a: any, b: any) => {
+                const nameA = (find(products, { id: a.productId }) as any)?.name ?? "";
+                const nameB = (find(products, { id: b.productId }) as any)?.name ?? "";
+                return nameA.localeCompare(nameB);
+              }}
               render={(productId: string) => {
                 const p = find(products, { id: productId });
                 return p ? (
@@ -136,6 +142,7 @@ const Inventory = () => {
             <Table.Column
               title={<Trans>Type</Trans>}
               key="type"
+              sorter={(a: any, b: any) => (a.type ?? "").localeCompare(b.type ?? "")}
               render={(m: any) => movementTypeTag(m.type)}
             />
             <Table.Column
@@ -143,6 +150,7 @@ const Inventory = () => {
               dataIndex="quantity"
               key="quantity"
               align="right"
+              sorter={(a: any, b: any) => a.quantity - b.quantity}
               render={(qty: number) => (
                 <span style={{ color: qty >= 0 ? "#52c41a" : "#ff4d4f", fontWeight: 600 }}>
                   {formatQty(qty)}
@@ -153,12 +161,14 @@ const Inventory = () => {
               title={<Trans>Reference</Trans>}
               dataIndex="reference"
               key="reference"
+              sorter={(a: any, b: any) => (a.reference ?? "").localeCompare(b.reference ?? "")}
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               title={<Trans>Note</Trans>}
               dataIndex="note"
               key="note"
+              sorter={(a: any, b: any) => (a.note ?? "").localeCompare(b.note ?? "")}
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column

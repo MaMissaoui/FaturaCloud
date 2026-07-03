@@ -187,29 +187,34 @@ export default function Organizations() {
           dataIndex="code"
           key="code"
           width={120}
+          sorter={(a: any, b: any) => (a.code ?? "").localeCompare(b.code ?? "")}
         />
         <Table.Column
           title={<Trans>Email</Trans>}
           dataIndex="email"
           key="email"
+          sorter={(a: any, b: any) => (a.email ?? "").localeCompare(b.email ?? "")}
         />
         <Table.Column
           title={<Trans>Phone</Trans>}
           dataIndex="phone"
           key="phone"
           width={150}
+          sorter={(a: any, b: any) => (a.phone ?? "").localeCompare(b.phone ?? "")}
         />
         <Table.Column
           title="IBAN"
           dataIndex="iban"
           key="iban"
           width={200}
+          sorter={(a: any, b: any) => (a.iban ?? "").localeCompare(b.iban ?? "")}
         />
         <Table.Column
           title={<Trans>Currency</Trans>}
           dataIndex="currency"
           key="currency"
           width={100}
+          sorter={(a: any, b: any) => (a.currency ?? "").localeCompare(b.currency ?? "")}
         />
         <Table.Column
           title=""

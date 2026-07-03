@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Button,
@@ -75,9 +75,11 @@ const Invoices = () => {
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const [search, setSearch] = useAtom(searchAtom);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setInvoices();
+    setLoading(true);
+    setInvoices().finally(() => setLoading(false));
   }, [setInvoices]);
 
   const searchInvoices = () => {
@@ -162,12 +164,23 @@ const Invoices = () => {
         </Col>
       </Row>
 
-      <Table dataSource={search ? searchInvoices() : invoices} pagination={false} rowKey="id">
+      <Table
+        dataSource={search ? searchInvoices() : invoices}
+        pagination={false}
+        rowKey="id"
+        loading={loading}
+        onRow={(record: any) => ({
+          onClick: () => navigate(`/invoices/${record.id}`),
+          style: { cursor: "pointer" },
+        })}
+      >
         <Table.Column
           title="#"
           dataIndex="number"
-          sorter={(a: any, b: any) => (a.number < b.nuber ? -1 : a.number === b.number ? 0 : 1)}
-          render={(number, invoice: any) => <Link to={`/invoices/${invoice.id}`}>{number}</Link>}
+          sorter={(a: any, b: any) => (a.number < b.number ? -1 : a.number === b.number ? 0 : 1)}
+          render={(number, invoice: any) => (
+            <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>{number}</Link>
+          )}
         />
         <Table.Column
           title={<Trans>Client</Trans>}
@@ -205,18 +218,25 @@ const Invoices = () => {
           title={<Trans>State</Trans>}
           key="state"
           align="right"
+          sorter={(a: any, b: any) => (a.state ?? "").localeCompare(b.state ?? "")}
           filters={stateFilter}
           onFilter={(value, record: any) => record.state.indexOf(value) === 0}
-          render={(invoice) => <InvoiceStateSelect invoice={invoice} />}
+          render={(invoice) => (
+            <span onClick={(e) => e.stopPropagation()}>
+              <InvoiceStateSelect invoice={invoice} />
+            </span>
+          )}
         />
         <Table.Column
           key="actions"
           align="right"
           width={60}
           render={(invoice) => (
-            <Dropdown menu={{ items: getActionItems(invoice) }} trigger={["click"]}>
-              <Button type="text" icon={<MoreOutlined />} />
-            </Dropdown>
+            <span onClick={(e) => e.stopPropagation()}>
+              <Dropdown menu={{ items: getActionItems(invoice) }} trigger={["click"]}>
+                <Button type="text" icon={<MoreOutlined />} />
+              </Dropdown>
+            </span>
           )}
         />
       </Table>
