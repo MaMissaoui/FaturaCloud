@@ -1,6 +1,16 @@
 package db
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrTaxRateInUse is returned by DeleteTaxRate when the rate is still
+// referenced by invoice line items. invoiceLineItems.taxRate has an
+// ON DELETE CASCADE foreign key, so deleting an in-use rate would silently
+// strip line items (and corrupt totals) off existing invoices instead of
+// just removing an unused lookup value.
+var ErrTaxRateInUse = errors.New("tax rate is still used by one or more invoices")
 
 // TaxRate mirrors the taxRates table.
 type TaxRate struct {
@@ -124,7 +134,25 @@ func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest)
 	return d.GetTaxRate(taxRateID)
 }
 
+// GetTaxRateUsageCount returns how many invoice line items reference this
+// tax rate, so callers can decide whether it's safe to delete.
+func (d *Database) GetTaxRateUsageCount(taxRateID string) (int64, error) {
+	var count int64
+	if err := d.DB.Get(&count, `SELECT COUNT(*) FROM invoiceLineItems WHERE taxRate = ?`, taxRateID); err != nil {
+		return 0, fmt.Errorf("get_tax_rate_usage_count: %w", err)
+	}
+	return count, nil
+}
+
 func (d *Database) DeleteTaxRate(taxRateID string) (bool, error) {
+	count, err := d.GetTaxRateUsageCount(taxRateID)
+	if err != nil {
+		return false, err
+	}
+	if count > 0 {
+		return false, ErrTaxRateInUse
+	}
+
 	res, err := d.DB.Exec(`DELETE FROM taxRates WHERE id = ?`, taxRateID)
 	if err != nil {
 		return false, fmt.Errorf("delete_tax_rate: %w", err)

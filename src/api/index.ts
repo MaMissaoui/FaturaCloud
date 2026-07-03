@@ -175,6 +175,8 @@ export const CreateTaxRate = (req: any) => post<any>("/tax-rates", req);
 export const UpdateTaxRate = (id: string, req: any) => put<any>(`/tax-rates/${id}`, req);
 export const DeleteTaxRate = (id: string) =>
   del<{ deleted: boolean }>(`/tax-rates/${id}`).then((r) => r.deleted);
+export const GetTaxRateUsageCount = (id: string) =>
+  get<{ count: number }>(`/tax-rates/${id}/usage-count`).then((r) => r.count);
 
 // ---- Products ----
 

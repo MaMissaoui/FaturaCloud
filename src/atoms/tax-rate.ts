@@ -5,11 +5,14 @@ import { t } from "@lingui/core/macro";
 import orderBy from "lodash/orderBy";
 import keyBy from "lodash/keyBy";
 import map from "lodash/map";
+import reject from "lodash/reject";
+import isEqual from "lodash/isEqual";
 import {
   GetTaxRates,
   GetTaxRate,
   CreateTaxRate,
   UpdateTaxRate,
+  DeleteTaxRate,
 } from "src/api";
 
 import { organizationIdAtom } from "./organization";
@@ -104,3 +107,19 @@ export const taxRateAtom = atom(
     }
   },
 );
+
+export const deleteTaxRateAtom = atom(null, async (get, set, taxRateId: string) => {
+  try {
+    const success = await DeleteTaxRate(taxRateId);
+    if (success) {
+      const taxRates: any = reject(get(taxRatesAtom), (obj: any) => isEqual(obj.id, taxRateId));
+      set(taxRatesAtom, taxRates);
+      message.success(t`Tax rate deleted`);
+    } else {
+      message.error(t`Tax rate deletion failed`);
+    }
+  } catch (error) {
+    console.error("Failed to delete tax rate:", error);
+    message.error(error instanceof Error ? error.message : t`Tax rate deletion failed`);
+  }
+});

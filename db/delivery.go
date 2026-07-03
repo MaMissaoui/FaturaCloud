@@ -8,6 +8,18 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
+// ValidationError marks a message that's already safe to show the end user
+// verbatim — a business-rule rejection (e.g. insufficient stock, invalid
+// status transition), not an internal failure whose details should stay
+// server-side.
+type ValidationError struct{ msg string }
+
+func (e *ValidationError) Error() string { return e.msg }
+
+func newValidationError(format string, args ...any) error {
+	return &ValidationError{msg: fmt.Sprintf(format, args...)}
+}
+
 type OutboundDelivery struct {
 	ID              string  `db:"id"              json:"id"`
 	OrganizationID  string  `db:"organizationId"  json:"organizationId"`
@@ -225,7 +237,7 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 		}
 		for _, line := range lines {
 			if line.Quantity > line.AvailableStock {
-				return nil, fmt.Errorf(
+				return nil, newValidationError(
 					"insufficient stock for %q: available %.2f, requested %.2f",
 					line.ProductName, line.AvailableStock, line.Quantity,
 				)
@@ -285,7 +297,7 @@ func (d *Database) DeleteDelivery(id string) (bool, error) {
 		return false, fmt.Errorf("delete_delivery lookup: %w", err)
 	}
 	if current.Status == "shipped" || current.Status == "delivered" {
-		return false, fmt.Errorf("cannot delete a %s delivery — cancel it instead", current.Status)
+		return false, newValidationError("cannot delete a %s delivery — cancel it instead", current.Status)
 	}
 
 	res, err := d.DB.Exec(`DELETE FROM outbound_deliveries WHERE id = ?`, id)

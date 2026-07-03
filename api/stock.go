@@ -10,7 +10,7 @@ func (h *handler) listStockMovements(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	movements, err := h.db.GetStockMovements(orgID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, movements)
@@ -20,7 +20,7 @@ func (h *handler) listProductStockMovements(w http.ResponseWriter, r *http.Reque
 	productID := r.PathValue("id")
 	movements, err := h.db.GetProductStockMovements(productID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, movements)
@@ -34,7 +34,7 @@ func (h *handler) createStockMovement(w http.ResponseWriter, r *http.Request) {
 	}
 	movement, err := h.db.CreateStockMovement(req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, movement)
@@ -44,7 +44,7 @@ func (h *handler) deleteStockMovement(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ok, err := h.db.DeleteStockMovement(id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeInternalError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})

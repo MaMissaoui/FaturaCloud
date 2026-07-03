@@ -111,6 +111,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/tax-rates/{id}", h.getTaxRate)
 	protected("PUT", "/api/tax-rates/{id}", h.updateTaxRate)
 	protected("DELETE", "/api/tax-rates/{id}", h.deleteTaxRate)
+	protected("GET", "/api/tax-rates/{id}/usage-count", h.getTaxRateUsageCount)
 
 	// Products
 	protected("GET", "/api/organizations/{orgId}/products", h.listProducts)

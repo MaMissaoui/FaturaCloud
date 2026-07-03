@@ -1,11 +1,16 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
+
+// ErrDuplicateSKU is returned by CreateProduct/UpdateProduct when the
+// (organizationId, sku) unique index rejects the write.
+var ErrDuplicateSKU = errors.New("product code already in use")
 
 // Product mirrors the products table.
 type Product struct {
@@ -88,7 +93,10 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 		req.Price, req.UnitCost, req.Unit, req.Type, req.TaxRateID, req.StockEnabled,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create_product: %w", friendlyProductError(err))
+		if isDuplicateSKU(err) {
+			return nil, ErrDuplicateSKU
+		}
+		return nil, fmt.Errorf("create_product: %w", err)
 	}
 	return d.GetProduct(req.ID)
 }
@@ -106,18 +114,18 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 		productID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("update_product: %w", friendlyProductError(err))
+		if isDuplicateSKU(err) {
+			return nil, ErrDuplicateSKU
+		}
+		return nil, fmt.Errorf("update_product: %w", err)
 	}
 	return d.GetProduct(productID)
 }
 
-// friendlyProductError turns the raw SQLite unique-index violation on
-// (organizationId, sku) into a message a user can act on.
-func friendlyProductError(err error) error {
-	if strings.Contains(err.Error(), "UNIQUE constraint failed") && strings.Contains(err.Error(), "sku") {
-		return fmt.Errorf("product code already in use")
-	}
-	return err
+// isDuplicateSKU recognizes the raw SQLite unique-index violation on
+// (organizationId, sku).
+func isDuplicateSKU(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint failed") && strings.Contains(err.Error(), "sku")
 }
 
 func (d *Database) DeleteProduct(productID string) (bool, error) {

@@ -129,6 +129,7 @@ POST   /api/tax-rates
 GET    /api/tax-rates/{id}
 PUT    /api/tax-rates/{id}
 DELETE /api/tax-rates/{id}
+GET    /api/tax-rates/{id}/usage-count
 
 # Products
 GET    /api/organizations/{orgId}/products
@@ -222,6 +223,7 @@ Schema conventions:
 - `outbound_delivery_line_items.productId` links a delivery line to a stock-tracked product — set directly (standalone deliveries) or auto-resolved server-side from `orderLineItemId` when omitted (`db.replaceDeliveryLineItems`); this is the only field `db.getShippableStockLines` uses to decide which lines affect inventory
 - Marking a delivery `"shipped"` (`db.UpdateDeliveryStatus`) validates every stock-enabled product line against `products.stockQuantity` and rejects the transition if any line is short; on success it inserts `"out"` `stockMovements` referenced by `deliveryNumber`. Cancelling an already-`shipped` delivery inserts reversing `"in"` movements. Deleting a `shipped`/`delivered` delivery is rejected — cancel it instead
 - `db.GetOrderDeliveredQuantities(orderID)` sums delivered quantity per `orderLineItemId` across non-cancelled deliveries, used to prefill a new delivery from an order with only the outstanding quantity per line (supports full or partial fulfilment)
+- `invoiceLineItems.taxRate` has an `ON DELETE CASCADE` foreign key to `taxRates(id)` — deleting a tax rate still referenced by any invoice line item would silently strip those line items off existing invoices. `db.DeleteTaxRate` guards against this via `GetTaxRateUsageCount` and returns `ErrTaxRateInUse` (surfaced as 409) instead of deleting; the frontend only offers deletion for unused tax rates
 
 ## State Management
 Uses Jotai atoms pattern with:
