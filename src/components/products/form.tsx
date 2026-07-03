@@ -9,6 +9,7 @@ import get from "lodash/get";
 
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
+import ScrollShadow from "src/components/scroll-shadow";
 
 const UNIT_OPTIONS = ["hour", "day", "week", "month", "piece", "kg", "g", "lb", "oz", "l", "ml", "m", "km"];
 
@@ -158,73 +159,75 @@ const ProductForm = () => {
         </div>
       }
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        initialValues={{ type: "service", stockEnabled: false }}
-      >
-        <Section><Trans>Details</Trans></Section>
-        <Form.Item name="name" label={<Trans>Name</Trans>} rules={[{ required: true, message: t`Name is required` }]}>
-          <Input placeholder={t`Product or service name`} />
-        </Form.Item>
-
-        <Form.Item name="type" label={<Trans>Type</Trans>} rules={[{ required: true }]}>
-          <Select onChange={(val) => { if (val === "service") form.setFieldValue("stockEnabled", false); }}>
-            <Select.Option value="service"><Trans>Service</Trans></Select.Option>
-            <Select.Option value="product"><Trans>Product</Trans></Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
-          {({ getFieldValue }) =>
-            getFieldValue("type") === "product" ? (
-              <Form.Item name="stockEnabled" label={<Trans>Track inventory</Trans>} valuePropName="checked">
-                <Switch />
-              </Form.Item>
-            ) : null
-          }
-        </Form.Item>
-
-        <Form.Item name="description" label={<Trans>Description</Trans>}>
-          <Input.TextArea rows={3} placeholder={t`Optional description or notes`} />
-        </Form.Item>
-
-        <Form.Item
-          name="sku"
-          label={<Trans>SKU / Product code</Trans>}
-          rules={[{ required: true, message: t`Product code is required` }]}
+      <ScrollShadow>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{ type: "service", stockEnabled: false }}
         >
-          <Input placeholder={t`e.g. SVC-001`} onChange={() => setCodeTouched(true)} />
-        </Form.Item>
+          <Section><Trans>Details</Trans></Section>
+          <Form.Item name="name" label={<Trans>Name</Trans>} rules={[{ required: true, message: t`Name is required` }]}>
+            <Input placeholder={t`Product or service name`} />
+          </Form.Item>
 
-        <Section><Trans>Pricing</Trans></Section>
-        <Form.Item name="price" label={<Trans>Price</Trans>} rules={[{ required: true, message: t`Price is required` }]}>
-          <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
-        </Form.Item>
+          <Form.Item name="type" label={<Trans>Type</Trans>} rules={[{ required: true }]}>
+            <Select onChange={(val) => { if (val === "service") form.setFieldValue("stockEnabled", false); }}>
+              <Select.Option value="service"><Trans>Service</Trans></Select.Option>
+              <Select.Option value="product"><Trans>Product</Trans></Select.Option>
+            </Select>
+          </Form.Item>
 
-        <Form.Item name="unitCost" label={<Trans>Cost price</Trans>}>
-          <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
-        </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
+            {({ getFieldValue }) =>
+              getFieldValue("type") === "product" ? (
+                <Form.Item name="stockEnabled" label={<Trans>Track inventory</Trans>} valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+              ) : null
+            }
+          </Form.Item>
 
-        <Form.Item name="unit" label={<Trans>Unit</Trans>}>
-          <Select allowClear showSearch placeholder={t`Select or type a unit`}>
-            {UNIT_OPTIONS.map((u) => (
-              <Select.Option key={u} value={u}>{u}</Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+          <Form.Item name="description" label={<Trans>Description</Trans>}>
+            <Input.TextArea rows={3} placeholder={t`Optional description or notes`} />
+          </Form.Item>
 
-        <Form.Item name="taxRateId" label={<Trans>Default tax rate</Trans>}>
-          <Select allowClear placeholder={t`Select tax rate`}>
-            {taxRates.map((tr: any) => (
-              <Select.Option key={tr.id} value={tr.id}>
-                {tr.name} ({tr.percentage}%)
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
-      </Form>
+          <Form.Item
+            name="sku"
+            label={<Trans>SKU / Product code</Trans>}
+            rules={[{ required: true, message: t`Product code is required` }]}
+          >
+            <Input placeholder={t`e.g. SVC-001`} onChange={() => setCodeTouched(true)} />
+          </Form.Item>
+
+          <Section><Trans>Pricing</Trans></Section>
+          <Form.Item name="price" label={<Trans>Price</Trans>} rules={[{ required: true, message: t`Price is required` }]}>
+            <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
+          </Form.Item>
+
+          <Form.Item name="unitCost" label={<Trans>Cost price</Trans>}>
+            <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
+          </Form.Item>
+
+          <Form.Item name="unit" label={<Trans>Unit</Trans>}>
+            <Select allowClear showSearch placeholder={t`Select or type a unit`}>
+              {UNIT_OPTIONS.map((u) => (
+                <Select.Option key={u} value={u}>{u}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item name="taxRateId" label={<Trans>Default tax rate</Trans>}>
+            <Select allowClear placeholder={t`Select tax rate`}>
+              {taxRates.map((tr: any) => (
+                <Select.Option key={tr.id} value={tr.id}>
+                  {tr.name} ({tr.percentage}%)
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </ScrollShadow>
     </Drawer>
   );
 };

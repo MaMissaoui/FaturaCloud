@@ -10,6 +10,7 @@ import { GetClientInvoiceCount } from "src/api";
 
 import { clientIdAtom, clientAtom, clientsAtom, deleteClientAtom } from "src/atoms/client";
 import { generateClientCode } from "src/utils/client";
+import ScrollShadow from "src/components/scroll-shadow";
 
 const Section = ({ children }: { children: React.ReactNode }) => {
   const { token } = theme.useToken();
@@ -144,37 +145,39 @@ const ClientForm = () => {
         </div>
       }
     >
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
-        <Section><Trans>Contact</Trans></Section>
-        <Form.Item name="name" label={<Trans>Name</Trans>} rules={[{ required: true, message: t`Please input name!` }]}>
-          <Input
-            placeholder={t`Name`}
-            onChange={(e) => {
-              if (!clientId) form.setFieldValue("code", generateClientCode(e.target.value));
-            }}
-          />
-        </Form.Item>
-        <Form.Item name="code" label={<Trans>Code</Trans>}>
-          <Input placeholder={t`Code`} maxLength={10} />
-        </Form.Item>
-        <Form.Item name="emails" label={<Trans>E-mails</Trans>}>
-          <Select placeholder={t`E-mails`} mode="tags" tokenSeparators={[",", ";"]} />
-        </Form.Item>
-        <Form.Item name="phone" label={<Trans>Phone</Trans>}>
-          <Input placeholder={t`Phone`} />
-        </Form.Item>
-        <Form.Item name="website" label={<Trans>Website</Trans>}>
-          <Input placeholder={t`Website`} />
-        </Form.Item>
-        <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
-          <Input placeholder={t`VAT Number`} />
-        </Form.Item>
+      <ScrollShadow>
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+          <Section><Trans>Contact</Trans></Section>
+          <Form.Item name="name" label={<Trans>Name</Trans>} rules={[{ required: true, message: t`Please input name!` }]}>
+            <Input
+              placeholder={t`Name`}
+              onChange={(e) => {
+                if (!clientId) form.setFieldValue("code", generateClientCode(e.target.value));
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="code" label={<Trans>Code</Trans>}>
+            <Input placeholder={t`Code`} maxLength={10} />
+          </Form.Item>
+          <Form.Item name="emails" label={<Trans>E-mails</Trans>}>
+            <Select placeholder={t`E-mails`} mode="tags" tokenSeparators={[",", ";"]} />
+          </Form.Item>
+          <Form.Item name="phone" label={<Trans>Phone</Trans>}>
+            <Input placeholder={t`Phone`} />
+          </Form.Item>
+          <Form.Item name="website" label={<Trans>Website</Trans>}>
+            <Input placeholder={t`Website`} />
+          </Form.Item>
+          <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
+            <Input placeholder={t`VAT Number`} />
+          </Form.Item>
 
-        <Section><Trans>Address</Trans></Section>
-        <Form.Item name="address" label={<Trans>Address</Trans>}>
-          <Input.TextArea rows={4} placeholder={t`Address`} />
-        </Form.Item>
-      </Form>
+          <Section><Trans>Address</Trans></Section>
+          <Form.Item name="address" label={<Trans>Address</Trans>}>
+            <Input.TextArea rows={4} placeholder={t`Address`} />
+          </Form.Item>
+        </Form>
+      </ScrollShadow>
     </Drawer>
   );
 };
