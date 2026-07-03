@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router";
-import { Button, Col, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Col, Popconfirm, Row, Select, Space, Table, Tag, theme, Tooltip, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -28,6 +28,7 @@ const formatQty = (qty: number) =>
 
 const Inventory = () => {
   useLingui();
+  const { token } = theme.useToken();
   const location = useLocation();
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
@@ -85,18 +86,18 @@ const Inventory = () => {
         <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
           {trackedProducts.map((p: any) => {
             const qty: number = p.stockQuantity ?? 0;
-            const color = qty <= 0 ? "#ff4d4f" : qty <= 5 ? "#faad14" : "#52c41a";
+            const color = qty <= 0 ? token.colorError : qty <= 5 ? token.colorWarning : token.colorSuccess;
             return (
               <Col key={p.id} xs={12} sm={8} md={6} lg={4}>
                 <div
                   style={{
                     padding: "12px 16px",
-                    border: "1px solid #f0f0f0",
+                    border: `1px solid ${token.colorBorderSecondary}`,
                     borderRadius: 6,
                     borderLeft: `4px solid ${color}`,
                   }}
                 >
-                  <div style={{ fontSize: 12, color: "#888", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 12, color: token.colorTextSecondary, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.name}
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 600, color }}>

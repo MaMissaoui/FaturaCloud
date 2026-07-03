@@ -12,6 +12,7 @@ import {
   Typography,
   Upload,
   message,
+  theme,
 } from "antd";
 import { atom, useAtom, useSetAtom } from "jotai";
 import {
@@ -41,6 +42,7 @@ const submittingAtom = atom(false);
 function SettingsInvoice() {
   const [form] = Form.useForm();
   const { i18n } = useLingui();
+  const { token } = theme.useToken();
 
   const setOrganizations = useSetAtom(setOrganizationsAtom);
   const [organization, setOrganization] = useAtom(organizationAtom);
@@ -182,7 +184,7 @@ function SettingsInvoice() {
             <Trans>Available variables</Trans>
           </Button>
           {showVariables && (
-            <div style={{ padding: "12px 16px", backgroundColor: "#f5f5f5", borderRadius: 4, marginBottom: 16 }}>
+            <div style={{ padding: "12px 16px", backgroundColor: token.colorFillAlter, borderRadius: 4, marginBottom: 16 }}>
               <Space direction="vertical" size={4} style={{ width: "100%" }}>
                 {[
                   ["{number}", <Trans key="n">Sequential number</Trans>],
@@ -230,7 +232,7 @@ function SettingsInvoice() {
                   maxWidth: 240,
                   maxHeight: 80,
                   objectFit: "contain",
-                  border: "1px solid #d9d9d9",
+                  border: `1px solid ${token.colorBorderSecondary}`,
                   borderRadius: 6,
                   padding: 8,
                   display: "block",
