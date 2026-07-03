@@ -15,7 +15,7 @@ import {
   Typography,
 } from "antd";
 import { atom, useAtom, useAtomValue } from "jotai";
-import { TeamOutlined } from "@ant-design/icons";
+import { DeleteOutlined, TeamOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -107,6 +107,17 @@ export default function SettingsUsers() {
   const handleDelete = async (id: string) => {
     await DeleteUser(id);
     fetchUsers(search);
+  };
+
+  const handleDeleteFromDrawer = async () => {
+    if (!editingId) return;
+    setSubmitting(true);
+    try {
+      await handleDelete(editingId);
+      handleClose();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleToggleActive = async (id: string, active: boolean) => {
@@ -226,12 +237,29 @@ export default function SettingsUsers() {
         width={480}
         onClose={handleClose}
         footer={
-          <Space style={{ justifyContent: "flex-end", width: "100%", display: "flex" }}>
-            <Button onClick={handleClose}><Trans>Cancel</Trans></Button>
-            <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-              <Trans>Save</Trans>
-            </Button>
-          </Space>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div>
+              {isEdit && editingId !== me?.id && (
+                <Popconfirm
+                  title={t`Delete this user?`}
+                  onConfirm={handleDeleteFromDrawer}
+                  okText={<Trans>Yes</Trans>}
+                  cancelText={<Trans>No</Trans>}
+                  placement="topRight"
+                >
+                  <Button danger icon={<DeleteOutlined />} loading={submitting}>
+                    <Trans>Delete</Trans>
+                  </Button>
+                </Popconfirm>
+              )}
+            </div>
+            <Space>
+              <Button onClick={handleClose}><Trans>Cancel</Trans></Button>
+              <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+                <Trans>Save</Trans>
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
