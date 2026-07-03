@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Button, Divider, Layout, Menu, Select, Space, Row, Col, message, theme } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -57,6 +57,21 @@ export default function BaseLayout() {
 
   // Feedback modal state
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+
+  // Below this width the sidebar becomes an overlay drawer instead of
+  // pushing content — it's shown/hidden via mobileMenuOpen (not persisted,
+  // unlike the desktop siderCollapsed preference below).
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768,
+  );
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const onChange = () => setIsMobile(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
 
   // Organizations
   const organizations = useAtomValue(organizationsAtom);
@@ -120,13 +135,32 @@ export default function BaseLayout() {
     );
   }
 
+  const mobileSiderOpen = isMobile && mobileMenuOpen;
+  const siderIsCollapsed = isMobile ? !mobileMenuOpen : siderCollapsed;
+  const closeMobileMenu = () => {
+    if (isMobile) setMobileMenuOpen(false);
+  };
+
   return (
     <Layout hasSider style={{ minHeight: "100vh", width: "100%" }}>
+      {isMobile && (
+        <div
+          onClick={closeMobileMenu}
+          style={{
+            display: mobileSiderOpen ? "block" : "none",
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.45)",
+            zIndex: 999,
+          }}
+        />
+      )}
       <Sider
         theme={themeMode}
         trigger={null}
         collapsible
-        collapsed={siderCollapsed}
+        collapsed={siderIsCollapsed}
+        collapsedWidth={isMobile ? 0 : 80}
         style={{
           overflow: "auto",
           height: "100vh",
@@ -134,25 +168,26 @@ export default function BaseLayout() {
           left: 0,
           top: 0,
           bottom: 0,
+          zIndex: isMobile ? 1000 : undefined,
           borderRight: `1px solid ${colorBorderSecondary}`,
         }}
       >
-        <div className="logo" style={{ padding: siderCollapsed ? "16px 8px 12px" : "18px 16px 14px" }}>
+        <div className="logo" style={{ padding: siderIsCollapsed ? "16px 8px 12px" : "18px 16px 14px" }}>
           <Link
             to="/invoices"
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: siderCollapsed ? "center" : "flex-start",
+              justifyContent: siderIsCollapsed ? "center" : "flex-start",
               gap: 10,
             }}
           >
             <img
               src="/logo-minimal.png"
               alt="FaturaCloud"
-              style={{ width: siderCollapsed ? 44 : 34, height: "auto", flexShrink: 0 }}
+              style={{ width: siderIsCollapsed ? 44 : 34, height: "auto", flexShrink: 0 }}
             />
-            {!siderCollapsed && <Wordmark fontSize={19} />}
+            {!siderIsCollapsed && <Wordmark fontSize={19} />}
           </Link>
         </div>
         <Menu
@@ -160,6 +195,7 @@ export default function BaseLayout() {
           mode="inline"
           defaultOpenKeys={openKeys}
           defaultSelectedKeys={selectedKeys}
+          onClick={closeMobileMenu}
           items={[
             {
               type: "group" as const,
@@ -308,12 +344,16 @@ export default function BaseLayout() {
               textAlign: "left",
             }}
           >
-            {!siderCollapsed && <Trans>Feedback</Trans>}
+            {!siderIsCollapsed && <Trans>Feedback</Trans>}
           </Button>
         </div>
       </Sider>
       <Layout
-        style={{ width: "100%", marginLeft: siderCollapsed ? 80 : 200, transition: "all 0.2s" }}
+        style={{
+          width: "100%",
+          marginLeft: isMobile ? 0 : siderCollapsed ? 80 : 200,
+          transition: "all 0.2s",
+        }}
       >
         <Header
           style={{
@@ -329,8 +369,8 @@ export default function BaseLayout() {
             <Col flex="auto">
               <Button
                 type="text"
-                icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={() => setSiderCollapsed(!siderCollapsed)}
+                icon={siderIsCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => (isMobile ? setMobileMenuOpen(!mobileMenuOpen) : setSiderCollapsed(!siderCollapsed))}
                 style={{
                   fontSize: "16px",
                   width: 64,
