@@ -43,6 +43,7 @@ export const taxRateAtom = atom(
       return taxRate;
     } catch (error) {
       console.error("Failed to fetch tax rate:", error);
+      message.error(t`Failed to fetch tax rate`);
       return null;
     }
   },

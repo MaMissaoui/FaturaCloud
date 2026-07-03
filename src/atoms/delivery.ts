@@ -60,6 +60,7 @@ export const deliveryAtom = atom(
       };
     } catch (error) {
       console.error("Failed to fetch delivery:", error);
+      message.error(t`Failed to fetch delivery`);
       return null;
     }
   },

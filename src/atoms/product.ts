@@ -44,6 +44,7 @@ export const productAtom = atom(
       return await GetProduct(productId);
     } catch (error) {
       console.error("Failed to fetch product:", error);
+      message.error(t`Failed to fetch product`);
       return null;
     }
   },

@@ -77,6 +77,7 @@ export const invoiceAtom = atom(
       };
     } catch (error) {
       console.error("Failed to fetch invoice:", error);
+      message.error(t`Failed to fetch invoice`);
       return null;
     }
   },

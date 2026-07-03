@@ -64,6 +64,7 @@ export const organizationAtom = atom(
       return organization;
     } catch (error) {
       console.error("Failed to fetch organization:", error);
+      message.error(t`Failed to fetch organization`);
       return null;
     }
   },

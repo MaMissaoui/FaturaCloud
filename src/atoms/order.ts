@@ -71,6 +71,7 @@ export const orderAtom = atom(
       };
     } catch (error) {
       console.error("Failed to fetch order:", error);
+      message.error(t`Failed to fetch order`);
       return null;
     }
   },

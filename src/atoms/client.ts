@@ -54,6 +54,7 @@ export const clientAtom = atom(
       };
     } catch (error) {
       console.error("Failed to fetch client:", error);
+      message.error(t`Failed to fetch client`);
       return null;
     }
   },
