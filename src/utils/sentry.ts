@@ -17,7 +17,12 @@ export const initSentry = async () => {
   }
 
   Sentry.init({
-    dsn: "https://6dc2200c78474838a13d3fbaa2b8d139@o87060.ingest.us.sentry.io/1223243",
+    // TODO: replace with your own Sentry project's DSN — this is a dummy
+    // placeholder. The previous value was a hardcoded third-party DSN
+    // inherited from the original Fatura desktop app, silently sending this
+    // deployment's crash reports and user feedback to an account we don't
+    // control. Create a project at sentry.io and paste its DSN here.
+    dsn: "https://dummy-replace-me@o000000.ingest.us.sentry.io/0000000",
     environment: import.meta.env.MODE,
     release: appVersion,
     enabled: isEnabled,
