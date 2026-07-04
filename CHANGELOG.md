@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-04
+
 ### Added
 - Sentry error tracking is now wired to a real project (DSN via the `VITE_SENTRY_DSN` build-arg, off by default) instead of a dummy placeholder; the published GHCR image ships without a DSN so third-party deployments don't report into this project's Sentry account. Source-map upload (`vite.config.ts`) now tags releases with the same version string the running app reports, so uploaded maps actually match reported events — previously they were always tagged `"development"` since `GITHUB_SHA` never reached the Docker build
 
