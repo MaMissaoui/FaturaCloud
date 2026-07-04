@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-04
+
 ### Added
 - Sidebar groups (Sales, Inventory, Master Data) are now collapsible/expandable, matching the existing Settings behavior — the active group auto-expands based on the current page
 - Two new stock movement types for recording physical stock count / assessment discrepancies directly: "Stock count — surplus found" and "Stock count — shortage found", alongside the existing generic Adjustment type
