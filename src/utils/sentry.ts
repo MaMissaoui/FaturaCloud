@@ -3,10 +3,18 @@ import { GetVersion } from "src/api";
 
 // Initialize Sentry
 export const initSentry = async () => {
+  // DSN comes from the VITE_SENTRY_DSN build-time env var, not a literal here —
+  // this file ships in the public GHCR image, and a hardcoded DSN would mean
+  // every downstream deployer's crash reports land in this project's own
+  // Sentry account. Set VITE_SENTRY_DSN as a Docker build-arg for deployments
+  // that want error tracking; the published image is built without it.
+  const dsn = import.meta.env.VITE_SENTRY_DSN;
+
   // Check if Sentry should be enabled
   const isEnabled =
-    import.meta.env.VITE_SENTRY_ENABLED === "true" ||
-    (import.meta.env.VITE_SENTRY_ENABLED === undefined && import.meta.env.PROD);
+    Boolean(dsn) &&
+    (import.meta.env.VITE_SENTRY_ENABLED === "true" ||
+      (import.meta.env.VITE_SENTRY_ENABLED === undefined && import.meta.env.PROD));
 
   // Get the app version
   let appVersion = "unknown";
@@ -17,12 +25,7 @@ export const initSentry = async () => {
   }
 
   Sentry.init({
-    // TODO: replace with your own Sentry project's DSN — this is a dummy
-    // placeholder. The previous value was a hardcoded third-party DSN
-    // inherited from the original Fatura desktop app, silently sending this
-    // deployment's crash reports and user feedback to an account we don't
-    // control. Create a project at sentry.io and paste its DSN here.
-    dsn: "https://dummy-replace-me@o000000.ingest.us.sentry.io/0000000",
+    dsn,
     environment: import.meta.env.MODE,
     release: appVersion,
     enabled: isEnabled,

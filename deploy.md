@@ -100,6 +100,20 @@ environment variables, the Authelia-side client registration steps, and the
 security model. This is unset (off) by default, so nothing here changes
 unless you deliberately configure it.
 
+## Optional: Sentry error tracking
+
+The published image ships without a Sentry DSN, so `docker compose pull` never
+sends this deployment's crash reports anywhere. To enable it, add
+`VITE_SENTRY_DSN=<your dsn>` to `.env` and build locally instead of pulling:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+`docker-compose.yml` passes `VITE_SENTRY_DSN` through as a build-arg. Switching
+back to `docker compose pull` later reverts to the DSN-less published image.
+
 ## Troubleshooting
 
 - **Container exits immediately on first run**: check `docker compose logs

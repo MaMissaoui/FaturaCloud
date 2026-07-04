@@ -13,11 +13,16 @@ export default defineConfig(async () => ({
     }),
     lingui(),
     sentryVitePlugin({
-      org: "konstruktor",
-      project: "fatura-cloud",
+      org: "mohamed-ali-missaoui",
+      project: "faturacloud",
       telemetry: false,
       release: {
-        name: process.env.GITHUB_SHA || "development",
+        // Matches the VERSION build-arg embedded in the Go binary and served by
+        // GET /api/version — Sentry.init's `release` (src/utils/sentry.ts) reads
+        // that same string at runtime, so uploaded source maps line up with
+        // reported events. GITHUB_SHA never reaches the Docker build container,
+        // so it was never a usable value here.
+        name: process.env.VERSION || "development",
       },
       sourcemaps: {
         assets: "./dist/**",

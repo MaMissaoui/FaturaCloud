@@ -12,7 +12,22 @@ RUN pnpm install --frozen-lockfile
 COPY index.html lingui.config.ts vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY src ./src
 
-RUN pnpm build
+# VERSION also feeds vite.config.ts's sentryVitePlugin release name, so uploaded
+# source maps match the release string the running app reports to Sentry.
+ARG VERSION=dev
+ENV VERSION=$VERSION
+
+# Optional: bake a Sentry DSN into this build so the app reports errors. Left
+# empty by default — the published multi-arch image is built without one, so
+# Sentry stays off unless a deployment explicitly opts in with its own DSN.
+ARG VITE_SENTRY_DSN=""
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
+
+# Optional: upload source maps for this release to Sentry (readable stack
+# traces). Passed as a BuildKit secret, not a build-arg, so the token never
+# lands in image layers/history. Skipped silently if not mounted.
+RUN --mount=type=secret,id=sentry_auth_token \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" pnpm build
 
 
 # ---- Stage 2: Build the Go backend ----

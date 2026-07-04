@@ -274,16 +274,20 @@ The `Dockerfile` is a three-stage build:
 2. **backend** (golang:1.26-alpine) — copies `dist/` and embeds it via `//go:embed all:dist`, compiles binary
 3. **runtime** (alpine:3.21) — copies only the binary, minimal footprint
 
-Pass `--build-arg VERSION=<tag>` to inject a version string (accessible via `GET /api/version`).
+Pass `--build-arg VERSION=<tag>` to inject a version string (accessible via `GET /api/version`); the frontend build stage also uses it as the Sentry release name (see below).
+
+Two Sentry-related build inputs are optional and deliberately excluded from the published GHCR image (`.github/workflows/docker.yml`), so pulling that image never sends crash reports to this project's Sentry account by default:
+- `--build-arg VITE_SENTRY_DSN=<dsn>` — bakes a DSN into the frontend build, enabling error reporting. `docker-compose.yml` passes this through from a `VITE_SENTRY_DSN` var in your own `.env` for `docker compose up --build`.
+- `--secret id=sentry_auth_token,env=SENTRY_AUTH_TOKEN` (BuildKit secret, not a build-arg — keeps the token out of image layers/history) — uploads source maps for that release to Sentry (`org: mohamed-ali-missaoui`, `project: faturacloud` in `vite.config.ts`). CI supplies it from the `SENTRY_AUTH_TOKEN` repo secret; skipped silently if absent.
 
 ## Environment Variables
 - `PORT` — HTTP port for the Go server (default `8080`)
 - `JWT_SECRET` — secret key for signing JWT tokens; defaults to `"dev-secret-change-me-in-production"` — **must be set in production**
 - `ADMIN_EMAIL` — email for the initial admin user created on first startup (default: `admin@fatura.cloud`)
 - `ADMIN_PASSWORD` — password for the initial admin user (default: `admin`) — **change in production**
-- `VITE_SENTRY_ENABLED=true` — force-enables Sentry error tracking in dev (defaults off outside production)
+- `VITE_SENTRY_DSN` — frontend build-time; enables Sentry error tracking when set (see Docker section above for how to pass it in). Unset means Sentry is fully off regardless of `VITE_SENTRY_ENABLED`
+- `VITE_SENTRY_ENABLED=true` — force-enables Sentry error tracking in dev (defaults off outside production); has no effect without `VITE_SENTRY_DSN` also set
 - `VITE_JOTAI_DEVTOOLS_ENABLED=true` — enables Jotai DevTools in dev mode
-- `GITHUB_SHA` — injected by CI for Sentry release tracking; resolves to `"development"` locally
 - `OIDC_ISSUER_URL` — enables OIDC SSO login when set (Authelia or any standards-compliant provider); unset/empty means the feature is fully disabled, no route reachable, local login unaffected
 - `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_REDIRECT_URL` — OIDC client credentials and this app's own callback URL (must exactly match what's registered with the provider)
 - `OIDC_SCOPES` — space-separated (default `openid profile email groups`)

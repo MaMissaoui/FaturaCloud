@@ -5,7 +5,13 @@ services:
     # compose pull` on a new host. `build: .` is kept so local dev can still
     # do `docker compose up --build` from source instead.
     image: ghcr.io/mamissaoui/fatura-cloud:${VERSION:-latest}
-    build: .
+    build:
+      context: .
+      args:
+        # Optional: set in your own .env to enable Sentry error tracking on a
+        # locally-built image. Left unset, this build has no DSN, same as the
+        # published GHCR image — see CLAUDE.md's Environment Variables section.
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
     ports:
       - "8080:8080"
     volumes:
