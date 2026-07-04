@@ -235,11 +235,11 @@ Uses Jotai atoms pattern with:
 **Important**: never use Jotai module-level atoms for local UI state inside Modal or Drawer forms — the mask gets orphaned and freezes the UI. Use `useState` for all local drawer/modal state.
 
 ## Sidebar Navigation
-The sidebar is grouped with `type: "group"` items (non-clickable headers):
+The sidebar is grouped into collapsible submenus (click the group to expand/collapse, same behavior for all groups — the active group auto-expands based on the current route via `defaultOpenKeys` in `src/layouts/base.tsx`):
 - **Sales**: Invoices → Outbound Deliveries → Orders
 - **Inventory**: Inventory
 - **Master Data**: Clients → Products → Organizations
-- **Settings** (collapsible): Invoice, Tax Rates, Backup, Users (admin only)
+- **Settings**: Invoice, Tax Rates, Backup, Users (admin only)
 
 ## Internationalization
 - Uses LinguiJS with macro-based extraction

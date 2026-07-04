@@ -15,6 +15,8 @@ import {
   AppstoreOutlined,
   InboxOutlined,
   ShoppingOutlined,
+  ShopOutlined,
+  FolderOutlined,
   SendOutlined,
   CommentOutlined,
   LogoutOutlined,
@@ -121,7 +123,18 @@ export default function BaseLayout() {
       ? matchResult.params.path.join("/")
       : matchResult.params.path;
     const pathArray = pathString.split("/");
-    openKeys = pathArray[0] === "settings" ? ["settings"] : [];
+    const section = pathArray[0];
+    const salesSections = ["invoices", "deliveries", "orders"];
+    const masterDataSections = ["clients", "products", "organizations"];
+    if (section === "settings") {
+      openKeys = ["settings"];
+    } else if (salesSections.includes(section)) {
+      openKeys = ["group-sales"];
+    } else if (section === "inventory") {
+      openKeys = ["group-inventory"];
+    } else if (masterDataSections.includes(section)) {
+      openKeys = ["group-masterdata"];
+    }
     selectedKeys = [join(take(compact(pathArray), 2), ".")];
   }
 
@@ -198,7 +211,7 @@ export default function BaseLayout() {
           onClick={closeMobileMenu}
           items={[
             {
-              type: "group" as const,
+              icon: <ShopOutlined />,
               label: <Trans>Sales</Trans>,
               key: "group-sales",
               children: [
@@ -232,7 +245,7 @@ export default function BaseLayout() {
               ],
             },
             {
-              type: "group" as const,
+              icon: <InboxOutlined />,
               label: <Trans>Inventory</Trans>,
               key: "group-inventory",
               children: [
@@ -248,7 +261,7 @@ export default function BaseLayout() {
               ],
             },
             {
-              type: "group" as const,
+              icon: <FolderOutlined />,
               label: <Trans>Master Data</Trans>,
               key: "group-masterdata",
               children: [
