@@ -56,7 +56,7 @@ const MovementForm = () => {
     const rawQty: number = values.quantity ?? 0;
 
     let signedQty: number;
-    if (values.type === "out") {
+    if (values.type === "out" || values.type === "count_subtraction") {
       signedQty = -rawQty;
     } else if (values.type === "adjustment") {
       signedQty = rawQty - (product?.stockQuantity ?? 0);
@@ -110,6 +110,8 @@ const MovementForm = () => {
             <Select.Option value="in"><Trans>Stock in — receive goods</Trans></Select.Option>
             <Select.Option value="out"><Trans>Stock out — consume / sell</Trans></Select.Option>
             <Select.Option value="adjustment"><Trans>Adjustment — set count to</Trans></Select.Option>
+            <Select.Option value="count_addition"><Trans>Stock count — surplus found (add)</Trans></Select.Option>
+            <Select.Option value="count_subtraction"><Trans>Stock count — shortage found (subtract)</Trans></Select.Option>
           </Select>
         </Form.Item>
 
@@ -121,7 +123,11 @@ const MovementForm = () => {
                 ? t`New stock count`
                 : type === "out"
                   ? t`Quantity consumed / sold`
-                  : t`Quantity received`;
+                  : type === "count_addition"
+                    ? t`Surplus quantity found`
+                    : type === "count_subtraction"
+                      ? t`Shortage quantity found`
+                      : t`Quantity received`;
             return (
               <Form.Item name="quantity" label={label} rules={[{ required: true, message: t`Quantity is required` }]}>
                 <InputNumber min={0} precision={2} step={1} style={{ width: "100%" }} placeholder="0" />

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Sidebar groups (Sales, Inventory, Master Data) are now collapsible/expandable, matching the existing Settings behavior — the active group auto-expands based on the current page
+- Two new stock movement types for recording physical stock count / assessment discrepancies directly: "Stock count — surplus found" and "Stock count — shortage found", alongside the existing generic Adjustment type
 - Deliveries created from an order now pre-fill line items with the outstanding (not-yet-delivered) quantity per line, so a single order can be fulfilled across multiple full or partial deliveries
 - Marking a delivery as shipped validates and reduces inventory for stock-tracked products, rejecting the transition with a descriptive error if stock is insufficient; cancelling an already-shipped delivery restores it via a reversing stock movement, both referenced by the delivery number
 - Standalone deliveries (not linked to any order) can now pick a product per line item and get the same stock validation and movements as order-linked deliveries

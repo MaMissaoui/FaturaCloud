@@ -20,6 +20,8 @@ const productFilterAtom = atom<string | null>(null);
 const movementTypeTag = (type: string) => {
   if (type === "in") return <Tag color="green">↑ <Trans>In</Trans></Tag>;
   if (type === "out") return <Tag color="red">↓ <Trans>Out</Trans></Tag>;
+  if (type === "count_addition") return <Tag color="cyan">↑ <Trans>Stock count (surplus)</Trans></Tag>;
+  if (type === "count_subtraction") return <Tag color="orange">↓ <Trans>Stock count (shortage)</Trans></Tag>;
   return <Tag color="blue">⇆ <Trans>Adjustment</Trans></Tag>;
 };
 
