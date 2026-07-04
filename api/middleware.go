@@ -16,6 +16,12 @@ type Claims struct {
 	UserID string `json:"userId"`
 	Email  string `json:"email"`
 	Role   string `json:"role"`
+	// Provider records how this token was issued ("local" or "oidc"). It must
+	// round-trip through the signed JWT itself (not just live in memory at
+	// issue time) since /api/auth/me reads it back from a re-parsed token on
+	// a later request — a json:"-" tag here would silently make every token
+	// look like "local" after the first parse.
+	Provider string `json:"authProvider"`
 	jwt.RegisteredClaims
 }
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/api"
@@ -71,7 +72,22 @@ func main() {
 		adminPassword = defaultAdminPassword
 	}
 
-	mux := api.NewRouter(database, dbPath, backupDir, jwtSecret, version)
+	oidcCfg := api.OIDCConfig{
+		IssuerURL:    os.Getenv("OIDC_ISSUER_URL"),
+		ClientID:     os.Getenv("OIDC_CLIENT_ID"),
+		ClientSecret: os.Getenv("OIDC_CLIENT_SECRET"),
+		RedirectURL:  os.Getenv("OIDC_REDIRECT_URL"),
+		Scopes:       oidcScopes(os.Getenv("OIDC_SCOPES")),
+		EmailClaim:   envOrDefault("OIDC_EMAIL_CLAIM", "email"),
+		NameClaim:    envOrDefault("OIDC_NAME_CLAIM", "name"),
+		GroupsClaim:  envOrDefault("OIDC_GROUPS_CLAIM", "groups"),
+		AdminGroup:   envOrDefault("OIDC_ADMIN_GROUP", "admins"),
+	}
+	if oidcCfg.IssuerURL != "" {
+		log.Printf("OIDC SSO enabled — issuer %s, admin group %q", oidcCfg.IssuerURL, oidcCfg.AdminGroup)
+	}
+
+	mux := api.NewRouter(database, dbPath, backupDir, jwtSecret, version, oidcCfg)
 	api.EnsureFirstAdmin(database, adminEmail, adminPassword)
 
 	// Serve embedded frontend from dist/ with SPA fallback to index.html.
@@ -131,6 +147,22 @@ func spaHandler(fsys fs.FS) http.Handler {
 		r2.URL.Path = "/"
 		fileServer.ServeHTTP(w, r2)
 	})
+}
+
+func envOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+// oidcScopes parses a space-separated OIDC_SCOPES override, falling back to
+// the standard set needed for email + group-based role mapping.
+func oidcScopes(raw string) []string {
+	if raw == "" {
+		return []string{"openid", "profile", "email", "groups"}
+	}
+	return strings.Fields(raw)
 }
 
 func dbFilePath() string {

@@ -11,6 +11,7 @@ export interface CurrentUser {
   displayName: string;
   role: "admin" | "user";
   isActive: number;
+  authProvider: "local" | "oidc";
 }
 
 export interface UserRecord extends CurrentUser {
@@ -39,6 +40,20 @@ export const Logout = () => {
 };
 
 export const GetMe = () => get<CurrentUser>("/auth/me");
+
+// GET /api/auth/oidc/enabled is intentionally not routed through the shared
+// fetch wrapper's 401 handling (this is a public, unauthenticated endpoint) —
+// a plain fetch keeps it simple and avoids any token-related side effects.
+export const GetOidcEnabled = async (): Promise<boolean> => {
+  try {
+    const res = await fetch("/api/auth/oidc/enabled");
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Boolean(data.enabled);
+  } catch {
+    return false;
+  }
+};
 
 // ---- Users (admin only) ----
 

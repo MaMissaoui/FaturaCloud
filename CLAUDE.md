@@ -28,6 +28,7 @@ FaturaCloud is a web-based invoicing application. It runs as a single Docker ima
 - `@sentry/react` — frontend error tracking
 - `zod` — schema validation
 - `oxlint` + `oxfmt` — linting and formatting (replaces ESLint)
+- `coreos/go-oidc` + `golang.org/x/oauth2` — OIDC SSO login (Authorization Code + PKCE), provider-agnostic (Authelia, Keycloak, Auth0, …)
 
 ## Development Commands
 ```bash
@@ -83,6 +84,11 @@ POST /api/auth/logout
 
 # Auth (JWT required)
 GET  /api/auth/me
+
+# OIDC SSO — public; login is entirely absent/off unless OIDC_ISSUER_URL is set
+GET  /api/auth/oidc/enabled
+GET  /api/auth/oidc/login
+GET  /api/auth/oidc/callback
 
 # Users (admin only)
 GET    /api/users
@@ -173,7 +179,8 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `api/helpers.go` — `writeJSON`, `writeError`, `decodeJSON`
 - `api/middleware.go` — JWT `authMiddleware`, `adminOnly`, per-IP login rate limiter
 - `api/auth.go` — login, logout, me handlers
-- `api/users.go` — user CRUD handlers (admin only)
+- `api/oidc.go` — OIDC SSO: login redirect (Authorization Code + PKCE), callback (ID token verification, JIT provisioning), issues the same JWT local login does
+- `api/users.go` — user CRUD handlers (admin only); also `provisionOrSyncUser`, the JIT-provision/role-resync used by OIDC login
 - `api/{domain}.go` — HTTP handlers per domain (clients, invoices, organizations, orders, deliveries, …)
 - `api/utility.go` — version, backup download, restore upload, scheduler
 - `db/` — Go database layer (SQLite connection, migrations, CRUD per domain)
@@ -184,7 +191,8 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/atoms/auth.ts` — `currentUserAtom`, `isAuthenticatedAtom`, `isAdminAtom`
 - `src/atoms/delivery.ts` — delivery list, detail, status, and delete atoms
 - `src/routes/` — main application pages
-- `src/routes/login.tsx` — login page (public, redirects to `/` on success)
+- `src/routes/login.tsx` — login page (public, redirects to `/` on success); shows an "Sign in with SSO" button when `GET /api/auth/oidc/enabled` reports true
+- `src/routes/auth-callback.tsx` — landing point for the OIDC redirect; reads the JWT from the URL fragment, stores it, full-page-navigates to `/`
 - `src/routes/deliveries.tsx` — outbound deliveries list
 - `src/routes/deliveries/details.tsx` — delivery detail/edit page
 - `src/routes/orders/details.tsx` — order detail/edit page
@@ -200,6 +208,8 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/locales/` — translation files (.po format)
 - `Dockerfile` — multi-stage build: node (frontend) → golang (backend + embed) → alpine
 - `docker-compose.yml` — single service, `/data` volume for SQLite
+- `docker-compose.oidc.yml` — overlay enabling OIDC SSO against homelab-auth's Authelia via Nginx Proxy Manager (no Traefik — see `docs/oidc-sso.md`); merge with `-f docker-compose.yml -f docker-compose.oidc.yml`
+- `docs/oidc-sso.md` — OIDC SSO design doc: generic provider-agnostic pattern, FaturaCloud-specific implementation, security model, Authelia-side client setup
 
 ## Database
 SQLite is accessed from Go via `jmoiron/sqlx`. All schema migrations live in `db/migrations/` as `*.up.sql` files and run automatically on every startup. The database file is located at:
@@ -274,6 +284,13 @@ Pass `--build-arg VERSION=<tag>` to inject a version string (accessible via `GET
 - `VITE_SENTRY_ENABLED=true` — force-enables Sentry error tracking in dev (defaults off outside production)
 - `VITE_JOTAI_DEVTOOLS_ENABLED=true` — enables Jotai DevTools in dev mode
 - `GITHUB_SHA` — injected by CI for Sentry release tracking; resolves to `"development"` locally
+- `OIDC_ISSUER_URL` — enables OIDC SSO login when set (Authelia or any standards-compliant provider); unset/empty means the feature is fully disabled, no route reachable, local login unaffected
+- `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_REDIRECT_URL` — OIDC client credentials and this app's own callback URL (must exactly match what's registered with the provider)
+- `OIDC_SCOPES` — space-separated (default `openid profile email groups`)
+- `OIDC_EMAIL_CLAIM` / `OIDC_NAME_CLAIM` / `OIDC_GROUPS_CLAIM` — ID token claim names to read (defaults `email` / `name` / `groups`) — override for providers that name claims differently
+- `OIDC_ADMIN_GROUP` — group value in the groups claim that maps to the FaturaCloud `admin` role (default `admins`)
+
+See `docs/oidc-sso.md` for the full design, security model, and the matching Authelia-side setup.
 
 ## Adding a New API Endpoint
 

@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
+	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 )
 
 type handler struct {
@@ -14,6 +16,13 @@ type handler struct {
 	backupDir string
 	jwtSecret string
 	version   string
+
+	// OIDC SSO — oidcCfg.IssuerURL empty means the feature is disabled.
+	// oidcVerifier/oidcOAuth2 are built lazily by ensureOIDC.
+	oidcCfg      OIDCConfig
+	oidcMu       sync.Mutex
+	oidcVerifier *oidc.IDTokenVerifier
+	oidcOAuth2   *oauth2.Config
 }
 
 // defaultMaxBody caps ordinary JSON request bodies (comfortably above the
@@ -30,13 +39,14 @@ func limitBody(limit int64, next http.HandlerFunc) http.Handler {
 // NewRouter wires all API routes and returns the mux.
 // The caller is responsible for mounting a static file handler at "/" for the
 // embedded frontend.
-func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version string) *http.ServeMux {
+func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version string, oidcCfg OIDCConfig) *http.ServeMux {
 	h := &handler{
 		db:        database,
 		dbPath:    dbPath,
 		backupDir: backupDir,
 		jwtSecret: jwtSecret,
 		version:   version,
+		oidcCfg:   oidcCfg,
 	}
 	go h.runScheduler()
 	go sweepLoginBuckets()
@@ -47,6 +57,11 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/version", limitBody(defaultMaxBody, h.getVersion))
 	mux.Handle("POST /api/auth/login", limitBody(defaultMaxBody, h.login))
 	mux.Handle("POST /api/auth/logout", limitBody(defaultMaxBody, h.logout))
+	// OIDC SSO — public; these ARE the auth entry point, not gated by
+	// authMiddleware. All three 503 if OIDC_ISSUER_URL isn't configured.
+	mux.Handle("GET /api/auth/oidc/enabled", limitBody(defaultMaxBody, h.oidcEnabled))
+	mux.Handle("GET /api/auth/oidc/login", limitBody(defaultMaxBody, h.oidcLoginStart))
+	mux.Handle("GET /api/auth/oidc/callback", limitBody(defaultMaxBody, h.oidcCallback))
 
 	// Protected — all routes below require a valid JWT
 	auth := h.authMiddleware

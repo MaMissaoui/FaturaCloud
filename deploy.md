@@ -90,6 +90,16 @@ cycles and image updates. FaturaCloud also has a built-in backup feature
 schedule; download those snapshots off the Pi periodically since they still
 live on the same disk as the volume.
 
+## Optional: OIDC single sign-on
+
+FaturaCloud can authenticate against Authelia (or any standards-compliant
+OIDC provider) instead of — or alongside — local email/password login. Local
+login always remains available as a fallback. See
+[`docs/oidc-sso.md`](docs/oidc-sso.md) for the full design, the `OIDC_*`
+environment variables, the Authelia-side client registration steps, and the
+security model. This is unset (off) by default, so nothing here changes
+unless you deliberately configure it.
+
 ## Troubleshooting
 
 - **Container exits immediately on first run**: check `docker compose logs

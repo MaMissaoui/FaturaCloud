@@ -60,6 +60,7 @@ import Index from "src/routes/index";
 import Invoices from "src/routes/invoices";
 import InvoiceDetails from "src/routes/invoices/details.tsx";
 import LoginPage from "src/routes/login";
+import AuthCallback from "src/routes/auth-callback";
 import SettingsInvoice from "src/routes/settings/invoice";
 import SettingsTaxRates from "src/routes/settings/tax-rates";
 import OrganizationsList from "src/routes/organizations/index";
@@ -143,7 +144,9 @@ const AppContent = () => {
   }, [locale]);
 
   useEffect(() => {
-    // Load current user from token on mount
+    // Load current user from token on mount. "/auth/callback" is excluded
+    // from the no-token redirect because it hasn't stored its (SSO-issued)
+    // token yet at this point — it does so itself, then navigates to "/".
     if (getToken()) {
       GetMe()
         .then(setCurrentUser)
@@ -151,7 +154,7 @@ const AppContent = () => {
           clearToken();
           if (location.pathname !== "/login") navigate("/login");
         });
-    } else if (location.pathname !== "/login") {
+    } else if (location.pathname !== "/login" && location.pathname !== "/auth/callback") {
       navigate("/login");
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -178,7 +181,7 @@ const AppContent = () => {
   // "/login" must be allowed too, otherwise an unauthenticated visitor (no org) gets
   // bounced /login -> / and stuck on the loading spinner instead of seeing the login page.
   useEffect(() => {
-    const allowedPathsWithoutOrg = ["/", "/login", "/organizations/new"];
+    const allowedPathsWithoutOrg = ["/", "/login", "/organizations/new", "/auth/callback"];
     const isAllowedPath = allowedPathsWithoutOrg.includes(location.pathname);
 
     if (organizationId === null && !isAllowedPath) {
@@ -223,6 +226,7 @@ const AppContent = () => {
           <I18nProvider i18n={i18n}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/" element={<Index />} />
           <Route path="/organizations/new" element={<NewOrganization />} />
           <Route path="/organizations" element={<BaseLayout />}>

@@ -99,11 +99,12 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"token": token,
 		"user": map[string]any{
-			"id":          user.ID,
-			"email":       user.Email,
-			"displayName": user.DisplayName,
-			"role":        user.Role,
-			"isActive":    user.IsActive,
+			"id":           user.ID,
+			"email":        user.Email,
+			"displayName":  user.DisplayName,
+			"role":         user.Role,
+			"isActive":     user.IsActive,
+			"authProvider": "local",
 		},
 	})
 }
@@ -128,14 +129,25 @@ func (h *handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, userToJSON(user))
+	resp := userToJSON(user)
+	provider := claims.Provider
+	if provider == "" {
+		provider = "local"
+	}
+	resp["authProvider"] = provider
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *handler) issueToken(user userRow) (string, error) {
+	return h.issueTokenWithProvider(user, "local")
+}
+
+func (h *handler) issueTokenWithProvider(user userRow, provider string) (string, error) {
 	claims := Claims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
+		UserID:   user.ID,
+		Email:    user.Email,
+		Role:     user.Role,
+		Provider: provider,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

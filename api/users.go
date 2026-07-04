@@ -1,7 +1,10 @@
 package api
 
 import (
+	"crypto/rand"
+	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -9,15 +12,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// errUserDeactivated is returned by provisionOrSyncUser when an
+// admin-deactivated local user attempts to authenticate via SSO — it must
+// not be silently re-authorized just because the IdP still accepts them.
+var errUserDeactivated = errors.New("user is deactivated")
+
 type userRow struct {
-	ID           string  `db:"id"           json:"id"`
-	Email        string  `db:"email"        json:"email"`
-	PasswordHash string  `db:"passwordHash" json:"-"`
-	DisplayName  string  `db:"displayName"  json:"displayName"`
-	Role         string  `db:"role"         json:"role"`
-	IsActive     int     `db:"isActive"     json:"isActive"`
-	CreatedAt    string  `db:"createdAt"    json:"createdAt"`
-	LastLoginAt  *int64  `db:"lastLoginAt"  json:"lastLoginAt"`
+	ID           string `db:"id"           json:"id"`
+	Email        string `db:"email"        json:"email"`
+	PasswordHash string `db:"passwordHash" json:"-"`
+	DisplayName  string `db:"displayName"  json:"displayName"`
+	Role         string `db:"role"         json:"role"`
+	IsActive     int    `db:"isActive"     json:"isActive"`
+	CreatedAt    string `db:"createdAt"    json:"createdAt"`
+	LastLoginAt  *int64 `db:"lastLoginAt"  json:"lastLoginAt"`
 }
 
 func userToJSON(u userRow) map[string]any {
@@ -144,6 +152,68 @@ func (h *handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	h.db.DB.Exec(`DELETE FROM users WHERE id = ?`, id)
 	h.dbMu.RUnlock()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// provisionOrSyncUser looks up a user by email — the identity anchor for SSO
+// logins — JIT-provisioning one on first login and re-syncing its role (never
+// displayName) on every subsequent login so group changes at the identity
+// provider take effect without waiting for an admin to edit the account here.
+func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow, error) {
+	email = strings.TrimSpace(email)
+	role := "user"
+	if isAdmin {
+		role = "admin"
+	}
+
+	h.dbMu.Lock()
+	defer h.dbMu.Unlock()
+
+	var u userRow
+	err := h.db.DB.Get(&u, `SELECT * FROM users WHERE email = ?`, email)
+	if err != nil {
+		if name == "" {
+			name = email
+		}
+		// A random, never-reused password satisfies passwordHash's NOT NULL
+		// constraint without producing a usable local-login credential.
+		randomPassword := make([]byte, 32)
+		if _, rerr := rand.Read(randomPassword); rerr != nil {
+			return userRow{}, rerr
+		}
+		hash, herr := bcrypt.GenerateFromPassword(randomPassword, bcrypt.DefaultCost)
+		if herr != nil {
+			return userRow{}, herr
+		}
+		id, _ := nanoid.New()
+		// ON CONFLICT DO NOTHING handles two near-simultaneous first logins
+		// for the same new SSO email; the SELECT below picks up whichever
+		// row won.
+		if _, err = h.db.DB.Exec(
+			`INSERT INTO users (id, email, passwordHash, displayName, role, createdAt)
+			 VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING`,
+			id, email, string(hash), name, role, time.Now().Format("2006-01-02 15:04:05"),
+		); err != nil {
+			return userRow{}, err
+		}
+		if err := h.db.DB.Get(&u, `SELECT * FROM users WHERE email = ?`, email); err != nil {
+			return userRow{}, err
+		}
+	}
+
+	if u.IsActive == 0 {
+		return userRow{}, errUserDeactivated
+	}
+
+	if u.Role != role {
+		if _, err := h.db.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, role, u.ID); err != nil {
+			return userRow{}, err
+		}
+		u.Role = role
+	}
+
+	h.db.DB.Exec(`UPDATE users SET lastLoginAt = ? WHERE id = ?`, time.Now().UnixMilli(), u.ID)
+
+	return u, nil
 }
 
 // EnsureFirstAdmin creates an admin user if no users exist yet.

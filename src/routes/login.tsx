@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { Alert, Button, Card, Form, Input, Space, Typography, theme } from "antd";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { Alert, Button, Card, Divider, Form, Input, Space, Typography, theme } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 
-import { Login } from "src/api";
+import { Login, GetOidcEnabled } from "src/api";
 import { currentUserAtom } from "src/atoms/auth";
 import Wordmark from "src/components/wordmark";
 
@@ -16,12 +16,24 @@ const { Text } = Typography;
 export default function LoginPage() {
   useLingui();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const setCurrentUser = useSetAtom(currentUserAtom);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ssoEnabled, setSsoEnabled] = useState(false);
   const {
     token: { colorBgLayout },
   } = theme.useToken();
+
+  useEffect(() => {
+    GetOidcEnabled().then(setSsoEnabled);
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get("error") === "sso_failed") {
+      setError(t`Single sign-on login failed — try again, or use your email and password below.`);
+    }
+  }, [searchParams]);
 
   const onFinish = async (values: { email: string; password: string }) => {
     setError(null);
@@ -60,6 +72,27 @@ export default function LoginPage() {
           </div>
 
           {error && <Alert type="error" message={error} showIcon />}
+
+          {ssoEnabled && (
+            <>
+              <Button
+                block
+                size="large"
+                onClick={() => {
+                  // Full browser navigation, not a fetch — this must be a
+                  // real top-level redirect for the OAuth dance to work.
+                  window.location.href = "/api/auth/oidc/login";
+                }}
+              >
+                <Trans>Sign in with SSO</Trans>
+              </Button>
+              <Divider style={{ margin: 0 }}>
+                <Text type="secondary" style={{ fontWeight: "normal" }}>
+                  <Trans>or</Trans>
+                </Text>
+              </Divider>
+            </>
+          )}
 
           <Form layout="vertical" onFinish={onFinish} requiredMark={false} style={{ textAlign: "left" }}>
             <Form.Item

@@ -1,0 +1,52 @@
+# Overlay enabling OIDC SSO against homelab-auth's Authelia (see
+# docs/oidc-sso.md). Merge with the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.oidc.yml up -d
+#
+# homelab-auth's Nginx Proxy Manager (NPM) reaches every service — including
+# this one — by Compose service name over the shared `proxy` Docker network,
+# not by published host port. This overlay joins that network and gives the
+# service a stable, explicit name (`fatura-cloud`) so NPM's proxy host target
+# doesn't depend on the generic `app` service name colliding with some other
+# project also joined to `proxy`. It also removes the base file's host port
+# publish — nothing needs to reach this container directly from the LAN once
+# NPM is routing to it by container name.
+#
+# Requires: the shared `proxy` Docker network already created
+# (`docker network create proxy`) with NPM joined to it, homelab-auth
+# deployed and reachable, and an OIDC client registered for this app in its
+# deploy/authelia/configuration.yml (see that repo's README.md, "Adding an
+# app that uses OIDC instead of forwardAuth").
+
+networks:
+  proxy:
+    external: true
+
+services:
+  app:
+    container_name: fatura-cloud
+    ports: !override []
+    networks:
+      - default
+      - proxy
+    environment:
+      - OIDC_ISSUER_URL=https://auth.${DOMAIN}
+      - OIDC_CLIENT_ID=fatura-cloud
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - OIDC_REDIRECT_URL=https://fatura.${DOMAIN}/api/auth/oidc/callback
+      - OIDC_ADMIN_GROUP=${OIDC_ADMIN_GROUP:-admins}
+    # OIDC_ISSUER_URL deliberately stays the PUBLIC hostname (not Authelia's
+    # container address, e.g. http://authelia:9091) — the ID token's issuer
+    # identity must match what the browser authenticated against, or ID token
+    # verification fails. That means this container's own server-to-server
+    # token exchange call also goes out to auth.${DOMAIN} rather than using
+    # the `proxy` network directly. Since Authelia has no published host port
+    # either (see homelab-auth's docker-compose.yml), the only way to reach
+    # auth.${DOMAIN} is through NPM — this entry points that hostname
+    # directly at NPM's LAN IP (NPM is what holds the TLS certificate for it)
+    # instead of resolving out to the public IP and hairpinning back through
+    # your router, which many home routers don't support. TLS still validates
+    # normally since the hostname/SNI/certificate check are unaffected — only
+    # where the TCP connection physically goes changes.
+    extra_hosts:
+      - "auth.${DOMAIN}:${NPM_LAN_IP}"
