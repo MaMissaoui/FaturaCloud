@@ -1,6 +1,3 @@
-# Go
-go.sum
-
 # Build output
 dist/
 dist-ssr/
