@@ -14,26 +14,42 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: src/routes/time-tracking/reports.tsx:136
-msgid "%"
-msgstr "%"
+#~ msgid "%"
+#~ msgstr "%"
 
-#: src/routes/settings/invoice.tsx:105
+#: src/routes/settings/invoice.tsx:125
 msgid "% per day"
 msgstr "% par jour"
 
 #: src/routes/settings/invoice.tsx:177
-msgid "2-digit month"
-msgstr "Mois à 2 chiffres"
+#~ msgid "2-digit month"
+#~ msgstr "Mois à 2 chiffres"
+
+#. placeholder {0}: String(new Date().getMonth() + 1).padStart(2, "0")
+#: src/routes/settings/invoice.tsx:193
+msgid "2-digit month ({0})"
+msgstr ""
 
 #: src/routes/settings/invoice.tsx:173
-msgid "2-digit year"
-msgstr "Année à 2 chiffres"
+#~ msgid "2-digit year"
+#~ msgstr "Année à 2 chiffres"
+
+#. placeholder {0}: String(new Date().getFullYear() % 100).padStart(2, "0")
+#: src/routes/settings/invoice.tsx:192
+msgid "2-digit year ({0})"
+msgstr ""
 
 #: src/routes/settings/invoice.tsx:170
-msgid "4-digit year"
-msgstr "Année à 4 chiffres"
+#~ msgid "4-digit year"
+#~ msgstr "Année à 4 chiffres"
 
-#: src/routes/projects.tsx:110
+#. placeholder {0}: new Date().getFullYear()
+#: src/routes/settings/invoice.tsx:191
+msgid "4-digit year ({0})"
+msgstr ""
+
+#: src/routes/settings/users.tsx:188
+#: src/routes/settings/users.tsx:276
 msgid "Active"
 msgstr "Actif"
 
@@ -41,19 +57,36 @@ msgstr "Actif"
 msgid "Add a new organization to your account"
 msgstr "Ajouter une nouvelle organisation à votre compte"
 
-#: src/routes/invoices/details.tsx:826
+#: src/routes/deliveries/details.tsx:415
+#: src/routes/invoices/details.tsx:930
+#: src/routes/orders/details.tsx:422
 msgid "Add line item"
 msgstr "Ajouter une ligne"
 
 #: src/components/time-entries/form.tsx:272
-msgid "Add or select tags"
-msgstr "Ajouter ou sélectionner des étiquettes"
+#~ msgid "Add or select tags"
+#~ msgstr "Ajouter ou sélectionner des étiquettes"
 
-#: src/components/clients/form.tsx:184
-#: src/routes/clients.tsx:81
-#: src/routes/settings/organization.tsx:67
+#: src/components/clients/form.tsx:175
+#: src/components/clients/form.tsx:176
+#: src/components/clients/form.tsx:177
+#: src/routes/clients.tsx:101
+#: src/routes/organizations/index.tsx:366
 msgid "Address"
 msgstr "Adresse"
+
+#: src/routes/inventory.tsx:25
+msgid "Adjustment"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:112
+msgid "Adjustment — set count to"
+msgstr ""
+
+#: src/routes/settings/users.tsx:183
+#: src/routes/settings/users.tsx:302
+msgid "Admin"
+msgstr ""
 
 #: src/layouts/base.tsx:226
 #~ msgid "AI"
@@ -70,8 +103,8 @@ msgstr "Adresse"
 #~ msgstr "Configuration IA"
 
 #: src/routes/time-tracking/reports.tsx:182
-msgid "All clients"
-msgstr "Tous les clients"
+#~ msgid "All clients"
+#~ msgstr "Tous les clients"
 
 #: src/routes/settings/ai.tsx:55
 #~ msgid "Anthropic API Key"
@@ -86,133 +119,227 @@ msgstr "Tous les clients"
 #~ msgstr "Clé API enregistrée avec succès"
 
 #: src/components/projects/form.tsx:145
-msgid "Archive"
-msgstr "Archiver"
+#~ msgid "Archive"
+#~ msgstr "Archiver"
 
 #: src/routes/projects.tsx:102
 #: src/routes/projects.tsx:111
-msgid "Archived"
-msgstr "Archivé"
+#~ msgid "Archived"
+#~ msgstr "Archivé"
 
 #: src/routes/settings/organization.tsx:141
-msgid "Are you sure delete this organization?"
-msgstr "Êtes-vous sûr(e) de vouloir supprimer cette organisation ?"
+#~ msgid "Are you sure delete this organization?"
+#~ msgstr "Êtes-vous sûr(e) de vouloir supprimer cette organisation ?"
 
-#: src/routes/invoices/details.tsx:939
-#: src/routes/invoices/index.tsx:104
+#: src/routes/invoices/details.tsx:1043
+#: src/routes/invoices/index.tsx:126
 msgid "Are you sure to delete this invoice?"
 msgstr "Êtes-vous sûr(e) de vouloir supprimer cette facture ?"
 
 #: src/routes/time-tracking/index.tsx:475
-msgid "Are you sure to delete this time entry?"
-msgstr "Êtes-vous sûr(e) de vouloir supprimer cette entrée de temps ?"
+#~ msgid "Are you sure to delete this time entry?"
+#~ msgstr "Êtes-vous sûr(e) de vouloir supprimer cette entrée de temps ?"
 
 #: src/components/projects/form.tsx:134
-msgid "Are you sure you want to archive this project?"
-msgstr "Êtes-vous sûr(e) de vouloir archiver ce projet ?"
+#~ msgid "Are you sure you want to archive this project?"
+#~ msgstr "Êtes-vous sûr(e) de vouloir archiver ce projet ?"
 
-#: src/components/clients/form.tsx:118
+#: src/components/clients/form.tsx:120
 msgid "Are you sure you want to delete this client?"
 msgstr "Êtes-vous sûr(e) de vouloir supprimer ce client ?"
 
+#: src/components/products/form.tsx:141
+msgid "Are you sure you want to delete this product?"
+msgstr ""
+
+#: src/components/tax-rates/form.tsx:96
+msgid "Are you sure you want to delete this tax rate?"
+msgstr ""
+
 #: src/components/time-entries/form.tsx:125
-msgid "Are you sure you want to delete this time entry?"
-msgstr "Êtes-vous sûr(e) de vouloir supprimer cette entrée de temps ?"
+#~ msgid "Are you sure you want to delete this time entry?"
+#~ msgstr "Êtes-vous sûr(e) de vouloir supprimer cette entrée de temps ?"
 
 #: src/routes/settings/backup.tsx:48
-msgid "Are you sure you want to restore from a backup? This will replace all current data and cannot be undone."
-msgstr "Êtes-vous sûr(e) de vouloir restaurer à partir d'une sauvegarde ? Cela remplacera toutes les données actuelles et ne peut pas être annulé."
+#~ msgid "Are you sure you want to restore from a backup? This will replace all current data and cannot be undone."
+#~ msgstr "Êtes-vous sûr(e) de vouloir restaurer à partir d'une sauvegarde ? Cela remplacera toutes les données actuelles et ne peut pas être annulé."
 
 #: src/components/projects/form.tsx:133
-msgid "Are you sure you want to unarchive this project?"
-msgstr "Êtes-vous sûr(e) de vouloir désarchiver ce projet ?"
+#~ msgid "Are you sure you want to unarchive this project?"
+#~ msgstr "Êtes-vous sûr(e) de vouloir désarchiver ce projet ?"
 
 #: src/components/ai-drawer.tsx:420
 #~ msgid "Ask me about invoicing, clients, or general questions..."
 #~ msgstr "Posez-moi des questions sur la facturation, les clients ou des questions générales..."
 
+#: src/routes/settings/backup.tsx:184
+msgid "Automatic schedule"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:363
+msgid "Available stock"
+msgstr ""
+
+#: src/routes/settings/invoice.tsx:184
+msgid "Available variables"
+msgstr ""
+
 #: src/routes/settings/invoice.tsx:163
-msgid "Available variables:"
-msgstr "Variables disponibles :"
+#~ msgid "Available variables:"
+#~ msgstr "Variables disponibles :"
 
 #: src/routes/time-tracking/reports.tsx:220
-msgid "Average per entry"
-msgstr "Moyenne par entrée"
+#~ msgid "Average per entry"
+#~ msgstr "Moyenne par entrée"
 
-#: src/layouts/base.tsx:212
+#: src/layouts/base.tsx:326
 msgid "Backup"
 msgstr "Sauvegarde"
 
 #: src/routes/settings/backup.tsx:80
-msgid "Backup & restore"
-msgstr "Sauvegarde et restauration"
+#~ msgid "Backup & restore"
+#~ msgstr "Sauvegarde et restauration"
 
-#: src/routes/settings/organization.tsx:82
+#: src/routes/settings/backup.tsx:178
+msgid "Backup & Restore"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:109
+msgid "Backup downloaded: {filename}"
+msgstr ""
+
+#. placeholder {0}: String(err)
+#: src/routes/settings/backup.tsx:112
+msgid "Backup failed: {0}"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:320
+msgid "Backup history"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:376
 msgid "Bank name"
 msgstr "Nom de la banque"
 
-#: src/components/clients/form.tsx:148
+#: src/routes/organizations/index.tsx:373
+msgid "Banking"
+msgstr ""
+
+#: src/components/clients/form.tsx:140
 #: src/components/feedback-modal.tsx:54
-#: src/components/projects/form.tsx:155
-#: src/components/time-entries/form.tsx:145
-#: src/components/time-entries/time-range-cell.tsx:88
-#: src/routes/organizations/new.tsx:88
-#: src/routes/settings/backup.tsx:50
+#: src/components/products/form.tsx:154
+#: src/components/stock/movement-form.tsx:89
+#: src/components/tax-rates/form.tsx:110
+#: src/routes/organizations/index.tsx:300
+#: src/routes/organizations/new.tsx:104
+#: src/routes/settings/backup.tsx:124
+#: src/routes/settings/backup.tsx:148
+#: src/routes/settings/backup.tsx:289
+#: src/routes/settings/users.tsx:257
 msgid "Cancel"
 msgstr "Annuler"
 
+#: src/routes/deliveries/details.tsx:467
+msgid "Cancel delivery"
+msgstr ""
+
+#: src/routes/invoices/details.tsx:1099
+msgid "Cancel invoice"
+msgstr ""
+
+#: src/routes/orders/details.tsx:496
+msgid "Cancel order"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:461
+msgid "Cancel this delivery?"
+msgstr ""
+
+#: src/routes/invoices/details.tsx:1089
+msgid "Cancel this invoice?"
+msgstr ""
+
+#: src/routes/orders/details.tsx:490
+msgid "Cancel this order?"
+msgstr ""
+
+#: src/components/tax-rates/form.tsx:89
+msgid "Cannot delete: used by {usageCount} invoice(s)"
+msgstr ""
+
 #: src/routes/settings/invoice.tsx:240
-msgid "Change"
-msgstr "Modifier"
+#~ msgid "Change"
+#~ msgstr "Modifier"
+
+#: src/routes/settings/invoice.tsx:248
+msgid "Change logo"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:271
+msgid "Choose file"
+msgstr ""
 
 #: src/components/ai-drawer.tsx:388
 #~ msgid "Clear chat"
 #~ msgstr "Effacer la conversation"
 
-#: src/components/projects/form.tsx:181
-#: src/components/time-entries/form.tsx:170
-#: src/routes/invoices/index.tsx:150
-#: src/routes/projects.tsx:68
-#: src/routes/time-tracking/index.tsx:362
-#: src/routes/time-tracking/reports.tsx:111
+#: src/routes/deliveries.tsx:102
+#: src/routes/invoices/index.tsx:188
+#: src/routes/orders.tsx:96
+#: src/routes/orders/details.tsx:219
 msgid "Client"
 msgstr "Client"
 
 #: src/routes/settings/invoice.tsx:189
-msgid "Client code"
-msgstr "Code client"
+#~ msgid "Client code"
+#~ msgstr "Code client"
 
-#: src/atoms/client.ts:72
+#: src/routes/settings/invoice.tsx:196
+msgid "Client code (e.g. AP, MS)"
+msgstr ""
+
+#: src/atoms/client.ts:78
 msgid "Client created"
 msgstr "Client créé"
 
-#: src/atoms/client.ts:93
+#: src/atoms/client.ts:96
 msgid "Client creation failed"
 msgstr "Échec de la création du client"
 
-#: src/atoms/client.ts:110
+#: src/atoms/client.ts:113
 msgid "Client deleted"
 msgstr "Client supprimé"
 
-#: src/atoms/client.ts:112
-#: src/atoms/client.ts:116
+#: src/atoms/client.ts:115
+#: src/atoms/client.ts:119
 msgid "Client deletion failed"
 msgstr "Échec de la suppression du client"
 
-#: src/atoms/client.ts:95
+#: src/routes/orders/details.tsx:221
+msgid "Client is required"
+msgstr ""
+
+#: src/atoms/client.ts:98
 msgid "Client update failed"
 msgstr "Échec de la mise à jour du client"
 
-#: src/atoms/client.ts:83
+#: src/atoms/client.ts:86
 msgid "Client updated successfully"
 msgstr "Client mis à jour avec succès"
 
-#: src/layouts/base.tsx:137
-#: src/routes/clients.tsx:54
+#: src/routes/organizations/index.tsx:247
+msgid "client(s)"
+msgstr ""
+
+#: src/layouts/base.tsx:272
+#: src/routes/clients.tsx:57
 msgid "Clients"
 msgstr "Clients"
 
-#: src/components/clients/form.tsx:181
+#: src/components/clients/form.tsx:159
+#: src/components/clients/form.tsx:160
+#: src/routes/organizations/index.tsx:206
+#: src/routes/organizations/index.tsx:320
 msgid "Code"
 msgstr "Code"
 
@@ -220,32 +347,48 @@ msgstr "Code"
 #~ msgid "Configure your Anthropic API key to enable AI-powered features in your invoicing workflow."
 #~ msgstr "Configurez votre clé API Anthropic pour activer les fonctionnalités IA dans votre flux de facturation."
 
-#: src/routes/invoices/index.tsx:32
+#: src/routes/settings/users.tsx:324
+msgid "Confirm password"
+msgstr ""
+
+#: src/routes/invoices/index.tsx:54
 msgid "Confirmed"
 msgstr "Confirmée"
 
-#: src/routes/settings/invoice.tsx:203
+#: src/components/clients/form.tsx:150
+msgid "Contact"
+msgstr ""
+
+#: src/routes/products.tsx:131
+msgid "Cost"
+msgstr ""
+
+#: src/components/products/form.tsx:208
+msgid "Cost price"
+msgstr ""
+
+#: src/routes/settings/invoice.tsx:216
 msgid "Counter must be 0 or greater"
 msgstr "Le compteur doit être supérieur ou égal à 0"
 
-#: src/routes/organizations/new.tsx:61
-#: src/routes/settings/organization.tsx:58
+#: src/routes/organizations/index.tsx:328
+#: src/routes/organizations/new.tsx:66
 msgid "Country"
 msgstr "Pays"
 
 #: src/components/projects/form.tsx:162
-msgid "Create"
-msgstr "Créer"
+#~ msgid "Create"
+#~ msgstr "Créer"
 
 #: src/routes/settings/backup.tsx:103
-msgid "Create a backup of your database to save all your invoices, clients, and settings. The backup file can be used to restore your data if needed."
-msgstr "Créez une sauvegarde de votre base de données pour sauvegarder toutes vos factures, clients et paramètres. Le fichier de sauvegarde peut être utilisé pour restaurer vos données si nécessaire."
+#~ msgid "Create a backup of your database to save all your invoices, clients, and settings. The backup file can be used to restore your data if needed."
+#~ msgstr "Créez une sauvegarde de votre base de données pour sauvegarder toutes vos factures, clients et paramètres. Le fichier de sauvegarde peut être utilisé pour restaurer vos données si nécessaire."
 
 #: src/routes/settings/backup.tsx:98
-msgid "Create Backup"
-msgstr "Créer une sauvegarde"
+#~ msgid "Create Backup"
+#~ msgstr "Créer une sauvegarde"
 
-#: src/routes/organizations/new.tsx:84
+#: src/routes/organizations/new.tsx:95
 msgid "Create Organization"
 msgstr "Créer une organisation"
 
@@ -253,268 +396,501 @@ msgstr "Créer une organisation"
 #~ msgid "Create your organization to get started"
 #~ msgstr "Créez votre organisation pour commencer"
 
-#: src/routes/invoices/details.tsx:581
-#: src/routes/organizations/new.tsx:72
-#: src/routes/settings/invoice.tsx:84
+#: src/routes/settings/backup.tsx:252
+msgid "Creates a snapshot, saves it to the backup list, and downloads it."
+msgstr ""
+
+#: src/routes/invoices/details.tsx:596
+#: src/routes/organizations/index.tsx:233
+#: src/routes/organizations/index.tsx:337
+#: src/routes/organizations/new.tsx:77
+#: src/routes/settings/invoice.tsx:96
 msgid "Currency"
 msgstr "Devise"
 
-#: src/routes/invoices/details.tsx:837
+#: src/routes/invoices/details.tsx:941
 msgid "Customer note"
 msgstr "Note client"
 
-#: src/routes/invoices/details.tsx:616
+#: src/routes/invoices/details.tsx:638
 msgid "Daily %"
 msgstr "Quotidien %"
 
 #: src/routes/time-tracking/reports.tsx:228
-msgid "Daily average"
-msgstr "Moyenne journalière"
+#~ msgid "Daily average"
+#~ msgstr "Moyenne journalière"
 
 #: src/routes/settings/backup.tsx:35
-msgid "Database backup saved successfully to {backupPath}"
-msgstr "Sauvegarde de la base de données enregistrée avec succès vers {backupPath}"
+#~ msgid "Database backup saved successfully to {backupPath}"
+#~ msgstr "Sauvegarde de la base de données enregistrée avec succès vers {backupPath}"
 
 #: src/routes/settings/backup.tsx:60
-msgid "Database has been restored successfully. Please restart the application to see the changes."
-msgstr "La base de données a été restaurée avec succès. Veuillez redémarrer l'application pour voir les modifications."
+#~ msgid "Database has been restored successfully. Please restart the application to see the changes."
+#~ msgstr "La base de données a été restaurée avec succès. Veuillez redémarrer l'application pour voir les modifications."
 
-#: src/components/invoices/pdf.tsx:261
-#: src/components/time-entries/time-range-cell.tsx:81
-#: src/routes/invoices/index.tsx:156
-#: src/routes/time-tracking/reports.tsx:111
+#: src/routes/settings/backup.tsx:129
+#: src/routes/settings/backup.tsx:153
+#: src/routes/settings/backup.tsx:294
+msgid "Database restored — reload to see changes"
+msgstr ""
+
+#: src/components/invoices/pdf.tsx:221
+#: src/routes/inventory.tsx:120
+#: src/routes/invoices/index.tsx:196
+#: src/routes/settings/backup.tsx:353
 msgid "Date"
 msgstr "Date"
 
-#: src/routes/settings/organization.tsx:121
+#: src/routes/organizations/index.tsx:396
 msgid "Date format"
 msgstr ""
 
 #: src/routes/settings/organization.tsx:113
-msgid "Date Formatting"
-msgstr ""
+#~ msgid "Date Formatting"
+#~ msgstr ""
 
 #: src/routes/settings/invoice.tsx:185
-msgid "Day of month"
-msgstr "Jour du mois"
+#~ msgid "Day of month"
+#~ msgstr "Jour du mois"
 
-#: src/routes/settings/invoice.tsx:99
+#. placeholder {0}: String(new Date().getDate()).padStart(2, "0")
+#: src/routes/settings/invoice.tsx:195
+msgid "Day of month ({0})"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:410
+#: src/routes/organizations/new.tsx:88
+#: src/routes/settings/invoice.tsx:113
 msgid "Decimal places"
 msgstr "Décimales"
 
-#: src/components/tax-rates/form.tsx:76
-#: src/routes/settings/tax-rates.tsx:68
+#: src/components/tax-rates/form.tsx:140
+#: src/routes/settings/tax-rates.tsx:102
 msgid "Default"
 msgstr "Par défaut"
 
-#: src/components/clients/form.tsx:132
-#: src/components/time-entries/form.tsx:132
-#: src/routes/invoices/details.tsx:945
-#: src/routes/invoices/index.tsx:113
-#: src/routes/settings/organization.tsx:147
-#: src/routes/time-tracking/index.tsx:484
+#: src/components/products/form.tsx:220
+msgid "Default tax rate"
+msgstr ""
+
+#: src/routes/settings/invoice.tsx:92
+msgid "Defaults"
+msgstr ""
+
+#: src/components/clients/form.tsx:134
+#: src/components/products/form.tsx:148
+#: src/components/tax-rates/form.tsx:91
+#: src/components/tax-rates/form.tsx:103
+#: src/routes/deliveries/details.tsx:443
+#: src/routes/invoices/details.tsx:1049
+#: src/routes/invoices/index.tsx:135
+#: src/routes/orders/details.tsx:472
+#: src/routes/organizations/index.tsx:284
+#: src/routes/settings/users.tsx:226
+#: src/routes/settings/users.tsx:251
 msgid "Delete"
 msgstr "Supprimer"
 
-#: src/routes/invoices/details.tsx:938
-#: src/routes/invoices/index.tsx:103
+#: src/routes/inventory.tsx:181
+msgid "Delete movement"
+msgstr ""
+
+#: src/routes/invoices/details.tsx:1042
+#: src/routes/invoices/index.tsx:125
 msgid "Delete the invoice?"
 msgstr "Supprimer la facture ?"
 
 #: src/routes/time-tracking/index.tsx:474
-msgid "Delete the time entry?"
-msgstr "Supprimer l'entrée de temps ?"
+#~ msgid "Delete the time entry?"
+#~ msgstr "Supprimer l'entrée de temps ?"
 
-#: src/components/invoices/pdf.tsx:285
-#: src/components/tax-rates/form.tsx:69
-#: src/components/time-entries/form.tsx:163
-#: src/routes/invoices/details.tsx:658
-#: src/routes/settings/tax-rates.tsx:53
-#: src/routes/time-tracking/index.tsx:355
+#: src/routes/deliveries/details.tsx:437
+msgid "Delete this delivery?"
+msgstr ""
+
+#: src/routes/orders/details.tsx:466
+msgid "Delete this order?"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:257
+msgid "Delete this organization?"
+msgstr ""
+
+#: src/routes/inventory.tsx:183
+msgid "Delete this stock movement? The stock level will be recalculated."
+msgstr ""
+
+#: src/routes/settings/users.tsx:215
+#: src/routes/settings/users.tsx:244
+msgid "Delete this user?"
+msgstr ""
+
+#: src/routes/orders/details.tsx:379
+msgid "Delivered"
+msgstr ""
+
+#: src/atoms/delivery.ts:84
+msgid "Delivery created"
+msgstr ""
+
+#: src/atoms/delivery.ts:98
+msgid "Delivery creation failed"
+msgstr ""
+
+#: src/routes/deliveries.tsx:108
+#: src/routes/deliveries/details.tsx:256
+#: src/routes/orders.tsx:117
+msgid "Delivery date"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:258
+msgid "Delivery date is required"
+msgstr ""
+
+#: src/atoms/delivery.ts:122
+msgid "Delivery deleted"
+msgstr ""
+
+#: src/atoms/delivery.ts:124
+#: src/atoms/delivery.ts:129
+msgid "Delivery deletion failed"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:473
+msgid "Delivery note"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:247
+msgid "Delivery number"
+msgstr ""
+
+#: src/atoms/delivery.ts:94
+msgid "Delivery saved"
+msgstr ""
+
+#: src/atoms/delivery.ts:108
+msgid "Delivery status updated"
+msgstr ""
+
+#: src/atoms/delivery.ts:98
+msgid "Delivery update failed"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:251
+msgid "delivery(ies)"
+msgstr ""
+
+#: src/components/invoices/pdf.tsx:258
+#: src/components/products/form.tsx:191
+#: src/components/tax-rates/form.tsx:129
+#: src/components/tax-rates/form.tsx:130
+#: src/routes/deliveries/details.tsx:336
+#: src/routes/invoices/details.tsx:681
+#: src/routes/orders/details.tsx:341
+#: src/routes/settings/tax-rates.tsx:88
 msgid "Description"
 msgstr "Description"
 
+#: src/routes/deliveries/details.tsx:342
+#: src/routes/orders/details.tsx:347
+msgid "Description required"
+msgstr ""
+
+#: src/components/products/form.tsx:169
+#: src/components/stock/movement-form.tsx:149
+#: src/routes/organizations/index.tsx:308
+msgid "Details"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:247
+msgid "Download backup"
+msgstr ""
+
 #: src/components/invoices/state-select.tsx:27
 #: src/components/invoices/state-select.tsx:58
-#: src/routes/invoices/index.tsx:28
+#: src/routes/invoices/index.tsx:50
 msgid "Draft"
 msgstr "Brouillon"
 
-#: src/components/invoices/pdf.tsx:264
-#: src/routes/invoices/details.tsx:605
-#: src/routes/invoices/index.tsx:163
+#: src/components/invoices/pdf.tsx:224
+#: src/routes/invoices/details.tsx:624
+#: src/routes/invoices/index.tsx:203
 msgid "Due date"
 msgstr "Date d'échéance"
 
-#: src/routes/settings/invoice.tsx:102
+#: src/routes/settings/invoice.tsx:118
 msgid "Due days"
 msgstr "Jours d'échéance"
 
-#: src/routes/invoices/details.tsx:933
-#: src/routes/invoices/index.tsx:92
+#: src/routes/invoices/details.tsx:1037
+#: src/routes/invoices/index.tsx:114
 msgid "Duplicate"
 msgstr "Dupliquer"
 
 #: src/routes/time-tracking/index.tsx:399
-msgid "Duration"
-msgstr "Durée"
+#~ msgid "Duration"
+#~ msgstr "Durée"
 
 #: src/components/time-entries/form.tsx:245
-msgid "Duration (seconds)"
-msgstr "Durée (secondes)"
+#~ msgid "Duration (seconds)"
+#~ msgstr "Durée (secondes)"
 
 #: src/components/time-entries/form.tsx:249
-msgid "Duration in seconds"
-msgstr "Durée en secondes"
+#~ msgid "Duration in seconds"
+#~ msgstr "Durée en secondes"
 
-#: src/routes/settings/organization.tsx:70
+#: src/routes/organizations/index.tsx:346
 msgid "E-mail"
 msgstr "E-mail"
 
-#: src/components/clients/form.tsx:188
+#: src/components/clients/form.tsx:162
+#: src/components/clients/form.tsx:163
 msgid "E-mails"
 msgstr "E-mails"
 
 #: src/routes/settings/invoice.tsx:189
-msgid "e.g. AP, MS"
-msgstr "par ex. AP, MS"
+#~ msgid "e.g. AP, MS"
+#~ msgstr "par ex. AP, MS"
 
-#: src/routes/invoices/details.tsx:962
-#: src/routes/invoices/index.tsx:86
-#: src/routes/time-tracking/index.tsx:454
+#: src/components/products/form.tsx:200
+msgid "e.g. SVC-001"
+msgstr ""
+
+#: src/routes/invoices/details.tsx:1066
+#: src/routes/invoices/index.tsx:108
 msgid "Edit"
 msgstr "Modifier"
 
-#: src/components/clients/form.tsx:99
+#: src/components/clients/form.tsx:108
 msgid "Edit client"
 msgstr "Modifier le client"
 
-#: src/components/projects/form.tsx:123
-msgid "Edit Project"
-msgstr "Modifier le projet"
+#: src/routes/organizations/index.tsx:293
+msgid "Edit organization"
+msgstr ""
 
-#: src/components/tax-rates/form.tsx:46
+#: src/components/products/form.tsx:131
+msgid "Edit product"
+msgstr ""
+
+#: src/components/projects/form.tsx:123
+#~ msgid "Edit Project"
+#~ msgstr "Modifier le projet"
+
+#: src/components/tax-rates/form.tsx:79
 msgid "Edit tax rate"
 msgstr "Modifier le taux de taxe"
 
 #: src/components/time-entries/form.tsx:111
-msgid "Edit Time Entry"
-msgstr "Modifier l'entrée de temps"
+#~ msgid "Edit Time Entry"
+#~ msgstr "Modifier l'entrée de temps"
 
-#: src/components/feedback-modal.tsx:71
+#: src/routes/settings/users.tsx:234
+msgid "Edit user"
+msgstr ""
+
+#: src/components/feedback-modal.tsx:64
+#: src/routes/organizations/index.tsx:213
+#: src/routes/settings/users.tsx:171
+#: src/routes/settings/users.tsx:288
 msgid "Email"
 msgstr "Email"
 
-#: src/routes/clients.tsx:83
+#: src/routes/clients.tsx:107
 msgid "Emails"
 msgstr "E-mails"
 
+#: src/routes/settings/backup.tsx:192
+msgid "Enable automatic backups"
+msgstr ""
+
 #: src/components/projects/form.tsx:206
-msgid "End Date"
-msgstr "Date de fin"
+#~ msgid "End Date"
+#~ msgstr "Date de fin"
 
 #: src/components/time-entries/form.tsx:234
 #: src/components/time-entries/time-range-cell.tsx:74
-msgid "End Time"
-msgstr "Heure de fin"
+#~ msgid "End Time"
+#~ msgstr "Heure de fin"
 
-#: src/routes/settings/invoice.tsx:213
+#: src/routes/settings/invoice.tsx:171
 msgid "Enter format to see preview"
 msgstr "Saisissez le format pour voir l'aperçu"
 
 #: src/components/projects/form.tsx:176
-msgid "Enter project name"
-msgstr "Saisissez le nom du projet"
+#~ msgid "Enter project name"
+#~ msgstr "Saisissez le nom du projet"
 
 #: src/routes/time-tracking/reports.tsx:122
-msgid "Entries"
-msgstr "Entrées"
+#~ msgid "Entries"
+#~ msgstr "Entrées"
 
 #: src/components/ai-drawer.tsx:444
 #~ msgid "Error"
 #~ msgstr "Erreur"
 
+#: src/routes/orders/details.tsx:272
+msgid "Expected delivery"
+msgstr ""
+
 #: src/routes/time-tracking/reports.tsx:159
-msgid "Export"
-msgstr "Exporter"
+#~ msgid "Export"
+#~ msgstr "Exporter"
 
 #: src/atoms/project.ts:111
-msgid "Failed to archive project"
-msgstr "Échec de l'archivage du projet"
+#~ msgid "Failed to archive project"
+#~ msgstr "Échec de l'archivage du projet"
 
 #. placeholder {0}: String(error)
 #: src/routes/settings/backup.tsx:39
-msgid "Failed to backup database: {0}"
-msgstr "Échec de la sauvegarde de la base de données : {0}"
+#~ msgid "Failed to backup database: {0}"
+#~ msgstr "Échec de la sauvegarde de la base de données : {0}"
 
 #: src/atoms/project.ts:68
-msgid "Failed to create project"
-msgstr "Échec de la création du projet"
+#~ msgid "Failed to create project"
+#~ msgstr "Échec de la création du projet"
 
-#: src/atoms/client.ts:26
+#: src/atoms/stock.ts:79
+#: src/atoms/stock.ts:83
+msgid "Failed to delete stock movement"
+msgstr ""
+
+#: src/atoms/client.ts:57
+msgid "Failed to fetch client"
+msgstr ""
+
+#: src/atoms/client.ts:32
 msgid "Failed to fetch clients"
 msgstr "Échec de la récupération des clients"
 
-#: src/atoms/invoice.ts:33
+#: src/atoms/delivery.ts:40
+msgid "Failed to fetch deliveries"
+msgstr ""
+
+#: src/atoms/delivery.ts:63
+msgid "Failed to fetch delivery"
+msgstr ""
+
+#: src/atoms/invoice.ts:80
+msgid "Failed to fetch invoice"
+msgstr ""
+
+#: src/atoms/invoice.ts:44
 msgid "Failed to fetch invoices"
 msgstr "Échec de la récupération des factures"
 
-#: src/atoms/organization.ts:24
+#: src/atoms/order.ts:74
+msgid "Failed to fetch order"
+msgstr ""
+
+#: src/atoms/order.ts:34
+msgid "Failed to fetch orders"
+msgstr ""
+
+#: src/atoms/organization.ts:63
+msgid "Failed to fetch organization"
+msgstr ""
+
+#: src/atoms/organization.ts:26
 msgid "Failed to fetch organizations"
 msgstr "Échec de la récupération des organisations"
 
+#: src/atoms/product.ts:47
+msgid "Failed to fetch product"
+msgstr ""
+
+#: src/atoms/product.ts:30
+msgid "Failed to fetch products"
+msgstr ""
+
 #: src/atoms/project.ts:34
-msgid "Failed to fetch projects"
-msgstr "Échec de la récupération des projets"
+#~ msgid "Failed to fetch projects"
+#~ msgstr "Échec de la récupération des projets"
+
+#: src/atoms/stock.ts:19
+msgid "Failed to fetch stock movements"
+msgstr ""
 
 #: src/atoms/time-tracking.ts:25
-msgid "Failed to fetch tags"
-msgstr "Échec de la récupération des étiquettes"
+#~ msgid "Failed to fetch tags"
+#~ msgstr "Échec de la récupération des étiquettes"
 
-#: src/atoms/tax-rate.ts:21
+#: src/atoms/tax-rate.ts:46
+msgid "Failed to fetch tax rate"
+msgstr ""
+
+#: src/atoms/tax-rate.ts:29
 msgid "Failed to fetch tax rates"
 msgstr "Échec de la récupération des taux de taxe"
 
 #: src/atoms/time-tracking.ts:118
-msgid "Failed to fetch time entries"
-msgstr "Échec de la récupération des entrées de temps"
+#~ msgid "Failed to fetch time entries"
+#~ msgstr "Échec de la récupération des entrées de temps"
 
-#: src/atoms/invoice.ts:222
+#: src/atoms/invoice.ts:225
 msgid "Failed to generate invoice number"
 msgstr "Échec de la génération du numéro de facture"
 
+#: src/atoms/stock.ts:49
+msgid "Failed to record stock movement"
+msgstr ""
+
 #. placeholder {0}: String(error)
 #: src/routes/settings/backup.tsx:64
-msgid "Failed to restore database: {0}"
-msgstr "Échec de la restauration de la base de données : {0}"
+#~ msgid "Failed to restore database: {0}"
+#~ msgstr "Échec de la restauration de la base de données : {0}"
+
+#: src/routes/settings/backup.tsx:99
+msgid "Failed to save schedule"
+msgstr ""
 
 #: src/components/feedback-modal.tsx:35
 msgid "Failed to send feedback. Please try again."
 msgstr "Échec de l'envoi des commentaires. Veuillez réessayer."
 
 #: src/atoms/project.ts:132
-msgid "Failed to unarchive project"
-msgstr "Échec du désarchivage du projet"
+#~ msgid "Failed to unarchive project"
+#~ msgstr "Échec du désarchivage du projet"
 
-#: src/atoms/invoice.ts:201
+#: src/atoms/delivery.ts:111
+msgid "Failed to update delivery status"
+msgstr ""
+
+#: src/atoms/invoice.ts:203
 msgid "Failed to update invoice state"
 msgstr "Échec de la mise à jour de l'état de la facture"
 
+#: src/atoms/order.ts:138
+msgid "Failed to update order status"
+msgstr ""
+
 #: src/atoms/project.ts:89
-msgid "Failed to update project"
-msgstr "Échec de la mise à jour du projet"
+#~ msgid "Failed to update project"
+#~ msgstr "Échec de la mise à jour du projet"
 
 #: src/atoms/time-tracking.ts:159
-msgid "Failed to update time entry"
-msgstr "Échec de la mise à jour de l'entrée de temps"
+#~ msgid "Failed to update time entry"
+#~ msgstr "Échec de la mise à jour de l'entrée de temps"
 
-#: src/layouts/base.tsx:236
+#: src/layouts/base.tsx:360
 msgid "Feedback"
 msgstr "Commentaires"
 
 #: src/components/feedback-modal.tsx:30
 msgid "Feedback sent successfully!"
 msgstr "Commentaires envoyés avec succès !"
+
+#: src/routes/settings/backup.tsx:340
+msgid "File"
+msgstr ""
+
+#: src/routes/inventory.tsx:68
+msgid "Filter by product"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:393
+msgid "Formatting"
+msgstr ""
 
 #: src/routes/index.tsx:90
 #~ msgid "Get started"
@@ -525,27 +901,41 @@ msgstr "Commentaires envoyés avec succès !"
 #~ msgstr "Obtenez votre clé API depuis"
 
 #: src/routes/time-tracking/reports.tsx:194
-msgid "Group by client"
-msgstr "Grouper par client"
+#~ msgid "Group by client"
+#~ msgstr "Grouper par client"
 
 #: src/routes/time-tracking/reports.tsx:197
-msgid "Group by date"
-msgstr "Grouper par date"
+#~ msgid "Group by date"
+#~ msgstr "Grouper par date"
 
 #: src/routes/time-tracking/reports.tsx:200
-msgid "Group by week"
-msgstr "Grouper par semaine"
+#~ msgid "Group by week"
+#~ msgstr "Grouper par semaine"
+
+#: src/routes/settings/backup.tsx:195
+msgid "Hour (UTC)"
+msgstr ""
 
 #: src/routes/settings/organization.tsx:89
-msgid "IBAN"
-msgstr "IBAN"
+#~ msgid "IBAN"
+#~ msgstr "IBAN"
 
-#: src/layouts/base.tsx:194
+#: src/routes/inventory.tsx:21
+msgid "In"
+msgstr ""
+
+#: src/layouts/base.tsx:249
+#: src/layouts/base.tsx:256
+#: src/routes/inventory.tsx:61
+msgid "Inventory"
+msgstr ""
+
+#: src/layouts/base.tsx:306
 msgid "Invoice"
 msgstr "Facture"
 
 #. placeholder {0}: invoice.number
-#: src/components/invoices/pdf.tsx:221
+#: src/components/invoices/pdf.tsx:179
 msgid "Invoice {0}"
 msgstr "Facture {0}"
 
@@ -553,32 +943,32 @@ msgstr "Facture {0}"
 #~ msgid "Invoice #{0}"
 #~ msgstr "Facture n°{0}"
 
-#: src/atoms/invoice.ts:105
+#: src/atoms/invoice.ts:115
 msgid "Invoice created"
 msgstr "Facture créée"
 
-#: src/atoms/invoice.ts:152
+#: src/atoms/invoice.ts:159
 msgid "Invoice creation failed"
 msgstr "Échec de la création de la facture"
 
-#: src/atoms/invoice.ts:169
+#: src/atoms/invoice.ts:176
 msgid "Invoice deleted"
 msgstr "Facture supprimée"
 
-#: src/atoms/invoice.ts:171
-#: src/atoms/invoice.ts:175
+#: src/atoms/invoice.ts:178
+#: src/atoms/invoice.ts:183
 msgid "Invoice deletion failed"
 msgstr "Échec de la suppression de la facture"
 
 #: src/routes/settings/invoice.tsx:79
-msgid "Invoice details"
-msgstr "Détails de la facture"
+#~ msgid "Invoice details"
+#~ msgstr "Détails de la facture"
 
-#: src/atoms/invoice.ts:253
+#: src/atoms/invoice.ts:258
 msgid "Invoice duplicated successfully"
 msgstr "Facture dupliquée avec succès"
 
-#: src/atoms/invoice.ts:275
+#: src/atoms/invoice.ts:274
 msgid "Invoice duplication failed"
 msgstr "Échec de la duplication de la facture"
 
@@ -586,81 +976,160 @@ msgstr "Échec de la duplication de la facture"
 #~ msgid "Invoice form updated with new data."
 #~ msgstr "Formulaire de facture mis à jour avec de nouvelles données."
 
-#: src/atoms/invoice.ts:215
+#: src/atoms/invoice.ts:218
 msgid "Invoice not found"
 msgstr "Facture introuvable"
 
-#: src/routes/invoices/details.tsx:572
+#: src/routes/invoices/details.tsx:587
 msgid "Invoice number"
 msgstr "Numéro de facture"
 
+#: src/routes/settings/invoice.tsx:211
+msgid "Invoice number counter"
+msgstr ""
+
 #: src/routes/settings/invoice.tsx:199
-msgid "Invoice Number Counter"
-msgstr "Compteur de numéro de facture"
+#~ msgid "Invoice Number Counter"
+#~ msgstr "Compteur de numéro de facture"
+
+#: src/routes/settings/invoice.tsx:150
+msgid "Invoice number format"
+msgstr ""
 
 #: src/routes/settings/invoice.tsx:129
-msgid "Invoice Number Format"
-msgstr "Format de numéro de facture"
+#~ msgid "Invoice Number Format"
+#~ msgstr "Format de numéro de facture"
 
 #: src/routes/settings/invoice.tsx:122
-msgid "Invoice Numbering"
-msgstr "Numérotation des factures"
+#~ msgid "Invoice Numbering"
+#~ msgstr "Numérotation des factures"
 
-#: src/atoms/invoice.ts:187
+#: src/routes/settings/invoice.tsx:88
+msgid "Invoice settings"
+msgstr ""
+
+#: src/atoms/invoice.ts:195
 msgid "Invoice state updated"
 msgstr "État de la facture mis à jour"
 
-#: src/atoms/invoice.ts:154
+#: src/atoms/invoice.ts:161
 msgid "Invoice update failed"
 msgstr "Échec de la mise à jour de la facture"
 
-#: src/atoms/invoice.ts:142
+#: src/atoms/invoice.ts:149
 msgid "Invoice updated successfully"
 msgstr "Facture mise à jour avec succès"
 
-#: src/layouts/base.tsx:128
-#: src/routes/invoices/index.tsx:127
+#: src/routes/organizations/index.tsx:248
+msgid "invoice(s)"
+msgstr ""
+
+#: src/layouts/base.tsx:222
+#: src/routes/invoices/index.tsx:151
 msgid "Invoices"
 msgstr "Factures"
 
-#: src/routes/settings/invoice.tsx:221
+#: src/routes/settings/users.tsx:203
+msgid "Last login"
+msgstr ""
+
+#: src/routes/orders/details.tsx:286
+msgid "Leave blank to use client address"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:237
+msgid "Linked order"
+msgstr ""
+
+#: src/routes/login.tsx:46
+msgid "Login failed"
+msgstr ""
+
+#: src/routes/settings/invoice.tsx:225
 msgid "Logo"
 msgstr "Logo"
 
-#: src/components/feedback-modal.tsx:84
+#: src/routes/orders/details.tsx:242
+msgid "Manage clients"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:237
+msgid "Manual backup"
+msgstr ""
+
+#: src/layouts/base.tsx:265
+msgid "Master Data"
+msgstr ""
+
+#: src/components/feedback-modal.tsx:77
 msgid "Message"
 msgstr "Message"
 
-#: src/routes/settings/invoice.tsx:181
-msgid "Month name"
-msgstr "Nom du mois"
+#: src/routes/settings/users.tsx:314
+#: src/routes/settings/users.tsx:315
+msgid "Minimum 6 characters"
+msgstr ""
 
-#: src/components/clients/form.tsx:170
-#: src/components/feedback-modal.tsx:64
-#: src/components/tax-rates/form.tsx:66
-#: src/routes/clients.tsx:72
-#: src/routes/organizations/new.tsx:56
-#: src/routes/projects.tsx:58
-#: src/routes/settings/organization.tsx:55
-#: src/routes/settings/tax-rates.tsx:49
+#: src/routes/settings/invoice.tsx:181
+#~ msgid "Month name"
+#~ msgstr "Nom du mois"
+
+#. placeholder {0}: new Date().toLocaleString("en", { month: "short" })
+#: src/routes/settings/invoice.tsx:194
+msgid "Month name ({0})"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:97
+msgid "Movement"
+msgstr ""
+
+#: src/components/clients/form.tsx:151
+#: src/components/clients/form.tsx:153
+#: src/components/feedback-modal.tsx:58
+#: src/components/products/form.tsx:170
+#: src/components/tax-rates/form.tsx:126
+#: src/components/tax-rates/form.tsx:127
+#: src/routes/clients.tsx:87
+#: src/routes/organizations/index.tsx:200
+#: src/routes/organizations/index.tsx:313
+#: src/routes/organizations/new.tsx:62
+#: src/routes/products.tsx:88
+#: src/routes/settings/tax-rates.tsx:80
+#: src/routes/settings/users.tsx:165
+#: src/routes/settings/users.tsx:268
 msgid "Name"
 msgstr "Nom"
 
-#: src/components/clients/form.tsx:99
-#: src/routes/clients.tsx:62
-#: src/routes/invoices/details.tsx:557
+#: src/components/products/form.tsx:170
+msgid "Name is required"
+msgstr ""
+
+#: src/components/clients/form.tsx:108
+#: src/routes/clients.tsx:68
+#: src/routes/invoices/details.tsx:572
 msgid "New client"
 msgstr "Nouveau client"
 
-#: src/routes/time-tracking/index.tsx:570
-msgid "New Entry"
-msgstr "Nouvelle entrée"
+#: src/routes/deliveries.tsx:69
+#: src/routes/orders/details.tsx:507
+msgid "New delivery"
+msgstr ""
 
-#: src/routes/invoices/index.tsx:135
+#: src/routes/time-tracking/index.tsx:570
+#~ msgid "New Entry"
+#~ msgstr "Nouvelle entrée"
+
+#: src/routes/invoices/index.tsx:162
 msgid "New invoice"
 msgstr "Nouvelle facture"
 
-#: src/layouts/base.tsx:293
+#: src/routes/orders.tsx:69
+msgid "New order"
+msgstr ""
+
+#: src/layouts/base.tsx:424
+#: src/routes/organizations/index.tsx:185
+#: src/routes/organizations/index.tsx:293
 msgid "New organization"
 msgstr "Nouvelle organisation"
 
@@ -668,125 +1137,281 @@ msgstr "Nouvelle organisation"
 msgid "New Organization"
 msgstr "Nouvelle organisation"
 
+#: src/routes/settings/users.tsx:312
+msgid "New password (leave blank to keep current)"
+msgstr ""
+
+#: src/components/products/form.tsx:131
+#: src/routes/products.tsx:69
+msgid "New product"
+msgstr ""
+
 #: src/components/projects/form.tsx:123
 #: src/routes/projects.tsx:148
-msgid "New Project"
-msgstr "Nouveau projet"
+#~ msgid "New Project"
+#~ msgstr "Nouveau projet"
+
+#: src/components/stock/movement-form.tsx:123
+msgid "New stock count"
+msgstr ""
 
 #: src/routes/settings/tax-rates.tsx:40
-msgid "New tax"
-msgstr "Nouvelle taxe"
+#~ msgid "New tax"
+#~ msgstr "Nouvelle taxe"
 
-#: src/components/tax-rates/form.tsx:46
+#: src/components/tax-rates/form.tsx:79
+#: src/routes/settings/tax-rates.tsx:61
 msgid "New tax rate"
 msgstr "Nouveau taux de taxe"
 
 #: src/components/time-entries/form.tsx:111
-msgid "New Time Entry"
-msgstr "Nouvelle entrée de temps"
+#~ msgid "New Time Entry"
+#~ msgstr "Nouvelle entrée de temps"
 
-#: src/routes/settings/invoice.tsx:205
+#: src/routes/settings/users.tsx:150
+#: src/routes/settings/users.tsx:234
+msgid "New user"
+msgstr ""
+
+#: src/routes/settings/invoice.tsx:213
 msgid "Next invoice will use this number + 1"
 msgstr "La prochaine facture utilisera ce numéro + 1"
 
-#: src/components/clients/form.tsx:128
-#: src/components/projects/form.tsx:138
-#: src/components/time-entries/form.tsx:128
-#: src/routes/invoices/details.tsx:942
-#: src/routes/invoices/index.tsx:110
-#: src/routes/time-tracking/index.tsx:481
+#: src/routes/settings/backup.tsx:230
+msgid "Next run: {nextRunLabel}"
+msgstr ""
+
+#: src/components/clients/form.tsx:130
+#: src/components/products/form.tsx:144
+#: src/components/tax-rates/form.tsx:99
+#: src/routes/deliveries/details.tsx:440
+#: src/routes/deliveries/details.tsx:464
+#: src/routes/inventory.tsx:186
+#: src/routes/invoices/details.tsx:1046
+#: src/routes/invoices/details.tsx:1096
+#: src/routes/invoices/index.tsx:132
+#: src/routes/orders/details.tsx:469
+#: src/routes/orders/details.tsx:493
+#: src/routes/settings/users.tsx:247
 msgid "No"
 msgstr "Non"
 
 #: src/routes/time-tracking/reports.tsx:90
-msgid "No client"
-msgstr "Aucun client"
+#~ msgid "No client"
+#~ msgstr "Aucun client"
 
 #: src/routes/projects.tsx:78
-msgid "No client assigned"
-msgstr "Aucun client assigné"
+#~ msgid "No client assigned"
+#~ msgstr "Aucun client assigné"
 
-#: src/routes/invoices/details.tsx:649
+#: src/routes/deliveries/details.tsx:300
+#: src/routes/invoices/details.tsx:672
+#: src/routes/orders/details.tsx:304
 msgid "No line items"
 msgstr "Aucune ligne d'article"
 
 #: src/routes/projects.tsx:160
-msgid "No projects found"
-msgstr "Aucun projet trouvé"
+#~ msgid "No projects found"
+#~ msgstr "Aucun projet trouvé"
 
 #: src/routes/settings/organization.tsx:144
-msgid "No!"
-msgstr "Non !"
+#~ msgid "No!"
+#~ msgstr "Non !"
 
-#: src/routes/settings/invoice.tsx:114
+#: src/components/stock/movement-form.tsx:154
+#: src/routes/inventory.tsx:170
+msgid "Note"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:284
+#: src/routes/orders/details.tsx:290
+#: src/routes/settings/invoice.tsx:139
 msgid "Notes"
 msgstr "Notes"
 
-#: src/routes/invoices/index.tsx:142
-#~ msgid "Number"
-#~ msgstr "Numéro"
+#: src/routes/deliveries.tsx:86
+msgid "Number"
+msgstr "Numéro"
 
 #: src/routes/settings/invoice.tsx:126
 #~ msgid "Number of Digits"
 #~ msgstr "Nombre de chiffres"
 
+#: src/routes/settings/invoice.tsx:146
+msgid "Numbering"
+msgstr ""
+
 #: src/components/ai-drawer.tsx:161
 #~ msgid "Opening new invoice form with your data. Please review and click Save to create the invoice."
 #~ msgstr "Ouverture d'un nouveau formulaire de facture avec vos données. Veuillez vérifier et cliquer sur Enregistrer pour créer la facture."
 
-#: src/layouts/base.tsx:185
-msgid "Organization"
-msgstr "Organisation"
+#: src/routes/deliveries/details.tsx:313
+#: src/routes/invoices/details.tsx:714
+#: src/routes/orders/details.tsx:318
+msgid "Optional"
+msgstr ""
 
-#: src/atoms/organization.ts:89
+#: src/components/products/form.tsx:192
+msgid "Optional description or notes"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:155
+msgid "Optional note"
+msgstr ""
+
+#: src/routes/login.tsx:91
+msgid "or"
+msgstr ""
+
+#: src/routes/deliveries.tsx:96
+msgid "Order"
+msgstr ""
+
+#: src/routes/orders.tsx:88
+msgid "Order #"
+msgstr ""
+
+#: src/routes/orders/details.tsx:502
+msgid "Order confirmation"
+msgstr ""
+
+#: src/atoms/order.ts:101
+msgid "Order created"
+msgstr ""
+
+#: src/atoms/order.ts:122
+msgid "Order creation failed"
+msgstr ""
+
+#: src/routes/orders.tsx:110
+#: src/routes/orders/details.tsx:264
+msgid "Order date"
+msgstr ""
+
+#: src/routes/orders/details.tsx:266
+msgid "Order date is required"
+msgstr ""
+
+#: src/atoms/order.ts:149
+msgid "Order deleted"
+msgstr ""
+
+#: src/atoms/order.ts:151
+#: src/atoms/order.ts:156
+msgid "Order deletion failed"
+msgstr ""
+
+#: src/routes/orders/details.tsx:255
+msgid "Order number"
+msgstr ""
+
+#: src/routes/orders/details.tsx:257
+msgid "Order number is required"
+msgstr ""
+
+#: src/atoms/order.ts:115
+msgid "Order saved"
+msgstr ""
+
+#: src/atoms/order.ts:132
+msgid "Order status updated"
+msgstr ""
+
+#: src/atoms/order.ts:122
+msgid "Order update failed"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:250
+msgid "order(s)"
+msgstr ""
+
+#: src/layouts/base.tsx:240
+#: src/routes/orders.tsx:59
+msgid "Orders"
+msgstr ""
+
+#: src/layouts/base.tsx:185
+#~ msgid "Organization"
+#~ msgstr "Organisation"
+
+#: src/atoms/organization.ts:101
 msgid "Organization created"
 msgstr "Organisation créée"
 
-#: src/atoms/organization.ts:107
+#: src/atoms/organization.ts:116
 msgid "Organization creation failed"
 msgstr "Échec de la création de l'organisation"
 
-#: src/atoms/organization.ts:144
+#: src/routes/organizations/index.tsx:147
 msgid "Organization deleted"
 msgstr "Organisation supprimée"
 
-#: src/atoms/organization.ts:149
-#: src/atoms/organization.ts:153
+#: src/routes/organizations/index.tsx:150
 msgid "Organization deletion failed"
 msgstr "Échec de la suppression de l'organisation"
 
 #: src/routes/settings/organization.tsx:48
-msgid "Organization details"
-msgstr "Détails de l'organisation"
+#~ msgid "Organization details"
+#~ msgstr "Détails de l'organisation"
 
-#: src/atoms/organization.ts:109
+#: src/atoms/organization.ts:118
 msgid "Organization update failed"
 msgstr "Échec de la mise à jour de l'organisation"
 
-#: src/atoms/organization.ts:96
+#: src/atoms/organization.ts:105
 msgid "Organization updated successfully"
 msgstr "Organisation mise à jour avec succès"
 
-#: src/components/invoices/pdf.tsx:268
-#: src/routes/invoices/details.tsx:614
-#: src/routes/settings/invoice.tsx:105
+#: src/layouts/base.tsx:290
+#: src/routes/organizations/index.tsx:172
+msgid "Organizations"
+msgstr ""
+
+#: src/routes/inventory.tsx:22
+msgid "Out"
+msgstr ""
+
+#: src/layouts/base.tsx:231
+#: src/routes/deliveries.tsx:58
+msgid "Outbound Deliveries"
+msgstr ""
+
+#: src/components/invoices/pdf.tsx:228
+#: src/routes/invoices/details.tsx:633
+#: src/routes/settings/invoice.tsx:124
 msgid "Overdue charge"
 msgstr "Frais de retard"
 
 #: src/components/invoices/state-select.tsx:35
 #: src/components/invoices/state-select.tsx:62
-#: src/routes/invoices/index.tsx:36
+#: src/routes/invoices/index.tsx:58
 msgid "Paid"
 msgstr "Payée"
 
-#: src/components/tax-rates/form.tsx:72
-#: src/routes/settings/tax-rates.tsx:57
+#: src/routes/login.tsx:108
+#: src/routes/settings/users.tsx:312
+msgid "Password"
+msgstr ""
+
+#: src/routes/settings/users.tsx:332
+msgid "Passwords do not match"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:388
+msgid "pcs, kg, m…"
+msgstr ""
+
+#: src/components/tax-rates/form.tsx:134
+#: src/components/tax-rates/form.tsx:137
+#: src/routes/settings/tax-rates.tsx:94
 msgid "Percentage"
 msgstr "Pourcentage"
 
-#: src/components/clients/form.tsx:191
-#: src/routes/clients.tsx:91
-#: src/routes/settings/organization.tsx:73
+#: src/components/clients/form.tsx:165
+#: src/components/clients/form.tsx:166
+#: src/routes/clients.tsx:123
+#: src/routes/organizations/index.tsx:219
+#: src/routes/organizations/index.tsx:351
 msgid "Phone"
 msgstr "Téléphone"
 
@@ -795,121 +1420,297 @@ msgstr "Téléphone"
 #~ msgstr "Veuillez configurer votre clé API Anthropic dans"
 
 #: src/components/projects/form.tsx:174
-msgid "Please enter a project name"
-msgstr "Veuillez saisir un nom de projet"
+#~ msgid "Please enter a project name"
+#~ msgstr "Veuillez saisir un nom de projet"
 
-#: src/components/feedback-modal.tsx:75
+#: src/routes/login.tsx:100
+msgid "Please enter a valid email"
+msgstr ""
+
+#: src/components/feedback-modal.tsx:68
 msgid "Please enter a valid email address"
 msgstr "Veuillez entrer une adresse email valide"
 
-#: src/components/feedback-modal.tsx:88
+#: src/components/feedback-modal.tsx:81
 msgid "Please enter your feedback"
 msgstr "Veuillez entrer vos commentaires"
 
-#: src/components/tax-rates/form.tsx:71
+#: src/routes/login.tsx:106
+msgid "Please enter your password"
+msgstr ""
+
+#: src/components/tax-rates/form.tsx:135
 msgid "Please input a percentage!"
 msgstr "Veuillez saisir un pourcentage !"
 
-#: src/components/clients/form.tsx:168
-#: src/components/tax-rates/form.tsx:65
-#: src/routes/organizations/new.tsx:55
+#: src/components/clients/form.tsx:151
+#: src/components/tax-rates/form.tsx:126
+#: src/routes/organizations/new.tsx:61
 msgid "Please input name!"
 msgstr "Veuillez saisir un nom !"
 
 #: src/components/time-entries/form.tsx:223
-msgid "Please select start time!"
-msgstr "Veuillez sélectionner l'heure de début !"
+#~ msgid "Please select start time!"
+#~ msgstr "Veuillez sélectionner l'heure de début !"
 
-#: src/routes/settings/invoice.tsx:58
+#: src/routes/settings/invoice.tsx:72
 msgid "Please upload a PNG or JPEG image"
 msgstr "Veuillez télécharger une image PNG ou JPEG"
+
+#: src/routes/settings/invoice.tsx:252
+msgid "PNG or JPEG, shown on invoices and delivery notes."
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:151
+msgid "PO number, invoice ID, …"
+msgstr ""
 
 #: src/routes/settings/invoice.tsx:109
 #~ msgid "Prefix"
 #~ msgstr "Préfixe"
 
-#: src/routes/settings/invoice.tsx:211
+#: src/routes/settings/invoice.tsx:169
 msgid "Preview"
 msgstr "Aperçu"
 
-#: src/components/invoices/pdf.tsx:291
-#: src/routes/invoices/details.tsx:715
+#: src/components/invoices/pdf.tsx:264
+#: src/components/products/form.tsx:204
+#: src/routes/invoices/details.tsx:788
+#: src/routes/products.tsx:121
 msgid "Price"
 msgstr "Prix"
 
+#: src/components/products/form.tsx:204
+msgid "Price is required"
+msgstr ""
+
+#: src/components/products/form.tsx:203
+msgid "Pricing"
+msgstr ""
+
+#: src/components/products/form.tsx:177
+#: src/components/stock/movement-form.tsx:98
+#: src/routes/deliveries/details.tsx:304
+#: src/routes/inventory.tsx:127
+#: src/routes/invoices/details.tsx:705
+#: src/routes/orders/details.tsx:309
+#: src/routes/products.tsx:108
+msgid "Product"
+msgstr ""
+
+#: src/components/products/form.tsx:198
+msgid "Product code is required"
+msgstr ""
+
+#: src/atoms/product.ts:60
+msgid "Product created"
+msgstr ""
+
+#: src/atoms/product.ts:75
+msgid "Product creation failed"
+msgstr ""
+
+#: src/atoms/product.ts:86
+msgid "Product deleted"
+msgstr ""
+
+#: src/atoms/product.ts:88
+#: src/atoms/product.ts:92
+msgid "Product deletion failed"
+msgstr ""
+
+#: src/components/products/form.tsx:171
+msgid "Product or service name"
+msgstr ""
+
+#: src/atoms/product.ts:74
+msgid "Product update failed"
+msgstr ""
+
+#: src/atoms/product.ts:64
+msgid "Product updated"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:249
+msgid "product(s)"
+msgstr ""
+
+#: src/layouts/base.tsx:281
+#: src/routes/products.tsx:58
+msgid "Products"
+msgstr ""
+
 #: src/components/time-entries/form.tsx:195
 #: src/routes/time-tracking/index.tsx:375
-msgid "Project"
-msgstr "Projet"
+#~ msgid "Project"
+#~ msgstr "Projet"
 
 #: src/atoms/project.ts:108
-msgid "Project archived successfully"
-msgstr "Projet archivé avec succès"
+#~ msgid "Project archived successfully"
+#~ msgstr "Projet archivé avec succès"
 
 #: src/atoms/project.ts:64
-msgid "Project created successfully"
-msgstr "Projet créé avec succès"
+#~ msgid "Project created successfully"
+#~ msgstr "Projet créé avec succès"
 
 #: src/components/projects/form.tsx:173
-msgid "Project Name"
-msgstr "Nom du projet"
+#~ msgid "Project Name"
+#~ msgstr "Nom du projet"
 
 #: src/atoms/project.ts:129
-msgid "Project unarchived successfully"
-msgstr "Projet désarchivé avec succès"
+#~ msgid "Project unarchived successfully"
+#~ msgstr "Projet désarchivé avec succès"
 
 #: src/atoms/project.ts:86
-msgid "Project updated successfully"
-msgstr "Projet mis à jour avec succès"
+#~ msgid "Project updated successfully"
+#~ msgstr "Projet mis à jour avec succès"
 
 #: src/layouts/base.tsx:146
 #: src/routes/projects.tsx:136
-msgid "Projects"
-msgstr "Projets"
+#~ msgid "Projects"
+#~ msgstr "Projets"
 
-#: src/components/invoices/pdf.tsx:288
-#: src/routes/invoices/details.tsx:680
+#: src/components/stock/movement-form.tsx:142
+msgid "Purchase price per unit"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:349
+#: src/routes/orders/details.tsx:354
+msgid "Qty"
+msgstr ""
+
+#: src/components/invoices/pdf.tsx:261
+#: src/routes/invoices/details.tsx:745
 msgid "Qty."
 msgstr "Qté"
 
-#: src/routes/settings/organization.tsx:76
+#: src/routes/inventory.tsx:151
+msgid "Quantity"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:125
+msgid "Quantity consumed / sold"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:132
+msgid "Quantity is required"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:130
+msgid "Quantity received"
+msgstr ""
+
+#: src/routes/inventory.tsx:79
+msgid "Record movement"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:82
+msgid "Record stock movement"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:150
+#: src/routes/inventory.tsx:163
+msgid "Reference"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:328
+msgid "Refresh"
+msgstr ""
+
+#: src/routes/organizations/index.tsx:361
 msgid "Registration number"
 msgstr "Numéro d'enregistrement"
 
+#: src/routes/deliveries/details.tsx:402
+#: src/routes/invoices/details.tsx:871
+#: src/routes/orders/details.tsx:409
+msgid "Remove line item"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:121
+msgid "Replace all current data with backup \"{name}\"? This cannot be undone."
+msgstr ""
+
+#: src/routes/settings/backup.tsx:145
+#: src/routes/settings/backup.tsx:286
+msgid "Replace all current data with the uploaded file? This cannot be undone."
+msgstr ""
+
 #: src/layouts/base.tsx:169
 #: src/routes/time-tracking/reports.tsx:153
-msgid "Reports"
-msgstr "Rapports"
+#~ msgid "Reports"
+#~ msgstr "Rapports"
 
-#: src/routes/settings/backup.tsx:49
+#: src/routes/deliveries/details.tsx:249
+#: src/routes/deliveries/details.tsx:356
+#: src/routes/orders/details.tsx:361
+msgid "Required"
+msgstr ""
+
+#: src/routes/settings/backup.tsx:122
+#: src/routes/settings/backup.tsx:146
+#: src/routes/settings/backup.tsx:287
+#: src/routes/settings/backup.tsx:372
 msgid "Restore"
 msgstr "Restaurer"
 
 #: src/routes/settings/backup.tsx:59
-msgid "Restore Complete"
-msgstr "Restauration terminée"
+#~ msgid "Restore Complete"
+#~ msgstr "Restauration terminée"
+
+#: src/routes/settings/backup.tsx:120
+#: src/routes/settings/backup.tsx:144
+#: src/routes/settings/backup.tsx:285
+msgid "Restore database"
+msgstr ""
 
 #: src/routes/settings/backup.tsx:47
-msgid "Restore Database"
-msgstr "Restaurer la base de données"
+#~ msgid "Restore Database"
+#~ msgstr "Restaurer la base de données"
+
+#. placeholder {0}: String(err)
+#: src/routes/settings/backup.tsx:131
+#: src/routes/settings/backup.tsx:155
+#: src/routes/settings/backup.tsx:297
+msgid "Restore failed: {0}"
+msgstr ""
 
 #: src/routes/settings/backup.tsx:124
-msgid "Restore from Backup"
-msgstr "Restaurer à partir d'une sauvegarde"
+#~ msgid "Restore from Backup"
+#~ msgstr "Restaurer à partir d'une sauvegarde"
+
+#: src/routes/settings/backup.tsx:306
+msgid "Restore from file"
+msgstr ""
 
 #: src/routes/settings/backup.tsx:129
-msgid "Restore your database from a previously created backup file. This will replace all current data with the backup data."
-msgstr "Restaurez votre base de données à partir d'un fichier de sauvegarde créé précédemment. Cela remplacera toutes les données actuelles par les données de sauvegarde."
+#~ msgid "Restore your database from a previously created backup file. This will replace all current data with the backup data."
+#~ msgstr "Restaurez votre base de données à partir d'un fichier de sauvegarde créé précédemment. Cela remplacera toutes les données actuelles par les données de sauvegarde."
 
-#: src/components/clients/form.tsx:101
-#: src/components/clients/form.tsx:155
-#: src/components/tax-rates/form.tsx:48
-#: src/components/time-entries/form.tsx:113
-#: src/components/time-entries/form.tsx:152
-#: src/components/time-entries/time-range-cell.tsx:91
-#: src/routes/invoices/details.tsx:988
-#: src/routes/settings/invoice.tsx:256
-#: src/routes/settings/organization.tsx:138
+#: src/routes/settings/backup.tsx:208
+msgid "Retention (days)"
+msgstr ""
+
+#: src/routes/settings/users.tsx:177
+#: src/routes/settings/users.tsx:297
+msgid "Role"
+msgstr ""
+
+#: src/layouts/base.tsx:215
+msgid "Sales"
+msgstr ""
+
+#: src/components/clients/form.tsx:142
+#: src/components/products/form.tsx:156
+#: src/components/stock/movement-form.tsx:91
+#: src/components/tax-rates/form.tsx:112
+#: src/routes/deliveries/details.tsx:477
+#: src/routes/invoices/details.tsx:1109
+#: src/routes/orders/details.tsx:511
+#: src/routes/organizations/index.tsx:302
+#: src/routes/settings/backup.tsx:225
+#: src/routes/settings/invoice.tsx:266
+#: src/routes/settings/users.tsx:259
 msgid "Save"
 msgstr "Enregistrer"
 
@@ -917,46 +1718,75 @@ msgstr "Enregistrer"
 #~ msgid "Save Configuration"
 #~ msgstr "Enregistrer la configuration"
 
-#: src/routes/projects.tsx:142
-msgid "Search projects..."
-msgstr "Rechercher des projets..."
+#: src/routes/settings/backup.tsx:97
+msgid "Schedule saved"
+msgstr ""
 
-#: src/routes/clients.tsx:59
-#: src/routes/invoices/index.tsx:132
+#: src/routes/deliveries.tsx:64
+#: src/routes/orders.tsx:65
+#: src/routes/organizations/index.tsx:178
+#: src/routes/products.tsx:64
+#: src/routes/settings/tax-rates.tsx:56
+#: src/routes/settings/users.tsx:142
+msgid "Search"
+msgstr ""
+
+#: src/routes/projects.tsx:142
+#~ msgid "Search projects..."
+#~ msgstr "Rechercher des projets..."
+
+#: src/routes/clients.tsx:63
+#: src/routes/invoices/index.tsx:157
 msgid "Search text"
 msgstr "Rechercher du texte"
 
 #: src/routes/time-tracking/index.tsx:554
-msgid "Search time entries..."
-msgstr "Rechercher des entrées de temps..."
+#~ msgid "Search time entries..."
+#~ msgstr "Rechercher des entrées de temps..."
 
 #: src/components/projects/form.tsx:184
-msgid "Select a client (optional)"
-msgstr "Sélectionner un client (optionnel)"
+#~ msgid "Select a client (optional)"
+#~ msgstr "Sélectionner un client (optionnel)"
+
+#: src/components/stock/movement-form.tsx:98
+msgid "Select a product"
+msgstr ""
 
 #: src/routes/time-tracking/reports.tsx:179
-msgid "Select client"
-msgstr "Sélectionner un client"
+#~ msgid "Select client"
+#~ msgstr "Sélectionner un client"
 
 #: src/components/time-entries/form.tsx:172
-msgid "Select client (optional)"
-msgstr "Sélectionner un client (optionnel)"
+#~ msgid "Select client (optional)"
+#~ msgstr "Sélectionner un client (optionnel)"
 
-#: src/routes/settings/organization.tsx:59
+#: src/routes/organizations/index.tsx:329
 msgid "Select country"
 msgstr ""
 
-#: src/routes/settings/organization.tsx:122
+#: src/routes/organizations/index.tsx:397
 msgid "Select date format"
 msgstr ""
 
-#: src/routes/invoices/details.tsx:515
+#: src/routes/invoices/details.tsx:525
 msgid "Select or create a client"
 msgstr "Sélectionner ou créer un client"
 
+#: src/components/products/form.tsx:213
+msgid "Select or type a unit"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:99
+msgid "Select product"
+msgstr ""
+
 #: src/components/time-entries/form.tsx:197
-msgid "Select project (optional)"
-msgstr "Sélectionner un projet (optionnel)"
+#~ msgid "Select project (optional)"
+#~ msgstr "Sélectionner un projet (optionnel)"
+
+#: src/components/products/form.tsx:221
+msgid "Select tax rate"
+msgstr ""
 
 #: src/components/feedback-modal.tsx:53
 msgid "Send"
@@ -975,11 +1805,16 @@ msgstr "Envoyée"
 #~ msgid "Separator"
 #~ msgstr "Séparateur"
 
-#: src/routes/settings/invoice.tsx:167
+#: src/routes/settings/invoice.tsx:190
 msgid "Sequential number"
 msgstr "Numéro séquentiel"
 
-#: src/layouts/base.tsx:178
+#: src/components/products/form.tsx:176
+#: src/routes/products.tsx:110
+msgid "Service"
+msgstr ""
+
+#: src/layouts/base.tsx:299
 msgid "Settings"
 msgstr "Paramètres"
 
@@ -987,17 +1822,58 @@ msgstr "Paramètres"
 #~ msgid "Settings → AI"
 #~ msgstr "Paramètres → IA"
 
+#: src/routes/deliveries/details.tsx:279
+#: src/routes/orders/details.tsx:285
+msgid "Shipping address"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:129
+msgid "Shortage quantity found"
+msgstr ""
+
 #: src/routes/settings/invoice.tsx:158
-msgid "Show variables"
-msgstr "Afficher les variables"
+#~ msgid "Show variables"
+#~ msgstr "Afficher les variables"
+
+#: src/routes/login.tsx:112
+msgid "Sign in"
+msgstr ""
+
+#: src/routes/login.tsx:70
+msgid "Sign in to your account"
+msgstr ""
+
+#: src/routes/login.tsx:87
+msgid "Sign in with SSO"
+msgstr ""
+
+#: src/layouts/base.tsx:448
+msgid "Sign out"
+msgstr ""
+
+#: src/routes/login.tsx:34
+msgid "Single sign-on login failed — try again, or use your email and password below."
+msgstr ""
+
+#: src/routes/settings/backup.tsx:346
+msgid "Size"
+msgstr ""
+
+#: src/routes/products.tsx:115
+msgid "SKU"
+msgstr ""
+
+#: src/components/products/form.tsx:197
+msgid "SKU / Product code"
+msgstr ""
 
 #: src/components/ai-drawer.tsx:496
 #~ msgid "Start a conversation with your AI assistant"
 #~ msgstr "Commencez une conversation avec votre assistant IA"
 
 #: src/components/projects/form.tsx:199
-msgid "Start Date"
-msgstr "Date de début"
+#~ msgid "Start Date"
+#~ msgstr "Date de début"
 
 #: src/routes/settings/invoice.tsx:121
 #~ msgid "Start Number"
@@ -1005,23 +1881,66 @@ msgstr "Date de début"
 
 #: src/components/time-entries/form.tsx:222
 #: src/components/time-entries/time-range-cell.tsx:69
-msgid "Start Time"
-msgstr "Heure de début"
+#~ msgid "Start Time"
+#~ msgstr "Heure de début"
 
 #: src/routes/time-tracking/index.tsx:565
-msgid "Start Timer"
-msgstr "Démarrer le minuteur"
+#~ msgid "Start Timer"
+#~ msgstr "Démarrer le minuteur"
 
-#: src/routes/invoices/index.tsx:178
+#: src/routes/invoices/index.tsx:220
 msgid "State"
 msgstr "État"
 
-#: src/routes/time-tracking/index.tsx:561
-msgid "Stop Timer"
-msgstr "Arrêter le minuteur"
+#: src/routes/deliveries.tsx:115
+#: src/routes/deliveries/details.tsx:269
+#: src/routes/orders.tsx:103
+msgid "Status"
+msgstr ""
 
-#: src/components/invoices/pdf.tsx:335
-#: src/routes/invoices/details.tsx:866
+#: src/routes/products.tsx:154
+msgid "Stock"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:114
+msgid "Stock count — shortage found (subtract)"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:113
+msgid "Stock count — surplus found (add)"
+msgstr ""
+
+#: src/routes/inventory.tsx:24
+msgid "Stock count (shortage)"
+msgstr ""
+
+#: src/routes/inventory.tsx:23
+msgid "Stock count (surplus)"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:110
+msgid "Stock in — receive goods"
+msgstr ""
+
+#: src/atoms/stock.ts:77
+msgid "Stock movement deleted"
+msgstr ""
+
+#: src/atoms/stock.ts:45
+msgid "Stock movement recorded"
+msgstr ""
+
+#: src/components/stock/movement-form.tsx:111
+msgid "Stock out — consume / sell"
+msgstr ""
+
+#: src/routes/time-tracking/index.tsx:561
+#~ msgid "Stop Timer"
+#~ msgstr "Arrêter le minuteur"
+
+#: src/components/invoices/pdf.tsx:332
+#: src/routes/invoices/details.tsx:970
+#: src/routes/orders/details.tsx:439
 msgid "Subtotal"
 msgstr "Sous-total"
 
@@ -1029,215 +1948,309 @@ msgstr "Sous-total"
 #~ msgid "Suffix"
 #~ msgstr "Suffixe"
 
+#: src/components/stock/movement-form.tsx:127
+msgid "Surplus quantity found"
+msgstr ""
+
+#: src/layouts/base.tsx:456
+msgid "Switch to dark mode"
+msgstr ""
+
+#: src/layouts/base.tsx:456
+msgid "Switch to light mode"
+msgstr ""
+
 #: src/atoms/time-tracking.ts:61
-msgid "Tag created"
-msgstr "Étiquette créée"
+#~ msgid "Tag created"
+#~ msgstr "Étiquette créée"
 
 #: src/atoms/time-tracking.ts:82
-msgid "Tag creation failed"
-msgstr "Échec de la création de l'étiquette"
+#~ msgid "Tag creation failed"
+#~ msgstr "Échec de la création de l'étiquette"
 
 #: src/atoms/time-tracking.ts:99
-msgid "Tag deleted"
-msgstr "Étiquette supprimée"
+#~ msgid "Tag deleted"
+#~ msgstr "Étiquette supprimée"
 
 #: src/atoms/time-tracking.ts:101
 #: src/atoms/time-tracking.ts:105
-msgid "Tag deletion failed"
-msgstr "Échec de la suppression de l'étiquette"
+#~ msgid "Tag deletion failed"
+#~ msgstr "Échec de la suppression de l'étiquette"
 
 #: src/atoms/time-tracking.ts:84
-msgid "Tag update failed"
-msgstr "Échec de la mise à jour de l'étiquette"
+#~ msgid "Tag update failed"
+#~ msgstr "Échec de la mise à jour de l'étiquette"
 
 #: src/atoms/time-tracking.ts:72
-msgid "Tag updated successfully"
-msgstr "Étiquette mise à jour avec succès"
+#~ msgid "Tag updated successfully"
+#~ msgstr "Étiquette mise à jour avec succès"
 
 #: src/components/time-entries/form.tsx:271
 #: src/routes/time-tracking/index.tsx:412
-msgid "Tags"
-msgstr "Étiquettes"
+#~ msgid "Tags"
+#~ msgstr "Étiquettes"
 
-#: src/routes/invoices/details.tsx:887
+#: src/routes/invoices/details.tsx:991
 msgid "Tax"
 msgstr "Taxe"
 
-#: src/components/invoices/pdf.tsx:294
-#: src/routes/invoices/details.tsx:750
+#: src/components/invoices/pdf.tsx:267
+#: src/routes/invoices/details.tsx:831
 msgid "Tax %"
 msgstr "Taxe %"
 
-#: src/components/invoices/pdf.tsx:347
+#: src/components/invoices/pdf.tsx:356
 msgid "Tax 0%"
 msgstr "Taxe 0%"
 
-#: src/atoms/tax-rate.ts:61
+#: src/components/tax-rates/form.tsx:125
+#: src/routes/products.tsx:139
+msgid "Tax rate"
+msgstr ""
+
+#: src/atoms/tax-rate.ts:73
 msgid "Tax rate created"
 msgstr "Taux de taxe créé"
 
-#: src/atoms/tax-rate.ts:90
+#: src/atoms/tax-rate.ts:104
 msgid "Tax rate creation failed"
 msgstr "Échec de la création du taux de taxe"
 
-#: src/atoms/tax-rate.ts:92
+#: src/atoms/tax-rate.ts:118
+msgid "Tax rate deleted"
+msgstr ""
+
+#: src/atoms/tax-rate.ts:120
+#: src/atoms/tax-rate.ts:124
+msgid "Tax rate deletion failed"
+msgstr ""
+
+#: src/atoms/tax-rate.ts:106
 msgid "Tax rate update failed"
 msgstr "Échec de la mise à jour du taux de taxe"
 
-#: src/atoms/tax-rate.ts:80
+#: src/atoms/tax-rate.ts:94
 msgid "Tax rate updated successfully"
 msgstr "Taux de taxe mis à jour avec succès"
 
-#: src/layouts/base.tsx:203
-#: src/routes/settings/tax-rates.tsx:33
+#: src/routes/organizations/index.tsx:252
+msgid "tax rate(s)"
+msgstr ""
+
+#: src/layouts/base.tsx:315
+#: src/routes/settings/tax-rates.tsx:50
 msgid "Tax rates"
 msgstr "Taux de taxe"
 
-#: src/components/feedback-modal.tsx:94
+#: src/components/feedback-modal.tsx:87
 msgid "Tell us what you think, report a bug, or suggest an improvement..."
 msgstr "Dites-nous ce que vous pensez, signalez un bug ou suggérez une amélioration..."
 
-#: src/routes/invoices/details.tsx:517
-#: src/routes/invoices/details.tsx:574
-#: src/routes/invoices/details.tsx:583
-#: src/routes/invoices/details.tsx:599
-#: src/routes/invoices/details.tsx:607
-#: src/routes/invoices/details.tsx:671
-#: src/routes/invoices/details.tsx:686
-#: src/routes/invoices/details.tsx:721
-#: src/routes/invoices/details.tsx:787
-#: src/routes/settings/invoice.tsx:86
-#: src/routes/settings/invoice.tsx:132
-#: src/routes/settings/invoice.tsx:202
+#: src/routes/organizations/index.tsx:269
+#: src/routes/organizations/index.tsx:272
+msgid "This cannot be undone."
+msgstr ""
+
+#: src/routes/invoices/details.tsx:527
+#: src/routes/invoices/details.tsx:589
+#: src/routes/invoices/details.tsx:598
+#: src/routes/invoices/details.tsx:617
+#: src/routes/invoices/details.tsx:626
+#: src/routes/invoices/details.tsx:695
+#: src/routes/invoices/details.tsx:751
+#: src/routes/invoices/details.tsx:794
+#: src/routes/invoices/details.tsx:877
+#: src/routes/organizations/index.tsx:314
+#: src/routes/settings/invoice.tsx:98
+#: src/routes/settings/invoice.tsx:153
+#: src/routes/settings/invoice.tsx:215
 msgid "This field is required!"
 msgstr "Ce champ est obligatoire !"
 
+#: src/routes/organizations/index.tsx:262
+msgid "This will permanently delete:"
+msgstr ""
+
 #: src/atoms/time-tracking.ts:208
-msgid "Time entry created"
-msgstr "Entrée de temps créée"
+#~ msgid "Time entry created"
+#~ msgstr "Entrée de temps créée"
 
 #: src/atoms/time-tracking.ts:244
-msgid "Time entry creation failed"
-msgstr "Échec de la création de l'entrée de temps"
+#~ msgid "Time entry creation failed"
+#~ msgstr "Échec de la création de l'entrée de temps"
 
 #: src/atoms/time-tracking.ts:261
-msgid "Time entry deleted"
-msgstr "Entrée de temps supprimée"
+#~ msgid "Time entry deleted"
+#~ msgstr "Entrée de temps supprimée"
 
 #: src/atoms/time-tracking.ts:263
 #: src/atoms/time-tracking.ts:267
-msgid "Time entry deletion failed"
-msgstr "Échec de la suppression de l'entrée de temps"
+#~ msgid "Time entry deletion failed"
+#~ msgstr "Échec de la suppression de l'entrée de temps"
 
 #: src/atoms/time-tracking.ts:246
-msgid "Time entry update failed"
-msgstr "Échec de la mise à jour de l'entrée de temps"
+#~ msgid "Time entry update failed"
+#~ msgstr "Échec de la mise à jour de l'entrée de temps"
 
 #: src/atoms/time-tracking.ts:232
-msgid "Time entry updated successfully"
-msgstr "Entrée de temps mise à jour avec succès"
+#~ msgid "Time entry updated successfully"
+#~ msgstr "Entrée de temps mise à jour avec succès"
 
 #: src/routes/time-tracking/index.tsx:388
-msgid "Time Range"
-msgstr "Plage horaire"
+#~ msgid "Time Range"
+#~ msgstr "Plage horaire"
 
 #: src/layouts/base.tsx:153
-msgid "Time tracking"
-msgstr "Suivi du temps"
+#~ msgid "Time tracking"
+#~ msgstr "Suivi du temps"
 
 #: src/routes/time-tracking/index.tsx:548
-msgid "Time Tracking"
-msgstr "Suivi du temps"
+#~ msgid "Time Tracking"
+#~ msgstr "Suivi du temps"
 
 #: src/routes/projects.tsx:84
-msgid "Timeframe"
-msgstr "Période"
+#~ msgid "Timeframe"
+#~ msgstr "Période"
 
 #: src/layouts/base.tsx:160
-msgid "Timer"
-msgstr "Minuteur"
+#~ msgid "Timer"
+#~ msgstr "Minuteur"
 
 #: src/components/ai-drawer.tsx:362
 #~ msgid "to use the AI assistant."
 #~ msgstr "pour utiliser l'assistant IA."
 
-#: src/components/invoices/pdf.tsx:297
-#: src/components/invoices/pdf.tsx:371
-#: src/routes/invoices/details.tsx:768
-#: src/routes/invoices/details.tsx:898
-#: src/routes/invoices/index.tsx:170
-#: src/routes/time-tracking/reports.tsx:249
+#: src/components/invoices/pdf.tsx:270
+#: src/components/invoices/pdf.tsx:381
+#: src/routes/invoices/details.tsx:853
+#: src/routes/invoices/details.tsx:1002
+#: src/routes/invoices/index.tsx:210
 msgid "Total"
 msgstr "Total"
 
 #: src/routes/time-tracking/reports.tsx:214
-msgid "Total entries"
-msgstr "Nombre total d'entrées"
+#~ msgid "Total entries"
+#~ msgstr "Nombre total d'entrées"
 
 #: src/routes/time-tracking/reports.tsx:129
 #: src/routes/time-tracking/reports.tsx:209
-msgid "Total time"
-msgstr "Temps total"
+#~ msgid "Total time"
+#~ msgstr "Temps total"
+
+#: src/components/products/form.tsx:184
+msgid "Track inventory"
+msgstr ""
+
+#: src/routes/orders.tsx:124
+msgid "Tracking"
+msgstr ""
+
+#: src/routes/deliveries/details.tsx:264
+#: src/routes/orders/details.tsx:277
+msgid "Tracking number"
+msgstr ""
+
+#: src/components/products/form.tsx:174
+#: src/components/stock/movement-form.tsx:108
+#: src/routes/inventory.tsx:145
+#: src/routes/products.tsx:102
+msgid "Type"
+msgstr ""
 
 #: src/components/projects/form.tsx:145
-msgid "Unarchive"
-msgstr "Désarchiver"
+#~ msgid "Unarchive"
+#~ msgstr "Désarchiver"
+
+#: src/components/products/form.tsx:212
+#: src/routes/deliveries/details.tsx:383
+msgid "Unit"
+msgstr ""
+
+#: src/routes/orders/details.tsx:368
+msgid "Unit price"
+msgstr ""
 
 #: src/components/projects/form.tsx:162
-msgid "Update"
-msgstr "Mettre à jour"
+#~ msgid "Update"
+#~ msgstr "Mettre à jour"
 
 #: src/routes/settings/invoice.tsx:240
-msgid "Upload"
-msgstr "Télécharger"
+#~ msgid "Upload"
+#~ msgstr "Télécharger"
 
-#: src/components/clients/form.tsx:194
+#: src/routes/settings/backup.tsx:311
+msgid "Upload a .db file to replace the current database."
+msgstr ""
+
+#: src/routes/settings/invoice.tsx:248
+msgid "Upload logo"
+msgstr ""
+
+#: src/routes/settings/users.tsx:184
+#: src/routes/settings/users.tsx:303
+msgid "User"
+msgstr ""
+
+#: src/layouts/base.tsx:335
+#: src/routes/settings/users.tsx:136
+msgid "Users"
+msgstr ""
+
+#: src/components/clients/form.tsx:171
+#: src/components/clients/form.tsx:172
 msgid "VAT Number"
 msgstr "Numéro de TVA"
 
-#: src/routes/clients.tsx:105
+#: src/routes/clients.tsx:139
 msgid "VATIN"
 msgstr "N° TVA"
 
-#: src/routes/invoices/details.tsx:966
+#: src/routes/invoices/details.tsx:1070
 msgid "View"
 msgstr "Afficher"
 
 #: src/components/invoices/state-select.tsx:39
 #: src/components/invoices/state-select.tsx:64
-#: src/routes/invoices/index.tsx:40
+#: src/routes/invoices/index.tsx:62
 msgid "Void"
 msgstr "Annulée"
 
-#: src/components/clients/form.tsx:121
+#: src/components/clients/form.tsx:123
 msgid "Warning: This will also delete {invoiceCount} related invoice(s)."
 msgstr "Attention : Cela supprimera également {invoiceCount} facture(s) associée(s)."
 
-#: src/components/clients/form.tsx:197
-#: src/routes/clients.tsx:107
+#: src/components/clients/form.tsx:168
+#: src/components/clients/form.tsx:169
+#: src/routes/clients.tsx:145
+#: src/routes/organizations/index.tsx:356
 msgid "Website"
 msgstr "Site web"
 
 #: src/routes/time-tracking/reports.tsx:111
-msgid "Week"
-msgstr "Semaine"
+#~ msgid "Week"
+#~ msgstr "Semaine"
 
 #. placeholder {0}: startOfWeek.format("MMM D")
 #: src/routes/time-tracking/reports.tsx:94
-msgid "Week {week} ({0})"
-msgstr "Semaine {week} ({0})"
+#~ msgid "Week {week} ({0})"
+#~ msgstr "Semaine {week} ({0})"
 
 #: src/components/time-entries/form.tsx:165
-msgid "What are you working on?"
-msgstr "Sur quoi travaillez-vous ?"
+#~ msgid "What are you working on?"
+#~ msgstr "Sur quoi travaillez-vous ?"
 
-#: src/components/clients/form.tsx:127
-#: src/components/projects/form.tsx:137
-#: src/components/time-entries/form.tsx:127
-#: src/routes/invoices/details.tsx:941
-#: src/routes/invoices/index.tsx:109
-#: src/routes/settings/organization.tsx:143
-#: src/routes/time-tracking/index.tsx:480
+#: src/components/clients/form.tsx:129
+#: src/components/products/form.tsx:143
+#: src/components/tax-rates/form.tsx:98
+#: src/routes/deliveries/details.tsx:439
+#: src/routes/deliveries/details.tsx:463
+#: src/routes/inventory.tsx:185
+#: src/routes/invoices/details.tsx:1045
+#: src/routes/invoices/details.tsx:1095
+#: src/routes/invoices/index.tsx:131
+#: src/routes/orders/details.tsx:468
+#: src/routes/orders/details.tsx:492
+#: src/routes/settings/users.tsx:246
 msgid "Yes"
 msgstr "Oui"
 
@@ -1249,10 +2262,10 @@ msgstr "Oui"
 #~ msgid "Your Anthropic API key is configured and AI features are enabled."
 #~ msgstr "Votre clé API Anthropic est configurée et les fonctionnalités IA sont activées."
 
-#: src/components/feedback-modal.tsx:66
+#: src/components/feedback-modal.tsx:59
 msgid "Your name (optional)"
 msgstr "Votre nom (optionnel)"
 
-#: src/components/feedback-modal.tsx:79
+#: src/components/feedback-modal.tsx:72
 msgid "your.email@example.com (optional)"
 msgstr "votre.email@exemple.fr (optionnel)"

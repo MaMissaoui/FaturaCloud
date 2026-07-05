@@ -11,6 +11,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY index.html lingui.config.ts vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY src ./src
+COPY public ./public
 
 # VERSION also feeds vite.config.ts's sentryVitePlugin release name, so uploaded
 # source maps match the release string the running app reports to Sentry.
