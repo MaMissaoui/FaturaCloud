@@ -35,6 +35,15 @@ services:
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
       - OIDC_REDIRECT_URL=https://fatura.${DOMAIN}/api/auth/oidc/callback
       - OIDC_ADMIN_GROUP=${OIDC_ADMIN_GROUP:-admins}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES:-}
+    # TRUSTED_PROXIES: with the host port removed above, NPM is the only path
+    # to this container, so its address on the `proxy` network can safely be
+    # trusted to set X-Forwarded-For for login rate-limiting — otherwise every
+    # login attempt (from every real client NPM forwards) shares one bucket,
+    # since they all arrive from NPM's address. Set this to NPM's `proxy`-
+    # network subnet (check `docker network inspect proxy`, e.g.
+    # `172.20.0.0/16`) — not a single IP, since Docker can reassign it.
+    #
     # OIDC_ISSUER_URL deliberately stays the PUBLIC hostname (not Authelia's
     # container address, e.g. http://authelia:9091) — the ID token's issuer
     # identity must match what the browser authenticated against, or ID token

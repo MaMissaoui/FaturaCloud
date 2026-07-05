@@ -286,6 +286,7 @@ Two Sentry-related build inputs are optional and deliberately excluded from the 
 - `JWT_SECRET` — secret key for signing JWT tokens; defaults to `"dev-secret-change-me-in-production"` — **must be set in production**
 - `ADMIN_EMAIL` — email for the initial admin user created on first startup (default: `admin@fatura.cloud`)
 - `ADMIN_PASSWORD` — password for the initial admin user (default: `admin`) — **change in production**
+- `TRUSTED_PROXIES` — comma/space-separated IPs or CIDRs (e.g. `172.20.0.0/16`) of reverse proxies allowed to set `X-Forwarded-For`. Unset (default): the login rate limiter always keys on the direct TCP peer, so every client behind a reverse proxy shares one bucket — set this to your proxy's address when deploying behind one. Only ever list proxies that are the sole path to the app; an untrusted peer's `X-Forwarded-For` is always ignored
 - `VITE_SENTRY_DSN` — frontend build-time; enables Sentry error tracking when set (see Docker section above for how to pass it in). Unset means Sentry is fully off regardless of `VITE_SENTRY_ENABLED`
 - `VITE_SENTRY_ENABLED=true` — force-enables Sentry error tracking in dev (defaults off outside production); has no effect without `VITE_SENTRY_DSN` also set
 - `VITE_JOTAI_DEVTOOLS_ENABLED=true` — enables Jotai DevTools in dev mode

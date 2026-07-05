@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"net/netip"
 	"sync"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -16,6 +17,11 @@ type handler struct {
 	backupDir string
 	jwtSecret string
 	version   string
+
+	// Reverse proxies allowed to set X-Forwarded-For for login rate-limiting
+	// purposes (see clientIP in auth.go). Empty means none are trusted — the
+	// direct TCP peer is always used instead.
+	trustedProxies []netip.Prefix
 
 	// OIDC SSO — oidcCfg.IssuerURL empty means the feature is disabled.
 	// oidcVerifier/oidcOAuth2 are built lazily by ensureOIDC.
@@ -39,14 +45,15 @@ func limitBody(limit int64, next http.HandlerFunc) http.Handler {
 // NewRouter wires all API routes and returns the mux.
 // The caller is responsible for mounting a static file handler at "/" for the
 // embedded frontend.
-func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version string, oidcCfg OIDCConfig) *http.ServeMux {
+func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version string, oidcCfg OIDCConfig, trustedProxies []netip.Prefix) *http.ServeMux {
 	h := &handler{
-		db:        database,
-		dbPath:    dbPath,
-		backupDir: backupDir,
-		jwtSecret: jwtSecret,
-		version:   version,
-		oidcCfg:   oidcCfg,
+		db:             database,
+		dbPath:         dbPath,
+		backupDir:      backupDir,
+		jwtSecret:      jwtSecret,
+		version:        version,
+		oidcCfg:        oidcCfg,
+		trustedProxies: trustedProxies,
 	}
 	go h.runScheduler()
 	go sweepLoginBuckets()

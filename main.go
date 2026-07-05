@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,7 +88,9 @@ func main() {
 		log.Printf("OIDC SSO enabled — issuer %s, admin group %q", oidcCfg.IssuerURL, oidcCfg.AdminGroup)
 	}
 
-	mux := api.NewRouter(database, dbPath, backupDir, jwtSecret, version, oidcCfg)
+	trustedProxies := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
+
+	mux := api.NewRouter(database, dbPath, backupDir, jwtSecret, version, oidcCfg, trustedProxies)
 	api.EnsureFirstAdmin(database, adminEmail, adminPassword)
 
 	// Serve embedded frontend from dist/ with SPA fallback to index.html.
@@ -163,6 +166,43 @@ func oidcScopes(raw string) []string {
 		return []string{"openid", "profile", "email", "groups"}
 	}
 	return strings.Fields(raw)
+}
+
+// parseTrustedProxies parses a comma/space-separated list of IPs or CIDRs
+// (e.g. "172.20.0.0/16, 10.0.0.5") naming reverse proxies allowed to set
+// X-Forwarded-For. Left empty (the default), the login rate limiter always
+// keys on the direct TCP peer — safe with no reverse proxy in front, but
+// every client behind one then shares a single bucket. Only set this to a
+// proxy that is the sole path to the app (an exposed app port alongside a
+// trusted-but-bypassable proxy lets a client set X-Forwarded-For directly
+// and dodge rate limiting entirely).
+func parseTrustedProxies(raw string) []netip.Prefix {
+	if raw == "" {
+		return nil
+	}
+	var prefixes []netip.Prefix
+	for field := range strings.FieldsSeq(strings.ReplaceAll(raw, ",", " ")) {
+		entry := field
+		if !strings.Contains(entry, "/") {
+			addr, err := netip.ParseAddr(entry)
+			if err != nil {
+				log.Printf("ignoring invalid TRUSTED_PROXIES entry %q: %v", field, err)
+				continue
+			}
+			bits := 32
+			if addr.Is6() {
+				bits = 128
+			}
+			entry = fmt.Sprintf("%s/%d", addr, bits)
+		}
+		prefix, err := netip.ParsePrefix(entry)
+		if err != nil {
+			log.Printf("ignoring invalid TRUSTED_PROXIES entry %q: %v", field, err)
+			continue
+		}
+		prefixes = append(prefixes, prefix)
+	}
+	return prefixes
 }
 
 func dbFilePath() string {

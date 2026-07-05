@@ -3,6 +3,8 @@ package api
 import (
 	"net"
 	"net/http"
+	"net/netip"
+	"strings"
 	"sync"
 	"time"
 
@@ -53,11 +55,49 @@ func sweepLoginBuckets() {
 	}
 }
 
-func (h *handler) login(w http.ResponseWriter, r *http.Request) {
-	ip := r.RemoteAddr
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		ip = host
+// clientIP returns the address to key login rate-limiting on. By default
+// (h.trustedProxies empty) it's always the direct TCP peer — safe with no
+// reverse proxy in front, but every client sharing that proxy then shares one
+// bucket. When the peer matches a configured trusted proxy, the real client
+// address is instead read from the leftmost X-Forwarded-For entry, which
+// only that proxy is trusted to have set truthfully; an untrusted peer can
+// send any X-Forwarded-For value it likes, so this only takes effect once
+// the peer itself is verified.
+func (h *handler) clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
 	}
+	if len(h.trustedProxies) == 0 {
+		return host
+	}
+	peer, err := netip.ParseAddr(host)
+	if err != nil {
+		return host
+	}
+	trusted := false
+	for _, p := range h.trustedProxies {
+		if p.Contains(peer) {
+			trusted = true
+			break
+		}
+	}
+	if !trusted {
+		return host
+	}
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff == "" {
+		return host
+	}
+	real := strings.TrimSpace(strings.SplitN(xff, ",", 2)[0])
+	if real == "" {
+		return host
+	}
+	return real
+}
+
+func (h *handler) login(w http.ResponseWriter, r *http.Request) {
+	ip := h.clientIP(r)
 	if !checkLoginRate(ip) {
 		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
