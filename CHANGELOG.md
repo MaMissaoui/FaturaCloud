@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-07-05
+
+### Fixed
+- `docker-compose.yml` now bind-mounts a `./data` subfolder next to the compose file instead of a named Docker volume, so the SQLite database and backups are easy to find, back up, and copy between hosts; the container's non-root user is now a fixed uid:gid (1000:1000) so the host directory can be chowned to match ahead of time — see `deploy.md` for setup and migration steps
+- The login rate limiter no longer collapses into one shared bucket for every client behind a reverse proxy (it previously keyed on the direct TCP peer, which is the proxy's own address for every request). A new `TRUSTED_PROXIES` env var lets it read the real client address from `X-Forwarded-For`, but only when the direct peer matches a configured trusted proxy, so an untrusted client can't spoof the header to dodge rate limiting
+
 ## [1.2.1] - 2026-07-04
 
 ### Added
