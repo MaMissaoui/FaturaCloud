@@ -33,6 +33,19 @@ docker login ghcr.io -u MaMissaoui
 Copy `docker-compose.yml` from this repo onto the Pi (scp, git clone, or paste
 it directly) into its own directory, e.g. `~/fatura-cloud/`.
 
+Then create the data directory next to it and hand it to the container's
+non-root user (uid:gid `1000:1000`):
+
+```bash
+mkdir -p ./data
+sudo chown -R 1000:1000 ./data
+```
+
+This only matters on Linux — bind mounts surface the host directory's
+ownership as-is inside the container, unlike a named volume. Skip the `chown`
+only if uid 1000 is already the owner (the default first user on most Linux
+distros, including Raspberry Pi OS).
+
 ## 3. Configure secrets
 
 The container treats the presence of the `/data` volume as "this is a real
@@ -77,18 +90,35 @@ docker compose pull
 docker compose up -d
 ```
 
+### Migrating an existing deployment off the `fatura_data` named volume
+
+Versions before this change stored data in a `fatura_data` named volume
+instead of `./data`. To move an existing deployment over without losing data:
+
+```bash
+docker compose down
+mkdir -p ./data
+docker run --rm -v fatura_data:/from -v "$(pwd)/data:/to" alpine \
+  sh -c "cp -a /from/. /to/ && chown -R 1000:1000 /to"
+docker compose up -d
+```
+
+Verify the app comes up and your data is intact before removing the old
+volume with `docker volume rm fatura_data`.
+
 To pin a specific version instead of always tracking `latest`, set `VERSION`
 in `.env` (e.g. `VERSION=v1.1.0`) — the compose file reads
 `ghcr.io/mamissaoui/fatura-cloud:${VERSION:-latest}`.
 
 ## Data and backups
 
-All state (SQLite database) lives in the `fatura_data` named volume, mounted
-at `/data` in the container — it persists across `docker compose pull`/`up`
-cycles and image updates. FaturaCloud also has a built-in backup feature
-(Settings → Backup, admin only) that snapshots the database to a configurable
-schedule; download those snapshots off the Pi periodically since they still
-live on the same disk as the volume.
+All state (SQLite database) lives in `./data` next to `docker-compose.yml`,
+bind-mounted at `/data` in the container — it persists across
+`docker compose pull`/`up` cycles and image updates, and is a plain directory
+you can `tar`, `rsync`, or copy between hosts directly. FaturaCloud also has a
+built-in backup feature (Settings → Backup, admin only) that snapshots the
+database to `./data/backups` on a configurable schedule; copy those snapshots
+off the Pi periodically since they still live on the same disk as `./data`.
 
 ## Optional: OIDC single sign-on
 
@@ -119,6 +149,11 @@ back to `docker compose pull` later reverts to the DSN-less published image.
 - **Container exits immediately on first run**: check `docker compose logs
   app` — it's almost always a missing `JWT_SECRET`/`ADMIN_PASSWORD` in `.env`
   (see step 3).
+- **"unable to open database file" / permission denied writing to `/data`**:
+  `./data` isn't owned by uid:gid `1000:1000` — run
+  `sudo chown -R 1000:1000 ./data` (step 2). This only applies to images built
+  from a version that pins the container's user to uid 1000; if you're
+  running an older tag, upgrade first.
 - **`docker compose pull` fails with "unauthorized"**: the GHCR login (step 1)
   expired or wasn't run on this host — re-run `docker login ghcr.io`.
 - **Wrong architecture pulled / "exec format error"**: confirm `uname -m`

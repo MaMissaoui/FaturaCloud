@@ -15,13 +15,15 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - fatura_data:/data
+      # Bind-mounted subfolder next to this file (not a named volume) so the
+      # SQLite database and backups are easy to find, back up, and copy
+      # between hosts. The container runs as uid:gid 1000:1000 — on first
+      # setup run `mkdir -p ./data && chown -R 1000:1000 ./data` so the
+      # non-root app user can write to it (see deploy.md).
+      - ./data:/data
     environment:
       - PORT=8080
       - JWT_SECRET=${JWT_SECRET}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@fatura.cloud}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     restart: unless-stopped
-
-volumes:
-  fatura_data:

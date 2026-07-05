@@ -54,9 +54,13 @@ WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata
 
-# Run as a non-root user. Pre-create /data (the SQLite volume) owned by that user so
-# the app can write to a fresh named volume without needing root.
-RUN addgroup -S fatura && adduser -S -G fatura fatura \
+# Run as a non-root user with a fixed UID/GID (1000:1000) rather than a
+# system-assigned one — /data is meant to be bind-mounted from a host
+# directory in production, and the host side needs a stable UID to chown to
+# that won't shift across image rebuilds. 1000 also matches the default
+# first user on most Linux distros (including Raspberry Pi OS), so the host
+# directory needs no chown at all in the common case.
+RUN addgroup -g 1000 fatura && adduser -S -u 1000 -G fatura fatura \
     && mkdir -p /data \
     && chown -R fatura:fatura /app /data
 

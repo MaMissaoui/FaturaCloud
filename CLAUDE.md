@@ -265,8 +265,9 @@ docker compose up --build
 # Build image only
 docker build -t fatura-cloud .
 
-# Run with explicit volume
-docker run -p 8080:8080 -v fatura_data:/data fatura-cloud
+# Run with explicit volume (bind-mounted subfolder, not a named volume —
+# container runs as uid:gid 1000:1000, so ./data must be owned by that)
+docker run -p 8080:8080 -v ./data:/data fatura-cloud
 ```
 
 The `Dockerfile` is a three-stage build:
