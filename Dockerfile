@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 
 # ---- Stage 1: Build the React frontend ----
-FROM node:22-alpine AS frontend
+# Pinned to the build host's own platform, not the target one: this stage's
+# output (static JS/CSS/HTML) is architecture-independent, so building it
+# under arm64 QEMU emulation on a multi-arch buildx run would just be a much
+# slower way to produce the exact same files.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend
 WORKDIR /app
 
 RUN npm install -g pnpm
@@ -32,10 +36,13 @@ RUN --mount=type=secret,id=sentry_auth_token \
 
 
 # ---- Stage 2: Build the Go backend ----
-FROM golang:1.26-alpine AS backend
+# Also pinned to the build host's own platform, same reasoning as the
+# frontend stage: the only Go dependency that ever needed a C toolchain was
+# mattn/go-sqlite3, and this app uses modernc.org/sqlite (pure Go, no cgo)
+# instead — see db/db.go. With CGO_ENABLED=0, `go build` cross-compiles for
+# TARGETARCH natively, no QEMU emulation needed here either.
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS backend
 WORKDIR /app
-
-RUN apk add --no-cache gcc musl-dev
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -46,7 +53,8 @@ COPY db ./db
 COPY --from=frontend /app/dist ./dist
 
 ARG VERSION=dev
-RUN go build -ldflags="-X main.version=${VERSION}" -o fatura-cloud .
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOARCH=$TARGETARCH GOOS=linux go build -ldflags="-X main.version=${VERSION}" -o fatura-cloud .
 
 
 # ---- Stage 3: Minimal runtime image ----
