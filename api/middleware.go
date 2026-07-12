@@ -41,6 +41,21 @@ func (h *handler) authMiddleware(next http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+
+		// Re-check the user on every request rather than trusting the JWT
+		// alone — otherwise deactivating or deleting a user leaves their
+		// token usable for up to its full 24h lifetime. Acquired and
+		// released here (not deferred past next.ServeHTTP) so this never
+		// nests under a route's own withDB read lock (api/router.go).
+		h.dbMu.RLock()
+		var isActive int
+		err = h.db.DB.Get(&isActive, `SELECT isActive FROM users WHERE id = ?`, claims.UserID)
+		h.dbMu.RUnlock()
+		if err != nil || isActive == 0 {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

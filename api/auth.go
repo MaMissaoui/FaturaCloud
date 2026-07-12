@@ -96,6 +96,20 @@ func (h *handler) clientIP(r *http.Request) string {
 	return real
 }
 
+// dummyPasswordHash is a fixed bcrypt hash that no real password will ever
+// match. login compares against it when the email lookup misses, so a
+// bcrypt.CompareHashAndPassword call runs on both the found and not-found
+// paths — otherwise response time leaks whether an email is registered.
+var dummyPasswordHash = mustBcryptHash("not-a-real-password-timing-decoy-only")
+
+func mustBcryptHash(password string) string {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+	return string(hash)
+}
+
 func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	ip := h.clientIP(r)
 	if !checkLoginRate(ip) {
@@ -117,6 +131,9 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	err := h.db.DB.Get(&user, `SELECT * FROM users WHERE email = ? AND isActive = 1`, body.Email)
 	h.dbMu.RUnlock()
 	if err != nil {
+		// Compare against a decoy hash so this path costs the same as a real
+		// mismatch (see dummyPasswordHash) instead of returning instantly.
+		bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(body.Password))
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
@@ -160,10 +177,8 @@ func (h *handler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.dbMu.RLock()
 	var user userRow
 	err := h.db.DB.Get(&user, `SELECT * FROM users WHERE id = ?`, claims.UserID)
-	h.dbMu.RUnlock()
 	if err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
