@@ -323,10 +323,23 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 	}
 
 	if u.Role != role {
-		if _, err := h.db.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, role, u.ID); err != nil {
-			return userRow{}, err
+		demoting := u.Role == "admin" && role != "admin"
+		blocked := false
+		if demoting {
+			activeAdmins, err := h.countActiveAdmins()
+			if err != nil {
+				return userRow{}, err
+			}
+			blocked = activeAdmins <= 1
 		}
-		u.Role = role
+		if blocked {
+			log.Printf("provisionOrSyncUser: refusing to demote last active admin %s via SSO role sync", email)
+		} else {
+			if _, err := h.db.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, role, u.ID); err != nil {
+				return userRow{}, err
+			}
+			u.Role = role
+		}
 	}
 
 	h.db.DB.Exec(`UPDATE users SET lastLoginAt = ? WHERE id = ?`, time.Now().UnixMilli(), u.ID)
