@@ -70,14 +70,27 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/auth/oidc/login", limitBody(defaultMaxBody, h.oidcLoginStart))
 	mux.Handle("GET /api/auth/oidc/callback", limitBody(defaultMaxBody, h.oidcCallback))
 
+	// withDB holds dbMu's *read* lock for a request's full duration, so a
+	// handler's use of h.db can never race a restore's write-locked swap
+	// (api/utility.go's swapDatabase). It wraps the innermost handler only —
+	// never the two restore routes below, which take the write lock
+	// themselves and would deadlock against a held read lock.
+	withDB := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			h.dbMu.RLock()
+			defer h.dbMu.RUnlock()
+			next(w, r)
+		}
+	}
+
 	// Protected — all routes below require a valid JWT
 	auth := h.authMiddleware
 	adminOnly := h.adminOnly
 	protected := func(method, pattern string, handlerFn http.HandlerFunc) {
-		mux.Handle(method+" "+pattern, auth(limitBody(defaultMaxBody, handlerFn)))
+		mux.Handle(method+" "+pattern, auth(limitBody(defaultMaxBody, withDB(handlerFn))))
 	}
 	adminProtected := func(method, pattern string, handlerFn http.HandlerFunc) {
-		mux.Handle(method+" "+pattern, auth(adminOnly(limitBody(defaultMaxBody, handlerFn))))
+		mux.Handle(method+" "+pattern, auth(adminOnly(limitBody(defaultMaxBody, withDB(handlerFn)))))
 	}
 
 	// Auth
@@ -88,9 +101,13 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// gating the state-changing operations.
 	adminProtected("GET", "/api/backups", h.listBackups)
 	adminProtected("POST", "/api/backups", h.triggerBackup)
-	adminProtected("POST", "/api/backups/{name}/restore", h.restoreNamedBackup)
 	adminProtected("GET", "/api/backup/config", h.getBackupConfig)
 	adminProtected("PUT", "/api/backup/config", h.setBackupConfig)
+	// Restore routes swap out h.db under dbMu's *write* lock (see
+	// swapDatabase) — they must never be wrapped in withDB's read lock, which
+	// would deadlock against it. Registered directly instead of through
+	// adminProtected, which folds withDB into every route.
+	mux.Handle("POST /api/backups/{name}/restore", auth(adminOnly(limitBody(defaultMaxBody, h.restoreNamedBackup))))
 	// Restore uploads stream a full SQLite database file, so this route needs a
 	// much larger body limit than the default — matching restoreDatabase's own
 	// ParseMultipartForm cap.

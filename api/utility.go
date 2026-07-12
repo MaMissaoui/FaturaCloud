@@ -1,9 +1,11 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
+	_ "modernc.org/sqlite"
 )
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -73,7 +76,7 @@ func (h *handler) writeBackupConfig(cfg BackupConfig) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(h.backupDir, "config.json"), data, 0644)
+	return os.WriteFile(filepath.Join(h.backupDir, "config.json"), data, 0600)
 }
 
 // ── Backup list ───────────────────────────────────────────────────────────────
@@ -114,10 +117,7 @@ func (h *handler) triggerBackup(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("fatura-backup-%s.db", time.Now().Format("2006-01-02T15-04-05"))
 	dst := filepath.Join(h.backupDir, filename)
 
-	h.dbMu.RLock()
-	err := h.db.Backup(dst)
-	h.dbMu.RUnlock()
-	if err != nil {
+	if err := h.db.Backup(dst); err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("backup failed: %v", err))
 		return
 	}
@@ -183,7 +183,43 @@ func (h *handler) restoreDatabase(w http.ResponseWriter, r *http.Request) {
 
 // ── Shared DB-swap logic ──────────────────────────────────────────────────────
 
+// validateRestoreCandidate opens srcPath as a plain SQLite file (no pragmas,
+// no migrations — it must not mutate a stored backup or a not-yet-committed
+// upload) and runs a quick integrity check, so a garbage upload is rejected
+// before the live database is ever touched.
+func validateRestoreCandidate(srcPath string) error {
+	conn, err := sql.Open("sqlite", srcPath)
+	if err != nil {
+		return fmt.Errorf("open: %w", err)
+	}
+	defer conn.Close()
+
+	var result string
+	if err := conn.QueryRow("PRAGMA integrity_check").Scan(&result); err != nil {
+		return fmt.Errorf("not a sqlite database: %w", err)
+	}
+	if result != "ok" {
+		return fmt.Errorf("integrity check failed: %s", result)
+	}
+
+	var count int
+	if err := conn.QueryRow(
+		`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'users'`,
+	).Scan(&count); err != nil {
+		return fmt.Errorf("read schema: %w", err)
+	}
+	if count != 1 {
+		return fmt.Errorf("missing users table — doesn't look like a FaturaCloud database")
+	}
+	return nil
+}
+
 func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
+	if err := validateRestoreCandidate(srcPath); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("not a valid FaturaCloud database: %v", err))
+		return
+	}
+
 	safetyPath := h.dbPath + ".safety"
 
 	h.dbMu.Lock()
@@ -206,23 +242,46 @@ func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 	_ = os.Remove(h.dbPath + "-shm")
 
 	if err := copyFile(srcPath, h.dbPath); err != nil {
-		_ = copyFile(safetyPath, h.dbPath)
-		database, _ := db.NewDatabase(h.dbPath)
-		h.db = database
-		_ = os.Remove(safetyPath)
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("restore copy: %v", err))
+		if !h.recoverFromSafety(safetyPath) {
+			log.Fatalf("restore failed (%v) and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", err)
+		}
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("restore copy failed, rolled back to the pre-restore database: %v", err))
 		return
 	}
 
 	database, err := db.NewDatabase(h.dbPath)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("reopen db: %v", err))
+		if !h.recoverFromSafety(safetyPath) {
+			log.Fatalf("restored database failed to open (%v) and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", err)
+		}
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("restored database failed to open, rolled back to the pre-restore database: %v", err))
 		return
 	}
 	h.db = database
 	_ = os.Remove(safetyPath)
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Database restored successfully"})
+}
+
+// recoverFromSafety restores the pre-restore safety backup over h.dbPath and
+// reopens it, used when a restore attempt fails partway through with the live
+// database already closed. Reports whether recovery succeeded — h.db is left
+// nil only when it didn't (no safety backup existed, e.g. on a fresh install
+// with no prior database, or the rollback copy/reopen itself failed).
+func (h *handler) recoverFromSafety(safetyPath string) bool {
+	if _, err := os.Stat(safetyPath); err != nil {
+		return false
+	}
+	if err := copyFile(safetyPath, h.dbPath); err != nil {
+		return false
+	}
+	database, err := db.NewDatabase(h.dbPath)
+	if err != nil {
+		return false
+	}
+	h.db = database
+	_ = os.Remove(safetyPath)
+	return true
 }
 
 // ── Scheduler ─────────────────────────────────────────────────────────────────
@@ -247,6 +306,10 @@ func (h *handler) runScheduler() {
 		}
 
 		h.dbMu.RLock()
+		if h.db == nil {
+			h.dbMu.RUnlock()
+			continue
+		}
 		err := h.db.Backup(filepath.Join(h.backupDir, todayName))
 		h.dbMu.RUnlock()
 		if err != nil {
@@ -288,7 +351,7 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	defer in.Close()
-	out, err := os.Create(dst)
+	out, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
