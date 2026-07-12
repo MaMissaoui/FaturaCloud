@@ -3,7 +3,10 @@ package api
 import (
 	"crypto/rand"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -16,6 +19,24 @@ import (
 // admin-deactivated local user attempts to authenticate via SSO — it must
 // not be silently re-authorized just because the IdP still accepts them.
 var errUserDeactivated = errors.New("user is deactivated")
+
+// validUserRoles are the only values users.role may take (also enforced by a
+// DB-level CHECK constraint — validating here just gives a clean 400 instead
+// of a raw constraint-violation error).
+var validUserRoles = map[string]bool{"user": true, "admin": true}
+
+// minPasswordLength is the only rule enforced on local-login passwords — no
+// complexity requirements beyond length.
+const minPasswordLength = 8
+
+// countActiveAdmins reports how many users currently hold the admin role and
+// are active — used to block an update/delete that would leave the app with
+// no admin able to log in.
+func (h *handler) countActiveAdmins() (int, error) {
+	var count int
+	err := h.db.DB.Get(&count, `SELECT COUNT(*) FROM users WHERE role = 'admin' AND isActive = 1`)
+	return count, err
+}
 
 type userRow struct {
 	ID           string `db:"id"           json:"id"`
@@ -42,15 +63,18 @@ func userToJSON(u userRow) map[string]any {
 
 func (h *handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
-	h.dbMu.RLock()
 	var rows []userRow
+	var err error
 	if search != "" {
 		like := "%" + search + "%"
-		h.db.DB.Select(&rows, `SELECT * FROM users WHERE displayName LIKE ? OR email LIKE ? ORDER BY displayName`, like, like)
+		err = h.db.DB.Select(&rows, `SELECT * FROM users WHERE displayName LIKE ? OR email LIKE ? ORDER BY displayName`, like, like)
 	} else {
-		h.db.DB.Select(&rows, `SELECT * FROM users ORDER BY displayName`)
+		err = h.db.DB.Select(&rows, `SELECT * FROM users ORDER BY displayName`)
 	}
-	h.dbMu.RUnlock()
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	if rows == nil {
 		rows = []userRow{}
 	}
@@ -59,10 +83,8 @@ func (h *handler) listUsers(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) getUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	h.dbMu.RLock()
 	var u userRow
 	err := h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id)
-	h.dbMu.RUnlock()
 	if err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
@@ -78,37 +100,54 @@ func (h *handler) createUser(w http.ResponseWriter, r *http.Request) {
 		Role        string `json:"role"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request")
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if body.Email == "" || body.Password == "" {
-		writeError(w, http.StatusBadRequest, "email and password are required")
+	if _, err := mail.ParseAddress(body.Email); err != nil {
+		writeError(w, http.StatusBadRequest, "a valid email is required")
+		return
+	}
+	if len(body.Password) < minPasswordLength {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("password must be at least %d characters", minPasswordLength))
+		return
+	}
+	if body.Role == "" {
+		body.Role = "user"
+	}
+	if !validUserRoles[body.Role] {
+		writeError(w, http.StatusBadRequest, `role must be "user" or "admin"`)
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not hash password")
+		writeInternalError(w, err)
 		return
 	}
 	id, _ := nanoid.New()
-	if body.Role == "" {
-		body.Role = "user"
-	}
-	h.dbMu.RLock()
 	_, err = h.db.DB.Exec(
 		`INSERT INTO users (id, email, passwordHash, displayName, role) VALUES (?, ?, ?, ?, ?)`,
 		id, body.Email, string(hash), body.DisplayName, body.Role,
 	)
-	h.dbMu.RUnlock()
 	if err != nil {
-		writeError(w, http.StatusConflict, "email already exists")
+		if isDuplicateEmail(err) {
+			writeError(w, http.StatusConflict, "email already exists")
+			return
+		}
+		writeInternalError(w, err)
 		return
 	}
-	h.dbMu.RLock()
 	var u userRow
-	h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id)
-	h.dbMu.RUnlock()
+	if err := h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusCreated, userToJSON(u))
+}
+
+// isDuplicateEmail recognizes the raw SQLite unique-index violation on
+// users.email (mirrors isDuplicateSKU's pattern in db/product.go).
+func isDuplicateEmail(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint failed") && strings.Contains(err.Error(), "users.email")
 }
 
 func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
@@ -120,37 +159,116 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		Password    string `json:"password"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request")
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	h.dbMu.RLock()
+	if body.Role != "" && !validUserRoles[body.Role] {
+		writeError(w, http.StatusBadRequest, `role must be "user" or "admin"`)
+		return
+	}
+	if body.Password != "" && len(body.Password) < minPasswordLength {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("password must be at least %d characters", minPasswordLength))
+		return
+	}
+
+	var current userRow
+	if err := h.db.DB.Get(&current, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	demoting := body.Role != "" && current.Role == "admin" && body.Role != "admin"
+	deactivating := body.IsActive != nil && *body.IsActive == 0 && current.IsActive == 1
+
+	if claims := getClaims(r); claims != nil && claims.UserID == id {
+		if demoting {
+			writeError(w, http.StatusBadRequest, "cannot demote your own account")
+			return
+		}
+		if deactivating {
+			writeError(w, http.StatusBadRequest, "cannot deactivate your own account")
+			return
+		}
+	}
+	if (demoting || deactivating) && current.Role == "admin" && current.IsActive == 1 {
+		activeAdmins, err := h.countActiveAdmins()
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		if activeAdmins <= 1 {
+			writeError(w, http.StatusBadRequest, "cannot remove the last active admin")
+			return
+		}
+	}
+
 	if body.IsActive != nil {
-		h.db.DB.Exec(`UPDATE users SET isActive = ? WHERE id = ?`, *body.IsActive, id)
+		if _, err := h.db.DB.Exec(`UPDATE users SET isActive = ? WHERE id = ?`, *body.IsActive, id); err != nil {
+			writeInternalError(w, err)
+			return
+		}
 	}
 	if body.DisplayName != "" {
-		h.db.DB.Exec(`UPDATE users SET displayName = ?, role = ? WHERE id = ?`, body.DisplayName, body.Role, id)
+		if _, err := h.db.DB.Exec(`UPDATE users SET displayName = ? WHERE id = ?`, body.DisplayName, id); err != nil {
+			writeInternalError(w, err)
+			return
+		}
+	}
+	if body.Role != "" {
+		if _, err := h.db.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, body.Role, id); err != nil {
+			writeInternalError(w, err)
+			return
+		}
 	}
 	if body.Password != "" {
-		hash, _ := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
-		h.db.DB.Exec(`UPDATE users SET passwordHash = ? WHERE id = ?`, string(hash), id)
+		hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		if _, err := h.db.DB.Exec(`UPDATE users SET passwordHash = ? WHERE id = ?`, string(hash), id); err != nil {
+			writeInternalError(w, err)
+			return
+		}
 	}
+
 	var u userRow
-	h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id)
-	h.dbMu.RUnlock()
+	if err := h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, userToJSON(u))
 }
 
 func (h *handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// Prevent deleting yourself
 	claims := getClaims(r)
 	if claims != nil && claims.UserID == id {
 		writeError(w, http.StatusBadRequest, "cannot delete your own account")
 		return
 	}
-	h.dbMu.RLock()
-	h.db.DB.Exec(`DELETE FROM users WHERE id = ?`, id)
-	h.dbMu.RUnlock()
+
+	var target userRow
+	if err := h.db.DB.Get(&target, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if target.Role == "admin" && target.IsActive == 1 {
+		activeAdmins, err := h.countActiveAdmins()
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		if activeAdmins <= 1 {
+			writeError(w, http.StatusBadRequest, "cannot delete the last active admin")
+			return
+		}
+	}
+
+	if _, err := h.db.DB.Exec(`DELETE FROM users WHERE id = ?`, id); err != nil {
+		writeInternalError(w, err)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -219,17 +337,23 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 // EnsureFirstAdmin creates an admin user if no users exist yet.
 func EnsureFirstAdmin(database *db.Database, email, password string) {
 	var count int
-	database.DB.Get(&count, `SELECT COUNT(*) FROM users`)
+	if err := database.DB.Get(&count, `SELECT COUNT(*) FROM users`); err != nil {
+		log.Printf("EnsureFirstAdmin: failed to count existing users: %v", err)
+		return
+	}
 	if count > 0 {
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
+		log.Printf("EnsureFirstAdmin: failed to hash password: %v", err)
 		return
 	}
 	id, _ := nanoid.New()
-	database.DB.Exec(
+	if _, err := database.DB.Exec(
 		`INSERT INTO users (id, email, passwordHash, displayName, role, createdAt) VALUES (?, ?, ?, 'Administrator', 'admin', ?)`,
 		id, email, string(hash), time.Now().Format("2006-01-02 15:04:05"),
-	)
+	); err != nil {
+		log.Printf("EnsureFirstAdmin: failed to create initial admin user: %v", err)
+	}
 }

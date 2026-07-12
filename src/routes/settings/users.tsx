@@ -5,6 +5,7 @@ import {
   Drawer,
   Form,
   Input,
+  message,
   Popconfirm,
   Row,
   Select,
@@ -98,31 +99,42 @@ export default function SettingsUsers() {
       handleClose();
       fetchUsers(search);
     } catch (err) {
-      // error is shown by the form validation or global message
+      message.error(err instanceof Error ? err.message : t`Failed to save user`);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    await DeleteUser(id);
-    fetchUsers(search);
+    try {
+      await DeleteUser(id);
+      fetchUsers(search);
+      return true;
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : t`Failed to delete user`);
+      return false;
+    }
   };
 
   const handleDeleteFromDrawer = async () => {
     if (!editingId) return;
     setSubmitting(true);
     try {
-      await handleDelete(editingId);
-      handleClose();
+      const success = await handleDelete(editingId);
+      if (success) handleClose();
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleToggleActive = async (id: string, active: boolean) => {
-    await UpdateUser(id, { isActive: active ? 1 : 0 });
-    fetchUsers(search);
+    try {
+      await UpdateUser(id, { isActive: active ? 1 : 0 });
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : t`Failed to update user`);
+    } finally {
+      fetchUsers(search);
+    }
   };
 
   const isEdit = !!editingId;
