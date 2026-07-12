@@ -40,7 +40,7 @@ func (h *handler) getInvoiceLineItems(w http.ResponseWriter, r *http.Request) {
 func (h *handler) createInvoice(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateInvoiceRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	invoice, err := h.db.CreateInvoice(req)
@@ -55,7 +55,7 @@ func (h *handler) updateInvoice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateInvoiceRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	invoice, err := h.db.UpdateInvoice(id, req)
@@ -72,7 +72,7 @@ func (h *handler) updateInvoiceState(w http.ResponseWriter, r *http.Request) {
 		State string `json:"state"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	invoice, err := h.db.UpdateInvoiceState(id, body.State)

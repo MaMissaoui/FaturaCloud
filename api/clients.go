@@ -29,7 +29,7 @@ func (h *handler) getClient(w http.ResponseWriter, r *http.Request) {
 func (h *handler) createClient(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateClientRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	client, err := h.db.CreateClient(req)
@@ -44,7 +44,7 @@ func (h *handler) updateClient(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateClientRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	client, err := h.db.UpdateClient(id, req)

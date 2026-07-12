@@ -30,7 +30,7 @@ func (h *handler) getProduct(w http.ResponseWriter, r *http.Request) {
 func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateProductRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.SKU == nil || *req.SKU == "" {
@@ -53,7 +53,7 @@ func (h *handler) updateProduct(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateProductRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.SKU == nil || *req.SKU == "" {
