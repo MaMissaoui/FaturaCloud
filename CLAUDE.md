@@ -110,7 +110,7 @@ GET    /api/organizations
 POST   /api/organizations
 GET    /api/organizations/{id}
 PUT    /api/organizations/{id}
-DELETE /api/organizations/{id}
+DELETE /api/organizations/{id}             admin only — cascade-deletes clients/invoices/orders/deliveries
 
 # Clients
 GET    /api/organizations/{orgId}/clients

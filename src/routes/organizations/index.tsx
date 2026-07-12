@@ -15,7 +15,7 @@ import {
   Table,
   Typography,
 } from "antd";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ApartmentOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -40,6 +40,7 @@ import {
   type OrganizationUsageCount,
 } from "src/api";
 import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
+import { isAdminAtom } from "src/atoms/auth";
 import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
 import { countries } from "src/utils/countries";
 
@@ -50,6 +51,7 @@ const currencies = compact(uniq(map(countries, "currency_code")));
 
 export default function Organizations() {
   useLingui();
+  const isAdmin = useAtomValue(isAdminAtom);
   const [form] = Form.useForm();
 
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -241,6 +243,7 @@ export default function Organizations() {
           key="actions"
           width={80}
           render={(_: any, record: any) => {
+            if (!isAdmin) return null;
             const counts = usageCounts[record.id];
             const breakdown = counts
               ? [
