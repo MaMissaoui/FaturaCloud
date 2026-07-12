@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-07-12
+
+A full security and robustness audit of the backend, database layer, and Docker/CI
+setup, plus everything shipped as untagged v1.2.3/v1.2.4 builds.
+
+### Added
+- CI workflow that runs `go vet`, `go test -race`, and the frontend lint/build on every push and pull request — previously the only workflow was the tag-triggered Docker image publish
+- Content-Security-Policy header on all responses; backup files/directories are now created with owner-only permissions instead of world-readable
+
+### Fixed
+- Eliminated a data race on the database handle: every request now holds a read lock for its duration, and a failed database restore no longer leaves the app running with a nil database handle — it validates the upload before swapping and rolls back to the pre-restore safety backup on failure instead of bricking the process
+- Delivery and order status can now only change through their dedicated PATCH endpoints, with transitions validated server-side; `PUT` requests can no longer set `status` directly (which previously bypassed stock adjustments and allowed shipping the same delivery twice), and line items of an already-shipped delivery can no longer be edited
+- Deactivating or deleting a user now revokes their existing session immediately instead of leaving their token valid until it expires (up to 24h later)
+- `updateUser`: a role-only change is no longer silently dropped, role is validated, an admin can no longer demote or deactivate their own account, and updating a nonexistent user now returns 404 instead of an empty 200
+- Login no longer leaks via response timing whether an email is registered; new users now require a valid email and an 8+ character password
+- Delivery creation and line-item replacement are now transactional; delivery numbers are derived from the highest existing number instead of a row count, so deleting a draft delivery can no longer cause the next one to collide with it
+- Database errors during user management are now handled and logged instead of silently discarded; "email already exists" is only returned for an actual conflict, not any insert failure
+- API error responses no longer echo raw JSON-decoder messages back to the client
+- Added the missing down-migration for the orders table
+- Unmatched `/api/*` paths now return a JSON 404 instead of the SPA's `index.html`; directory paths under the embedded static assets no longer render a listing
+- Restricted organization deletion — which cascade-deletes all of its clients, invoices, orders, and deliveries — to admins
+- Invoice `total`/`taxTotal`/`subTotal` are now recomputed and validated server-side against the line items before every create/update and rejected on mismatch, instead of trusting client-supplied totals verbatim
+- Docker images were missing `public/` (logos, favicons), which fell through to the SPA fallback; completed the English, French, and German translation catalogs, including strings added by OIDC SSO login that were never extracted
+
+### Changed
+- Docker builds now cross-compile the frontend/backend stages instead of QEMU-emulating them, cutting CI build time from ~26 minutes to under a minute
+
 ## [1.2.2] - 2026-07-05
 
 ### Fixed
