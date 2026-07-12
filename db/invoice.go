@@ -126,6 +126,10 @@ func (d *Database) GetInvoiceLineItems(invoiceID string) ([]InvoiceLineItem, err
 }
 
 func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
+	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total); err != nil {
+		return nil, err
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("create_invoice begin: %w", err)
@@ -173,6 +177,52 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 }
 
 func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest) (*Invoice, error) {
+	// If any financial field is being touched, validate the *effective*
+	// resulting state — falling back to what's already stored for whichever
+	// of lineItems/total/taxTotal/subTotal isn't part of this request. A
+	// partial update (e.g. totals only, or line items only) must not be able
+	// to bypass validation by omitting the field that would catch it.
+	if updates.LineItems != nil || updates.SubTotal != nil || updates.TaxTotal != nil || updates.Total != nil {
+		lineItems := updates.LineItems
+		if lineItems == nil {
+			stored, err := d.GetInvoiceLineItems(invoiceID)
+			if err != nil {
+				return nil, fmt.Errorf("update_invoice fetch line items: %w", err)
+			}
+			converted := make([]CreateInvoiceLineItemRequest, len(stored))
+			for i, item := range stored {
+				converted[i] = CreateInvoiceLineItemRequest{
+					Description: item.Description,
+					Quantity:    item.Quantity,
+					UnitPrice:   float64(item.UnitPrice),
+					TaxRate:     item.TaxRate,
+				}
+			}
+			lineItems = &converted
+		}
+
+		subTotal, taxTotal, total := updates.SubTotal, updates.TaxTotal, updates.Total
+		if subTotal == nil || taxTotal == nil || total == nil {
+			current, err := d.GetInvoice(invoiceID)
+			if err != nil {
+				return nil, fmt.Errorf("update_invoice fetch current: %w", err)
+			}
+			if subTotal == nil {
+				subTotal = &current.SubTotal
+			}
+			if taxTotal == nil {
+				taxTotal = &current.TaxTotal
+			}
+			if total == nil {
+				total = &current.Total
+			}
+		}
+
+		if err := d.validateInvoiceTotals(*lineItems, *subTotal, *taxTotal, *total); err != nil {
+			return nil, err
+		}
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("update_invoice begin: %w", err)

@@ -45,7 +45,7 @@ func (h *handler) createInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 	invoice, err := h.db.CreateInvoice(req)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, invoice)
@@ -60,7 +60,7 @@ func (h *handler) updateInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 	invoice, err := h.db.UpdateInvoice(id, req)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, invoice)

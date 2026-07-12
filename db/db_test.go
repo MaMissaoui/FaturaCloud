@@ -134,9 +134,10 @@ func TestInvoiceCRUD(t *testing.T) {
 		ClientID:       client.ID,
 		Date:           1700000000000,
 		Currency:       "EUR",
-		Total:          12000,
-		TaxTotal:       2000,
-		SubTotal:       10000,
+		// 2*5000 + 1*2000 = 12000 subtotal; 20% tax on the 10000 taxed portion = 2000.
+		Total:    14000,
+		TaxTotal: 2000,
+		SubTotal: 12000,
 		LineItems: []CreateInvoiceLineItemRequest{
 			{Quantity: 2, UnitPrice: 5000, TaxRate: &taxRate.ID},
 			{Quantity: 1, UnitPrice: 2000},
@@ -731,5 +732,209 @@ func TestBackupFilePermissions(t *testing.T) {
 	}
 	if perm := info.Mode().Perm(); perm != 0600 {
 		t.Fatalf("backup file mode = %o, want 0600", perm)
+	}
+}
+
+// TestCreateInvoiceRejectsMismatchedTotals covers F18: totals are otherwise
+// client-computed and stored verbatim — a total that doesn't match the line
+// items must be rejected rather than silently stored.
+func TestCreateInvoiceRejectsMismatchedTotals(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+
+	_, err = d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-1", OrganizationID: org.ID, Number: "INV-001", State: "draft", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR",
+		Total: 1, TaxTotal: 0, SubTotal: 1, // a Widget worth 100.00 stored as 0.01
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 10000}},
+	})
+	if err == nil {
+		t.Fatal("expected a mismatched total to be rejected")
+	}
+	if _, ok := err.(*ValidationError); !ok {
+		t.Fatalf("expected a *ValidationError (409), got %T: %v", err, err)
+	}
+}
+
+// TestCreateInvoiceAcceptsRoundingBoundary is the positive counterpart,
+// pinned to a case verified against the real frontend (a 3.33 unit price at
+// 19.5% tax — the true tax is 0.64935, landing exactly on the halfway point
+// between 0.64 and 0.65 once rounded to cents). Exercising this through the
+// actual browser produced subtotal=333, tax=65, total=398; the Go-side
+// recompute must agree exactly, or every invoice using this tax rate would
+// start getting rejected.
+func TestCreateInvoiceAcceptsRoundingBoundary(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	taxRate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-1", OrganizationID: org.ID, Name: "VAT 19.5", Percentage: 19.5,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-1", OrganizationID: org.ID, Number: "INV-001", State: "draft", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR",
+		Total: 398, TaxTotal: 65, SubTotal: 333,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 333, TaxRate: &taxRate.ID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected the rounding-boundary totals to be accepted, got: %v", err)
+	}
+	if inv.SubTotal != 333 || inv.TaxTotal != 65 || inv.Total != 398 {
+		t.Fatalf("got subtotal=%d tax=%d total=%d, want 333/65/398", inv.SubTotal, inv.TaxTotal, inv.Total)
+	}
+}
+
+// TestCreateInvoiceAcceptsFractionalQuantity is a regression lock for the
+// other reason the recompute uses exact rational arithmetic instead of
+// float64: a fractional quantity (1.5 units at 3.33 each, 19.5% tax) still
+// has to land on exactly the right cent.
+func TestCreateInvoiceAcceptsFractionalQuantity(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	taxRate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-1", OrganizationID: org.ID, Name: "VAT 19.5", Percentage: 19.5,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-1", OrganizationID: org.ID, Number: "INV-001", State: "draft", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR",
+		Total: 597, TaxTotal: 97, SubTotal: 500,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1.5, UnitPrice: 333, TaxRate: &taxRate.ID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected the fractional-quantity totals to be accepted, got: %v", err)
+	}
+	if inv.SubTotal != 500 || inv.TaxTotal != 97 || inv.Total != 597 {
+		t.Fatalf("got subtotal=%d tax=%d total=%d, want 500/97/597", inv.SubTotal, inv.TaxTotal, inv.Total)
+	}
+}
+
+// TestUpdateInvoiceHeaderOnlyDoesNotValidateTotals: a header-only edit (no
+// line items, no totals) has nothing to recompute against and must not be
+// rejected.
+func TestUpdateInvoiceHeaderOnlyDoesNotValidateTotals(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-1", OrganizationID: org.ID, Number: "INV-001", State: "draft", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR",
+		Total: 10000, TaxTotal: 0, SubTotal: 10000,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 10000}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	notes := "Thanks for your business"
+	if _, err := d.UpdateInvoice(inv.ID, UpdateInvoiceRequest{CustomerNotes: &notes}); err != nil {
+		t.Fatalf("expected a header-only update to succeed: %v", err)
+	}
+}
+
+// TestUpdateInvoiceRejectsTotalsOnlyMismatch covers the partial-update
+// bypass: a request that sends only new totals (no lineItems) must still be
+// validated against the invoice's *stored* line items, not skipped just
+// because lineItems is absent from this particular request.
+func TestUpdateInvoiceRejectsTotalsOnlyMismatch(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-1", OrganizationID: org.ID, Number: "INV-001", State: "draft", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR",
+		Total: 10000, TaxTotal: 0, SubTotal: 10000,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 10000}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	// Line items are untouched (still worth 10000) — inflating just the total
+	// must be rejected against the stored line items, not silently accepted.
+	inflatedTotal := int64(999999)
+	if _, err := d.UpdateInvoice(inv.ID, UpdateInvoiceRequest{Total: &inflatedTotal}); err == nil {
+		t.Fatal("expected a totals-only update that doesn't match stored line items to be rejected")
+	}
+
+	// A totals-only update that's actually still correct must still succeed.
+	correctTotal := int64(10000)
+	if _, err := d.UpdateInvoice(inv.ID, UpdateInvoiceRequest{Total: &correctTotal}); err != nil {
+		t.Fatalf("expected a totals-only update matching stored line items to succeed: %v", err)
+	}
+}
+
+// TestUpdateInvoiceRejectsLineItemsOnlyMismatch is the mirror case: new,
+// more expensive line items sent without updated totals must be validated
+// against the invoice's *stored* totals, not skipped just because the
+// totals fields are absent from this request.
+func TestUpdateInvoiceRejectsLineItemsOnlyMismatch(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-1", OrganizationID: org.ID, Number: "INV-001", State: "draft", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR",
+		Total: 10000, TaxTotal: 0, SubTotal: 10000,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 10000}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	// Stored totals stay at 10000 — swapping in a pricier line item without
+	// updating them must be rejected against the stored totals.
+	expensiveItems := []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 999999}}
+	if _, err := d.UpdateInvoice(inv.ID, UpdateInvoiceRequest{LineItems: &expensiveItems}); err == nil {
+		t.Fatal("expected new line items that don't match stored totals to be rejected")
 	}
 }
