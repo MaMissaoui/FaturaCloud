@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-07-12
+
+### Fixed
+- OIDC login no longer silently demotes the last active admin: `provisionOrSyncUser` re-syncs a user's role from the IdP's `groups` claim on every SSO login, and previously did so unconditionally — a token missing the claim (or not mapping to `OIDC_ADMIN_GROUP`) could strip the only admin account of its role with no safeguard, unlike the local admin-user endpoints which already refuse to demote the last admin. The SSO sync path now applies the same guard: it logs a warning and leaves the role untouched instead
+
 ## [1.2.5] - 2026-07-12
 
 A full security and robustness audit of the backend, database layer, and Docker/CI
