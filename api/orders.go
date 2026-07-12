@@ -50,12 +50,12 @@ func (h *handler) getOrderDeliveredQuantities(w http.ResponseWriter, r *http.Req
 func (h *handler) createOrder(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateOrderRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	order, err := h.db.CreateOrder(req)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, order)
@@ -65,7 +65,7 @@ func (h *handler) updateOrder(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateOrderRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	order, err := h.db.UpdateOrder(id, req)
@@ -82,12 +82,12 @@ func (h *handler) updateOrderStatus(w http.ResponseWriter, r *http.Request) {
 		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	order, err := h.db.UpdateOrderStatus(id, body.Status)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, order)

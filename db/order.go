@@ -57,13 +57,29 @@ type CreateOrderRequest struct {
 type UpdateOrderRequest struct {
 	ClientID        *string                       `json:"clientId"`
 	OrderNumber     *string                       `json:"orderNumber"`
-	Status          *string                       `json:"status"`
 	OrderDate       *int64                        `json:"orderDate"`
 	DeliveryDate    *int64                        `json:"deliveryDate"`
 	ShippingAddress *string                       `json:"shippingAddress"`
 	TrackingNumber  *string                       `json:"trackingNumber"`
 	Notes           *string                       `json:"notes"`
 	LineItems       *[]CreateOrderLineItemRequest `json:"lineItems"`
+}
+
+// validOrderStatuses are the only values orders.status may take (see
+// CLAUDE.md); orderStatusTransitions below governs which moves between them
+// are legal once an order exists.
+var validOrderStatuses = map[string]bool{
+	"draft": true, "confirmed": true, "shipped": true, "delivered": true, "cancelled": true,
+}
+
+// orderStatusTransitions enumerates the only legal order status moves;
+// "delivered" and "cancelled" are terminal (absent as keys, so any move out
+// of them is rejected). Mirrors src/routes/orders/details.tsx's
+// STATUS_TRANSITIONS, enforced here too since that's client-side only.
+var orderStatusTransitions = map[string]map[string]bool{
+	"draft":     {"confirmed": true, "cancelled": true},
+	"confirmed": {"shipped": true, "cancelled": true},
+	"shipped":   {"delivered": true, "cancelled": true},
 }
 
 func (d *Database) GetOrders(organizationID string) ([]Order, error) {
@@ -138,6 +154,13 @@ func (d *Database) GetOrderDeliveredQuantities(orderID string) (map[string]float
 }
 
 func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
+	if req.Status == "" {
+		req.Status = "draft"
+	}
+	if !validOrderStatuses[req.Status] {
+		return nil, newValidationError("invalid order status %q", req.Status)
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("create_order begin: %w", err)
@@ -184,7 +207,6 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 		UPDATE orders
 		SET clientId        = ?,
 		    orderNumber     = COALESCE(?, orderNumber),
-		    status          = COALESCE(?, status),
 		    orderDate       = COALESCE(?, orderDate),
 		    deliveryDate    = ?,
 		    shippingAddress = ?,
@@ -192,7 +214,7 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 		    notes           = ?
 		WHERE id = ?`,
 		updates.ClientID,
-		updates.OrderNumber, updates.Status, updates.OrderDate,
+		updates.OrderNumber, updates.OrderDate,
 		updates.DeliveryDate, updates.ShippingAddress, updates.TrackingNumber, updates.Notes,
 		orderID,
 	)
@@ -224,8 +246,19 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 	return d.GetOrder(orderID)
 }
 
+// UpdateOrderStatus updates an order's status. Any transition not in
+// orderStatusTransitions (including out of a terminal "delivered"/"cancelled"
+// state) is rejected; setting an order to its current status is a no-op.
 func (d *Database) UpdateOrderStatus(orderID string, status string) (*Order, error) {
-	_, err := d.DB.Exec(`UPDATE orders SET status = ? WHERE id = ?`, status, orderID)
+	current, err := d.GetOrder(orderID)
+	if err != nil {
+		return nil, fmt.Errorf("update_order_status lookup: %w", err)
+	}
+	if status != current.Status && !orderStatusTransitions[current.Status][status] {
+		return nil, newValidationError("cannot transition order from %q to %q", current.Status, status)
+	}
+
+	_, err = d.DB.Exec(`UPDATE orders SET status = ? WHERE id = ?`, status, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("update_order_status: %w", err)
 	}

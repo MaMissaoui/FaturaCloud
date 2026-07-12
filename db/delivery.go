@@ -79,7 +79,6 @@ type UpdateDeliveryRequest struct {
 	ShippingAddress *string                          `json:"shippingAddress"`
 	TrackingNumber  *string                          `json:"trackingNumber"`
 	Notes           *string                          `json:"notes"`
-	Status          *string                          `json:"status"`
 	LineItems       *[]CreateDeliveryLineItemRequest `json:"lineItems"`
 }
 
@@ -142,7 +141,13 @@ func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLi
 }
 
 func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery, error) {
-	_, err := d.DB.Exec(`
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("create_delivery begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	_, err = tx.Exec(`
 		INSERT INTO outbound_deliveries
 		  (id, organizationId, orderId, deliveryNumber, deliveryDate, shippingAddress, trackingNumber, notes)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -152,34 +157,57 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 	if err != nil {
 		return nil, fmt.Errorf("create_delivery: %w", err)
 	}
-	if err := d.replaceDeliveryLineItems(req.ID, req.LineItems); err != nil {
+	if err := replaceDeliveryLineItemsTx(tx, req.ID, req.LineItems); err != nil {
 		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("create_delivery commit: %w", err)
 	}
 	return d.GetDelivery(req.ID)
 }
 
 func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*OutboundDelivery, error) {
-	_, err := d.DB.Exec(`
+	if req.LineItems != nil {
+		current, err := d.GetDelivery(id)
+		if err != nil {
+			return nil, fmt.Errorf("update_delivery lookup: %w", err)
+		}
+		if current.Status == "shipped" || current.Status == "delivered" {
+			return nil, newValidationError("cannot edit line items of a %s delivery", current.Status)
+		}
+	}
+
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("update_delivery begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	_, err = tx.Exec(`
 		UPDATE outbound_deliveries SET
 		  orderId         = COALESCE(?, orderId),
 		  deliveryNumber  = COALESCE(?, deliveryNumber),
 		  deliveryDate    = COALESCE(?, deliveryDate),
 		  shippingAddress = COALESCE(?, shippingAddress),
 		  trackingNumber  = COALESCE(?, trackingNumber),
-		  notes           = COALESCE(?, notes),
-		  status          = COALESCE(?, status)
+		  notes           = COALESCE(?, notes)
 		WHERE id = ?`,
 		req.OrderID, req.DeliveryNumber, req.DeliveryDate,
-		req.ShippingAddress, req.TrackingNumber, req.Notes, req.Status,
+		req.ShippingAddress, req.TrackingNumber, req.Notes,
 		id,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("update_delivery: %w", err)
 	}
 	if req.LineItems != nil {
-		if err := d.replaceDeliveryLineItems(id, *req.LineItems); err != nil {
+		if err := replaceDeliveryLineItemsTx(tx, id, *req.LineItems); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("update_delivery commit: %w", err)
 	}
 	return d.GetDelivery(id)
 }
@@ -213,14 +241,28 @@ func getShippableStockLines(tx *sqlx.Tx, deliveryID string) ([]deliveryStockLine
 	return lines, nil
 }
 
+// deliveryStatusTransitions enumerates the only legal delivery status moves;
+// "delivered" and "cancelled" are terminal (absent as keys, so any move out
+// of them is rejected). Mirrors src/routes/deliveries/details.tsx's
+// STATUS_TRANSITIONS, enforced here too since that's client-side only.
+var deliveryStatusTransitions = map[string]map[string]bool{
+	"draft":   {"shipped": true, "cancelled": true},
+	"shipped": {"delivered": true, "cancelled": true},
+}
+
 // UpdateDeliveryStatus updates a delivery's status, reducing inventory when a
 // draft delivery is marked shipped (rejecting the transition if any stock-enabled
 // product doesn't have enough available stock) and restoring inventory when an
-// already-shipped delivery is cancelled.
+// already-shipped delivery is cancelled. Any transition not in
+// deliveryStatusTransitions (including out of a terminal state) is rejected;
+// setting a delivery to its current status is a no-op.
 func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, error) {
 	current, err := d.GetDelivery(id)
 	if err != nil {
 		return nil, fmt.Errorf("update_delivery_status lookup: %w", err)
+	}
+	if status != current.Status && !deliveryStatusTransitions[current.Status][status] {
+		return nil, newValidationError("cannot transition delivery from %q to %q", current.Status, status)
 	}
 
 	tx, err := d.DB.Beginx()
@@ -308,8 +350,16 @@ func (d *Database) DeleteDelivery(id string) (bool, error) {
 	return n > 0, nil
 }
 
-func (d *Database) replaceDeliveryLineItems(deliveryID string, items []CreateDeliveryLineItemRequest) error {
-	_, err := d.DB.Exec(`DELETE FROM outbound_delivery_line_items WHERE deliveryId = ?`, deliveryID)
+// sqlGetExecer is satisfied by both *sqlx.DB and *sqlx.Tx, letting
+// replaceDeliveryLineItemsTx run as part of a caller's transaction (CreateDelivery,
+// UpdateDelivery) while still resolving each line's product via a plain SELECT.
+type sqlGetExecer interface {
+	sqlExecer
+	Get(dest any, query string, args ...any) error
+}
+
+func replaceDeliveryLineItemsTx(exec sqlGetExecer, deliveryID string, items []CreateDeliveryLineItemRequest) error {
+	_, err := exec.Exec(`DELETE FROM outbound_delivery_line_items WHERE deliveryId = ?`, deliveryID)
 	if err != nil {
 		return fmt.Errorf("delete_delivery_line_items: %w", err)
 	}
@@ -318,11 +368,11 @@ func (d *Database) replaceDeliveryLineItems(deliveryID string, items []CreateDel
 		productID := item.ProductID
 		if productID == nil && item.OrderLineItemID != nil {
 			var resolved sql.NullString
-			if err := d.DB.Get(&resolved, `SELECT productId FROM orderLineItems WHERE id = ?`, *item.OrderLineItemID); err == nil && resolved.Valid {
+			if err := exec.Get(&resolved, `SELECT productId FROM orderLineItems WHERE id = ?`, *item.OrderLineItemID); err == nil && resolved.Valid {
 				productID = &resolved.String
 			}
 		}
-		_, err := d.DB.Exec(`
+		_, err := exec.Exec(`
 			INSERT INTO outbound_delivery_line_items
 			  (id, deliveryId, orderLineItemId, productId, description, quantity, unit, position)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -335,8 +385,17 @@ func (d *Database) replaceDeliveryLineItems(deliveryID string, items []CreateDel
 	return nil
 }
 
+// NextDeliveryNumber proposes the next "DEL-%04d" number for an organization,
+// continuing from the highest number in use rather than COUNT(*)+1 — the
+// latter reissues an already-used number as soon as any delivery is deleted,
+// since deliveryNumber has no UNIQUE constraint to catch the collision.
 func (d *Database) NextDeliveryNumber(organizationID string) string {
-	var count int
-	_ = d.DB.Get(&count, `SELECT COUNT(*) FROM outbound_deliveries WHERE organizationId = ?`, organizationID)
-	return fmt.Sprintf("DEL-%04d", count+1)
+	var maxNumber sql.NullInt64
+	_ = d.DB.Get(&maxNumber, `
+		SELECT MAX(CAST(SUBSTR(deliveryNumber, 5) AS INTEGER))
+		FROM outbound_deliveries
+		WHERE organizationId = ? AND deliveryNumber LIKE 'DEL-%'`,
+		organizationID,
+	)
+	return fmt.Sprintf("DEL-%04d", maxNumber.Int64+1)
 }

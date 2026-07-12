@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS orderLineItems;
+DROP TABLE IF EXISTS orders;

@@ -39,7 +39,7 @@ func (h *handler) getDeliveryLineItems(w http.ResponseWriter, r *http.Request) {
 func (h *handler) createDelivery(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateDeliveryRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	row, err := h.db.CreateDelivery(req)
@@ -54,12 +54,12 @@ func (h *handler) updateDelivery(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateDeliveryRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	row, err := h.db.UpdateDelivery(id, req)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, row)
@@ -71,7 +71,7 @@ func (h *handler) updateDeliveryStatus(w http.ResponseWriter, r *http.Request) {
 		Status string `json:"status"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	row, err := h.db.UpdateDeliveryStatus(id, body.Status)

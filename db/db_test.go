@@ -1,6 +1,7 @@
 package db
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -454,3 +455,281 @@ func TestProductCodeUniquePerOrganization(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// TestDeliveryStatusTransitions is a table-driven matrix covering every
+// (from, to) pair over the delivery status lifecycle: only draft→{shipped,
+// cancelled} and shipped→{delivered,cancelled} are legal moves;
+// delivered/cancelled are terminal; same-status is always a no-op. Each case
+// force-sets the starting status directly via SQL so the guard in
+// UpdateDeliveryStatus is isolated from the stock-movement side effects
+// already covered by TestDeliveryShipReducesStockAndCancelRestores.
+func TestDeliveryStatusTransitions(t *testing.T) {
+	tests := []struct {
+		from    string
+		to      string
+		wantErr bool
+	}{
+		{"draft", "shipped", false},
+		{"draft", "cancelled", false},
+		{"draft", "delivered", true},
+		{"draft", "draft", false},
+		{"shipped", "delivered", false},
+		{"shipped", "cancelled", false},
+		{"shipped", "draft", true},
+		{"shipped", "shipped", false},
+		{"delivered", "shipped", true},
+		{"delivered", "cancelled", true},
+		{"delivered", "delivered", false},
+		{"cancelled", "shipped", true},
+		{"cancelled", "draft", true},
+		{"cancelled", "cancelled", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			d := newTestDB(t)
+			org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+			if err != nil {
+				t.Fatalf("CreateOrganization: %v", err)
+			}
+			delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+				ID: "del-1", OrganizationID: org.ID, DeliveryNumber: "DEL-0001", DeliveryDate: 1700000000000,
+			})
+			if err != nil {
+				t.Fatalf("CreateDelivery: %v", err)
+			}
+			if _, err := d.DB.Exec(`UPDATE outbound_deliveries SET status = ? WHERE id = ?`, tc.from, delivery.ID); err != nil {
+				t.Fatalf("force status to %q: %v", tc.from, err)
+			}
+
+			_, err = d.UpdateDeliveryStatus(delivery.ID, tc.to)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected transition %s -> %s to be rejected", tc.from, tc.to)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected transition %s -> %s to succeed, got: %v", tc.from, tc.to, err)
+			}
+		})
+	}
+}
+
+// TestOrderStatusTransitions mirrors TestDeliveryStatusTransitions for the
+// order lifecycle: draft→{confirmed,cancelled}, confirmed→{shipped,cancelled},
+// shipped→{delivered,cancelled}; delivered/cancelled terminal; same-status a
+// no-op.
+func TestOrderStatusTransitions(t *testing.T) {
+	tests := []struct {
+		from    string
+		to      string
+		wantErr bool
+	}{
+		{"draft", "confirmed", false},
+		{"draft", "cancelled", false},
+		{"draft", "shipped", true},
+		{"draft", "draft", false},
+		{"confirmed", "shipped", false},
+		{"confirmed", "cancelled", false},
+		{"confirmed", "draft", true},
+		{"confirmed", "confirmed", false},
+		{"shipped", "delivered", false},
+		{"shipped", "cancelled", false},
+		{"shipped", "confirmed", true},
+		{"shipped", "shipped", false},
+		{"delivered", "shipped", true},
+		{"delivered", "cancelled", true},
+		{"delivered", "delivered", false},
+		{"cancelled", "confirmed", true},
+		{"cancelled", "cancelled", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			d := newTestDB(t)
+			org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+			if err != nil {
+				t.Fatalf("CreateOrganization: %v", err)
+			}
+			order, err := d.CreateOrder(CreateOrderRequest{
+				ID: "order-1", OrganizationID: org.ID, OrderNumber: "ORD-0001", OrderDate: 1700000000000,
+			})
+			if err != nil {
+				t.Fatalf("CreateOrder: %v", err)
+			}
+			if _, err := d.DB.Exec(`UPDATE orders SET status = ? WHERE id = ?`, tc.from, order.ID); err != nil {
+				t.Fatalf("force status to %q: %v", tc.from, err)
+			}
+
+			_, err = d.UpdateOrderStatus(order.ID, tc.to)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected transition %s -> %s to be rejected", tc.from, tc.to)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected transition %s -> %s to succeed, got: %v", tc.from, tc.to, err)
+			}
+		})
+	}
+}
+
+func TestCreateOrderStatusValidation(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	order, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-1", OrganizationID: org.ID, OrderNumber: "ORD-0001", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder with empty status: %v", err)
+	}
+	if order.Status != "draft" {
+		t.Fatalf("expected empty status to default to draft, got %q", order.Status)
+	}
+
+	if _, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-2", OrganizationID: org.ID, OrderNumber: "ORD-0002", OrderDate: 1700000000000, Status: "bogus",
+	}); err == nil {
+		t.Fatal("expected an invalid order status to be rejected")
+	}
+}
+
+// TestCreateDeliveryLineItemFailureRollsBackAtomically covers F8: a
+// mid-batch line-item failure (here, a FK violation from a nonexistent
+// productId) must not leave a delivery header persisted with only some of
+// its line items.
+func TestCreateDeliveryLineItemFailureRollsBackAtomically(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	badProductID := "does-not-exist"
+	_, err = d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, DeliveryNumber: "DEL-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{Description: "Valid line", Quantity: 1},
+			{Description: "Bad line", Quantity: 1, ProductID: &badProductID},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected CreateDelivery to fail when a line item references a nonexistent product")
+	}
+
+	if _, err := d.GetDelivery("del-1"); err == nil {
+		t.Fatal("expected the delivery header to be rolled back along with its line items")
+	}
+}
+
+// TestUpdateDeliveryLineItemFailureRollsBackAtomically is the UpdateDelivery
+// counterpart: a failed line-item replacement must leave the original line
+// items in place, not a half-deleted state.
+func TestUpdateDeliveryLineItemFailureRollsBackAtomically(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, DeliveryNumber: "DEL-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{{Description: "Original", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+
+	badProductID := "does-not-exist"
+	newItems := []CreateDeliveryLineItemRequest{{Description: "Replacement", Quantity: 1, ProductID: &badProductID}}
+	if _, err := d.UpdateDelivery(delivery.ID, UpdateDeliveryRequest{LineItems: &newItems}); err == nil {
+		t.Fatal("expected UpdateDelivery to fail when a replacement line item references a nonexistent product")
+	}
+
+	items, err := d.GetDeliveryLineItems(delivery.ID)
+	if err != nil {
+		t.Fatalf("GetDeliveryLineItems: %v", err)
+	}
+	if len(items) != 1 || items[0].Description != "Original" {
+		t.Fatalf("expected original line items to survive a failed update, got %+v", items)
+	}
+}
+
+// TestNextDeliveryNumberSkipsGapsFromDeletions covers F9: COUNT(*)+1 would
+// reissue an in-use number as soon as any non-newest delivery is deleted.
+func TestNextDeliveryNumberSkipsGapsFromDeletions(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	for _, num := range []string{"DEL-0001", "DEL-0002", "DEL-0003"} {
+		if _, err := d.CreateDelivery(CreateDeliveryRequest{
+			ID: num, OrganizationID: org.ID, DeliveryNumber: num, DeliveryDate: 1700000000000,
+		}); err != nil {
+			t.Fatalf("CreateDelivery(%s): %v", num, err)
+		}
+	}
+	if got, want := d.NextDeliveryNumber(org.ID), "DEL-0004"; got != want {
+		t.Fatalf("NextDeliveryNumber before delete: got %q, want %q", got, want)
+	}
+
+	// Deleting the middle delivery leaves a gap (DEL-0001, DEL-0003 remain).
+	// COUNT(*)+1 would now propose DEL-0003 again, colliding with the
+	// still-existing delivery of that number.
+	if ok, err := d.DeleteDelivery("DEL-0002"); err != nil || !ok {
+		t.Fatalf("DeleteDelivery: ok=%v, err=%v", ok, err)
+	}
+	if got, want := d.NextDeliveryNumber(org.ID), "DEL-0004"; got != want {
+		t.Fatalf("NextDeliveryNumber after deleting a gap delivery: got %q, want %q (must not collide with DEL-0003)", got, want)
+	}
+}
+
+// TestUpdateDeliveryRejectsLineItemEditAfterShip covers F4: once a delivery
+// has shipped, its line items are frozen (they've already generated stock
+// movements) — only header fields like tracking number remain editable.
+func TestUpdateDeliveryRejectsLineItemEditAfterShip(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, DeliveryNumber: "DEL-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{{Description: "Widget", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
+	}
+
+	newItems := []CreateDeliveryLineItemRequest{{Description: "Widget", Quantity: 2}}
+	if _, err := d.UpdateDelivery(delivery.ID, UpdateDeliveryRequest{LineItems: &newItems}); err == nil {
+		t.Fatal("expected editing line items of a shipped delivery to be rejected")
+	}
+
+	newTracking := "TRACK-123"
+	if _, err := d.UpdateDelivery(delivery.ID, UpdateDeliveryRequest{TrackingNumber: &newTracking}); err != nil {
+		t.Fatalf("expected a header-only update on a shipped delivery to succeed: %v", err)
+	}
+}
+
+// TestBackupFilePermissions covers F15: VACUUM INTO creates files with
+// SQLite's default (world-readable) mode — Backup must tighten that down to
+// owner-only since it's a full copy of the financial database.
+func TestBackupFilePermissions(t *testing.T) {
+	d := newTestDB(t)
+	dest := filepath.Join(t.TempDir(), "backup.db")
+	if err := d.Backup(dest); err != nil {
+		t.Fatalf("Backup: %v", err)
+	}
+	info, err := os.Stat(dest)
+	if err != nil {
+		t.Fatalf("stat backup file: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0600 {
+		t.Fatalf("backup file mode = %o, want 0600", perm)
+	}
+}
