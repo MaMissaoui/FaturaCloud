@@ -54,6 +54,11 @@ func (d *Database) Backup(destPath string) error {
 	if _, err := d.DB.Exec("VACUUM INTO ?", destPath); err != nil {
 		return fmt.Errorf("backup: %w", err)
 	}
+	// VACUUM INTO creates the file with SQLite's default (world-readable) mode —
+	// this is a full financial database, tighten it to owner-only.
+	if err := os.Chmod(destPath, 0600); err != nil {
+		return fmt.Errorf("backup: chmod: %w", err)
+	}
 	return nil
 }
 

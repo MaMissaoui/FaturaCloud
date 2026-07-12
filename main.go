@@ -38,7 +38,7 @@ func main() {
 	log.Println("Database initialized successfully")
 
 	backupDir := backupDirPath(dbPath)
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
+	if err := os.MkdirAll(backupDir, 0700); err != nil {
 		log.Fatalf("Failed to create backup directory: %v", err)
 	}
 
@@ -121,6 +121,19 @@ func main() {
 	}
 }
 
+// contentSecurityPolicy is same-origin by design (no CDNs). Ant Design and
+// @react-pdf need inline styles; @react-pdf renders PDFs via a blob: worker,
+// compiles a WebAssembly font-shaping engine loaded from a data: URI (hence
+// 'wasm-unsafe-eval' and connect-src data:), and its in-app PDFViewer fetches
+// its own rendered output back via an XHR to a blob: URL (hence connect-src
+// blob:) — all three confirmed against an actual invoice PDF preview/download,
+// not just copied from a generic starting policy.
+const contentSecurityPolicy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; " +
+	"style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+	"font-src 'self' data:; connect-src 'self' data: blob: *.sentry.io; " +
+	"worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; " +
+	"object-src 'none'"
+
 // securityHeaders sets baseline defensive headers on every response, API and
 // embedded frontend alike.
 func securityHeaders(next http.Handler) http.Handler {
@@ -128,28 +141,45 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "same-origin")
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 		next.ServeHTTP(w, r)
 	})
 }
 
 // spaHandler serves static files from the embedded FS and falls back to
 // index.html for any path that doesn't resolve to a real file — letting
-// React Router handle client-side navigation.
+// React Router handle client-side navigation. Unmatched /api/* paths (no
+// registered handler matched them) get a JSON 404 instead of index.html, and
+// directory paths fall through to index.html instead of a listing.
 func spaHandler(fsys fs.FS) http.Handler {
 	fileServer := http.FileServerFS(fsys)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			writeJSONNotFound(w)
+			return
+		}
 		// Try to open the requested path in the embedded FS.
 		f, err := fsys.Open(r.URL.Path[1:]) // strip leading "/"
 		if err == nil {
+			info, statErr := f.Stat()
 			f.Close()
-			fileServer.ServeHTTP(w, r)
-			return
+			if statErr == nil && !info.IsDir() {
+				fileServer.ServeHTTP(w, r)
+				return
+			}
 		}
-		// Not found — serve index.html so React Router takes over.
+		// Not found, or a directory with no index.html of its own — serve the
+		// SPA shell so React Router takes over instead of listing contents.
 		r2 := r.Clone(r.Context())
 		r2.URL.Path = "/"
 		fileServer.ServeHTTP(w, r2)
 	})
+}
+
+func writeJSONNotFound(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte(`{"error":"not found"}`))
 }
 
 func envOrDefault(key, def string) string {
