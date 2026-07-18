@@ -169,7 +169,7 @@ export default function SettingsUsers() {
         dataSource={users}
         rowKey="id"
         loading={loading}
-        pagination={false}
+        pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         size="middle"
         onRow={(record) => ({ onClick: () => openEdit(record.id), style: { cursor: "pointer" } })}
       >

@@ -981,3 +981,32 @@ func TestInvoiceStateValidation(t *testing.T) {
 		t.Fatal("expected UpdateInvoiceState with unknown state to be rejected")
 	}
 }
+
+// TestGetOrganizationsOmitsLogo covers F29: the org list must not ship the
+// logo BLOB (re-fetched on every auth change), while the single-org fetch
+// still returns it for the invoice PDF / settings form.
+func TestGetOrganizationsOmitsLogo(t *testing.T) {
+	d := newTestDB(t)
+	logo := []byte("PRETEND-THIS-IS-A-BIG-PNG")
+	if _, err := d.CreateOrganization(CreateOrganizationRequest{
+		ID: "org-1", Name: ptr("ACME"), Logo: logo,
+	}); err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	list, err := d.GetOrganizations()
+	if err != nil || len(list) != 1 {
+		t.Fatalf("GetOrganizations: err=%v len=%d", err, len(list))
+	}
+	if list[0].Logo != nil {
+		t.Fatalf("expected list logo to be omitted, got %d bytes", len(list[0].Logo))
+	}
+
+	single, err := d.GetOrganization("org-1")
+	if err != nil {
+		t.Fatalf("GetOrganization: %v", err)
+	}
+	if string(single.Logo) != string(logo) {
+		t.Fatalf("expected single-org fetch to keep the logo, got %q", single.Logo)
+	}
+}

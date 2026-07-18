@@ -194,7 +194,7 @@ export default function Organizations() {
         dataSource={filteredOrgs}
         rowKey="id"
         loading={loading}
-        pagination={false}
+        pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         size="middle"
         onRow={(record) => ({ onClick: () => openEdit(record.id), style: { cursor: "pointer" } })}
       >

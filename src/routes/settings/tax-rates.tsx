@@ -69,7 +69,7 @@ function SettingsTaxRates() {
         <Col span={24}>
           <Table
             dataSource={filtered}
-            pagination={false}
+            pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             onRow={(record: any) => ({
               onClick: () => navigate(`/settings/tax-rates/${record.id}`),
