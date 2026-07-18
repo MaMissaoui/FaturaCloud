@@ -28,8 +28,7 @@ func (h *handler) listProductStockMovements(w http.ResponseWriter, r *http.Reque
 
 func (h *handler) createStockMovement(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateStockMovementRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	movement, err := h.db.CreateStockMovement(req)

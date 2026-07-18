@@ -44,8 +44,7 @@ func (h *handler) getBackupConfig(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) setBackupConfig(w http.ResponseWriter, r *http.Request) {
 	var cfg BackupConfig
-	if err := decodeJSON(r, &cfg); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &cfg); err != nil {
 		return
 	}
 	if cfg.RetentionDays < 1 {

@@ -121,8 +121,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request")
+	if err := decodeJSON(w, r, &body); err != nil {
 		return
 	}
 

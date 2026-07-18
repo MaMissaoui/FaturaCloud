@@ -27,8 +27,7 @@ func (h *handler) getOrganization(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) createOrganization(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateOrganizationRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	org, err := h.db.CreateOrganization(req)
@@ -42,8 +41,7 @@ func (h *handler) createOrganization(w http.ResponseWriter, r *http.Request) {
 func (h *handler) updateOrganization(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateOrganizationRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	org, err := h.db.UpdateOrganization(id, req)

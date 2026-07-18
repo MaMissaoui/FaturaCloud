@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -39,8 +38,7 @@ func (h *handler) getInvoiceLineItems(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) createInvoice(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateInvoiceRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	invoice, err := h.db.CreateInvoice(req)
@@ -54,8 +52,7 @@ func (h *handler) createInvoice(w http.ResponseWriter, r *http.Request) {
 func (h *handler) updateInvoice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateInvoiceRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	invoice, err := h.db.UpdateInvoice(id, req)
@@ -71,8 +68,7 @@ func (h *handler) updateInvoiceState(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		State string `json:"state"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &body); err != nil {
 		return
 	}
 	invoice, err := h.db.UpdateInvoiceState(id, body.State)

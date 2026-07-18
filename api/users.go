@@ -99,8 +99,7 @@ func (h *handler) createUser(w http.ResponseWriter, r *http.Request) {
 		DisplayName string `json:"displayName"`
 		Role        string `json:"role"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &body); err != nil {
 		return
 	}
 	if _, err := mail.ParseAddress(body.Email); err != nil {
@@ -158,8 +157,7 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		IsActive    *int   `json:"isActive"`
 		Password    string `json:"password"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &body); err != nil {
 		return
 	}
 	if body.Role != "" && !validUserRoles[body.Role] {
