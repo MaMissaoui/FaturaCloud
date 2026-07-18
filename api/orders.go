@@ -49,8 +49,7 @@ func (h *handler) getOrderDeliveredQuantities(w http.ResponseWriter, r *http.Req
 
 func (h *handler) createOrder(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateOrderRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	order, err := h.db.CreateOrder(req)
@@ -64,8 +63,7 @@ func (h *handler) createOrder(w http.ResponseWriter, r *http.Request) {
 func (h *handler) updateOrder(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateOrderRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	order, err := h.db.UpdateOrder(id, req)

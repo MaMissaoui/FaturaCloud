@@ -8,6 +8,17 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
+// invoiceStates is the canonical set of invoice states. Unlike orders and
+// deliveries, invoices may move freely between these (a bounced payment can
+// legitimately send paid→sent), so there is no transition matrix here — only
+// set membership is enforced, on create and on the PATCH state endpoint.
+var invoiceStates = map[string]bool{
+	"draft":     true,
+	"sent":      true,
+	"paid":      true,
+	"cancelled": true,
+}
+
 // Invoice mirrors the invoices table (with an optional joined clientName).
 type Invoice struct {
 	ID             string   `db:"id"             json:"id"`
@@ -29,22 +40,22 @@ type Invoice struct {
 
 // InvoiceLineItem mirrors the invoiceLineItems table.
 type InvoiceLineItem struct {
-	ID          string   `db:"id"          json:"id"`
-	InvoiceID   string   `db:"invoiceId"   json:"invoiceId"`
-	Description *string  `db:"description" json:"description"`
-	Quantity    float64  `db:"quantity"    json:"quantity"`
-	UnitPrice   int64    `db:"unitPrice"   json:"unitPrice"`
-	TaxRate     *string  `db:"taxRate"     json:"taxRate"`
-	Position    int      `db:"position"    json:"position"`
-	CreatedAt   *string  `db:"createdAt"   json:"createdAt"`
+	ID          string  `db:"id"          json:"id"`
+	InvoiceID   string  `db:"invoiceId"   json:"invoiceId"`
+	Description *string `db:"description" json:"description"`
+	Quantity    float64 `db:"quantity"    json:"quantity"`
+	UnitPrice   int64   `db:"unitPrice"   json:"unitPrice"`
+	TaxRate     *string `db:"taxRate"     json:"taxRate"`
+	Position    int     `db:"position"    json:"position"`
+	CreatedAt   *string `db:"createdAt"   json:"createdAt"`
 }
 
 // CreateInvoiceLineItemRequest is a single line item within a create/update request.
 type CreateInvoiceLineItemRequest struct {
-	Description *string  `json:"description"`
-	Quantity    float64  `json:"quantity"`
-	UnitPrice   float64  `json:"unitPrice"`
-	TaxRate     *string  `json:"taxRate"`
+	Description *string `json:"description"`
+	Quantity    float64 `json:"quantity"`
+	UnitPrice   float64 `json:"unitPrice"`
+	TaxRate     *string `json:"taxRate"`
 }
 
 // CreateInvoiceRequest is the payload for creating an invoice.
@@ -65,10 +76,12 @@ type CreateInvoiceRequest struct {
 	LineItems      []CreateInvoiceLineItemRequest `json:"lineItems"`
 }
 
-// UpdateInvoiceRequest is the payload for updating an invoice.
+// UpdateInvoiceRequest is the payload for updating an invoice. State is
+// deliberately absent — state changes go through PATCH /api/invoices/{id}/state
+// only (which validates against invoiceStates), matching the orders/deliveries
+// convention, so a PUT can't set an arbitrary state and bypass validation.
 type UpdateInvoiceRequest struct {
 	Number        *string                         `json:"number"`
-	State         *string                         `json:"state"`
 	ClientID      *string                         `json:"clientId"`
 	Date          *int64                          `json:"date"`
 	DueDate       *int64                          `json:"dueDate"`
@@ -126,6 +139,12 @@ func (d *Database) GetInvoiceLineItems(invoiceID string) ([]InvoiceLineItem, err
 }
 
 func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
+	if req.State == "" {
+		req.State = "draft"
+	}
+	if !invoiceStates[req.State] {
+		return nil, newValidationError("invalid invoice state %q", req.State)
+	}
 	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total); err != nil {
 		return nil, err
 	}
@@ -234,7 +253,6 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 	_, err = tx.Exec(`
 		UPDATE invoices
 		SET number        = COALESCE(?, number),
-		    state         = COALESCE(?, state),
 		    clientId      = COALESCE(?, clientId),
 		    date          = COALESCE(?, date),
 		    dueDate       = ?,
@@ -245,7 +263,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		    taxTotal      = COALESCE(?, taxTotal),
 		    subTotal      = COALESCE(?, subTotal)
 		WHERE id = ?`,
-		updates.Number, updates.State, updates.ClientID,
+		updates.Number, updates.ClientID,
 		updates.Date, updates.DueDate, updates.Currency,
 		updates.CustomerNotes, updates.OverdueCharge,
 		updates.Total, updates.TaxTotal, updates.SubTotal,
@@ -280,6 +298,9 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 }
 
 func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice, error) {
+	if !invoiceStates[state] {
+		return nil, newValidationError("invalid invoice state %q", state)
+	}
 	_, err := d.DB.Exec(`UPDATE invoices SET state = ? WHERE id = ?`, state, invoiceID)
 	if err != nil {
 		return nil, fmt.Errorf("update_invoice_state: %w", err)

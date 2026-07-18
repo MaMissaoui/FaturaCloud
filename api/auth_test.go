@@ -1,7 +1,11 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -62,4 +66,38 @@ func TestLogin(t *testing.T) {
 			t.Fatalf("expected 401, got %d: %s", rec.Code, rec.Body.String())
 		}
 	})
+}
+
+// TestLoginPerAccountRateLimit covers F24: attempts against one account are
+// throttled even when each comes from a distinct source IP, so IP rotation
+// can't grind a single email past the limit.
+func TestLoginPerAccountRateLimit(t *testing.T) {
+	mux, _, _, _ := newTestRouter(t)
+
+	attempt := func(ip string) int {
+		body, _ := json.Marshal(map[string]any{
+			"email":    "throttle-target@example.com",
+			"password": "whatever",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = ip + ":1234" // unique IP each call → IP bucket never trips
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	// loginMaxAttempts (10) attempts from distinct IPs: rejected as bad
+	// credentials (401), never 429.
+	for i := 0; i < loginMaxAttempts; i++ {
+		if code := attempt(fmt.Sprintf("10.9.9.%d", i+1)); code == http.StatusTooManyRequests {
+			t.Fatalf("attempt %d unexpectedly rate-limited (IP bucket should not trip): %d", i+1, code)
+		}
+	}
+
+	// The next attempt on the same email, from yet another fresh IP, trips the
+	// per-account limit.
+	if code := attempt("10.9.9.250"); code != http.StatusTooManyRequests {
+		t.Fatalf("expected per-account throttle to return 429, got %d", code)
+	}
 }

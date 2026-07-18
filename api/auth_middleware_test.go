@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // TestAuthMiddleware_RejectsDeactivatedUser covers F5: a JWT is only a claim
@@ -53,5 +56,37 @@ func TestAuthMiddleware_RejectsDeletedUser(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected a deleted user's token to be rejected, got %d", rec.Code)
+	}
+}
+
+// TestAuthMiddleware_RejectsTokenWithoutIssuerAudience covers F23: tokens are
+// bound to this app via iss/aud, so a signature-valid token that lacks those
+// claims (e.g. one minted for another service sharing the JWT secret, or an
+// older token issued before this binding) is rejected.
+func TestAuthMiddleware_RejectsTokenWithoutIssuerAudience(t *testing.T) {
+	mux, database, _, _ := newTestRouter(t)
+	seedUser(t, database, "test-user", "user", 1)
+
+	// Mint a correctly-signed token that omits Issuer/Audience.
+	claims := Claims{
+		UserID:   "test-user",
+		Role:     "user",
+		Provider: "local",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(testRestoreJWTSecret))
+	if err != nil {
+		t.Fatalf("mint jwt: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/organizations", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected a token without iss/aud to be rejected, got %d", rec.Code)
 	}
 }

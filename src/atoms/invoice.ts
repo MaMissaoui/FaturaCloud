@@ -127,7 +127,9 @@ export const invoiceAtom = atom(
       } else {
         // Update
         const updateData = {
-          ...invoice,
+          // State is not editable via PUT — it changes only through the PATCH
+          // state endpoint (server rejects it on PUT), so drop it here.
+          ...omit(invoice, "state"),
           // Convert dayjs objects to unix timestamps
           date: invoice.date?.valueOf ? invoice.date.valueOf() : invoice.date,
           dueDate: invoice.dueDate?.valueOf ? invoice.dueDate.valueOf() : invoice.dueDate,

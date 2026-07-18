@@ -29,8 +29,7 @@ func (h *handler) getTaxRate(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) createTaxRate(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateTaxRateRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	rate, err := h.db.CreateTaxRate(req)
@@ -44,8 +43,7 @@ func (h *handler) createTaxRate(w http.ResponseWriter, r *http.Request) {
 func (h *handler) updateTaxRate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req db.UpdateTaxRateRequest
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
 	rate, err := h.db.UpdateTaxRate(id, req)

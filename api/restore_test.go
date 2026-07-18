@@ -61,6 +61,8 @@ func mintTestJWT(t *testing.T, userID, role string) string {
 		Role:     role,
 		Provider: "local",
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    jwtIssuer,
+			Audience:  jwt.ClaimStrings{jwtAudience},
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},

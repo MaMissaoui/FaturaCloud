@@ -4,76 +4,76 @@ import "fmt"
 
 // Organization mirrors the organizations table.
 type Organization struct {
-	ID                   string  `db:"id"                      json:"id"`
-	Code                 *string `db:"code"                    json:"code"`
-	Name                 *string `db:"name"                    json:"name"`
-	Country              *string `db:"country"                 json:"country"`
-	Address              *string `db:"address"                 json:"address"`
-	Email                *string `db:"email"                   json:"email"`
-	Phone                *string `db:"phone"                   json:"phone"`
-	Website              *string `db:"website"                 json:"website"`
-	RegistrationNumber   *string `db:"registration_number"     json:"registration_number"`
-	Vatin                *string `db:"vatin"                   json:"vatin"`
-	BankName             *string `db:"bank_name"               json:"bank_name"`
-	IBAN                 *string `db:"iban"                    json:"iban"`
-	Currency             *string `db:"currency"                json:"currency"`
-	MinimumFractionDigits *int64 `db:"minimum_fraction_digits" json:"minimum_fraction_digits"`
-	DueDays              *int64  `db:"due_days"                json:"due_days"`
-	OverdueCharge        *float64 `db:"overdueCharge"          json:"overdueCharge"`
-	CustomerNotes        *string `db:"customerNotes"           json:"customerNotes"`
-	CreatedAt            *string `db:"createdAt"               json:"createdAt"`
-	Logo                 []byte  `db:"logo"                    json:"logo"`
-	InvoiceNumberFormat  *string `db:"invoice_number_format"   json:"invoiceNumberFormat"`
-	InvoiceNumberCounter *int64  `db:"invoice_number_counter"  json:"invoiceNumberCounter"`
-	DateFormat           *string `db:"date_format"             json:"date_format"`
+	ID                    string   `db:"id"                      json:"id"`
+	Code                  *string  `db:"code"                    json:"code"`
+	Name                  *string  `db:"name"                    json:"name"`
+	Country               *string  `db:"country"                 json:"country"`
+	Address               *string  `db:"address"                 json:"address"`
+	Email                 *string  `db:"email"                   json:"email"`
+	Phone                 *string  `db:"phone"                   json:"phone"`
+	Website               *string  `db:"website"                 json:"website"`
+	RegistrationNumber    *string  `db:"registration_number"     json:"registration_number"`
+	Vatin                 *string  `db:"vatin"                   json:"vatin"`
+	BankName              *string  `db:"bank_name"               json:"bank_name"`
+	IBAN                  *string  `db:"iban"                    json:"iban"`
+	Currency              *string  `db:"currency"                json:"currency"`
+	MinimumFractionDigits *int64   `db:"minimum_fraction_digits" json:"minimum_fraction_digits"`
+	DueDays               *int64   `db:"due_days"                json:"due_days"`
+	OverdueCharge         *float64 `db:"overdueCharge"          json:"overdueCharge"`
+	CustomerNotes         *string  `db:"customerNotes"           json:"customerNotes"`
+	CreatedAt             *string  `db:"createdAt"               json:"createdAt"`
+	Logo                  []byte   `db:"logo"                    json:"logo"`
+	InvoiceNumberFormat   *string  `db:"invoice_number_format"   json:"invoiceNumberFormat"`
+	InvoiceNumberCounter  *int64   `db:"invoice_number_counter"  json:"invoiceNumberCounter"`
+	DateFormat            *string  `db:"date_format"             json:"date_format"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
 type CreateOrganizationRequest struct {
-	ID                   string   `json:"id"`
-	Code                 *string  `json:"code"`
-	Name                 *string  `json:"name"`
-	Country              *string  `json:"country"`
-	Address              *string  `json:"address"`
-	Email                *string  `json:"email"`
-	Phone                *string  `json:"phone"`
-	Website              *string  `json:"website"`
-	RegistrationNumber   *string  `json:"registration_number"`
-	Vatin                *string  `json:"vatin"`
-	BankName             *string  `json:"bank_name"`
-	IBAN                 *string  `json:"iban"`
-	Currency             *string  `json:"currency"`
-	MinimumFractionDigits *int64  `json:"minimum_fraction_digits"`
-	DueDays              *int64   `json:"due_days"`
-	OverdueCharge        *float64 `json:"overdueCharge"`
-	CustomerNotes        *string  `json:"customerNotes"`
-	Logo                 []byte   `json:"logo"`
-	InvoiceNumberFormat  *string  `json:"invoiceNumberFormat"`
-	DateFormat           *string  `json:"date_format"`
+	ID                    string   `json:"id"`
+	Code                  *string  `json:"code"`
+	Name                  *string  `json:"name"`
+	Country               *string  `json:"country"`
+	Address               *string  `json:"address"`
+	Email                 *string  `json:"email"`
+	Phone                 *string  `json:"phone"`
+	Website               *string  `json:"website"`
+	RegistrationNumber    *string  `json:"registration_number"`
+	Vatin                 *string  `json:"vatin"`
+	BankName              *string  `json:"bank_name"`
+	IBAN                  *string  `json:"iban"`
+	Currency              *string  `json:"currency"`
+	MinimumFractionDigits *int64   `json:"minimum_fraction_digits"`
+	DueDays               *int64   `json:"due_days"`
+	OverdueCharge         *float64 `json:"overdueCharge"`
+	CustomerNotes         *string  `json:"customerNotes"`
+	Logo                  []byte   `json:"logo"`
+	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
+	DateFormat            *string  `json:"date_format"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
 type UpdateOrganizationRequest struct {
-	Code                 *string  `json:"code"`
-	Name                 *string  `json:"name"`
-	Country              *string  `json:"country"`
-	Address              *string  `json:"address"`
-	Email                *string  `json:"email"`
-	Phone                *string  `json:"phone"`
-	Website              *string  `json:"website"`
-	RegistrationNumber   *string  `json:"registration_number"`
-	Vatin                *string  `json:"vatin"`
-	BankName             *string  `json:"bank_name"`
-	IBAN                 *string  `json:"iban"`
-	Currency             *string  `json:"currency"`
-	MinimumFractionDigits *int64  `json:"minimum_fraction_digits"`
-	DueDays              *int64   `json:"due_days"`
-	OverdueCharge        *float64 `json:"overdueCharge"`
-	CustomerNotes        *string  `json:"customerNotes"`
-	Logo                 []byte   `json:"logo"`
-	InvoiceNumberFormat  *string  `json:"invoiceNumberFormat"`
-	InvoiceNumberCounter *int64   `json:"invoiceNumberCounter"`
-	DateFormat           *string  `json:"date_format"`
+	Code                  *string  `json:"code"`
+	Name                  *string  `json:"name"`
+	Country               *string  `json:"country"`
+	Address               *string  `json:"address"`
+	Email                 *string  `json:"email"`
+	Phone                 *string  `json:"phone"`
+	Website               *string  `json:"website"`
+	RegistrationNumber    *string  `json:"registration_number"`
+	Vatin                 *string  `json:"vatin"`
+	BankName              *string  `json:"bank_name"`
+	IBAN                  *string  `json:"iban"`
+	Currency              *string  `json:"currency"`
+	MinimumFractionDigits *int64   `json:"minimum_fraction_digits"`
+	DueDays               *int64   `json:"due_days"`
+	OverdueCharge         *float64 `json:"overdueCharge"`
+	CustomerNotes         *string  `json:"customerNotes"`
+	Logo                  []byte   `json:"logo"`
+	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
+	InvoiceNumberCounter  *int64   `json:"invoiceNumberCounter"`
+	DateFormat            *string  `json:"date_format"`
 }
 
 func (d *Database) GetOrganizations() ([]Organization, error) {

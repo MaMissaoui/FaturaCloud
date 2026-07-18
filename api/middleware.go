@@ -12,6 +12,15 @@ type contextKey string
 
 const claimsKey contextKey = "claims"
 
+// jwtIssuer and jwtAudience bind every issued token to this application, so a
+// token minted for (or replayed from) some other service that happens to share
+// the JWT secret is rejected. They are set on issue (api/auth.go) and enforced
+// on parse in authMiddleware.
+const (
+	jwtIssuer   = "faturacloud"
+	jwtAudience = "faturacloud"
+)
+
 type Claims struct {
 	UserID string `json:"userId"`
 	Email  string `json:"email"`
@@ -36,7 +45,7 @@ func (h *handler) authMiddleware(next http.Handler) http.Handler {
 		claims := &Claims{}
 		_, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
 			return []byte(h.jwtSecret), nil
-		}, jwt.WithValidMethods([]string{"HS256"}))
+		}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience))
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return

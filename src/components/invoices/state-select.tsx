@@ -1,44 +1,27 @@
 import { Dropdown, Space, Tag } from "antd";
 import { useSetAtom } from "jotai";
 import { MoreOutlined } from "@ant-design/icons";
-import { Trans } from "@lingui/react/macro";
 
 import type { MenuProps } from "antd";
 
 import { updateInvoiceStateAtom } from "src/atoms/invoice";
+import { INVOICE_STATES, invoiceStateColor, invoiceStateLabel } from "src/types/invoice";
 
-const stateColor = {
-  draft: null,
-  sent: "geekblue",
-  paid: "green",
-  void: "volcano",
-};
-
-const InvoiceStateSelect = ({ invoice }: { invoice: any }) => {
+const InvoiceStateSelect = ({ invoice }: { invoice: { id: string; state: string } }) => {
   const updateInvoiceState = useSetAtom(updateInvoiceStateAtom);
 
   const changeState = async (toState: string) => {
     await updateInvoiceState({ invoiceId: invoice.id, state: toState });
   };
 
-  const items: MenuProps["items"] = [
-    {
-      key: "draft",
-      label: <Trans>Draft</Trans>,
-    },
-    {
-      key: "sent",
-      label: <Trans>Sent</Trans>,
-    },
-    {
-      key: "paid",
-      label: <Trans>Paid</Trans>,
-    },
-    {
-      key: "void",
-      label: <Trans>Void</Trans>,
-    },
-  ];
+  const items: MenuProps["items"] = INVOICE_STATES.map((state) => ({
+    key: state,
+    label: invoiceStateLabel(state),
+  }));
+
+  const color = INVOICE_STATES.includes(invoice.state as never)
+    ? invoiceStateColor[invoice.state as keyof typeof invoiceStateColor]
+    : undefined;
 
   return (
     <Dropdown
@@ -51,20 +34,9 @@ const InvoiceStateSelect = ({ invoice }: { invoice: any }) => {
         },
       }}
     >
-      {/* @ts-expect-error - TODO: stateColor ts definition */}
-      <Tag color={stateColor[invoice.state]} style={{ marginInlineEnd: 0, cursor: "pointer" }}>
+      <Tag color={color} style={{ marginInlineEnd: 0, cursor: "pointer" }}>
         <Space size={4} style={{ fontSize: 12 }}>
-          {invoice.state === "draft" ? (
-            <Trans>Draft</Trans>
-          ) : invoice.state === "sent" ? (
-            <Trans>Sent</Trans>
-          ) : invoice.state === "paid" ? (
-            <Trans>Paid</Trans>
-          ) : invoice.state === "void" ? (
-            <Trans>Void</Trans>
-          ) : (
-            invoice.state
-          )}
+          {invoiceStateLabel(invoice.state)}
           <MoreOutlined />
         </Space>
       </Tag>
