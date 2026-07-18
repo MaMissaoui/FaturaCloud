@@ -256,7 +256,7 @@ The sidebar is grouped into collapsible submenus (click the group to expand/coll
 - Uses LinguiJS with macro-based extraction
 - Translation files in .po format under src/locales/
 - Default locale configuration in src/utils/lingui.tsx
-- Currently supports 11 locales: en, en-GB, de, et, fi, fr, el, nl, pt, sv, uk
+- Supports 3 locales: en, de, fr (the set lives in `lingui.config.ts` `locales`; the language switcher, antd/dayjs locale wiring in `src/app.tsx`, and `dynamicActivate` in `src/utils/lingui.tsx` all derive from or match it). de and fr are fully translated; en is the source locale
 
 ## Docker
 ```bash
