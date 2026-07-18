@@ -75,7 +75,7 @@ const Clients = () => {
         <Col span={24}>
           <Table
             dataSource={search ? searchClients() : clients}
-            pagination={false}
+            pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
             onRow={(record: any) => ({
