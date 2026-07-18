@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net"
 	"net/http"
 	"net/netip"
@@ -149,8 +150,12 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.dbMu.RLock()
-	h.db.DB.Exec(`UPDATE users SET lastLoginAt = ? WHERE id = ?`, time.Now().UnixMilli(), user.ID)
+	_, lastLoginErr := h.db.DB.Exec(`UPDATE users SET lastLoginAt = ? WHERE id = ?`, time.Now().UnixMilli(), user.ID)
 	h.dbMu.RUnlock()
+	if lastLoginErr != nil {
+		// Non-fatal: the login itself succeeded, only the bookkeeping failed.
+		log.Printf("login: failed to update lastLoginAt for user %s: %v", user.ID, lastLoginErr)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"token": token,
@@ -203,6 +208,8 @@ func (h *handler) issueTokenWithProvider(user userRow, provider string) (string,
 		Role:     user.Role,
 		Provider: provider,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    jwtIssuer,
+			Audience:  jwt.ClaimStrings{jwtAudience},
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
