@@ -23,15 +23,16 @@ i18n.activate(defaultLocale);
 })();
 
 export async function dynamicActivate(locale: string) {
+  // Fall back to the default if an unsupported locale is requested — e.g. a
+  // value persisted in localStorage from a locale that has since been removed,
+  // which would otherwise fail the dynamic .po import below.
+  if (!locales.includes(locale)) {
+    locale = defaultLocale;
+  }
+
   const { messages } = await import(`../locales/${locale}.po`);
   i18n.load(locale, messages);
   i18n.activate(locale);
 
-  // Map locales to dayjs locale codes
-  const dayjsLocaleMap: Record<string, string> = {
-    "en-GB": "en-gb", // Ensure correct casing
-  };
-
-  const dayjsLocale = dayjsLocaleMap[locale] || locale;
-  dayjs.locale(dayjsLocale);
+  dayjs.locale(locale);
 }

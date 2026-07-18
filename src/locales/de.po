@@ -48,8 +48,8 @@ msgstr "Jahr, 2-stellig ({0})"
 msgid "4-digit year ({0})"
 msgstr "Jahr, 4-stellig ({0})"
 
-#: src/routes/settings/users.tsx:188
-#: src/routes/settings/users.tsx:276
+#: src/routes/settings/users.tsx:200
+#: src/routes/settings/users.tsx:288
 msgid "Active"
 msgstr "Aktiv"
 
@@ -71,7 +71,7 @@ msgstr "Position hinzufügen"
 #: src/components/clients/form.tsx:176
 #: src/components/clients/form.tsx:177
 #: src/routes/clients.tsx:101
-#: src/routes/organizations/index.tsx:366
+#: src/routes/organizations/index.tsx:369
 msgid "Address"
 msgstr "Adresse"
 
@@ -83,8 +83,8 @@ msgstr "Korrektur"
 msgid "Adjustment — set count to"
 msgstr "Korrektur — Bestand setzen auf"
 
-#: src/routes/settings/users.tsx:183
-#: src/routes/settings/users.tsx:302
+#: src/routes/settings/users.tsx:195
+#: src/routes/settings/users.tsx:314
 msgid "Admin"
 msgstr "Admin"
 
@@ -132,7 +132,7 @@ msgstr "Admin"
 #~ msgstr "Sind Sie sicher, dass Sie diese Organisation löschen möchten?"
 
 #: src/routes/invoices/details.tsx:1043
-#: src/routes/invoices/index.tsx:126
+#: src/routes/invoices/index.tsx:116
 msgid "Are you sure to delete this invoice?"
 msgstr "Sind Sie sicher, dass Sie diese Rechnung löschen möchten?"
 
@@ -217,11 +217,11 @@ msgstr "Sicherung fehlgeschlagen: {0}"
 msgid "Backup history"
 msgstr "Sicherungsverlauf"
 
-#: src/routes/organizations/index.tsx:376
+#: src/routes/organizations/index.tsx:379
 msgid "Bank name"
 msgstr "Bankname"
 
-#: src/routes/organizations/index.tsx:373
+#: src/routes/organizations/index.tsx:376
 msgid "Banking"
 msgstr "Bankverbindung"
 
@@ -230,12 +230,12 @@ msgstr "Bankverbindung"
 #: src/components/products/form.tsx:154
 #: src/components/stock/movement-form.tsx:89
 #: src/components/tax-rates/form.tsx:110
-#: src/routes/organizations/index.tsx:300
+#: src/routes/organizations/index.tsx:303
 #: src/routes/organizations/new.tsx:104
 #: src/routes/settings/backup.tsx:124
 #: src/routes/settings/backup.tsx:148
 #: src/routes/settings/backup.tsx:289
-#: src/routes/settings/users.tsx:257
+#: src/routes/settings/users.tsx:269
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -263,6 +263,10 @@ msgstr "Diese Rechnung stornieren?"
 msgid "Cancel this order?"
 msgstr "Diese Bestellung stornieren?"
 
+#: src/types/invoice.ts:30
+msgid "Cancelled"
+msgstr "Storniert"
+
 #: src/components/tax-rates/form.tsx:89
 msgid "Cannot delete: used by {usageCount} invoice(s)"
 msgstr "Löschen nicht möglich: wird von {usageCount} Rechnung(en) verwendet"
@@ -284,7 +288,7 @@ msgstr "Datei auswählen"
 #~ msgstr "Chat löschen"
 
 #: src/routes/deliveries.tsx:102
-#: src/routes/invoices/index.tsx:188
+#: src/routes/invoices/index.tsx:178
 #: src/routes/orders.tsx:96
 #: src/routes/orders/details.tsx:219
 msgid "Client"
@@ -327,7 +331,7 @@ msgstr "Kunde-Aktualisierung fehlgeschlagen"
 msgid "Client updated successfully"
 msgstr "Kunde erfolgreich aktualisiert"
 
-#: src/routes/organizations/index.tsx:247
+#: src/routes/organizations/index.tsx:250
 msgid "client(s)"
 msgstr "Kunde(n)"
 
@@ -338,8 +342,8 @@ msgstr "Kunden"
 
 #: src/components/clients/form.tsx:159
 #: src/components/clients/form.tsx:160
-#: src/routes/organizations/index.tsx:206
-#: src/routes/organizations/index.tsx:320
+#: src/routes/organizations/index.tsx:208
+#: src/routes/organizations/index.tsx:323
 msgid "Code"
 msgstr "Code"
 
@@ -347,13 +351,13 @@ msgstr "Code"
 #~ msgid "Configure your Anthropic API key to enable AI-powered features in your invoicing workflow."
 #~ msgstr "Konfigurieren Sie Ihren Anthropic API-Schlüssel, um KI-gestützte Funktionen in Ihrem Rechnungsworkflow zu aktivieren."
 
-#: src/routes/settings/users.tsx:324
+#: src/routes/settings/users.tsx:336
 msgid "Confirm password"
 msgstr "Passwort bestätigen"
 
 #: src/routes/invoices/index.tsx:54
-msgid "Confirmed"
-msgstr "Bestätigt"
+#~ msgid "Confirmed"
+#~ msgstr "Bestätigt"
 
 #: src/components/clients/form.tsx:150
 msgid "Contact"
@@ -371,7 +375,7 @@ msgstr "Einkaufspreis"
 msgid "Counter must be 0 or greater"
 msgstr "Zähler muss 0 oder größer sein"
 
-#: src/routes/organizations/index.tsx:328
+#: src/routes/organizations/index.tsx:331
 #: src/routes/organizations/new.tsx:66
 msgid "Country"
 msgstr "Land"
@@ -401,8 +405,8 @@ msgid "Creates a snapshot, saves it to the backup list, and downloads it."
 msgstr "Erstellt eine Momentaufnahme, speichert sie in der Sicherungsliste und lädt sie herunter."
 
 #: src/routes/invoices/details.tsx:596
-#: src/routes/organizations/index.tsx:233
-#: src/routes/organizations/index.tsx:337
+#: src/routes/organizations/index.tsx:235
+#: src/routes/organizations/index.tsx:340
 #: src/routes/organizations/new.tsx:77
 #: src/routes/settings/invoice.tsx:96
 msgid "Currency"
@@ -436,12 +440,12 @@ msgstr "Datenbank wiederhergestellt — neu laden, um Änderungen zu sehen"
 
 #: src/components/invoices/pdf.tsx:221
 #: src/routes/inventory.tsx:120
-#: src/routes/invoices/index.tsx:196
+#: src/routes/invoices/index.tsx:186
 #: src/routes/settings/backup.tsx:353
 msgid "Date"
 msgstr "Datum"
 
-#: src/routes/organizations/index.tsx:396
+#: src/routes/organizations/index.tsx:399
 msgid "Date format"
 msgstr "Datumsformat"
 
@@ -458,7 +462,7 @@ msgstr "Datumsformat"
 msgid "Day of month ({0})"
 msgstr "Tag des Monats ({0})"
 
-#: src/routes/organizations/index.tsx:410
+#: src/routes/organizations/index.tsx:413
 #: src/routes/organizations/new.tsx:88
 #: src/routes/settings/invoice.tsx:113
 msgid "Decimal places"
@@ -483,11 +487,11 @@ msgstr "Standardwerte"
 #: src/components/tax-rates/form.tsx:103
 #: src/routes/deliveries/details.tsx:443
 #: src/routes/invoices/details.tsx:1049
-#: src/routes/invoices/index.tsx:135
+#: src/routes/invoices/index.tsx:125
 #: src/routes/orders/details.tsx:472
-#: src/routes/organizations/index.tsx:284
-#: src/routes/settings/users.tsx:226
-#: src/routes/settings/users.tsx:251
+#: src/routes/organizations/index.tsx:287
+#: src/routes/settings/users.tsx:238
+#: src/routes/settings/users.tsx:263
 msgid "Delete"
 msgstr "Löschen"
 
@@ -496,7 +500,7 @@ msgid "Delete movement"
 msgstr "Bewegung löschen"
 
 #: src/routes/invoices/details.tsx:1042
-#: src/routes/invoices/index.tsx:125
+#: src/routes/invoices/index.tsx:115
 msgid "Delete the invoice?"
 msgstr "Rechnung löschen?"
 
@@ -512,7 +516,7 @@ msgstr "Diese Lieferung löschen?"
 msgid "Delete this order?"
 msgstr "Diese Bestellung löschen?"
 
-#: src/routes/organizations/index.tsx:257
+#: src/routes/organizations/index.tsx:260
 msgid "Delete this organization?"
 msgstr "Diese Organisation löschen?"
 
@@ -520,8 +524,8 @@ msgstr "Diese Organisation löschen?"
 msgid "Delete this stock movement? The stock level will be recalculated."
 msgstr "Diese Lagerbewegung löschen? Der Lagerbestand wird neu berechnet."
 
-#: src/routes/settings/users.tsx:215
-#: src/routes/settings/users.tsx:244
+#: src/routes/settings/users.tsx:227
+#: src/routes/settings/users.tsx:256
 msgid "Delete this user?"
 msgstr "Diesen Benutzer löschen?"
 
@@ -576,7 +580,7 @@ msgstr "Lieferstatus aktualisiert"
 msgid "Delivery update failed"
 msgstr "Lieferung-Aktualisierung fehlgeschlagen"
 
-#: src/routes/organizations/index.tsx:251
+#: src/routes/organizations/index.tsx:254
 msgid "delivery(ies)"
 msgstr "Lieferung(en)"
 
@@ -598,7 +602,7 @@ msgstr "Beschreibung erforderlich"
 
 #: src/components/products/form.tsx:169
 #: src/components/stock/movement-form.tsx:149
-#: src/routes/organizations/index.tsx:308
+#: src/routes/organizations/index.tsx:311
 msgid "Details"
 msgstr "Details"
 
@@ -606,15 +610,13 @@ msgstr "Details"
 msgid "Download backup"
 msgstr "Sicherung herunterladen"
 
-#: src/components/invoices/state-select.tsx:27
-#: src/components/invoices/state-select.tsx:58
-#: src/routes/invoices/index.tsx:50
+#: src/types/invoice.ts:24
 msgid "Draft"
 msgstr "Entwurf"
 
 #: src/components/invoices/pdf.tsx:224
 #: src/routes/invoices/details.tsx:624
-#: src/routes/invoices/index.tsx:203
+#: src/routes/invoices/index.tsx:193
 msgid "Due date"
 msgstr "Fälligkeitsdatum"
 
@@ -623,7 +625,7 @@ msgid "Due days"
 msgstr "Fälligkeitstage"
 
 #: src/routes/invoices/details.tsx:1037
-#: src/routes/invoices/index.tsx:114
+#: src/routes/invoices/index.tsx:104
 msgid "Duplicate"
 msgstr "Duplizieren"
 
@@ -639,7 +641,7 @@ msgstr "Duplizieren"
 #~ msgid "Duration in seconds"
 #~ msgstr "Dauer in Sekunden"
 
-#: src/routes/organizations/index.tsx:346
+#: src/routes/organizations/index.tsx:349
 msgid "E-mail"
 msgstr "E-Mail"
 
@@ -657,7 +659,7 @@ msgid "e.g. SVC-001"
 msgstr "z. B. SVC-001"
 
 #: src/routes/invoices/details.tsx:1066
-#: src/routes/invoices/index.tsx:108
+#: src/routes/invoices/index.tsx:98
 msgid "Edit"
 msgstr "Bearbeiten"
 
@@ -665,7 +667,7 @@ msgstr "Bearbeiten"
 msgid "Edit client"
 msgstr "Kunde bearbeiten"
 
-#: src/routes/organizations/index.tsx:293
+#: src/routes/organizations/index.tsx:296
 msgid "Edit organization"
 msgstr "Organisation bearbeiten"
 
@@ -685,14 +687,14 @@ msgstr "Steuersatz bearbeiten"
 #~ msgid "Edit Time Entry"
 #~ msgstr "Zeiteintrag bearbeiten"
 
-#: src/routes/settings/users.tsx:234
+#: src/routes/settings/users.tsx:246
 msgid "Edit user"
 msgstr "Benutzer bearbeiten"
 
 #: src/components/feedback-modal.tsx:64
-#: src/routes/organizations/index.tsx:213
-#: src/routes/settings/users.tsx:171
-#: src/routes/settings/users.tsx:288
+#: src/routes/organizations/index.tsx:215
+#: src/routes/settings/users.tsx:183
+#: src/routes/settings/users.tsx:300
 msgid "Email"
 msgstr "E-Mail"
 
@@ -754,6 +756,10 @@ msgstr "Erwartete Lieferung"
 #: src/atoms/stock.ts:83
 msgid "Failed to delete stock movement"
 msgstr "Lagerbewegung konnte nicht gelöscht werden"
+
+#: src/routes/settings/users.tsx:114
+msgid "Failed to delete user"
+msgstr "Fehler beim Löschen des Benutzers"
 
 #: src/atoms/client.ts:57
 msgid "Failed to fetch client"
@@ -827,7 +833,7 @@ msgstr "Fehler beim Laden der Steuersätze"
 #~ msgid "Failed to fetch time entries"
 #~ msgstr "Fehler beim Laden der Zeiteinträge"
 
-#: src/atoms/invoice.ts:225
+#: src/atoms/invoice.ts:227
 msgid "Failed to generate invoice number"
 msgstr "Fehler beim Generieren der Rechnungsnummer"
 
@@ -844,6 +850,10 @@ msgstr "Lagerbewegung konnte nicht erfasst werden"
 msgid "Failed to save schedule"
 msgstr "Zeitplan konnte nicht gespeichert werden"
 
+#: src/routes/settings/users.tsx:102
+msgid "Failed to save user"
+msgstr "Fehler beim Speichern des Benutzers"
+
 #: src/components/feedback-modal.tsx:35
 msgid "Failed to send feedback. Please try again."
 msgstr "Feedback konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
@@ -856,7 +866,7 @@ msgstr "Feedback konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
 msgid "Failed to update delivery status"
 msgstr "Lieferstatus konnte nicht aktualisiert werden"
 
-#: src/atoms/invoice.ts:203
+#: src/atoms/invoice.ts:205
 msgid "Failed to update invoice state"
 msgstr "Rechnungsstatus konnte nicht aktualisiert werden"
 
@@ -871,6 +881,10 @@ msgstr "Bestellstatus konnte nicht aktualisiert werden"
 #: src/atoms/time-tracking.ts:159
 #~ msgid "Failed to update time entry"
 #~ msgstr "Fehler beim Aktualisieren des Zeiteintrags"
+
+#: src/routes/settings/users.tsx:134
+msgid "Failed to update user"
+msgstr "Fehler beim Aktualisieren des Benutzers"
 
 #: src/layouts/base.tsx:360
 msgid "Feedback"
@@ -888,7 +902,7 @@ msgstr "Datei"
 msgid "Filter by product"
 msgstr "Nach Produkt filtern"
 
-#: src/routes/organizations/index.tsx:393
+#: src/routes/organizations/index.tsx:396
 msgid "Formatting"
 msgstr "Formatierung"
 
@@ -947,16 +961,16 @@ msgstr "Rechnung {0}"
 msgid "Invoice created"
 msgstr "Rechnung erstellt"
 
-#: src/atoms/invoice.ts:159
+#: src/atoms/invoice.ts:161
 msgid "Invoice creation failed"
 msgstr "Rechnung-Erstellung fehlgeschlagen"
 
-#: src/atoms/invoice.ts:176
+#: src/atoms/invoice.ts:178
 msgid "Invoice deleted"
 msgstr "Rechnung gelöscht"
 
-#: src/atoms/invoice.ts:178
-#: src/atoms/invoice.ts:183
+#: src/atoms/invoice.ts:180
+#: src/atoms/invoice.ts:185
 msgid "Invoice deletion failed"
 msgstr "Rechnung-Löschung fehlgeschlagen"
 
@@ -964,11 +978,11 @@ msgstr "Rechnung-Löschung fehlgeschlagen"
 #~ msgid "Invoice details"
 #~ msgstr "Rechnungsdetails"
 
-#: src/atoms/invoice.ts:258
+#: src/atoms/invoice.ts:260
 msgid "Invoice duplicated successfully"
 msgstr "Rechnung erfolgreich dupliziert"
 
-#: src/atoms/invoice.ts:274
+#: src/atoms/invoice.ts:276
 msgid "Invoice duplication failed"
 msgstr "Rechnung-Duplizierung fehlgeschlagen"
 
@@ -976,7 +990,7 @@ msgstr "Rechnung-Duplizierung fehlgeschlagen"
 #~ msgid "Invoice form updated with new data."
 #~ msgstr "Rechnungsformular mit neuen Daten aktualisiert."
 
-#: src/atoms/invoice.ts:218
+#: src/atoms/invoice.ts:220
 msgid "Invoice not found"
 msgstr "Rechnung nicht gefunden"
 
@@ -1008,28 +1022,28 @@ msgstr "Rechnungsnummernformat"
 msgid "Invoice settings"
 msgstr "Rechnungseinstellungen"
 
-#: src/atoms/invoice.ts:195
+#: src/atoms/invoice.ts:197
 msgid "Invoice state updated"
 msgstr "Rechnungsstatus aktualisiert"
 
-#: src/atoms/invoice.ts:161
+#: src/atoms/invoice.ts:163
 msgid "Invoice update failed"
 msgstr "Rechnung-Aktualisierung fehlgeschlagen"
 
-#: src/atoms/invoice.ts:149
+#: src/atoms/invoice.ts:151
 msgid "Invoice updated successfully"
 msgstr "Rechnung erfolgreich aktualisiert"
 
-#: src/routes/organizations/index.tsx:248
+#: src/routes/organizations/index.tsx:251
 msgid "invoice(s)"
 msgstr "Rechnung(en)"
 
 #: src/layouts/base.tsx:222
-#: src/routes/invoices/index.tsx:151
+#: src/routes/invoices/index.tsx:141
 msgid "Invoices"
 msgstr "Rechnungen"
 
-#: src/routes/settings/users.tsx:203
+#: src/routes/settings/users.tsx:215
 msgid "Last login"
 msgstr "Letzte Anmeldung"
 
@@ -1065,8 +1079,8 @@ msgstr "Stammdaten"
 msgid "Message"
 msgstr "Nachricht"
 
-#: src/routes/settings/users.tsx:314
-#: src/routes/settings/users.tsx:315
+#: src/routes/settings/users.tsx:326
+#: src/routes/settings/users.tsx:327
 msgid "Minimum 6 characters"
 msgstr "Mindestens 6 Zeichen"
 
@@ -1090,13 +1104,13 @@ msgstr "Bewegung"
 #: src/components/tax-rates/form.tsx:126
 #: src/components/tax-rates/form.tsx:127
 #: src/routes/clients.tsx:87
-#: src/routes/organizations/index.tsx:200
-#: src/routes/organizations/index.tsx:313
+#: src/routes/organizations/index.tsx:202
+#: src/routes/organizations/index.tsx:316
 #: src/routes/organizations/new.tsx:62
 #: src/routes/products.tsx:88
 #: src/routes/settings/tax-rates.tsx:80
-#: src/routes/settings/users.tsx:165
-#: src/routes/settings/users.tsx:268
+#: src/routes/settings/users.tsx:177
+#: src/routes/settings/users.tsx:280
 msgid "Name"
 msgstr "Name"
 
@@ -1119,7 +1133,7 @@ msgstr "Neue Lieferung"
 #~ msgid "New Entry"
 #~ msgstr "Neuer Eintrag"
 
-#: src/routes/invoices/index.tsx:162
+#: src/routes/invoices/index.tsx:152
 msgid "New invoice"
 msgstr "Neue Rechnung"
 
@@ -1128,8 +1142,8 @@ msgid "New order"
 msgstr "Neue Bestellung"
 
 #: src/layouts/base.tsx:424
-#: src/routes/organizations/index.tsx:185
-#: src/routes/organizations/index.tsx:293
+#: src/routes/organizations/index.tsx:187
+#: src/routes/organizations/index.tsx:296
 msgid "New organization"
 msgstr "Neue Organisation"
 
@@ -1137,7 +1151,7 @@ msgstr "Neue Organisation"
 msgid "New Organization"
 msgstr "Neue Organisation"
 
-#: src/routes/settings/users.tsx:312
+#: src/routes/settings/users.tsx:324
 msgid "New password (leave blank to keep current)"
 msgstr "Neues Passwort (leer lassen, um das aktuelle beizubehalten)"
 
@@ -1168,8 +1182,8 @@ msgstr "Neuer Steuersatz"
 #~ msgid "New Time Entry"
 #~ msgstr "Neuer Zeiteintrag"
 
-#: src/routes/settings/users.tsx:150
-#: src/routes/settings/users.tsx:234
+#: src/routes/settings/users.tsx:162
+#: src/routes/settings/users.tsx:246
 msgid "New user"
 msgstr "Neuer Benutzer"
 
@@ -1189,10 +1203,10 @@ msgstr "Nächste Ausführung: {nextRunLabel}"
 #: src/routes/inventory.tsx:186
 #: src/routes/invoices/details.tsx:1046
 #: src/routes/invoices/details.tsx:1096
-#: src/routes/invoices/index.tsx:132
+#: src/routes/invoices/index.tsx:122
 #: src/routes/orders/details.tsx:469
 #: src/routes/orders/details.tsx:493
-#: src/routes/settings/users.tsx:247
+#: src/routes/settings/users.tsx:259
 msgid "No"
 msgstr "Nein"
 
@@ -1321,7 +1335,7 @@ msgstr "Bestellstatus aktualisiert"
 msgid "Order update failed"
 msgstr "Bestellung-Aktualisierung fehlgeschlagen"
 
-#: src/routes/organizations/index.tsx:250
+#: src/routes/organizations/index.tsx:253
 msgid "order(s)"
 msgstr "Bestellung(en)"
 
@@ -1342,11 +1356,11 @@ msgstr "Organisation erstellt"
 msgid "Organization creation failed"
 msgstr "Organisation-Erstellung fehlgeschlagen"
 
-#: src/routes/organizations/index.tsx:147
+#: src/routes/organizations/index.tsx:149
 msgid "Organization deleted"
 msgstr "Organisation gelöscht"
 
-#: src/routes/organizations/index.tsx:150
+#: src/routes/organizations/index.tsx:152
 msgid "Organization deletion failed"
 msgstr "Organisation-Löschung fehlgeschlagen"
 
@@ -1363,7 +1377,7 @@ msgid "Organization updated successfully"
 msgstr "Organisation erfolgreich aktualisiert"
 
 #: src/layouts/base.tsx:290
-#: src/routes/organizations/index.tsx:172
+#: src/routes/organizations/index.tsx:174
 msgid "Organizations"
 msgstr "Organisationen"
 
@@ -1376,24 +1390,26 @@ msgstr "Ausgang"
 msgid "Outbound Deliveries"
 msgstr "Ausgangslieferungen"
 
+#: src/routes/invoices/index.tsx:203
+msgid "Overdue"
+msgstr "Überfällig"
+
 #: src/components/invoices/pdf.tsx:228
 #: src/routes/invoices/details.tsx:633
 #: src/routes/settings/invoice.tsx:124
 msgid "Overdue charge"
 msgstr "Verzögerungszüschlag"
 
-#: src/components/invoices/state-select.tsx:35
-#: src/components/invoices/state-select.tsx:62
-#: src/routes/invoices/index.tsx:58
+#: src/types/invoice.ts:28
 msgid "Paid"
 msgstr "Bezahlt"
 
 #: src/routes/login.tsx:108
-#: src/routes/settings/users.tsx:312
+#: src/routes/settings/users.tsx:324
 msgid "Password"
 msgstr "Passwort"
 
-#: src/routes/settings/users.tsx:332
+#: src/routes/settings/users.tsx:344
 msgid "Passwords do not match"
 msgstr "Passwörter stimmen nicht überein"
 
@@ -1410,8 +1426,8 @@ msgstr "Prozentsatz"
 #: src/components/clients/form.tsx:165
 #: src/components/clients/form.tsx:166
 #: src/routes/clients.tsx:123
-#: src/routes/organizations/index.tsx:219
-#: src/routes/organizations/index.tsx:351
+#: src/routes/organizations/index.tsx:221
+#: src/routes/organizations/index.tsx:354
 msgid "Phone"
 msgstr "Telefon"
 
@@ -1531,7 +1547,7 @@ msgstr "Produkt-Aktualisierung fehlgeschlagen"
 msgid "Product updated"
 msgstr "Produkt aktualisiert"
 
-#: src/routes/organizations/index.tsx:249
+#: src/routes/organizations/index.tsx:252
 msgid "product(s)"
 msgstr "Produkt(e)"
 
@@ -1617,7 +1633,7 @@ msgstr "Referenz"
 msgid "Refresh"
 msgstr "Aktualisieren"
 
-#: src/routes/organizations/index.tsx:361
+#: src/routes/organizations/index.tsx:364
 msgid "Registration number"
 msgstr "Registrierungsnummer"
 
@@ -1691,8 +1707,8 @@ msgstr "Aus Datei wiederherstellen"
 msgid "Retention (days)"
 msgstr "Aufbewahrung (Tage)"
 
-#: src/routes/settings/users.tsx:177
-#: src/routes/settings/users.tsx:297
+#: src/routes/settings/users.tsx:189
+#: src/routes/settings/users.tsx:309
 msgid "Role"
 msgstr "Rolle"
 
@@ -1707,10 +1723,10 @@ msgstr "Verkauf"
 #: src/routes/deliveries/details.tsx:477
 #: src/routes/invoices/details.tsx:1109
 #: src/routes/orders/details.tsx:511
-#: src/routes/organizations/index.tsx:302
+#: src/routes/organizations/index.tsx:305
 #: src/routes/settings/backup.tsx:225
 #: src/routes/settings/invoice.tsx:266
-#: src/routes/settings/users.tsx:259
+#: src/routes/settings/users.tsx:271
 msgid "Save"
 msgstr "Speichern"
 
@@ -1724,10 +1740,10 @@ msgstr "Zeitplan gespeichert"
 
 #: src/routes/deliveries.tsx:64
 #: src/routes/orders.tsx:65
-#: src/routes/organizations/index.tsx:178
+#: src/routes/organizations/index.tsx:180
 #: src/routes/products.tsx:64
 #: src/routes/settings/tax-rates.tsx:56
-#: src/routes/settings/users.tsx:142
+#: src/routes/settings/users.tsx:154
 msgid "Search"
 msgstr "Suchen"
 
@@ -1736,7 +1752,7 @@ msgstr "Suchen"
 #~ msgstr "Projekte suchen..."
 
 #: src/routes/clients.tsx:63
-#: src/routes/invoices/index.tsx:157
+#: src/routes/invoices/index.tsx:147
 msgid "Search text"
 msgstr "Suchtext"
 
@@ -1760,11 +1776,11 @@ msgstr "Produkt auswählen"
 #~ msgid "Select client (optional)"
 #~ msgstr "Kunde auswählen (optional)"
 
-#: src/routes/organizations/index.tsx:329
+#: src/routes/organizations/index.tsx:332
 msgid "Select country"
 msgstr "Land auswählen"
 
-#: src/routes/organizations/index.tsx:397
+#: src/routes/organizations/index.tsx:400
 msgid "Select date format"
 msgstr "Datumsformat auswählen"
 
@@ -1796,8 +1812,7 @@ msgstr "Senden"
 msgid "Send Feedback"
 msgstr "Feedback senden"
 
-#: src/components/invoices/state-select.tsx:31
-#: src/components/invoices/state-select.tsx:60
+#: src/types/invoice.ts:26
 msgid "Sent"
 msgstr "Gesendet"
 
@@ -2033,7 +2048,7 @@ msgstr "Steuersatz-Aktualisierung fehlgeschlagen"
 msgid "Tax rate updated successfully"
 msgstr "Steuersatz erfolgreich aktualisiert"
 
-#: src/routes/organizations/index.tsx:252
+#: src/routes/organizations/index.tsx:255
 msgid "tax rate(s)"
 msgstr "Steuersatz/-sätze"
 
@@ -2046,8 +2061,8 @@ msgstr "Steuersätze"
 msgid "Tell us what you think, report a bug, or suggest an improvement..."
 msgstr "Teilen Sie uns Ihre Meinung mit, melden Sie einen Fehler oder schlagen Sie eine Verbesserung vor..."
 
-#: src/routes/organizations/index.tsx:269
 #: src/routes/organizations/index.tsx:272
+#: src/routes/organizations/index.tsx:275
 msgid "This cannot be undone."
 msgstr "Dies kann nicht rückgängig gemacht werden."
 
@@ -2060,14 +2075,14 @@ msgstr "Dies kann nicht rückgängig gemacht werden."
 #: src/routes/invoices/details.tsx:751
 #: src/routes/invoices/details.tsx:794
 #: src/routes/invoices/details.tsx:877
-#: src/routes/organizations/index.tsx:314
+#: src/routes/organizations/index.tsx:317
 #: src/routes/settings/invoice.tsx:98
 #: src/routes/settings/invoice.tsx:153
 #: src/routes/settings/invoice.tsx:215
 msgid "This field is required!"
 msgstr "Dieses Feld ist erforderlich!"
 
-#: src/routes/organizations/index.tsx:262
+#: src/routes/organizations/index.tsx:265
 msgid "This will permanently delete:"
 msgstr "Dies wird dauerhaft löschen:"
 
@@ -2186,13 +2201,13 @@ msgstr "Laden Sie eine .db-Datei hoch, um die aktuelle Datenbank zu ersetzen."
 msgid "Upload logo"
 msgstr "Logo hochladen"
 
-#: src/routes/settings/users.tsx:184
-#: src/routes/settings/users.tsx:303
+#: src/routes/settings/users.tsx:196
+#: src/routes/settings/users.tsx:315
 msgid "User"
 msgstr "Benutzer"
 
 #: src/layouts/base.tsx:335
-#: src/routes/settings/users.tsx:136
+#: src/routes/settings/users.tsx:148
 msgid "Users"
 msgstr "Benutzer"
 
@@ -2212,8 +2227,8 @@ msgstr "Anzeigen"
 #: src/components/invoices/state-select.tsx:39
 #: src/components/invoices/state-select.tsx:64
 #: src/routes/invoices/index.tsx:62
-msgid "Void"
-msgstr "Ungültig"
+#~ msgid "Void"
+#~ msgstr "Ungültig"
 
 #: src/components/clients/form.tsx:123
 msgid "Warning: This will also delete {invoiceCount} related invoice(s)."
@@ -2222,7 +2237,7 @@ msgstr "Warnung: Dies löscht auch {invoiceCount} zugehörige Rechnung(en)."
 #: src/components/clients/form.tsx:168
 #: src/components/clients/form.tsx:169
 #: src/routes/clients.tsx:145
-#: src/routes/organizations/index.tsx:356
+#: src/routes/organizations/index.tsx:359
 msgid "Website"
 msgstr "Website"
 
@@ -2247,10 +2262,10 @@ msgstr "Website"
 #: src/routes/inventory.tsx:185
 #: src/routes/invoices/details.tsx:1045
 #: src/routes/invoices/details.tsx:1095
-#: src/routes/invoices/index.tsx:131
+#: src/routes/invoices/index.tsx:121
 #: src/routes/orders/details.tsx:468
 #: src/routes/orders/details.tsx:492
-#: src/routes/settings/users.tsx:246
+#: src/routes/settings/users.tsx:258
 msgid "Yes"
 msgstr "Ja"
 

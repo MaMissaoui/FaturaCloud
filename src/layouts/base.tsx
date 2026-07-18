@@ -469,16 +469,8 @@ export default function BaseLayout() {
                   {map(locales, (locale) => {
                     const languageMap: Record<string, string> = {
                       en: "🇺🇸 English (US)",
-                      "en-GB": "🇬🇧 English (UK)",
                       de: "🇩🇪 German",
-                      et: "🇪🇪 Estonian",
-                      fi: "🇫🇮 Finnish",
                       fr: "🇫🇷 French",
-                      el: "🇬🇷 Greek",
-                      nl: "🇳🇱 Dutch",
-                      pt: "🇵🇹 Portuguese",
-                      sv: "🇸🇪 Swedish",
-                      uk: "🇺🇦 Ukrainian",
                     };
                     const languageText = languageMap[locale] || toUpper(locale);
                     const flagOnly = languageText.split(" ")[0];
