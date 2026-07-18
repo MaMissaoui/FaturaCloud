@@ -27,6 +27,14 @@ export default defineConfig(async () => ({
       sourcemaps: {
         assets: "./dist/**",
         ignore: ["node_modules"],
+        // Never ship source maps in the deployed artifact: the Go server embeds
+        // all of dist/ (//go:embed all:dist), so any .map left here is served
+        // publicly at /assets/*.js.map — full original source exposure plus
+        // dead weight in the binary. The plugin uploads them to Sentry first
+        // (when an auth token is present), then deletes them; with no token it
+        // just deletes. Combined with build.sourcemap: "hidden" below (no
+        // sourceMappingURL comment), maps exist only inside Sentry.
+        filesToDeleteAfterUpload: ["./dist/**/*.map"],
       },
     }),
   ],
@@ -61,7 +69,12 @@ export default defineConfig(async () => ({
   build: {
     target: "es2020",
     minify: "esbuild",
-    sourcemap: true,
+    // "hidden" still generates maps (Sentry uploads them at build time) but
+    // omits the //# sourceMappingURL comment, so even a stray .map is never
+    // advertised to the browser. The Sentry plugin deletes them post-upload
+    // (see sourcemaps.filesToDeleteAfterUpload) so none reach the dist/ the
+    // Go binary embeds.
+    sourcemap: "hidden",
     outDir: "dist",
   },
 }));
