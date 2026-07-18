@@ -24,32 +24,41 @@ const (
 )
 
 var (
-	loginMu      sync.Mutex
-	loginBuckets = map[string]*loginBucket{}
+	loginMu sync.Mutex
+	// loginBuckets is keyed on source IP; loginEmailBuckets on the lowercased
+	// email. Both share the same window/limit. Keying only on IP lets a botnet
+	// rotating source addresses grind one account unthrottled; keying only on
+	// email lets one noisy IP lock every account out — so both apply.
+	loginBuckets      = map[string]*loginBucket{}
+	loginEmailBuckets = map[string]*loginBucket{}
 )
 
-func checkLoginRate(ip string) bool {
+// checkRate enforces loginMaxAttempts per loginWindow for one key in the given
+// bucket map. It takes loginMu itself.
+func checkRate(buckets map[string]*loginBucket, key string) bool {
 	loginMu.Lock()
 	defer loginMu.Unlock()
-	b, ok := loginBuckets[ip]
+	b, ok := buckets[key]
 	if !ok || time.Now().After(b.windowEnd) {
-		loginBuckets[ip] = &loginBucket{count: 1, windowEnd: time.Now().Add(loginWindow)}
+		buckets[key] = &loginBucket{count: 1, windowEnd: time.Now().Add(loginWindow)}
 		return true
 	}
 	b.count++
 	return b.count <= loginMaxAttempts
 }
 
-// sweepLoginBuckets periodically evicts expired rate-limit entries so
-// loginBuckets doesn't grow unbounded as distinct source IPs attempt to log in.
+// sweepLoginBuckets periodically evicts expired rate-limit entries so neither
+// bucket map grows unbounded as distinct IPs/emails attempt to log in.
 func sweepLoginBuckets() {
 	for {
 		time.Sleep(loginWindow)
 		loginMu.Lock()
 		now := time.Now()
-		for ip, b := range loginBuckets {
-			if now.After(b.windowEnd) {
-				delete(loginBuckets, ip)
+		for _, buckets := range []map[string]*loginBucket{loginBuckets, loginEmailBuckets} {
+			for key, b := range buckets {
+				if now.After(b.windowEnd) {
+					delete(buckets, key)
+				}
 			}
 		}
 		loginMu.Unlock()
@@ -113,7 +122,7 @@ func mustBcryptHash(password string) string {
 
 func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	ip := h.clientIP(r)
-	if !checkLoginRate(ip) {
+	if !checkRate(loginBuckets, ip) {
 		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
 	}
@@ -123,6 +132,13 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 	if err := decodeJSON(w, r, &body); err != nil {
+		return
+	}
+
+	// Also throttle per account so IP rotation can't grind a single email.
+	// Same 429 message as the IP limit — no signal about which limit tripped.
+	if body.Email != "" && !checkRate(loginEmailBuckets, strings.ToLower(body.Email)) {
+		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
 	}
 
