@@ -56,9 +56,9 @@ import { pdf } from "@react-pdf/renderer";
 import { Document, Page } from "react-pdf";
 import dayjs from "dayjs";
 
-// Import CSS for react-pdf
-import "react-pdf/dist/esm/Page/AnnotationLayer.css";
-import "react-pdf/dist/esm/Page/TextLayer.css";
+// Import CSS for react-pdf (v10 dropped the esm/ path segment)
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
 
 // Configure PDF.js worker
 import { pdfjs } from "react-pdf";
