@@ -11,6 +11,7 @@ import {
   Dropdown,
   MenuProps,
   Popconfirm,
+  Tooltip,
 } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
@@ -193,7 +194,17 @@ const Invoices = () => {
           dataIndex="dueDate"
           key="dueDate"
           sorter={(a: any, b: any) => dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()}
-          render={(date) => (date ? formatDate(date) : "-")}
+          render={(date, invoice: any) => {
+            if (!date) return "-";
+            // A sent (unpaid) invoice past its due date is overdue — flag it.
+            const overdue = invoice.state === "sent" && dayjs(date).valueOf() < Date.now();
+            if (!overdue) return formatDate(date);
+            return (
+              <Tooltip title={t`Overdue`}>
+                <Typography.Text type="danger">{formatDate(date)}</Typography.Text>
+              </Tooltip>
+            );
+          }}
         />
         <Table.Column
           title={<Trans>Total</Trans>}
