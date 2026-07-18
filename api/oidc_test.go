@@ -399,6 +399,11 @@ func TestOIDCCallback_RoleResyncsWithoutTouchingDisplayName(t *testing.T) {
 	// Admin curates the display name locally between logins.
 	h.db.DB.Exec(`UPDATE users SET displayName = ? WHERE email = ?`, "Alice (Finance)", "alice@example.com")
 
+	// Seed a second admin so Alice is no longer the *last* active admin —
+	// otherwise the last-admin demotion guard (provisionOrSyncUser) correctly
+	// refuses to demote her via SSO role sync, and the resync below can't run.
+	seedUser(t, h.db, "other-admin", "admin", 1)
+
 	// Second login: removed from admins group at the IdP.
 	idp.idTokenFor = func(code string) (string, string) {
 		claims := idp.baseClaims("n2")
