@@ -221,7 +221,7 @@ Schema conventions:
 - Primary keys are 21-character nanoid strings
 - Monetary values stored as integer cents — the form layer converts (user input × 100 → store; stored ÷ 100 → display); atoms and API pass cents through unchanged
 - Dates stored as Unix timestamps in milliseconds
-- Organization logo stored as BLOB (raw bytes) — Go's `encoding/json` marshals `[]byte` as base64; the frontend calls `atob`/`btoa` accordingly
+- Organization logo stored as BLOB (raw bytes) — Go's `encoding/json` marshals `[]byte` as base64; the frontend calls `atob`/`btoa` accordingly. `GET /api/organizations` (the list) **omits** the logo column — the list is re-fetched on every auth change, so multi-MB logos there are pure waste; only the single-org `GET /api/organizations/{id}` returns it (what the invoice PDF and settings form read)
 - `products.type` is `"product"` | `"service"` (default `"service"`)
 - `products.sku` (labeled "Product code" in the UI) must be unique per organization — enforced by a `UNIQUE(organizationId, sku)` index, not a DB-level `NOT NULL` (SQLite can't add that retroactively without a table rebuild); required-ness is enforced in `api/products.go` and the frontend form instead. The New Product form proposes a code derived from the name, deduplicated against other products in the org
 - `stockMovements.quantity` is a **signed delta**: positive = stock in, negative = stock out/adjustment; `products.stockQuantity` is always `SUM(quantity)` over all movements and is recomputed inside a transaction on every insert/delete — never update it directly

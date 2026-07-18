@@ -78,7 +78,16 @@ type UpdateOrganizationRequest struct {
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
-	err := d.DB.Select(&orgs, `SELECT * FROM organizations ORDER BY name ASC`)
+	// Every column except logo: the list is re-fetched on every auth change
+	// and can hold many orgs, so shipping each org's (potentially multi-MB)
+	// logo BLOB here is pure waste. The single-org GetOrganization still
+	// returns it — that's what the invoice PDF and settings pages read.
+	err := d.DB.Select(&orgs, `
+		SELECT id, code, name, country, address, email, phone, website,
+		       registration_number, vatin, bank_name, iban, currency,
+		       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
+		       createdAt, invoice_number_format, invoice_number_counter, date_format
+		FROM organizations ORDER BY name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("get_organizations: %w", err)
 	}
