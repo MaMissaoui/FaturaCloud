@@ -49,28 +49,32 @@ import { currentUserAtom } from "src/atoms/auth";
 import { getToken, clearToken } from "src/api/client";
 import { GetMe } from "src/api";
 import BaseLayout from "src/layouts/base";
-import Clients from "src/routes/clients";
-import Products from "src/routes/products";
-import Inventory from "src/routes/inventory";
-import Orders from "src/routes/orders";
-import OrderDetails from "src/routes/orders/details";
-import Deliveries from "src/routes/deliveries";
-import DeliveryDetails from "src/routes/deliveries/details";
 import Index from "src/routes/index";
-import Invoices from "src/routes/invoices";
-import InvoiceDetails from "src/routes/invoices/details.tsx";
 import LoginPage from "src/routes/login";
 import AuthCallback from "src/routes/auth-callback";
-import SettingsInvoice from "src/routes/settings/invoice";
-import SettingsTaxRates from "src/routes/settings/tax-rates";
-import OrganizationsList from "src/routes/organizations/index";
-import SettingsBackup from "src/routes/settings/backup";
-import SettingsUsers from "src/routes/settings/users";
-import NewOrganization from "src/routes/organizations/new";
-
-// Components
 import Loading from "src/components/loading";
-import TaxRateForm from "src/components/tax-rates/form.tsx";
+
+// Route pages are code-split so the first paint (login) doesn't download the
+// PDF stack (react-pdf/pdfjs — pulled in by invoice details), dnd-kit, or the
+// settings pages. BaseLayout, Index, Login, AuthCallback and Loading stay eager
+// as the shell/first-paint set. Each lazy chunk loads on first navigation to
+// its route, behind the <Suspense> fallback below.
+const Clients = lazy(() => import("src/routes/clients"));
+const Products = lazy(() => import("src/routes/products"));
+const Inventory = lazy(() => import("src/routes/inventory"));
+const Orders = lazy(() => import("src/routes/orders"));
+const OrderDetails = lazy(() => import("src/routes/orders/details"));
+const Deliveries = lazy(() => import("src/routes/deliveries"));
+const DeliveryDetails = lazy(() => import("src/routes/deliveries/details"));
+const Invoices = lazy(() => import("src/routes/invoices"));
+const InvoiceDetails = lazy(() => import("src/routes/invoices/details.tsx"));
+const SettingsInvoice = lazy(() => import("src/routes/settings/invoice"));
+const SettingsTaxRates = lazy(() => import("src/routes/settings/tax-rates"));
+const OrganizationsList = lazy(() => import("src/routes/organizations/index"));
+const SettingsBackup = lazy(() => import("src/routes/settings/backup"));
+const SettingsUsers = lazy(() => import("src/routes/settings/users"));
+const NewOrganization = lazy(() => import("src/routes/organizations/new"));
+const TaxRateForm = lazy(() => import("src/components/tax-rates/form.tsx"));
 
 dayjs.extend(localizedFormat);
 
@@ -224,6 +228,7 @@ const AppContent = () => {
             </Suspense>
           )}
           <I18nProvider i18n={i18n}>
+        <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -266,6 +271,7 @@ const AppContent = () => {
             <Route path="users" element={<SettingsUsers />} />
           </Route>
         </Routes>
+        </Suspense>
           </I18nProvider>
         </>
       )}
