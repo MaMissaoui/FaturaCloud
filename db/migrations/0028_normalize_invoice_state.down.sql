@@ -1,0 +1,3 @@
+-- No-op: the up migration is a lossy normalization. Once "void" rows have been
+-- rewritten to "cancelled" they are indistinguishable from genuinely-cancelled
+-- invoices, so mapping "cancelled" back to "void" would corrupt real data.

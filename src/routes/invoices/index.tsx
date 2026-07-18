@@ -40,31 +40,20 @@ import { organizationAtom } from "src/atoms/organization";
 import { getFormattedNumber } from "src/utils/currencies";
 import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
+import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
 
 const { Title } = Typography;
 
 const searchAtom = atom<string>("");
 
-const stateFilter = [
-  {
-    text: t`Draft`,
-    value: "draft",
-  },
-  {
-    text: t`Confirmed`,
-    value: "confirmed",
-  },
-  {
-    text: t`Paid`,
-    value: "paid",
-  },
-  {
-    text: t`Void`,
-    value: "void",
-  },
-];
-
 const Invoices = () => {
+  // Built inside the component (not at module scope) so the filter labels
+  // follow the active locale rather than freezing at import-time locale.
+  const stateFilter = INVOICE_STATES.map((value) => ({
+    text: invoiceStateLabel(value),
+    value,
+  }));
+
   const { i18n } = useLingui();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();

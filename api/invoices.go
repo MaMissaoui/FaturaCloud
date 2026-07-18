@@ -73,7 +73,7 @@ func (h *handler) updateInvoiceState(w http.ResponseWriter, r *http.Request) {
 	}
 	invoice, err := h.db.UpdateInvoiceState(id, body.State)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, invoice)

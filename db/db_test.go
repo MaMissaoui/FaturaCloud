@@ -938,3 +938,47 @@ func TestUpdateInvoiceRejectsLineItemsOnlyMismatch(t *testing.T) {
 		t.Fatal("expected new line items that don't match stored totals to be rejected")
 	}
 }
+
+// TestInvoiceStateValidation covers F20: invoice state is validated against
+// the canonical set on create and on the PATCH state endpoint, empty defaults
+// to draft, and unknown values are rejected.
+func TestInvoiceStateValidation(t *testing.T) {
+	d := newTestDB(t)
+	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	client, _ := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+
+	base := func(id, state string) CreateInvoiceRequest {
+		return CreateInvoiceRequest{
+			ID: id, OrganizationID: org.ID, Number: id, State: state,
+			ClientID: client.ID, Date: 1700000000000, Currency: "EUR",
+			Total: 0, TaxTotal: 0, SubTotal: 0,
+			LineItems: []CreateInvoiceLineItemRequest{},
+		}
+	}
+
+	// Unknown state on create is rejected.
+	if _, err := d.CreateInvoice(base("inv-bad", "confirmed")); err == nil {
+		t.Fatal("expected create with unknown state to be rejected")
+	}
+
+	// Empty state defaults to draft.
+	inv, err := d.CreateInvoice(base("inv-1", ""))
+	if err != nil {
+		t.Fatalf("CreateInvoice with empty state: %v", err)
+	}
+	if inv.State != "draft" {
+		t.Fatalf("expected empty state to default to draft, got %q", inv.State)
+	}
+
+	// Each canonical state is accepted by the PATCH endpoint.
+	for _, s := range []string{"sent", "paid", "cancelled", "draft"} {
+		if _, err := d.UpdateInvoiceState(inv.ID, s); err != nil {
+			t.Fatalf("UpdateInvoiceState(%q): %v", s, err)
+		}
+	}
+
+	// A non-canonical state is rejected by the PATCH endpoint.
+	if _, err := d.UpdateInvoiceState(inv.ID, "confirmed"); err == nil {
+		t.Fatal("expected UpdateInvoiceState with unknown state to be rejected")
+	}
+}
