@@ -40,22 +40,22 @@ type Invoice struct {
 
 // InvoiceLineItem mirrors the invoiceLineItems table.
 type InvoiceLineItem struct {
-	ID          string   `db:"id"          json:"id"`
-	InvoiceID   string   `db:"invoiceId"   json:"invoiceId"`
-	Description *string  `db:"description" json:"description"`
-	Quantity    float64  `db:"quantity"    json:"quantity"`
-	UnitPrice   int64    `db:"unitPrice"   json:"unitPrice"`
-	TaxRate     *string  `db:"taxRate"     json:"taxRate"`
-	Position    int      `db:"position"    json:"position"`
-	CreatedAt   *string  `db:"createdAt"   json:"createdAt"`
+	ID          string  `db:"id"          json:"id"`
+	InvoiceID   string  `db:"invoiceId"   json:"invoiceId"`
+	Description *string `db:"description" json:"description"`
+	Quantity    float64 `db:"quantity"    json:"quantity"`
+	UnitPrice   int64   `db:"unitPrice"   json:"unitPrice"`
+	TaxRate     *string `db:"taxRate"     json:"taxRate"`
+	Position    int     `db:"position"    json:"position"`
+	CreatedAt   *string `db:"createdAt"   json:"createdAt"`
 }
 
 // CreateInvoiceLineItemRequest is a single line item within a create/update request.
 type CreateInvoiceLineItemRequest struct {
-	Description *string  `json:"description"`
-	Quantity    float64  `json:"quantity"`
-	UnitPrice   float64  `json:"unitPrice"`
-	TaxRate     *string  `json:"taxRate"`
+	Description *string `json:"description"`
+	Quantity    float64 `json:"quantity"`
+	UnitPrice   float64 `json:"unitPrice"`
+	TaxRate     *string `json:"taxRate"`
 }
 
 // CreateInvoiceRequest is the payload for creating an invoice.

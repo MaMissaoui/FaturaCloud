@@ -14,22 +14,22 @@ var ErrTaxRateInUse = errors.New("tax rate is still used by one or more invoices
 
 // TaxRate mirrors the taxRates table.
 type TaxRate struct {
-	ID             string   `db:"id"             json:"id"`
-	OrganizationID string   `db:"organizationId" json:"organizationId"`
-	Name           string   `db:"name"           json:"name"`
-	Description    *string  `db:"description"    json:"description"`
-	Percentage     float64  `db:"percentage"     json:"percentage"`
-	IsDefault      *int64   `db:"isDefault"      json:"isDefault"`
+	ID             string  `db:"id"             json:"id"`
+	OrganizationID string  `db:"organizationId" json:"organizationId"`
+	Name           string  `db:"name"           json:"name"`
+	Description    *string `db:"description"    json:"description"`
+	Percentage     float64 `db:"percentage"     json:"percentage"`
+	IsDefault      *int64  `db:"isDefault"      json:"isDefault"`
 }
 
 // CreateTaxRateRequest is the payload for creating a tax rate.
 type CreateTaxRateRequest struct {
-	ID             string   `json:"id"`
-	OrganizationID string   `json:"organizationId"`
-	Name           string   `json:"name"`
-	Description    *string  `json:"description"`
-	Percentage     float64  `json:"percentage"`
-	IsDefault      *int64   `json:"isDefault"`
+	ID             string  `json:"id"`
+	OrganizationID string  `json:"organizationId"`
+	Name           string  `json:"name"`
+	Description    *string `json:"description"`
+	Percentage     float64 `json:"percentage"`
+	IsDefault      *int64  `json:"isDefault"`
 }
 
 // UpdateTaxRateRequest is the payload for updating a tax rate.

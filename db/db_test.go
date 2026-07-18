@@ -196,7 +196,6 @@ func TestInvoiceCRUD(t *testing.T) {
 	}
 }
 
-
 func TestOrganizationCascadeDeletesClients(t *testing.T) {
 	d := newTestDB(t)
 
