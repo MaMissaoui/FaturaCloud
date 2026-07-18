@@ -31,6 +31,9 @@ jobs:
       - name: Test
         run: go test -race ./...
 
+      - name: Vulnerability scan
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -48,6 +51,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        # --prod so a moderate advisory in the dev-only chain doesn't block a
+        # release; high threshold to fail only on genuinely serious findings.
+        run: pnpm audit --prod --audit-level high
 
       - name: Lint
         run: pnpm lint
