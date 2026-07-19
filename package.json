@@ -23,7 +23,7 @@
     "@lingui/react": "^6.5.0",
     "@react-pdf/renderer": "4.5.1",
     "@sentry/react": "^10.66.0",
-    "antd": "5.26.1",
+    "antd": "6.5.1",
     "dayjs": "^1.11.21",
     "decimal.js": "^10.6.0",
     "jotai": "2.20.2",
