@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { Product, TaxRate } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Badge, Button, Col, Input, Row, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -42,7 +43,7 @@ const Products = () => {
   }, [location, setProducts, setTaxRates]);
 
   const filtered = search
-    ? filter(products, (p: any) =>
+    ? filter(products, (p: Product) =>
         some(["name", "sku", "description", "unit", "type"], (field) =>
           includes(toString(get(p, field)).toLowerCase(), search.toLowerCase()),
         ),
@@ -79,7 +80,7 @@ const Products = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
-            onRow={(record: any) => ({
+            onRow={(record: Product) => ({
               onClick: () => navigate("/products", { state: { productModal: true, productId: record.id } }),
               style: { cursor: "pointer" },
             })}
@@ -87,7 +88,7 @@ const Products = () => {
             <Table.Column
               title={<Trans>Name</Trans>}
               key="name"
-              sorter={(a: any, b: any) => a.name.localeCompare(b.name)}
+              sorter={(a: Product, b: Product) => a.name.localeCompare(b.name)}
               render={(p) => (
                 <Link
                   to="/products"
@@ -102,7 +103,7 @@ const Products = () => {
               title={<Trans>Type</Trans>}
               dataIndex="type"
               key="type"
-              sorter={(a: any, b: any) => (a.type ?? "").localeCompare(b.type ?? "")}
+              sorter={(a: Product, b: Product) => (a.type ?? "").localeCompare(b.type ?? "")}
               render={(type: string) =>
                 type === "product" ? (
                   <Tag color="blue"><Trans>Product</Trans></Tag>
@@ -115,15 +116,15 @@ const Products = () => {
               title={<Trans>SKU</Trans>}
               dataIndex="sku"
               key="sku"
-              sorter={(a: any, b: any) => (a.sku ?? "").localeCompare(b.sku ?? "")}
+              sorter={(a: Product, b: Product) => (a.sku ?? "").localeCompare(b.sku ?? "")}
             />
             <Table.Column
               title={<Trans>Price</Trans>}
               dataIndex="price"
               key="price"
               align="right"
-              sorter={(a: any, b: any) => a.price - b.price}
-              render={(price: number, p: any) =>
+              sorter={(a: Product, b: Product) => a.price - b.price}
+              render={(price: number, p: Product) =>
                 `${formatPrice(price)}${p.unit ? ` / ${p.unit}` : ""}`
               }
             />
@@ -132,21 +133,21 @@ const Products = () => {
               dataIndex="unitCost"
               key="unitCost"
               align="right"
-              sorter={(a: any, b: any) => (a.unitCost ?? 0) - (b.unitCost ?? 0)}
+              sorter={(a: Product, b: Product) => (a.unitCost ?? 0) - (b.unitCost ?? 0)}
               render={(cost: number | null) => (cost != null ? formatPrice(cost) : "—")}
             />
             <Table.Column
               title={<Trans>Tax rate</Trans>}
               dataIndex="taxRateId"
               key="taxRateId"
-              sorter={(a: any, b: any) => {
-                const trA = taxRates.find((r: any) => r.id === a.taxRateId);
-                const trB = taxRates.find((r: any) => r.id === b.taxRateId);
+              sorter={(a: Product, b: Product) => {
+                const trA = taxRates.find((r: TaxRate) => r.id === a.taxRateId);
+                const trB = taxRates.find((r: TaxRate) => r.id === b.taxRateId);
                 return (trA?.name ?? "").localeCompare(trB?.name ?? "");
               }}
               render={(taxRateId: string | null) => {
                 if (!taxRateId) return "—";
-                const tr = taxRates.find((r: any) => r.id === taxRateId);
+                const tr = taxRates.find((r: TaxRate) => r.id === taxRateId);
                 return tr ? `${tr.name} (${tr.percentage}%)` : "—";
               }}
             />
@@ -154,8 +155,8 @@ const Products = () => {
               title={<Trans>Stock</Trans>}
               key="stock"
               align="center"
-              sorter={(a: any, b: any) => (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0)}
-              render={(p: any) => {
+              sorter={(a: Product, b: Product) => (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0)}
+              render={(p: Product) => {
                 if (!p.stockEnabled) return null;
                 const qty: number = p.stockQuantity ?? 0;
                 const status = qty <= 0 ? "error" : qty <= 5 ? "warning" : "success";

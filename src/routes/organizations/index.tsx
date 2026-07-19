@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { Organization } from "src/types/models";
 import {
   Button,
   Card,
@@ -202,47 +203,47 @@ export default function Organizations() {
           title={<Trans>Name</Trans>}
           dataIndex="name"
           key="name"
-          sorter={(a: any, b: any) => (a.name ?? "").localeCompare(b.name ?? "")}
+          sorter={(a: Organization, b: Organization) => (a.name ?? "").localeCompare(b.name ?? "")}
         />
         <Table.Column
           title={<Trans>Code</Trans>}
           dataIndex="code"
           key="code"
           width={120}
-          sorter={(a: any, b: any) => (a.code ?? "").localeCompare(b.code ?? "")}
+          sorter={(a: Organization, b: Organization) => (a.code ?? "").localeCompare(b.code ?? "")}
         />
         <Table.Column
           title={<Trans>Email</Trans>}
           dataIndex="email"
           key="email"
-          sorter={(a: any, b: any) => (a.email ?? "").localeCompare(b.email ?? "")}
+          sorter={(a: Organization, b: Organization) => (a.email ?? "").localeCompare(b.email ?? "")}
         />
         <Table.Column
           title={<Trans>Phone</Trans>}
           dataIndex="phone"
           key="phone"
           width={150}
-          sorter={(a: any, b: any) => (a.phone ?? "").localeCompare(b.phone ?? "")}
+          sorter={(a: Organization, b: Organization) => (a.phone ?? "").localeCompare(b.phone ?? "")}
         />
         <Table.Column
           title="IBAN"
           dataIndex="iban"
           key="iban"
           width={200}
-          sorter={(a: any, b: any) => (a.iban ?? "").localeCompare(b.iban ?? "")}
+          sorter={(a: Organization, b: Organization) => (a.iban ?? "").localeCompare(b.iban ?? "")}
         />
         <Table.Column
           title={<Trans>Currency</Trans>}
           dataIndex="currency"
           key="currency"
           width={100}
-          sorter={(a: any, b: any) => (a.currency ?? "").localeCompare(b.currency ?? "")}
+          sorter={(a: Organization, b: Organization) => (a.currency ?? "").localeCompare(b.currency ?? "")}
         />
         <Table.Column
           title=""
           key="actions"
           width={80}
-          render={(_: any, record: any) => {
+          render={(_: unknown, record: Organization) => {
             if (!isAdmin) return null;
             const counts = usageCounts[record.id];
             const breakdown = counts
