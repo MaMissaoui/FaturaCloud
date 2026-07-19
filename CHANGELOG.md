@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-19
+
+A security-hardening and dependency release. The headline change moves session
+authentication off browser-readable storage and onto an httpOnly cookie, which
+is a breaking change for existing sessions and any API client that sent a Bearer
+token.
+
+### Security
+- **BREAKING:** session authentication now uses an httpOnly, `SameSite=Lax` cookie (`fc_token`) instead of a JWT in `localStorage` with an `Authorization: Bearer` header. Because page JavaScript can no longer read the token, an XSS flaw can no longer exfiltrate a session. State-changing requests (POST/PUT/PATCH/DELETE) now require a custom `X-CSRF-Protection` header, which the browser will only attach for same-origin requests — a stateless CSRF defense. The OIDC callback sets the cookie and redirects to `/` rather than passing the token in a URL fragment. **Migration:** all existing sessions are invalidated on deploy and users simply log in again; any non-browser API client must switch from the `Authorization` header to the cookie plus the `X-CSRF-Protection` header
+- HSTS: on HTTPS requests the server now sends `Strict-Transport-Security` (`max-age=63072000; includeSubDomains`), so once a browser has loaded the app over HTTPS it refuses to downgrade to plain HTTP. The header is only emitted for requests that arrived over HTTPS, so plain-HTTP LAN deployments are unaffected
+
+### Changed
+- Upgraded Ant Design 5 → 6
+- Typed the frontend API layer and list-page table callbacks against shared domain models, removing pervasive `any` and catching several latent null-handling bugs at compile time (internal; no behavior change)
+
 ## [2.0.0] - 2026-07-18
 
 A follow-up audit (security, UI, performance, dependency freshness) building on the
