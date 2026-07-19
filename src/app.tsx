@@ -30,17 +30,15 @@ import { dynamicActivate } from "src/utils/lingui";
 
 import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
 import { currentUserAtom } from "src/atoms/auth";
-import { getToken, clearToken } from "src/api/client";
 import { GetMe } from "src/api";
 import BaseLayout from "src/layouts/base";
 import Index from "src/routes/index";
 import LoginPage from "src/routes/login";
-import AuthCallback from "src/routes/auth-callback";
 import Loading from "src/components/loading";
 
 // Route pages are code-split so the first paint (login) doesn't download the
 // PDF stack (react-pdf/pdfjs — pulled in by invoice details), dnd-kit, or the
-// settings pages. BaseLayout, Index, Login, AuthCallback and Loading stay eager
+// settings pages. BaseLayout, Index, Login and Loading stay eager
 // as the shell/first-paint set. Each lazy chunk loads on first navigation to
 // its route, behind the <Suspense> fallback below.
 const Clients = lazy(() => import("src/routes/clients"));
@@ -103,26 +101,22 @@ const AppContent = () => {
   }, [locale]);
 
   useEffect(() => {
-    // Load current user from token on mount. "/auth/callback" is excluded
-    // from the no-token redirect because it hasn't stored its (SSO-issued)
-    // token yet at this point — it does so itself, then navigates to "/".
-    if (getToken()) {
-      GetMe()
-        .then(setCurrentUser)
-        .catch(() => {
-          clearToken();
-          if (location.pathname !== "/login") navigate("/login");
-        });
-    } else if (location.pathname !== "/login" && location.pathname !== "/auth/callback") {
-      navigate("/login");
-    }
+    // The session is an httpOnly cookie the browser sends automatically and JS
+    // can't read, so we can't check for it — just ask the server who we are. On
+    // the login page there's no session yet, so skip it. A failed GetMe is a
+    // 401, which the fetch wrapper already turns into a redirect to /login.
+    if (location.pathname === "/login") return;
+    GetMe()
+      .then(setCurrentUser)
+      .catch(() => {
+        /* 401 → wrapper already redirected to /login */
+      });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-fetch organizations whenever the authenticated user changes: on initial load with
-  // a stored token, and immediately after a fresh login (the token is not a reactive value,
-  // so without this the app would spin forever on "/" after logging in).
+  // Re-fetch organizations whenever the authenticated user changes: on initial
+  // load once GetMe resolves, and immediately after a fresh login.
   useEffect(() => {
-    if (getToken()) {
+    if (currentUser) {
       setOrganizations();
     }
   }, [setOrganizations, currentUser]);
@@ -140,7 +134,7 @@ const AppContent = () => {
   // "/login" must be allowed too, otherwise an unauthenticated visitor (no org) gets
   // bounced /login -> / and stuck on the loading spinner instead of seeing the login page.
   useEffect(() => {
-    const allowedPathsWithoutOrg = ["/", "/login", "/organizations/new", "/auth/callback"];
+    const allowedPathsWithoutOrg = ["/", "/login", "/organizations/new"];
     const isAllowedPath = allowedPathsWithoutOrg.includes(location.pathname);
 
     if (organizationId === null && !isAllowedPath) {
@@ -186,7 +180,6 @@ const AppContent = () => {
         <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/" element={<Index />} />
           <Route path="/organizations/new" element={<NewOrganization />} />
           <Route path="/organizations" element={<BaseLayout />}>

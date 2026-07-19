@@ -22,7 +22,7 @@ func TestDeleteOrganization_RequiresAdmin(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/organizations/org-1", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -51,7 +51,7 @@ func TestDeleteOrganization_AdminSucceeds(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/organizations/org-1", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 

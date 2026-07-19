@@ -128,10 +128,11 @@ section after it is the concrete instance.
   checks the `nonce` claim against the stored value, extracts email/name/
   groups per the configured claim names, computes `role` from
   `OIDC_ADMIN_GROUP` membership, calls `provisionOrSyncUser` (below), mints a
-  FaturaCloud JWT via the existing `issueToken` (no new token format), and
-  redirects the browser to `/#/auth/callback?token=<jwt>` — a fragment, not a
-  query string, so the token never lands in server access logs or a
-  `Referer` header.
+  FaturaCloud JWT via the existing `issueToken` (no new token format), sets it
+  in the httpOnly `fc_token` cookie exactly like local login (`setAuthCookie`),
+  and redirects the browser to `/`. The token never appears in the URL (no
+  fragment, no query), so it can't leak via history, access logs, or a
+  `Referer` header, and page JS never sees it.
 - Any validation failure (bad/missing state, nonce mismatch, bad signature,
   wrong issuer/audience, expired token, IdP unreachable) → redirect to
   `/login?error=sso_failed` with details logged server-side only; never leak
@@ -188,18 +189,21 @@ whatever went wrong in between.
   on `/api/version`) reports the feature is on. Clicking it is a full
   browser navigation to `/api/auth/oidc/login` (not a `fetch` — this must be
   a real top-level redirect for the OAuth dance to work).
-- New tiny callback route (e.g. `/auth/callback`) that reads `token` from the
-  URL fragment, calls the existing `setToken()`, then navigates to `/`.
+- No frontend callback route is needed: the server-side callback sets the
+  httpOnly `fc_token` cookie and redirects straight to `/`. (An earlier
+  iteration delivered the token via a `#token=` fragment to a `/auth/callback`
+  route; that was removed when auth moved to the cookie.)
 - `src/api/index.ts`: extend `CurrentUser.authProvider` to
   `"local" | "oidc"`.
-- **No changes needed to `src/app.tsx`, `isAuthenticatedAtom`, or the
-  existing `getToken()`-gated effects.** Since OIDC mints the same local JWT
-  the app already knows how to use, the entire existing bootstrap/session
-  model is untouched — SSO is just a second way to obtain a token.
-- Logout: unchanged (`clearToken()` + navigate to `/login`) — fully logs the
-  user out of FaturaCloud regardless of how they authenticated. Redirecting
-  to the IdP's `end_session_endpoint` for a "global" logout is a reasonable
-  follow-up, not required for v1.
+- **No changes needed to `src/app.tsx`, `isAuthenticatedAtom`, or the session
+  bootstrap.** Since OIDC mints the same local JWT and delivers it via the same
+  cookie as local login, the existing model (`GetMe()` on mount → `currentUser`)
+  is untouched — SSO is just a second way to obtain the session cookie.
+- Logout: POSTs `/api/auth/logout` so the server expires the httpOnly cookie
+  (JS can't clear it), then navigates to `/login` — fully logs the user out of
+  FaturaCloud regardless of how they authenticated. Redirecting to the IdP's
+  `end_session_endpoint` for a "global" logout is a reasonable follow-up, not
+  required for v1.
 
 ### Security summary
 - PKCE (S256) mandatory; `state`/`nonce` are cryptographically random,

@@ -21,7 +21,7 @@ func TestDecodeJSON_BodyTooLarge(t *testing.T) {
 	// A JSON document comfortably larger than maxJSONBody (10 MiB).
 	huge := `{"name":"` + strings.Repeat("A", 11<<20) + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/clients", strings.NewReader(huge))
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -54,7 +54,7 @@ func TestDecodeJSON_NormalBodyAccepted(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest(http.MethodPost, "/api/clients", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)

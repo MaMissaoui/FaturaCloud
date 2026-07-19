@@ -19,7 +19,7 @@ func doJSON(t *testing.T, mux http.Handler, token, method, path string, body map
 		}
 	}
 	req := httptest.NewRequest(method, path, &buf)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -131,7 +131,7 @@ func TestDeleteUser_LastActiveAdminRejected(t *testing.T) {
 	token := mintTestJWT(t, "actor", "admin")
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/users/target-admin", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {

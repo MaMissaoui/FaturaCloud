@@ -152,11 +152,28 @@ func callbackRequest(h *handler, state, nonce, verifier, queryState, code string
 	return req
 }
 
-func parseIssuedJWT(t *testing.T, h *handler, redirectLocation string) *Claims {
+// parseIssuedJWT verifies the callback delivered the session the new way — an
+// httpOnly fc_token cookie plus a redirect to "/" with no token in the URL —
+// and returns the decoded claims.
+func parseIssuedJWT(t *testing.T, h *handler, rec *httptest.ResponseRecorder) *Claims {
 	t.Helper()
-	_, tokenStr, ok := strings.Cut(redirectLocation, "#token=")
-	if !ok {
-		t.Fatalf("redirect location has no token fragment: %s", redirectLocation)
+	if loc := rec.Header().Get("Location"); loc != "/" {
+		t.Fatalf("expected redirect to /, got %q", loc)
+	}
+	if strings.Contains(rec.Header().Get("Location"), "#token=") {
+		t.Fatalf("token must not appear in the redirect URL")
+	}
+	var tokenStr string
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == authCookieName {
+			tokenStr = c.Value
+			if !c.HttpOnly {
+				t.Fatalf("%s cookie must be HttpOnly", authCookieName)
+			}
+		}
+	}
+	if tokenStr == "" {
+		t.Fatalf("callback set no %s cookie", authCookieName)
 	}
 	claims := &Claims{}
 	_, err := jwt.ParseWithClaims(tokenStr, claims, func(*jwt.Token) (any, error) {
@@ -227,7 +244,7 @@ func TestOIDCCallback_SuccessGrantsAdminForGroupMember(t *testing.T) {
 	if rec.Code != http.StatusFound {
 		t.Fatalf("expected 302 on success, got %d body=%s", rec.Code, rec.Body.String())
 	}
-	claims := parseIssuedJWT(t, h, rec.Header().Get("Location"))
+	claims := parseIssuedJWT(t, h, rec)
 	if claims.Email != "alice@example.com" {
 		t.Errorf("expected email alice@example.com, got %s", claims.Email)
 	}
@@ -258,7 +275,7 @@ func TestOIDCCallback_NonAdminGroupGetsUserRole(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.oidcCallback(rec, req)
 
-	claims := parseIssuedJWT(t, h, rec.Header().Get("Location"))
+	claims := parseIssuedJWT(t, h, rec)
 	if claims.Role != "user" {
 		t.Errorf("expected role user (not in admins group), got %s", claims.Role)
 	}
@@ -359,9 +376,10 @@ func TestOIDCCallback_DeactivatedUserRejected(t *testing.T) {
 	req := callbackRequest(h, "st1", "n1", "verifier1", "st1", "good-code")
 	rec := httptest.NewRecorder()
 	h.oidcCallback(rec, req)
-	if rec.Code != http.StatusFound || !strings.Contains(rec.Header().Get("Location"), "#token=") {
+	if rec.Code != http.StatusFound {
 		t.Fatalf("expected first login to succeed, got %d %s", rec.Code, rec.Header().Get("Location"))
 	}
+	parseIssuedJWT(t, h, rec) // asserts fc_token cookie set + redirect to /
 
 	h.db.DB.Exec(`UPDATE users SET isActive = 0 WHERE email = ?`, "alice@example.com")
 
@@ -391,7 +409,7 @@ func TestOIDCCallback_RoleResyncsWithoutTouchingDisplayName(t *testing.T) {
 	req := callbackRequest(h, "st1", "n1", "verifier1", "st1", "good-code")
 	rec := httptest.NewRecorder()
 	h.oidcCallback(rec, req)
-	first := parseIssuedJWT(t, h, rec.Header().Get("Location"))
+	first := parseIssuedJWT(t, h, rec)
 	if first.Role != "admin" {
 		t.Fatalf("expected first login role admin, got %s", first.Role)
 	}
@@ -413,7 +431,7 @@ func TestOIDCCallback_RoleResyncsWithoutTouchingDisplayName(t *testing.T) {
 	req2 := callbackRequest(h, "st2", "n2", "verifier2", "st2", "good-code-2")
 	rec2 := httptest.NewRecorder()
 	h.oidcCallback(rec2, req2)
-	second := parseIssuedJWT(t, h, rec2.Header().Get("Location"))
+	second := parseIssuedJWT(t, h, rec2)
 	if second.Role != "user" {
 		t.Errorf("expected role to resync to user after group removal, got %s", second.Role)
 	}

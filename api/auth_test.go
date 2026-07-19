@@ -81,7 +81,8 @@ func TestLoginPerAccountRateLimit(t *testing.T) {
 		})
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
-		req.RemoteAddr = ip + ":1234" // unique IP each call → IP bucket never trips
+		req.Header.Set(csrfHeaderName, "1") // login route requires the CSRF header
+		req.RemoteAddr = ip + ":1234"       // unique IP each call → IP bucket never trips
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		return rec.Code

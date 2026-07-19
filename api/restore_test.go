@@ -54,6 +54,14 @@ func seedUser(t *testing.T, database *db.Database, id, role string, isActive int
 	}
 }
 
+// authRequest authenticates a test request the way a browser now does: the
+// JWT rides in the httpOnly cookie, and the CSRF header is present so
+// state-changing requests aren't rejected by csrfRequired.
+func authRequest(req *http.Request, token string) {
+	req.AddCookie(&http.Cookie{Name: authCookieName, Value: token})
+	req.Header.Set(csrfHeaderName, "1")
+}
+
 func mintTestJWT(t *testing.T, userID, role string) string {
 	t.Helper()
 	claims := Claims{
@@ -107,7 +115,7 @@ func TestRestoreDatabase_RejectsInvalidFile(t *testing.T) {
 	body, contentType := multipartDatabaseUpload(t, "bad.db", []byte("definitely not a sqlite database"))
 	req := httptest.NewRequest(http.MethodPost, "/api/restore", body)
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -160,7 +168,7 @@ func TestRestoreDatabase_ConcurrentWithReads(t *testing.T) {
 				default:
 				}
 				req := httptest.NewRequest(http.MethodGet, "/api/organizations", nil)
-				req.Header.Set("Authorization", "Bearer "+token)
+				authRequest(req, token)
 				rec := httptest.NewRecorder()
 				mux.ServeHTTP(rec, req)
 				if rec.Code != http.StatusOK {
@@ -174,7 +182,7 @@ func TestRestoreDatabase_ConcurrentWithReads(t *testing.T) {
 	body, contentType := multipartDatabaseUpload(t, "good-backup.db", backupBytes)
 	req := httptest.NewRequest(http.MethodPost, "/api/restore", body)
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

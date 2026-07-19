@@ -62,8 +62,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 
 	// Public
 	mux.Handle("GET /api/version", limitBody(defaultMaxBody, h.getVersion))
-	mux.Handle("POST /api/auth/login", limitBody(defaultMaxBody, h.login))
-	mux.Handle("POST /api/auth/logout", limitBody(defaultMaxBody, h.logout))
+	// login/logout are POST and set/clear the auth cookie, so they carry the
+	// same CSRF requirement as any other mutation.
+	mux.Handle("POST /api/auth/login", h.csrfRequired(limitBody(defaultMaxBody, h.login)))
+	mux.Handle("POST /api/auth/logout", h.csrfRequired(limitBody(defaultMaxBody, h.logout)))
 	// OIDC SSO — public; these ARE the auth entry point, not gated by
 	// authMiddleware. All three 503 if OIDC_ISSUER_URL isn't configured.
 	mux.Handle("GET /api/auth/oidc/enabled", limitBody(defaultMaxBody, h.oidcEnabled))
@@ -86,11 +88,14 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Protected — all routes below require a valid JWT
 	auth := h.authMiddleware
 	adminOnly := h.adminOnly
+	// csrf gates state-changing methods on a custom header (see csrfRequired);
+	// GET routes pass through it untouched, so it's safe to apply uniformly.
+	csrf := h.csrfRequired
 	protected := func(method, pattern string, handlerFn http.HandlerFunc) {
-		mux.Handle(method+" "+pattern, auth(limitBody(defaultMaxBody, withDB(handlerFn))))
+		mux.Handle(method+" "+pattern, auth(csrf(limitBody(defaultMaxBody, withDB(handlerFn)))))
 	}
 	adminProtected := func(method, pattern string, handlerFn http.HandlerFunc) {
-		mux.Handle(method+" "+pattern, auth(adminOnly(limitBody(defaultMaxBody, withDB(handlerFn)))))
+		mux.Handle(method+" "+pattern, auth(adminOnly(csrf(limitBody(defaultMaxBody, withDB(handlerFn))))))
 	}
 
 	// Auth
@@ -107,11 +112,11 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// swapDatabase) — they must never be wrapped in withDB's read lock, which
 	// would deadlock against it. Registered directly instead of through
 	// adminProtected, which folds withDB into every route.
-	mux.Handle("POST /api/backups/{name}/restore", auth(adminOnly(limitBody(defaultMaxBody, h.restoreNamedBackup))))
+	mux.Handle("POST /api/backups/{name}/restore", auth(adminOnly(csrf(limitBody(defaultMaxBody, h.restoreNamedBackup)))))
 	// Restore uploads stream a full SQLite database file, so this route needs a
 	// much larger body limit than the default — matching restoreDatabase's own
 	// ParseMultipartForm cap.
-	mux.Handle("POST /api/restore", auth(adminOnly(limitBody(256<<20, h.restoreDatabase))))
+	mux.Handle("POST /api/restore", auth(adminOnly(csrf(limitBody(256<<20, h.restoreDatabase)))))
 
 	// Users (admin only)
 	adminProtected("GET", "/api/users", h.listUsers)
