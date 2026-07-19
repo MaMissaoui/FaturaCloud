@@ -1,5 +1,37 @@
 import { t } from "@lingui/core/macro";
 
+// Invoice as returned by the API (storage shape): monetary values in integer
+// cents, dates as Unix-millisecond numbers. The atoms convert these to display
+// units / Dayjs; see InvoiceDisplay for the detail-page shape.
+export interface Invoice {
+  id: string;
+  organizationId: string;
+  number: string;
+  state: string;
+  clientId: string;
+  date: number;
+  dueDate: number | null;
+  currency: string;
+  customerNotes: string | null;
+  overdueCharge: number | null;
+  total: number;
+  taxTotal: number;
+  subTotal: number;
+  createdAt: string | null;
+  clientName: string | null;
+}
+
+export interface InvoiceLineItem {
+  id: string;
+  invoiceId: string;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  taxRate: string | null;
+  position: number;
+  createdAt: string | null;
+}
+
 // Canonical invoice states — the single source of truth shared by the list
 // page, the state-select dropdown, and the details page. Must match the
 // server-side set in db/invoice.go.
