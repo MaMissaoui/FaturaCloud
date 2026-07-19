@@ -7,28 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.0.0] - 2026-07-19
+## [2.0.0] - 2026-07-19
 
-A security-hardening and dependency release. The headline change moves session
-authentication off browser-readable storage and onto an httpOnly cookie, which
-is a breaking change for existing sessions and any API client that sent a Bearer
-token.
+A follow-up audit (security, UI, performance, dependency freshness) building on the
+1.2.x backend hardening, a reduction of the supported-language set, and a rework of
+how sessions are authenticated. Two breaking changes relative to 1.2.x: the
+supported-language reduction and the move to cookie-based session authentication
+(see Removed and Security).
+
+### Removed
+- **BREAKING:** supported languages reduced to English, German, and French. The eight other locales (en-GB, Estonian, Finnish, Greek, Dutch, Portuguese, Swedish, Ukrainian) and their translation catalogs have been removed. A user who had selected one of the removed languages falls back to English on next load — no data, API, or configuration change is required
 
 ### Security
 - **BREAKING:** session authentication now uses an httpOnly, `SameSite=Lax` cookie (`fc_token`) instead of a JWT in `localStorage` with an `Authorization: Bearer` header. Because page JavaScript can no longer read the token, an XSS flaw can no longer exfiltrate a session. State-changing requests (POST/PUT/PATCH/DELETE) now require a custom `X-CSRF-Protection` header, which the browser will only attach for same-origin requests — a stateless CSRF defense. The OIDC callback sets the cookie and redirects to `/` rather than passing the token in a URL fragment. **Migration:** all existing sessions are invalidated on deploy and users simply log in again; any non-browser API client must switch from the `Authorization` header to the cookie plus the `X-CSRF-Protection` header
 - HSTS: on HTTPS requests the server now sends `Strict-Transport-Security` (`max-age=63072000; includeSubDomains`), so once a browser has loaded the app over HTTPS it refuses to downgrade to plain HTTP. The header is only emitted for requests that arrived over HTTPS, so plain-HTTP LAN deployments are unaffected
-
-### Changed
-- Upgraded Ant Design 5 → 6
-- Typed the frontend API layer and list-page table callbacks against shared domain models, removing pervasive `any` and catching several latent null-handling bugs at compile time (internal; no behavior change)
-
-## [2.0.0] - 2026-07-18
-
-A follow-up audit (security, UI, performance, dependency freshness) building on the
-1.2.x backend hardening, plus a reduction of the supported-language set.
-
-### Removed
-- **BREAKING:** supported languages reduced to English, German, and French. The eight other locales (en-GB, Estonian, Finnish, Greek, Dutch, Portuguese, Swedish, Ukrainian) and their translation catalogs have been removed. A user who had selected one of the removed languages falls back to English on next load — no data, API, or configuration change is required
+- Request bodies are now size-capped (10 MiB) on every JSON endpoint, including the unauthenticated login endpoint, closing a memory-exhaustion vector — previously only the database-restore upload was bounded
+- Invoice state is validated server-side against the allowed set on create and on the state-change endpoint, and can no longer be set through a plain `PUT` — mirroring the order/delivery hardening from 1.2.x
+- Issued JWTs are now bound to this application via issuer/audience claims, enforced on every request, so a token minted for another service that happens to share the signing secret is rejected (invalidates outstanding tokens once — users simply log in again)
+- Source maps are no longer shipped in the deployed image: the Go binary embedded ~14 MB of maps that exposed the full original TypeScript source at `/assets/*.js.map`. They are now uploaded to Sentry at build time and deleted from the artifact
+- `jotai-devtools` (which pulled in a vulnerable `jsondiffpatch`) moved to dev-only dependencies, taking the advisory out of the production dependency tree
 
 ### Added
 - Overdue invoices are now visually flagged in the invoices list: a sent (unpaid) invoice past its due date shows its due date in a danger color with an "Overdue" tooltip
@@ -39,18 +36,13 @@ A follow-up audit (security, UI, performance, dependency freshness) building on 
 - German and French translations are now complete (zero untranslated strings against the English source)
 - Much faster initial load: the frontend is now route-code-split, so the login screen no longer downloads the PDF-rendering stack, drag-and-drop, and every settings page up front — the main bundle dropped from ~1.19 MB to ~190 kB gzipped, and the PDF engine loads only when an invoice is opened
 - List tables (invoices, orders, deliveries, clients, products, tax rates, organizations, users) are now paginated instead of rendering every row at once
+- Upgraded Ant Design 5 → 6
+- Typed the frontend API layer and list-page table callbacks against shared domain models, removing pervasive `any` and catching several latent null-handling bugs at compile time (internal; no behavior change)
 - Dependency upgrades: react-pdf 9→10 (with pdfjs 4→5, picking up upstream PDF.js security fixes), react-router 7→8, TypeScript 5.9→7, and routine minor/patch bumps across Lingui, Sentry, Vite, and the Go modules
 
 ### Fixed
 - Invoice state is now consistent across the app: the list filter, the state dropdown, and the details page share one vocabulary (draft / sent / paid / cancelled). Previously a cancelled invoice could render as a raw untranslated tag, the list filter offered a dead "Confirmed" option and no way to filter "Sent", and the state labels went stale after switching language
 - The organizations list no longer ships each organization's logo image — a potentially multi-MB payload that was re-downloaded on every login/refresh for organizations the user wasn't even viewing
-
-### Security
-- Request bodies are now size-capped (10 MiB) on every JSON endpoint, including the unauthenticated login endpoint, closing a memory-exhaustion vector — previously only the database-restore upload was bounded
-- Invoice state is validated server-side against the allowed set on create and on the state-change endpoint, and can no longer be set through a plain `PUT` — mirroring the order/delivery hardening from 1.2.x
-- Issued JWTs are now bound to this application via issuer/audience claims, enforced on every request, so a token minted for another service that happens to share the signing secret is rejected (invalidates outstanding tokens once — users simply log in again)
-- Source maps are no longer shipped in the deployed image: the Go binary embedded ~14 MB of maps that exposed the full original TypeScript source at `/assets/*.js.map`. They are now uploaded to Sentry at build time and deleted from the artifact
-- `jotai-devtools` (which pulled in a vulnerable `jsondiffpatch`) moved to dev-only dependencies, taking the advisory out of the production dependency tree
 
 ## [1.2.6] - 2026-07-12
 
