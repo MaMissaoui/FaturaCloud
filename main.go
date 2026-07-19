@@ -142,8 +142,27 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		// HSTS only on requests that actually arrived over HTTPS. TLS is
+		// terminated upstream (reverse proxy) in every real deployment, so
+		// we key off X-Forwarded-Proto; sending it unconditionally would be
+		// wrong for plain-HTTP LAN deployments. 2 years + includeSubDomains,
+		// no preload (that's a standing commitment the operator should opt
+		// into deliberately, not a default).
+		if requestIsHTTPS(r) {
+			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// requestIsHTTPS reports whether the original client request was HTTPS,
+// accounting for TLS termination upstream (mirrors api.isHTTPS, which is
+// unexported).
+func requestIsHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 // spaHandler serves static files from the embedded FS and falls back to
