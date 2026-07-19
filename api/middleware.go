@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -21,6 +20,20 @@ const (
 	jwtAudience = "faturacloud"
 )
 
+// authCookieName is the httpOnly cookie the JWT rides in. httpOnly means
+// page JavaScript can't read it, so an XSS payload can't exfiltrate the
+// session token the way it could from localStorage.
+const authCookieName = "fc_token"
+
+// csrfHeaderName is a custom request header the frontend sends on every
+// state-changing request. Because the auth token now travels in a cookie
+// (sent automatically by the browser), a cross-site page could otherwise
+// forge authenticated requests; requiring a custom header defeats that, since
+// cross-site JavaScript can't set custom headers without a CORS preflight this
+// server never grants. SameSite=Lax on the cookie is the primary defense; this
+// is defense-in-depth. Its value is irrelevant — only its presence matters.
+const csrfHeaderName = "X-CSRF-Protection"
+
 type Claims struct {
 	UserID string `json:"userId"`
 	Email  string `json:"email"`
@@ -36,14 +49,14 @@ type Claims struct {
 
 func (h *handler) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		if !strings.HasPrefix(header, "Bearer ") {
+		cookie, err := r.Cookie(authCookieName)
+		if err != nil || cookie.Value == "" {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-		tokenStr := strings.TrimPrefix(header, "Bearer ")
+		tokenStr := cookie.Value
 		claims := &Claims{}
-		_, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
+		_, err = jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
 			return []byte(h.jwtSecret), nil
 		}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience))
 		if err != nil {
@@ -76,6 +89,24 @@ func (h *handler) adminOnly(next http.Handler) http.Handler {
 		if claims == nil || claims.Role != "admin" {
 			writeError(w, http.StatusForbidden, "forbidden")
 			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// csrfRequired wraps state-changing routes and rejects any request that omits
+// the CSRF header (see csrfHeaderName). Safe methods (GET/HEAD/OPTIONS) pass
+// through untouched — every such route in this app is a read, and browser
+// navigations can't set custom headers anyway.
+func (h *handler) csrfRequired(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+		default:
+			if r.Header.Get(csrfHeaderName) == "" {
+				writeError(w, http.StatusForbidden, "missing CSRF header")
+				return
+			}
 		}
 		next.ServeHTTP(w, r)
 	})

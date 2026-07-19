@@ -173,8 +173,10 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		log.Printf("login: failed to update lastLoginAt for user %s: %v", user.ID, lastLoginErr)
 	}
 
+	// The token rides in an httpOnly cookie, never the response body — page
+	// JavaScript never sees it, so XSS can't steal the session.
+	setAuthCookie(w, r, token)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"token": token,
 		"user": map[string]any{
 			"id":           user.ID,
 			"email":        user.Email,
@@ -186,8 +188,44 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handler) logout(w http.ResponseWriter, _ *http.Request) {
+func (h *handler) logout(w http.ResponseWriter, r *http.Request) {
+	// The cookie is httpOnly, so the client can't clear it itself — the server
+	// must expire it here.
+	clearAuthCookie(w, r)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+}
+
+const authCookieMaxAge = int(24 * 60 * 60) // seconds; matches the JWT's 24h exp
+
+// setAuthCookie writes the session JWT as an httpOnly, SameSite=Lax cookie.
+// Secure is set only when the original request arrived over HTTPS (isHTTPS),
+// so it still works for a plain-HTTP LAN deployment. SameSite=Lax lets the
+// cookie ride top-level GET navigations (deep links, the OIDC return) while
+// withholding it from cross-site subrequests and non-GET requests — the CSRF
+// primary defense.
+func setAuthCookie(w http.ResponseWriter, r *http.Request, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     authCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isHTTPS(r),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   authCookieMaxAge,
+	})
+}
+
+// clearAuthCookie expires the session cookie (same attributes, MaxAge<0).
+func clearAuthCookie(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     authCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isHTTPS(r),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 }
 
 func (h *handler) me(w http.ResponseWriter, r *http.Request) {

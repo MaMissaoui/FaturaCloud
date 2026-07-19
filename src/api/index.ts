@@ -1,7 +1,7 @@
 // HTTP API client — drop-in replacement for the wailsjs/go/main/App bindings.
 // Function names and signatures are intentionally identical so atom files only
 // need their import path changed.
-import { get, post, put, patch, del, setToken, clearToken } from "./client";
+import { get, post, put, patch, del, CSRF_HEADER } from "./client";
 
 // ---- Auth ----
 
@@ -19,25 +19,27 @@ export interface UserRecord extends CurrentUser {
   lastLoginAt: number | null;
 }
 
-export const Login = async (email: string, password: string): Promise<{ token: string; user: CurrentUser }> => {
+// Login authenticates and — on success — the server sets the httpOnly session
+// cookie via Set-Cookie. This is a bespoke fetch (not the shared wrapper), so
+// the CSRF header and credentials are attached explicitly. No token is returned
+// in the body; only the user record.
+export const Login = async (email: string, password: string): Promise<{ user: CurrentUser }> => {
   const res = await fetch("/api/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", [CSRF_HEADER]: "1" },
+    credentials: "same-origin",
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error ?? res.statusText);
   }
-  const data = await res.json();
-  setToken(data.token);
-  return data;
+  return res.json();
 };
 
-export const Logout = () => {
-  clearToken();
-  return Promise.resolve();
-};
+// Logout must hit the server so it can expire the httpOnly cookie — JavaScript
+// can't clear it. Routed through the wrapper so it carries the CSRF header.
+export const Logout = () => post<{ message: string }>("/auth/logout", {});
 
 export const GetMe = () => get<CurrentUser>("/auth/me");
 
@@ -109,7 +111,11 @@ export interface BackupConfig {
 export const ListBackups = () => get<BackupEntry[]>("/backups");
 
 export const TriggerBackup = async (): Promise<string> => {
-  const res = await fetch("/api/backups", { method: "POST" });
+  const res = await fetch("/api/backups", {
+    method: "POST",
+    headers: { [CSRF_HEADER]: "1" },
+    credentials: "same-origin",
+  });
   if (!res.ok) throw new Error("Backup failed");
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
@@ -135,7 +141,12 @@ export const RestoreNamedBackup = (name: string): Promise<{ message: string }> =
 export const RestoreDatabase = async (file: File): Promise<string> => {
   const form = new FormData();
   form.append("database", file);
-  const res = await fetch("/api/restore", { method: "POST", body: form });
+  const res = await fetch("/api/restore", {
+    method: "POST",
+    headers: { [CSRF_HEADER]: "1" },
+    credentials: "same-origin",
+    body: form,
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error ?? res.statusText);

@@ -10,7 +10,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -203,12 +202,13 @@ func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The path (/auth/callback) is real — the SPA uses BrowserRouter, which
-	// routes on pathname, not on the hash. The token itself rides in the
-	// fragment (after the path), not a query string, so it never lands in
-	// server access logs or gets forwarded in a Referer header — fragments
-	// are never sent to the server at all.
-	http.Redirect(w, r, "/auth/callback#token="+url.QueryEscape(jwtToken), http.StatusFound)
+	// Deliver the session the same way local login does — an httpOnly cookie —
+	// then redirect straight to the app. The token never appears in the URL
+	// (no fragment, no query), so it can't leak via history, and page JS never
+	// sees it. Set-Cookie on this cross-site redirect response works fine; it's
+	// the browser sending an existing cookie cross-site that SameSite governs.
+	setAuthCookie(w, r, jwtToken)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // oidcClaimHasGroup checks a claims map's group-list claim (a flat array of

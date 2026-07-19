@@ -72,7 +72,7 @@ import { GetClients, CreateClient } from "src/api"
 const clients = await GetClients(organizationId)  // GET /api/organizations/{id}/clients
 ```
 
-The base fetch wrapper lives in `src/api/client.ts`. It attaches the JWT Bearer token from `localStorage` to every request. All API errors throw `Error(message)` so callers catch them normally.
+The base fetch wrapper lives in `src/api/client.ts`. Auth is a JWT in an **httpOnly `fc_token` cookie** the browser sends automatically (not localStorage/Bearer — page JS can't read it, so XSS can't steal the session). The wrapper sends `credentials: "same-origin"` and a custom `X-CSRF-Protection` header on every request; the server's `csrfRequired` middleware rejects state-changing requests (POST/PUT/PATCH/DELETE) that lack it (a stateless CSRF defense that works because there's no permissive CORS, backed by `SameSite=Lax` on the cookie). `login` sets the cookie and returns only `{user}`; `logout` POSTs to the server so it can expire the cookie; the OIDC callback sets the cookie and redirects to `/` (no token in the URL). All API errors throw `Error(message)` so callers catch them normally.
 
 ### API Routes
 
@@ -185,14 +185,13 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `api/utility.go` — version, backup download, restore upload, scheduler
 - `db/` — Go database layer (SQLite connection, migrations, CRUD per domain)
 - `db/migrations/` — SQL migration files (`*.up.sql`), applied automatically on startup
-- `src/api/client.ts` — base fetch wrapper; attaches JWT Bearer token from `localStorage`
+- `src/api/client.ts` — base fetch wrapper; sends the httpOnly auth cookie (`credentials: same-origin`) + the `X-CSRF-Protection` header
 - `src/api/index.ts` — typed API functions, one per REST endpoint
 - `src/atoms/` — Jotai state atoms; import from `src/api`
 - `src/atoms/auth.ts` — `currentUserAtom`, `isAuthenticatedAtom`, `isAdminAtom`
 - `src/atoms/delivery.ts` — delivery list, detail, status, and delete atoms
 - `src/routes/` — main application pages
 - `src/routes/login.tsx` — login page (public, redirects to `/` on success); shows an "Sign in with SSO" button when `GET /api/auth/oidc/enabled` reports true
-- `src/routes/auth-callback.tsx` — landing point for the OIDC redirect; reads the JWT from the URL fragment, stores it, full-page-navigates to `/`
 - `src/routes/deliveries.tsx` — outbound deliveries list
 - `src/routes/deliveries/details.tsx` — delivery detail/edit page
 - `src/routes/orders/details.tsx` — order detail/edit page

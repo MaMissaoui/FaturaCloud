@@ -20,7 +20,7 @@ func TestAuthMiddleware_RejectsDeactivatedUser(t *testing.T) {
 
 	get := func() int {
 		req := httptest.NewRequest(http.MethodGet, "/api/organizations", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
+		authRequest(req, token)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		return rec.Code
@@ -51,7 +51,7 @@ func TestAuthMiddleware_RejectsDeletedUser(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/organizations", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
@@ -83,7 +83,7 @@ func TestAuthMiddleware_RejectsTokenWithoutIssuerAudience(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/organizations", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	authRequest(req, token)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
