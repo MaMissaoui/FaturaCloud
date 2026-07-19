@@ -132,7 +132,7 @@ const contentSecurityPolicy = "default-src 'self'; script-src 'self' 'wasm-unsaf
 	"style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
 	"font-src 'self' data:; connect-src 'self' data: blob: *.sentry.io; " +
 	"worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; " +
-	"object-src 'none'"
+	"form-action 'self'; object-src 'none'"
 
 // securityHeaders sets baseline defensive headers on every response, API and
 // embedded frontend alike.
@@ -140,7 +140,8 @@ func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Referrer-Policy", "same-origin")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 		// HSTS only on requests that actually arrived over HTTPS. TLS is
 		// terminated upstream (reverse proxy) in every real deployment, so
