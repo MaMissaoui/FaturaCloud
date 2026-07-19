@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import type { Product, StockMovement } from "src/types/models";
 import { Link, useLocation } from "react-router";
 import { Button, Col, Popconfirm, Row, Select, Space, Table, Tag, theme, Tooltip, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -46,10 +47,10 @@ const Inventory = () => {
     }
   }, [location, setProducts, setMovements]);
 
-  const trackedProducts = filter(products, (p: any) => p.stockEnabled);
+  const trackedProducts = filter(products, (p: Product) => p.stockEnabled);
 
   const filtered = productFilter
-    ? filter(movements, (m: any) => m.productId === productFilter)
+    ? filter(movements, (m: StockMovement) => m.productId === productFilter)
     : movements;
 
   return (
@@ -70,7 +71,7 @@ const Inventory = () => {
               onChange={(val) => setProductFilter(val ?? null)}
               value={productFilter}
             >
-              {trackedProducts.map((p: any) => (
+              {trackedProducts.map((p: Product) => (
                 <Select.Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Select.Option>
               ))}
             </Select>
@@ -86,7 +87,7 @@ const Inventory = () => {
       {/* Stock levels summary */}
       {trackedProducts.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-          {trackedProducts.map((p: any) => {
+          {trackedProducts.map((p: Product) => {
             const qty: number = p.stockQuantity ?? 0;
             const color = qty <= 0 ? token.colorError : qty <= 5 ? token.colorWarning : token.colorSuccess;
             return (
@@ -120,23 +121,23 @@ const Inventory = () => {
               title={<Trans>Date</Trans>}
               dataIndex="createdAt"
               key="createdAt"
-              sorter={(a: any, b: any) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()}
+              sorter={(a: StockMovement, b: StockMovement) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()}
               render={(v: string) => v ? new Date(v).toLocaleString() : "—"}
             />
             <Table.Column
               title={<Trans>Product</Trans>}
               dataIndex="productId"
               key="productId"
-              sorter={(a: any, b: any) => {
-                const nameA = (find(products, { id: a.productId }) as any)?.name ?? "";
-                const nameB = (find(products, { id: b.productId }) as any)?.name ?? "";
+              sorter={(a: StockMovement, b: StockMovement) => {
+                const nameA = find(products, { id: a.productId })?.name ?? "";
+                const nameB = find(products, { id: b.productId })?.name ?? "";
                 return nameA.localeCompare(nameB);
               }}
               render={(productId: string) => {
                 const p = find(products, { id: productId });
                 return p ? (
                   <Link to="/products" state={{ productModal: true, productId }}>
-                    {(p as any).name}{(p as any).sku ? ` (${(p as any).sku})` : ""}
+                    {p.name}{p.sku ? ` (${p.sku})` : ""}
                   </Link>
                 ) : productId;
               }}
@@ -144,15 +145,15 @@ const Inventory = () => {
             <Table.Column
               title={<Trans>Type</Trans>}
               key="type"
-              sorter={(a: any, b: any) => (a.type ?? "").localeCompare(b.type ?? "")}
-              render={(m: any) => movementTypeTag(m.type)}
+              sorter={(a: StockMovement, b: StockMovement) => (a.type ?? "").localeCompare(b.type ?? "")}
+              render={(m: StockMovement) => movementTypeTag(m.type)}
             />
             <Table.Column
               title={<Trans>Quantity</Trans>}
               dataIndex="quantity"
               key="quantity"
               align="right"
-              sorter={(a: any, b: any) => a.quantity - b.quantity}
+              sorter={(a: StockMovement, b: StockMovement) => a.quantity - b.quantity}
               render={(qty: number) => (
                 <span style={{ color: qty >= 0 ? "#52c41a" : "#ff4d4f", fontWeight: 600 }}>
                   {formatQty(qty)}
@@ -163,21 +164,21 @@ const Inventory = () => {
               title={<Trans>Reference</Trans>}
               dataIndex="reference"
               key="reference"
-              sorter={(a: any, b: any) => (a.reference ?? "").localeCompare(b.reference ?? "")}
+              sorter={(a: StockMovement, b: StockMovement) => (a.reference ?? "").localeCompare(b.reference ?? "")}
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               title={<Trans>Note</Trans>}
               dataIndex="note"
               key="note"
-              sorter={(a: any, b: any) => (a.note ?? "").localeCompare(b.note ?? "")}
+              sorter={(a: StockMovement, b: StockMovement) => (a.note ?? "").localeCompare(b.note ?? "")}
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               key="actions"
               align="center"
               width={60}
-              render={(m: any) => (
+              render={(m: StockMovement) => (
                 <Tooltip title={t`Delete movement`}>
                   <Popconfirm
                     title={<Trans>Delete this stock movement? The stock level will be recalculated.</Trans>}

@@ -42,6 +42,7 @@ import { getFormattedNumber } from "src/utils/currencies";
 import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
 import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
+import type { Invoice } from "src/types/models";
 
 const { Title } = Typography;
 
@@ -73,7 +74,7 @@ const Invoices = () => {
   }, [setInvoices]);
 
   const searchInvoices = () => {
-    return filter(invoices, (invoice: any) => {
+    return filter(invoices, (invoice: Invoice) => {
       return some(["clientName", "number", "customerNotes", "total"], (field) => {
         const value = get(invoice, field);
         return includes(toString(value).toLowerCase(), search.toLowerCase());
@@ -92,7 +93,7 @@ const Invoices = () => {
     await deleteInvoice(invoiceId);
   };
 
-  const getActionItems = (invoice: any): MenuProps["items"] => [
+  const getActionItems = (invoice: Invoice): MenuProps["items"] => [
     {
       key: "edit",
       label: <Trans>Edit</Trans>,
@@ -161,7 +162,7 @@ const Invoices = () => {
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         rowKey="id"
         loading={loading}
-        onRow={(record: any) => ({
+        onRow={(record: Invoice) => ({
           onClick: () => navigate(`/invoices/${record.id}`),
           style: { cursor: "pointer" },
         })}
@@ -169,32 +170,30 @@ const Invoices = () => {
         <Table.Column
           title="#"
           dataIndex="number"
-          sorter={(a: any, b: any) => (a.number < b.number ? -1 : a.number === b.number ? 0 : 1)}
-          render={(number, invoice: any) => (
+          sorter={(a: Invoice, b: Invoice) => (a.number < b.number ? -1 : a.number === b.number ? 0 : 1)}
+          render={(number, invoice: Invoice) => (
             <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>{number}</Link>
           )}
         />
         <Table.Column
           title={<Trans>Client</Trans>}
           dataIndex="clientName"
-          sorter={(a: any, b: any) =>
-            a.clientName < b.clientName ? -1 : a.clientName === b.clientName ? 0 : 1
-          }
+          sorter={(a: Invoice, b: Invoice) => (a.clientName ?? "").localeCompare(b.clientName ?? "")}
           render={(clientName) => (clientName ? clientName : "-")}
         />
         <Table.Column
           title={<Trans>Date</Trans>}
           dataIndex="date"
           key="date"
-          sorter={(a: any, b: any) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()}
+          sorter={(a: Invoice, b: Invoice) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()}
           render={(date) => (date ? formatDate(date) : "-")}
         />
         <Table.Column
           title={<Trans>Due date</Trans>}
           dataIndex="dueDate"
           key="dueDate"
-          sorter={(a: any, b: any) => dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()}
-          render={(date, invoice: any) => {
+          sorter={(a: Invoice, b: Invoice) => dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()}
+          render={(date, invoice: Invoice) => {
             if (!date) return "-";
             // A sent (unpaid) invoice past its due date is overdue — flag it.
             const overdue = invoice.state === "sent" && dayjs(date).valueOf() < Date.now();
@@ -211,8 +210,8 @@ const Invoices = () => {
           dataIndex="total"
           key="total"
           align="right"
-          sorter={(a: any, b: any) => a.total - b.total}
-          render={(total, invoice: any) =>
+          sorter={(a: Invoice, b: Invoice) => a.total - b.total}
+          render={(total, invoice: Invoice) =>
             getFormattedNumber(total, invoice.currency, i18n.locale, organization)
           }
         />
@@ -220,9 +219,9 @@ const Invoices = () => {
           title={<Trans>State</Trans>}
           key="state"
           align="right"
-          sorter={(a: any, b: any) => (a.state ?? "").localeCompare(b.state ?? "")}
+          sorter={(a: Invoice, b: Invoice) => (a.state ?? "").localeCompare(b.state ?? "")}
           filters={stateFilter}
-          onFilter={(value, record: any) => record.state.indexOf(value) === 0}
+          onFilter={(value, record: Invoice) => record.state === String(value)}
           render={(invoice) => (
             <span onClick={(e) => e.stopPropagation()}>
               <InvoiceStateSelect invoice={invoice} />

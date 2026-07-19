@@ -120,7 +120,7 @@ const TaxRateForm = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={taxRate.state === "hasData" ? taxRate.data : undefined}
+          initialValues={taxRate.state === "hasData" ? (taxRate.data ?? undefined) : undefined}
         >
           <Section><Trans>Tax rate</Trans></Section>
           <Form.Item name="name" label={<Trans>Name</Trans>} rules={[{ required: true, message: t`Please input name!` }]}>

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import type { TaxRate } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, Col, Input, Row, Space, Table, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -34,7 +35,7 @@ function SettingsTaxRates() {
   }, [location, setTaxRates]);
 
   const filtered = search
-    ? filter(taxRates, (tr: any) =>
+    ? filter(taxRates, (tr: TaxRate) =>
         some(["name", "description", "percentage"], (field) =>
           includes(toString(get(tr, field)).toLowerCase(), search.toLowerCase()),
         ),
@@ -71,7 +72,7 @@ function SettingsTaxRates() {
             dataSource={filtered}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
-            onRow={(record: any) => ({
+            onRow={(record: TaxRate) => ({
               onClick: () => navigate(`/settings/tax-rates/${record.id}`),
               style: { cursor: "pointer" },
             })}
@@ -79,7 +80,7 @@ function SettingsTaxRates() {
             <Table.Column
               title={<Trans>Name</Trans>}
               key="name"
-              sorter={(a: any, b: any) => a.name.localeCompare(b.name)}
+              sorter={(a: TaxRate, b: TaxRate) => a.name.localeCompare(b.name)}
               render={(tr) => (
                 <Link to={`/settings/tax-rates/${tr.id}`} onClick={(e) => e.stopPropagation()}>{tr.name}</Link>
               )}
@@ -88,14 +89,14 @@ function SettingsTaxRates() {
               title={<Trans>Description</Trans>}
               dataIndex="description"
               key="description"
-              sorter={(a: any, b: any) => (a.description ?? "").localeCompare(b.description ?? "")}
+              sorter={(a: TaxRate, b: TaxRate) => (a.description ?? "").localeCompare(b.description ?? "")}
             />
             <Table.Column
               title={<Trans>Percentage</Trans>}
               align="right"
               dataIndex="percentage"
               key="percentage"
-              sorter={(a: any, b: any) => a.percentage - b.percentage}
+              sorter={(a: TaxRate, b: TaxRate) => a.percentage - b.percentage}
               render={(percentage) => `${percentage} %`}
             />
             <Table.Column
@@ -103,7 +104,7 @@ function SettingsTaxRates() {
               align="center"
               dataIndex="isDefault"
               key="isDefault"
-              sorter={(a: any, b: any) => (a.isDefault ? 1 : 0) - (b.isDefault ? 1 : 0)}
+              sorter={(a: TaxRate, b: TaxRate) => (a.isDefault ? 1 : 0) - (b.isDefault ? 1 : 0)}
               render={(value) => (value ? <CheckSquareOutlined /> : "—")}
             />
           </Table>

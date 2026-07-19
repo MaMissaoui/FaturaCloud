@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { Client } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, Col, Input, Space, Table, Typography, Row, Tag, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -37,7 +38,7 @@ const Clients = () => {
   }, [location, setClients]);
 
   const searchClients = () => {
-    return filter(clients, (client: any) => {
+    return filter(clients, (client: Client) => {
       return some(
         ["name", "code", "registration_number", "address", "emails", "phone", "vatin", "website"],
         (field) => {
@@ -78,7 +79,7 @@ const Clients = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
-            onRow={(record: any) => ({
+            onRow={(record: Client) => ({
               onClick: () => navigate("/clients", { state: { clientModal: true, clientId: record.id } }),
               style: { cursor: "pointer" },
             })}
@@ -86,7 +87,7 @@ const Clients = () => {
             <Table.Column
               title={<Trans>Name</Trans>}
               key="name"
-              sorter={(a: any, b: any) => (a.name < b.name ? -1 : a.name === b.name ? 0 : 1)}
+              sorter={(a: Client, b: Client) => (a.name ?? "").localeCompare(b.name ?? "")}
               render={(client) => (
                 <Link
                   to={`/clients`}
@@ -101,13 +102,13 @@ const Clients = () => {
               title={<Trans>Address</Trans>}
               dataIndex="address"
               key="address"
-              sorter={(a: any, b: any) => (a.address ?? "").localeCompare(b.address ?? "")}
+              sorter={(a: Client, b: Client) => (a.address ?? "").localeCompare(b.address ?? "")}
             />
             <Table.Column
               title={<Trans>Emails</Trans>}
               dataIndex="emails"
               key="emails"
-              sorter={(a: any, b: any) => (a.emails ?? "").localeCompare(b.emails ?? "")}
+              sorter={(a: Client, b: Client) => (a.emails ?? "").localeCompare(b.emails ?? "")}
               render={(emails: string) => {
                 if (!emails) return "";
                 let parsed: string[];
@@ -123,7 +124,7 @@ const Clients = () => {
               title={<Trans>Phone</Trans>}
               dataIndex="phone"
               key="phone"
-              sorter={(a: any, b: any) => (a.phone ?? "").localeCompare(b.phone ?? "")}
+              sorter={(a: Client, b: Client) => (a.phone ?? "").localeCompare(b.phone ?? "")}
               render={(phone) => {
                 if (!isEmpty(phone)) {
                   return (
@@ -139,7 +140,7 @@ const Clients = () => {
               title={<Trans>VATIN</Trans>}
               dataIndex="vatin"
               key="vatin"
-              sorter={(a: any, b: any) => (a.vatin ?? "").localeCompare(b.vatin ?? "")}
+              sorter={(a: Client, b: Client) => (a.vatin ?? "").localeCompare(b.vatin ?? "")}
             />
             <Table.Column
               title={<Trans>Website</Trans>}
@@ -147,7 +148,7 @@ const Clients = () => {
               key="website"
               width={60}
               align="center"
-              sorter={(a: any, b: any) => (a.website ?? "").localeCompare(b.website ?? "")}
+              sorter={(a: Client, b: Client) => (a.website ?? "").localeCompare(b.website ?? "")}
               render={(website) =>
                 website ? (
                   <Tooltip title={website}>

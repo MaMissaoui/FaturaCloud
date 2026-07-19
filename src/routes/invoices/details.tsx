@@ -343,14 +343,17 @@ const InvoiceDetails: React.FC = () => {
     }
   }, [isNew, invoiceId, navigate]);
 
-  const getInitialValues = () => {
-    let values = {
-      currency: organization.currency ?? "EUR",
+  const getInitialValues = (): Record<string, unknown> => {
+    // Antd form values are a heterogeneous bag (Dayjs dates, nested line
+    // items, strings) that differs between the new-invoice and edit branches,
+    // so a loose record is the honest type here rather than a contrived union.
+    let values: Record<string, unknown> = {
+      currency: organization?.currency ?? "EUR",
       date: dayjs(),
-      dueDate: organization.due_days ? dayjs().add(organization.due_days, "day") : null,
+      dueDate: organization?.due_days ? dayjs().add(organization.due_days, "day") : null,
       lineItems: [{ quantity: 1, taxRate: get(find(taxRates, { isDefault: 1 }), "id") }],
-      customerNotes: organization.customerNotes,
-      overdueCharge: organization.overdueCharge || 0,
+      customerNotes: organization?.customerNotes,
+      overdueCharge: organization?.overdueCharge || 0,
       number: isNew ? nextInvoiceNumber || "" : undefined,
     };
 
@@ -971,7 +974,7 @@ const InvoiceDetails: React.FC = () => {
                     {Intl.NumberFormat(i18n.locale, {
                       style: "currency",
                       currency: organization.currency ?? "EUR",
-                      minimumFractionDigits: organization.minimum_fraction_digits,
+                      minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                     }).format(subTotal)}
                   </Descriptions.Item>
                   {taxGroups.length > 0 ? (
@@ -983,7 +986,7 @@ const InvoiceDetails: React.FC = () => {
                         {Intl.NumberFormat(i18n.locale, {
                           style: "currency",
                           currency: organization.currency ?? "EUR",
-                          minimumFractionDigits: organization.minimum_fraction_digits,
+                          minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                         }).format(group.tax)}
                       </Descriptions.Item>
                     ))
@@ -992,7 +995,7 @@ const InvoiceDetails: React.FC = () => {
                       {Intl.NumberFormat(i18n.locale, {
                         style: "currency",
                         currency: organization.currency ?? "EUR",
-                        minimumFractionDigits: organization.minimum_fraction_digits,
+                        minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                       }).format(0)}
                     </Descriptions.Item>
                   )}
@@ -1007,7 +1010,7 @@ const InvoiceDetails: React.FC = () => {
                       {Intl.NumberFormat(i18n.locale, {
                         style: "currency",
                         currency: organization.currency ?? "EUR",
-                        minimumFractionDigits: organization.minimum_fraction_digits,
+                        minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                       }).format(total)}
                     </strong>
                   </Descriptions.Item>

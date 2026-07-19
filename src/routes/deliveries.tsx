@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { Delivery } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Input, Row, Space, Table, Tag, Typography } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -42,7 +43,7 @@ const Deliveries = () => {
   }, [location, setDeliveries]);
 
   const filtered = search
-    ? filter(deliveries, (d: any) =>
+    ? filter(deliveries, (d: Delivery) =>
         includes((d.deliveryNumber ?? "").toLowerCase(), search.toLowerCase()) ||
         includes((d.clientName ?? "").toLowerCase(), search.toLowerCase()) ||
         includes((d.orderNumber ?? "").toLowerCase(), search.toLowerCase()),
@@ -77,7 +78,7 @@ const Deliveries = () => {
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         rowKey="id"
         loading={loading}
-        onRow={(record: any) => ({
+        onRow={(record: Delivery) => ({
           onClick: () => navigate(`/deliveries/${record.id}`),
           style: { cursor: "pointer" },
         })}
@@ -85,37 +86,37 @@ const Deliveries = () => {
         <Table.Column
           title={<Trans>Number</Trans>}
           key="deliveryNumber"
-          render={(d: any) => (
+          render={(d: Delivery) => (
             <Link to={`/deliveries/${d.id}`} onClick={(e) => e.stopPropagation()}>
               {d.deliveryNumber}
             </Link>
           )}
-          sorter={(a: any, b: any) => a.deliveryNumber.localeCompare(b.deliveryNumber)}
+          sorter={(a: Delivery, b: Delivery) => a.deliveryNumber.localeCompare(b.deliveryNumber)}
         />
         <Table.Column
           title={<Trans>Order</Trans>}
           dataIndex="orderNumber"
           key="orderNumber"
-          sorter={(a: any, b: any) => (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")}
+          sorter={(a: Delivery, b: Delivery) => (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")}
         />
         <Table.Column
           title={<Trans>Client</Trans>}
           dataIndex="clientName"
           key="clientName"
-          sorter={(a: any, b: any) => (a.clientName ?? "").localeCompare(b.clientName ?? "")}
+          sorter={(a: Delivery, b: Delivery) => (a.clientName ?? "").localeCompare(b.clientName ?? "")}
         />
         <Table.Column
           title={<Trans>Delivery date</Trans>}
           dataIndex="deliveryDate"
           key="deliveryDate"
           render={(v: number) => (v ? dayjs(v).format("L") : "—")}
-          sorter={(a: any, b: any) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
+          sorter={(a: Delivery, b: Delivery) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
         />
         <Table.Column
           title={<Trans>Status</Trans>}
           dataIndex="status"
           key="status"
-          sorter={(a: any, b: any) => (a.status ?? "").localeCompare(b.status ?? "")}
+          sorter={(a: Delivery, b: Delivery) => (a.status ?? "").localeCompare(b.status ?? "")}
           render={statusTag}
         />
       </Table>
