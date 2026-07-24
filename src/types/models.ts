@@ -6,6 +6,7 @@
 
 export type { Client } from "./client";
 export type { Vendor } from "./vendor";
+export type { PurchaseOrderStatus } from "./purchase-order";
 export type { Invoice, InvoiceLineItem, InvoiceState } from "./invoice";
 
 export interface Product {
@@ -124,4 +125,31 @@ export interface StockMovement {
   reference: string | null;
   createdAt: string | null;
   productName?: string | null;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  organizationId: string;
+  vendorId: string | null;
+  orderNumber: string;
+  status: string;
+  orderDate: number;
+  expectedDate: number | null;
+  currency: string | null;
+  deliveryAddress: string | null;
+  notes: string | null;
+  vendorName: string | null;
+  createdAt: number;
+}
+
+export interface PurchaseOrderLineItem {
+  id: string;
+  purchaseOrderId: string;
+  productId: string | null;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  unit: string | null;
+  taxRate: string | null;
+  position: number;
 }

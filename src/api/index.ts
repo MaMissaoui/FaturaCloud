@@ -4,6 +4,7 @@
 import { get, post, put, patch, del, CSRF_HEADER } from "./client";
 import type {
   Client, Vendor, Invoice, InvoiceLineItem, Product, TaxRate, Organization,
+  PurchaseOrder, PurchaseOrderLineItem,
   Order, OrderLineItem, Delivery, DeliveryLineItem, StockMovement,
 } from "src/types/models";
 
@@ -178,6 +179,7 @@ export type OrganizationUsageCount = {
   orders: number;
   deliveries: number;
   taxRates: number;
+  purchaseOrders: number;
 };
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
@@ -281,3 +283,22 @@ export const DeleteVendor = (id: string) =>
   del<{ deleted: boolean }>(`/vendors/${id}`).then((r) => r.deleted);
 export const GetVendorDocumentCount = (id: string) =>
   get<{ count: number }>(`/vendors/${id}/document-count`).then((r) => r.count);
+
+// ---- Purchase Orders ----
+
+export const GetPurchaseOrders = (organizationId: string) =>
+  get<PurchaseOrder[]>(`/organizations/${organizationId}/purchase-orders`);
+export const GetNextPurchaseOrderNumber = (organizationId: string) =>
+  get<{ number: string }>(`/organizations/${organizationId}/purchase-orders/next-number`).then(
+    (r) => r.number,
+  );
+export const GetPurchaseOrder = (id: string) => get<PurchaseOrder>(`/purchase-orders/${id}`);
+export const GetPurchaseOrderLineItems = (id: string) =>
+  get<PurchaseOrderLineItem[]>(`/purchase-orders/${id}/line-items`);
+export const CreatePurchaseOrder = (req: unknown) => post<PurchaseOrder>("/purchase-orders", req);
+export const UpdatePurchaseOrder = (id: string, req: unknown) =>
+  put<PurchaseOrder>(`/purchase-orders/${id}`, req);
+export const UpdatePurchaseOrderStatus = (id: string, status: string) =>
+  patch<PurchaseOrder>(`/purchase-orders/${id}/status`, { status });
+export const DeletePurchaseOrder = (id: string) =>
+  del<{ deleted: boolean }>(`/purchase-orders/${id}`).then((r) => r.deleted);

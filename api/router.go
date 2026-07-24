@@ -151,6 +151,16 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/vendors/{id}", h.deleteVendor)
 	protected("GET", "/api/vendors/{id}/document-count", h.getVendorDocumentCount)
 
+	// Purchase orders
+	protected("GET", "/api/organizations/{orgId}/purchase-orders", h.listPurchaseOrders)
+	protected("GET", "/api/organizations/{orgId}/purchase-orders/next-number", h.nextPurchaseOrderNumber)
+	protected("POST", "/api/purchase-orders", h.createPurchaseOrder)
+	protected("GET", "/api/purchase-orders/{id}", h.getPurchaseOrder)
+	protected("GET", "/api/purchase-orders/{id}/line-items", h.getPurchaseOrderLineItems)
+	protected("PUT", "/api/purchase-orders/{id}", h.updatePurchaseOrder)
+	protected("PATCH", "/api/purchase-orders/{id}/status", h.updatePurchaseOrderStatus)
+	protected("DELETE", "/api/purchase-orders/{id}", h.deletePurchaseOrder)
+
 	// Invoices
 	protected("GET", "/api/organizations/{orgId}/invoices", h.listInvoices)
 	protected("POST", "/api/invoices", h.createInvoice)

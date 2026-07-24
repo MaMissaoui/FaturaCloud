@@ -128,6 +128,16 @@ PUT    /api/vendors/{id}
 DELETE /api/vendors/{id}               refused with 409 while purchasing documents reference it
 GET    /api/vendors/{id}/document-count
 
+# Purchase Orders
+GET    /api/organizations/{orgId}/purchase-orders
+GET    /api/organizations/{orgId}/purchase-orders/next-number
+POST   /api/purchase-orders
+GET    /api/purchase-orders/{id}
+GET    /api/purchase-orders/{id}/line-items
+PUT    /api/purchase-orders/{id}
+PATCH  /api/purchase-orders/{id}/status
+DELETE /api/purchase-orders/{id}
+
 # Invoices
 GET    /api/organizations/{orgId}/invoices
 POST   /api/invoices
@@ -201,6 +211,9 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/atoms/delivery.ts` — delivery list, detail, status, and delete atoms
 - `src/atoms/vendor.ts` — vendor list, detail, and delete atoms (mirrors `client.ts`, including the `emails` JSON-string ↔ array conversion)
 - `src/routes/vendors.tsx` + `src/components/vendors/form.tsx` — vendors list with a `Drawer` form on the same page (the clients pattern — no detail route)
+- `src/types/purchase-order.ts` — the frontend single source of truth for purchase order status (`PURCHASE_ORDER_STATUSES`, `purchaseOrderStatusColor`, `purchaseOrderStatusLabel`, `purchaseOrderTransitions`). Unlike orders/deliveries, the transition matrix lives next to the statuses so the "must stay in sync with the Go map" pairing is visible in one place
+- `src/routes/purchase-orders.tsx` + `src/routes/purchase-orders/details.tsx` — purchase order list and detail/edit pages
+- `src/components/purchase-orders/purchase-order-pdf.tsx` — purchase order PDF (with prices; sent to the vendor). Takes an `i18n` prop and translates, following `invoices/pdf.tsx` rather than the hardcoded-English order/delivery PDFs
 - `src/routes/` — main application pages
 - `src/routes/login.tsx` — login page (public, redirects to `/` on success); shows an "Sign in with SSO" button when `GET /api/auth/oidc/enabled` reports true
 - `src/routes/deliveries.tsx` — outbound deliveries list
@@ -236,6 +249,8 @@ Schema conventions:
 - `products.sku` (labeled "Product code" in the UI) must be unique per organization — enforced by a `UNIQUE(organizationId, sku)` index, not a DB-level `NOT NULL` (SQLite can't add that retroactively without a table rebuild); required-ness is enforced in `api/products.go` and the frontend form instead. The New Product form proposes a code derived from the name, deduplicated against other products in the org
 - `stockMovements.quantity` is a **signed delta**: positive = stock in, negative = stock out/adjustment; `products.stockQuantity` is always `SUM(quantity)` over all movements and is recomputed inside a transaction on every insert/delete — never update it directly
 - `invoices.state` is validated against the canonical set `"draft"` | `"sent"` | `"paid"` | `"cancelled"` (`invoiceStates` in `db/invoice.go`) on create and on `PATCH /api/invoices/{id}/state`; unknown values are rejected with a 409. Unlike orders/deliveries there's no transition matrix — invoices move freely between states (a bounced payment can send `paid→sent`). State is **not** settable via `PUT` (stripped from `UpdateInvoiceRequest`); the frontend single source of truth is `src/types/invoice.ts` (`INVOICE_STATES`, `invoiceStateColor`, `invoiceStateLabel`)
+- `purchase_orders.status` is `"draft"` | `"confirmed"` | `"received"` | `"cancelled"`, enforced by a `CHECK` constraint **and** by `purchaseOrderStatusTransitions` in `db/purchase_order.go` (`PATCH /api/purchase-orders/{id}/status` only — status can't be set through `PUT`). `received`/`cancelled` are terminal. Status is never auto-advanced from received quantities; per-line fulfilment is reported separately
+- `purchase_orders.vendorId` deliberately has **no `ON DELETE` clause**. Vendor referential integrity is enforced app-side by `DeleteVendor`'s guard; `ON DELETE SET NULL` would silently orphan a purchase order from its vendor and make that guard's rationale false. Any new table with a `vendorId` column must be added to `vendorReferencingTables` in `db/vendor.go` — `TestVendorDocumentCountCoversEveryReference` reads the live schema and fails otherwise
 - `orders.status` is `"draft"` | `"confirmed"` | `"shipped"` | `"delivered"` | `"cancelled"`; transitions enforced both client-side via `STATUS_TRANSITIONS` in `src/routes/orders/details.tsx` and server-side via `orderStatusTransitions` in `db/order.go` (`PATCH /api/orders/{id}/status` only — status can't be set through `PUT`, which no longer accepts a `status` field)
 - `orderLineItems.unitPrice` stored as integer cents; `orderLineItems.quantity` stored as REAL (supports fractional quantities)
 - `outbound_deliveries.status` is `"draft"` | `"shipped"` | `"delivered"` | `"cancelled"`; transitions enforced both client-side in `src/routes/deliveries/details.tsx` and server-side via `deliveryStatusTransitions` in `db/delivery.go` (`PATCH /api/deliveries/{id}/status` only — status can't be set through `PUT`, which no longer accepts a `status` field). Line items are frozen once a delivery is `shipped`/`delivered` — `PUT` still accepts header-field-only edits (tracking number, notes, …)
@@ -258,6 +273,7 @@ Uses Jotai atoms pattern with:
 ## Sidebar Navigation
 The sidebar is grouped into collapsible submenus (click the group to expand/collapse, same behavior for all groups — the active group auto-expands based on the current route via `defaultOpenKeys` in `src/layouts/base.tsx`):
 - **Sales**: Invoices → Outbound Deliveries → Orders
+- **Purchasing**: Purchase Orders
 - **Inventory**: Inventory
 - **Master Data**: Clients → Vendors → Products → Organizations
 - **Settings**: Invoice, Tax Rates, Backup, Users (admin only)

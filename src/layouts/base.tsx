@@ -8,6 +8,7 @@ import {
   FileTextOutlined,
   TeamOutlined,
   SolutionOutlined,
+  ShoppingCartOutlined,
   SettingOutlined,
   FileOutlined,
   CalculatorOutlined,
@@ -126,11 +127,14 @@ export default function BaseLayout() {
     const pathArray = pathString.split("/");
     const section = pathArray[0];
     const salesSections = ["invoices", "deliveries", "orders"];
+    const purchasingSections = ["purchase-orders"];
     const masterDataSections = ["clients", "vendors", "products", "organizations"];
     if (section === "settings") {
       openKeys = ["settings"];
     } else if (salesSections.includes(section)) {
       openKeys = ["group-sales"];
+    } else if (purchasingSections.includes(section)) {
+      openKeys = ["group-purchasing"];
     } else if (section === "inventory") {
       openKeys = ["group-inventory"];
     } else if (masterDataSections.includes(section)) {
@@ -242,6 +246,22 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "orders",
+                },
+              ],
+            },
+            {
+              icon: <ShoppingCartOutlined />,
+              label: <Trans>Purchasing</Trans>,
+              key: "group-purchasing",
+              children: [
+                {
+                  icon: <ShoppingCartOutlined />,
+                  label: (
+                    <Link to="/purchase-orders">
+                      <Trans>Purchase Orders</Trans>
+                    </Link>
+                  ),
+                  key: "purchase-orders",
                 },
               ],
             },
