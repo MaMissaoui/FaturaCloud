@@ -1095,3 +1095,60 @@ func TestVendorCascadesWithOrganization(t *testing.T) {
 		t.Fatalf("%d vendors survived organization deletion", remaining)
 	}
 }
+
+// TestVendorDocumentCountCoversEveryReference is a tripwire for the purchasing
+// phases that follow. DeleteVendor's guard is only as good as the list of
+// tables GetVendorDocumentCount actually counts, and a migration that adds a
+// vendorId column without updating that list turns the guard into a no-op —
+// deleting a referenced vendor would then surface a raw foreign-key error as an
+// opaque 500, which is exactly what the guard exists to prevent.
+//
+// Rather than trusting a comment, this discovers every table with a vendorId
+// column from the live schema and requires it to be covered.
+func TestVendorDocumentCountCoversEveryReference(t *testing.T) {
+	d := newTestDB(t)
+
+	tables := []string{}
+	if err := d.DB.Select(&tables,
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
+	); err != nil {
+		t.Fatalf("list tables: %v", err)
+	}
+
+	covered := map[string]bool{}
+	for _, name := range vendorReferencingTables {
+		covered[name] = true
+	}
+
+	for _, table := range tables {
+		columns := []struct {
+			Name string `db:"name"`
+		}{}
+		if err := d.DB.Select(&columns, `SELECT name FROM pragma_table_info(?)`, table); err != nil {
+			t.Fatalf("pragma_table_info(%s): %v", table, err)
+		}
+		for _, col := range columns {
+			if col.Name != "vendorId" {
+				continue
+			}
+			if !covered[table] {
+				t.Errorf(
+					"table %q has a vendorId column but is not in vendorReferencingTables — "+
+						"DeleteVendor's guard would not see its rows; add it to the list in db/vendor.go",
+					table,
+				)
+			}
+		}
+	}
+
+	// The converse: a listed table that no longer exists would make every count query fail.
+	existing := map[string]bool{}
+	for _, name := range tables {
+		existing[name] = true
+	}
+	for _, name := range vendorReferencingTables {
+		if !existing[name] {
+			t.Errorf("vendorReferencingTables lists %q, which is not a table in the schema", name)
+		}
+	}
+}

@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -122,11 +123,31 @@ func (d *Database) UpdateVendor(vendorID string, updates UpdateVendorRequest) (*
 // GetVendorDocumentCount returns how many purchasing documents reference this
 // vendor, so callers can decide whether it's safe to delete.
 //
-// Each purchasing phase adds its own subquery here as it introduces its table
-// (purchase orders, inbound deliveries, incoming invoices); until then there is
-// nothing that can reference a vendor.
-func (d *Database) GetVendorDocumentCount(_ string) (int64, error) {
-	return 0, nil
+// Each purchasing phase adds its table here as it introduces it (purchase
+// orders, inbound deliveries, incoming invoices); until then nothing can
+// reference a vendor and the count is always zero. TestVendorDocumentCountCoversEveryReference
+// fails if a table gains a vendorId column without being listed, so the guard
+// can't silently rot into a no-op.
+var vendorReferencingTables = []string{}
+
+func (d *Database) GetVendorDocumentCount(vendorID string) (int64, error) {
+	if len(vendorReferencingTables) == 0 {
+		return 0, nil
+	}
+
+	// Table names come from the package-level slice above, never from input.
+	subqueries := make([]string, len(vendorReferencingTables))
+	args := make([]any, len(vendorReferencingTables))
+	for i, table := range vendorReferencingTables {
+		subqueries[i] = fmt.Sprintf("(SELECT COUNT(*) FROM %s WHERE vendorId = ?)", table)
+		args[i] = vendorID
+	}
+
+	var count int64
+	if err := d.DB.Get(&count, "SELECT "+strings.Join(subqueries, " + "), args...); err != nil {
+		return 0, fmt.Errorf("get_vendor_document_count: %w", err)
+	}
+	return count, nil
 }
 
 // DeleteVendor refuses to delete a vendor that still has purchasing documents.
