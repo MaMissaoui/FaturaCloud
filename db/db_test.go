@@ -1010,3 +1010,88 @@ func TestGetOrganizationsOmitsLogo(t *testing.T) {
 		t.Fatalf("expected single-org fetch to keep the logo, got %q", single.Logo)
 	}
 }
+
+func TestVendorCRUD(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-vendor", Name: ptr("ACME Corp")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	vendor, err := d.CreateVendor(CreateVendorRequest{
+		OrganizationID:   org.ID,
+		Name:             ptr("Supplier Ltd"),
+		Code:             ptr("SU"),
+		Emails:           ptr(`["sales@supplier.example"]`),
+		DefaultCurrency:  ptr("EUR"),
+		PaymentTermsDays: ptr(int64(30)),
+	})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+	if vendor.ID == "" {
+		t.Fatal("CreateVendor did not generate an id")
+	}
+	if vendor.PaymentTermsDays == nil || *vendor.PaymentTermsDays != 30 {
+		t.Fatalf("paymentTermsDays not round-tripped: %v", vendor.PaymentTermsDays)
+	}
+
+	vendors, err := d.GetVendors(org.ID)
+	if err != nil {
+		t.Fatalf("GetVendors: %v", err)
+	}
+	if len(vendors) != 1 {
+		t.Fatalf("got %d vendors, want 1", len(vendors))
+	}
+
+	updated, err := d.UpdateVendor(vendor.ID, UpdateVendorRequest{Name: ptr("Supplier GmbH")})
+	if err != nil {
+		t.Fatalf("UpdateVendor: %v", err)
+	}
+	if updated.Name == nil || *updated.Name != "Supplier GmbH" {
+		t.Fatalf("name not updated: %v", updated.Name)
+	}
+
+	ok, err := d.DeleteVendor(vendor.ID)
+	if err != nil {
+		t.Fatalf("DeleteVendor: %v", err)
+	}
+	if !ok {
+		t.Fatal("DeleteVendor reported no rows removed")
+	}
+}
+
+// Vendors must be scoped to their organization and cascade away with it, the
+// same as clients — otherwise deleting an org leaves orphaned master data.
+func TestVendorCascadesWithOrganization(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cascade", Name: ptr("ACME Corp")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")}); err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+
+	counts, err := d.GetOrganizationUsageCount(org.ID)
+	if err != nil {
+		t.Fatalf("GetOrganizationUsageCount: %v", err)
+	}
+	if counts.Vendors != 1 {
+		t.Fatalf("usage count reported %d vendors, want 1", counts.Vendors)
+	}
+
+	if _, err := d.DeleteOrganization(org.ID); err != nil {
+		t.Fatalf("DeleteOrganization: %v", err)
+	}
+
+	var remaining int
+	if err := d.DB.Get(&remaining, `SELECT COUNT(*) FROM vendors WHERE organizationId = ?`, org.ID); err != nil {
+		t.Fatalf("count vendors: %v", err)
+	}
+	if remaining != 0 {
+		t.Fatalf("%d vendors survived organization deletion", remaining)
+	}
+}

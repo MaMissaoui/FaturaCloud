@@ -7,6 +7,7 @@ import {
   MenuUnfoldOutlined,
   FileTextOutlined,
   TeamOutlined,
+  SolutionOutlined,
   SettingOutlined,
   FileOutlined,
   CalculatorOutlined,
@@ -125,7 +126,7 @@ export default function BaseLayout() {
     const pathArray = pathString.split("/");
     const section = pathArray[0];
     const salesSections = ["invoices", "deliveries", "orders"];
-    const masterDataSections = ["clients", "products", "organizations"];
+    const masterDataSections = ["clients", "vendors", "products", "organizations"];
     if (section === "settings") {
       openKeys = ["settings"];
     } else if (salesSections.includes(section)) {
@@ -273,6 +274,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "clients",
+                },
+                {
+                  icon: <SolutionOutlined />,
+                  label: (
+                    <Link to="/vendors">
+                      <Trans>Vendors</Trans>
+                    </Link>
+                  ),
+                  key: "vendors",
                 },
                 {
                   icon: <AppstoreOutlined />,
