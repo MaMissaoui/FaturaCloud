@@ -20,7 +20,6 @@ import {
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { loadable } from "jotai/utils";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -66,14 +65,6 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
 
-// Wrapped in `loadable` so reading it never suspends. A bare async atom read
-// here suspends the whole page a second time (after the order itself has
-// resolved); when that late suspension unwinds, the Form remounts empty and the
-// populate effect does not re-run — the order's line items and dates silently
-// vanish on a direct page load. Only the number is needed, and only when
-// creating, so a non-suspending read is both safer and sufficient.
-const loadableNextNumberAtom = loadable(nextPurchaseOrderNumberAtom);
-
 const PurchaseOrderDetails = () => {
   const { id } = useParams<string>();
   const navigate = useNavigate();
@@ -90,8 +81,12 @@ const PurchaseOrderDetails = () => {
   const setVendors = useSetAtom(setVendorsAtom);
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
-  const nextNumberState = useAtomValue(loadableNextNumberAtom);
-  const nextNumber = nextNumberState.state === "hasData" ? nextNumberState.data : "PO-0001";
+  // Read the async atom directly so the component suspends until the real
+  // number arrives. A non-suspending read would let the Form mount with a
+  // placeholder, and antd applies initialValues only on first mount — freezing
+  // the field at that placeholder and proposing an already-used number, which
+  // is exactly what NextPurchaseOrderNumber's MAX-based query exists to avoid.
+  const nextNumber = useAtomValue(nextPurchaseOrderNumberAtom);
 
   const [orderId, setOrderId] = useAtom(purchaseOrderIdAtom);
   const [order, setOrder] = useAtom(purchaseOrderAtom);
@@ -143,12 +138,18 @@ const PurchaseOrderDetails = () => {
     organization?.currency ??
     "EUR";
 
-  // onFinish's `values` cannot be trusted on this page: antd only reports
-  // fields it considers registered, and on an existing record it hands back an
-  // empty object even though every input is populated on screen. Submitting
-  // that would persist emptiness and wipe the order's line items. Read the
-  // whole form store instead — the same reason handlePrintPurchaseOrder uses
-  // getFieldsValue(true).
+  // Read the form store rather than onFinish's `values`.
+  //
+  // Under React.StrictMode (dev only) the mount effect's cleanup transiently
+  // sets the id atom to null, `order` reads as null, the guard below unmounts
+  // the Form, and it remounts with no registered fields — so onFinish hands
+  // back an empty object even though every input is populated on screen, and
+  // saving it would wipe the order's line items. Production builds don't
+  // double-invoke effects and are unaffected, but dev is where this page gets
+  // edited, so read the store, which is correct in both.
+  //
+  // Validation is unaffected: form.submit() still runs validateFields first and
+  // only reaches this on success.
   const handleSubmit = async () => {
     await setOrder(form.getFieldsValue(true));
   };
@@ -175,9 +176,9 @@ const PurchaseOrderDetails = () => {
   };
 
   const handlePrintPurchaseOrder = async () => {
-    // getFieldsValue(true) returns the whole form store. The no-argument form
-    // returns {} here — the sales-side PDF handlers use it and silently do
-    // nothing as a result — so the `true` is load-bearing, not incidental.
+    // getFieldsValue(true) reads the whole store, for the same StrictMode
+    // reason handleSubmit does — the no-argument form returns {} in dev, which
+    // makes the PDF button silently do nothing.
     const values = form.getFieldsValue(true);
     const vendorData = find(vendors, { id: values.vendorId });
     if (!vendorData) return;
