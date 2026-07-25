@@ -254,6 +254,36 @@ function SettingsInvoice() {
           </Space>
         </Card>
 
+        {/* 3-way matching policy for incoming (vendor) invoices. Zero means any
+            variance is flagged and blocks approval until it's resolved or
+            explicitly overridden with a reason. */}
+        <Card title={<Trans>Vendor invoice matching</Trans>} style={{ marginBottom: 24 }}>
+          <Row gutter={24}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="match_price_tolerance_percent"
+                label={<Trans>Price tolerance (%)</Trans>}
+                extra={
+                  <Trans>How far a vendor's unit price may differ from the purchase order.</Trans>
+                }
+              >
+                <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="match_quantity_tolerance_percent"
+                label={<Trans>Quantity tolerance (%)</Trans>}
+                extra={
+                  <Trans>How far a billed quantity may exceed what was ordered and received.</Trans>
+                }
+              >
+                <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
         <Divider />
 
         <Button

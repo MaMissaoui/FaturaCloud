@@ -255,6 +255,7 @@ export default function Organizations() {
                   [counts.orders, t`order(s)`],
                   [counts.purchaseOrders, t`purchase order(s)`],
                   [counts.inboundDeliveries, t`goods receipt(s)`],
+                  [counts.incomingInvoices, t`incoming invoice(s)`],
                   [counts.deliveries, t`delivery(ies)`],
                   [counts.taxRates, t`tax rate(s)`],
                 ].filter(([n]) => (n as number) > 0)

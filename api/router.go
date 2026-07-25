@@ -172,6 +172,16 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PATCH", "/api/inbound-deliveries/{id}/status", h.updateInboundDeliveryStatus)
 	protected("DELETE", "/api/inbound-deliveries/{id}", h.deleteInboundDelivery)
 
+	// Incoming invoices (vendor bills)
+	protected("GET", "/api/organizations/{orgId}/incoming-invoices", h.listIncomingInvoices)
+	protected("POST", "/api/incoming-invoices", h.createIncomingInvoice)
+	protected("GET", "/api/incoming-invoices/{id}", h.getIncomingInvoice)
+	protected("GET", "/api/incoming-invoices/{id}/line-items", h.getIncomingInvoiceLineItems)
+	protected("GET", "/api/incoming-invoices/{id}/match", h.getIncomingInvoiceMatch)
+	protected("PUT", "/api/incoming-invoices/{id}", h.updateIncomingInvoice)
+	protected("PATCH", "/api/incoming-invoices/{id}/state", h.updateIncomingInvoiceState)
+	protected("DELETE", "/api/incoming-invoices/{id}", h.deleteIncomingInvoice)
+
 	// Invoices
 	protected("GET", "/api/organizations/{orgId}/invoices", h.listInvoices)
 	protected("POST", "/api/invoices", h.createInvoice)

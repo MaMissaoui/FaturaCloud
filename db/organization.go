@@ -26,6 +26,10 @@ type Organization struct {
 	InvoiceNumberFormat   *string  `db:"invoice_number_format"   json:"invoiceNumberFormat"`
 	InvoiceNumberCounter  *int64   `db:"invoice_number_counter"  json:"invoiceNumberCounter"`
 	DateFormat            *string  `db:"date_format"             json:"date_format"`
+
+	// 3-way matching tolerance policy (percent). Zero means any variance is flagged.
+	MatchPriceTolerancePercent    *float64 `db:"match_price_tolerance_percent"    json:"match_price_tolerance_percent"`
+	MatchQuantityTolerancePercent *float64 `db:"match_quantity_tolerance_percent" json:"match_quantity_tolerance_percent"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -50,6 +54,9 @@ type CreateOrganizationRequest struct {
 	Logo                  []byte   `json:"logo"`
 	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
 	DateFormat            *string  `json:"date_format"`
+
+	MatchPriceTolerancePercent    *float64 `json:"match_price_tolerance_percent"`
+	MatchQuantityTolerancePercent *float64 `json:"match_quantity_tolerance_percent"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -74,6 +81,9 @@ type UpdateOrganizationRequest struct {
 	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
 	InvoiceNumberCounter  *int64   `json:"invoiceNumberCounter"`
 	DateFormat            *string  `json:"date_format"`
+
+	MatchPriceTolerancePercent    *float64 `json:"match_price_tolerance_percent"`
+	MatchQuantityTolerancePercent *float64 `json:"match_quantity_tolerance_percent"`
 }
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
@@ -86,7 +96,8 @@ func (d *Database) GetOrganizations() ([]Organization, error) {
 		SELECT id, code, name, country, address, email, phone, website,
 		       registration_number, vatin, bank_name, iban, currency,
 		       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
-		       createdAt, invoice_number_format, invoice_number_counter, date_format
+		       createdAt, invoice_number_format, invoice_number_counter, date_format,
+		       match_price_tolerance_percent, match_quantity_tolerance_percent
 		FROM organizations ORDER BY name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("get_organizations: %w", err)
@@ -151,13 +162,16 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     logo                   = COALESCE(?, logo),
 		     invoice_number_format  = COALESCE(?, invoice_number_format),
 		     invoice_number_counter = COALESCE(?, invoice_number_counter),
-		     date_format            = COALESCE(?, date_format)
+		     date_format            = COALESCE(?, date_format),
+		     match_price_tolerance_percent    = COALESCE(?, match_price_tolerance_percent),
+		     match_quantity_tolerance_percent = COALESCE(?, match_quantity_tolerance_percent)
 		 WHERE id = ?`,
 		updates.Code, updates.Name, updates.Country, updates.Address, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
 		updates.IBAN, updates.Currency, updates.MinimumFractionDigits, updates.DueDays,
 		updates.OverdueCharge, updates.CustomerNotes, updates.Logo,
 		updates.InvoiceNumberFormat, updates.InvoiceNumberCounter, updates.DateFormat,
+		updates.MatchPriceTolerancePercent, updates.MatchQuantityTolerancePercent,
 		organizationID,
 	)
 	if err != nil {
@@ -189,6 +203,7 @@ type OrganizationUsageCount struct {
 
 	PurchaseOrders    int64 `db:"purchaseOrders"    json:"purchaseOrders"`
 	InboundDeliveries int64 `db:"inboundDeliveries" json:"inboundDeliveries"`
+	IncomingInvoices  int64 `db:"incomingInvoices"  json:"incomingInvoices"`
 }
 
 func (d *Database) GetOrganizationUsageCount(organizationID string) (*OrganizationUsageCount, error) {
@@ -203,8 +218,9 @@ func (d *Database) GetOrganizationUsageCount(organizationID string) (*Organizati
 			(SELECT COUNT(*) FROM outbound_deliveries WHERE organizationId = ?) AS deliveries,
 			(SELECT COUNT(*) FROM taxRates WHERE organizationId = ?) AS taxRates,
 			(SELECT COUNT(*) FROM purchase_orders WHERE organizationId = ?) AS purchaseOrders,
-			(SELECT COUNT(*) FROM inbound_deliveries WHERE organizationId = ?) AS inboundDeliveries`,
-		organizationID, organizationID, organizationID, organizationID,
+			(SELECT COUNT(*) FROM inbound_deliveries WHERE organizationId = ?) AS inboundDeliveries,
+			(SELECT COUNT(*) FROM incoming_invoices WHERE organizationId = ?) AS incomingInvoices`,
+		organizationID, organizationID, organizationID, organizationID, organizationID,
 		organizationID, organizationID, organizationID, organizationID, organizationID,
 	)
 	if err != nil {

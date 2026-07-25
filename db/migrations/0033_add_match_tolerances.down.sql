@@ -1,0 +1,2 @@
+ALTER TABLE organizations DROP COLUMN match_price_tolerance_percent;
+ALTER TABLE organizations DROP COLUMN match_quantity_tolerance_percent;

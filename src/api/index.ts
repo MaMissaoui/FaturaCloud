@@ -5,6 +5,7 @@ import { get, post, put, patch, del, CSRF_HEADER } from "./client";
 import type {
   Client, Vendor, Invoice, InvoiceLineItem, Product, TaxRate, Organization,
   PurchaseOrder, PurchaseOrderLineItem, InboundDelivery, InboundDeliveryLineItem,
+  IncomingInvoice, IncomingInvoiceLineItem, MatchLine,
   Order, OrderLineItem, Delivery, DeliveryLineItem, StockMovement,
 } from "src/types/models";
 
@@ -181,6 +182,7 @@ export type OrganizationUsageCount = {
   taxRates: number;
   purchaseOrders: number;
   inboundDeliveries: number;
+  incomingInvoices: number;
 };
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
@@ -325,3 +327,23 @@ export const UpdateInboundDeliveryStatus = (id: string, status: string) =>
   patch<InboundDelivery>(`/inbound-deliveries/${id}/status`, { status });
 export const DeleteInboundDelivery = (id: string) =>
   del<{ deleted: boolean }>(`/inbound-deliveries/${id}`).then((r) => r.deleted);
+
+// ---- Incoming Invoices (vendor bills) ----
+
+export const GetIncomingInvoices = (organizationId: string) =>
+  get<IncomingInvoice[]>(`/organizations/${organizationId}/incoming-invoices`);
+export const GetIncomingInvoice = (id: string) => get<IncomingInvoice>(`/incoming-invoices/${id}`);
+export const GetIncomingInvoiceLineItems = (id: string) =>
+  get<IncomingInvoiceLineItem[]>(`/incoming-invoices/${id}/line-items`);
+// The 3-way match is computed server-side on every read, so it always reflects
+// the current state of the linked order and its goods receipts.
+export const GetIncomingInvoiceMatch = (id: string) =>
+  get<MatchLine[]>(`/incoming-invoices/${id}/match`);
+export const CreateIncomingInvoice = (req: unknown) =>
+  post<IncomingInvoice>("/incoming-invoices", req);
+export const UpdateIncomingInvoice = (id: string, req: unknown) =>
+  put<IncomingInvoice>(`/incoming-invoices/${id}`, req);
+export const UpdateIncomingInvoiceState = (id: string, state: string) =>
+  patch<IncomingInvoice>(`/incoming-invoices/${id}/state`, { state });
+export const DeleteIncomingInvoice = (id: string) =>
+  del<{ deleted: boolean }>(`/incoming-invoices/${id}`).then((r) => r.deleted);
