@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-07-25
+
+### Fixed
+- Invoice details page (`/invoices/{id}`) hung indefinitely on load, stuck
+  re-fetching the invoice and its line items in an infinite loop instead of
+  ever rendering. Caused by reading an async Jotai atom in a way that
+  suspended the app's top-level route boundary on every update
+
 ## [2.2.0] - 2026-07-25
 
 Adds the buy-side mirror of FaturaCloud's existing sell side: vendors, purchase
