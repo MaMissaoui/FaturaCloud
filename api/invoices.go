@@ -91,9 +91,9 @@ func (h *handler) deleteInvoice(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})
 }
 
-func (h *handler) getInvoiceXRechnung(w http.ResponseWriter, r *http.Request) {
+func (h *handler) getInvoiceEInvoice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	doc, err := h.db.GenerateXRechnung(id)
+	doc, err := h.db.GenerateEInvoice(id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			writeDBError(w, err, "invoice not found")
@@ -103,7 +103,7 @@ func (h *handler) getInvoiceXRechnung(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+id+`-xrechnung.xml"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+id+`-e-invoice.xml"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(doc)
 }

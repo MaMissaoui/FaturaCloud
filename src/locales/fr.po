@@ -793,11 +793,25 @@ msgstr "Dupliquer"
 #~ msgid "Duration in seconds"
 #~ msgstr "Durée en secondes"
 
+#: src/routes/invoices/details.tsx:1147
+msgid "E-Invoice (XML)"
+msgstr "Facture électronique (XML)"
+
+#: src/routes/invoices/details.tsx:1140
+msgid "E-invoice export failed"
+msgstr "Échec de l'export de la facture électronique"
+
 #: src/components/clients/form.tsx:195
 #: src/components/tax-rates/form.tsx:190
 #: src/routes/organizations/index.tsx:426
-msgid "E-invoicing (XRechnung)"
-msgstr "Facturation électronique (XRechnung)"
+msgid "E-invoicing"
+msgstr "Facturation électronique"
+
+#: src/components/clients/form.tsx:195
+#: src/components/tax-rates/form.tsx:190
+#: src/routes/organizations/index.tsx:426
+#~ msgid "E-invoicing (XRechnung)"
+#~ msgstr "Facturation électronique (XRechnung)"
 
 #: src/routes/organizations/index.tsx:371
 msgid "E-mail"
@@ -1323,11 +1337,11 @@ msgstr "Échec de la suppression de la facture"
 #~ msgid "Invoice details"
 #~ msgstr "Détails de la facture"
 
-#: src/atoms/invoice.ts:260
+#: src/atoms/invoice.ts:262
 msgid "Invoice duplicated successfully"
 msgstr "Facture dupliquée avec succès"
 
-#: src/atoms/invoice.ts:276
+#: src/atoms/invoice.ts:278
 msgid "Invoice duplication failed"
 msgstr "Échec de la duplication de la facture"
 
@@ -3045,12 +3059,12 @@ msgid "Why is this variance acceptable?"
 msgstr "Pourquoi cet écart est-il acceptable ?"
 
 #: src/routes/invoices/details.tsx:1147
-msgid "XRechnung"
-msgstr "XRechnung"
+#~ msgid "XRechnung"
+#~ msgstr "XRechnung"
 
 #: src/routes/invoices/details.tsx:1140
-msgid "XRechnung export failed"
-msgstr "Échec de l'export XRechnung"
+#~ msgid "XRechnung export failed"
+#~ msgstr "Échec de l'export XRechnung"
 
 #: src/components/clients/form.tsx:133
 #: src/components/products/form.tsx:143

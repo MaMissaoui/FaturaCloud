@@ -192,7 +192,7 @@ const ClientForm = () => {
           </Form.Item>
 
           <Section>
-            <Trans>E-invoicing (XRechnung)</Trans>
+            <Trans>E-invoicing</Trans>
           </Section>
           <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
             <Input placeholder={t`Tax number`} />

@@ -793,11 +793,25 @@ msgstr "Duplicate"
 #~ msgid "Duration in seconds"
 #~ msgstr ""
 
+#: src/routes/invoices/details.tsx:1147
+msgid "E-Invoice (XML)"
+msgstr "E-Invoice (XML)"
+
+#: src/routes/invoices/details.tsx:1140
+msgid "E-invoice export failed"
+msgstr "E-invoice export failed"
+
 #: src/components/clients/form.tsx:195
 #: src/components/tax-rates/form.tsx:190
 #: src/routes/organizations/index.tsx:426
-msgid "E-invoicing (XRechnung)"
-msgstr "E-invoicing (XRechnung)"
+msgid "E-invoicing"
+msgstr "E-invoicing"
+
+#: src/components/clients/form.tsx:195
+#: src/components/tax-rates/form.tsx:190
+#: src/routes/organizations/index.tsx:426
+#~ msgid "E-invoicing (XRechnung)"
+#~ msgstr "E-invoicing (XRechnung)"
 
 #: src/routes/organizations/index.tsx:371
 msgid "E-mail"
@@ -1323,11 +1337,11 @@ msgstr "Invoice deletion failed"
 #~ msgid "Invoice details"
 #~ msgstr ""
 
-#: src/atoms/invoice.ts:260
+#: src/atoms/invoice.ts:262
 msgid "Invoice duplicated successfully"
 msgstr "Invoice duplicated successfully"
 
-#: src/atoms/invoice.ts:276
+#: src/atoms/invoice.ts:278
 msgid "Invoice duplication failed"
 msgstr "Invoice duplication failed"
 
@@ -3045,12 +3059,12 @@ msgid "Why is this variance acceptable?"
 msgstr "Why is this variance acceptable?"
 
 #: src/routes/invoices/details.tsx:1147
-msgid "XRechnung"
-msgstr "XRechnung"
+#~ msgid "XRechnung"
+#~ msgstr "XRechnung"
 
 #: src/routes/invoices/details.tsx:1140
-msgid "XRechnung export failed"
-msgstr "XRechnung export failed"
+#~ msgid "XRechnung export failed"
+#~ msgstr "XRechnung export failed"
 
 #: src/components/clients/form.tsx:133
 #: src/components/products/form.tsx:143

@@ -53,7 +53,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { SaveFile, DownloadInvoiceXRechnung } from "src/api";
+import { SaveFile, DownloadInvoiceEInvoice } from "src/api";
 import { pdf } from "@react-pdf/renderer";
 import { Document, Page } from "react-pdf";
 import dayjs from "dayjs";
@@ -314,7 +314,7 @@ const InvoiceDetails: React.FC = () => {
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
   const [, setSubmitting] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
-  const [downloadingXRechnung, setDownloadingXRechnung] = useState(false);
+  const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
   const dateFormat = useDatePickerFormat();
 
   // Drag and drop sensors
@@ -1128,23 +1128,23 @@ const InvoiceDetails: React.FC = () => {
                         )}
                         {!isNew && (
                           <Button
-                            loading={downloadingXRechnung}
+                            loading={downloadingEInvoice}
                             onClick={async () => {
-                              setDownloadingXRechnung(true);
+                              setDownloadingEInvoice(true);
                               try {
-                                await DownloadInvoiceXRechnung(id!);
+                                await DownloadInvoiceEInvoice(id!);
                               } catch (error) {
                                 message.error(
                                   error instanceof Error
                                     ? error.message
-                                    : t`XRechnung export failed`,
+                                    : t`E-invoice export failed`,
                                 );
                               } finally {
-                                setDownloadingXRechnung(false);
+                                setDownloadingEInvoice(false);
                               }
                             }}
                           >
-                            <FileTextOutlined /> <Trans>XRechnung</Trans>
+                            <FileTextOutlined /> <Trans>E-Invoice (XML)</Trans>
                           </Button>
                         )}
                         {!isNew && currentInvoiceState !== "cancelled" && (

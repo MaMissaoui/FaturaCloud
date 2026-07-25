@@ -239,15 +239,18 @@ export const UpdateInvoiceState = (id: string, state: string) =>
 export const DeleteInvoice = (id: string) =>
   del<{ deleted: boolean }>(`/invoices/${id}`).then((r) => r.deleted);
 
-export const DownloadInvoiceXRechnung = async (id: string): Promise<void> => {
-  const res = await fetch(`/api/invoices/${id}/xrechnung`, { credentials: "same-origin" });
+// Downloads the invoice as an EN 16931 UBL XML document — XRechnung for a
+// German buyer, generic EN 16931 core for everyone else (see
+// resolveEInvoiceProfile in db/einvoice.go).
+export const DownloadInvoiceEInvoice = async (id: string): Promise<void> => {
+  const res = await fetch(`/api/invoices/${id}/e-invoice`, { credentials: "same-origin" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error ?? res.statusText);
   }
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
-  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${id}-xrechnung.xml`;
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${id}-e-invoice.xml`;
   const href = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = href;

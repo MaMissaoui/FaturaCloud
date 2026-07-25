@@ -187,7 +187,7 @@ const TaxRateForm = () => {
           </Form.Item>
 
           <Section>
-            <Trans>E-invoicing (XRechnung)</Trans>
+            <Trans>E-invoicing</Trans>
           </Section>
           <Form.Item
             name="category_code"

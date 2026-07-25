@@ -423,7 +423,7 @@ export default function Organizations() {
             </Row>
           </Card>
 
-          <Card title={<Trans>E-invoicing (XRechnung)</Trans>} style={{ marginBottom: 16 }}>
+          <Card title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 16 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
