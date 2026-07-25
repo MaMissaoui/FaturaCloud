@@ -22,6 +22,7 @@ import {
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { loadable } from "jotai/utils";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -61,6 +62,15 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
 
+// incomingInvoiceAtom is async; reading it with plain useAtom throws to the
+// app's single top-level Suspense boundary whenever incomingInvoiceIdAtom
+// changes after mount, which unmounts this whole route (the effect below's
+// cleanup resets incomingInvoiceIdAtom to null) and remounts it once the
+// fetch resolves, setting the id back — an infinite loop. loadable()
+// resolves synchronously instead of suspending, same fix as
+// src/components/tax-rates/form.tsx and src/routes/invoices/details.tsx.
+const loadableIncomingInvoiceAtom = loadable(incomingInvoiceAtom);
+
 const IncomingInvoiceDetails = () => {
   const { id } = useParams<string>();
   const [searchParams] = useSearchParams();
@@ -83,7 +93,9 @@ const IncomingInvoiceDetails = () => {
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
 
   const [invoiceId, setInvoiceId] = useAtom(incomingInvoiceIdAtom);
-  const [invoice, setInvoice] = useAtom(incomingInvoiceAtom);
+  const invoiceLoadable = useAtomValue(loadableIncomingInvoiceAtom);
+  const setInvoice = useSetAtom(incomingInvoiceAtom);
+  const invoice = invoiceLoadable.state === "hasData" ? invoiceLoadable.data : undefined;
   const updateState = useSetAtom(updateIncomingInvoiceStateAtom);
   const deleteInvoice = useSetAtom(deleteIncomingInvoiceAtom);
 
