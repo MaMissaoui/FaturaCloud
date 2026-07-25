@@ -128,7 +128,9 @@ func (d *Database) UpdateVendor(vendorID string, updates UpdateVendorRequest) (*
 // reference a vendor and the count is always zero. TestVendorDocumentCountCoversEveryReference
 // fails if a table gains a vendorId column without being listed, so the guard
 // can't silently rot into a no-op.
-var vendorReferencingTables = []string{}
+var vendorReferencingTables = []string{
+	"purchase_orders",
+}
 
 func (d *Database) GetVendorDocumentCount(vendorID string) (int64, error) {
 	if len(vendorReferencingTables) == 0 {

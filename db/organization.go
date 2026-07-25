@@ -186,6 +186,8 @@ type OrganizationUsageCount struct {
 	Orders     int64 `db:"orders"     json:"orders"`
 	Deliveries int64 `db:"deliveries" json:"deliveries"`
 	TaxRates   int64 `db:"taxRates"   json:"taxRates"`
+
+	PurchaseOrders int64 `db:"purchaseOrders" json:"purchaseOrders"`
 }
 
 func (d *Database) GetOrganizationUsageCount(organizationID string) (*OrganizationUsageCount, error) {
@@ -198,9 +200,10 @@ func (d *Database) GetOrganizationUsageCount(organizationID string) (*Organizati
 			(SELECT COUNT(*) FROM products WHERE organizationId = ?) AS products,
 			(SELECT COUNT(*) FROM orders WHERE organizationId = ?) AS orders,
 			(SELECT COUNT(*) FROM outbound_deliveries WHERE organizationId = ?) AS deliveries,
-			(SELECT COUNT(*) FROM taxRates WHERE organizationId = ?) AS taxRates`,
+			(SELECT COUNT(*) FROM taxRates WHERE organizationId = ?) AS taxRates,
+			(SELECT COUNT(*) FROM purchase_orders WHERE organizationId = ?) AS purchaseOrders`,
 		organizationID, organizationID, organizationID, organizationID,
-		organizationID, organizationID, organizationID,
+		organizationID, organizationID, organizationID, organizationID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_organization_usage_count: %w", err)

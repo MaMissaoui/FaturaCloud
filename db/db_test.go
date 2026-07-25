@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1150,5 +1151,242 @@ func TestVendorDocumentCountCoversEveryReference(t *testing.T) {
 		if !existing[name] {
 			t.Errorf("vendorReferencingTables lists %q, which is not a table in the schema", name)
 		}
+	}
+}
+
+// TestPurchaseOrderStatusTransitions mirrors TestOrderStatusTransitions for the
+// purchase order lifecycle: draft→{confirmed,cancelled},
+// confirmed→{received,cancelled}; received/cancelled terminal; same-status a
+// no-op. Each case force-sets the starting status directly via SQL so the guard
+// is isolated from the rest of the update path.
+func TestPurchaseOrderStatusTransitions(t *testing.T) {
+	tests := []struct {
+		from    string
+		to      string
+		wantErr bool
+	}{
+		{"draft", "confirmed", false},
+		{"draft", "cancelled", false},
+		{"draft", "received", true},
+		{"draft", "draft", false},
+		{"confirmed", "received", false},
+		{"confirmed", "cancelled", false},
+		{"confirmed", "draft", true},
+		{"confirmed", "confirmed", false},
+		{"received", "confirmed", true},
+		{"received", "cancelled", true},
+		{"received", "received", false},
+		{"cancelled", "confirmed", true},
+		{"cancelled", "draft", true},
+		{"cancelled", "cancelled", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			d := newTestDB(t)
+			org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+			if err != nil {
+				t.Fatalf("CreateOrganization: %v", err)
+			}
+			order, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+				ID: "po-1", OrganizationID: org.ID, OrderNumber: "PO-0001", OrderDate: 1700000000000,
+			})
+			if err != nil {
+				t.Fatalf("CreatePurchaseOrder: %v", err)
+			}
+			if _, err := d.DB.Exec(
+				`UPDATE purchase_orders SET status = ? WHERE id = ?`, tc.from, order.ID,
+			); err != nil {
+				t.Fatalf("force status to %q: %v", tc.from, err)
+			}
+
+			_, err = d.UpdatePurchaseOrderStatus(order.ID, tc.to)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected transition %s -> %s to be rejected", tc.from, tc.to)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected transition %s -> %s to succeed, got: %v", tc.from, tc.to, err)
+			}
+		})
+	}
+}
+
+func TestPurchaseOrderCRUDAndLineItems(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po", Name: ptr("ACME Corp")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+
+	order, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: org.ID,
+		VendorID:       &vendor.ID,
+		OrderNumber:    "PO-0001",
+		OrderDate:      1700000000000,
+		LineItems: []CreatePurchaseOrderLineItemRequest{
+			{Description: "Widgets", Quantity: 10, UnitPrice: 250}, // cents
+			{Description: "Gadgets", Quantity: 4, UnitPrice: 199},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder: %v", err)
+	}
+	if order.Status != "draft" {
+		t.Fatalf("expected default status draft, got %q", order.Status)
+	}
+	if order.VendorName == nil || *order.VendorName != "Supplier Ltd" {
+		t.Fatalf("vendorName not joined: %v", order.VendorName)
+	}
+
+	items, err := d.GetPurchaseOrderLineItems(order.ID)
+	if err != nil {
+		t.Fatalf("GetPurchaseOrderLineItems: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("got %d line items, want 2", len(items))
+	}
+	if items[0].Position != 0 || items[1].Position != 1 {
+		t.Fatalf("positions not assigned in slice order: %d, %d", items[0].Position, items[1].Position)
+	}
+	if items[0].UnitPrice != 250 {
+		t.Fatalf("unitPrice not stored as cents: got %d, want 250", items[0].UnitPrice)
+	}
+
+	// Replacing line items renumbers positions and drops the old rows.
+	_, err = d.UpdatePurchaseOrder(order.ID, UpdatePurchaseOrderRequest{
+		LineItems: &[]CreatePurchaseOrderLineItemRequest{
+			{Description: "Only one", Quantity: 1, UnitPrice: 100},
+		},
+	})
+	if err != nil {
+		t.Fatalf("UpdatePurchaseOrder: %v", err)
+	}
+	items, _ = d.GetPurchaseOrderLineItems(order.ID)
+	if len(items) != 1 || items[0].Description != "Only one" {
+		t.Fatalf("line items not replaced: %+v", items)
+	}
+}
+
+// A received purchase order can't be deleted — it must be cancelled instead,
+// mirroring the guard on shipped/delivered sales orders.
+func TestDeleteReceivedPurchaseOrderIsRejected(t *testing.T) {
+	d := newTestDB(t)
+	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-del"})
+	order, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: org.ID, OrderNumber: "PO-0001", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder: %v", err)
+	}
+	if _, err := d.DB.Exec(`UPDATE purchase_orders SET status = 'received' WHERE id = ?`, order.ID); err != nil {
+		t.Fatalf("force status: %v", err)
+	}
+
+	ok, err := d.DeletePurchaseOrder(order.ID)
+	if err == nil {
+		t.Fatal("expected deleting a received purchase order to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError (surfaced as 409), got %T: %v", err, err)
+	}
+	if ok {
+		t.Fatal("DeletePurchaseOrder reported success despite the guard")
+	}
+}
+
+// NextPurchaseOrderNumber must continue from the highest number in use, not
+// COUNT(*)+1 — the latter reissues a number as soon as one is deleted. The
+// SUBSTR offset is prefix-length-sensitive ("PO-" is 3 chars, unlike "DEL-").
+func TestNextPurchaseOrderNumber(t *testing.T) {
+	d := newTestDB(t)
+	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-num"})
+
+	if got := d.NextPurchaseOrderNumber(org.ID); got != "PO-0001" {
+		t.Fatalf("first number: got %q, want PO-0001", got)
+	}
+
+	for _, num := range []string{"PO-0001", "PO-0002", "PO-0007"} {
+		if _, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+			OrganizationID: org.ID, OrderNumber: num, OrderDate: 1700000000000,
+		}); err != nil {
+			t.Fatalf("CreatePurchaseOrder %s: %v", num, err)
+		}
+	}
+	if got := d.NextPurchaseOrderNumber(org.ID); got != "PO-0008" {
+		t.Fatalf("after PO-0007: got %q, want PO-0008 (SUBSTR offset likely wrong)", got)
+	}
+
+	// Deleting the highest must not reissue a number already used by a live row.
+	var id string
+	if err := d.DB.Get(&id, `SELECT id FROM purchase_orders WHERE orderNumber = 'PO-0002'`); err != nil {
+		t.Fatalf("lookup: %v", err)
+	}
+	if _, err := d.DeletePurchaseOrder(id); err != nil {
+		t.Fatalf("DeletePurchaseOrder: %v", err)
+	}
+	if got := d.NextPurchaseOrderNumber(org.ID); got != "PO-0008" {
+		t.Fatalf("after deleting a middle order: got %q, want PO-0008", got)
+	}
+}
+
+// Status must not be settable through PUT — only through the PATCH status
+// endpoint, which enforces the transition matrix.
+func TestUpdatePurchaseOrderCannotChangeStatus(t *testing.T) {
+	d := newTestDB(t)
+	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-status"})
+	order, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: org.ID, OrderNumber: "PO-0001", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder: %v", err)
+	}
+
+	updated, err := d.UpdatePurchaseOrder(order.ID, UpdatePurchaseOrderRequest{
+		Notes: ptr("header-only edit"),
+	})
+	if err != nil {
+		t.Fatalf("UpdatePurchaseOrder: %v", err)
+	}
+	if updated.Status != "draft" {
+		t.Fatalf("status changed through PUT: got %q, want draft", updated.Status)
+	}
+}
+
+// A partial PUT must not orphan a purchase order from its vendor. vendorId is
+// COALESCE'd for the same reason its foreign key deliberately has no
+// ON DELETE SET NULL: a null vendor on an existing order is never a legitimate
+// state, and silently producing one would defeat DeleteVendor's guard.
+func TestUpdatePurchaseOrderKeepsVendorOnPartialUpdate(t *testing.T) {
+	d := newTestDB(t)
+	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-vendor"})
+	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+	order, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: org.ID, VendorID: &vendor.ID, OrderNumber: "PO-0001", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder: %v", err)
+	}
+
+	// A header-only edit that doesn't mention the vendor at all.
+	updated, err := d.UpdatePurchaseOrder(order.ID, UpdatePurchaseOrderRequest{Notes: ptr("edited")})
+	if err != nil {
+		t.Fatalf("UpdatePurchaseOrder: %v", err)
+	}
+	if updated.VendorID == nil || *updated.VendorID != vendor.ID {
+		t.Fatalf("partial update orphaned the order from its vendor: got %v, want %q", updated.VendorID, vendor.ID)
+	}
+
+	// The vendor is still referenced, so deleting it must still be refused.
+	if _, err := d.DeleteVendor(vendor.ID); !errors.Is(err, ErrVendorInUse) {
+		t.Fatalf("expected ErrVendorInUse after partial update, got %v", err)
 	}
 }

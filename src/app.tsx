@@ -43,6 +43,8 @@ import Loading from "src/components/loading";
 // its route, behind the <Suspense> fallback below.
 const Clients = lazy(() => import("src/routes/clients"));
 const Vendors = lazy(() => import("src/routes/vendors"));
+const PurchaseOrders = lazy(() => import("src/routes/purchase-orders"));
+const PurchaseOrderDetails = lazy(() => import("src/routes/purchase-orders/details"));
 const Products = lazy(() => import("src/routes/products"));
 const Inventory = lazy(() => import("src/routes/inventory"));
 const Orders = lazy(() => import("src/routes/orders"));
@@ -196,6 +198,10 @@ const AppContent = () => {
           </Route>
           <Route path="/vendors" element={<BaseLayout />}>
             <Route index element={<Vendors />} />
+          </Route>
+          <Route path="/purchase-orders" element={<BaseLayout />}>
+            <Route index element={<PurchaseOrders />} />
+            <Route path=":id" element={<PurchaseOrderDetails />} />
           </Route>
           <Route path="/products" element={<BaseLayout />}>
             <Route index element={<Products />} />
