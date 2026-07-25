@@ -120,6 +120,14 @@ PUT    /api/clients/{id}
 DELETE /api/clients/{id}
 GET    /api/clients/{id}/invoice-count
 
+# Vendors
+GET    /api/organizations/{orgId}/vendors
+POST   /api/vendors
+GET    /api/vendors/{id}
+PUT    /api/vendors/{id}
+DELETE /api/vendors/{id}               refused with 409 while purchasing documents reference it
+GET    /api/vendors/{id}/document-count
+
 # Invoices
 GET    /api/organizations/{orgId}/invoices
 POST   /api/invoices
@@ -181,7 +189,8 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `api/auth.go` — login, logout, me handlers
 - `api/oidc.go` — OIDC SSO: login redirect (Authorization Code + PKCE), callback (ID token verification, JIT provisioning), issues the same JWT local login does
 - `api/users.go` — user CRUD handlers (admin only); also `provisionOrSyncUser`, the JIT-provision/role-resync used by OIDC login
-- `api/{domain}.go` — HTTP handlers per domain (clients, invoices, organizations, orders, deliveries, …)
+- `api/{domain}.go` — HTTP handlers per domain (clients, vendors, invoices, organizations, orders, deliveries, …)
+- `db/vendor.go` / `api/vendors.go` — vendor master data (the purchasing counterpart to clients). `DeleteVendor` is guarded by `GetVendorDocumentCount` and returns `ErrVendorInUse` (409) rather than letting a foreign key fail as an opaque 500 — each purchasing phase adds its own subquery to that count
 - `api/utility.go` — version, backup download, restore upload, scheduler
 - `db/` — Go database layer (SQLite connection, migrations, CRUD per domain)
 - `db/migrations/` — SQL migration files (`*.up.sql`), applied automatically on startup
@@ -190,6 +199,8 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/atoms/` — Jotai state atoms; import from `src/api`
 - `src/atoms/auth.ts` — `currentUserAtom`, `isAuthenticatedAtom`, `isAdminAtom`
 - `src/atoms/delivery.ts` — delivery list, detail, status, and delete atoms
+- `src/atoms/vendor.ts` — vendor list, detail, and delete atoms (mirrors `client.ts`, including the `emails` JSON-string ↔ array conversion)
+- `src/routes/vendors.tsx` + `src/components/vendors/form.tsx` — vendors list with a `Drawer` form on the same page (the clients pattern — no detail route)
 - `src/routes/` — main application pages
 - `src/routes/login.tsx` — login page (public, redirects to `/` on success); shows an "Sign in with SSO" button when `GET /api/auth/oidc/enabled` reports true
 - `src/routes/deliveries.tsx` — outbound deliveries list
@@ -248,7 +259,7 @@ Uses Jotai atoms pattern with:
 The sidebar is grouped into collapsible submenus (click the group to expand/collapse, same behavior for all groups — the active group auto-expands based on the current route via `defaultOpenKeys` in `src/layouts/base.tsx`):
 - **Sales**: Invoices → Outbound Deliveries → Orders
 - **Inventory**: Inventory
-- **Master Data**: Clients → Products → Organizations
+- **Master Data**: Clients → Vendors → Products → Organizations
 - **Settings**: Invoice, Tax Rates, Backup, Users (admin only)
 
 ## Internationalization

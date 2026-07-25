@@ -180,6 +180,7 @@ func (d *Database) DeleteOrganization(organizationID string) (bool, error) {
 // blast radius before the user confirms.
 type OrganizationUsageCount struct {
 	Clients    int64 `db:"clients"    json:"clients"`
+	Vendors    int64 `db:"vendors"    json:"vendors"`
 	Invoices   int64 `db:"invoices"   json:"invoices"`
 	Products   int64 `db:"products"   json:"products"`
 	Orders     int64 `db:"orders"     json:"orders"`
@@ -192,12 +193,14 @@ func (d *Database) GetOrganizationUsageCount(organizationID string) (*Organizati
 	err := d.DB.Get(&counts, `
 		SELECT
 			(SELECT COUNT(*) FROM clients WHERE organizationId = ?) AS clients,
+			(SELECT COUNT(*) FROM vendors WHERE organizationId = ?) AS vendors,
 			(SELECT COUNT(*) FROM invoices WHERE organizationId = ?) AS invoices,
 			(SELECT COUNT(*) FROM products WHERE organizationId = ?) AS products,
 			(SELECT COUNT(*) FROM orders WHERE organizationId = ?) AS orders,
 			(SELECT COUNT(*) FROM outbound_deliveries WHERE organizationId = ?) AS deliveries,
 			(SELECT COUNT(*) FROM taxRates WHERE organizationId = ?) AS taxRates`,
-		organizationID, organizationID, organizationID, organizationID, organizationID, organizationID,
+		organizationID, organizationID, organizationID, organizationID,
+		organizationID, organizationID, organizationID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_organization_usage_count: %w", err)

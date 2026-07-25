@@ -3,7 +3,7 @@
 // need their import path changed.
 import { get, post, put, patch, del, CSRF_HEADER } from "./client";
 import type {
-  Client, Invoice, InvoiceLineItem, Product, TaxRate, Organization,
+  Client, Vendor, Invoice, InvoiceLineItem, Product, TaxRate, Organization,
   Order, OrderLineItem, Delivery, DeliveryLineItem, StockMovement,
 } from "src/types/models";
 
@@ -172,6 +172,7 @@ export const DeleteOrganization = (id: string) =>
   del<{ deleted: boolean }>(`/organizations/${id}`).then((r) => r.deleted);
 export type OrganizationUsageCount = {
   clients: number;
+  vendors: number;
   invoices: number;
   products: number;
   orders: number;
@@ -268,3 +269,15 @@ export const UpdateDeliveryStatus = (id: string, status: string) =>
 export const DeleteDelivery = (id: string) =>
   del<{ success: boolean }>(`/deliveries/${id}`).then((r) => r.success);
 
+
+// ---- Vendors ----
+
+export const GetVendors = (organizationId: string) =>
+  get<Vendor[]>(`/organizations/${organizationId}/vendors`);
+export const GetVendor = (id: string) => get<Vendor>(`/vendors/${id}`);
+export const CreateVendor = (req: Partial<Vendor>) => post<Vendor>("/vendors", req);
+export const UpdateVendor = (id: string, req: Partial<Vendor>) => put<Vendor>(`/vendors/${id}`, req);
+export const DeleteVendor = (id: string) =>
+  del<{ deleted: boolean }>(`/vendors/${id}`).then((r) => r.deleted);
+export const GetVendorDocumentCount = (id: string) =>
+  get<{ count: number }>(`/vendors/${id}/document-count`).then((r) => r.count);

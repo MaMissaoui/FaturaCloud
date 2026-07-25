@@ -5,6 +5,7 @@
 // stay numeric so a converted list value still satisfies the same interface.
 
 export type { Client } from "./client";
+export type { Vendor } from "./vendor";
 export type { Invoice, InvoiceLineItem, InvoiceState } from "./invoice";
 
 export interface Product {

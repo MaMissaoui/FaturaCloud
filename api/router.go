@@ -143,6 +143,14 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/clients/{id}", h.deleteClient)
 	protected("GET", "/api/clients/{id}/invoice-count", h.getClientInvoiceCount)
 
+	// Vendors
+	protected("GET", "/api/organizations/{orgId}/vendors", h.listVendors)
+	protected("POST", "/api/vendors", h.createVendor)
+	protected("GET", "/api/vendors/{id}", h.getVendor)
+	protected("PUT", "/api/vendors/{id}", h.updateVendor)
+	protected("DELETE", "/api/vendors/{id}", h.deleteVendor)
+	protected("GET", "/api/vendors/{id}/document-count", h.getVendorDocumentCount)
+
 	// Invoices
 	protected("GET", "/api/organizations/{orgId}/invoices", h.listInvoices)
 	protected("POST", "/api/invoices", h.createInvoice)

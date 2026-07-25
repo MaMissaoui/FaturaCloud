@@ -249,6 +249,7 @@ export default function Organizations() {
             const breakdown = counts
               ? [
                   [counts.clients, t`client(s)`],
+                  [counts.vendors, t`vendor(s)`],
                   [counts.invoices, t`invoice(s)`],
                   [counts.products, t`product(s)`],
                   [counts.orders, t`order(s)`],

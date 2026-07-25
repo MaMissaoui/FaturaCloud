@@ -1010,3 +1010,145 @@ func TestGetOrganizationsOmitsLogo(t *testing.T) {
 		t.Fatalf("expected single-org fetch to keep the logo, got %q", single.Logo)
 	}
 }
+
+func TestVendorCRUD(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-vendor", Name: ptr("ACME Corp")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	vendor, err := d.CreateVendor(CreateVendorRequest{
+		OrganizationID:   org.ID,
+		Name:             ptr("Supplier Ltd"),
+		Code:             ptr("SU"),
+		Emails:           ptr(`["sales@supplier.example"]`),
+		DefaultCurrency:  ptr("EUR"),
+		PaymentTermsDays: ptr(int64(30)),
+	})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+	if vendor.ID == "" {
+		t.Fatal("CreateVendor did not generate an id")
+	}
+	if vendor.PaymentTermsDays == nil || *vendor.PaymentTermsDays != 30 {
+		t.Fatalf("paymentTermsDays not round-tripped: %v", vendor.PaymentTermsDays)
+	}
+
+	vendors, err := d.GetVendors(org.ID)
+	if err != nil {
+		t.Fatalf("GetVendors: %v", err)
+	}
+	if len(vendors) != 1 {
+		t.Fatalf("got %d vendors, want 1", len(vendors))
+	}
+
+	updated, err := d.UpdateVendor(vendor.ID, UpdateVendorRequest{Name: ptr("Supplier GmbH")})
+	if err != nil {
+		t.Fatalf("UpdateVendor: %v", err)
+	}
+	if updated.Name == nil || *updated.Name != "Supplier GmbH" {
+		t.Fatalf("name not updated: %v", updated.Name)
+	}
+
+	ok, err := d.DeleteVendor(vendor.ID)
+	if err != nil {
+		t.Fatalf("DeleteVendor: %v", err)
+	}
+	if !ok {
+		t.Fatal("DeleteVendor reported no rows removed")
+	}
+}
+
+// Vendors must be scoped to their organization and cascade away with it, the
+// same as clients — otherwise deleting an org leaves orphaned master data.
+func TestVendorCascadesWithOrganization(t *testing.T) {
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cascade", Name: ptr("ACME Corp")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")}); err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+
+	counts, err := d.GetOrganizationUsageCount(org.ID)
+	if err != nil {
+		t.Fatalf("GetOrganizationUsageCount: %v", err)
+	}
+	if counts.Vendors != 1 {
+		t.Fatalf("usage count reported %d vendors, want 1", counts.Vendors)
+	}
+
+	if _, err := d.DeleteOrganization(org.ID); err != nil {
+		t.Fatalf("DeleteOrganization: %v", err)
+	}
+
+	var remaining int
+	if err := d.DB.Get(&remaining, `SELECT COUNT(*) FROM vendors WHERE organizationId = ?`, org.ID); err != nil {
+		t.Fatalf("count vendors: %v", err)
+	}
+	if remaining != 0 {
+		t.Fatalf("%d vendors survived organization deletion", remaining)
+	}
+}
+
+// TestVendorDocumentCountCoversEveryReference is a tripwire for the purchasing
+// phases that follow. DeleteVendor's guard is only as good as the list of
+// tables GetVendorDocumentCount actually counts, and a migration that adds a
+// vendorId column without updating that list turns the guard into a no-op —
+// deleting a referenced vendor would then surface a raw foreign-key error as an
+// opaque 500, which is exactly what the guard exists to prevent.
+//
+// Rather than trusting a comment, this discovers every table with a vendorId
+// column from the live schema and requires it to be covered.
+func TestVendorDocumentCountCoversEveryReference(t *testing.T) {
+	d := newTestDB(t)
+
+	tables := []string{}
+	if err := d.DB.Select(&tables,
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
+	); err != nil {
+		t.Fatalf("list tables: %v", err)
+	}
+
+	covered := map[string]bool{}
+	for _, name := range vendorReferencingTables {
+		covered[name] = true
+	}
+
+	for _, table := range tables {
+		columns := []struct {
+			Name string `db:"name"`
+		}{}
+		if err := d.DB.Select(&columns, `SELECT name FROM pragma_table_info(?)`, table); err != nil {
+			t.Fatalf("pragma_table_info(%s): %v", table, err)
+		}
+		for _, col := range columns {
+			if col.Name != "vendorId" {
+				continue
+			}
+			if !covered[table] {
+				t.Errorf(
+					"table %q has a vendorId column but is not in vendorReferencingTables — "+
+						"DeleteVendor's guard would not see its rows; add it to the list in db/vendor.go",
+					table,
+				)
+			}
+		}
+	}
+
+	// The converse: a listed table that no longer exists would make every count query fail.
+	existing := map[string]bool{}
+	for _, name := range tables {
+		existing[name] = true
+	}
+	for _, name := range vendorReferencingTables {
+		if !existing[name] {
+			t.Errorf("vendorReferencingTables lists %q, which is not a table in the schema", name)
+		}
+	}
+}
