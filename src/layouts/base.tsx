@@ -390,19 +390,17 @@ export default function BaseLayout() {
         >
           <Row>
             <Col flex="auto">
-              <Button
-                type="text"
-                icon={siderIsCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={() => (isMobile ? setMobileMenuOpen(!mobileMenuOpen) : setSiderCollapsed(!siderCollapsed))}
-                style={{
-                  fontSize: "16px",
-                  width: 64,
-                  height: 64,
-                }}
-              />
-            </Col>
-            <Col>
-              <Space>
+              <Space align="center">
+                <Button
+                  type="text"
+                  icon={siderIsCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                  onClick={() => (isMobile ? setMobileMenuOpen(!mobileMenuOpen) : setSiderCollapsed(!siderCollapsed))}
+                  style={{
+                    fontSize: "16px",
+                    width: 64,
+                    height: 64,
+                  }}
+                />
                 {!isEmpty(organizations) && (
                   <Select
                     showSearch={organizations.length > 5 ? true : false}
@@ -446,19 +444,10 @@ export default function BaseLayout() {
                     ))}
                   </Select>
                 )}
-                {currentUser && (
-                  <Space size={4} style={{ marginRight: 4 }}>
-                    <UserOutlined />
-                    <span style={{ fontSize: 13 }}>{currentUser.displayName || currentUser.email}</span>
-                    <Button
-                      type="text"
-                      icon={<LogoutOutlined />}
-                      size="small"
-                      onClick={handleLogout}
-                      title={t`Sign out`}
-                    />
-                  </Space>
-                )}
+              </Space>
+            </Col>
+            <Col>
+              <Space>
                 <Button
                   type="text"
                   icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
@@ -467,7 +456,6 @@ export default function BaseLayout() {
                 />
                 <Select
                   variant="borderless"
-                  style={{ marginRight: 24 }}
                   popupMatchSelectWidth={false}
                   onSelect={(value) => {
                     setLocale(value);
@@ -491,6 +479,19 @@ export default function BaseLayout() {
                     );
                   })}
                 </Select>
+                {currentUser && (
+                  <Space size={4} style={{ marginRight: 24 }}>
+                    <UserOutlined />
+                    <span style={{ fontSize: 13 }}>{currentUser.displayName || currentUser.email}</span>
+                    <Button
+                      type="text"
+                      icon={<LogoutOutlined />}
+                      size="small"
+                      onClick={handleLogout}
+                      title={t`Sign out`}
+                    />
+                  </Space>
+                )}
               </Space>
             </Col>
           </Row>

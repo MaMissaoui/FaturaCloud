@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-25
+
+### Security
+- Bumped `react-router` 8.2.0 → 8.3.0, patching a CSRF bypass that allowed action execution before the framework's 400 response ([GHSA-qwww-vcr4-c8h2](https://github.com/advisories/GHSA-qwww-vcr4-c8h2))
+- Response security headers now match STBVirement's baseline: added `Permissions-Policy` and a CSP `form-action 'self'` directive, and switched `Referrer-Policy` to `strict-origin-when-cross-origin`
+
+### Changed
+- Header layout unified with STBVirement: the organization selector moved to the left (next to the sidebar toggle), and the right-side controls now appear in the same order on both apps — theme toggle, language, then user/logout
+
 ## [2.0.0] - 2026-07-19
 
 A follow-up audit (security, UI, performance, dependency freshness) building on the
