@@ -19,6 +19,17 @@ type Client struct {
 	RegistrationNumber *string `db:"registration_number" json:"registration_number"`
 	Vatin              *string `db:"vatin"               json:"vatin"`
 	CreatedAt          *string `db:"createdAt"           json:"createdAt"`
+
+	// EN 16931 (XRechnung) buyer fields. address above is kept as a free-text
+	// legacy display field; these structured columns are what e-invoice
+	// export reads and validates. clients previously had no country at all.
+	Street                *string `db:"street"                  json:"street"`
+	HouseNumber           *string `db:"house_number"             json:"house_number"`
+	PostalCode            *string `db:"postal_code"              json:"postal_code"`
+	City                  *string `db:"city"                     json:"city"`
+	CountryCode           *string `db:"country_code"             json:"country_code"`
+	TaxNumber             *string `db:"tax_number"               json:"tax_number"`
+	DefaultBuyerReference *string `db:"default_buyer_reference"  json:"default_buyer_reference"`
 }
 
 // CreateClientRequest is the payload for creating a client.
@@ -33,6 +44,14 @@ type CreateClientRequest struct {
 	Website            *string `json:"website"`
 	RegistrationNumber *string `json:"registration_number"`
 	Vatin              *string `json:"vatin"`
+
+	Street                *string `json:"street"`
+	HouseNumber           *string `json:"house_number"`
+	PostalCode            *string `json:"postal_code"`
+	City                  *string `json:"city"`
+	CountryCode           *string `json:"country_code"`
+	TaxNumber             *string `json:"tax_number"`
+	DefaultBuyerReference *string `json:"default_buyer_reference"`
 }
 
 // UpdateClientRequest is the payload for updating a client.
@@ -45,6 +64,14 @@ type UpdateClientRequest struct {
 	Website            *string `json:"website"`
 	RegistrationNumber *string `json:"registration_number"`
 	Vatin              *string `json:"vatin"`
+
+	Street                *string `json:"street"`
+	HouseNumber           *string `json:"house_number"`
+	PostalCode            *string `json:"postal_code"`
+	City                  *string `json:"city"`
+	CountryCode           *string `json:"country_code"`
+	TaxNumber             *string `json:"tax_number"`
+	DefaultBuyerReference *string `json:"default_buyer_reference"`
 }
 
 func (d *Database) GetClients(organizationID string) ([]Client, error) {
@@ -76,10 +103,15 @@ func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
 		req.ID, _ = gonanoid.New()
 	}
 	_, err := d.DB.Exec(
-		`INSERT INTO clients (id, organizationId, name, code, address, emails, phone, website, registration_number, vatin)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO clients (
+			id, organizationId, name, code, address, emails, phone, website,
+			registration_number, vatin, street, house_number, postal_code, city,
+			country_code, tax_number, default_buyer_reference
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Code, req.Address,
 		req.Emails, req.Phone, req.Website, req.RegistrationNumber, req.Vatin,
+		req.Street, req.HouseNumber, req.PostalCode, req.City,
+		req.CountryCode, req.TaxNumber, req.DefaultBuyerReference,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_client: %w", err)
@@ -91,10 +123,14 @@ func (d *Database) UpdateClient(clientID string, updates UpdateClientRequest) (*
 	_, err := d.DB.Exec(
 		`UPDATE clients
 		 SET name = ?, code = ?, address = ?, emails = ?, phone = ?,
-		     website = ?, registration_number = ?, vatin = ?
+		     website = ?, registration_number = ?, vatin = ?,
+		     street = ?, house_number = ?, postal_code = ?, city = ?,
+		     country_code = ?, tax_number = ?, default_buyer_reference = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Code, updates.Address, updates.Emails, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin,
+		updates.Street, updates.HouseNumber, updates.PostalCode, updates.City,
+		updates.CountryCode, updates.TaxNumber, updates.DefaultBuyerReference,
 		clientID,
 	)
 	if err != nil {

@@ -30,6 +30,17 @@ type Organization struct {
 	// 3-way matching tolerance policy (percent). Zero means any variance is flagged.
 	MatchPriceTolerancePercent    *float64 `db:"match_price_tolerance_percent"    json:"match_price_tolerance_percent"`
 	MatchQuantityTolerancePercent *float64 `db:"match_quantity_tolerance_percent" json:"match_quantity_tolerance_percent"`
+
+	// EN 16931 (XRechnung/ZUGFeRD) seller fields. address/country above are
+	// kept as free-text legacy display fields; these structured columns are
+	// what e-invoice export reads and validates.
+	BIC         *string `db:"bic"           json:"bic"`
+	TaxNumber   *string `db:"tax_number"    json:"tax_number"`
+	Street      *string `db:"street"        json:"street"`
+	HouseNumber *string `db:"house_number"  json:"house_number"`
+	PostalCode  *string `db:"postal_code"   json:"postal_code"`
+	City        *string `db:"city"          json:"city"`
+	CountryCode *string `db:"country_code"  json:"country_code"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -57,6 +68,14 @@ type CreateOrganizationRequest struct {
 
 	MatchPriceTolerancePercent    *float64 `json:"match_price_tolerance_percent"`
 	MatchQuantityTolerancePercent *float64 `json:"match_quantity_tolerance_percent"`
+
+	BIC         *string `json:"bic"`
+	TaxNumber   *string `json:"tax_number"`
+	Street      *string `json:"street"`
+	HouseNumber *string `json:"house_number"`
+	PostalCode  *string `json:"postal_code"`
+	City        *string `json:"city"`
+	CountryCode *string `json:"country_code"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -84,6 +103,14 @@ type UpdateOrganizationRequest struct {
 
 	MatchPriceTolerancePercent    *float64 `json:"match_price_tolerance_percent"`
 	MatchQuantityTolerancePercent *float64 `json:"match_quantity_tolerance_percent"`
+
+	BIC         *string `json:"bic"`
+	TaxNumber   *string `json:"tax_number"`
+	Street      *string `json:"street"`
+	HouseNumber *string `json:"house_number"`
+	PostalCode  *string `json:"postal_code"`
+	City        *string `json:"city"`
+	CountryCode *string `json:"country_code"`
 }
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
@@ -97,7 +124,8 @@ func (d *Database) GetOrganizations() ([]Organization, error) {
 		       registration_number, vatin, bank_name, iban, currency,
 		       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
 		       createdAt, invoice_number_format, invoice_number_counter, date_format,
-		       match_price_tolerance_percent, match_quantity_tolerance_percent
+		       match_price_tolerance_percent, match_quantity_tolerance_percent,
+		       bic, tax_number, street, house_number, postal_code, city, country_code
 		FROM organizations ORDER BY name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("get_organizations: %w", err)
@@ -127,12 +155,14 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			id, code, name, country, address, email, phone, website,
 			registration_number, vatin, bank_name, iban, currency,
 			minimum_fraction_digits, due_days, overdueCharge,
-			customerNotes, logo, invoice_number_format, date_format
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			customerNotes, logo, invoice_number_format, date_format,
+			bic, tax_number, street, house_number, postal_code, city, country_code
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Address, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.Logo, req.InvoiceNumberFormat, req.DateFormat,
+		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
@@ -164,7 +194,14 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     invoice_number_counter = COALESCE(?, invoice_number_counter),
 		     date_format            = COALESCE(?, date_format),
 		     match_price_tolerance_percent    = COALESCE(?, match_price_tolerance_percent),
-		     match_quantity_tolerance_percent = COALESCE(?, match_quantity_tolerance_percent)
+		     match_quantity_tolerance_percent = COALESCE(?, match_quantity_tolerance_percent),
+		     bic                    = COALESCE(?, bic),
+		     tax_number             = COALESCE(?, tax_number),
+		     street                 = COALESCE(?, street),
+		     house_number           = COALESCE(?, house_number),
+		     postal_code            = COALESCE(?, postal_code),
+		     city                   = COALESCE(?, city),
+		     country_code           = COALESCE(?, country_code)
 		 WHERE id = ?`,
 		updates.Code, updates.Name, updates.Country, updates.Address, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
@@ -172,6 +209,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.OverdueCharge, updates.CustomerNotes, updates.Logo,
 		updates.InvoiceNumberFormat, updates.InvoiceNumberCounter, updates.DateFormat,
 		updates.MatchPriceTolerancePercent, updates.MatchQuantityTolerancePercent,
+		updates.BIC, updates.TaxNumber, updates.Street, updates.HouseNumber,
+		updates.PostalCode, updates.City, updates.CountryCode,
 		organizationID,
 	)
 	if err != nil {

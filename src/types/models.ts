@@ -35,6 +35,10 @@ export interface TaxRate {
   percentage: number;
   isDefault: number | null;
   createdAt?: string | null;
+  // BT-118 VAT category code (UNTDID 5305: S/Z/E/AE/...), defaults to "S".
+  // BT-120 exemption reason, required by EN 16931 when the category needs one.
+  category_code: string;
+  exemption_reason: string | null;
 }
 
 export interface Organization {
@@ -63,6 +67,16 @@ export interface Organization {
   // 3-way matching tolerance policy (percent) for incoming vendor invoices.
   match_price_tolerance_percent: number | null;
   match_quantity_tolerance_percent: number | null;
+  // EN 16931 (XRechnung/ZUGFeRD) seller fields. address/country above stay
+  // as free-text legacy display fields; these structured fields are what
+  // e-invoice export reads and validates.
+  bic: string | null;
+  tax_number: string | null;
+  street: string | null;
+  house_number: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country_code: string | null;
 }
 
 export interface Order {
