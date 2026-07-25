@@ -76,5 +76,12 @@ export default defineConfig(async () => ({
     // Go binary embeds.
     sourcemap: "hidden",
     outDir: "dist",
+    // @react-pdf/renderer's browser bundle (fonts + layout engine) alone
+    // exceeds the 500kB default. It's already isolated to its own async
+    // chunk, only loaded when a route that renders/downloads a PDF is
+    // visited — never part of the initial page load — so further splitting
+    // wouldn't reduce what any single user actually downloads. Raised to
+    // clear the warning rather than chase a chunk that's already lazy.
+    chunkSizeWarningLimit: 1600,
   },
 }));
