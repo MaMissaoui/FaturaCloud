@@ -19,6 +19,7 @@ import {
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { loadable } from "jotai/utils";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -58,6 +59,14 @@ const STATUS_COLORS: Record<string, string> = {
   delivered: "green",
 };
 
+// deliveryAtom is async; reading it with plain useAtom throws to the app's
+// single top-level Suspense boundary whenever deliveryIdAtom changes after
+// mount, which unmounts this whole route (the effect below's cleanup resets
+// deliveryIdAtom to null) and remounts it once the fetch resolves, setting
+// the id back — an infinite loop. loadable() resolves synchronously instead
+// of suspending, same fix as src/routes/invoices/details.tsx (#31/#32).
+const loadableDeliveryAtom = loadable(deliveryAtom);
+
 const DeliveryDetails = () => {
   const { id } = useParams<string>();
   const [searchParams] = useSearchParams();
@@ -81,7 +90,9 @@ const DeliveryDetails = () => {
   const nextNumber = useAtomValue(nextDeliveryNumberAtom);
 
   const [deliveryId, setDeliveryId] = useAtom(deliveryIdAtom);
-  const [delivery, setDelivery] = useAtom(deliveryAtom);
+  const deliveryLoadable = useAtomValue(loadableDeliveryAtom);
+  const setDelivery = useSetAtom(deliveryAtom);
+  const delivery = deliveryLoadable.state === "hasData" ? deliveryLoadable.data : undefined;
   const updateStatus = useSetAtom(updateDeliveryStatusAtom);
   const deleteDelivery = useSetAtom(deleteDeliveryAtom);
 

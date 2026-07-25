@@ -20,6 +20,7 @@ import {
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { loadable } from "jotai/utils";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -58,6 +59,14 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
 
+// orderAtom is async; reading it with plain useAtom throws to the app's
+// single top-level Suspense boundary whenever orderIdAtom changes after
+// mount, which unmounts this whole route (the effect below's cleanup resets
+// orderIdAtom to null) and remounts it once the fetch resolves, setting the
+// id back — an infinite loop. loadable() resolves synchronously instead of
+// suspending, same fix as src/routes/invoices/details.tsx (#31/#32).
+const loadableOrderAtom = loadable(orderAtom);
+
 const STATUS_TRANSITIONS: Record<string, { label: string; next: string; type?: "primary" | "default" | "dashed" }[]> = {
   draft: [{ label: "Confirm order", next: "confirmed", type: "primary" }],
   confirmed: [{ label: "Mark as shipped", next: "shipped", type: "primary" }],
@@ -85,7 +94,9 @@ const OrderDetails = () => {
   const nextNumber = useAtomValue(nextOrderNumberAtom);
 
   const [orderId, setOrderId] = useAtom(orderIdAtom);
-  const [order, setOrder] = useAtom(orderAtom);
+  const orderLoadable = useAtomValue(loadableOrderAtom);
+  const setOrder = useSetAtom(orderAtom);
+  const order = orderLoadable.state === "hasData" ? orderLoadable.data : undefined;
   const updateStatus = useSetAtom(updateOrderStatusAtom);
   const deleteOrder = useSetAtom(deleteOrderAtom);
 
