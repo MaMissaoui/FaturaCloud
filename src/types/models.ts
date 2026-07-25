@@ -8,6 +8,7 @@ export type { Client } from "./client";
 export type { Vendor } from "./vendor";
 export type { PurchaseOrderStatus } from "./purchase-order";
 export type { InboundDeliveryStatus } from "./inbound-delivery";
+export type { IncomingInvoiceState, MatchLine, MatchStatus } from "./incoming-invoice";
 export type { Invoice, InvoiceLineItem, InvoiceState } from "./invoice";
 
 export interface Product {
@@ -59,6 +60,9 @@ export interface Organization {
   invoiceNumberFormat: string | null;
   invoiceNumberCounter: number | null;
   date_format: string | null;
+  // 3-way matching tolerance policy (percent) for incoming vendor invoices.
+  match_price_tolerance_percent: number | null;
+  match_quantity_tolerance_percent: number | null;
 }
 
 export interface Order {
@@ -184,4 +188,38 @@ export interface InboundDeliveryLineItem {
   stockEnabled: number | null;
   currentStock: number | null;
   productName: string | null;
+}
+
+export interface IncomingInvoice {
+  id: string;
+  organizationId: string;
+  vendorId: string;
+  purchaseOrderId: string | null;
+  vendorInvoiceNumber: string;
+  reference: string | null;
+  state: string;
+  date: number;
+  dueDate: number | null;
+  currency: string;
+  notes: string | null;
+  total: number;
+  taxTotal: number;
+  subTotal: number;
+  matchOverride: number;
+  matchOverrideReason: string | null;
+  createdAt: number;
+  vendorName: string | null;
+  orderNumber: string | null;
+}
+
+export interface IncomingInvoiceLineItem {
+  id: string;
+  incomingInvoiceId: string;
+  purchaseOrderLineItemId: string | null;
+  productId: string | null;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: string | null;
+  position: number;
 }

@@ -149,6 +149,16 @@ PUT    /api/inbound-deliveries/{id}
 PATCH  /api/inbound-deliveries/{id}/status
 DELETE /api/inbound-deliveries/{id}
 
+# Incoming Invoices (vendor bills)
+GET    /api/organizations/{orgId}/incoming-invoices
+POST   /api/incoming-invoices
+GET    /api/incoming-invoices/{id}
+GET    /api/incoming-invoices/{id}/line-items
+GET    /api/incoming-invoices/{id}/match      3-way match, computed on read
+PUT    /api/incoming-invoices/{id}
+PATCH  /api/incoming-invoices/{id}/state      blocked by an unresolved variance
+DELETE /api/incoming-invoices/{id}
+
 # Invoices
 GET    /api/organizations/{orgId}/invoices
 POST   /api/invoices
@@ -224,6 +234,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/routes/vendors.tsx` + `src/components/vendors/form.tsx` — vendors list with a `Drawer` form on the same page (the clients pattern — no detail route)
 - `src/types/purchase-order.ts` — the frontend single source of truth for purchase order status (`PURCHASE_ORDER_STATUSES`, `purchaseOrderStatusColor`, `purchaseOrderStatusLabel`, `purchaseOrderTransitions`). Unlike orders/deliveries, the transition matrix lives next to the statuses so the "must stay in sync with the Go map" pairing is visible in one place
 - `src/routes/purchase-orders.tsx` + `src/routes/purchase-orders/details.tsx` — purchase order list and detail/edit pages
+- `src/types/incoming-invoice.ts`, `src/atoms/incoming-invoice.ts`, `src/routes/incoming-invoices.tsx`, `src/routes/incoming-invoices/details.tsx` — vendor bills with the 3-way match panel (no PDF: these are received, not issued)
 - `src/types/inbound-delivery.ts`, `src/atoms/inbound-delivery.ts`, `src/routes/inbound-deliveries.tsx`, `src/routes/inbound-deliveries/details.tsx` — goods receipts (no PDF: these are internal)
 - `src/components/purchase-orders/purchase-order-pdf.tsx` — purchase order PDF (with prices; sent to the vendor). Takes an `i18n` prop and translates, following `invoices/pdf.tsx` rather than the hardcoded-English order/delivery PDFs
 - `src/routes/` — main application pages
@@ -266,6 +277,11 @@ Schema conventions:
 - `inbound_deliveries.status` is `"draft"` | `"received"` | `"cancelled"`, enforced by a `CHECK` constraint and by `inboundDeliveryStatusTransitions` in `db/inbound_delivery.go` (`PATCH` only). Marking a receipt `"received"` inserts `"in"` `stockMovements` (**no availability check** — stock is going up) carrying the line's `unitCost`; cancelling a received receipt inserts reversing `"out"` movements, but **only after validating that every line's quantity is still in stock** — otherwise the goods have already been shipped and reversing would drive `stockQuantity` negative. That guard has no outbound equivalent. Deleting a received receipt is rejected — cancel it instead
 - `inbound_delivery_line_items.unitCost` is the deliberate divergence from `outbound_delivery_line_items` (which has no price columns): it is what feeds `stockMovements.unitCost` and, through it, the product's average cost. When a line comes from a purchase order and names neither product nor cost, `db.replaceInboundDeliveryLineItemsTx` resolves **both** from the order line
 - `products.unitCost` is a **weighted average derived from `stockMovements`**, never adjusted in place — the same philosophy as `stockQuantity` being `SUM(quantity)`. `db.recomputeAverageCostTx` (`db/product_cost.go`) replays the whole history with `math/big` rationals, ordered `createdAt ASC, rowid ASC` (`createdAt` is second-resolution TEXT and ties within a transaction). Costed inflows move the average; uncosted inflows and all outflows move at the running average and leave it unchanged. **Cancelling a receipt does not restore the previous average** — a reversal removes quantity at the *current* average, which is correct weighted-average behaviour. A product with no costed inflow keeps whatever cost the user typed
+- `incoming_invoices.state` is `"draft"` | `"approved"` | `"paid"` | `"cancelled"`. Like sales invoices — and unlike orders/receipts — there is **no transition matrix**, only set membership: a bounced payment can send `paid→approved`. State is settable only via `PATCH /state`, which is where 3-way matching is enforced
+- **3-way matching** (`db/incoming_invoice_match.go`) compares each invoice line against the purchase order (quantity and unit price) and against goods actually received, counting what *other* non-cancelled invoices already billed for the same order line — that `PreviouslyInvoiced` term is what stops the same goods being billed twice. Per-line status is `matched` | `unlinked` | `quantity_variance` | `over_received` | `price_variance`. It is **computed on read, never stored**: a stored flag would go stale as soon as a linked receipt is cancelled. Tolerances come from `organizations.match_price_tolerance_percent` / `match_quantity_tolerance_percent` (both default 0, exposed on Settings → Invoice); comparisons use `math/big` rationals, not float64
+- Matching does **not** block saving — a draft can be saved with variances so they can be investigated. It blocks the move to `approved` (and to `paid` from a non-`approved` state) unless `matchOverride = 1`, and `matchOverrideReason` is **required** when it is: a blank reason would make the override a silent bypass. `unlinked` lines are informational and never block
+- `incoming_invoice_line_items` reuses `db.CreateInvoiceLineItemRequest` so incoming invoices go through the same `db.validateInvoiceTotals` as sales invoices rather than duplicating its exact-rational arithmetic; the type gained nil-safe `purchaseOrderLineItemId`/`productId` fields that stay nil on the sales path
+- `taxRates` is referenced by **three** line-item tables now (`invoiceLineItems`, `incoming_invoice_line_items`, `purchase_order_line_items`), listed in `taxRateReferencingTables` in `db/tax_rate.go`. The first two cascade on delete, so a table missing from that list would let an in-use rate be deleted and silently strip line items off existing invoices — `TestTaxRateUsageCountCoversEveryReference` reads the live schema and fails if one is missing
 - `orders.status` is `"draft"` | `"confirmed"` | `"shipped"` | `"delivered"` | `"cancelled"`; transitions enforced both client-side via `STATUS_TRANSITIONS` in `src/routes/orders/details.tsx` and server-side via `orderStatusTransitions` in `db/order.go` (`PATCH /api/orders/{id}/status` only — status can't be set through `PUT`, which no longer accepts a `status` field)
 - `orderLineItems.unitPrice` stored as integer cents; `orderLineItems.quantity` stored as REAL (supports fractional quantities)
 - `outbound_deliveries.status` is `"draft"` | `"shipped"` | `"delivered"` | `"cancelled"`; transitions enforced both client-side in `src/routes/deliveries/details.tsx` and server-side via `deliveryStatusTransitions` in `db/delivery.go` (`PATCH /api/deliveries/{id}/status` only — status can't be set through `PUT`, which no longer accepts a `status` field). Line items are frozen once a delivery is `shipped`/`delivered` — `PUT` still accepts header-field-only edits (tracking number, notes, …)
@@ -288,7 +304,7 @@ Uses Jotai atoms pattern with:
 ## Sidebar Navigation
 The sidebar is grouped into collapsible submenus (click the group to expand/collapse, same behavior for all groups — the active group auto-expands based on the current route via `defaultOpenKeys` in `src/layouts/base.tsx`):
 - **Sales**: Invoices → Outbound Deliveries → Orders
-- **Purchasing**: Purchase Orders → Goods Receipts
+- **Purchasing**: Purchase Orders → Goods Receipts → Incoming Invoices
 - **Inventory**: Inventory
 - **Master Data**: Clients → Vendors → Products → Organizations
 - **Settings**: Invoice, Tax Rates, Backup, Users (admin only)

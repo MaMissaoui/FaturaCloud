@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // ErrTaxRateInUse is returned by DeleteTaxRate when the rate is still
@@ -136,9 +137,30 @@ func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest)
 
 // GetTaxRateUsageCount returns how many invoice line items reference this
 // tax rate, so callers can decide whether it's safe to delete.
+// Every line-item table that references taxRates must be counted here.
+// invoiceLineItems and incoming_invoice_line_items cascade on delete, so a rate
+// missing from this count could be deleted and silently strip line items off
+// existing invoices; purchase_order_line_items merely null out, but a rate
+// vanishing from a live order is just as unwanted.
+// TestTaxRateUsageCountCoversEveryReference reads the live schema and fails if
+// a table gains a taxRate column without being listed.
+var taxRateReferencingTables = []string{
+	"invoiceLineItems",
+	"incoming_invoice_line_items",
+	"purchase_order_line_items",
+}
+
 func (d *Database) GetTaxRateUsageCount(taxRateID string) (int64, error) {
+	subqueries := make([]string, len(taxRateReferencingTables))
+	args := make([]any, len(taxRateReferencingTables))
+	for i, table := range taxRateReferencingTables {
+		// Table names come from the package-level slice above, never from input.
+		subqueries[i] = fmt.Sprintf("(SELECT COUNT(*) FROM %s WHERE taxRate = ?)", table)
+		args[i] = taxRateID
+	}
+
 	var count int64
-	if err := d.DB.Get(&count, `SELECT COUNT(*) FROM invoiceLineItems WHERE taxRate = ?`, taxRateID); err != nil {
+	if err := d.DB.Get(&count, "SELECT "+strings.Join(subqueries, " + "), args...); err != nil {
 		return 0, fmt.Errorf("get_tax_rate_usage_count: %w", err)
 	}
 	return count, nil

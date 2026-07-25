@@ -47,6 +47,8 @@ const PurchaseOrders = lazy(() => import("src/routes/purchase-orders"));
 const PurchaseOrderDetails = lazy(() => import("src/routes/purchase-orders/details"));
 const InboundDeliveries = lazy(() => import("src/routes/inbound-deliveries"));
 const InboundDeliveryDetails = lazy(() => import("src/routes/inbound-deliveries/details"));
+const IncomingInvoices = lazy(() => import("src/routes/incoming-invoices"));
+const IncomingInvoiceDetails = lazy(() => import("src/routes/incoming-invoices/details"));
 const Products = lazy(() => import("src/routes/products"));
 const Inventory = lazy(() => import("src/routes/inventory"));
 const Orders = lazy(() => import("src/routes/orders"));
@@ -208,6 +210,10 @@ const AppContent = () => {
           <Route path="/inbound-deliveries" element={<BaseLayout />}>
             <Route index element={<InboundDeliveries />} />
             <Route path=":id" element={<InboundDeliveryDetails />} />
+          </Route>
+          <Route path="/incoming-invoices" element={<BaseLayout />}>
+            <Route index element={<IncomingInvoices />} />
+            <Route path=":id" element={<IncomingInvoiceDetails />} />
           </Route>
           <Route path="/products" element={<BaseLayout />}>
             <Route index element={<Products />} />

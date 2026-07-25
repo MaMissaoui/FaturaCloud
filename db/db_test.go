@@ -1785,3 +1785,519 @@ func TestInboundDeliveryStatusTransitions(t *testing.T) {
 		})
 	}
 }
+
+// TestTaxRateUsageCountCoversEveryReference is the tripwire for the tax rate
+// delete guard. taxRates is referenced by several line-item tables, some with
+// ON DELETE CASCADE — a table missing from taxRateReferencingTables would let
+// an in-use rate be deleted and silently strip line items off existing
+// invoices, which is exactly what DeleteTaxRate exists to prevent.
+func TestTaxRateUsageCountCoversEveryReference(t *testing.T) {
+	d := newTestDB(t)
+
+	tables := []string{}
+	if err := d.DB.Select(&tables,
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
+	); err != nil {
+		t.Fatalf("list tables: %v", err)
+	}
+
+	covered := map[string]bool{}
+	for _, name := range taxRateReferencingTables {
+		covered[name] = true
+	}
+
+	for _, table := range tables {
+		columns := []struct {
+			Name string `db:"name"`
+		}{}
+		if err := d.DB.Select(&columns, `SELECT name FROM pragma_table_info(?)`, table); err != nil {
+			t.Fatalf("pragma_table_info(%s): %v", table, err)
+		}
+		for _, col := range columns {
+			if col.Name == "taxRate" && !covered[table] {
+				t.Errorf(
+					"table %q has a taxRate column but is not in taxRateReferencingTables — "+
+						"DeleteTaxRate's guard would not see its rows; add it in db/tax_rate.go",
+					table,
+				)
+			}
+		}
+	}
+}
+
+// seedMatch builds an org, vendor, product, confirmed purchase order and a
+// received goods receipt, returning the ids matching needs.
+type matchFixture struct {
+	OrgID    string
+	VendorID string
+	OrderID  string
+	POLineID string
+	TaxRate  *TaxRate
+}
+
+func seedMatch(t *testing.T, d *Database, orgID string, ordered float64, unitPrice int64, received float64) matchFixture {
+	t.Helper()
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: orgID})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+	product, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"), Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	po, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: org.ID, VendorID: &vendor.ID, OrderNumber: "PO-0001", OrderDate: 1700000000000,
+		LineItems: []CreatePurchaseOrderLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: ordered, UnitPrice: float64(unitPrice)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder: %v", err)
+	}
+	poItems, _ := d.GetPurchaseOrderLineItems(po.ID)
+
+	if received > 0 {
+		receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+			OrganizationID: org.ID, PurchaseOrderID: &po.ID, VendorID: &vendor.ID,
+			DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+			LineItems: []CreateInboundDeliveryLineItemRequest{
+				{PurchaseOrderLineItemID: &poItems[0].ID, Description: "Widget", Quantity: received},
+			},
+		})
+		if err != nil {
+			t.Fatalf("CreateInboundDelivery: %v", err)
+		}
+		if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+			t.Fatalf("receive: %v", err)
+		}
+	}
+
+	return matchFixture{OrgID: org.ID, VendorID: vendor.ID, OrderID: po.ID, POLineID: poItems[0].ID}
+}
+
+func createIncomingInvoice(t *testing.T, d *Database, f matchFixture, number string, qty float64, unitPrice int64) *IncomingInvoice {
+	t.Helper()
+	subTotal := int64(qty * float64(unitPrice))
+	inv, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: f.OrgID, VendorID: f.VendorID, PurchaseOrderID: &f.OrderID,
+		VendorInvoiceNumber: number, Date: 1700000000000, Currency: "EUR",
+		SubTotal: subTotal, TaxTotal: 0, Total: subTotal,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{
+				Description: ptr("Widget"), Quantity: qty, UnitPrice: float64(unitPrice),
+				PurchaseOrderLineItemID: &f.POLineID,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateIncomingInvoice: %v", err)
+	}
+	return inv
+}
+
+// An invoice matching what was ordered and received is clean, and approving it
+// is allowed.
+func TestIncomingInvoiceMatches(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-1", 10, 250, 10)
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+
+	lines, err := d.GetIncomingInvoiceMatch(inv.ID)
+	if err != nil {
+		t.Fatalf("GetIncomingInvoiceMatch: %v", err)
+	}
+	if len(lines) != 1 {
+		t.Fatalf("expected one match line, got %d", len(lines))
+	}
+	if lines[0].Status != MatchMatched {
+		t.Fatalf("status: got %q (%s), want matched", lines[0].Status, lines[0].Message)
+	}
+	if lines[0].ReceivedQuantity == nil || *lines[0].ReceivedQuantity != 10 {
+		t.Fatalf("receivedQuantity: %v", lines[0].ReceivedQuantity)
+	}
+
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("approving a matched invoice was rejected: %v", err)
+	}
+}
+
+// Billing more than was received is the over-billing case, and it blocks
+// approval — but not saving.
+func TestIncomingInvoiceOverReceivedBlocksApproval(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-2", 10, 250, 4) // only 4 of 10 received
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+
+	lines, _ := d.GetIncomingInvoiceMatch(inv.ID)
+	if lines[0].Status != MatchOverReceived {
+		t.Fatalf("status: got %q, want over_received", lines[0].Status)
+	}
+
+	_, err := d.UpdateIncomingInvoiceState(inv.ID, "approved")
+	if err == nil {
+		t.Fatal("expected approving an over-billed invoice to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+	current, _ := d.GetIncomingInvoice(inv.ID)
+	if current.State != "draft" {
+		t.Fatalf("state changed despite rejection: %q", current.State)
+	}
+}
+
+// A second invoice against the same order line must count what the first one
+// already billed — otherwise the same goods can be billed twice.
+func TestIncomingInvoiceDoubleBillingDetected(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-3", 10, 250, 10)
+
+	first := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+	if _, err := d.UpdateIncomingInvoiceState(first.ID, "approved"); err != nil {
+		t.Fatalf("first invoice should match: %v", err)
+	}
+
+	second := createIncomingInvoice(t, d, f, "V-002", 10, 250)
+	lines, _ := d.GetIncomingInvoiceMatch(second.ID)
+	if lines[0].Status != MatchOverReceived {
+		t.Fatalf("second invoice status: got %q, want over_received", lines[0].Status)
+	}
+	if lines[0].PreviouslyInvoiced != 10 {
+		t.Fatalf("previouslyInvoiced: got %v, want 10", lines[0].PreviouslyInvoiced)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(second.ID, "approved"); err == nil {
+		t.Fatal("expected double-billing to block approval")
+	}
+}
+
+// A unit price above what was ordered is a price variance.
+func TestIncomingInvoicePriceVariance(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-4", 10, 250, 10)
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 300) // ordered at 250
+
+	lines, _ := d.GetIncomingInvoiceMatch(inv.ID)
+	if lines[0].Status != MatchPriceVariance {
+		t.Fatalf("status: got %q, want price_variance", lines[0].Status)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err == nil {
+		t.Fatal("expected a price variance to block approval")
+	}
+
+	// Widening the organization's tolerance to 25% brings 300 within range.
+	if _, err := d.UpdateOrganization(f.OrgID, UpdateOrganizationRequest{
+		MatchPriceTolerancePercent: ptr(25.0),
+	}); err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
+	lines, _ = d.GetIncomingInvoiceMatch(inv.ID)
+	if lines[0].Status != MatchMatched {
+		t.Fatalf("with a 25%% tolerance: got %q, want matched", lines[0].Status)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("within tolerance should approve: %v", err)
+	}
+}
+
+// The override is the documented escape hatch, and it requires a reason.
+func TestIncomingInvoiceOverrideRequiresReasonAndUnblocks(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-5", 10, 250, 4)
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+
+	// Override with no reason is refused — a silent bypass would defeat the
+	// entire audit value of the flag.
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1),
+	}); err == nil {
+		t.Fatal("expected an override without a reason to be rejected")
+	}
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("   "),
+	}); err == nil {
+		t.Fatal("expected a blank override reason to be rejected")
+	}
+
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("freight billed separately, agreed with vendor"),
+	}); err != nil {
+		t.Fatalf("override with a reason: %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("override should unblock approval: %v", err)
+	}
+}
+
+// A free-text line with no purchase order link is informational only and must
+// never block approval.
+func TestIncomingInvoiceUnlinkedLineDoesNotBlock(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-6", 10, 250, 10)
+
+	inv, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: f.OrgID, VendorID: f.VendorID,
+		VendorInvoiceNumber: "V-009", Date: 1700000000000, Currency: "EUR",
+		SubTotal: 500, TaxTotal: 0, Total: 500,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Description: ptr("Freight"), Quantity: 1, UnitPrice: 500},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateIncomingInvoice: %v", err)
+	}
+
+	lines, _ := d.GetIncomingInvoiceMatch(inv.ID)
+	if lines[0].Status != MatchUnlinked {
+		t.Fatalf("status: got %q, want unlinked", lines[0].Status)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("an unlinked line must not block approval: %v", err)
+	}
+}
+
+// Totals are re-validated server-side by the same routine sales invoices use,
+// including on a partial update that sends only new totals.
+func TestIncomingInvoiceTotalsValidated(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-7", 10, 250, 10)
+
+	_, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: f.OrgID, VendorID: f.VendorID,
+		VendorInvoiceNumber: "V-BAD", Date: 1700000000000, Currency: "EUR",
+		SubTotal: 9999, TaxTotal: 0, Total: 9999, // line items say 2500
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Description: ptr("Widget"), Quantity: 10, UnitPrice: 250},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected mismatched totals to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+
+	inv := createIncomingInvoice(t, d, f, "V-OK", 10, 250)
+	// Sending only new totals must still be checked against stored line items.
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		Total: ptr(int64(1)), SubTotal: ptr(int64(1)), TaxTotal: ptr(int64(0)),
+	}); err == nil {
+		t.Fatal("expected a totals-only update to be validated against stored line items")
+	}
+}
+
+// A vendor cannot bill the same number twice.
+func TestIncomingInvoiceDuplicateNumberRejected(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-8", 10, 250, 10)
+	createIncomingInvoice(t, d, f, "V-001", 10, 250)
+
+	_, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: f.OrgID, VendorID: f.VendorID,
+		VendorInvoiceNumber: "V-001", Date: 1700000000000, Currency: "EUR",
+		SubTotal: 100, TaxTotal: 0, Total: 100,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Description: ptr("Widget"), Quantity: 1, UnitPrice: 100},
+		},
+	})
+	if !errors.Is(err, ErrDuplicateVendorInvoiceNumber) {
+		t.Fatalf("expected ErrDuplicateVendorInvoiceNumber, got %v", err)
+	}
+}
+
+// A tax rate used only by an incoming invoice must not be deletable — its FK
+// cascades, so deleting it would strip those line items.
+func TestTaxRateUsedOnlyByIncomingInvoiceCannotBeDeleted(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-9", 10, 250, 10)
+
+	rate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-1", OrganizationID: f.OrgID, Name: "VAT 20%", Percentage: 20,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	// 10 * 250 = 2500 subtotal; 20% = 500 tax.
+	if _, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: f.OrgID, VendorID: f.VendorID,
+		VendorInvoiceNumber: "V-TAX", Date: 1700000000000, Currency: "EUR",
+		SubTotal: 2500, TaxTotal: 500, Total: 3000,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Description: ptr("Widget"), Quantity: 10, UnitPrice: 250, TaxRate: &rate.ID},
+		},
+	}); err != nil {
+		t.Fatalf("CreateIncomingInvoice: %v", err)
+	}
+
+	count, err := d.GetTaxRateUsageCount(rate.ID)
+	if err != nil {
+		t.Fatalf("GetTaxRateUsageCount: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("usage count: got %d, want 1 — the incoming invoice table is not being counted", count)
+	}
+	if _, err := d.DeleteTaxRate(rate.ID); !errors.Is(err, ErrTaxRateInUse) {
+		t.Fatalf("expected ErrTaxRateInUse, got %v", err)
+	}
+}
+
+// Uncosted stock must not dilute the first costed receipt. A product's opening
+// stock is typically a manual adjustment with no cost; letting those units into
+// the valuation pool at a value of zero would halve the price actually paid.
+func TestAverageCostIgnoresUncostedStockBeforeFirstCostedReceipt(t *testing.T) {
+	d := newTestDB(t)
+	product := seedCostProduct(t, d, "org-cost-dilute")
+
+	// Opening stock, no cost recorded.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID, Type: "in", Quantity: 10,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+	// First actual purchase.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID,
+		Type: "in", Quantity: 10, UnitCost: ptr(int64(200)),
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	p, _ := d.GetProduct(product.ID)
+	if p.UnitCost == nil || *p.UnitCost != 200 {
+		t.Fatalf("unit cost: got %v, want 200 — unvalued opening stock diluted the price paid", p.UnitCost)
+	}
+	// Both movements still count toward stock.
+	if p.StockQuantity != 20 {
+		t.Fatalf("stockQuantity: got %v, want 20", p.StockQuantity)
+	}
+
+	// Once an average exists, an uncosted inflow moves at it and leaves it alone.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID, Type: "in", Quantity: 5,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+	p, _ = d.GetProduct(product.ID)
+	if p.UnitCost == nil || *p.UnitCost != 200 {
+		t.Fatalf("uncosted inflow after an average exists moved it: got %v, want 200", p.UnitCost)
+	}
+}
+
+// The purchase order's "received" figure and the invoice matcher's must agree.
+// They are separate queries, and an earlier version disagreed: the order page
+// counted draft receipts while matching counted only received ones, so the same
+// goods read as both fully received and not received at all.
+func TestReceivedQuantityAgreesBetweenOrderAndMatch(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-received-agree", 10, 250, 0)
+
+	// A receipt for the full quantity, deliberately left in draft.
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: f.OrgID, PurchaseOrderID: &f.OrderID, VendorID: &f.VendorID,
+		DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{PurchaseOrderLineItemID: &f.POLineID, Description: "Widget", Quantity: 10},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+
+	assertAgrees := func(stage string, want float64) {
+		t.Helper()
+		onOrder, err := d.GetPurchaseOrderReceivedQuantities(f.OrderID)
+		if err != nil {
+			t.Fatalf("GetPurchaseOrderReceivedQuantities: %v", err)
+		}
+		inv := createIncomingInvoice(t, d, f, "V-"+stage, 10, 250)
+		lines, err := d.GetIncomingInvoiceMatch(inv.ID)
+		if err != nil {
+			t.Fatalf("GetIncomingInvoiceMatch: %v", err)
+		}
+		inMatch := *lines[0].ReceivedQuantity
+
+		if onOrder[f.POLineID] != want || inMatch != want {
+			t.Fatalf(
+				"%s: purchase order reports %v received, matching reports %v — both should be %v",
+				stage, onOrder[f.POLineID], inMatch, want,
+			)
+		}
+	}
+
+	// A draft receipt has moved no stock, so nothing is received yet.
+	assertAgrees("draft", 0)
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+	assertAgrees("received", 10)
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled"); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	assertAgrees("cancelled", 0)
+}
+
+// An override justifies one specific variance. Editing the financials can turn
+// it into a different one, so the flag is cleared unless the same request
+// re-states it — otherwise an approved invoice could be edited and re-approved
+// against a reason that no longer describes it.
+func TestIncomingInvoiceOverrideClearedWhenFinancialsChange(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-override-stale", 10, 250, 4)
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("balance shipping separately"),
+	}); err != nil {
+		t.Fatalf("set override: %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("approve with override: %v", err)
+	}
+
+	// Now edit the line items — a different variance entirely.
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		SubTotal: ptr(int64(5000)), TaxTotal: ptr(int64(0)), Total: ptr(int64(5000)),
+		LineItems: &[]CreateInvoiceLineItemRequest{
+			{
+				Description: ptr("Widget"), Quantity: 20, UnitPrice: 250,
+				PurchaseOrderLineItemID: &f.POLineID,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("edit line items: %v", err)
+	}
+
+	current, _ := d.GetIncomingInvoice(inv.ID)
+	if current.MatchOverride != 0 {
+		t.Fatalf("override survived a financial edit: %d", current.MatchOverride)
+	}
+	if current.MatchOverrideReason != nil {
+		t.Fatalf("stale override reason survived: %v", current.MatchOverrideReason)
+	}
+	// And approval is gated again.
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err == nil {
+		t.Fatal("expected re-approval to be blocked after the override was cleared")
+	}
+
+	// Re-stating the override in the same request keeps it.
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		SubTotal: ptr(int64(5000)), TaxTotal: ptr(int64(0)), Total: ptr(int64(5000)),
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("revised agreement covers the full 20"),
+	}); err != nil {
+		t.Fatalf("re-state override: %v", err)
+	}
+	current, _ = d.GetIncomingInvoice(inv.ID)
+	if current.MatchOverride != 1 {
+		t.Fatal("re-stated override was cleared")
+	}
+}

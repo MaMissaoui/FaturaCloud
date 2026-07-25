@@ -50,12 +50,20 @@ type InvoiceLineItem struct {
 	CreatedAt   *string `db:"createdAt"   json:"createdAt"`
 }
 
-// CreateInvoiceLineItemRequest is a single line item within a create/update request.
+// CreateInvoiceLineItemRequest is a single line item within a create/update
+// request, shared by sales invoices and incoming (vendor) invoices so both go
+// through the same validateInvoiceTotals check rather than duplicating its
+// exact-rational arithmetic.
+//
+// PurchaseOrderLineItemID and ProductID are used only by incoming invoices —
+// they are what 3-way matching links against — and stay nil on the sales path.
 type CreateInvoiceLineItemRequest struct {
-	Description *string `json:"description"`
-	Quantity    float64 `json:"quantity"`
-	UnitPrice   float64 `json:"unitPrice"`
-	TaxRate     *string `json:"taxRate"`
+	Description             *string `json:"description"`
+	Quantity                float64 `json:"quantity"`
+	UnitPrice               float64 `json:"unitPrice"`
+	TaxRate                 *string `json:"taxRate"`
+	PurchaseOrderLineItemID *string `json:"purchaseOrderLineItemId"`
+	ProductID               *string `json:"productId"`
 }
 
 // CreateInvoiceRequest is the payload for creating an invoice.

@@ -10,6 +10,7 @@ import {
   SolutionOutlined,
   ShoppingCartOutlined,
   ImportOutlined,
+  AuditOutlined,
   SettingOutlined,
   FileOutlined,
   CalculatorOutlined,
@@ -128,7 +129,7 @@ export default function BaseLayout() {
     const pathArray = pathString.split("/");
     const section = pathArray[0];
     const salesSections = ["invoices", "deliveries", "orders"];
-    const purchasingSections = ["purchase-orders", "inbound-deliveries"];
+    const purchasingSections = ["purchase-orders", "inbound-deliveries", "incoming-invoices"];
     const masterDataSections = ["clients", "vendors", "products", "organizations"];
     if (section === "settings") {
       openKeys = ["settings"];
@@ -272,6 +273,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "inbound-deliveries",
+                },
+                {
+                  icon: <AuditOutlined />,
+                  label: (
+                    <Link to="/incoming-invoices">
+                      <Trans>Incoming Invoices</Trans>
+                    </Link>
+                  ),
+                  key: "incoming-invoices",
                 },
               ],
             },
