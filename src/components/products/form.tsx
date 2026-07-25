@@ -205,7 +205,15 @@ const ProductForm = () => {
             <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
           </Form.Item>
 
-          <Form.Item name="unitCost" label={<Trans>Cost price</Trans>}>
+          {/* Once goods are received at a cost, this becomes a weighted average
+              recomputed from the stock movement history — anything typed here
+              would be overwritten by the next receipt. Until then it's the
+              user's own figure. */}
+          <Form.Item
+            name="unitCost"
+            label={<Trans>Cost price</Trans>}
+            extra={<Trans>Calculated as a weighted average once goods are received at a cost.</Trans>}
+          >
             <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
           </Form.Item>
 

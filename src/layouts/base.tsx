@@ -9,6 +9,7 @@ import {
   TeamOutlined,
   SolutionOutlined,
   ShoppingCartOutlined,
+  ImportOutlined,
   SettingOutlined,
   FileOutlined,
   CalculatorOutlined,
@@ -127,7 +128,7 @@ export default function BaseLayout() {
     const pathArray = pathString.split("/");
     const section = pathArray[0];
     const salesSections = ["invoices", "deliveries", "orders"];
-    const purchasingSections = ["purchase-orders"];
+    const purchasingSections = ["purchase-orders", "inbound-deliveries"];
     const masterDataSections = ["clients", "vendors", "products", "organizations"];
     if (section === "settings") {
       openKeys = ["settings"];
@@ -262,6 +263,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "purchase-orders",
+                },
+                {
+                  icon: <ImportOutlined />,
+                  label: (
+                    <Link to="/inbound-deliveries">
+                      <Trans>Goods Receipts</Trans>
+                    </Link>
+                  ),
+                  key: "inbound-deliveries",
                 },
               ],
             },

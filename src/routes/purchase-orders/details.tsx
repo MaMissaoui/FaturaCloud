@@ -40,7 +40,7 @@ import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import sum from "lodash/sum";
 
-import { SaveFile } from "src/api";
+import { SaveFile, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import {
@@ -95,6 +95,7 @@ const PurchaseOrderDetails = () => {
 
   const [form] = Form.useForm();
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
+  const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setVendors();
@@ -107,6 +108,18 @@ const PurchaseOrderDetails = () => {
       setOrderId(null);
     };
   }, [id, isNew, setVendors, setProducts, setOrderId]);
+
+  // Per-line fulfilment, so partial receipts are visible without opening every
+  // goods receipt for this order.
+  useEffect(() => {
+    if (isNew || !id) {
+      setReceivedQuantities({});
+      return;
+    }
+    GetPurchaseOrderReceivedQuantities(id)
+      .then(setReceivedQuantities)
+      .catch(() => setReceivedQuantities({}));
+  }, [id, isNew]);
 
   // After create, navigate to the new purchase order
   useEffect(() => {
@@ -418,6 +431,37 @@ const PurchaseOrderDetails = () => {
                   </Form.Item>
                 )}
               />
+              {!isNew && (
+                <Table.Column
+                  title={<Trans>Received</Trans>}
+                  key="received"
+                  width={100}
+                  render={(field) => (
+                    <Form.Item shouldUpdate noStyle>
+                      {() => {
+                        const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
+                        const quantity =
+                          form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                        if (!itemId) return null;
+                        const received = receivedQuantities[itemId] ?? 0;
+                        return (
+                          <Tag
+                            color={
+                              received >= quantity
+                                ? "success"
+                                : received > 0
+                                  ? "processing"
+                                  : "default"
+                            }
+                          >
+                            {received} / {quantity}
+                          </Tag>
+                        );
+                      }}
+                    </Form.Item>
+                  )}
+                />
+              )}
               <Table.Column
                 key="remove"
                 width={40}
@@ -522,6 +566,13 @@ const PurchaseOrderDetails = () => {
                   {!isNew && (
                     <Button onClick={handlePrintPurchaseOrder}>
                       <FilePdfOutlined /> <Trans>Purchase order PDF</Trans>
+                    </Button>
+                  )}
+                  {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
+                    <Button
+                      onClick={() => navigate(`/inbound-deliveries/new?purchaseOrderId=${id}`)}
+                    >
+                      <PlusOutlined /> <Trans>New goods receipt</Trans>
                     </Button>
                   )}
                   <Button type="primary" onClick={() => form.submit()}>

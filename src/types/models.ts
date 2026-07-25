@@ -7,6 +7,7 @@
 export type { Client } from "./client";
 export type { Vendor } from "./vendor";
 export type { PurchaseOrderStatus } from "./purchase-order";
+export type { InboundDeliveryStatus } from "./inbound-delivery";
 export type { Invoice, InvoiceLineItem, InvoiceState } from "./invoice";
 
 export interface Product {
@@ -152,4 +153,35 @@ export interface PurchaseOrderLineItem {
   unit: string | null;
   taxRate: string | null;
   position: number;
+}
+
+export interface InboundDelivery {
+  id: string;
+  organizationId: string;
+  purchaseOrderId: string | null;
+  vendorId: string | null;
+  deliveryNumber: string;
+  deliveryDate: number;
+  vendorDeliveryNote: string | null;
+  trackingNumber: string | null;
+  notes: string | null;
+  status: string;
+  createdAt: number;
+  orderNumber: string | null;
+  vendorName: string | null;
+}
+
+export interface InboundDeliveryLineItem {
+  id: string;
+  deliveryId: string;
+  purchaseOrderLineItemId: string | null;
+  productId: string | null;
+  description: string;
+  quantity: number;
+  unitCost: number | null;
+  unit: string | null;
+  position: number;
+  stockEnabled: number | null;
+  currentStock: number | null;
+  productName: string | null;
 }

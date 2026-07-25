@@ -130,6 +130,7 @@ func (d *Database) UpdateVendor(vendorID string, updates UpdateVendorRequest) (*
 // can't silently rot into a no-op.
 var vendorReferencingTables = []string{
 	"purchase_orders",
+	"inbound_deliveries",
 }
 
 func (d *Database) GetVendorDocumentCount(vendorID string) (int64, error) {

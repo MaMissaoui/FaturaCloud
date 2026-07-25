@@ -157,9 +157,20 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("POST", "/api/purchase-orders", h.createPurchaseOrder)
 	protected("GET", "/api/purchase-orders/{id}", h.getPurchaseOrder)
 	protected("GET", "/api/purchase-orders/{id}/line-items", h.getPurchaseOrderLineItems)
+	protected("GET", "/api/purchase-orders/{id}/received-quantities", h.getPurchaseOrderReceivedQuantities)
 	protected("PUT", "/api/purchase-orders/{id}", h.updatePurchaseOrder)
 	protected("PATCH", "/api/purchase-orders/{id}/status", h.updatePurchaseOrderStatus)
 	protected("DELETE", "/api/purchase-orders/{id}", h.deletePurchaseOrder)
+
+	// Inbound deliveries (goods receipts)
+	protected("GET", "/api/organizations/{orgId}/inbound-deliveries", h.listInboundDeliveries)
+	protected("GET", "/api/organizations/{orgId}/inbound-deliveries/next-number", h.nextInboundDeliveryNumber)
+	protected("POST", "/api/inbound-deliveries", h.createInboundDelivery)
+	protected("GET", "/api/inbound-deliveries/{id}", h.getInboundDelivery)
+	protected("GET", "/api/inbound-deliveries/{id}/line-items", h.getInboundDeliveryLineItems)
+	protected("PUT", "/api/inbound-deliveries/{id}", h.updateInboundDelivery)
+	protected("PATCH", "/api/inbound-deliveries/{id}/status", h.updateInboundDeliveryStatus)
+	protected("DELETE", "/api/inbound-deliveries/{id}", h.deleteInboundDelivery)
 
 	// Invoices
 	protected("GET", "/api/organizations/{orgId}/invoices", h.listInvoices)

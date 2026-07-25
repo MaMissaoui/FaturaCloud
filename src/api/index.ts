@@ -4,7 +4,7 @@
 import { get, post, put, patch, del, CSRF_HEADER } from "./client";
 import type {
   Client, Vendor, Invoice, InvoiceLineItem, Product, TaxRate, Organization,
-  PurchaseOrder, PurchaseOrderLineItem,
+  PurchaseOrder, PurchaseOrderLineItem, InboundDelivery, InboundDeliveryLineItem,
   Order, OrderLineItem, Delivery, DeliveryLineItem, StockMovement,
 } from "src/types/models";
 
@@ -180,6 +180,7 @@ export type OrganizationUsageCount = {
   deliveries: number;
   taxRates: number;
   purchaseOrders: number;
+  inboundDeliveries: number;
 };
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
@@ -302,3 +303,25 @@ export const UpdatePurchaseOrderStatus = (id: string, status: string) =>
   patch<PurchaseOrder>(`/purchase-orders/${id}/status`, { status });
 export const DeletePurchaseOrder = (id: string) =>
   del<{ deleted: boolean }>(`/purchase-orders/${id}`).then((r) => r.deleted);
+export const GetPurchaseOrderReceivedQuantities = (id: string) =>
+  get<Record<string, number>>(`/purchase-orders/${id}/received-quantities`);
+
+// ---- Inbound Deliveries (goods receipts) ----
+
+export const GetInboundDeliveries = (organizationId: string) =>
+  get<InboundDelivery[]>(`/organizations/${organizationId}/inbound-deliveries`);
+export const GetNextInboundDeliveryNumber = (organizationId: string) =>
+  get<{ number: string }>(`/organizations/${organizationId}/inbound-deliveries/next-number`).then(
+    (r) => r.number,
+  );
+export const GetInboundDelivery = (id: string) => get<InboundDelivery>(`/inbound-deliveries/${id}`);
+export const GetInboundDeliveryLineItems = (id: string) =>
+  get<InboundDeliveryLineItem[]>(`/inbound-deliveries/${id}/line-items`);
+export const CreateInboundDelivery = (req: unknown) =>
+  post<InboundDelivery>("/inbound-deliveries", req);
+export const UpdateInboundDelivery = (id: string, req: unknown) =>
+  put<InboundDelivery>(`/inbound-deliveries/${id}`, req);
+export const UpdateInboundDeliveryStatus = (id: string, status: string) =>
+  patch<InboundDelivery>(`/inbound-deliveries/${id}/status`, { status });
+export const DeleteInboundDelivery = (id: string) =>
+  del<{ deleted: boolean }>(`/inbound-deliveries/${id}`).then((r) => r.deleted);
