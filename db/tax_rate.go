@@ -13,6 +13,21 @@ import (
 // just removing an unused lookup value.
 var ErrTaxRateInUse = errors.New("tax rate is still used by one or more invoices")
 
+// taxRateCategoryCodes is the UNTDID 5305 subset EN 16931 (XRechnung) allows
+// for BT-118. Not the full UNTDID 5305 list — only the codes the EN 16931
+// validation rules (BR-CO-*) actually accept.
+var taxRateCategoryCodes = map[string]bool{
+	"S":  true, // Standard rate
+	"Z":  true, // Zero rated goods
+	"E":  true, // Exempt from tax
+	"AE": true, // VAT Reverse Charge
+	"K":  true, // VAT exempt for EEA intra-community supply
+	"G":  true, // Free export item, tax not charged
+	"O":  true, // Services outside scope of tax
+	"L":  true, // Canary Islands general indirect tax
+	"M":  true, // Tax for production, services and importation in Ceuta and Melilla
+}
+
 // TaxRate mirrors the taxRates table.
 type TaxRate struct {
 	ID             string  `db:"id"             json:"id"`
@@ -21,6 +36,12 @@ type TaxRate struct {
 	Description    *string `db:"description"    json:"description"`
 	Percentage     float64 `db:"percentage"     json:"percentage"`
 	IsDefault      *int64  `db:"isDefault"      json:"isDefault"`
+
+	// BT-118 VAT category code (UNTDID 5305: S/Z/E/AE/...), defaults to "S"
+	// (standard rate). BT-120 exemption reason, required by EN 16931 when
+	// the category needs one (e.g. E, Z, O).
+	CategoryCode    string  `db:"category_code"    json:"category_code"`
+	ExemptionReason *string `db:"exemption_reason" json:"exemption_reason"`
 }
 
 // CreateTaxRateRequest is the payload for creating a tax rate.
@@ -31,6 +52,9 @@ type CreateTaxRateRequest struct {
 	Description    *string `json:"description"`
 	Percentage     float64 `json:"percentage"`
 	IsDefault      *int64  `json:"isDefault"`
+
+	CategoryCode    string  `json:"category_code"`
+	ExemptionReason *string `json:"exemption_reason"`
 }
 
 // UpdateTaxRateRequest is the payload for updating a tax rate.
@@ -39,6 +63,9 @@ type UpdateTaxRateRequest struct {
 	Description *string  `json:"description"`
 	Percentage  *float64 `json:"percentage"`
 	IsDefault   *int64   `json:"isDefault"`
+
+	CategoryCode    *string `json:"category_code"`
+	ExemptionReason *string `json:"exemption_reason"`
 }
 
 func (d *Database) GetTaxRates(organizationID string) ([]TaxRate, error) {
@@ -66,6 +93,13 @@ func (d *Database) GetTaxRate(taxRateID string) (*TaxRate, error) {
 }
 
 func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
+	if req.CategoryCode == "" {
+		req.CategoryCode = "S"
+	}
+	if !taxRateCategoryCodes[req.CategoryCode] {
+		return nil, newValidationError("invalid tax rate category code %q", req.CategoryCode)
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("create_tax_rate begin: %w", err)
@@ -83,9 +117,10 @@ func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
 	}
 
 	if _, err = tx.Exec(
-		`INSERT INTO taxRates (id, organizationId, name, description, percentage, isDefault)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO taxRates (id, organizationId, name, description, percentage, isDefault, category_code, exemption_reason)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Description, req.Percentage, req.IsDefault,
+		req.CategoryCode, req.ExemptionReason,
 	); err != nil {
 		return nil, fmt.Errorf("create_tax_rate insert: %w", err)
 	}
@@ -97,6 +132,10 @@ func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
 }
 
 func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest) (*TaxRate, error) {
+	if updates.CategoryCode != nil && !taxRateCategoryCodes[*updates.CategoryCode] {
+		return nil, newValidationError("invalid tax rate category code %q", *updates.CategoryCode)
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("update_tax_rate begin: %w", err)
@@ -119,12 +158,15 @@ func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest)
 
 	if _, err = tx.Exec(`
 		UPDATE taxRates
-		SET name        = COALESCE(?, name),
-		    description = COALESCE(?, description),
-		    percentage  = COALESCE(?, percentage),
-		    isDefault   = COALESCE(?, isDefault)
+		SET name             = COALESCE(?, name),
+		    description      = COALESCE(?, description),
+		    percentage       = COALESCE(?, percentage),
+		    isDefault        = COALESCE(?, isDefault),
+		    category_code    = COALESCE(?, category_code),
+		    exemption_reason = ?
 		WHERE id = ?`,
-		updates.Name, updates.Description, updates.Percentage, updates.IsDefault, taxRateID,
+		updates.Name, updates.Description, updates.Percentage, updates.IsDefault,
+		updates.CategoryCode, updates.ExemptionReason, taxRateID,
 	); err != nil {
 		return nil, fmt.Errorf("update_tax_rate exec: %w", err)
 	}

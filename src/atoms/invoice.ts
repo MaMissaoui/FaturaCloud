@@ -249,6 +249,8 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
       subTotal: originalInvoice.subTotal,
       customerNotes: originalInvoice.customerNotes,
       overdueCharge: originalInvoice.overdueCharge,
+      buyerReference: originalInvoice.buyerReference,
+      paymentTerms: originalInvoice.paymentTerms,
       lineItems: (lineItems || []).map((item: any) => ({
         ...omit(item, ["id", "invoiceId", "createdAt"]),
       })),

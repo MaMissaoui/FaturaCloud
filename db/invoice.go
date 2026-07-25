@@ -36,6 +36,11 @@ type Invoice struct {
 	SubTotal       int64    `db:"subTotal"       json:"subTotal"`
 	CreatedAt      *string  `db:"createdAt"      json:"createdAt"`
 	ClientName     *string  `db:"clientName"     json:"clientName"`
+
+	// BT-10 buyer reference (e.g. a German Leitweg-ID), mandatory for
+	// XRechnung/B2G. BT-20 payment terms free text; BT-9 due date is dueDate.
+	BuyerReference *string `db:"buyerReference" json:"buyerReference"`
+	PaymentTerms   *string `db:"paymentTerms"   json:"paymentTerms"`
 }
 
 // InvoiceLineItem mirrors the invoiceLineItems table.
@@ -82,6 +87,8 @@ type CreateInvoiceRequest struct {
 	TaxTotal       int64                          `json:"taxTotal"`
 	SubTotal       int64                          `json:"subTotal"`
 	LineItems      []CreateInvoiceLineItemRequest `json:"lineItems"`
+	BuyerReference *string                        `json:"buyerReference"`
+	PaymentTerms   *string                        `json:"paymentTerms"`
 }
 
 // UpdateInvoiceRequest is the payload for updating an invoice. State is
@@ -89,17 +96,19 @@ type CreateInvoiceRequest struct {
 // only (which validates against invoiceStates), matching the orders/deliveries
 // convention, so a PUT can't set an arbitrary state and bypass validation.
 type UpdateInvoiceRequest struct {
-	Number        *string                         `json:"number"`
-	ClientID      *string                         `json:"clientId"`
-	Date          *int64                          `json:"date"`
-	DueDate       *int64                          `json:"dueDate"`
-	Currency      *string                         `json:"currency"`
-	CustomerNotes *string                         `json:"customerNotes"`
-	OverdueCharge *float64                        `json:"overdueCharge"`
-	Total         *int64                          `json:"total"`
-	TaxTotal      *int64                          `json:"taxTotal"`
-	SubTotal      *int64                          `json:"subTotal"`
-	LineItems     *[]CreateInvoiceLineItemRequest `json:"lineItems"`
+	Number         *string                         `json:"number"`
+	ClientID       *string                         `json:"clientId"`
+	Date           *int64                          `json:"date"`
+	DueDate        *int64                          `json:"dueDate"`
+	Currency       *string                         `json:"currency"`
+	CustomerNotes  *string                         `json:"customerNotes"`
+	OverdueCharge  *float64                        `json:"overdueCharge"`
+	Total          *int64                          `json:"total"`
+	TaxTotal       *int64                          `json:"taxTotal"`
+	SubTotal       *int64                          `json:"subTotal"`
+	LineItems      *[]CreateInvoiceLineItemRequest `json:"lineItems"`
+	BuyerReference *string                         `json:"buyerReference"`
+	PaymentTerms   *string                         `json:"paymentTerms"`
 }
 
 func (d *Database) GetInvoices(organizationID string) ([]Invoice, error) {
@@ -166,11 +175,12 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 	_, err = tx.Exec(`
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
-			currency, customerNotes, overdueCharge, total, taxTotal, subTotal
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			currency, customerNotes, overdueCharge, total, taxTotal, subTotal,
+			buyerReference, paymentTerms
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Number, req.State, req.ClientID,
 		req.Date, req.DueDate, req.Currency, req.CustomerNotes, req.OverdueCharge,
-		req.Total, req.TaxTotal, req.SubTotal,
+		req.Total, req.TaxTotal, req.SubTotal, req.BuyerReference, req.PaymentTerms,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_invoice insert: %w", err)
@@ -269,12 +279,15 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		    overdueCharge = ?,
 		    total         = COALESCE(?, total),
 		    taxTotal      = COALESCE(?, taxTotal),
-		    subTotal      = COALESCE(?, subTotal)
+		    subTotal      = COALESCE(?, subTotal),
+		    buyerReference = ?,
+		    paymentTerms   = ?
 		WHERE id = ?`,
 		updates.Number, updates.ClientID,
 		updates.Date, updates.DueDate, updates.Currency,
 		updates.CustomerNotes, updates.OverdueCharge,
 		updates.Total, updates.TaxTotal, updates.SubTotal,
+		updates.BuyerReference, updates.PaymentTerms,
 		invoiceID,
 	)
 	if err != nil {

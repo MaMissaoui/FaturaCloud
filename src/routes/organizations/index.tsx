@@ -247,14 +247,18 @@ export default function Organizations() {
           title={<Trans>Email</Trans>}
           dataIndex="email"
           key="email"
-          sorter={(a: Organization, b: Organization) => (a.email ?? "").localeCompare(b.email ?? "")}
+          sorter={(a: Organization, b: Organization) =>
+            (a.email ?? "").localeCompare(b.email ?? "")
+          }
         />
         <Table.Column
           title={<Trans>Phone</Trans>}
           dataIndex="phone"
           key="phone"
           width={150}
-          sorter={(a: Organization, b: Organization) => (a.phone ?? "").localeCompare(b.phone ?? "")}
+          sorter={(a: Organization, b: Organization) =>
+            (a.phone ?? "").localeCompare(b.phone ?? "")
+          }
         />
         <Table.Column
           title="IBAN"
@@ -268,7 +272,9 @@ export default function Organizations() {
           dataIndex="currency"
           key="currency"
           width={100}
-          sorter={(a: Organization, b: Organization) => (a.currency ?? "").localeCompare(b.currency ?? "")}
+          sorter={(a: Organization, b: Organization) =>
+            (a.currency ?? "").localeCompare(b.currency ?? "")
+          }
         />
         <Table.Column
           title=""
@@ -302,24 +308,29 @@ export default function Organizations() {
                       </div>
                       <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
                         {breakdown.map(([n, label]) => (
-                          <li key={label as string}>{n} {label}</li>
+                          <li key={label as string}>
+                            {n} {label}
+                          </li>
                         ))}
                       </ul>
-                      <div><Trans>This cannot be undone.</Trans></div>
+                      <div>
+                        <Trans>This cannot be undone.</Trans>
+                      </div>
                     </div>
                   ) : (
                     <Trans>This cannot be undone.</Trans>
                   )
                 }
-                onOpenChange={(open) => { if (open) fetchUsageCount(record.id); }}
-                onConfirm={(e) => { e?.stopPropagation(); handleDelete(record.id); }}
+                onOpenChange={(open) => {
+                  if (open) fetchUsageCount(record.id);
+                }}
+                onConfirm={(e) => {
+                  e?.stopPropagation();
+                  handleDelete(record.id);
+                }}
                 onCancel={(e) => e?.stopPropagation()}
               >
-                <Button
-                  size="small"
-                  danger
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <Button size="small" danger onClick={(e) => e.stopPropagation()}>
                   <Trans>Delete</Trans>
                 </Button>
               </Popconfirm>
@@ -336,7 +347,9 @@ export default function Organizations() {
         onClose={handleClose}
         footer={
           <Space style={{ justifyContent: "flex-end", width: "100%", display: "flex" }}>
-            <Button onClick={handleClose}><Trans>Cancel</Trans></Button>
+            <Button onClick={handleClose}>
+              <Trans>Cancel</Trans>
+            </Button>
             <Button type="primary" loading={submitting} onClick={() => form.submit()}>
               <Trans>Save</Trans>
             </Button>
@@ -367,7 +380,9 @@ export default function Organizations() {
                 <Form.Item name="country" label={<Trans>Country</Trans>}>
                   <Select showSearch placeholder={t`Select country`}>
                     {countries.map((c) => (
-                      <Select.Option key={c.name} value={c.name}>{c.name}</Select.Option>
+                      <Select.Option key={c.name} value={c.name}>
+                        {c.name}
+                      </Select.Option>
                     ))}
                   </Select>
                 </Form.Item>
@@ -376,7 +391,9 @@ export default function Organizations() {
                 <Form.Item name="currency" label={<Trans>Currency</Trans>}>
                   <Select showSearch>
                     {currencies.map((c) => (
-                      <Select.Option key={c} value={c}>{c}</Select.Option>
+                      <Select.Option key={c} value={c}>
+                        {c}
+                      </Select.Option>
                     ))}
                   </Select>
                 </Form.Item>
@@ -468,7 +485,60 @@ export default function Organizations() {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
+                <Form.Item name="bic" label="BIC">
+                  <Input
+                    maxLength={11}
+                    onChange={(e) => form.setFieldValue("bic", e.target.value.toUpperCase())}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
                 <Form.Item name="vatin" label="VATIN">
+                  <Input />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          <Card title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 16 }}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
+                  <Input />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="country_code"
+                  label={<Trans>Country code</Trans>}
+                  rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
+                >
+                  <Input
+                    maxLength={2}
+                    placeholder={t`e.g. DE`}
+                    onChange={(e) =>
+                      form.setFieldValue("country_code", e.target.value.toUpperCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={16}>
+                <Form.Item name="street" label={<Trans>Street</Trans>}>
+                  <Input />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="house_number" label={<Trans>House number</Trans>}>
+                  <Input />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
+                  <Input />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={16}>
+                <Form.Item name="city" label={<Trans>City</Trans>}>
                   <Input />
                 </Form.Item>
               </Col>
@@ -481,10 +551,7 @@ export default function Organizations() {
                 <Form.Item name="date_format" label={<Trans>Date format</Trans>}>
                   <Select placeholder={t`Select date format`}>
                     {Object.keys(DATE_FORMATS).map((key) => (
-                      <Select.Option
-                        key={key}
-                        value={DATE_FORMATS[key as DateFormatKey] ?? "AUTO"}
-                      >
+                      <Select.Option key={key} value={DATE_FORMATS[key as DateFormatKey] ?? "AUTO"}>
                         {getDateFormatLabel(key as DateFormatKey)}
                       </Select.Option>
                     ))}

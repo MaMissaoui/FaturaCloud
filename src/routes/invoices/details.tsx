@@ -15,6 +15,7 @@ import {
   Space,
   Descriptions,
   Layout,
+  message,
   Popconfirm,
   theme,
   Spin,
@@ -30,6 +31,7 @@ import {
   EditOutlined,
   EyeOutlined,
   FilePdfOutlined,
+  FileTextOutlined,
   MoreOutlined,
   PlusOutlined,
   SaveOutlined,
@@ -52,7 +54,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { SaveFile } from "src/api";
+import { SaveFile, DownloadInvoiceEInvoice } from "src/api";
 import { pdf } from "@react-pdf/renderer";
 import { Document, Page } from "react-pdf";
 import dayjs from "dayjs";
@@ -96,7 +98,13 @@ import ClientForm from "src/components/clients/form.tsx";
 import InvoicePDF from "src/components/invoices/pdf";
 import { currencies } from "src/utils/currencies";
 import { generateInvoiceNumber } from "src/utils/invoice";
-import { multiplyDecimal, divideDecimal, calculateTax, addDecimal, centsToUnits } from "src/utils/currency";
+import {
+  multiplyDecimal,
+  divideDecimal,
+  calculateTax,
+  addDecimal,
+  centsToUnits,
+} from "src/utils/currency";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -319,6 +327,7 @@ const InvoiceDetails: React.FC = () => {
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
   const [, setSubmitting] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
   const dateFormat = useDatePickerFormat();
 
   // Drag and drop sensors
@@ -517,9 +526,10 @@ const InvoiceDetails: React.FC = () => {
     );
   };
 
-  const currentInvoiceState = !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
-    ? (invoice as any).state ?? "draft"
-    : "draft";
+  const currentInvoiceState =
+    !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
+      ? ((invoice as any).state ?? "draft")
+      : "draft";
 
   if (!organization) return null;
   if (!isNew && !invoice) return null;
@@ -553,22 +563,32 @@ const InvoiceDetails: React.FC = () => {
                       return true;
                     }}
                     onChange={(clientId) => {
-                      if (isNew && organization?.invoiceNumberFormat?.includes("{clientCode}")) {
-                        // Find the selected client
+                      if (isNew) {
                         const selectedClient = clients.find((c: any) => c.id === clientId);
-                        const clientCode = selectedClient?.code || "";
 
-                        // Regenerate invoice number with client code
-                        const counter = addDecimal(organization.invoiceNumberCounter || 0, 1);
-                        const newNumber = organization.invoiceNumberFormat
-                          ? generateInvoiceNumber(
-                              organization.invoiceNumberFormat,
-                              counter,
-                              new Date(),
-                              clientCode,
-                            )
-                          : "";
-                        form.setFieldsValue({ number: newNumber });
+                        if (organization?.invoiceNumberFormat?.includes("{clientCode}")) {
+                          const clientCode = selectedClient?.code || "";
+
+                          // Regenerate invoice number with client code
+                          const counter = addDecimal(organization.invoiceNumberCounter || 0, 1);
+                          const newNumber = organization.invoiceNumberFormat
+                            ? generateInvoiceNumber(
+                                organization.invoiceNumberFormat,
+                                counter,
+                                new Date(),
+                                clientCode,
+                              )
+                            : "";
+                          form.setFieldsValue({ number: newNumber });
+                        }
+
+                        // Prefill the buyer reference (e.g. a Leitweg-ID) from the
+                        // client's default, but don't clobber a manual edit.
+                        if (!form.getFieldValue("buyerReference")) {
+                          form.setFieldsValue({
+                            buyerReference: selectedClient?.default_buyer_reference || undefined,
+                          });
+                        }
                       }
                     }}
                     popupRender={(menu) => (
@@ -667,6 +687,23 @@ const InvoiceDetails: React.FC = () => {
               </Col>
             </Row>
 
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item
+                  label={t`Buyer reference`}
+                  name="buyerReference"
+                  tooltip={t`Mandatory for German B2G XRechnung, e.g. a Leitweg-ID.`}
+                >
+                  <Input />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label={t`Payment terms`} name="paymentTerms">
+                  <Input />
+                </Form.Item>
+              </Col>
+            </Row>
+
             <Row gutter={16} style={{ marginTop: "20px" }}>
               <Col span={24}>
                 <Form.List name="lineItems">
@@ -733,7 +770,8 @@ const InvoiceDetails: React.FC = () => {
                                       const product = find(products, { id: productId });
                                       if (product) {
                                         const lineItems = form.getFieldValue("lineItems");
-                                        const quantity = get(lineItems[field.name], "quantity") || 1;
+                                        const quantity =
+                                          get(lineItems[field.name], "quantity") || 1;
                                         const unitPrice = centsToUnits((product as any).price ?? 0);
                                         lineItems[field.name] = {
                                           ...lineItems[field.name],
@@ -750,7 +788,8 @@ const InvoiceDetails: React.FC = () => {
                                   >
                                     {map(products, (p: any) => (
                                       <Option key={p.id} value={p.id}>
-                                        {p.name}{p.sku ? ` (${p.sku})` : ""}
+                                        {p.name}
+                                        {p.sku ? ` (${p.sku})` : ""}
                                       </Option>
                                     ))}
                                   </Select>
@@ -1098,6 +1137,27 @@ const InvoiceDetails: React.FC = () => {
                             }}
                           >
                             <FilePdfOutlined /> PDF
+                          </Button>
+                        )}
+                        {!isNew && (
+                          <Button
+                            loading={downloadingEInvoice}
+                            onClick={async () => {
+                              setDownloadingEInvoice(true);
+                              try {
+                                await DownloadInvoiceEInvoice(id!);
+                              } catch (error) {
+                                message.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : t`E-invoice export failed`,
+                                );
+                              } finally {
+                                setDownloadingEInvoice(false);
+                              }
+                            }}
+                          >
+                            <FileTextOutlined /> <Trans>E-Invoice (XML)</Trans>
                           </Button>
                         )}
                         {!isNew && currentInvoiceState !== "cancelled" && (

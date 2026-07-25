@@ -2187,6 +2187,36 @@ func TestTaxRateUsedOnlyByIncomingInvoiceCannotBeDeleted(t *testing.T) {
 	}
 }
 
+// An unknown BT-118 category code would produce invalid XRechnung/ZUGFeRD
+// XML at export time, so it's rejected up front on both create and update.
+func TestTaxRateRejectsUnknownCategoryCode(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-tax-cat"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	var verr *ValidationError
+	if _, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-bad-cat", OrganizationID: org.ID, Name: "Bogus", Percentage: 10,
+		CategoryCode: "XX",
+	}); !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+
+	rate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-good-cat", OrganizationID: org.ID, Name: "Standard", Percentage: 19,
+		CategoryCode: "S",
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	if _, err := d.UpdateTaxRate(rate.ID, UpdateTaxRateRequest{CategoryCode: ptr("XX")}); !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError on update, got %T: %v", err, err)
+	}
+}
+
 // Uncosted stock must not dilute the first costed receipt. A product's opening
 // stock is typically a manual adjustment with no cost; letting those units into
 // the valuation pool at a value of zero would halve the price actually paid.

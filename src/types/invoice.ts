@@ -19,6 +19,10 @@ export interface Invoice {
   subTotal: number;
   createdAt: string | null;
   clientName: string | null;
+  // BT-10 buyer reference (e.g. a German Leitweg-ID), mandatory for
+  // XRechnung/B2G. BT-20 payment terms free text; BT-9 due date is dueDate.
+  buyerReference: string | null;
+  paymentTerms: string | null;
 }
 
 export interface InvoiceLineItem {

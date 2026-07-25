@@ -117,10 +117,14 @@ const ClientForm = () => {
               <Popconfirm
                 title={
                   <div>
-                    <div><Trans>Are you sure you want to delete this client?</Trans></div>
+                    <div>
+                      <Trans>Are you sure you want to delete this client?</Trans>
+                    </div>
                     {invoiceCount !== null && invoiceCount > 0 && (
                       <div style={{ color: "#ff4d4f", marginTop: 4 }}>
-                        <Trans>Warning: This will also delete {invoiceCount} related invoice(s).</Trans>
+                        <Trans>
+                          Warning: This will also delete {invoiceCount} related invoice(s).
+                        </Trans>
                       </div>
                     )}
                   </div>
@@ -137,7 +141,9 @@ const ClientForm = () => {
             )}
           </div>
           <Space>
-            <Button onClick={handleClose}><Trans>Cancel</Trans></Button>
+            <Button onClick={handleClose}>
+              <Trans>Cancel</Trans>
+            </Button>
             <Button type="primary" loading={submitting} onClick={() => form.submit()}>
               <Trans>Save</Trans>
             </Button>
@@ -147,8 +153,14 @@ const ClientForm = () => {
     >
       <ScrollShadow>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Section><Trans>Contact</Trans></Section>
-          <Form.Item name="name" label={<Trans>Name</Trans>} rules={[{ required: true, message: t`Please input name!` }]}>
+          <Section>
+            <Trans>Contact</Trans>
+          </Section>
+          <Form.Item
+            name="name"
+            label={<Trans>Name</Trans>}
+            rules={[{ required: true, message: t`Please input name!` }]}
+          >
             <Input
               placeholder={t`Name`}
               onChange={(e) => {
@@ -172,9 +184,48 @@ const ClientForm = () => {
             <Input placeholder={t`VAT Number`} />
           </Form.Item>
 
-          <Section><Trans>Address</Trans></Section>
+          <Section>
+            <Trans>Address</Trans>
+          </Section>
           <Form.Item name="address" label={<Trans>Address</Trans>}>
             <Input.TextArea rows={4} placeholder={t`Address`} />
+          </Form.Item>
+
+          <Section>
+            <Trans>E-invoicing</Trans>
+          </Section>
+          <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
+            <Input placeholder={t`Tax number`} />
+          </Form.Item>
+          <Form.Item name="street" label={<Trans>Street</Trans>}>
+            <Input placeholder={t`Street`} />
+          </Form.Item>
+          <Form.Item name="house_number" label={<Trans>House number</Trans>}>
+            <Input placeholder={t`House number`} />
+          </Form.Item>
+          <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
+            <Input placeholder={t`Postal code`} />
+          </Form.Item>
+          <Form.Item name="city" label={<Trans>City</Trans>}>
+            <Input placeholder={t`City`} />
+          </Form.Item>
+          <Form.Item
+            name="country_code"
+            label={<Trans>Country code</Trans>}
+            rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
+          >
+            <Input
+              maxLength={2}
+              placeholder={t`e.g. DE`}
+              onChange={(e) => form.setFieldValue("country_code", e.target.value.toUpperCase())}
+            />
+          </Form.Item>
+          <Form.Item
+            name="default_buyer_reference"
+            label={<Trans>Default buyer reference</Trans>}
+            tooltip={t`Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G.`}
+          >
+            <Input placeholder={t`Default buyer reference`} />
           </Form.Item>
         </Form>
       </ScrollShadow>
