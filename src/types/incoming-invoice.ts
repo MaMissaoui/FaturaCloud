@@ -68,6 +68,26 @@ export function matchStatusLabel(status: string): string {
   }
 }
 
+// The server also returns a `message`, but it is English — like every other
+// server-side validation string in this app. The match panel renders it inline
+// rather than in a toast, so build the explanation here from the structured
+// numbers instead, which keeps it in the user's language.
+export function matchStatusDetail(line: MatchLine): string {
+  const qty = (n: number | null) => (n ?? 0).toFixed(2);
+  switch (line.status) {
+    case "over_received":
+      return t`Billing ${qty(line.invoicedQuantity)} but only ${qty(line.receivedQuantity)} received (${qty(line.previouslyInvoicedQuantity)} already invoiced).`;
+    case "quantity_variance":
+      return t`Billing ${qty(line.invoicedQuantity)} but only ${qty(line.orderedQuantity)} ordered.`;
+    case "price_variance":
+      return t`Billed at a different unit price than ordered.`;
+    case "unlinked":
+      return t`Not linked to a purchase order line.`;
+    default:
+      return "";
+  }
+}
+
 export interface MatchLine {
   lineItemId: string;
   purchaseOrderLineItemId: string | null;

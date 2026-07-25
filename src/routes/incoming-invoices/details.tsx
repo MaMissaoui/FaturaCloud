@@ -41,6 +41,7 @@ import {
   incomingInvoiceStateLabel,
   matchStatusColor,
   matchStatusLabel,
+  matchStatusDetail,
   hasBlockingVariance,
   type IncomingInvoiceState,
   type MatchLine,
@@ -404,7 +405,7 @@ const IncomingInvoiceDetails = () => {
                       const line = matchLines.find((l) => l.lineItemId === lineId);
                       if (!line) return null;
                       return (
-                        <Tag color={matchStatusColor[line.status]} title={line.message}>
+                        <Tag color={matchStatusColor[line.status]} title={matchStatusDetail(line)}>
                           {matchStatusLabel(line.status)}
                         </Tag>
                       );
@@ -503,8 +504,8 @@ const IncomingInvoiceDetails = () => {
               render={(line: MatchLine) => (
                 <Space direction="vertical" size={0}>
                   <Tag color={matchStatusColor[line.status]}>{matchStatusLabel(line.status)}</Tag>
-                  {line.message && (
-                    <span style={{ fontSize: 12, opacity: 0.65 }}>{line.message}</span>
+                  {matchStatusDetail(line) && (
+                    <span style={{ fontSize: 12, opacity: 0.65 }}>{matchStatusDetail(line)}</span>
                   )}
                 </Space>
               )}

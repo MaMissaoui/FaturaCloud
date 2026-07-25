@@ -249,6 +249,15 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		}
 	}
 
+	// An override justifies one specific variance. Editing the financials can
+	// turn it into a different one, so anything that changes what would be
+	// matched clears the flag unless this same request re-states it — otherwise
+	// an invoice could be edited after approval and re-approved against a
+	// reason that no longer describes it.
+	financialsChanged := updates.LineItems != nil || updates.SubTotal != nil ||
+		updates.TaxTotal != nil || updates.Total != nil || updates.PurchaseOrderID != nil
+	clearOverride := financialsChanged && updates.MatchOverride == nil
+
 	// The override flag and its reason must be judged together, using whichever
 	// side this request doesn't supply.
 	if updates.MatchOverride != nil || updates.MatchOverrideReason != nil {
@@ -303,6 +312,17 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		}
 		return nil, fmt.Errorf("update_incoming_invoice: %w", err)
 	}
+	// Cleared after the COALESCE'd update above, which by design can't null a
+	// column out.
+	if clearOverride {
+		if _, err := tx.Exec(
+			`UPDATE incoming_invoices SET matchOverride = 0, matchOverrideReason = NULL WHERE id = ?`,
+			id,
+		); err != nil {
+			return nil, fmt.Errorf("update_incoming_invoice clear_override: %w", err)
+		}
+	}
+
 	if updates.LineItems != nil {
 		if err := replaceIncomingInvoiceLineItemsTx(tx, id, *updates.LineItems); err != nil {
 			return nil, err

@@ -64,6 +64,13 @@ func recomputeAverageCostTx(exec sqlSelectExecer, productID string) error {
 	quantity := new(big.Rat)
 	value := new(big.Rat)
 	average := new(big.Rat)
+	// Until a costed inflow has established an average there is nothing to move
+	// uncosted quantity at, so uncosted movements stay out of the valuation
+	// pool entirely. Letting them in would enter those units at a value of
+	// zero and halve the first price actually paid — an ordinary case, since a
+	// product's opening stock is typically a manual adjustment with no cost.
+	// They still count toward stockQuantity, which is summed separately.
+	haveAverage := false
 
 	for _, m := range movements {
 		qty, err := floatToRat(m.Quantity)
@@ -75,6 +82,9 @@ func recomputeAverageCostTx(exec sqlSelectExecer, productID string) error {
 		case m.Quantity > 0 && m.UnitCost != nil:
 			value.Add(value, new(big.Rat).Mul(qty, new(big.Rat).SetInt64(*m.UnitCost)))
 			quantity.Add(quantity, qty)
+			haveAverage = true
+		case !haveAverage:
+			continue
 		default:
 			// Uncosted inflows and every outflow move at the running average,
 			// which leaves the average itself unchanged.

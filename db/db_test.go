@@ -2148,3 +2148,156 @@ func TestTaxRateUsedOnlyByIncomingInvoiceCannotBeDeleted(t *testing.T) {
 		t.Fatalf("expected ErrTaxRateInUse, got %v", err)
 	}
 }
+
+// Uncosted stock must not dilute the first costed receipt. A product's opening
+// stock is typically a manual adjustment with no cost; letting those units into
+// the valuation pool at a value of zero would halve the price actually paid.
+func TestAverageCostIgnoresUncostedStockBeforeFirstCostedReceipt(t *testing.T) {
+	d := newTestDB(t)
+	product := seedCostProduct(t, d, "org-cost-dilute")
+
+	// Opening stock, no cost recorded.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID, Type: "in", Quantity: 10,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+	// First actual purchase.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID,
+		Type: "in", Quantity: 10, UnitCost: ptr(int64(200)),
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	p, _ := d.GetProduct(product.ID)
+	if p.UnitCost == nil || *p.UnitCost != 200 {
+		t.Fatalf("unit cost: got %v, want 200 — unvalued opening stock diluted the price paid", p.UnitCost)
+	}
+	// Both movements still count toward stock.
+	if p.StockQuantity != 20 {
+		t.Fatalf("stockQuantity: got %v, want 20", p.StockQuantity)
+	}
+
+	// Once an average exists, an uncosted inflow moves at it and leaves it alone.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID, Type: "in", Quantity: 5,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+	p, _ = d.GetProduct(product.ID)
+	if p.UnitCost == nil || *p.UnitCost != 200 {
+		t.Fatalf("uncosted inflow after an average exists moved it: got %v, want 200", p.UnitCost)
+	}
+}
+
+// The purchase order's "received" figure and the invoice matcher's must agree.
+// They are separate queries, and an earlier version disagreed: the order page
+// counted draft receipts while matching counted only received ones, so the same
+// goods read as both fully received and not received at all.
+func TestReceivedQuantityAgreesBetweenOrderAndMatch(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-received-agree", 10, 250, 0)
+
+	// A receipt for the full quantity, deliberately left in draft.
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: f.OrgID, PurchaseOrderID: &f.OrderID, VendorID: &f.VendorID,
+		DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{PurchaseOrderLineItemID: &f.POLineID, Description: "Widget", Quantity: 10},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+
+	assertAgrees := func(stage string, want float64) {
+		t.Helper()
+		onOrder, err := d.GetPurchaseOrderReceivedQuantities(f.OrderID)
+		if err != nil {
+			t.Fatalf("GetPurchaseOrderReceivedQuantities: %v", err)
+		}
+		inv := createIncomingInvoice(t, d, f, "V-"+stage, 10, 250)
+		lines, err := d.GetIncomingInvoiceMatch(inv.ID)
+		if err != nil {
+			t.Fatalf("GetIncomingInvoiceMatch: %v", err)
+		}
+		inMatch := *lines[0].ReceivedQuantity
+
+		if onOrder[f.POLineID] != want || inMatch != want {
+			t.Fatalf(
+				"%s: purchase order reports %v received, matching reports %v — both should be %v",
+				stage, onOrder[f.POLineID], inMatch, want,
+			)
+		}
+	}
+
+	// A draft receipt has moved no stock, so nothing is received yet.
+	assertAgrees("draft", 0)
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+	assertAgrees("received", 10)
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled"); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+	assertAgrees("cancelled", 0)
+}
+
+// An override justifies one specific variance. Editing the financials can turn
+// it into a different one, so the flag is cleared unless the same request
+// re-states it — otherwise an approved invoice could be edited and re-approved
+// against a reason that no longer describes it.
+func TestIncomingInvoiceOverrideClearedWhenFinancialsChange(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-override-stale", 10, 250, 4)
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("balance shipping separately"),
+	}); err != nil {
+		t.Fatalf("set override: %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("approve with override: %v", err)
+	}
+
+	// Now edit the line items — a different variance entirely.
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		SubTotal: ptr(int64(5000)), TaxTotal: ptr(int64(0)), Total: ptr(int64(5000)),
+		LineItems: &[]CreateInvoiceLineItemRequest{
+			{
+				Description: ptr("Widget"), Quantity: 20, UnitPrice: 250,
+				PurchaseOrderLineItemID: &f.POLineID,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("edit line items: %v", err)
+	}
+
+	current, _ := d.GetIncomingInvoice(inv.ID)
+	if current.MatchOverride != 0 {
+		t.Fatalf("override survived a financial edit: %d", current.MatchOverride)
+	}
+	if current.MatchOverrideReason != nil {
+		t.Fatalf("stale override reason survived: %v", current.MatchOverrideReason)
+	}
+	// And approval is gated again.
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err == nil {
+		t.Fatal("expected re-approval to be blocked after the override was cleared")
+	}
+
+	// Re-stating the override in the same request keeps it.
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		SubTotal: ptr(int64(5000)), TaxTotal: ptr(int64(0)), Total: ptr(int64(5000)),
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("revised agreement covers the full 20"),
+	}); err != nil {
+		t.Fatalf("re-state override: %v", err)
+	}
+	current, _ = d.GetIncomingInvoice(inv.ID)
+	if current.MatchOverride != 1 {
+		t.Fatal("re-stated override was cleared")
+	}
+}

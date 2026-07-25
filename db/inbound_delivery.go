@@ -135,11 +135,19 @@ func (d *Database) GetInboundDeliveryLineItems(deliveryID string) ([]InboundDeli
 }
 
 // GetPurchaseOrderReceivedQuantities sums received quantity per
-// purchaseOrderLineItemId across all non-cancelled inbound deliveries for the
-// given purchase order — used to prefill a new receipt with only the
-// outstanding quantity per line, and to show per-line fulfilment on the order.
+// purchaseOrderLineItemId for the given purchase order — used to prefill a new
+// receipt with only the outstanding quantity per line, and to show per-line
+// fulfilment on the order.
 //
-// Mirrors GetOrderDeliveredQuantities on the sales side.
+// "Received" means status = 'received', matching what
+// GetIncomingInvoiceMatch counts. A draft receipt has not moved any stock, so
+// counting it here (via the looser status != 'cancelled') would make the order
+// page report goods as received that the invoice matcher simultaneously
+// reports as not received — the same quantity described two contradictory ways
+// in two places.
+//
+// The sales-side mirror, GetOrderDeliveredQuantities, uses the looser test; it
+// has no matching engine to contradict.
 func (d *Database) GetPurchaseOrderReceivedQuantities(purchaseOrderID string) (map[string]float64, error) {
 	rows := []struct {
 		LineItemID string  `db:"purchaseOrderLineItemId"`
@@ -151,7 +159,7 @@ func (d *Database) GetPurchaseOrderReceivedQuantities(purchaseOrderID string) (m
 		FROM inbound_delivery_line_items dli
 		JOIN inbound_deliveries idl ON dli.deliveryId = idl.id
 		WHERE idl.purchaseOrderId = ?
-		  AND idl.status != 'cancelled'
+		  AND idl.status = 'received'
 		  AND dli.purchaseOrderLineItemId IS NOT NULL
 		GROUP BY dli.purchaseOrderLineItemId`,
 		purchaseOrderID,
