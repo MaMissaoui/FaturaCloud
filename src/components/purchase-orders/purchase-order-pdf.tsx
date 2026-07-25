@@ -5,43 +5,104 @@ import dayjs from "dayjs";
 
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
+// Dark slate header block + light neutral cards — matches the invoice PDF
+// (src/components/invoices/pdf.tsx) so every document in the app reads as
+// one designed system.
+const HEADER_BG = "#1e293b";
 
 const styles = StyleSheet.create({
   page: { fontFamily: FONT, fontSize: 10, color: "#222", padding: 50, flexDirection: "column" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 },
-  logo: { width: 100, height: 40, objectFit: "contain" },
-  docTitle: { fontFamily: FONT_BOLD, fontSize: 22, textAlign: "right", color: "#1a1a1a" },
-  docNumber: { fontSize: 11, textAlign: "right", color: "#555", marginTop: 4 },
-  orgName: { fontFamily: FONT_BOLD, fontSize: 16 },
-  parties: { flexDirection: "row", marginBottom: 28 },
-  partyBlock: { flex: 1 },
-  partyLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", marginBottom: 6, letterSpacing: 1 },
+
+  headerBlock: {
+    backgroundColor: HEADER_BG,
+    marginTop: -50,
+    marginHorizontal: -50,
+    paddingHorizontal: 50,
+    paddingTop: 36,
+    paddingBottom: 28,
+    marginBottom: 28,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  orgName: { fontFamily: FONT_BOLD, fontSize: 18, color: "#fff" },
+  logo: { maxWidth: 120, maxHeight: 44, objectFit: "contain", marginTop: 10 },
+  docTitle: { fontFamily: FONT_BOLD, fontSize: 22, textAlign: "right", color: "#fff" },
+  docNumberPill: {
+    alignSelf: "flex-end",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginTop: 8,
+  },
+  docNumberText: { fontSize: 11, color: "#fff" },
+  headerMeta: { marginTop: 12, alignItems: "flex-end" },
+  headerMetaRow: { flexDirection: "row", marginTop: 3 },
+  headerMetaLabel: { fontSize: 9, color: "rgba(255,255,255,0.65)", marginRight: 6 },
+  headerMetaValue: { fontFamily: FONT_BOLD, fontSize: 9, color: "#fff" },
+
+  parties: { flexDirection: "row", gap: 16, marginBottom: 24 },
+  card: { flex: 1, backgroundColor: "#f8f9fa", borderRadius: 3, padding: 14 },
+  partyLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
   partyName: { fontFamily: FONT_BOLD, fontSize: 11, marginBottom: 3 },
-  partyDetail: { color: "#555", marginBottom: 2, lineHeight: 1.5 },
-  meta: { flexDirection: "row", marginBottom: 24, gap: 40 },
-  metaItem: { flexDirection: "column" },
-  metaLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 },
-  metaValue: { fontSize: 10 },
-  divider: { borderBottomWidth: 1, borderBottomColor: "#e0e0e0", marginBottom: 16 },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f5f5f5", paddingVertical: 7, paddingHorizontal: 8, marginBottom: 2 },
-  tableRow: { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
+  partyDetail: { color: "#555", marginBottom: 2, lineHeight: 1.5, fontSize: 9 },
+
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: HEADER_BG,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+  },
+  tableHeaderText: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#fff",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  tableRowAlt: { backgroundColor: "#f8f9fa" },
   colNum: { width: 28, fontFamily: FONT_BOLD, color: "#888" },
   colDesc: { flex: 1 },
   colQty: { width: 60, textAlign: "right" },
   colUnit: { width: 50, textAlign: "right" },
   colPrice: { width: 80, textAlign: "right" },
   colTotal: { width: 80, textAlign: "right", fontFamily: FONT_BOLD },
-  headerText: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 },
+  itemCode: { fontSize: 8, color: "#888", marginBottom: 1 },
+
   totals: { marginTop: 16, alignItems: "flex-end" },
   totalRow: { flexDirection: "row", paddingVertical: 4 },
   grandTotalLabel: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right", marginRight: 16 },
   grandTotalValue: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right" },
-  itemCode: { fontSize: 8, color: "#888", marginBottom: 1 },
-  notes: { marginTop: 24 },
-  notesLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
-  notesText: { color: "#444", lineHeight: 1.6 },
+
+  noteCard: {
+    marginTop: 24,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 3,
+    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: HEADER_BG,
+  },
+  noteCardTitle: { fontFamily: FONT_BOLD, fontSize: 10, marginBottom: 6 },
+  noteCardText: { fontSize: 9, color: "#555", lineHeight: 1.5 },
+
   footer: { marginTop: 40, borderTopWidth: 1, borderTopColor: "#e0e0e0", paddingTop: 12 },
   footerText: { fontSize: 9, color: "#888", textAlign: "center" },
+  pageNumber: { position: "absolute", bottom: 24, right: 50, fontSize: 8, color: "#aaa" },
 });
 
 interface Props {
@@ -75,29 +136,52 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
       <Document>
         <Page size="A4" style={styles.page}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={styles.headerBlock}>
             <View>
-              {logoSrc ? (
-                <Image src={logoSrc} style={styles.logo} />
-              ) : (
-                <Text style={styles.orgName}>{organization?.name ?? ""}</Text>
-              )}
+              <Text style={styles.orgName}>{organization?.name ?? ""}</Text>
+              {logoSrc && <Image src={logoSrc} style={styles.logo} />}
             </View>
             <View>
               <Text style={styles.docTitle}>
                 <Trans>PURCHASE ORDER</Trans>
               </Text>
-              <Text style={styles.docNumber}>{order.orderNumber}</Text>
+              <View style={styles.docNumberPill}>
+                <Text style={styles.docNumberText}>{order.orderNumber}</Text>
+              </View>
+              <View style={styles.headerMeta}>
+                <View style={styles.headerMetaRow}>
+                  <Text style={styles.headerMetaLabel}>
+                    <Trans>Order Date</Trans>:
+                  </Text>
+                  <Text style={styles.headerMetaValue}>{dayjs(order.orderDate).format("L")}</Text>
+                </View>
+                {order.expectedDate && (
+                  <View style={styles.headerMetaRow}>
+                    <Text style={styles.headerMetaLabel}>
+                      <Trans>Expected Date</Trans>:
+                    </Text>
+                    <Text style={styles.headerMetaValue}>{dayjs(order.expectedDate).format("L")}</Text>
+                  </View>
+                )}
+                {order.deliveryAddress && (
+                  <View style={styles.headerMetaRow}>
+                    <Text style={styles.headerMetaLabel}>
+                      <Trans>Deliver To</Trans>:
+                    </Text>
+                    <Text style={styles.headerMetaValue}>{order.deliveryAddress}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
 
           {/* Buyer / Vendor */}
           <View style={styles.parties}>
-            <View style={styles.partyBlock}>
+            <View style={styles.card}>
               <Text style={styles.partyLabel}>
                 <Trans>Ordered By</Trans>
               </Text>
-              {logoSrc && <Text style={styles.partyName}>{organization?.name ?? ""}</Text>}
+              <Text style={styles.partyName}>{organization?.name ?? ""}</Text>
               {organization?.address && <Text style={styles.partyDetail}>{organization.address}</Text>}
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
@@ -107,7 +191,7 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
                 </Text>
               )}
             </View>
-            <View style={[styles.partyBlock, { paddingLeft: 24 }]}>
+            <View style={styles.card}>
               <Text style={styles.partyLabel}>
                 <Trans>Vendor</Trans>
               </Text>
@@ -122,50 +206,22 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
             </View>
           </View>
 
-          {/* Meta row */}
-          <View style={styles.meta}>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>
-                <Trans>Order Date</Trans>
-              </Text>
-              <Text style={styles.metaValue}>{dayjs(order.orderDate).format("L")}</Text>
-            </View>
-            {order.expectedDate && (
-              <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>
-                  <Trans>Expected Date</Trans>
-                </Text>
-                <Text style={styles.metaValue}>{dayjs(order.expectedDate).format("L")}</Text>
-              </View>
-            )}
-            {order.deliveryAddress && (
-              <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>
-                  <Trans>Deliver To</Trans>
-                </Text>
-                <Text style={styles.metaValue}>{order.deliveryAddress}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.divider} />
-
           {/* Items table */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.colNum, styles.headerText]}>#</Text>
-            <Text style={[styles.colDesc, styles.headerText]}>
+            <Text style={[styles.colNum, styles.tableHeaderText]}>#</Text>
+            <Text style={[styles.colDesc, styles.tableHeaderText]}>
               <Trans>Description</Trans>
             </Text>
-            <Text style={[styles.colQty, styles.headerText]}>
+            <Text style={[styles.colQty, styles.tableHeaderText]}>
               <Trans>Qty</Trans>
             </Text>
-            <Text style={[styles.colUnit, styles.headerText]}>
+            <Text style={[styles.colUnit, styles.tableHeaderText]}>
               <Trans>Unit</Trans>
             </Text>
-            <Text style={[styles.colPrice, styles.headerText]}>
+            <Text style={[styles.colPrice, styles.tableHeaderText]}>
               <Trans>Unit Cost</Trans>
             </Text>
-            <Text style={[styles.colTotal, styles.headerText]}>
+            <Text style={[styles.colTotal, styles.tableHeaderText]}>
               <Trans>Total</Trans>
             </Text>
           </View>
@@ -174,7 +230,10 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
             const qty = item.quantity ?? 1;
             const price = item.unitPrice ?? 0;
             return (
-              <View key={item.id ?? idx} style={styles.tableRow}>
+              <View
+                key={item.id ?? idx}
+                style={[styles.tableRow, ...(idx % 2 === 1 ? [styles.tableRowAlt] : [])]}
+              >
                 <Text style={styles.colNum}>{idx + 1}</Text>
                 <View style={styles.colDesc}>
                   {item.sku && <Text style={styles.itemCode}>{item.sku}</Text>}
@@ -199,11 +258,11 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
           </View>
 
           {order.notes && (
-            <View style={styles.notes}>
-              <Text style={styles.notesLabel}>
+            <View style={styles.noteCard}>
+              <Text style={styles.noteCardTitle}>
                 <Trans>Notes</Trans>
               </Text>
-              <Text style={styles.notesText}>{order.notes}</Text>
+              <Text style={styles.noteCardText}>{order.notes}</Text>
             </View>
           )}
 
@@ -212,6 +271,16 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
               <Trans>Please confirm receipt of this purchase order.</Trans>
             </Text>
           </View>
+
+          {/* react-pdf's render prop runs outside React's normal reconciler
+              (resolveDynamicNodes), so hooks-based i18n like <Trans> throws
+              "Invalid hook call" here — plain text only, like the other PDFs
+              that don't translate at all. */}
+          <Text
+            style={styles.pageNumber}
+            fixed
+            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          />
         </Page>
       </Document>
     </I18nProvider>

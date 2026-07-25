@@ -55,6 +55,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SaveFile, DownloadInvoiceEInvoice } from "src/api";
+import QRCode from "qrcode";
 import { pdf } from "@react-pdf/renderer";
 import { Document, Page } from "react-pdf";
 import dayjs from "dayjs";
@@ -97,6 +98,7 @@ import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
 import InvoicePDF from "src/components/invoices/pdf";
 import { currencies } from "src/utils/currencies";
+import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
 import { generateInvoiceNumber } from "src/utils/invoice";
 import {
   multiplyDecimal,
@@ -491,6 +493,47 @@ const InvoiceDetails: React.FC = () => {
   const taxTotal = sum(map(taxGroups, "tax"));
   const total = addDecimal(subTotal, taxTotal);
 
+  // SEPA credit transfer QR ("GiroCode") for the PDF's payment box. Only
+  // renders for EUR invoices on an organization with an IBAN — SEPA credit
+  // transfers don't exist for other currencies. Regenerated whenever the
+  // total, currency, invoice number, or organization's bank details change.
+  const watchedCurrency = Form.useWatch("currency", form);
+  const watchedNumber = Form.useWatch("number", form);
+  const [qrCodeDataUri, setQrCodeDataUri] = useState<string | null>(null);
+  useEffect(() => {
+    const payload = buildSepaCreditTransferPayload({
+      beneficiaryName: organization?.name,
+      iban: organization?.iban,
+      bic: organization?.bic,
+      currency: watchedCurrency ?? organization?.currency ?? "EUR",
+      amount: total,
+      reference: watchedNumber ?? "",
+    });
+    if (!payload) {
+      setQrCodeDataUri(null);
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(payload, { margin: 1, width: 200 })
+      .then((uri) => {
+        if (!cancelled) setQrCodeDataUri(uri);
+      })
+      .catch(() => {
+        if (!cancelled) setQrCodeDataUri(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    organization?.name,
+    organization?.iban,
+    organization?.bic,
+    organization?.currency,
+    watchedCurrency,
+    total,
+    watchedNumber,
+  ]);
+
   // Helper function to create PDF document with current form data
   const createPDFDocument = () => {
     // Get current form values to include unsaved changes
@@ -522,6 +565,7 @@ const InvoiceDetails: React.FC = () => {
         organization={organization}
         taxRates={taxRates}
         i18n={i18n}
+        qrCodeDataUri={qrCodeDataUri}
       />
     );
   };
