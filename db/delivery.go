@@ -271,6 +271,8 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 	}
 	defer tx.Rollback()
 
+	touchedProducts := []string{}
+
 	switch {
 	case current.Status == "draft" && status == "shipped":
 		lines, err := getShippableStockLines(tx, id)
@@ -298,6 +300,7 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 			}); err != nil {
 				return nil, fmt.Errorf("update_delivery_status reduce_stock: %w", err)
 			}
+			touchedProducts = append(touchedProducts, line.ProductID)
 		}
 
 	case current.Status == "shipped" && status == "cancelled":
@@ -318,6 +321,15 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 			}); err != nil {
 				return nil, fmt.Errorf("update_delivery_status restore_stock: %w", err)
 			}
+			touchedProducts = append(touchedProducts, line.ProductID)
+		}
+	}
+
+	// Outflows never move the weighted average, but recompute at every movement
+	// site so nobody has to re-derive why one path would be exempt.
+	for _, productID := range touchedProducts {
+		if err := recomputeAverageCostTx(tx, productID); err != nil {
+			return nil, fmt.Errorf("update_delivery_status recompute_cost: %w", err)
 		}
 	}
 

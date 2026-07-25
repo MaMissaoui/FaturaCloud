@@ -104,6 +104,11 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*StockMo
 	if err := insertStockMovementTx(tx, req); err != nil {
 		return nil, fmt.Errorf("create_stock_movement: %w", err)
 	}
+	// unitCost on a manual movement feeds the product's average cost, which is
+	// always derived from the movement history rather than adjusted in place.
+	if err := recomputeAverageCostTx(tx, req.ProductID); err != nil {
+		return nil, fmt.Errorf("create_stock_movement: %w", err)
+	}
 
 	if err = tx.Commit(); err != nil {
 		return nil, fmt.Errorf("create_stock_movement commit: %w", err)
@@ -144,6 +149,9 @@ func (d *Database) DeleteStockMovement(movementID string) (bool, error) {
 	)
 	if err != nil {
 		return false, fmt.Errorf("delete_stock_movement recompute: %w", err)
+	}
+	if err := recomputeAverageCostTx(tx, productID); err != nil {
+		return false, fmt.Errorf("delete_stock_movement recompute_cost: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {

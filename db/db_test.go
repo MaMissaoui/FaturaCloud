@@ -1390,3 +1390,398 @@ func TestUpdatePurchaseOrderKeepsVendorOnPartialUpdate(t *testing.T) {
 		t.Fatalf("expected ErrVendorInUse after partial update, got %v", err)
 	}
 }
+
+// seedCostProduct creates an org + stock-tracked product for the costing tests.
+func seedCostProduct(t *testing.T, d *Database, orgID string) *Product {
+	t.Helper()
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: orgID})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	product, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"), Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	return product
+}
+
+func productUnitCost(t *testing.T, d *Database, productID string) *int64 {
+	t.Helper()
+	p, err := d.GetProduct(productID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	return p.UnitCost
+}
+
+// TestAverageCostWeightsInflows is the core costing case: receiving 10 @ 100
+// then 10 @ 200 must value stock at the weighted average of 150, and an outflow
+// must consume at that average without moving it.
+func TestAverageCostWeightsInflows(t *testing.T) {
+	d := newTestDB(t)
+	product := seedCostProduct(t, d, "org-cost-1")
+
+	in := func(qty float64, cost int64) {
+		t.Helper()
+		if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+			OrganizationID: product.OrganizationID, ProductID: product.ID,
+			Type: "in", Quantity: qty, UnitCost: ptr(cost),
+		}); err != nil {
+			t.Fatalf("CreateStockMovement in: %v", err)
+		}
+	}
+
+	in(10, 100)
+	if got := productUnitCost(t, d, product.ID); got == nil || *got != 100 {
+		t.Fatalf("after first receipt: got %v, want 100", got)
+	}
+
+	in(10, 200)
+	if got := productUnitCost(t, d, product.ID); got == nil || *got != 150 {
+		t.Fatalf("weighted average wrong: got %v, want 150", got)
+	}
+
+	// An outflow consumes at the current average and must not change it.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID,
+		Type: "out", Quantity: -5,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement out: %v", err)
+	}
+	if got := productUnitCost(t, d, product.ID); got == nil || *got != 150 {
+		t.Fatalf("outflow moved the average: got %v, want 150", got)
+	}
+	p, _ := d.GetProduct(product.ID)
+	if p.StockQuantity != 15 {
+		t.Fatalf("stockQuantity: got %v, want 15", p.StockQuantity)
+	}
+}
+
+// A product with no costed inflow keeps whatever cost the user typed — cost only
+// becomes derived once real purchase data exists, so existing products are
+// untouched.
+func TestAverageCostLeavesManualCostAloneWithoutCostedInflows(t *testing.T) {
+	d := newTestDB(t)
+	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cost-2"})
+	product, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"),
+		Type: "product", StockEnabled: 1, UnitCost: ptr(int64(4242)),
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+
+	// Uncosted movements in both directions must not disturb the manual value.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "out", Quantity: -3,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	if got := productUnitCost(t, d, product.ID); got == nil || *got != 4242 {
+		t.Fatalf("manual unit cost was overwritten: got %v, want 4242", got)
+	}
+}
+
+// Replay must be a pure function of the movement history: recomputing twice
+// over the same rows yields the same answer, with no drift.
+func TestAverageCostReplayIsDeterministic(t *testing.T) {
+	d := newTestDB(t)
+	product := seedCostProduct(t, d, "org-cost-3")
+
+	for _, m := range []struct {
+		qty  float64
+		cost *int64
+	}{{10, ptr(int64(100))}, {5, ptr(int64(310))}, {-4, nil}, {8, ptr(int64(90))}} {
+		if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+			OrganizationID: product.OrganizationID, ProductID: product.ID,
+			Type: "in", Quantity: m.qty, UnitCost: m.cost,
+		}); err != nil {
+			t.Fatalf("CreateStockMovement: %v", err)
+		}
+	}
+
+	first := productUnitCost(t, d, product.ID)
+	if first == nil {
+		t.Fatal("no average cost computed")
+	}
+	// Recompute standalone — the same history must give the same number.
+	if err := recomputeAverageCostTx(d.DB, product.ID); err != nil {
+		t.Fatalf("recomputeAverageCostTx: %v", err)
+	}
+	second := productUnitCost(t, d, product.ID)
+	if second == nil || *first != *second {
+		t.Fatalf("replay not deterministic: first %v, second %v", first, second)
+	}
+}
+
+// seedReceipt builds a purchase order and a draft goods receipt against it.
+func seedReceipt(t *testing.T, d *Database, orgID string, qty float64, unitCost int64) (*Product, *InboundDelivery) {
+	t.Helper()
+	product := seedCostProduct(t, d, orgID)
+	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: orgID, Name: ptr("Supplier Ltd")})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+	po, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgID, VendorID: &vendor.ID, OrderNumber: "PO-0001", OrderDate: 1700000000000,
+		LineItems: []CreatePurchaseOrderLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: qty, UnitPrice: float64(unitCost)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder: %v", err)
+	}
+	poItems, _ := d.GetPurchaseOrderLineItems(po.ID)
+
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: orgID, PurchaseOrderID: &po.ID, VendorID: &vendor.ID,
+		DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			// Neither productId nor unitCost given — both must resolve from the PO line.
+			{PurchaseOrderLineItemID: &poItems[0].ID, Description: "Widget", Quantity: qty},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+	return product, receipt
+}
+
+// Receiving raises stock, records an "in" movement referencing the receipt, and
+// values the goods at the purchase order's price — resolved server-side, since
+// the request named neither the product nor the cost.
+func TestInboundReceiptRaisesStockAndSetsCost(t *testing.T) {
+	d := newTestDB(t)
+	product, receipt := seedReceipt(t, d, "org-inb-1", 10, 250)
+
+	items, err := d.GetInboundDeliveryLineItems(receipt.ID)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("GetInboundDeliveryLineItems: err=%v len=%d", err, len(items))
+	}
+	if items[0].ProductID == nil || *items[0].ProductID != product.ID {
+		t.Fatalf("productId not resolved from the purchase order line: %v", items[0].ProductID)
+	}
+	if items[0].UnitCost == nil || *items[0].UnitCost != 250 {
+		t.Fatalf("unitCost not resolved from the purchase order line: %v", items[0].UnitCost)
+	}
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		t.Fatalf("UpdateInboundDeliveryStatus: %v", err)
+	}
+
+	p, _ := d.GetProduct(product.ID)
+	if p.StockQuantity != 10 {
+		t.Fatalf("stockQuantity: got %v, want 10", p.StockQuantity)
+	}
+	if p.UnitCost == nil || *p.UnitCost != 250 {
+		t.Fatalf("unitCost: got %v, want 250", p.UnitCost)
+	}
+
+	movements, _ := d.GetProductStockMovements(product.ID)
+	if len(movements) != 1 || movements[0].Type != "in" || movements[0].Quantity != 10 {
+		t.Fatalf("expected one +10 \"in\" movement, got %+v", movements)
+	}
+	if movements[0].Reference == nil || *movements[0].Reference != "GR-0001" {
+		t.Fatalf("movement not referenced by receipt number: %v", movements[0].Reference)
+	}
+
+	// Received quantities feed the purchase order's per-line fulfilment view.
+	received, err := d.GetPurchaseOrderReceivedQuantities(*receipt.PurchaseOrderID)
+	if err != nil {
+		t.Fatalf("GetPurchaseOrderReceivedQuantities: %v", err)
+	}
+	if len(received) != 1 {
+		t.Fatalf("expected one line's received quantity, got %+v", received)
+	}
+	for _, qty := range received {
+		if qty != 10 {
+			t.Fatalf("received quantity: got %v, want 10", qty)
+		}
+	}
+}
+
+// Cancelling a received receipt reverses the stock it added.
+func TestInboundCancelReversesStock(t *testing.T) {
+	d := newTestDB(t)
+	product, receipt := seedReceipt(t, d, "org-inb-2", 10, 250)
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled"); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	p, _ := d.GetProduct(product.ID)
+	if p.StockQuantity != 0 {
+		t.Fatalf("stock not reversed: got %v, want 0", p.StockQuantity)
+	}
+	movements, _ := d.GetProductStockMovements(product.ID)
+	if len(movements) != 2 {
+		t.Fatalf("expected an original and a reversing movement, got %d", len(movements))
+	}
+
+	// Cancelling does NOT restore a previous average — a reversal removes
+	// quantity at the current average. With only this receipt in history the
+	// average stays at its price; the assertion guards against someone
+	// "fixing" the replay into non-standard costing.
+	if p.UnitCost == nil || *p.UnitCost != 250 {
+		t.Fatalf("unit cost after cancellation: got %v, want 250", p.UnitCost)
+	}
+}
+
+// The guard the outbound side has no equivalent for: cancelling a receipt whose
+// goods have already been shipped out would drive stock negative, so it is
+// rejected and nothing changes.
+func TestInboundCancelRejectedWhenStockAlreadyConsumed(t *testing.T) {
+	d := newTestDB(t)
+	product, receipt := seedReceipt(t, d, "org-inb-3", 10, 250)
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+	// Ship 6 of the 10 units out.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: product.OrganizationID, ProductID: product.ID, Type: "out", Quantity: -6,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	_, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled")
+	if err == nil {
+		t.Fatal("expected cancelling a partly-consumed receipt to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError (surfaced as 409), got %T: %v", err, err)
+	}
+
+	current, _ := d.GetInboundDelivery(receipt.ID)
+	if current.Status != "received" {
+		t.Fatalf("status changed despite rejection: %q", current.Status)
+	}
+	p, _ := d.GetProduct(product.ID)
+	if p.StockQuantity != 4 {
+		t.Fatalf("stock changed despite rejection: got %v, want 4", p.StockQuantity)
+	}
+}
+
+// A standalone receipt (no purchase order) still moves stock, using the product
+// named directly on the line.
+func TestInboundStandaloneReceiptMovesStock(t *testing.T) {
+	d := newTestDB(t)
+	product := seedCostProduct(t, d, "org-inb-4")
+
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: product.OrganizationID, DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: 7, UnitCost: ptr(float64(400))},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	p, _ := d.GetProduct(product.ID)
+	if p.StockQuantity != 7 {
+		t.Fatalf("stockQuantity: got %v, want 7", p.StockQuantity)
+	}
+	if p.UnitCost == nil || *p.UnitCost != 400 {
+		t.Fatalf("unitCost: got %v, want 400", p.UnitCost)
+	}
+}
+
+// Line items freeze once received; header-only edits stay allowed, which is why
+// UpdateInboundDelivery COALESCEs every column.
+func TestInboundLineItemsFrozenAfterReceipt(t *testing.T) {
+	d := newTestDB(t)
+	_, receipt := seedReceipt(t, d, "org-inb-5", 10, 250)
+
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	_, err := d.UpdateInboundDelivery(receipt.ID, UpdateInboundDeliveryRequest{
+		LineItems: &[]CreateInboundDeliveryLineItemRequest{},
+	})
+	if err == nil {
+		t.Fatal("expected editing line items of a received receipt to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+
+	updated, err := d.UpdateInboundDelivery(receipt.ID, UpdateInboundDeliveryRequest{
+		TrackingNumber: ptr("TRACK-1"),
+	})
+	if err != nil {
+		t.Fatalf("header-only edit rejected: %v", err)
+	}
+	if updated.TrackingNumber == nil || *updated.TrackingNumber != "TRACK-1" {
+		t.Fatalf("tracking number not saved: %v", updated.TrackingNumber)
+	}
+	if updated.DeliveryNumber != "GR-0001" {
+		t.Fatalf("header-only edit blanked deliveryNumber: %q", updated.DeliveryNumber)
+	}
+
+	if _, err := d.DeleteInboundDelivery(receipt.ID); err == nil {
+		t.Fatal("expected deleting a received receipt to be rejected")
+	}
+}
+
+// TestInboundDeliveryStatusTransitions covers every (from, to) pair.
+func TestInboundDeliveryStatusTransitions(t *testing.T) {
+	tests := []struct {
+		from    string
+		to      string
+		wantErr bool
+	}{
+		{"draft", "received", false},
+		{"draft", "cancelled", false},
+		{"draft", "draft", false},
+		{"received", "cancelled", false},
+		{"received", "draft", true},
+		{"received", "received", false},
+		{"cancelled", "received", true},
+		{"cancelled", "draft", true},
+		{"cancelled", "cancelled", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			d := newTestDB(t)
+			org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+			receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+				OrganizationID: org.ID, DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+			})
+			if err != nil {
+				t.Fatalf("CreateInboundDelivery: %v", err)
+			}
+			if _, err := d.DB.Exec(
+				`UPDATE inbound_deliveries SET status = ? WHERE id = ?`, tc.from, receipt.ID,
+			); err != nil {
+				t.Fatalf("force status to %q: %v", tc.from, err)
+			}
+
+			_, err = d.UpdateInboundDeliveryStatus(receipt.ID, tc.to)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected transition %s -> %s to be rejected", tc.from, tc.to)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected transition %s -> %s to succeed, got: %v", tc.from, tc.to, err)
+			}
+		})
+	}
+}
