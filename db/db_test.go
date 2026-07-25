@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/base64"
 	"errors"
 	"os"
 	"path/filepath"
@@ -983,32 +984,69 @@ func TestInvoiceStateValidation(t *testing.T) {
 	}
 }
 
-// TestGetOrganizationsOmitsLogo covers F29: the org list must not ship the
-// logo BLOB (re-fetched on every auth change), while the single-org fetch
-// still returns it for the invoice PDF / settings form.
-func TestGetOrganizationsOmitsLogo(t *testing.T) {
+// TestOrganizationLogoRoundTrip covers the dedicated logo storage path used
+// by GET/POST/DELETE /organizations/{id}/logo: neither the Organization
+// struct returned by GetOrganizations/GetOrganization carries the logo BLOB
+// (F29 — the list is re-fetched on every auth change, and a multi-MB logo has
+// no business riding along with either), only GetOrganizationLogo does.
+func TestOrganizationLogoRoundTrip(t *testing.T) {
 	d := newTestDB(t)
-	logo := []byte("PRETEND-THIS-IS-A-BIG-PNG")
-	if _, err := d.CreateOrganization(CreateOrganizationRequest{
-		ID: "org-1", Name: ptr("ACME"), Logo: logo,
-	}); err != nil {
+	if _, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1", Name: ptr("ACME")}); err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
 	}
 
-	list, err := d.GetOrganizations()
-	if err != nil || len(list) != 1 {
-		t.Fatalf("GetOrganizations: err=%v len=%d", err, len(list))
-	}
-	if list[0].Logo != nil {
-		t.Fatalf("expected list logo to be omitted, got %d bytes", len(list[0].Logo))
+	if logo, err := d.GetOrganizationLogo("org-1"); err != nil || len(logo) != 0 {
+		t.Fatalf("expected no logo yet, got logo=%v err=%v", logo, err)
 	}
 
-	single, err := d.GetOrganization("org-1")
-	if err != nil {
+	logo := []byte("PRETEND-THIS-IS-A-BIG-PNG")
+	if ok, err := d.SetOrganizationLogo("org-1", logo); err != nil || !ok {
+		t.Fatalf("SetOrganizationLogo: ok=%v err=%v", ok, err)
+	}
+
+	got, err := d.GetOrganizationLogo("org-1")
+	if err != nil || string(got) != string(logo) {
+		t.Fatalf("GetOrganizationLogo: got=%q err=%v", got, err)
+	}
+
+	if list, err := d.GetOrganizations(); err != nil || len(list) != 1 {
+		t.Fatalf("GetOrganizations: err=%v len=%d", err, len(list))
+	}
+	if _, err := d.GetOrganization("org-1"); err != nil {
 		t.Fatalf("GetOrganization: %v", err)
 	}
-	if string(single.Logo) != string(logo) {
-		t.Fatalf("expected single-org fetch to keep the logo, got %q", single.Logo)
+
+	if ok, err := d.SetOrganizationLogo("org-1", nil); err != nil || !ok {
+		t.Fatalf("SetOrganizationLogo(nil): ok=%v err=%v", ok, err)
+	}
+	if logo, err := d.GetOrganizationLogo("org-1"); err != nil || len(logo) != 0 {
+		t.Fatalf("expected logo cleared, got logo=%v err=%v", logo, err)
+	}
+
+	if ok, err := d.SetOrganizationLogo("does-not-exist", []byte("x")); err != nil || ok {
+		t.Fatalf("expected SetOrganizationLogo on unknown org to report ok=false, got ok=%v err=%v", ok, err)
+	}
+}
+
+// TestOrganizationLogoLegacyDataURI covers organizations whose logo column
+// still holds the browser's full "data:image/png;base64,..." string as text
+// (the format used before the /logo endpoint existed) — GetOrganizationLogo
+// must decode it back to raw image bytes rather than returning the text.
+func TestOrganizationLogoLegacyDataURI(t *testing.T) {
+	d := newTestDB(t)
+	if _, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1", Name: ptr("ACME")}); err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	raw := []byte("not-really-a-png-but-stands-in-for-one")
+	dataURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(raw)
+	if ok, err := d.SetOrganizationLogo("org-1", []byte(dataURI)); err != nil || !ok {
+		t.Fatalf("SetOrganizationLogo: ok=%v err=%v", ok, err)
+	}
+
+	got, err := d.GetOrganizationLogo("org-1")
+	if err != nil || string(got) != string(raw) {
+		t.Fatalf("expected legacy data URI decoded to raw bytes, got %q err=%v", got, err)
 	}
 }
 

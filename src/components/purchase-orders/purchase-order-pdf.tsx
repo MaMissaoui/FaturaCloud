@@ -57,7 +57,9 @@ interface Props {
 // (the invoices/pdf.tsx pattern), not hardcoded English.
 const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Props) => {
   const currency = order?.currency ?? organization?.currency ?? "EUR";
-  const logoSrc = organization?.logo ? `data:image/png;base64,${organization.logo}` : null;
+  // organizationAtom already resolves logo to a ready-to-use data URI
+  // (fetched from GET /organizations/{id}/logo) — don't re-wrap it.
+  const logoSrc = organization?.logo ?? null;
   // Takes cents — the caller pre-multiplies.
   const fmt = (cents: number) =>
     Intl.NumberFormat(i18n.locale, { style: "currency", currency }).format(cents / 100);

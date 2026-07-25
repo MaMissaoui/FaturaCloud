@@ -8,6 +8,7 @@ import {
   GetOrganization,
   CreateOrganization,
   UpdateOrganization,
+  GetOrganizationLogoDataUri,
 } from "src/api";
 
 import { generateInvoiceNumber } from "src/utils/invoice";
@@ -40,23 +41,27 @@ export const organizationIdAtom = atomWithStorage<string | null>(
 );
 organizationIdAtom.debugLabel = "organizationIdAtom";
 
+// Bumped to force organizationAtom's getter to refetch without changing which
+// organization is selected (e.g. after a logo upload/removal, or after an
+// update). Setting organizationIdAtom to null and back to the same value
+// doesn't reliably do this: if both set() calls land in the same render
+// batch, subscribers only ever observe the final (unchanged) value and never
+// re-run the getter. A monotonically increasing counter has no such
+// coincidental-equality problem.
+const organizationRefreshTokenAtom = atom(0);
+
 export const organizationAtom = atom(
   async (get) => {
     const organizationId = get(organizationIdAtom);
+    get(organizationRefreshTokenAtom);
     if (!organizationId) return null;
 
     try {
-      const organization = await GetOrganization(organizationId);
-
-      // Go's encoding/json marshals []byte as base64 — decode to the data URL string.
-      if (organization?.logo && typeof organization.logo === "string") {
-        try {
-          organization.logo = atob(organization.logo);
-        } catch {
-          // already a plain string or invalid base64 — leave as-is
-        }
-      }
-
+      const [organization, logo] = await Promise.all([
+        GetOrganization(organizationId),
+        GetOrganizationLogoDataUri(organizationId),
+      ]);
+      organization.logo = logo;
       return organization;
     } catch (error) {
       console.error("Failed to fetch organization:", error);
@@ -68,15 +73,10 @@ export const organizationAtom = atom(
     const organizationId = get(organizationIdAtom);
 
     try {
-      // Go's encoding/json unmarshals []byte from base64 — encode the data URL string.
-      let processedValues = { ...newValues };
-      if (processedValues.logo && typeof processedValues.logo === "string") {
-        try {
-          processedValues.logo = btoa(processedValues.logo);
-        } catch {
-          // Non-ASCII in data URL (unlikely) — send as-is and let Go handle it
-        }
-      }
+      // logo travels through the dedicated /logo endpoints, never through
+      // this create/update JSON — drop it here so a stray value from a form
+      // isn't silently sent (and silently ignored by the server).
+      const { logo: _logo, ...processedValues } = newValues;
 
       if (!organizationId) {
         // Strip undefined values so they don't override defaults below.
@@ -104,11 +104,7 @@ export const organizationAtom = atom(
         await UpdateOrganization(organizationId, processedValues);
         message.success(t`Organization updated successfully`);
         set(setOrganizationsAtom);
-
-        // Force refresh by temporarily clearing and resetting the organizationId
-        // This will trigger the organizationAtom getter to refetch
-        set(organizationIdAtom, null);
-        set(organizationIdAtom, organizationId);
+        set(organizationRefreshTokenAtom, (v) => v + 1);
       }
     } catch (error) {
       console.error("Organization operation failed:", error);
@@ -121,6 +117,14 @@ export const organizationAtom = atom(
   },
 );
 organizationAtom.debugLabel = "organizationAtom";
+
+// Forces organizationAtom to refetch the currently selected organization
+// (including its logo) without going through a create/update. Used after a
+// logo upload/removal, which happens through the dedicated /logo endpoints
+// rather than the organizationAtom setter above.
+export const reloadOrganizationAtom = atom(null, (_get, set) => {
+  set(organizationRefreshTokenAtom, (v) => v + 1);
+});
 
 // Get next invoice number
 export const nextInvoiceNumberAtom = atom(async (get) => {

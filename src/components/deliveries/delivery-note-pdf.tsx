@@ -50,7 +50,9 @@ interface Props {
 }
 
 const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _locale }: Props) => {
-  const logoSrc = organization?.logo ? `data:image/png;base64,${organization.logo}` : null;
+  // organizationAtom already resolves logo to a ready-to-use data URI
+  // (fetched from GET /organizations/{id}/logo) — don't re-wrap it.
+  const logoSrc = organization?.logo ?? null;
 
   return (
     <I18nProvider i18n={i18n}>

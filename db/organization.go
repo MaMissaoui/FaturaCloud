@@ -1,6 +1,10 @@
 package db
 
-import "fmt"
+import (
+	"bytes"
+	"encoding/base64"
+	"fmt"
+)
 
 // Organization mirrors the organizations table.
 type Organization struct {
@@ -22,7 +26,6 @@ type Organization struct {
 	OverdueCharge         *float64 `db:"overdueCharge"          json:"overdueCharge"`
 	CustomerNotes         *string  `db:"customerNotes"           json:"customerNotes"`
 	CreatedAt             *string  `db:"createdAt"               json:"createdAt"`
-	Logo                  []byte   `db:"logo"                    json:"logo"`
 	InvoiceNumberFormat   *string  `db:"invoice_number_format"   json:"invoiceNumberFormat"`
 	InvoiceNumberCounter  *int64   `db:"invoice_number_counter"  json:"invoiceNumberCounter"`
 	DateFormat            *string  `db:"date_format"             json:"date_format"`
@@ -51,7 +54,6 @@ type CreateOrganizationRequest struct {
 	DueDays               *int64   `json:"due_days"`
 	OverdueCharge         *float64 `json:"overdueCharge"`
 	CustomerNotes         *string  `json:"customerNotes"`
-	Logo                  []byte   `json:"logo"`
 	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
 	DateFormat            *string  `json:"date_format"`
 
@@ -77,7 +79,6 @@ type UpdateOrganizationRequest struct {
 	DueDays               *int64   `json:"due_days"`
 	OverdueCharge         *float64 `json:"overdueCharge"`
 	CustomerNotes         *string  `json:"customerNotes"`
-	Logo                  []byte   `json:"logo"`
 	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
 	InvoiceNumberCounter  *int64   `json:"invoiceNumberCounter"`
 	DateFormat            *string  `json:"date_format"`
@@ -86,19 +87,21 @@ type UpdateOrganizationRequest struct {
 	MatchQuantityTolerancePercent *float64 `json:"match_quantity_tolerance_percent"`
 }
 
+// organizationColumns is every organizations column except logo, shared by
+// GetOrganizations and GetOrganization. The logo BLOB is never loaded as part
+// of the Organization struct — GetOrganizationLogo reads it directly, and the
+// only way to read or write it over HTTP is the dedicated /logo endpoints.
+const organizationColumns = `id, code, name, country, address, email, phone, website,
+	       registration_number, vatin, bank_name, iban, currency,
+	       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
+	       createdAt, invoice_number_format, invoice_number_counter, date_format,
+	       match_price_tolerance_percent, match_quantity_tolerance_percent`
+
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
-	// Every column except logo: the list is re-fetched on every auth change
-	// and can hold many orgs, so shipping each org's (potentially multi-MB)
-	// logo BLOB here is pure waste. The single-org GetOrganization still
-	// returns it — that's what the invoice PDF and settings pages read.
-	err := d.DB.Select(&orgs, `
-		SELECT id, code, name, country, address, email, phone, website,
-		       registration_number, vatin, bank_name, iban, currency,
-		       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
-		       createdAt, invoice_number_format, invoice_number_counter, date_format,
-		       match_price_tolerance_percent, match_quantity_tolerance_percent
-		FROM organizations ORDER BY name ASC`)
+	// The list is re-fetched on every auth change and can hold many orgs, so
+	// shipping each org's (potentially multi-MB) logo BLOB here is pure waste.
+	err := d.DB.Select(&orgs, `SELECT `+organizationColumns+` FROM organizations ORDER BY name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("get_organizations: %w", err)
 	}
@@ -108,13 +111,45 @@ func (d *Database) GetOrganizations() ([]Organization, error) {
 func (d *Database) GetOrganization(organizationID string) (*Organization, error) {
 	var org Organization
 	err := d.DB.Get(&org,
-		`SELECT * FROM organizations WHERE id = ? LIMIT 1`,
+		`SELECT `+organizationColumns+` FROM organizations WHERE id = ? LIMIT 1`,
 		organizationID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_organization: %w", err)
 	}
 	return &org, nil
+}
+
+// GetOrganizationLogo returns the raw logo bytes for GET /organizations/{id}/logo.
+// Organizations created before this endpoint existed (and the desktop-Fatura
+// import that predates migration 0005) may still hold the browser's full
+// "data:image/png;base64,..." string stored verbatim as text, from when the
+// only write path was JSON-encoding a data URL into the logo column. Detect
+// and decode that legacy format on read rather than leaving it to render as
+// broken images forever.
+func (d *Database) GetOrganizationLogo(organizationID string) ([]byte, error) {
+	var logo []byte
+	err := d.DB.Get(&logo, `SELECT logo FROM organizations WHERE id = ?`, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("get_organization_logo: %w", err)
+	}
+	if idx := bytes.IndexByte(logo, ','); bytes.HasPrefix(logo, []byte("data:")) && idx != -1 {
+		if decoded, err := base64.StdEncoding.DecodeString(string(logo[idx+1:])); err == nil {
+			return decoded, nil
+		}
+	}
+	return logo, nil
+}
+
+// SetOrganizationLogo overwrites (or, with data == nil, clears) an
+// organization's logo. Used by both the upload and delete /logo handlers.
+func (d *Database) SetOrganizationLogo(organizationID string, data []byte) (bool, error) {
+	res, err := d.DB.Exec(`UPDATE organizations SET logo = ? WHERE id = ?`, data, organizationID)
+	if err != nil {
+		return false, fmt.Errorf("set_organization_logo: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organization, error) {
@@ -127,12 +162,12 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			id, code, name, country, address, email, phone, website,
 			registration_number, vatin, bank_name, iban, currency,
 			minimum_fraction_digits, due_days, overdueCharge,
-			customerNotes, logo, invoice_number_format, date_format
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			customerNotes, invoice_number_format, date_format
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Address, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
-		req.CustomerNotes, req.Logo, req.InvoiceNumberFormat, req.DateFormat,
+		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
@@ -159,7 +194,6 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     due_days               = COALESCE(?, due_days),
 		     overdueCharge          = COALESCE(?, overdueCharge),
 		     customerNotes          = COALESCE(?, customerNotes),
-		     logo                   = COALESCE(?, logo),
 		     invoice_number_format  = COALESCE(?, invoice_number_format),
 		     invoice_number_counter = COALESCE(?, invoice_number_counter),
 		     date_format            = COALESCE(?, date_format),
@@ -169,7 +203,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.Code, updates.Name, updates.Country, updates.Address, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
 		updates.IBAN, updates.Currency, updates.MinimumFractionDigits, updates.DueDays,
-		updates.OverdueCharge, updates.CustomerNotes, updates.Logo,
+		updates.OverdueCharge, updates.CustomerNotes,
 		updates.InvoiceNumberFormat, updates.InvoiceNumberCounter, updates.DateFormat,
 		updates.MatchPriceTolerancePercent, updates.MatchQuantityTolerancePercent,
 		organizationID,

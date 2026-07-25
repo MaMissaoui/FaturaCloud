@@ -187,6 +187,38 @@ export type OrganizationUsageCount = {
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
 
+// The logo lives outside the Organization JSON (excluded server-side via
+// json:"-") — GET /logo is a raw image response, not JSON, so this fetches
+// it directly rather than going through the shared `get` wrapper.
+export const GetOrganizationLogoDataUri = async (id: string): Promise<string | null> => {
+  const res = await fetch(`/api/organizations/${id}/logo`, { credentials: "same-origin" });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+};
+
+export const UploadOrganizationLogo = async (id: string, file: File): Promise<void> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`/api/organizations/${id}/logo`, {
+    method: "POST",
+    headers: { [CSRF_HEADER]: "1" },
+    credentials: "same-origin",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+};
+
+export const DeleteOrganizationLogo = (id: string) => del<void>(`/organizations/${id}/logo`);
+
 // ---- Clients ----
 
 export const GetClients = (organizationId: string) =>
