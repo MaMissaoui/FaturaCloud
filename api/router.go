@@ -190,6 +190,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PUT", "/api/invoices/{id}", h.updateInvoice)
 	protected("PATCH", "/api/invoices/{id}/state", h.updateInvoiceState)
 	protected("DELETE", "/api/invoices/{id}", h.deleteInvoice)
+	protected("GET", "/api/invoices/{id}/xrechnung", h.getInvoiceXRechnung)
 
 	// Tax rates
 	protected("GET", "/api/organizations/{orgId}/tax-rates", h.listTaxRates)

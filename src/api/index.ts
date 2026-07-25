@@ -3,10 +3,25 @@
 // need their import path changed.
 import { get, post, put, patch, del, CSRF_HEADER } from "./client";
 import type {
-  Client, Vendor, Invoice, InvoiceLineItem, Product, TaxRate, Organization,
-  PurchaseOrder, PurchaseOrderLineItem, InboundDelivery, InboundDeliveryLineItem,
-  IncomingInvoice, IncomingInvoiceLineItem, MatchLine,
-  Order, OrderLineItem, Delivery, DeliveryLineItem, StockMovement,
+  Client,
+  Vendor,
+  Invoice,
+  InvoiceLineItem,
+  Product,
+  TaxRate,
+  Organization,
+  PurchaseOrder,
+  PurchaseOrderLineItem,
+  InboundDelivery,
+  InboundDeliveryLineItem,
+  IncomingInvoice,
+  IncomingInvoiceLineItem,
+  MatchLine,
+  Order,
+  OrderLineItem,
+  Delivery,
+  DeliveryLineItem,
+  StockMovement,
 } from "src/types/models";
 
 // ---- Auth ----
@@ -68,23 +83,31 @@ export const GetOidcEnabled = async (): Promise<boolean> => {
 export const ListUsers = (search?: string) =>
   get<UserRecord[]>(`/users${search ? `?search=${encodeURIComponent(search)}` : ""}`);
 export const GetUser = (id: string) => get<UserRecord>(`/users/${id}`);
-export const CreateUser = (req: { email: string; password: string; displayName: string; role: string }) =>
-  post<UserRecord>("/users", req);
-export const UpdateUser = (id: string, req: { displayName?: string; role?: string; isActive?: number; password?: string }) =>
-  put<UserRecord>(`/users/${id}`, req);
+export const CreateUser = (req: {
+  email: string;
+  password: string;
+  displayName: string;
+  role: string;
+}) => post<UserRecord>("/users", req);
+export const UpdateUser = (
+  id: string,
+  req: { displayName?: string; role?: string; isActive?: number; password?: string },
+) => put<UserRecord>(`/users/${id}`, req);
 export const DeleteUser = (id: string) => del<void>(`/users/${id}`);
 
 // ---- Utility ----
 
-export const GetVersion = () =>
-  get<{ version: string }>("/version").then((r) => r.version);
+export const GetVersion = () => get<{ version: string }>("/version").then((r) => r.version);
 
 export const OpenURL = (url: string) => {
   window.open(url, "_blank", "noopener,noreferrer");
 };
 
 export const SaveFile = (defaultName: string, contents: Blob | Uint8Array) => {
-  const blob = contents instanceof Blob ? contents : new Blob([contents as BlobPart], { type: "application/octet-stream" });
+  const blob =
+    contents instanceof Blob
+      ? contents
+      : new Blob([contents as BlobPart], { type: "application/octet-stream" });
   const href = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = href;
@@ -168,8 +191,10 @@ export const SetBackupConfig = (cfg: BackupConfig) => put<BackupConfig>("/backup
 
 export const GetOrganizations = () => get<Organization[]>("/organizations");
 export const GetOrganization = (id: string) => get<Organization>(`/organizations/${id}`);
-export const CreateOrganization = (req: Partial<Organization>) => post<Organization>("/organizations", req);
-export const UpdateOrganization = (id: string, req: Partial<Organization>) => put<Organization>(`/organizations/${id}`, req);
+export const CreateOrganization = (req: Partial<Organization>) =>
+  post<Organization>("/organizations", req);
+export const UpdateOrganization = (id: string, req: Partial<Organization>) =>
+  put<Organization>(`/organizations/${id}`, req);
 export const DeleteOrganization = (id: string) =>
   del<{ deleted: boolean }>(`/organizations/${id}`).then((r) => r.deleted);
 export type OrganizationUsageCount = {
@@ -193,7 +218,8 @@ export const GetClients = (organizationId: string) =>
   get<Client[]>(`/organizations/${organizationId}/clients`);
 export const GetClient = (id: string) => get<Client>(`/clients/${id}`);
 export const CreateClient = (req: Partial<Client>) => post<Client>("/clients", req);
-export const UpdateClient = (id: string, req: Partial<Client>) => put<Client>(`/clients/${id}`, req);
+export const UpdateClient = (id: string, req: Partial<Client>) =>
+  put<Client>(`/clients/${id}`, req);
 export const DeleteClient = (id: string) =>
   del<{ deleted: boolean }>(`/clients/${id}`).then((r) => r.deleted);
 export const GetClientInvoiceCount = (id: string) =>
@@ -204,7 +230,8 @@ export const GetClientInvoiceCount = (id: string) =>
 export const GetInvoices = (organizationId: string) =>
   get<Invoice[]>(`/organizations/${organizationId}/invoices`);
 export const GetInvoice = (id: string) => get<Invoice>(`/invoices/${id}`);
-export const GetInvoiceLineItems = (id: string) => get<InvoiceLineItem[]>(`/invoices/${id}/line-items`);
+export const GetInvoiceLineItems = (id: string) =>
+  get<InvoiceLineItem[]>(`/invoices/${id}/line-items`);
 export const CreateInvoice = (req: unknown) => post<Invoice>("/invoices", req);
 export const UpdateInvoice = (id: string, req: unknown) => put<Invoice>(`/invoices/${id}`, req);
 export const UpdateInvoiceState = (id: string, state: string) =>
@@ -212,13 +239,36 @@ export const UpdateInvoiceState = (id: string, state: string) =>
 export const DeleteInvoice = (id: string) =>
   del<{ deleted: boolean }>(`/invoices/${id}`).then((r) => r.deleted);
 
+export const DownloadInvoiceXRechnung = async (id: string): Promise<void> => {
+  const res = await fetch(`/api/invoices/${id}/xrechnung`, { credentials: "same-origin" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${id}-xrechnung.xml`;
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(href);
+    a.remove();
+  }, 1000);
+};
+
 // ---- Tax Rates ----
 
 export const GetTaxRates = (organizationId: string) =>
   get<TaxRate[]>(`/organizations/${organizationId}/tax-rates`);
 export const GetTaxRate = (id: string) => get<TaxRate>(`/tax-rates/${id}`);
 export const CreateTaxRate = (req: Partial<TaxRate>) => post<TaxRate>("/tax-rates", req);
-export const UpdateTaxRate = (id: string, req: Partial<TaxRate>) => put<TaxRate>(`/tax-rates/${id}`, req);
+export const UpdateTaxRate = (id: string, req: Partial<TaxRate>) =>
+  put<TaxRate>(`/tax-rates/${id}`, req);
 export const DeleteTaxRate = (id: string) =>
   del<{ deleted: boolean }>(`/tax-rates/${id}`).then((r) => r.deleted);
 export const GetTaxRateUsageCount = (id: string) =>
@@ -230,7 +280,8 @@ export const GetProducts = (organizationId: string) =>
   get<Product[]>(`/organizations/${organizationId}/products`);
 export const GetProduct = (id: string) => get<Product>(`/products/${id}`);
 export const CreateProduct = (req: Partial<Product>) => post<Product>("/products", req);
-export const UpdateProduct = (id: string, req: Partial<Product>) => put<Product>(`/products/${id}`, req);
+export const UpdateProduct = (id: string, req: Partial<Product>) =>
+  put<Product>(`/products/${id}`, req);
 export const DeleteProduct = (id: string) =>
   del<{ deleted: boolean }>(`/products/${id}`).then((r) => r.deleted);
 export const GetProductStockMovements = (id: string) =>
@@ -240,7 +291,8 @@ export const GetProductStockMovements = (id: string) =>
 
 export const GetStockMovements = (organizationId: string) =>
   get<StockMovement[]>(`/organizations/${organizationId}/stock-movements`);
-export const CreateStockMovement = (req: Partial<StockMovement>) => post<StockMovement>("/stock-movements", req);
+export const CreateStockMovement = (req: Partial<StockMovement>) =>
+  post<StockMovement>("/stock-movements", req);
 export const DeleteStockMovement = (id: string) =>
   del<{ deleted: boolean }>(`/stock-movements/${id}`).then((r) => r.deleted);
 
@@ -264,9 +316,12 @@ export const DeleteOrder = (id: string) =>
 export const GetDeliveries = (organizationId: string) =>
   get<Delivery[]>(`/organizations/${organizationId}/deliveries`);
 export const GetNextDeliveryNumber = (organizationId: string) =>
-  get<{ number: string }>(`/organizations/${organizationId}/deliveries/next-number`).then((r) => r.number);
+  get<{ number: string }>(`/organizations/${organizationId}/deliveries/next-number`).then(
+    (r) => r.number,
+  );
 export const GetDelivery = (id: string) => get<Delivery>(`/deliveries/${id}`);
-export const GetDeliveryLineItems = (id: string) => get<DeliveryLineItem[]>(`/deliveries/${id}/line-items`);
+export const GetDeliveryLineItems = (id: string) =>
+  get<DeliveryLineItem[]>(`/deliveries/${id}/line-items`);
 export const CreateDelivery = (req: unknown) => post<Delivery>("/deliveries", req);
 export const UpdateDelivery = (id: string, req: unknown) => put<Delivery>(`/deliveries/${id}`, req);
 export const UpdateDeliveryStatus = (id: string, status: string) =>
@@ -274,14 +329,14 @@ export const UpdateDeliveryStatus = (id: string, status: string) =>
 export const DeleteDelivery = (id: string) =>
   del<{ success: boolean }>(`/deliveries/${id}`).then((r) => r.success);
 
-
 // ---- Vendors ----
 
 export const GetVendors = (organizationId: string) =>
   get<Vendor[]>(`/organizations/${organizationId}/vendors`);
 export const GetVendor = (id: string) => get<Vendor>(`/vendors/${id}`);
 export const CreateVendor = (req: Partial<Vendor>) => post<Vendor>("/vendors", req);
-export const UpdateVendor = (id: string, req: Partial<Vendor>) => put<Vendor>(`/vendors/${id}`, req);
+export const UpdateVendor = (id: string, req: Partial<Vendor>) =>
+  put<Vendor>(`/vendors/${id}`, req);
 export const DeleteVendor = (id: string) =>
   del<{ deleted: boolean }>(`/vendors/${id}`).then((r) => r.deleted);
 export const GetVendorDocumentCount = (id: string) =>

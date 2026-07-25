@@ -167,6 +167,7 @@ GET    /api/invoices/{id}/line-items
 PUT    /api/invoices/{id}
 PATCH  /api/invoices/{id}/state
 DELETE /api/invoices/{id}
+GET    /api/invoices/{id}/xrechnung           EN 16931/XRechnung UBL XML export
 
 # Tax Rates
 GET    /api/organizations/{orgId}/tax-rates
@@ -223,6 +224,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `api/{domain}.go` — HTTP handlers per domain (clients, vendors, invoices, organizations, orders, deliveries, …)
 - `db/vendor.go` / `api/vendors.go` — vendor master data (the purchasing counterpart to clients). `DeleteVendor` is guarded by `GetVendorDocumentCount` and returns `ErrVendorInUse` (409) rather than letting a foreign key fail as an opaque 500 — each purchasing phase adds its own subquery to that count
 - `api/utility.go` — version, backup download, restore upload, scheduler
+- `db/xrechnung.go` / `GET /api/invoices/{id}/xrechnung` — renders an invoice as an EN 16931 UBL 2.1 XML document (XRechnung). Deliberately minimal: maps only the BT fields with real columns (seller/buyer structured address, VAT ID, tax category + exemption reason, buyer reference, payment terms) and skips the rest of the BR-*/BR-DE-* business rules rather than guessing at them — there is no EN 16931 validator (e.g. KoSIT) available to check against in this environment, so `db/xrechnung_test.go`'s golden test only catches output regressions, not conformance. Validate externally before relying on it for real B2G submission. Rejects with a 409 (`*db.ValidationError`) listing every missing mandatory field at once rather than failing on the first. ZUGFeRD (a PDF/A-3 with this XML embedded) is explicitly out of scope — `@react-pdf/renderer` can't produce PDF/A-3, so it needs its own design decision
 - `db/` — Go database layer (SQLite connection, migrations, CRUD per domain)
 - `db/migrations/` — SQL migration files (`*.up.sql`), applied automatically on startup
 - `src/api/client.ts` — base fetch wrapper; sends the httpOnly auth cookie (`credentials: same-origin`) + the `X-CSRF-Protection` header

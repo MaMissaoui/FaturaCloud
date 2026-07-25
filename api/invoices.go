@@ -1,6 +1,8 @@
 package api
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -87,4 +89,21 @@ func (h *handler) deleteInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})
+}
+
+func (h *handler) getInvoiceXRechnung(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	doc, err := h.db.GenerateXRechnung(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeDBError(w, err, "invoice not found")
+			return
+		}
+		writeMutationError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/xml")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+id+`-xrechnung.xml"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(doc)
 }
