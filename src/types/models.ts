@@ -60,6 +60,11 @@ export interface Organization {
   overdueCharge: number | null;
   customerNotes: string | null;
   createdAt: string | null;
+  // Not part of the server JSON — the logo BLOB is excluded from Organization
+  // responses (json:"-" in Go; fetch it via GET /organizations/{id}/logo
+  // instead). organizationAtom populates this with a data URI fetched from
+  // that endpoint so PDF templates and the settings page can keep reading
+  // organization.logo as a ready-to-use image source.
   logo: string | null;
   invoiceNumberFormat: string | null;
   invoiceNumberCounter: number | null;

@@ -20,11 +20,11 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
-// maxJSONBody caps the size of any JSON request body. It is comfortably larger
-// than a multi-MB organization logo (carried as base64 inside the org
-// create/update JSON) but small enough to stop an authenticated — or, on the
-// login endpoint, unauthenticated — client from exhausting memory with an
-// unbounded body. The multipart restore upload has its own, larger cap.
+// maxJSONBody caps the size of any JSON request body — comfortably larger
+// than any legitimate JSON payload in this app but small enough to stop an
+// authenticated — or, on the login endpoint, unauthenticated — client from
+// exhausting memory with an unbounded body. The multipart restore and
+// organization logo uploads have their own, separately sized caps.
 const maxJSONBody = 10 << 20 // 10 MiB
 
 // decodeJSON caps the request body at maxJSONBody, decodes it into v, and on

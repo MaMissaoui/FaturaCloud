@@ -19,6 +19,7 @@ import {
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { loadable } from "jotai/utils";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined, PlusOutlined, SaveOutlined, UserAddOutlined } from "@ant-design/icons";
@@ -55,6 +56,15 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
 
+// inboundDeliveryAtom is async; reading it with plain useAtom throws to the
+// app's single top-level Suspense boundary whenever inboundDeliveryIdAtom
+// changes after mount, which unmounts this whole route (the effect below's
+// cleanup resets inboundDeliveryIdAtom to null) and remounts it once the
+// fetch resolves, setting the id back — an infinite loop. loadable()
+// resolves synchronously instead of suspending, same fix as
+// src/components/tax-rates/form.tsx and src/routes/invoices/details.tsx.
+const loadableDeliveryAtom = loadable(inboundDeliveryAtom);
+
 const InboundDeliveryDetails = () => {
   const { id } = useParams<string>();
   const [searchParams] = useSearchParams();
@@ -77,7 +87,9 @@ const InboundDeliveryDetails = () => {
   const nextNumber = useAtomValue(nextInboundDeliveryNumberAtom);
 
   const [deliveryId, setDeliveryId] = useAtom(inboundDeliveryIdAtom);
-  const [delivery, setDelivery] = useAtom(inboundDeliveryAtom);
+  const deliveryLoadable = useAtomValue(loadableDeliveryAtom);
+  const setDelivery = useSetAtom(inboundDeliveryAtom);
+  const delivery = deliveryLoadable.state === "hasData" ? deliveryLoadable.data : undefined;
   const updateStatus = useSetAtom(updateInboundDeliveryStatusAtom);
   const deleteDelivery = useSetAtom(deleteInboundDeliveryAtom);
 

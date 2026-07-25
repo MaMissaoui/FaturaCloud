@@ -15,9 +15,11 @@ import {
   Space,
   Table,
   Typography,
+  Upload,
+  theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ApartmentOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -37,10 +39,12 @@ import {
   CreateOrganization,
   UpdateOrganization,
   DeleteOrganization,
+  DeleteOrganizationLogo,
   GetOrganizationUsageCount,
   type OrganizationUsageCount,
 } from "src/api";
-import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
+import { CSRF_HEADER } from "src/api/client";
+import { organizationIdAtom, reloadOrganizationAtom, setOrganizationsAtom } from "src/atoms/organization";
 import { isAdminAtom } from "src/atoms/auth";
 import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
 import { countries } from "src/utils/countries";
@@ -52,6 +56,7 @@ const currencies = compact(uniq(map(countries, "currency_code")));
 
 export default function Organizations() {
   useLingui();
+  const { token } = theme.useToken();
   const isAdmin = useAtomValue(isAdminAtom);
   const [form] = Form.useForm();
 
@@ -62,9 +67,13 @@ export default function Organizations() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, OrganizationUsageCount>>({});
+  const [logoKey, setLogoKey] = useState(0);
+  const [hasLogo, setHasLogo] = useState(true);
+  const [logoBusy, setLogoBusy] = useState(false);
 
   const [organizationId, setOrganizationId] = useAtom(organizationIdAtom);
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
+  const reloadActiveOrganization = useSetAtom(reloadOrganizationAtom);
 
   const fetchOrgs = async () => {
     setLoading(true);
@@ -97,6 +106,8 @@ export default function Organizations() {
   const openEdit = async (id: string) => {
     setEditingId(id);
     form.resetFields();
+    setHasLogo(true);
+    setLogoKey((k) => k + 1);
     setDrawerOpen(true);
     try {
       const org = await GetOrganization(id);
@@ -109,6 +120,26 @@ export default function Organizations() {
     setDrawerOpen(false);
     setEditingId(null);
     form.resetFields();
+  };
+
+  const refreshLogo = () => {
+    setHasLogo(true);
+    setLogoKey((k) => k + 1);
+    if (editingId === organizationId) reloadActiveOrganization();
+  };
+
+  const handleLogoRemove = async () => {
+    if (!editingId) return;
+    setLogoBusy(true);
+    try {
+      await DeleteOrganizationLogo(editingId);
+      setHasLogo(false);
+      if (editingId === organizationId) reloadActiveOrganization();
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Logo removal failed`);
+    } finally {
+      setLogoBusy(false);
+    }
   };
 
   const handleSubmit = async (values: any) => {
@@ -394,6 +425,52 @@ export default function Organizations() {
               </Col>
             </Row>
           </Card>
+
+          {isEdit && editingId && (
+            <Card title={<Trans>Logo</Trans>} style={{ marginBottom: 16 }}>
+              <Space direction="vertical" size={12}>
+                {hasLogo && (
+                  <img
+                    key={logoKey}
+                    src={`/api/organizations/${editingId}/logo?t=${logoKey}`}
+                    alt="logo"
+                    onError={() => setHasLogo(false)}
+                    style={{
+                      maxWidth: 240,
+                      maxHeight: 80,
+                      objectFit: "contain",
+                      border: `1px solid ${token.colorBorderSecondary}`,
+                      borderRadius: 6,
+                      padding: 8,
+                      display: "block",
+                    }}
+                  />
+                )}
+                <Space>
+                  <Upload
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                    showUploadList={false}
+                    name="file"
+                    action={`/api/organizations/${editingId}/logo`}
+                    headers={{ [CSRF_HEADER]: "1" }}
+                    onChange={({ file }) => {
+                      if (file.status === "done") refreshLogo();
+                      else if (file.status === "error") message.error(t`Logo upload failed`);
+                    }}
+                  >
+                    <Button icon={<UploadOutlined />} loading={logoBusy}>
+                      {hasLogo ? t`Change logo` : t`Upload logo`}
+                    </Button>
+                  </Upload>
+                  {hasLogo && (
+                    <Button danger icon={<DeleteOutlined />} loading={logoBusy} onClick={handleLogoRemove}>
+                      <Trans>Remove logo</Trans>
+                    </Button>
+                  )}
+                </Space>
+              </Space>
+            </Card>
+          )}
 
           <Card title={<Trans>Banking</Trans>} style={{ marginBottom: 16 }}>
             <Row gutter={[16, 0]}>

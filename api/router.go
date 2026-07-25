@@ -31,11 +31,11 @@ type handler struct {
 	oidcOAuth2   *oauth2.Config
 }
 
-// defaultMaxBody caps ordinary JSON request bodies (comfortably above the
-// largest legitimate payload — a base64-encoded organization logo — while
-// still guarding against unbounded-body memory exhaustion, including on the
-// unauthenticated login route). The database restore upload gets its own,
-// much larger limit since it streams a full SQLite file.
+// defaultMaxBody caps ordinary JSON request bodies (comfortably above any
+// legitimate JSON payload while still guarding against unbounded-body memory
+// exhaustion, including on the unauthenticated login route). The organization
+// logo upload and the database restore upload each get their own, differently
+// sized multipart limits since neither travels as JSON.
 const defaultMaxBody = 10 << 20 // 10MB
 
 func limitBody(limit int64, next http.HandlerFunc) http.Handler {
@@ -134,6 +134,9 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// orders, and deliveries — admin only.
 	adminProtected("DELETE", "/api/organizations/{id}", h.deleteOrganization)
 	protected("GET", "/api/organizations/{id}/usage-count", h.getOrganizationUsageCount)
+	protected("GET", "/api/organizations/{id}/logo", h.getOrganizationLogo)
+	protected("POST", "/api/organizations/{id}/logo", h.uploadOrganizationLogo)
+	protected("DELETE", "/api/organizations/{id}/logo", h.deleteOrganizationLogo)
 
 	// Clients
 	protected("GET", "/api/organizations/{orgId}/clients", h.listClients)

@@ -111,6 +111,9 @@ POST   /api/organizations
 GET    /api/organizations/{id}
 PUT    /api/organizations/{id}
 DELETE /api/organizations/{id}             admin only — cascade-deletes clients/invoices/orders/deliveries
+GET    /api/organizations/{id}/logo        raw image bytes, sniffed Content-Type — logo isn't in the org JSON
+POST   /api/organizations/{id}/logo        multipart upload, 2 MB cap
+DELETE /api/organizations/{id}/logo
 
 # Clients
 GET    /api/organizations/{orgId}/clients
@@ -244,7 +247,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/routes/deliveries.tsx` — outbound deliveries list
 - `src/routes/deliveries/details.tsx` — delivery detail/edit page
 - `src/routes/orders/details.tsx` — order detail/edit page
-- `src/routes/organizations/index.tsx` — organizations list page (standalone, not under Settings)
+- `src/routes/organizations/index.tsx` — organizations list page (standalone, not under Settings); the edit drawer's Logo card (shown only for an existing org, not while creating one) is the STBvirement-style pattern: a plain `<img>` against the `/logo` URL with a local cache-busting key, not the data-URI atom the settings page and PDFs use, since this drawer can be editing an org other than the currently-selected one
 - `src/components/` — reusable React components
 - `src/components/deliveries/delivery-note-pdf.tsx` — delivery note PDF (no prices)
 - `src/components/orders/order-confirmation-pdf.tsx` — order confirmation PDF (with prices)
@@ -269,7 +272,7 @@ Schema conventions:
 - Primary keys are 21-character nanoid strings
 - Monetary values stored as integer cents — the form layer converts (user input × 100 → store; stored ÷ 100 → display); atoms and API pass cents through unchanged
 - Dates stored as Unix timestamps in milliseconds
-- Organization logo stored as BLOB (raw bytes) — Go's `encoding/json` marshals `[]byte` as base64; the frontend calls `atob`/`btoa` accordingly. `GET /api/organizations` (the list) **omits** the logo column — the list is re-fetched on every auth change, so multi-MB logos there are pure waste; only the single-org `GET /api/organizations/{id}` returns it (what the invoice PDF and settings form read)
+- Organization logo stored as BLOB (raw bytes), read and written exclusively through `GET/POST/DELETE /api/organizations/{id}/logo` (`db.GetOrganizationLogo`/`SetOrganizationLogo`) rather than as a field on the organization JSON — `db.Organization` has no `Logo` field at all (`json:"-"` alone wouldn't stop `SELECT *` from loading a multi-MB BLOB into memory on every org fetch, so it's dropped from the struct and both `GetOrganizations`/`GetOrganization` use an explicit column list instead). `GetOrganizationLogo` also decodes the legacy storage format from before this endpoint existed, where the column held the browser's full `"data:image/png;base64,..."` string as text rather than raw bytes. On the frontend, `organizationAtom` fetches the logo alongside the organization and converts it to a data URI (`FileReader.readAsDataURL`) so PDF templates and the settings page can keep reading `organization.logo` as a ready image source; the Organizations list edit drawer instead uses a plain `<img src="/api/organizations/{id}/logo">` (cookies travel automatically on a same-origin `<img>` request) since it can be editing an org other than the currently-selected one
 - `products.type` is `"product"` | `"service"` (default `"service"`)
 - `products.sku` (labeled "Product code" in the UI) must be unique per organization — enforced by a `UNIQUE(organizationId, sku)` index, not a DB-level `NOT NULL` (SQLite can't add that retroactively without a table rebuild); required-ness is enforced in `api/products.go` and the frontend form instead. The New Product form proposes a code derived from the name, deduplicated against other products in the org
 - `stockMovements.quantity` is a **signed delta**: positive = stock in, negative = stock out/adjustment; `products.stockQuantity` is always `SUM(quantity)` over all movements and is recomputed inside a transaction on every insert/delete — never update it directly

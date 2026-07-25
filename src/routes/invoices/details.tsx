@@ -21,6 +21,7 @@ import {
   Spin,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { loadable } from "jotai/utils";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -108,6 +109,16 @@ import {
 const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
+
+// invoiceAtom is async; reading it with plain useAtom/useAtomValue makes it
+// throw to the nearest Suspense boundary whenever invoiceIdAtom changes after
+// mount. That boundary is the single top-level one wrapping all routes
+// (src/app.tsx), so React tears down and remounts this whole route on every
+// invoice fetch — the effect below's cleanup resets invoiceIdAtom to null on
+// unmount, the remount sets it back, and the cycle repeats forever. loadable()
+// resolves synchronously instead of suspending, same fix as
+// src/components/tax-rates/form.tsx.
+const loadableInvoiceAtom = loadable(invoiceAtom);
 
 // Drag handle component that works with the table cell
 const DragHandleCell: React.FC<{
@@ -301,7 +312,9 @@ const InvoiceDetails: React.FC = () => {
   } = theme.useToken();
   const organization = useAtomValue(organizationAtom);
   const [invoiceId, setInvoiceId] = useAtom(invoiceIdAtom);
-  const [invoice, setInvoice] = useAtom(invoiceAtom);
+  const invoiceLoadable = useAtomValue(loadableInvoiceAtom);
+  const setInvoice = useSetAtom(invoiceAtom);
+  const invoice = invoiceLoadable.state === "hasData" ? invoiceLoadable.data : undefined;
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
   const products = useAtomValue(productsAtom);
