@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func seedXRechnungInvoice(t *testing.T, d *Database) *Invoice {
+func seedGermanInvoice(t *testing.T, d *Database) *Invoice {
 	t.Helper()
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{
@@ -75,17 +75,21 @@ func seedXRechnungInvoice(t *testing.T, d *Database) *Invoice {
 }
 
 // This is a golden-file regression test, not an EN 16931 conformance check —
-// there is no validator available in this environment (see GenerateXRechnung's
+// there is no validator available in this environment (see GenerateEInvoice's
 // doc comment). Validate the fixture output externally (e.g. the KoSIT
 // validator) before treating this as proof the XML is accepted by a real
 // recipient.
-func TestGenerateXRechnungGolden(t *testing.T) {
+//
+// A German buyer resolves to the XRechnung 3.0 profile (see
+// resolveEInvoiceProfile), which is why this fixture requires a buyer
+// reference.
+func TestGenerateEInvoiceGoldenGermany(t *testing.T) {
 	d := newTestDB(t)
-	invoice := seedXRechnungInvoice(t, d)
+	invoice := seedGermanInvoice(t, d)
 
-	got, err := d.GenerateXRechnung(invoice.ID)
+	got, err := d.GenerateEInvoice(invoice.ID)
 	if err != nil {
-		t.Fatalf("GenerateXRechnung: %v", err)
+		t.Fatalf("GenerateEInvoice: %v", err)
 	}
 
 	want := `<?xml version="1.0" encoding="UTF-8"?>
@@ -195,13 +199,112 @@ func TestGenerateXRechnungGolden(t *testing.T) {
 </Invoice>`
 
 	if strings.TrimSpace(string(got)) != want {
-		t.Fatalf("GenerateXRechnung output mismatch.\n--- got ---\n%s\n--- want ---\n%s", got, want)
+		t.Fatalf("GenerateEInvoice output mismatch.\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}
 }
 
-func TestGenerateXRechnungRejectsIncompleteSeller(t *testing.T) {
+// A French buyer has no country-specific profile, so this resolves to the
+// generic EN 16931 core profile — even though the seller is German. This
+// pins two things at once: profile resolution keys off the *buyer's*
+// country (not the seller's), and the generic profile doesn't require (or
+// emit) a buyer reference the way XRechnung does.
+func TestGenerateEInvoiceGoldenGenericProfile(t *testing.T) {
 	d := newTestDB(t)
-	invoice := seedXRechnungInvoice(t, d)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{
+		ID: "org-generic", Name: ptr("Muster GmbH"),
+		Street: ptr("Musterstraße"), HouseNumber: ptr("12"),
+		PostalCode: ptr("10115"), City: ptr("Berlin"), CountryCode: ptr("DE"),
+	})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	client, err := d.CreateClient(CreateClientRequest{
+		ID: "client-fr", OrganizationID: org.ID, Name: ptr("Client Français"),
+		Street: ptr("Rue de Client"), HouseNumber: ptr("5"),
+		PostalCode: ptr("75001"), City: ptr("Paris"), CountryCode: ptr("FR"),
+	})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+
+	taxRate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-generic", OrganizationID: org.ID, Name: "VAT 20%", Percentage: 20, CategoryCode: "S",
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	invoice, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-generic", OrganizationID: org.ID, Number: "INV-2026-002", ClientID: client.ID,
+		Date: 1736895600000, Currency: "EUR",
+		SubTotal: 10000, TaxTotal: 2000, Total: 12000,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Description: ptr("Consulting services"), Quantity: 1, UnitPrice: 10000, TaxRate: &taxRate.ID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	got, err := d.GenerateEInvoice(invoice.ID)
+	if err != nil {
+		t.Fatalf("GenerateEInvoice: %v", err)
+	}
+
+	gotStr := string(got)
+	if !strings.Contains(gotStr, "<cbc:CustomizationID>urn:cen.eu:en16931:2017</cbc:CustomizationID>") {
+		t.Fatalf("expected the generic EN 16931 CustomizationID, got:\n%s", gotStr)
+	}
+	if strings.Contains(gotStr, "xrechnung") {
+		t.Fatalf("did not expect the XRechnung CustomizationID for a French buyer, got:\n%s", gotStr)
+	}
+	if strings.Contains(gotStr, "cbc:BuyerReference") {
+		t.Fatalf("did not expect a BuyerReference element when the profile doesn't require one, got:\n%s", gotStr)
+	}
+}
+
+// A lowercase stored country code (e.g. written by a direct API call that
+// bypasses the form's uppercase-on-change) must still resolve to the DE
+// profile and emit an uppercase ISO 3166-1 code — normalizeCountryCode is
+// what makes that true at both read sites (resolveEInvoiceProfile and
+// buildParty).
+func TestGenerateEInvoiceNormalizesCountryCodeCasing(t *testing.T) {
+	d := newTestDB(t)
+	invoice := seedGermanInvoice(t, d)
+
+	// UpdateClientRequest overwrites every field verbatim (no COALESCE), so
+	// the rest of the client's fields must be resupplied here too.
+	if _, err := d.UpdateClient("client-xr", UpdateClientRequest{
+		Name: ptr("Kunde AG"), Vatin: ptr("DE987654321"),
+		Street: ptr("Kundenweg"), HouseNumber: ptr("3"),
+		PostalCode: ptr("80331"), City: ptr("München"),
+		CountryCode: ptr("de"),
+	}); err != nil {
+		t.Fatalf("UpdateClient: %v", err)
+	}
+
+	got, err := d.GenerateEInvoice(invoice.ID)
+	if err != nil {
+		t.Fatalf("GenerateEInvoice: %v", err)
+	}
+
+	gotStr := string(got)
+	if !strings.Contains(gotStr, "xrechnung_3.0") {
+		t.Fatalf("expected a lowercase client country code to still resolve to the XRechnung profile, got:\n%s", gotStr)
+	}
+	if strings.Contains(gotStr, "<cbc:IdentificationCode>de</cbc:IdentificationCode>") {
+		t.Fatalf("expected the emitted country code to be uppercase, got:\n%s", gotStr)
+	}
+	if !strings.Contains(gotStr, "<cbc:IdentificationCode>DE</cbc:IdentificationCode>") {
+		t.Fatalf("expected an uppercase DE country code, got:\n%s", gotStr)
+	}
+}
+
+func TestGenerateEInvoiceRejectsIncompleteSeller(t *testing.T) {
+	d := newTestDB(t)
+	invoice := seedGermanInvoice(t, d)
 
 	// Clear a mandatory seller field directly via the DB layer's own update
 	// path (empty string, not nil, since UpdateOrganization COALESCEs nil).
@@ -209,7 +312,7 @@ func TestGenerateXRechnungRejectsIncompleteSeller(t *testing.T) {
 		t.Fatalf("UpdateOrganization: %v", err)
 	}
 
-	_, err := d.GenerateXRechnung(invoice.ID)
+	_, err := d.GenerateEInvoice(invoice.ID)
 	var verr *ValidationError
 	if !errors.As(err, &verr) {
 		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
@@ -219,9 +322,9 @@ func TestGenerateXRechnungRejectsIncompleteSeller(t *testing.T) {
 	}
 }
 
-func TestGenerateXRechnungRejectsMissingLineTaxRate(t *testing.T) {
+func TestGenerateEInvoiceRejectsMissingLineTaxRate(t *testing.T) {
 	d := newTestDB(t)
-	invoice := seedXRechnungInvoice(t, d)
+	invoice := seedGermanInvoice(t, d)
 
 	if _, err := d.UpdateInvoice(invoice.ID, UpdateInvoiceRequest{
 		LineItems: &[]CreateInvoiceLineItemRequest{
@@ -234,7 +337,7 @@ func TestGenerateXRechnungRejectsMissingLineTaxRate(t *testing.T) {
 		t.Fatalf("UpdateInvoice: %v", err)
 	}
 
-	_, err := d.GenerateXRechnung(invoice.ID)
+	_, err := d.GenerateEInvoice(invoice.ID)
 	var verr *ValidationError
 	if !errors.As(err, &verr) {
 		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)

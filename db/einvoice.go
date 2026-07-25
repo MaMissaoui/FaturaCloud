@@ -9,32 +9,95 @@ import (
 	"time"
 )
 
-// GenerateXRechnung renders an invoice as an EN 16931 / XRechnung-conformant
-// UBL 2.1 Invoice document.
+// eInvoiceProfile is a jurisdiction-specific set of EN 16931 UBL export
+// rules: which CEN customization identifier (BT-24) to claim, and which
+// extra fields that specification mandates on top of core EN 16931.
+//
+// Deliberately only two profiles exist: "DE" (XRechnung 3.0, which this
+// generator has every field for) and a generic EN 16931 core profile for
+// everywhere else. Peppol BIS Billing 3.0 (which would cover GB/US/most
+// Peppol-network recipients) is NOT modeled here even though it's also
+// EN 16931-based UBL — Peppol BIS mandates cbc:EndpointID with a scheme ID
+// on both parties (BT-34/BT-49), which has no column and no reliable
+// scheme to infer. Claiming a CustomizationID for a profile whose mandatory
+// elements this generator can't actually produce would be a false
+// conformance claim, not a missing-field 409 — worse than not offering the
+// profile. Add it once EndpointID + scheme IDs are modeled.
+type eInvoiceProfile struct {
+	CustomizationID       string
+	RequireBuyerReference bool
+}
+
+var deXRechnungProfile = eInvoiceProfile{
+	CustomizationID:       "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0",
+	RequireBuyerReference: true,
+}
+
+// genericEN16931Profile claims only core EN 16931 conformance, with none of
+// XRechnung's extra German B2G rules (no mandatory buyer reference). This is
+// what every country other than Germany gets — including France, the UK,
+// and the US, none of which have a CIUS this generator implements. It's a
+// deliberately conservative default: valid EN 16931 UBL, no invented
+// country-specific extension.
+var genericEN16931Profile = eInvoiceProfile{
+	CustomizationID:       "urn:cen.eu:en16931:2017",
+	RequireBuyerReference: false,
+}
+
+var countryEInvoiceProfiles = map[string]eInvoiceProfile{
+	"DE": deXRechnungProfile,
+}
+
+// resolveEInvoiceProfile picks the profile by the *buyer's* country, falling
+// back to the seller's when the buyer's is unset. XRechnung/B2G e-invoicing
+// mandates are triggered by the recipient's jurisdiction, not the issuer's —
+// a German seller invoicing a French buyer does not owe that buyer an
+// XRechnung, and the buyer reference (Leitweg-ID) it would require is a
+// buyer-side routing identifier (mirrored by default_buyer_reference living
+// on clients, not organizations). An unrecognized or missing country code
+// resolves to the generic core profile rather than failing here — validated
+// as a normal missing-field 409 by validateEInvoiceCompleteness instead.
+func resolveEInvoiceProfile(client *Client, org *Organization) eInvoiceProfile {
+	countryCode := ""
+	if client.CountryCode != nil && *client.CountryCode != "" {
+		countryCode = *client.CountryCode
+	} else if org.CountryCode != nil && *org.CountryCode != "" {
+		countryCode = *org.CountryCode
+	}
+	if profile, ok := countryEInvoiceProfiles[normalizeCountryCode(countryCode)]; ok {
+		return profile
+	}
+	return genericEN16931Profile
+}
+
+// GenerateEInvoice renders an invoice as an EN 16931-conformant UBL 2.1
+// Invoice document, using the export profile resolved for the buyer's
+// country (see resolveEInvoiceProfile).
 //
 // This is deliberately minimal: it maps only the BT fields the schema has
 // real columns for (see the 0034-0037 migrations) and does not attempt the
-// full set of EN 16931 / XRechnung business rules (BR-*, BR-DE-*) — there is
-// no validator available in this environment to check against, so inventing
+// full set of EN 16931 business rules (BR-*), or any country's CIUS-specific
+// ones (BR-DE-* etc.) beyond the one BT-10 rule XRechnung adds — there is no
+// validator available in this environment to check against, so inventing
 // extra structure would be unverifiable. Validate the output against the
 // KoSIT validator (or an equivalent EN 16931 validator) before relying on it
 // for real B2G submission.
-func (d *Database) GenerateXRechnung(invoiceID string) ([]byte, error) {
+func (d *Database) GenerateEInvoice(invoiceID string) ([]byte, error) {
 	invoice, err := d.GetInvoice(invoiceID)
 	if err != nil {
-		return nil, fmt.Errorf("xrechnung get_invoice: %w", err)
+		return nil, fmt.Errorf("einvoice get_invoice: %w", err)
 	}
 	lineItems, err := d.GetInvoiceLineItems(invoiceID)
 	if err != nil {
-		return nil, fmt.Errorf("xrechnung get_line_items: %w", err)
+		return nil, fmt.Errorf("einvoice get_line_items: %w", err)
 	}
 	client, err := d.GetClient(invoice.ClientID)
 	if err != nil {
-		return nil, fmt.Errorf("xrechnung get_client: %w", err)
+		return nil, fmt.Errorf("einvoice get_client: %w", err)
 	}
 	org, err := d.GetOrganization(invoice.OrganizationID)
 	if err != nil {
-		return nil, fmt.Errorf("xrechnung get_organization: %w", err)
+		return nil, fmt.Errorf("einvoice get_organization: %w", err)
 	}
 
 	taxRates := map[string]*TaxRate{}
@@ -47,32 +110,34 @@ func (d *Database) GenerateXRechnung(invoiceID string) ([]byte, error) {
 		}
 		rate, err := d.GetTaxRate(*item.TaxRate)
 		if err != nil {
-			return nil, fmt.Errorf("xrechnung get_tax_rate: %w", err)
+			return nil, fmt.Errorf("einvoice get_tax_rate: %w", err)
 		}
 		taxRates[*item.TaxRate] = rate
 	}
 
-	if err := validateXRechnungCompleteness(invoice, lineItems, client, org); err != nil {
+	profile := resolveEInvoiceProfile(client, org)
+
+	if err := validateEInvoiceCompleteness(profile, invoice, lineItems, client, org); err != nil {
 		return nil, err
 	}
 
-	ubl, err := buildUBLInvoice(invoice, lineItems, client, org, taxRates)
+	ubl, err := buildUBLInvoice(profile, invoice, lineItems, client, org, taxRates)
 	if err != nil {
 		return nil, err
 	}
 
 	out, err := xml.MarshalIndent(ubl, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("xrechnung marshal: %w", err)
+		return nil, fmt.Errorf("einvoice marshal: %w", err)
 	}
 	return append([]byte(xml.Header), out...), nil
 }
 
-// validateXRechnungCompleteness checks the BT fields that are mandatory in
-// EN 16931 and have a real column to read from, and reports every missing
-// one at once (rather than failing on the first) so a user can fix them in
-// one pass instead of one 409 at a time.
-func validateXRechnungCompleteness(invoice *Invoice, lineItems []InvoiceLineItem, client *Client, org *Organization) error {
+// validateEInvoiceCompleteness checks the BT fields that are mandatory for
+// the resolved profile and have a real column to read from, and reports
+// every missing one at once (rather than failing on the first) so a user
+// can fix them in one pass instead of one 409 at a time.
+func validateEInvoiceCompleteness(profile eInvoiceProfile, invoice *Invoice, lineItems []InvoiceLineItem, client *Client, org *Organization) error {
 	var missing []string
 
 	require := func(v *string, label string) {
@@ -81,7 +146,9 @@ func validateXRechnungCompleteness(invoice *Invoice, lineItems []InvoiceLineItem
 		}
 	}
 
-	require(invoice.BuyerReference, "invoice buyer reference")
+	if profile.RequireBuyerReference {
+		require(invoice.BuyerReference, "invoice buyer reference")
+	}
 	require(org.Name, "organization name")
 	require(org.Street, "organization street")
 	require(org.PostalCode, "organization postal code")
@@ -106,19 +173,15 @@ func validateXRechnungCompleteness(invoice *Invoice, lineItems []InvoiceLineItem
 	}
 
 	if len(missing) > 0 {
-		return newValidationError("cannot generate XRechnung, missing: %s", strings.Join(missing, "; "))
+		return newValidationError("cannot generate e-invoice, missing: %s", strings.Join(missing, "; "))
 	}
 	return nil
 }
 
-// UBL/CEN customization identifier for XRechnung 3.0 (BT-24), the only
-// specification identifier this generator claims conformance to.
-const xrechnungCustomizationID = "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0"
-
 // Commercial invoice, UNCL1001 code 380.
 const invoiceTypeCodeCommercial = "380"
 
-func buildUBLInvoice(invoice *Invoice, lineItems []InvoiceLineItem, client *Client, org *Organization, taxRates map[string]*TaxRate) (*ublInvoice, error) {
+func buildUBLInvoice(profile eInvoiceProfile, invoice *Invoice, lineItems []InvoiceLineItem, client *Client, org *Organization, taxRates map[string]*TaxRate) (*ublInvoice, error) {
 	currency := invoice.Currency
 
 	lines := make([]ublInvoiceLine, len(lineItems))
@@ -129,7 +192,7 @@ func buildUBLInvoice(invoice *Invoice, lineItems []InvoiceLineItem, client *Clie
 	for i, item := range lineItems {
 		qty, err := floatToRat(item.Quantity)
 		if err != nil {
-			return nil, fmt.Errorf("xrechnung line %d quantity: %w", i+1, err)
+			return nil, fmt.Errorf("einvoice line %d quantity: %w", i+1, err)
 		}
 		price := new(big.Rat).SetInt64(item.UnitPrice)
 		priceUnits := new(big.Rat).Quo(price, hundred)
@@ -159,7 +222,7 @@ func buildUBLInvoice(invoice *Invoice, lineItems []InvoiceLineItem, client *Clie
 		taxable := taxableByRate[taxRateID]
 		pct, err := floatToRat(rate.Percentage)
 		if err != nil {
-			return nil, fmt.Errorf("xrechnung tax rate %q percentage: %w", taxRateID, err)
+			return nil, fmt.Errorf("einvoice tax rate %q percentage: %w", taxRateID, err)
 		}
 		tax := new(big.Rat).Mul(taxable, pct)
 		tax.Quo(tax, hundred)
@@ -184,12 +247,11 @@ func buildUBLInvoice(invoice *Invoice, lineItems []InvoiceLineItem, client *Clie
 		Xmlns:                "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
 		XmlnsCac:             "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
 		XmlnsCbc:             "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
-		CustomizationID:      xrechnungCustomizationID,
+		CustomizationID:      profile.CustomizationID,
 		ID:                   invoice.Number,
 		IssueDate:            formatMillis(invoice.Date),
 		InvoiceTypeCode:      invoiceTypeCodeCommercial,
 		DocumentCurrencyCode: currency,
-		BuyerReference:       *invoice.BuyerReference,
 		AccountingSupplierParty: ublPartyWrapper{Party: buildParty(
 			*org.Name, org.Street, org.HouseNumber, *org.PostalCode, *org.City, *org.CountryCode,
 			org.Vatin, org.Phone, org.Email,
@@ -211,6 +273,9 @@ func buildUBLInvoice(invoice *Invoice, lineItems []InvoiceLineItem, client *Clie
 		InvoiceLine: lines,
 	}
 
+	if invoice.BuyerReference != nil && *invoice.BuyerReference != "" {
+		inv.BuyerReference = *invoice.BuyerReference
+	}
 	if invoice.DueDate != nil {
 		inv.DueDate = formatMillis(*invoice.DueDate)
 	}
@@ -239,6 +304,15 @@ func taxCategoryFor(rate *TaxRate) ublTaxCategory {
 	}
 }
 
+// normalizeCountryCode upper-cases and trims a country code before it's used
+// for profile lookup or emitted as BT-40/BT-55 (ISO 3166-1 alpha-2, which is
+// uppercase by spec). Nothing enforces casing when the column is written —
+// e.g. a direct API call bypassing the form's uppercase-on-change — so both
+// read sites normalize defensively rather than trusting stored casing.
+func normalizeCountryCode(s string) string {
+	return strings.ToUpper(strings.TrimSpace(s))
+}
+
 // buildParty maps seller/buyer fields shared by db.Organization and db.Client
 // onto a UBL Party. House number, when present, is folded into StreetName —
 // UBL's PostalAddress has no dedicated building-number element.
@@ -256,7 +330,7 @@ func buildParty(name string, street, houseNumber *string, postalCode, city, coun
 			StreetName: streetName,
 			CityName:   city,
 			PostalZone: postalCode,
-			Country:    ublCountry{IdentificationCode: countryCode},
+			Country:    ublCountry{IdentificationCode: normalizeCountryCode(countryCode)},
 		},
 		PartyLegalEntity: ublPartyLegalEntity{RegistrationName: name},
 	}
@@ -449,7 +523,7 @@ type ublInvoice struct {
 	DueDate              string `xml:"cbc:DueDate,omitempty"`
 	InvoiceTypeCode      string `xml:"cbc:InvoiceTypeCode"`
 	DocumentCurrencyCode string `xml:"cbc:DocumentCurrencyCode"`
-	BuyerReference       string `xml:"cbc:BuyerReference"`
+	BuyerReference       string `xml:"cbc:BuyerReference,omitempty"`
 
 	AccountingSupplierParty ublPartyWrapper `xml:"cac:AccountingSupplierParty"`
 	AccountingCustomerParty ublPartyWrapper `xml:"cac:AccountingCustomerParty"`
