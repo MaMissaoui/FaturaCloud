@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-25
+
+Adds the buy-side mirror of FaturaCloud's existing sell side: vendors, purchase
+orders, goods receipts, and incoming invoices with 3-way matching. Non-breaking.
+
+### Added
+- **Vendors** — new master data alongside clients, with the same fields (address,
+  emails, VATIN, …) plus default currency and payment terms. A vendor can't be
+  deleted while any purchase order, goods receipt, or incoming invoice still
+  references it
+- **Purchase orders** — draft → confirmed → received → cancelled, server-numbered
+  (`PO-0001`, …), with a translated PDF (with prices) to send to the vendor. Each
+  line shows quantity received to date against quantity ordered
+- **Goods receipts** (inbound deliveries) — recording a receipt posts incoming
+  stock movements and, unlike shipping stock out, needs no availability check;
+  cancelling a received receipt reverses those movements but is blocked if the
+  goods have since been shipped out on an outbound delivery, which would drive
+  stock negative. Receipts can be created standalone or prefilled from a purchase
+  order's outstanding quantities
+- **Moving-average product costing** — `products.unitCost` is now derived by
+  replaying a product's full stock-movement history (`db/product_cost.go`)
+  instead of being a hand-typed number nobody could trust. Costed receipts move
+  the weighted average; uncosted inflows and all outflows move at the current
+  average without changing it. A product with no costed purchase history keeps
+  whatever cost was typed into it
+- **Incoming invoices** (vendor bills) with **3-way matching** — each line is
+  compared against what was ordered and what was actually received, computed on
+  read so it can never go stale. Approving an invoice is blocked while any line
+  has an unresolved variance (over-billed, over-received, price mismatch)
+  unless explicitly overridden with a required reason; a draft can still be
+  saved with variances so they can be investigated first. Match tolerances are
+  configurable per organization under Settings → Invoice
+- New **Purchasing** sidebar group: Purchase Orders → Goods Receipts → Incoming
+  Invoices
+
 ## [2.1.0] - 2026-07-25
 
 ### Security
