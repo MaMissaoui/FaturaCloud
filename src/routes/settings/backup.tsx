@@ -173,7 +173,7 @@ function SettingsBackup() {
         onChange={handleFileChange}
       />
 
-      <Title level={4} style={{ marginTop: 0, marginBottom: 20 }}>
+      <Title level={3} style={{ marginTop: 0, marginBottom: 20 }}>
         <DatabaseOutlined style={{ marginRight: 8 }} />
         <Trans>Backup & Restore</Trans>
       </Title>

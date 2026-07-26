@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Button, Drawer, Form, Input, Popconfirm, Select, Space, theme, Typography } from "antd";
+import {
+  Button,
+  Card,
+  Col,
+  Collapse,
+  Drawer,
+  Form,
+  Input,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+} from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -12,17 +24,17 @@ import { clientIdAtom, clientAtom, clientsAtom, deleteClientAtom } from "src/ato
 import { generateClientCode } from "src/utils/client";
 import ScrollShadow from "src/components/scroll-shadow";
 
-const Section = ({ children }: { children: React.ReactNode }) => {
-  const { token } = theme.useToken();
-  return (
-    <Typography.Text
-      strong
-      style={{ color: token.colorPrimary, display: "block", marginBottom: 12, marginTop: 4 }}
-    >
-      {children}
-    </Typography.Text>
-  );
-};
+// Fields inside the collapsed "E-invoicing" panel — used to auto-expand it if
+// validation fails on a field the user can't currently see.
+const E_INVOICING_FIELDS = [
+  "tax_number",
+  "street",
+  "house_number",
+  "postal_code",
+  "city",
+  "country_code",
+  "default_buyer_reference",
+];
 
 const ClientForm = () => {
   const location = useLocation();
@@ -35,6 +47,7 @@ const ClientForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const deleteClient = useSetAtom(deleteClientAtom);
   const [invoiceCount, setInvoiceCount] = useState<number | null>(null);
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   const isVisible = get(location.state, "clientModal", false);
 
@@ -54,7 +67,15 @@ const ClientForm = () => {
   const handleClose = () => {
     setClientId(null);
     form.resetFields();
+    setActiveKeys([]);
     navigate(location.pathname, { state: { clientModal: false } });
+  };
+
+  const handleFinishFailed = ({ errorFields }: { errorFields: { name: (string | number)[] }[] }) => {
+    const hasHiddenError = errorFields.some((field) => E_INVOICING_FIELDS.includes(String(field.name[0])));
+    if (hasHiddenError) {
+      setActiveKeys((keys) => (keys.includes("einvoicing") ? keys : [...keys, "einvoicing"]));
+    }
   };
 
   const handleSubmit = async (values: any) => {
@@ -108,7 +129,7 @@ const ClientForm = () => {
       title={clientId ? <Trans>Edit client</Trans> : <Trans>New client</Trans>}
       open={isVisible}
       placement="right"
-      width={480}
+      size={640}
       onClose={handleClose}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -152,81 +173,122 @@ const ClientForm = () => {
       }
     >
       <ScrollShadow>
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Section>
-            <Trans>Contact</Trans>
-          </Section>
-          <Form.Item
-            name="name"
-            label={<Trans>Name</Trans>}
-            rules={[{ required: true, message: t`Please input name!` }]}
-          >
-            <Input
-              placeholder={t`Name`}
-              onChange={(e) => {
-                if (!clientId) form.setFieldValue("code", generateClientCode(e.target.value));
-              }}
-            />
-          </Form.Item>
-          <Form.Item name="code" label={<Trans>Code</Trans>}>
-            <Input placeholder={t`Code`} maxLength={10} />
-          </Form.Item>
-          <Form.Item name="emails" label={<Trans>E-mails</Trans>}>
-            <Select placeholder={t`E-mails`} mode="tags" tokenSeparators={[",", ";"]} />
-          </Form.Item>
-          <Form.Item name="phone" label={<Trans>Phone</Trans>}>
-            <Input placeholder={t`Phone`} />
-          </Form.Item>
-          <Form.Item name="website" label={<Trans>Website</Trans>}>
-            <Input placeholder={t`Website`} />
-          </Form.Item>
-          <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
-            <Input placeholder={t`VAT Number`} />
-          </Form.Item>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={handleFinishFailed}>
+          <Card title={<Trans>Contact</Trans>} style={{ marginBottom: 16 }}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24}>
+                <Form.Item
+                  name="name"
+                  label={<Trans>Name</Trans>}
+                  rules={[{ required: true, message: t`Please input name!` }]}
+                >
+                  <Input
+                    placeholder={t`Name`}
+                    onChange={(e) => {
+                      if (!clientId) form.setFieldValue("code", generateClientCode(e.target.value));
+                    }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="code" label={<Trans>Code</Trans>}>
+                  <Input placeholder={t`Code`} maxLength={10} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
+                  <Input placeholder={t`VAT Number`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item name="emails" label={<Trans>E-mails</Trans>}>
+                  <Select placeholder={t`E-mails`} mode="tags" tokenSeparators={[",", ";"]} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="phone" label={<Trans>Phone</Trans>}>
+                  <Input placeholder={t`Phone`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="website" label={<Trans>Website</Trans>}>
+                  <Input placeholder={t`Website`} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
 
-          <Section>
-            <Trans>Address</Trans>
-          </Section>
-          <Form.Item name="address" label={<Trans>Address</Trans>}>
-            <Input.TextArea rows={4} placeholder={t`Address`} />
-          </Form.Item>
+          <Card title={<Trans>Address</Trans>} style={{ marginBottom: 16 }}>
+            <Form.Item name="address" label={<Trans>Address</Trans>} style={{ marginBottom: 0 }}>
+              <Input.TextArea rows={3} placeholder={t`Address`} />
+            </Form.Item>
+          </Card>
 
-          <Section>
-            <Trans>E-invoicing</Trans>
-          </Section>
-          <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
-            <Input placeholder={t`Tax number`} />
-          </Form.Item>
-          <Form.Item name="street" label={<Trans>Street</Trans>}>
-            <Input placeholder={t`Street`} />
-          </Form.Item>
-          <Form.Item name="house_number" label={<Trans>House number</Trans>}>
-            <Input placeholder={t`House number`} />
-          </Form.Item>
-          <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
-            <Input placeholder={t`Postal code`} />
-          </Form.Item>
-          <Form.Item name="city" label={<Trans>City</Trans>}>
-            <Input placeholder={t`City`} />
-          </Form.Item>
-          <Form.Item
-            name="country_code"
-            label={<Trans>Country code</Trans>}
-            rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
-          >
-            <Input
-              maxLength={2}
-              placeholder={t`e.g. DE`}
-              onChange={(e) => form.setFieldValue("country_code", e.target.value.toUpperCase())}
-            />
-          </Form.Item>
-          <Form.Item
-            name="default_buyer_reference"
-            label={<Trans>Default buyer reference</Trans>}
-            tooltip={t`Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G.`}
-          >
-            <Input placeholder={t`Default buyer reference`} />
-          </Form.Item>
+          <Collapse
+            activeKey={activeKeys}
+            onChange={(keys) => setActiveKeys(keys as string[])}
+            items={[
+              {
+                key: "einvoicing",
+                label: <Trans>E-invoicing</Trans>,
+                forceRender: true,
+                children: (
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
+                        <Input placeholder={t`Tax number`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="country_code"
+                        label={<Trans>Country code</Trans>}
+                        rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
+                      >
+                        <Input
+                          maxLength={2}
+                          placeholder={t`e.g. DE`}
+                          onChange={(e) =>
+                            form.setFieldValue("country_code", e.target.value.toUpperCase())
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={16}>
+                      <Form.Item name="street" label={<Trans>Street</Trans>}>
+                        <Input placeholder={t`Street`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="house_number" label={<Trans>House number</Trans>}>
+                        <Input placeholder={t`House number`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
+                        <Input placeholder={t`Postal code`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={16}>
+                      <Form.Item name="city" label={<Trans>City</Trans>}>
+                        <Input placeholder={t`City`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24}>
+                      <Form.Item
+                        name="default_buyer_reference"
+                        label={<Trans>Default buyer reference</Trans>}
+                        tooltip={t`Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G.`}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Input placeholder={t`Default buyer reference`} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                ),
+              },
+            ]}
+          />
         </Form>
       </ScrollShadow>
     </Drawer>
