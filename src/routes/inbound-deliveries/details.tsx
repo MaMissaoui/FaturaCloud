@@ -206,7 +206,7 @@ const InboundDeliveryDetails = () => {
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
-        <Col span={6}>
+        <Col xs={24} md={12} xl={6}>
           <Form.Item
             label={<Trans>Vendor</Trans>}
             name="vendorId"
@@ -247,7 +247,7 @@ const InboundDeliveryDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col span={5}>
+        <Col xs={24} md={12} xl={5}>
           <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
             <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
               {map(purchaseOrders, (o: any) => (
@@ -258,7 +258,7 @@ const InboundDeliveryDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Receipt number</Trans>}
             name="deliveryNumber"
@@ -267,7 +267,7 @@ const InboundDeliveryDetails = () => {
             <Input />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Receipt date</Trans>}
             name="deliveryDate"
@@ -276,7 +276,7 @@ const InboundDeliveryDetails = () => {
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col span={5}>
+        <Col xs={24} md={12} xl={5}>
           <Form.Item label={<Trans>Status</Trans>}>
             <Tag color={inboundDeliveryStatusColor[currentStatus as InboundDeliveryStatus]}>
               {inboundDeliveryStatusLabel(currentStatus)}
@@ -286,17 +286,17 @@ const InboundDeliveryDetails = () => {
       </Row>
 
       <Row gutter={24}>
-        <Col span={8}>
+        <Col xs={24} md={12} xl={8}>
           <Form.Item label={<Trans>Vendor delivery note</Trans>} name="vendorDeliveryNote">
             <Input placeholder={t`Number on the vendor's paperwork`} />
           </Form.Item>
         </Col>
-        <Col span={8}>
+        <Col xs={24} md={12} xl={8}>
           <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
             <Input />
           </Form.Item>
         </Col>
-        <Col span={8}>
+        <Col xs={24} md={12} xl={8}>
           <Form.Item label={<Trans>Notes</Trans>} name="notes">
             <TextArea rows={1} autoSize />
           </Form.Item>
