@@ -260,7 +260,7 @@ const IncomingInvoiceDetails = () => {
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
-        <Col span={6}>
+        <Col xs={24} md={12} xl={6}>
           <Form.Item
             label={<Trans>Vendor</Trans>}
             name="vendorId"
@@ -275,7 +275,7 @@ const IncomingInvoiceDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col span={5}>
+        <Col xs={24} md={12} xl={5}>
           <Form.Item
             label={<Trans>Vendor invoice #</Trans>}
             name="vendorInvoiceNumber"
@@ -284,7 +284,7 @@ const IncomingInvoiceDetails = () => {
             <Input placeholder={t`The number on the vendor's invoice`} />
           </Form.Item>
         </Col>
-        <Col span={5}>
+        <Col xs={24} md={12} xl={5}>
           <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
             <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
               {map(purchaseOrders, (o: any) => (
@@ -295,7 +295,7 @@ const IncomingInvoiceDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Invoice date</Trans>}
             name="date"
@@ -304,7 +304,7 @@ const IncomingInvoiceDetails = () => {
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Due date</Trans>} name="dueDate">
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
@@ -312,7 +312,7 @@ const IncomingInvoiceDetails = () => {
       </Row>
 
       <Row gutter={24}>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Currency</Trans>}
             name="currency"
@@ -321,12 +321,12 @@ const IncomingInvoiceDetails = () => {
             <Input />
           </Form.Item>
         </Col>
-        <Col span={5}>
+        <Col xs={24} md={12} xl={5}>
           <Form.Item label={<Trans>Our reference</Trans>} name="reference">
             <Input />
           </Form.Item>
         </Col>
-        <Col span={5}>
+        <Col xs={24} md={12} xl={5}>
           <Form.Item label={<Trans>State</Trans>}>
             <Space>
               <Tag color={incomingInvoiceStateColor[currentState as IncomingInvoiceState]}>
@@ -335,7 +335,7 @@ const IncomingInvoiceDetails = () => {
             </Space>
           </Form.Item>
         </Col>
-        <Col span={10}>
+        <Col xs={24} md={12} xl={10}>
           <Form.Item label={<Trans>Notes</Trans>} name="notes">
             <TextArea rows={1} autoSize />
           </Form.Item>
@@ -459,14 +459,14 @@ const IncomingInvoiceDetails = () => {
 
           {blocked && (
             <Row gutter={24}>
-              <Col span={6}>
+              <Col xs={24} md={6}>
                 <Form.Item name="matchOverride" valuePropName="checked">
                   <Checkbox>
                     <Trans>Approve despite the variance</Trans>
                   </Checkbox>
                 </Form.Item>
               </Col>
-              <Col span={18}>
+              <Col xs={24} md={18}>
                 <Form.Item
                   name="matchOverrideReason"
                   label={<Trans>Override reason</Trans>}
