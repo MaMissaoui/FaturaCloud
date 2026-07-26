@@ -2,15 +2,13 @@
 
 ## Status
 
-**Tier 0 and Tier 1 are done, verified in-browser, and committed.** **Tier 2
-(line-item tables) is in progress** — the shared shell exists and
-`orders/details.tsx`, `deliveries/details.tsx`, `purchase-orders/details.tsx`,
-`inbound-deliveries/details.tsx`, and `incoming-invoices/details.tsx`
-(migrations 1-5 of 6) are done; only `invoices/details.tsx` (the riskiest —
-DnD + editable back-computing Total) remains. **Tier 3 (detail-page shells)
+**Tier 0, Tier 1, and Tier 2 (line-item tables) are all done**, verified
+in-browser, and committed — all six document detail pages now use the shared
+`src/components/line-items/table.tsx` shell. **Tier 3 (detail-page shells)
 is not started.**
 
 Tier 2 progress:
+
 - `src/components/line-items/table.tsx` — the config-driven shell from 2.1.
   Column kinds so far: `index`, `product`, `description`, `quantity`, `unit`,
   `unitPrice`, `taxRate`, `custom`. The `quantity` kind gained an optional
@@ -61,8 +59,8 @@ Tier 2 progress:
   every line item (fresh ids) on any `PUT` that includes `lineItems`, which
   the frontend always sends on save. For purchase orders this is worse than
   orders' cosmetic "Delivered resets to 0": `inbound_delivery_line_items.
-  purchaseOrderLineItemId` and `incoming_invoice_line_items.
-  purchaseOrderLineItemId` — and the 3-way match in
+purchaseOrderLineItemId` and `incoming_invoice_line_items.
+purchaseOrderLineItemId` — and the 3-way match in
   `db/incoming_invoice_match.go`, which looks up `purchase_order_line_items`
   by that id — all key off the old id. Editing and saving a purchase order
   that already has linked goods receipts or incoming invoices orphans those
@@ -93,8 +91,70 @@ Tier 2 progress:
   Subtotal/Tax/Total `Descriptions` block (which reads the same
   `Form.useWatch("lineItems")` + `useMemo` as before, untouched by the
   table extraction).
+- `invoices/details.tsx` migrated — the last and riskiest of the six, and the
+  only one needing new shell capability beyond a config knob:
+  - **The plan's "Open decision" (below) was stale and did not need
+    resolving.** It assumed invoices already put Description first; reading
+    the actual code showed Product was already first, matching the other
+    five documents. No behavioural change was needed or made — corrected the
+    section below to say so rather than deleting the history.
+  - Added `reorderable?: boolean` to the shell: it now owns the generic
+    dnd-kit wiring (sensors, `DndContext`/`SortableContext`, the sortable
+    `<tr>` row) and reorders the form's array field directly on drop. The
+    visible drag handle stays page-owned (rendered inside invoices' Product
+    cell via `useSortable` against the same row key) since it's the one
+    genuinely document-specific piece — mirrors 2.1's `disabled` split
+    between shell-owned mechanism and page-owned rendering.
+  - `quantity`/`unitPrice`/`total` are **not** three independently
+    configurable shell columns here — each one's `onChange` writes the other
+    two (the editable back-computing Total), so they're one coupled unit and
+    stayed `kind: "custom"`, page-owned, exactly like `Delivered`/`Received`/
+    `match` on the other documents. Forcing per-column `onChange` escape
+    hatches into the built-in `quantity`/`unitPrice` kinds for one document's
+    quirk would have made the shell's config surface worse, not better.
+  - **Preserved verbatim, not "cleaned up":** the back-compute handlers read
+    and write via `form.getFieldValue(["lineItems", field.key, ...])` —
+    `field.key`, not `field.name`. In antd `Form.List`, those two diverge
+    after a middle row is removed (key is a stable counter, name is the
+    positional index), so this is a pre-existing latent bug — fixing it
+    would be a behaviour change hidden inside a refactor, exactly the kind
+    of thing this migration series has been careful not to do. Flagging it
+    here, not fixing it.
+  - `taxRate` stayed `kind: "custom"` too, to preserve the `{name} {percentage}%`
+    composition the non-goals list explicitly protects (`VAT 20% 20%` is not
+    a bug — see the top of this document).
+  - The shell's `custom` column kind gained an optional `onCell`, used here
+    to keep the Product cell's `paddingLeft: 0` (compensating for the
+    absolutely-positioned drag handle sitting in its gutter). The
+    `description` kind gained an optional `rows` (invoices uses 4, not the
+    shared default of 1).
+  - **One deliberate visual change**: the remove button was absolutely
+    positioned inside the Total cell (`right: -32`) with a `paddingRight: 0`
+    cell override. It now uses the shell's plain trailing remove column,
+    same as the other five documents — sanctioned by Tier 2.2's "one delete
+    affordance" goal.
+  - Verified live end-to-end, since this document had by far the largest
+    blast radius: added a second line item, confirmed the Total field
+    back-computes `unitPrice` and vice versa; dragged row 2 above row 1 with
+    real pointer events (`page.mouse` — Playwright's `dragTo` uses HTML5 DnD
+    events, which dnd-kit's `PointerSensor` does not listen for, so it silently
+    no-ops) and confirmed the row order and all per-row values moved together;
+    saved, reloaded, and confirmed both the new line and the reordering
+    persisted; confirmed the PDF preview renders the persisted data; confirmed
+    `VAT 20% 20%` still renders unchanged.
+  - **Not a regression, but worth flagging**: while diagnosing an unrelated
+    save failure during verification, found that the Product column's
+    `requiredForNewLineItem` rule and antd's `required` rule on `Due date`
+    both use `noStyle` on their `Form.Item`, which suppresses antd's
+    validation-error rendering — so a line item missing a product (or, as
+    happened during testing, a seed invoice missing its due date) fails
+    `form.submit()` **silently**: no error, no network request, nothing to
+    tell the user why Save did nothing. Confirmed this is pre-existing
+    (identical on `main`, unrelated to the table extraction) — out of scope
+    here, but a real UX footgun worth a follow-up.
 
 What actually shipped, with deviations from the original plan noted inline:
+
 - Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.
 - Tier 0.2 (`PageHeader` extraction) — done, on `refactor/page-header-extraction`.
   Adopted in all 13 list/settings pages named in the original plan. `inventory`'s
@@ -146,7 +206,7 @@ are not — "fixing" them will cause regressions.
 
 - **`VAT 20% 20%` in the tax dropdown is NOT a bug.** The rendering is
   `{rate.name} {rate.percentage}%` (`src/routes/invoices/details.tsx:943`). The
-  seed data happens to contain a rate *named* "VAT 20%". A rate named "Standard"
+  seed data happens to contain a rate _named_ "VAT 20%". A rate named "Standard"
   renders correctly as "Standard 20%". Leave the composition alone.
 - **The invoice `Total` column is an editable input, not a display field.**
   `src/routes/invoices/details.tsx:963-1010` — typing in it back-computes
@@ -170,6 +230,7 @@ are not — "fixing" them will cause regressions.
 ## Tier 0 — Shared primitives (do first; low risk, unblocks the rest)
 
 ### 0.1 Extract the duplicated `Section` component
+
 `Section` is defined **byte-identically in five files**:
 `src/components/clients/form.tsx:15`, `vendors/form.tsx:17`,
 `tax-rates/form.tsx:48`, `products/form.tsx:26`, `stock/movement-form.tsx:13`.
@@ -179,6 +240,7 @@ unchanged, then import it in all five and delete the local copies. No visual
 change should result — verify by screenshot diff.
 
 ### 0.2 Extract a shared `PageHeader`
+
 Eleven list pages hand-roll the same block: `Title level={3}` + icon on the
 left, `<Space>` with `<Input.Search>` + primary action button on the right.
 See `src/routes/clients.tsx:56-70` for the canonical version.
@@ -201,6 +263,7 @@ Adopt in: `clients`, `vendors`, `products`, `invoices/index`, `orders`,
 Keep the existing `Title level={3}` size — it is the majority convention.
 
 ### 0.3 Fix the antd 6 Drawer deprecation
+
 Console shows: `Warning: [antd: Drawer] 'width' is deprecated. Please use 'size'
 instead.`
 
@@ -212,6 +275,7 @@ Change `width={480}` → `size={480}` in all five drawer forms (widths are chang
 in Tier 1; do the rename first so the two changes stay reviewable).
 
 ### 0.4 Apply `ScrollShadow` consistently
+
 `src/components/scroll-shadow.tsx` is used in `clients`, `vendors`, `products`
 forms but missing from `tax-rates/form.tsx` and `stock/movement-form.tsx`. Add
 it to those two for consistent scroll affordance.
@@ -221,6 +285,7 @@ it to those two for consistent scroll affordance.
 ## Tier 1 — Make entry screens fit without scrolling
 
 ### The reference pattern (already in the codebase, already verified)
+
 `src/routes/organizations/index.tsx:342-570` is the target pattern and it
 renders well — I screenshotted it at 1440×900:
 
@@ -237,21 +302,23 @@ so `md` matches inside a 640px drawer on a desktop viewport. That is why the
 grid works; don't switch to container queries.
 
 ### 1.1 Convert the master-data drawers that actually overflow — DONE
+
 **Correction to the original plan**: it listed five drawers
 (`clients`, `vendors`, `products`, `tax-rates`, `stock/movement-form`). Before
 converting any of them, each was opened at 1440×900 and measured via
 `el.scrollHeight - el.clientHeight` on `.ant-drawer-body`. Only three actually
 overflowed:
 
-| Form | Fields | Overflow before | Converted? |
-|---|---|---|---|
-| Clients | 15 | ~2.5 screens | ✅ yes |
-| Vendors | 9 | cut off (Address hidden) | ✅ yes |
-| Products | 7 | cut off (tax rate hidden) | ✅ yes |
-| Tax rates | 6 | **0px — already fit** | ❌ skipped |
-| Stock movement | 6 | **0px — already fit** | ❌ skipped |
+| Form           | Fields | Overflow before           | Converted? |
+| -------------- | ------ | ------------------------- | ---------- |
+| Clients        | 15     | ~2.5 screens              | ✅ yes     |
+| Vendors        | 9      | cut off (Address hidden)  | ✅ yes     |
+| Products       | 7      | cut off (tax rate hidden) | ✅ yes     |
+| Tax rates      | 6      | **0px — already fit**     | ❌ skipped |
+| Stock movement | 6      | **0px — already fit**     | ❌ skipped |
 
 Applied to the three that needed it:
+
 - `size={480}` → `size={640}`
 - Wrap each `Section` group in `<Card title={...} style={{ marginBottom: 16 }}>`
   (this **replaces** `Section`, it doesn't sit alongside it — `Section` is only
@@ -272,12 +339,13 @@ Applied to the three that needed it:
   tighter layout.
 
 ### 1.2 Collapse secondary sections — DONE (clients only)
+
 Only clients needed this after the Tier 1.1 pass (vendors and products fit with
 the two-column grid alone). Applied:
 
-| Form | Always expanded | Collapsed by default |
-|---|---|---|
-| Clients | Contact, Address | E-invoicing |
+| Form    | Always expanded  | Collapsed by default |
+| ------- | ---------------- | -------------------- |
+| Clients | Contact, Address | E-invoicing          |
 
 Organizations already had this pattern pre-existing and untouched (it's the
 reference implementation, not something this plan changed).
@@ -302,11 +370,13 @@ onFinishFailed={({ errorFields }) => {
 Do not ship collapsible sections without both.
 
 ### 1.3 Settings pages — DONE for invoice, skipped (layout) for backup
+
 `src/routes/settings/invoice.tsx` and `settings/backup.tsx` both used
 `<div style={{ maxWidth: 720 }}>` + `Title level={4}`, while every other page
 uses `level={3}` and no cap.
 
 **invoice.tsx** overflowed badly (610px, before any fix) and was converted:
+
 - `Title level={4}` → `level={3}`, `maxWidth: 720` → `1100`
 - Paired the four cards into two outer rows — (Defaults, Numbering) and (Logo,
   Vendor invoice matching) — each `<Row gutter={[16,0]}><Col xs={24} xl={12}>`.
@@ -340,10 +410,11 @@ for consistency with the rest of the app.
 ## Tier 2 — Unify the line-item tables
 
 ### What is actually shared today
+
 All six pages use the identical scaffolding — `<Form.List>` wrapping an antd
 `<Table>` with `<Table.Column>` children, `dataSource={fields.map((field, index)
 => ({ ...field, index }))}`, `pagination={false}`, `size="middle"`,
-`locale={{ emptyText: t\`No line items\` }}`, `rowKey` on `index`. That block is
+`locale={{ emptyText: t\`No line items\` }}`, `rowKey`on`index`. That block is
 duplicated six times.
 
 Locations: `invoices/details.tsx:753`, `orders/details.tsx:308`,
@@ -351,21 +422,23 @@ Locations: `invoices/details.tsx:753`, `orders/details.tsx:308`,
 `inbound-deliveries/details.tsx:307`, `incoming-invoices/details.tsx:345`.
 
 ### How they diverge (all of this is unintentional)
-| | invoices | orders | deliveries | purchase-orders | inbound-deliveries | incoming-invoices |
-|---|---|---|---|---|---|---|
-| First column | **Description** | Product | Product | Product | Product | Description |
-| Unit column | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ |
-| Line total | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Drag reorder | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Qty label | `Qty.` | `Qty` | `Qty` | `Qty` | `Qty` | `Qty` |
-| `marginTop: 8` | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
-| Titles use | `` t`…` `` | `<Trans>` | `<Trans>` | `<Trans>` | `<Trans>` | `<Trans>` |
 
-Plus: invoice's delete button is a gray text button positioned *outside* the
+|                | invoices        | orders    | deliveries | purchase-orders | inbound-deliveries | incoming-invoices |
+| -------------- | --------------- | --------- | ---------- | --------------- | ------------------ | ----------------- |
+| First column   | **Description** | Product   | Product    | Product         | Product            | Description       |
+| Unit column    | ✗               | ✗         | ✓          | ✓               | ✓                  | ✗                 |
+| Line total     | ✓               | ✗         | ✗          | ✗               | ✗                  | ✗                 |
+| Drag reorder   | ✓               | ✗         | ✗          | ✗               | ✗                  | ✗                 |
+| Qty label      | `Qty.`          | `Qty`     | `Qty`      | `Qty`           | `Qty`              | `Qty`             |
+| `marginTop: 8` | ✗               | ✓         | ✗          | ✓               | ✓                  | ✓                 |
+| Titles use     | `` t`…` ``      | `<Trans>` | `<Trans>`  | `<Trans>`       | `<Trans>`          | `<Trans>`         |
+
+Plus: invoice's delete button is a gray text button positioned _outside_ the
 table border (`position: absolute; right: -32`), while every other page uses a
 red inline `<Button danger>`. Numeric cells are left-aligned everywhere.
 
 ### 2.1 Build a config-driven shell
+
 Create `src/components/line-items/table.tsx`. It must be **column-descriptor
 driven**, not a fixed table with a long prop list. The shell owns: `Form.List`,
 the `Table` scaffolding, DnD wiring, add/remove, row striping, empty state.
@@ -398,7 +471,7 @@ by their page and are **not** absorbed into the shell.
 
 **The `disabled` contract is verified.** Freezing is done **in place** — each
 input gets `disabled={!isEditable}`, and the remove/add buttons are hidden —
-*not* by swapping to a separate read-only view. Reference implementation:
+_not_ by swapping to a separate read-only view. Reference implementation:
 `src/routes/inbound-deliveries/details.tsx:202` (`const isEditable = isNew ||
 currentStatus === "draft"`) applied at `:327`, `:364`, `:382`, `:393`, `:408`,
 with `{isEditable && …}` guards at `:429` and `:447`. So a single `disabled`
@@ -417,6 +490,7 @@ Check `purchase-orders/details.tsx` for the same gap (it has terminal
 `received`/`cancelled` statuses and no `disabled` gating either).
 
 ### 2.2 Standardise while extracting
+
 - **Column order**: `#` → Product → Description → Qty → Unit → Price → Tax →
   Total → (computed) → remove.
   ⚠️ **Decision required before starting — see "Open decision" below.** Whether
@@ -433,7 +507,7 @@ Check `purchase-orders/details.tsx` for the same gap (it has terminal
 - Enable `reorderable` on invoices only at first (preserves current behaviour);
   extending DnD to other docs is a separate, optional follow-up.
 
-### 2.3 Make the table *render* better (not just consistently)
+### 2.3 Make the table _render_ better (not just consistently)
 
 Consistency work alone won't address the visual complaint. From the invoice
 screenshot at 1440×900, two things make the table read poorly:
@@ -454,10 +528,11 @@ track horizontally, and keep row height compact (`size="small"` is worth trying
 against the current `size="middle"` once cells are borderless — borderless cells
 need less vertical padding).
 
-Do this as its own commit *after* the shell exists, so the visual change is
+Do this as its own commit _after_ the shell exists, so the visual change is
 reviewable independently of the mechanical extraction.
 
 ### 2.4 Migration order (one PR each, easiest first)
+
 1. `orders/details.tsx` — simplest, no reorder, no tax
 2. `deliveries/details.tsx` — **no price columns, ever**
 3. `purchase-orders/details.tsx`
@@ -496,21 +571,24 @@ an implementation plan yet, and **both break this doc's own non-goal of
 the Tier 0-3 UI-consistency pass, not a continuation of it.
 
 ### 4.1 Inventory / product-list UI at scale
+
 Confirmed today: `GetProducts`/`GetStockMovements` (`src/atoms/product.ts`,
-`src/atoms/stock.ts`) fetch the *entire* table in one request with no
+`src/atoms/stock.ts`) fetch the _entire_ table in one request with no
 `limit`/`offset`/`search` params anywhere in `api/products.go`; `/inventory`
 and `/products` paginate client-side only (`pagination={{ pageSize: 50 }}` at
 `src/routes/inventory.tsx:114`, `defaultPageSize: 25` in `products.tsx`). Fine
 at tens/hundreds of rows; at thousands this means a multi-MB payload on every
 load, full in-memory filter/sort, and no server-side search. Needs: paginated
-+ filtered Go endpoints, matching server-side `Table` pagination/sorting and
-debounced search on the frontend, and likely a DB index on
-`products(organizationId, name/sku)`. Also worth checking whether the
-line-item product `Select`s (which assume the full product list fits in an
-in-browser `showSearch` dropdown) need to move to a search-as-you-type API
-call once this is in the thousands.
+
+- filtered Go endpoints, matching server-side `Table` pagination/sorting and
+  debounced search on the frontend, and likely a DB index on
+  `products(organizationId, name/sku)`. Also worth checking whether the
+  line-item product `Select`s (which assume the full product list fits in an
+  in-browser `showSearch` dropdown) need to move to a search-as-you-type API
+  call once this is in the thousands.
 
 ### 4.2 Dashboard(s) and reports
+
 Confirmed today: no dashboard or reporting route/component exists anywhere in
 `src/routes/` or `src/layouts/`. This is a new feature area, not a refactor —
 needs a decision on what to report (revenue over time, outstanding invoices,
@@ -545,6 +623,7 @@ go build ./... && go vet ./...   # should be untouched, confirm no drift
   the standard order, numerics right-aligned.
 
 **Functional checks that guard the risky parts:**
+
 - On a collapsed-section form, clear a required field inside the collapsed
   panel and submit. The panel must expand and show the error — it must not fail
   silently. This is the single most likely regression.
@@ -553,7 +632,7 @@ go build ./... && go vet ./...   # should be untouched, confirm no drift
 - On an invoice, type into the line `Total` field — it must still back-compute
   `quantity`/`unitPrice`.
 - Mark a delivery `shipped`. Line items must now be **disabled**, with the
-  remove and Add buttons hidden — this is a behaviour *fix*, not a preservation:
+  remove and Add buttons hidden — this is a behaviour _fix_, not a preservation:
   they are editable today (see the bug noted in Tier 2.1). Confirm header-only
   edits (tracking number, notes) still save.
 - Confirm delivery-note and goods-receipt PDFs are unchanged (Tier 2 touches
@@ -561,32 +640,25 @@ go build ./... && go vet ./...   # should be untouched, confirm no drift
 
 **i18n:** new strings (Collapse panel headers, `#` column, any PageHeader
 titles) need extraction and manual translation:
+
 ```bash
 pnpm extract   # missing-count baseline is 1 (a benign empty-header msgid)
 ```
+
 Then hand-translate the new msgids in `src/locales/de.po` and `fr.po`. English
 is the source locale and needs no translation.
 
-## Open decision (resolve before Tier 2)
+## Open decision — resolved by the status quo, no design call needed
 
-**Does the invoice line-item table move Description out of the first column?**
-
-Every other document puts Product first; invoices puts Description first. It is
-the only genuinely behavioural change in this plan, and it lands on the app's
-most-used screen — users have muscle memory for typing a description into the
-leftmost cell. Two defensible answers:
-
-- **(a) Standardise all six** on Product-first. Full consistency; costs muscle
-  memory on the busiest screen.
-- **(b) Standardise the other five to each other, leave invoices
-  description-first.** 5-of-6 consistency at zero behavioural cost. Justifiable
-  on its merits too: on invoices the product link is optional (the column
-  placeholder is literally "Optional") whereas on purchasing documents the
-  product drives cost and stock, so leading with Description on invoices matches
-  how the screen is actually used.
-
-Default to **(b)** unless told otherwise — it is the lower-risk reading of "as
-far as possible".
+This section originally asked whether the invoice line-item table should move
+Description out of the first column, on the premise that "every other document
+puts Product first; invoices puts Description first." That premise was wrong:
+reading `invoices/details.tsx` at migration time (Tier 2, 6/6) showed Product
+was already the first column, same as the other five documents. There was no
+5-of-6-vs-6-of-6 tradeoff to make and nothing was changed — leaving this note
+here instead of deleting it, since it's a good example of why a plan's stated
+assumptions need re-verifying against the actual code right before acting on
+them, not trusted at face value once Tier 2 migrations actually got underway.
 
 ## Workflow
 
@@ -598,6 +670,7 @@ PRs) so a regression can be bisected to a single document.
 ## Suggested commit split
 
 Per CLAUDE.md conventional commits, one concern per commit:
+
 - `refactor: extract shared Section and PageHeader components`
 - `fix: replace deprecated Drawer width prop with size`
 - `feat: convert master data drawers to two-column card layout`

@@ -5,6 +5,23 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import map from "lodash/map";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { requiredForNewLineItem } from "src/utils/line-items";
 
 const { Option } = Select;
@@ -16,6 +33,27 @@ interface LineItemField {
   index: number;
 }
 
+// Generic drag-and-drop row for `reorderable` tables. The visible drag handle
+// itself is document-specific (invoices renders it inside its Product cell)
+// and stays page-owned via a `kind: "custom"` column that calls useSortable
+// with the same row key — this component only supplies the sortable <tr>.
+const SortableRow = ({ children, ...props }: any) => {
+  const { setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props["data-row-key"],
+  });
+  const style = {
+    ...props.style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <tr {...props} ref={setNodeRef} style={style}>
+      {children}
+    </tr>
+  );
+};
+
 export type LineItemColumn =
   | { kind: "index" }
   | {
@@ -25,7 +63,7 @@ export type LineItemColumn =
       required?: boolean;
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
     }
-  | { kind: "description"; required?: boolean }
+  | { kind: "description"; required?: boolean; rows?: number }
   | { kind: "quantity"; label?: ReactNode; width?: number }
   | { kind: "unit"; placeholder?: string; width?: number }
   | { kind: "unitPrice"; name?: string; label?: ReactNode; width?: number }
@@ -36,6 +74,7 @@ export type LineItemColumn =
       title?: ReactNode;
       width?: number;
       align?: "left" | "right" | "center";
+      onCell?: () => Record<string, unknown>;
       render: (field: LineItemField) => ReactNode;
     };
 
@@ -45,6 +84,12 @@ interface LineItemsTableProps {
   disabled?: boolean;
   addLabel?: ReactNode;
   defaultNewRow?: Record<string, unknown>;
+  // Enables drag-to-reorder (invoices only, so far). The shell owns the
+  // generic dnd-kit wiring (sensors, DndContext/SortableContext, the sortable
+  // row) and reorders the form's array field directly; the drag handle itself
+  // is rendered by the page via a `kind: "custom"` column using useSortable
+  // with the same row key.
+  reorderable?: boolean;
 }
 
 // Shared shell for the six document line-item tables (invoices, orders,
@@ -60,13 +105,30 @@ const LineItemsTable = ({
   disabled = false,
   addLabel,
   defaultNewRow = { quantity: 1 },
+  reorderable = false,
 }: LineItemsTableProps) => {
   const form = Form.useFormInstance();
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id === over?.id) return;
+    const items = form.getFieldValue(name) || [];
+    const oldIndex = parseInt(active.id as string);
+    const newIndex = parseInt(over?.id as string);
+    if (!isNaN(oldIndex) && !isNaN(newIndex)) {
+      form.setFieldValue(name, arrayMove(items, oldIndex, newIndex));
+    }
+  };
+
   return (
     <Form.List name={name}>
-      {(fields, { add, remove }) => (
-        <>
+      {(fields, { add, remove }) => {
+        const table = (
           <Table
             dataSource={fields.map((field, index) => ({ ...field, index }))}
             pagination={false}
@@ -74,6 +136,7 @@ const LineItemsTable = ({
             locale={{ emptyText: t`No line items` }}
             rowKey={(r) => r.index.toString()}
             style={{ marginTop: 8 }}
+            components={reorderable ? { body: { row: SortableRow } } : undefined}
           >
             {columns.map((col) => {
               switch (col.kind) {
@@ -143,7 +206,7 @@ const LineItemsTable = ({
                               : []
                           }
                         >
-                          <TextArea rows={1} autoSize disabled={disabled} />
+                          <TextArea rows={col.rows ?? 1} autoSize disabled={disabled} />
                         </Form.Item>
                       )}
                     />
@@ -238,6 +301,7 @@ const LineItemsTable = ({
                       key={col.key}
                       width={col.width}
                       align={col.align}
+                      onCell={col.onCell}
                       render={col.render}
                     />
                   );
@@ -262,20 +326,41 @@ const LineItemsTable = ({
               />
             )}
           </Table>
+        );
 
-          {!disabled && (
-            <Button
-              type="default"
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => add(defaultNewRow)}
-              style={{ marginTop: 12 }}
-            >
-              {addLabel ?? <Trans>Add line item</Trans>}
-            </Button>
-          )}
-        </>
-      )}
+        return (
+          <>
+            {reorderable ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={fields.map((_, index) => index.toString())}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {table}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              table
+            )}
+
+            {!disabled && (
+              <Button
+                type="default"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => add(defaultNewRow)}
+                style={{ marginTop: 12 }}
+              >
+                {addLabel ?? <Trans>Add line item</Trans>}
+              </Button>
+            )}
+          </>
+        );
+      }}
     </Form.List>
   );
 };
