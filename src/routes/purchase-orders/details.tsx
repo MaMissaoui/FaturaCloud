@@ -250,8 +250,7 @@ const PurchaseOrderDetails = () => {
     : undefined;
 
   const currentStatus =
-    statusOverride ??
-    (!isNew && order && !(order as any).then ? (order as any).status : "draft");
+    statusOverride ?? (!isNew && order && !(order as any).then ? (order as any).status : "draft");
   const transitions = isNew ? [] : purchaseOrderTransitions(currentStatus);
 
   if (!organization) return null;
@@ -260,7 +259,7 @@ const PurchaseOrderDetails = () => {
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
-        <Col span={8}>
+        <Col xs={24} md={12} xl={8}>
           <Form.Item
             label={<Trans>Vendor</Trans>}
             name="vendorId"
@@ -301,7 +300,7 @@ const PurchaseOrderDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Order number</Trans>}
             name="orderNumber"
@@ -310,7 +309,7 @@ const PurchaseOrderDetails = () => {
             <Input />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Order date</Trans>}
             name="orderDate"
@@ -319,12 +318,12 @@ const PurchaseOrderDetails = () => {
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Expected date</Trans>} name="expectedDate">
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Status</Trans>}>
             <Tag color={purchaseOrderStatusColor[currentStatus as PurchaseOrderStatus]}>
               {purchaseOrderStatusLabel(currentStatus)}
@@ -334,12 +333,12 @@ const PurchaseOrderDetails = () => {
       </Row>
 
       <Row gutter={24}>
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item label={<Trans>Delivery address</Trans>} name="deliveryAddress">
             <TextArea rows={2} placeholder={t`Leave blank to use organization address`} />
           </Form.Item>
         </Col>
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item label={<Trans>Notes</Trans>} name="notes">
             <TextArea rows={2} />
           </Form.Item>
