@@ -10,6 +10,7 @@ import filter from "lodash/filter";
 import { productsAtom } from "src/atoms/product";
 import { createStockMovementAtom } from "src/atoms/stock";
 import Section from "src/components/form-section";
+import ScrollShadow from "src/components/scroll-shadow";
 
 const MovementForm = () => {
   const location = useLocation();
@@ -82,68 +83,70 @@ const MovementForm = () => {
         </Space>
       }
     >
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
-        <Section><Trans>Movement</Trans></Section>
-        <Form.Item name="productId" label={<Trans>Product</Trans>} rules={[{ required: true, message: t`Select a product` }]}>
-          <Select showSearch optionFilterProp="children" placeholder={t`Select product`}>
-            {trackedProducts.map((p: any) => (
-              <Select.Option key={p.id} value={p.id}>
-                {p.name}{p.sku ? ` (${p.sku})` : ""}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
+      <ScrollShadow>
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+          <Section><Trans>Movement</Trans></Section>
+          <Form.Item name="productId" label={<Trans>Product</Trans>} rules={[{ required: true, message: t`Select a product` }]}>
+            <Select showSearch optionFilterProp="children" placeholder={t`Select product`}>
+              {trackedProducts.map((p: any) => (
+                <Select.Option key={p.id} value={p.id}>
+                  {p.name}{p.sku ? ` (${p.sku})` : ""}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-        <Form.Item name="type" label={<Trans>Type</Trans>} rules={[{ required: true }]}>
-          <Select>
-            <Select.Option value="in"><Trans>Stock in — receive goods</Trans></Select.Option>
-            <Select.Option value="out"><Trans>Stock out — consume / sell</Trans></Select.Option>
-            <Select.Option value="adjustment"><Trans>Adjustment — set count to</Trans></Select.Option>
-            <Select.Option value="count_addition"><Trans>Stock count — surplus found (add)</Trans></Select.Option>
-            <Select.Option value="count_subtraction"><Trans>Stock count — shortage found (subtract)</Trans></Select.Option>
-          </Select>
-        </Form.Item>
+          <Form.Item name="type" label={<Trans>Type</Trans>} rules={[{ required: true }]}>
+            <Select>
+              <Select.Option value="in"><Trans>Stock in — receive goods</Trans></Select.Option>
+              <Select.Option value="out"><Trans>Stock out — consume / sell</Trans></Select.Option>
+              <Select.Option value="adjustment"><Trans>Adjustment — set count to</Trans></Select.Option>
+              <Select.Option value="count_addition"><Trans>Stock count — surplus found (add)</Trans></Select.Option>
+              <Select.Option value="count_subtraction"><Trans>Stock count — shortage found (subtract)</Trans></Select.Option>
+            </Select>
+          </Form.Item>
 
-        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
-          {({ getFieldValue }) => {
-            const type = getFieldValue("type");
-            const label =
-              type === "adjustment"
-                ? t`New stock count`
-                : type === "out"
-                  ? t`Quantity consumed / sold`
-                  : type === "count_addition"
-                    ? t`Surplus quantity found`
-                    : type === "count_subtraction"
-                      ? t`Shortage quantity found`
-                      : t`Quantity received`;
-            return (
-              <Form.Item name="quantity" label={label} rules={[{ required: true, message: t`Quantity is required` }]}>
-                <InputNumber min={0} precision={2} step={1} style={{ width: "100%" }} placeholder="0" />
-              </Form.Item>
-            );
-          }}
-        </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
+            {({ getFieldValue }) => {
+              const type = getFieldValue("type");
+              const label =
+                type === "adjustment"
+                  ? t`New stock count`
+                  : type === "out"
+                    ? t`Quantity consumed / sold`
+                    : type === "count_addition"
+                      ? t`Surplus quantity found`
+                      : type === "count_subtraction"
+                        ? t`Shortage quantity found`
+                        : t`Quantity received`;
+              return (
+                <Form.Item name="quantity" label={label} rules={[{ required: true, message: t`Quantity is required` }]}>
+                  <InputNumber min={0} precision={2} step={1} style={{ width: "100%" }} placeholder="0" />
+                </Form.Item>
+              );
+            }}
+          </Form.Item>
 
-        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
-          {({ getFieldValue }) =>
-            getFieldValue("type") === "in" ? (
-              <Form.Item name="unitCost" label={<Trans>Purchase price per unit</Trans>}>
-                <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
-              </Form.Item>
-            ) : null
-          }
-        </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
+            {({ getFieldValue }) =>
+              getFieldValue("type") === "in" ? (
+                <Form.Item name="unitCost" label={<Trans>Purchase price per unit</Trans>}>
+                  <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
+                </Form.Item>
+              ) : null
+            }
+          </Form.Item>
 
-        <Section><Trans>Details</Trans></Section>
-        <Form.Item name="reference" label={<Trans>Reference</Trans>}>
-          <Input placeholder={t`PO number, invoice ID, …`} />
-        </Form.Item>
+          <Section><Trans>Details</Trans></Section>
+          <Form.Item name="reference" label={<Trans>Reference</Trans>}>
+            <Input placeholder={t`PO number, invoice ID, …`} />
+          </Form.Item>
 
-        <Form.Item name="note" label={<Trans>Note</Trans>}>
-          <Input.TextArea rows={2} placeholder={t`Optional note`} />
-        </Form.Item>
-      </Form>
+          <Form.Item name="note" label={<Trans>Note</Trans>}>
+            <Input.TextArea rows={2} placeholder={t`Optional note`} />
+          </Form.Item>
+        </Form>
+      </ScrollShadow>
     </Drawer>
   );
 };
