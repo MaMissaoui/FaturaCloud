@@ -43,6 +43,7 @@ import sum from "lodash/sum";
 import { SaveFile, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
+import { requiredForNewLineItem } from "src/utils/line-items";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { organizationAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
@@ -321,12 +322,15 @@ const OrderDetails = () => {
                 key="productId"
                 width={180}
                 render={(field) => (
-                  <Form.Item name={[field.name, "productId"]} noStyle>
+                  <Form.Item
+                    name={[field.name, "productId"]}
+                    rules={[requiredForNewLineItem(form, field.name, t`This field is required!`)]}
+                    noStyle
+                  >
                     <Select
-                      allowClear
                       showSearch
                       style={{ width: "100%" }}
-                      placeholder={t`Optional`}
+                      placeholder={t`Select product`}
                       optionFilterProp="children"
                       onChange={(productId) => {
                         const product = find(products, { id: productId });

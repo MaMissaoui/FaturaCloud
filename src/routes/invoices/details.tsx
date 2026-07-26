@@ -100,6 +100,7 @@ import InvoicePDF from "src/components/invoices/pdf";
 import { currencies } from "src/utils/currencies";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
 import { generateInvoiceNumber } from "src/utils/invoice";
+import { requiredForNewLineItem } from "src/utils/line-items";
 import {
   multiplyDecimal,
   divideDecimal,
@@ -775,8 +776,9 @@ const InvoiceDetails: React.FC = () => {
                             }}
                           >
                             <Table.Column
-                              title={t`Description`}
-                              key="description"
+                              title={t`Product`}
+                              key="productId"
+                              width={180}
                               onCell={() => {
                                 return {
                                   style: {
@@ -787,56 +789,66 @@ const InvoiceDetails: React.FC = () => {
                               render={(field, record) => (
                                 <DragHandleCell rowKey={record.index.toString()}>
                                   <Form.Item
-                                    name={[field.name, "description"]}
+                                    name={[field.name, "productId"]}
                                     rules={[
-                                      { required: true, message: t`This field is required!` },
+                                      requiredForNewLineItem(
+                                        form,
+                                        field.name,
+                                        t`This field is required!`,
+                                      ),
                                     ]}
                                     noStyle
                                   >
-                                    <TextArea rows={4} autoSize />
+                                    <Select
+                                      showSearch
+                                      style={{ width: "100%" }}
+                                      placeholder={t`Select product`}
+                                      optionFilterProp="children"
+                                      onChange={(productId) => {
+                                        const product = find(products, { id: productId });
+                                        if (product) {
+                                          const lineItems = form.getFieldValue("lineItems");
+                                          const quantity =
+                                            get(lineItems[field.name], "quantity") || 1;
+                                          const unitPrice = centsToUnits(
+                                            (product as any).price ?? 0,
+                                          );
+                                          lineItems[field.name] = {
+                                            ...lineItems[field.name],
+                                            description: (product as any).name,
+                                            unitPrice,
+                                            total: multiplyDecimal(quantity, unitPrice),
+                                            ...((product as any).taxRateId
+                                              ? { taxRate: (product as any).taxRateId }
+                                              : {}),
+                                          };
+                                          form.setFieldValue("lineItems", [...lineItems]);
+                                        }
+                                      }}
+                                    >
+                                      {map(products, (p: any) => (
+                                        <Option key={p.id} value={p.id}>
+                                          {p.name}
+                                          {p.sku ? ` (${p.sku})` : ""}
+                                        </Option>
+                                      ))}
+                                    </Select>
                                   </Form.Item>
                                 </DragHandleCell>
                               )}
                             />
                             <Table.Column
-                              title={t`Product`}
-                              key="productId"
-                              width={180}
+                              title={t`Description`}
+                              key="description"
                               render={(field) => (
-                                <Form.Item name={[field.name, "productId"]} noStyle>
-                                  <Select
-                                    allowClear
-                                    showSearch
-                                    style={{ width: "100%" }}
-                                    placeholder={t`Optional`}
-                                    optionFilterProp="children"
-                                    onChange={(productId) => {
-                                      const product = find(products, { id: productId });
-                                      if (product) {
-                                        const lineItems = form.getFieldValue("lineItems");
-                                        const quantity =
-                                          get(lineItems[field.name], "quantity") || 1;
-                                        const unitPrice = centsToUnits((product as any).price ?? 0);
-                                        lineItems[field.name] = {
-                                          ...lineItems[field.name],
-                                          description: (product as any).name,
-                                          unitPrice,
-                                          total: multiplyDecimal(quantity, unitPrice),
-                                          ...((product as any).taxRateId
-                                            ? { taxRate: (product as any).taxRateId }
-                                            : {}),
-                                        };
-                                        form.setFieldValue("lineItems", [...lineItems]);
-                                      }
-                                    }}
-                                  >
-                                    {map(products, (p: any) => (
-                                      <Option key={p.id} value={p.id}>
-                                        {p.name}
-                                        {p.sku ? ` (${p.sku})` : ""}
-                                      </Option>
-                                    ))}
-                                  </Select>
+                                <Form.Item
+                                  name={[field.name, "description"]}
+                                  rules={[
+                                    { required: true, message: t`This field is required!` },
+                                  ]}
+                                  noStyle
+                                >
+                                  <TextArea rows={4} autoSize />
                                 </Form.Item>
                               )}
                             />
