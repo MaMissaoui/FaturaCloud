@@ -10,19 +10,10 @@ import {
   Select,
   Space,
   Typography,
-  Upload,
-  message,
   theme,
 } from "antd";
 import { atom, useAtom, useSetAtom } from "jotai";
-import {
-  CaretDownOutlined,
-  CaretRightOutlined,
-  DeleteOutlined,
-  FileTextOutlined,
-  SaveOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import { CaretDownOutlined, CaretRightOutlined, FileTextOutlined, SaveOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -30,8 +21,7 @@ import { useLingui } from "@lingui/react";
 import map from "lodash/map";
 import isEmpty from "lodash/isEmpty";
 
-import { organizationAtom, reloadOrganizationAtom, setOrganizationsAtom } from "src/atoms/organization";
-import { UploadOrganizationLogo, DeleteOrganizationLogo } from "src/api";
+import { organizationAtom, setOrganizationsAtom } from "src/atoms/organization";
 import { currencies, getCurrencySymbol } from "src/utils/currencies";
 import { validateInvoiceFormat, generateInvoiceNumber } from "src/utils/invoice";
 
@@ -48,10 +38,8 @@ function SettingsInvoice() {
 
   const setOrganizations = useSetAtom(setOrganizationsAtom);
   const [organization, setOrganization] = useAtom(organizationAtom);
-  const reloadOrganization = useSetAtom(reloadOrganizationAtom);
   const [submitting, setSubmitting] = useAtom(submittingAtom);
   const [showVariables, setShowVariables] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const invoiceFormat = Form.useWatch("invoiceNumberFormat", form);
   const getPreview = (format: string | undefined) => {
@@ -67,38 +55,6 @@ function SettingsInvoice() {
     await setOrganization(values);
     await setOrganizations();
     setSubmitting(false);
-  };
-
-  const onLogoUpload = async (data: any) => {
-    const file = data.file;
-    const validTypes = ["image/png", "image/jpeg", "image/jpg"];
-    if (!validTypes.includes(file.type)) {
-      message.error(t`Please upload a PNG or JPEG image`);
-      return;
-    }
-    if (!organization?.id) return;
-    setUploadingLogo(true);
-    try {
-      await UploadOrganizationLogo(organization.id, file);
-      reloadOrganization();
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Logo upload failed`);
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
-
-  const onLogoRemove = async () => {
-    if (!organization?.id) return;
-    setUploadingLogo(true);
-    try {
-      await DeleteOrganizationLogo(organization.id);
-      reloadOrganization();
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Logo removal failed`);
-    } finally {
-      setUploadingLogo(false);
-    }
   };
 
   if (isEmpty(organization)) return null;
@@ -242,45 +198,6 @@ function SettingsInvoice() {
               </Form.Item>
             </Col>
           </Row>
-        </Card>
-
-        <Card title={<Trans>Logo</Trans>} style={{ marginBottom: 24 }}>
-          <Space direction="vertical" size={12}>
-            {organization.logo && (
-              <img
-                src={organization.logo}
-                alt="logo"
-                style={{
-                  maxWidth: 240,
-                  maxHeight: 80,
-                  objectFit: "contain",
-                  border: `1px solid ${token.colorBorderSecondary}`,
-                  borderRadius: 6,
-                  padding: 8,
-                  display: "block",
-                }}
-              />
-            )}
-            <Space>
-              <Upload
-                accept="image/png,image/jpeg,image/jpg"
-                showUploadList={false}
-                customRequest={(data) => onLogoUpload(data)}
-              >
-                <Button icon={<UploadOutlined />} loading={uploadingLogo}>
-                  {organization.logo ? t`Change logo` : t`Upload logo`}
-                </Button>
-              </Upload>
-              {organization.logo && (
-                <Button danger icon={<DeleteOutlined />} loading={uploadingLogo} onClick={onLogoRemove}>
-                  <Trans>Remove logo</Trans>
-                </Button>
-              )}
-            </Space>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              <Trans>PNG or JPEG, shown on invoices and delivery notes.</Trans>
-            </Text>
-          </Space>
         </Card>
 
         {/* 3-way matching policy for incoming (vendor) invoices. Zero means any
