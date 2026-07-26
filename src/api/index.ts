@@ -309,6 +309,12 @@ export const DeleteTaxRate = (id: string) =>
 export const GetTaxRateUsageCount = (id: string) =>
   get<{ count: number }>(`/tax-rates/${id}/usage-count`).then((r) => r.count);
 
+// ---- Countries ----
+
+export const GetActiveCountries = () => get<string[]>("/countries/active");
+export const SetCountryActive = (code: string, active: boolean) =>
+  patch<{ code: string; active: boolean }>(`/countries/${code}`, { active });
+
 // ---- Products ----
 
 export const GetProducts = (organizationId: string) =>

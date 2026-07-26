@@ -22,6 +22,7 @@ import { GetClientInvoiceCount } from "src/api";
 
 import { clientIdAtom, clientAtom, clientsAtom, deleteClientAtom } from "src/atoms/client";
 import { generateClientCode } from "src/utils/client";
+import { useCountryOptions } from "src/hooks/useCountryOptions";
 import ScrollShadow from "src/components/scroll-shadow";
 
 // Fields inside the collapsed "E-invoicing" panel — used to auto-expand it if
@@ -55,6 +56,8 @@ const ClientForm = () => {
     }
     return { ...c, emails };
   }, [clients, clientId]);
+
+  const countryOptions = useCountryOptions(client?.country_code);
 
   const handleClose = () => {
     setClientId(null);
@@ -213,16 +216,14 @@ const ClientForm = () => {
           <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
-                <Form.Item
-                  name="country_code"
-                  label={<Trans>Country code</Trans>}
-                  rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
-                >
-                  <Input
-                    maxLength={2}
-                    placeholder={t`e.g. DE`}
-                    onChange={(e) =>
-                      form.setFieldValue("country_code", e.target.value.toUpperCase())
+                <Form.Item name="country_code" label={<Trans>Country</Trans>}>
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder={t`Select a country`}
+                    options={countryOptions}
+                    filterOption={(input, option) =>
+                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
                     }
                   />
                 </Form.Item>

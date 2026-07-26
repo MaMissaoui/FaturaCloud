@@ -48,6 +48,7 @@ import { organizationIdAtom, reloadOrganizationAtom, setOrganizationsAtom } from
 import { isAdminAtom } from "src/atoms/auth";
 import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
 import { countries } from "src/utils/countries";
+import { useCountryOptions } from "src/hooks/useCountryOptions";
 
 const { Title } = Typography;
 
@@ -73,6 +74,9 @@ export default function Organizations() {
   const [organizationId, setOrganizationId] = useAtom(organizationIdAtom);
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
   const reloadActiveOrganization = useSetAtom(reloadOrganizationAtom);
+
+  const watchedCountryCode = Form.useWatch("country_code", form);
+  const countryOptions = useCountryOptions(watchedCountryCode);
 
   const fetchOrgs = async () => {
     setLoading(true);
@@ -497,16 +501,14 @@ export default function Organizations() {
           <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
-                <Form.Item
-                  name="country_code"
-                  label={<Trans>Country code</Trans>}
-                  rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
-                >
-                  <Input
-                    maxLength={2}
-                    placeholder={t`e.g. DE`}
-                    onChange={(e) =>
-                      form.setFieldValue("country_code", e.target.value.toUpperCase())
+                <Form.Item name="country_code" label={<Trans>Country</Trans>}>
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder={t`Select a country`}
+                    options={countryOptions}
+                    filterOption={(input, option) =>
+                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
                     }
                   />
                 </Form.Item>

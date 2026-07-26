@@ -28,6 +28,7 @@ import {
   ApartmentOutlined,
   SunOutlined,
   MoonOutlined,
+  GlobalOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -387,29 +388,21 @@ export default function BaseLayout() {
                         ),
                         key: "settings.users",
                       },
+                      {
+                        icon: <GlobalOutlined />,
+                        label: (
+                          <Link to="/settings/countries">
+                            <Trans>Countries</Trans>
+                          </Link>
+                        ),
+                        key: "settings.countries",
+                      },
                     ]
                   : []),
               ],
             },
           ]}
         />
-        <div style={{ position: "absolute", bottom: 0, width: "100%", padding: "16px" }}>
-          <Button
-            type="text"
-            icon={<CommentOutlined />}
-            onClick={(e) => {
-              // Blur the button to remove focus after click
-              e.currentTarget.blur();
-              setFeedbackModalOpen(true);
-            }}
-            style={{
-              width: "100%",
-              textAlign: "left",
-            }}
-          >
-            {!siderIsCollapsed && <Trans>Feedback</Trans>}
-          </Button>
-        </div>
       </Sider>
       <Layout
         style={{
@@ -488,6 +481,16 @@ export default function BaseLayout() {
             </Col>
             <Col>
               <Space>
+                <Button
+                  type="text"
+                  icon={<CommentOutlined />}
+                  onClick={(e) => {
+                    // Blur the button to remove focus after click
+                    e.currentTarget.blur();
+                    setFeedbackModalOpen(true);
+                  }}
+                  title={t`Send feedback`}
+                />
                 <Button
                   type="text"
                   icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
