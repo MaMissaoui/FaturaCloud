@@ -1,0 +1,61 @@
+// Scoped to this table only (via `className` on antd's <Table>) so it never
+// leaks onto ordinary form inputs elsewhere on the same page.
+.wrapper {
+  :global {
+    // Cell inputs read as a plain table rather than a grid of boxes: borders
+    // and background stay hidden until the cell is actually being used
+    // (hovered or focused). Error/warning status always keeps its border —
+    // that's the one signal that must never disappear. Everything else
+    // (colors, dark mode) comes straight from antd's own :hover/focus
+    // styling, which is already theme-aware — nothing here hardcodes a color.
+    .ant-input:not(:hover):not(:focus):not(.ant-input-status-error):not(.ant-input-status-warning),
+    .ant-input-number:not(:hover):not(.ant-input-number-focused):not(
+        .ant-input-number-status-error
+      ):not(.ant-input-number-status-warning),
+    .ant-select:not(:hover):not(.ant-select-focused):not(.ant-select-status-error):not(
+        .ant-select-status-warning
+      ) {
+      border-color: transparent;
+      background-color: transparent;
+    }
+  }
+}
+
+// Row number at rest, drag handle on row hover — reuses antd's own
+// `.ant-table-cell-row-hover` cell class (already toggled by Table on
+// mouseenter/mouseleave) instead of introducing a second hover mechanism.
+.indexCell {
+  display: grid;
+  justify-items: end;
+}
+
+.indexNumber,
+.indexHandle {
+  grid-area: 1 / 1;
+}
+
+.indexHandle {
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.1s ease;
+
+  // Keyboard users tab onto this span directly (useSortable's `attributes`
+  // put tabIndex/role on it) without ever triggering antd's mouseenter-driven
+  // row-hover class below — without this it would be a focusable but
+  // invisible drag activator.
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+:global(.ant-table-cell-row-hover) .indexNumber {
+  opacity: 0;
+}
+
+:global(.ant-table-cell-row-hover) .indexHandle {
+  opacity: 1;
+}
+
+.indexCell:has(.indexHandle:focus-visible) .indexNumber {
+  opacity: 0;
+}
