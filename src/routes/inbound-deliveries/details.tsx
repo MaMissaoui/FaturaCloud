@@ -8,13 +8,11 @@ import {
   Divider,
   Form,
   Input,
-  InputNumber,
   Layout,
   Popconfirm,
   Row,
   Select,
   Space,
-  Table,
   Tag,
   theme,
 } from "antd";
@@ -22,7 +20,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { DeleteOutlined, PlusOutlined, SaveOutlined, UserAddOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SaveOutlined, UserAddOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import get from "lodash/get";
@@ -34,7 +32,7 @@ import map from "lodash/map";
 import { GetPurchaseOrderLineItems, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
-import { requiredForNewLineItem } from "src/utils/line-items";
+import LineItemsTable from "src/components/line-items/table";
 import {
   inboundDeliveryStatusColor,
   inboundDeliveryStatusLabel,
@@ -305,163 +303,51 @@ const InboundDeliveryDetails = () => {
         </Col>
       </Row>
 
-      <Form.List name="lineItems">
-        {(fields, { add, remove }) => (
-          <>
-            <Table
-              dataSource={fields.map((field, index) => ({ ...field, index }))}
-              pagination={false}
-              size="middle"
-              locale={{ emptyText: t`No line items` }}
-              rowKey={(r) => r.index.toString()}
-              style={{ marginTop: 8 }}
-            >
-              <Table.Column
-                title={<Trans>Product</Trans>}
-                key="productId"
-                width={180}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "productId"]}
-                    rules={[requiredForNewLineItem(form, field.name, t`This field is required!`)]}
-                    noStyle
-                  >
-                    <Select
-                      showSearch
-                      disabled={!isEditable}
-                      style={{ width: "100%" }}
-                      placeholder={t`Select product`}
-                      optionFilterProp="children"
-                      onChange={(productId) => {
-                        const product = find(products, { id: productId });
-                        if (product) {
-                          const items = form.getFieldValue("lineItems");
-                          items[field.name] = {
-                            ...items[field.name],
-                            description: (product as any).name,
-                            unit: (product as any).unit,
-                            unitCost: centsToUnits((product as any).unitCost ?? 0),
-                          };
-                          form.setFieldValue("lineItems", [...items]);
-                        }
-                      }}
-                    >
-                      {map(products, (p: any) => (
-                        <Option key={p.id} value={p.id}>
-                          {p.name}
-                          {p.sku ? ` (${p.sku})` : ""}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Description</Trans>}
-                key="description"
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "description"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Description required` }]}
-                  >
-                    <TextArea rows={1} autoSize disabled={!isEditable} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Qty received</Trans>}
-                key="quantity"
-                width={110}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "quantity"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Required` }]}
-                  >
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      min={0}
-                      precision={2}
-                      disabled={!isEditable}
-                    />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Unit</Trans>}
-                key="unit"
-                width={80}
-                render={(field) => (
-                  <Form.Item name={[field.name, "unit"]} noStyle>
-                    <Input disabled={!isEditable} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Unit cost</Trans>}
-                key="unitCost"
-                width={110}
-                render={(field) => (
-                  <Form.Item name={[field.name, "unitCost"]} noStyle>
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      min={0}
-                      precision={2}
-                      step={0.01}
-                      disabled={!isEditable}
-                    />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>In stock</Trans>}
-                key="currentStock"
-                width={90}
-                render={(field) => (
-                  <Form.Item shouldUpdate noStyle>
-                    {() => {
-                      const productId = form.getFieldValue(["lineItems", field.name, "productId"]);
-                      if (!productId) return null;
-                      const product: any = find(products, { id: productId });
-                      if (!product || !product.stockEnabled) return null;
-                      return <Tag>{product.stockQuantity}</Tag>;
-                    }}
-                  </Form.Item>
-                )}
-              />
-              {isEditable && (
-                <Table.Column
-                  key="remove"
-                  width={40}
-                  render={(field) => (
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={() => remove(field.name)}
-                      aria-label={t`Remove line item`}
-                    />
-                  )}
-                />
-              )}
-            </Table>
-
-            {isEditable && (
-              <Button
-                type="default"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={() => add({ quantity: 1 })}
-                style={{ marginTop: 12 }}
-              >
-                <Trans>Add line item</Trans>
-              </Button>
-            )}
-          </>
-        )}
-      </Form.List>
+      <LineItemsTable
+        disabled={!isEditable}
+        columns={[
+          { kind: "index" },
+          {
+            kind: "product",
+            products,
+            required: true,
+            onSelect: (productId, fieldName, formInstance) => {
+              const product = find(products, { id: productId });
+              if (product) {
+                const items = formInstance.getFieldValue("lineItems");
+                items[fieldName] = {
+                  ...items[fieldName],
+                  description: (product as any).name,
+                  unit: (product as any).unit,
+                  unitCost: centsToUnits((product as any).unitCost ?? 0),
+                };
+                formInstance.setFieldValue("lineItems", [...items]);
+              }
+            },
+          },
+          { kind: "description", required: true },
+          { kind: "quantity", label: <Trans>Qty received</Trans>, width: 110 },
+          { kind: "unit", width: 80 },
+          { kind: "unitPrice", name: "unitCost", label: <Trans>Unit cost</Trans> },
+          {
+            kind: "custom",
+            key: "currentStock",
+            title: <Trans>In stock</Trans>,
+            width: 90,
+            render: (field) => (
+              <Form.Item shouldUpdate noStyle>
+                {() => {
+                  const productId = form.getFieldValue(["lineItems", field.name, "productId"]);
+                  if (!productId) return null;
+                  const product: any = find(products, { id: productId });
+                  if (!product || !product.stockEnabled) return null;
+                  return <Tag>{product.stockQuantity}</Tag>;
+                }}
+              </Form.Item>
+            ),
+          },
+        ]}
+      />
 
       {document.getElementById("footer") &&
         createPortal(

@@ -4,17 +4,21 @@
 
 **Tier 0 and Tier 1 are done, verified in-browser, and committed.** **Tier 2
 (line-item tables) is in progress** — the shared shell exists and
-`orders/details.tsx`, `deliveries/details.tsx`, and
-`purchase-orders/details.tsx` (migrations 1-3 of 6) are done; the other three
-documents still use their own hand-rolled table. **Tier 3 (detail-page
+`orders/details.tsx`, `deliveries/details.tsx`, `purchase-orders/details.tsx`,
+and `inbound-deliveries/details.tsx` (migrations 1-4 of 6) are done; the other
+two documents still use their own hand-rolled table. **Tier 3 (detail-page
 shells) is not started.**
 
 Tier 2 progress:
 - `src/components/line-items/table.tsx` — the config-driven shell from 2.1.
   Column kinds so far: `index`, `product`, `description`, `quantity`, `unit`,
-  `unitPrice`, `custom`. `taxRate` and `lineTotal` kinds will be added when the
-  documents that need them (invoices/incoming-invoices) are migrated, rather
-  than speculatively built now.
+  `unitPrice`, `custom`. The `quantity` kind gained an optional `label` and
+  `unitPrice` an optional `name` (the form field to bind, default
+  `"unitPrice"`) during the inbound-deliveries migration, since that document
+  uses `unitCost` and "Qty received" instead of the defaults — both additive,
+  no existing usage changed. `taxRate` and `lineTotal` kinds will be added
+  when the documents that need them (invoices/incoming-invoices) are
+  migrated, rather than speculatively built now.
 - `orders/details.tsx` migrated: `#` column added, Qty/Unit price
   right-aligned, `Delivered` custom column preserved via `kind: "custom"`.
   Verified live: existing order loads/edits/saves correctly, product
@@ -64,6 +68,14 @@ Tier 2 progress:
   references silently. Confirmed pre-existing (identical on `main`), unrelated
   to this migration, out of scope here — flagging because the blast radius is
   larger than the orders case.
+- `inbound-deliveries/details.tsx` migrated: `#` column added; `unit` and
+  `unitPrice` reuse the shared kinds (`unitPrice` via its new `name: "unitCost"`
+  override, `quantity` via its new `label: "Qty received"` override);
+  `currentStock` stays `kind: "custom"`. The existing `isEditable` (draft-only)
+  gating carried through as the shell's `disabled` prop unchanged — this file
+  already had it correctly wired on every input plus remove/Add, same as
+  deliveries. Verified live: product selection still auto-fills
+  description/unit/unitCost/currentStock on a draft receipt.
 
 What actually shipped, with deviations from the original plan noted inline:
 - Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.

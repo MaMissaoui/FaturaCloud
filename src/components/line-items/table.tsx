@@ -26,9 +26,9 @@ export type LineItemColumn =
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
     }
   | { kind: "description"; required?: boolean }
-  | { kind: "quantity"; width?: number }
+  | { kind: "quantity"; label?: ReactNode; width?: number }
   | { kind: "unit"; placeholder?: string; width?: number }
-  | { kind: "unitPrice"; label?: ReactNode; width?: number }
+  | { kind: "unitPrice"; name?: string; label?: ReactNode; width?: number }
   | {
       kind: "custom";
       key: string;
@@ -150,7 +150,7 @@ const LineItemsTable = ({
                 case "quantity":
                   return (
                     <Table.Column<LineItemField>
-                      title={<Trans>Qty</Trans>}
+                      title={col.label ?? <Trans>Qty</Trans>}
                       key="quantity"
                       width={col.width ?? 90}
                       align="right"
@@ -194,7 +194,7 @@ const LineItemsTable = ({
                       width={col.width ?? 110}
                       align="right"
                       render={(field) => (
-                        <Form.Item name={[field.name, "unitPrice"]} noStyle>
+                        <Form.Item name={[field.name, col.name ?? "unitPrice"]} noStyle>
                           <InputNumber
                             style={{ width: "100%", textAlign: "right" }}
                             min={0}
