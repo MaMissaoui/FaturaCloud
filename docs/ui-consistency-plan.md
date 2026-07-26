@@ -4,9 +4,10 @@
 
 **Tier 0 and Tier 1 are done, verified in-browser, and committed.** **Tier 2
 (line-item tables) is in progress** — the shared shell exists and
-`orders/details.tsx` and `deliveries/details.tsx` (migrations 1-2 of 6) are
-done; the other four documents still use their own hand-rolled table. **Tier 3
-(detail-page shells) is not started.**
+`orders/details.tsx`, `deliveries/details.tsx`, and
+`purchase-orders/details.tsx` (migrations 1-3 of 6) are done; the other three
+documents still use their own hand-rolled table. **Tier 3 (detail-page
+shells) is not started.**
 
 Tier 2 progress:
 - `src/components/line-items/table.tsx` — the config-driven shell from 2.1.
@@ -40,10 +41,29 @@ Tier 2 progress:
   so `GetOrderDeliveredQuantities` (keyed by the old `orderLineItemId`) no
   longer matches. Pre-existing backend behavior, unrelated to this migration
   (confirmed identical on `main` before this change) — out of scope here.
-- `purchase-orders/details.tsx` is still flagged (per Tier 2.1) as missing
-  `disabled` gating on its line items despite having terminal
-  `received`/`cancelled` statuses — worth checking for real when that
-  document is migrated next.
+- `purchase-orders/details.tsx` migrated: `#` column added, `unit` now uses
+  the shared kind (added in the deliveries migration), `Received` custom
+  column preserved. **No `disabled`/`isEditable` gating was added**, unlike
+  the plan's Tier 2.1 suspicion — checked for real this time: unlike outbound
+  deliveries, `db.UpdatePurchaseOrder` has **no server-side status check at
+  all**; a `PUT` with `lineItems` is applied regardless of status, so there is
+  no existing rule for a client-side `disabled` to mirror. Adding one now
+  would be inventing new restrictive behavior the backend doesn't enforce,
+  not extracting an existing one — out of scope for a "make six tables use
+  one shell" refactor, so left exactly as unrestricted as it was on `main`.
+- **Aside, not fixed — more serious than the orders `Delivered` bug**: like
+  `db.UpdateOrder`, `replacePurchaseOrderLineItemsTx` deletes and reinserts
+  every line item (fresh ids) on any `PUT` that includes `lineItems`, which
+  the frontend always sends on save. For purchase orders this is worse than
+  orders' cosmetic "Delivered resets to 0": `inbound_delivery_line_items.
+  purchaseOrderLineItemId` and `incoming_invoice_line_items.
+  purchaseOrderLineItemId` — and the 3-way match in
+  `db/incoming_invoice_match.go`, which looks up `purchase_order_line_items`
+  by that id — all key off the old id. Editing and saving a purchase order
+  that already has linked goods receipts or incoming invoices orphans those
+  references silently. Confirmed pre-existing (identical on `main`), unrelated
+  to this migration, out of scope here — flagging because the blast radius is
+  larger than the orders case.
 
 What actually shipped, with deviations from the original plan noted inline:
 - Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.

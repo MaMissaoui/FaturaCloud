@@ -9,13 +9,11 @@ import {
   Divider,
   Form,
   Input,
-  InputNumber,
   Layout,
   Popconfirm,
   Row,
   Select,
   Space,
-  Table,
   Tag,
   theme,
 } from "antd";
@@ -44,7 +42,7 @@ import sum from "lodash/sum";
 import { SaveFile, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
-import { requiredForNewLineItem } from "src/utils/line-items";
+import LineItemsTable from "src/components/line-items/table";
 import {
   purchaseOrderStatusColor,
   purchaseOrderStatusLabel,
@@ -349,110 +347,40 @@ const PurchaseOrderDetails = () => {
       </Row>
 
       {/* Line items */}
-      <Form.List name="lineItems">
-        {(fields, { add, remove }) => (
-          <>
-            <Table
-              dataSource={fields.map((field, index) => ({ ...field, index }))}
-              pagination={false}
-              size="middle"
-              locale={{ emptyText: t`No line items` }}
-              rowKey={(r) => r.index.toString()}
-              style={{ marginTop: 8 }}
-            >
-              <Table.Column
-                title={<Trans>Product</Trans>}
-                key="productId"
-                width={180}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "productId"]}
-                    rules={[requiredForNewLineItem(form, field.name, t`This field is required!`)]}
-                    noStyle
-                  >
-                    <Select
-                      showSearch
-                      style={{ width: "100%" }}
-                      placeholder={t`Select product`}
-                      optionFilterProp="children"
-                      onChange={(productId) => {
-                        const product = find(products, { id: productId });
-                        if (product) {
-                          const items = form.getFieldValue("lineItems");
-                          items[field.name] = {
-                            ...items[field.name],
-                            description: (product as any).name,
-                            unit: (product as any).unit,
-                            // Purchases are priced at cost, not at the sale price.
-                            unitPrice: centsToUnits((product as any).unitCost ?? 0),
-                          };
-                          form.setFieldValue("lineItems", [...items]);
-                        }
-                      }}
-                    >
-                      {map(products, (p: any) => (
-                        <Option key={p.id} value={p.id}>
-                          {p.name}
-                          {p.sku ? ` (${p.sku})` : ""}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Description</Trans>}
-                key="description"
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "description"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Description required` }]}
-                  >
-                    <TextArea rows={1} autoSize />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Qty</Trans>}
-                key="quantity"
-                width={90}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "quantity"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Required` }]}
-                  >
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Unit</Trans>}
-                key="unit"
-                width={90}
-                render={(field) => (
-                  <Form.Item name={[field.name, "unit"]} noStyle>
-                    <Input />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Unit cost</Trans>}
-                key="unitPrice"
-                width={110}
-                render={(field) => (
-                  <Form.Item name={[field.name, "unitPrice"]} noStyle>
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} step={0.01} />
-                  </Form.Item>
-                )}
-              />
-              {!isNew && (
-                <Table.Column
-                  title={<Trans>Received</Trans>}
-                  key="received"
-                  width={100}
-                  render={(field) => (
+      <LineItemsTable
+        columns={[
+          { kind: "index" },
+          {
+            kind: "product",
+            products,
+            required: true,
+            onSelect: (productId, fieldName, formInstance) => {
+              const product = find(products, { id: productId });
+              if (product) {
+                const items = formInstance.getFieldValue("lineItems");
+                items[fieldName] = {
+                  ...items[fieldName],
+                  description: (product as any).name,
+                  unit: (product as any).unit,
+                  // Purchases are priced at cost, not at the sale price.
+                  unitPrice: centsToUnits((product as any).unitCost ?? 0),
+                };
+                formInstance.setFieldValue("lineItems", [...items]);
+              }
+            },
+          },
+          { kind: "description", required: true },
+          { kind: "quantity", width: 90 },
+          { kind: "unit", width: 90 },
+          { kind: "unitPrice", label: <Trans>Unit cost</Trans> },
+          ...(!isNew
+            ? [
+                {
+                  kind: "custom" as const,
+                  key: "received",
+                  title: <Trans>Received</Trans>,
+                  width: 100,
+                  render: (field: { name: number }) => (
                     <Form.Item shouldUpdate noStyle>
                       {() => {
                         const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
@@ -475,37 +403,12 @@ const PurchaseOrderDetails = () => {
                         );
                       }}
                     </Form.Item>
-                  )}
-                />
-              )}
-              <Table.Column
-                key="remove"
-                width={40}
-                render={(field) => (
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => remove(field.name)}
-                    aria-label={t`Remove line item`}
-                  />
-                )}
-              />
-            </Table>
-
-            <Button
-              type="default"
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => add({ quantity: 1 })}
-              style={{ marginTop: 12 }}
-            >
-              <Trans>Add line item</Trans>
-            </Button>
-          </>
-        )}
-      </Form.List>
+                  ),
+                },
+              ]
+            : []),
+        ]}
+      />
 
       {/* Totals */}
       {subTotal > 0 && (
