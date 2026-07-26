@@ -1,5 +1,25 @@
 # FaturaCloud UI Consistency & Density Plan
 
+## Status
+
+**Tier 0 and Tier 1 are done, verified in-browser, and committed** on
+`refactor/ui-consistency-tier0` (PR — see below). **Tier 2 (line-item tables)
+and Tier 3 (detail-page shells) are not started** — they are large enough to
+warrant their own branch/PR per the Workflow section below, and Tier 2 depends
+on the `disabled` contract now confirmed in this doc.
+
+What actually shipped, with deviations from the original plan noted inline:
+- Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.
+- Tier 0.2 (`PageHeader` extraction), 0.4 (`ScrollShadow` consistency) — **not
+  done**, still open.
+- Tier 1.1/1.2 — **only clients, vendors, and products needed conversion.**
+  tax-rates and stock-movement were measured at 1440×900 first and already fit
+  with zero overflow — converting them would have been unrequested churn. See
+  the corrected 1.1 section below.
+- Tier 1.3 — done for `settings/invoice.tsx`. `settings/backup.tsx` measured at
+  zero overflow (it's a backup list, not a dense form) — only its heading level
+  was fixed for consistency, layout left alone.
+
 ## Context
 
 Three UI problems have accumulated as the app grew from invoicing into a full
@@ -122,31 +142,51 @@ Note `<Col xs={24} md={12}>` breakpoints track the **viewport**, not the drawer,
 so `md` matches inside a 640px drawer on a desktop viewport. That is why the
 grid works; don't switch to container queries.
 
-### 1.1 Convert the five master-data drawers
-`clients`, `vendors`, `products`, `tax-rates`, `stock/movement-form`:
+### 1.1 Convert the master-data drawers that actually overflow — DONE
+**Correction to the original plan**: it listed five drawers
+(`clients`, `vendors`, `products`, `tax-rates`, `stock/movement-form`). Before
+converting any of them, each was opened at 1440×900 and measured via
+`el.scrollHeight - el.clientHeight` on `.ant-drawer-body`. Only three actually
+overflowed:
 
+| Form | Fields | Overflow before | Converted? |
+|---|---|---|---|
+| Clients | 15 | ~2.5 screens | ✅ yes |
+| Vendors | 9 | cut off (Address hidden) | ✅ yes |
+| Products | 7 | cut off (tax rate hidden) | ✅ yes |
+| Tax rates | 6 | **0px — already fit** | ❌ skipped |
+| Stock movement | 6 | **0px — already fit** | ❌ skipped |
+
+Applied to the three that needed it:
 - `size={480}` → `size={640}`
 - Wrap each `Section` group in `<Card title={...} style={{ marginBottom: 16 }}>`
+  (this **replaces** `Section`, it doesn't sit alongside it — `Section` is only
+  still imported by tax-rates and stock-movement, the two that were skipped)
 - Put fields in `<Row gutter={[16, 0]}>` / `<Col xs={24} md={12}>`
 - **Full width (`<Col xs={24}>`) for**: Address, Notes, Description, any
   `<Input.TextArea>`, and the `E-mails` tag-mode `<Select>`
 - Half width for everything short: Code, Phone, VAT, postal code, city, country,
   currency, percentages, dates
+- Vendors: after the two-column pass there was still 153px of overflow. Fixed
+  by folding the single-field "Address" card into the "Contact" card (one
+  fewer card boundary) rather than reaching for `Collapse` on a form this
+  small — down to 6px, not worth chasing further.
+- Products: the conditional "Track inventory" switch (only shown when
+  `type === "product"`) originally pushed its own full-width row, costing 54px.
+  Fixed by widening its `Form.Item noStyle shouldUpdate` wrapper into a third
+  `md={8}` column alongside Type/SKU instead of its own row — same logic,
+  tighter layout.
 
-Field counts that make this worthwhile: clients has 15 fields (the worst
-offender — currently ~2.5 screens), organizations ~22, products 9, vendors 9.
-
-### 1.2 Collapse secondary sections
-Where a form still doesn't fit at 1440×900 after the two-column conversion, move
-**secondary** sections into `<Collapse>`, collapsed by default:
+### 1.2 Collapse secondary sections — DONE (clients only)
+Only clients needed this after the Tier 1.1 pass (vendors and products fit with
+the two-column grid alone). Applied:
 
 | Form | Always expanded | Collapsed by default |
 |---|---|---|
 | Clients | Contact, Address | E-invoicing |
-| Vendors | Contact, Address | Terms |
-| Organizations | Details | Logo, Banking, E-invoicing, Formatting |
-| Products | Details | Pricing extras |
-| Tax rates | Details | E-invoicing (category/exemption) |
+
+Organizations already had this pattern pre-existing and untouched (it's the
+reference implementation, not something this plan changed).
 
 **Critical — validation footgun.** A collapsed antd `Collapse` panel does not
 mount its children, so `Form.Item` rules inside it never register and `submit()`
@@ -167,26 +207,39 @@ onFinishFailed={({ errorFields }) => {
 
 Do not ship collapsible sections without both.
 
-### 1.3 Settings pages
-`src/routes/settings/invoice.tsx:107` and `settings/backup.tsx:166` both use
+### 1.3 Settings pages — DONE for invoice, skipped (layout) for backup
+`src/routes/settings/invoice.tsx` and `settings/backup.tsx` both used
 `<div style={{ maxWidth: 720 }}>` + `Title level={4}`, while every other page
-uses `level={3}` and no cap. At 1440px this wastes ~40% of the horizontal space
-— confirmed by screenshot: the settings cards occupy ~535px of ~890px available
-and the page still scrolls to ~1130px tall.
+uses `level={3}` and no cap.
 
-- Change `Title level={4}` → `level={3}` (match the rest of the app)
-- Raise the cap to `maxWidth: 1100`, and lay the cards out in a
-  `<Row gutter={[16, 16]}>` / `<Col xs={24} xxl={12}>` two-column grid so
-  Defaults + Numbering sit side by side and the page fits one screen
+**invoice.tsx** overflowed badly (610px, before any fix) and was converted:
+- `Title level={4}` → `level={3}`, `maxWidth: 720` → `1100`
+- Paired the four cards into two outer rows — (Defaults, Numbering) and (Logo,
+  Vendor invoice matching) — each `<Row gutter={[16,0]}><Col xs={24} xl={12}>`.
+  **Correction to the original plan**: it specified `xxl={12}` to dodge a
+  nested-breakpoint cramping risk (halving only above 1600px). In practice
+  `xl={12}` at 1440px was tested directly and did not cramp, because the
+  Numbering card's nested `<Col md={14}>`/`md={10}` row was flattened to
+  `xs={24}` (stacked) as part of the same change — this removes the
+  nested-breakpoint risk entirely rather than just deferring it to a wider
+  screen, so there's no `xxl`-only edge case left to worry about.
+  Same flattening applied to the Vendor-invoice-matching card's two fields.
+- Even after the two-column split, 181px of overflow remained. Closed with:
+  `Card size="small"` (antd's built-in compact variant, tighter than manually
+  fighting `bodyStyle`) on all four cards, `TextArea rows={3}` → `rows={2}` on
+  Notes, `Title` bottom margin 20→12, Save button margin 40→8, and the closing
+  `<Divider />` before Save tightened to `margin: "8px 0 16px"`. Final overflow:
+  8px — same negligible tolerance as the vendors drawer, no visible scrollbar.
+- Verified interactive behaviour survives: "Available variables" still expands
+  (and correctly pushes the second row down, since Row height follows its
+  tallest column — that's normal grid behaviour, not a bug) and Save still
+  submits without new console errors.
 
-⚠️ **Nested-breakpoint trap.** Breakpoints track the viewport, not the parent
-column, so halving a card does *not* re-evaluate the grid inside it. The
-Numbering card has its own nested `<Col xs={24} md={14}>` / `md={10}`
-(`settings/invoice.tsx:170`, `:190`). Inside a halved ~540px card those still
-resolve to 14/10 → ~315px and ~225px, which is cramped. Use `xxl={12}` for the
-outer split (so halving only happens above 1600px) **and** flatten the nested
-Row to `xs={24}` in any card that gets halved. Screenshot `/settings/invoice` at
-1440×900 specifically to confirm the Numbering card is not cramped.
+**backup.tsx** was measured first: 0px overflow at 1440×900 (it's a backup
+list + action buttons, not a dense form — expected to scroll once the backup
+list grows, which is legitimate, not the cramped-form problem this tier
+targets). Left the layout alone; only changed `Title level={4}` → `level={3}`
+for consistency with the rest of the app.
 
 ---
 
