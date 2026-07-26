@@ -3,6 +3,8 @@ import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import dayjs from "dayjs";
 
+import { formatAddress } from "src/utils/address";
+
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
 
@@ -98,7 +100,9 @@ const DeliveryNotePDF = ({ order, lineItems, client, organization, locale }: Pro
             <View style={styles.partyBlock}>
               <Text style={styles.partyLabel}>From</Text>
               {logoSrc && <Text style={styles.partyName}>{organization?.name ?? ""}</Text>}
-              {organization?.address && <Text style={styles.partyDetail}>{organization.address}</Text>}
+              {organization && formatAddress(organization) && (
+                <Text style={styles.partyDetail}>{formatAddress(organization)}</Text>
+              )}
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
               {organization?.vatin && <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>}
@@ -106,8 +110,10 @@ const DeliveryNotePDF = ({ order, lineItems, client, organization, locale }: Pro
             <View style={[styles.partyBlock, { paddingLeft: 24 }]}>
               <Text style={styles.partyLabel}>Deliver To</Text>
               <Text style={styles.partyName}>{client?.name ?? ""}</Text>
-              {client?.address && <Text style={styles.partyDetail}>{client.address}</Text>}
-              {order.shippingAddress && order.shippingAddress !== client?.address && (
+              {client && formatAddress(client) && (
+                <Text style={styles.partyDetail}>{formatAddress(client)}</Text>
+              )}
+              {order.shippingAddress && order.shippingAddress !== formatAddress(client ?? {}) && (
                 <Text style={[styles.partyDetail, { marginTop: 6 }]}>
                   Ship to: {order.shippingAddress}
                 </Text>

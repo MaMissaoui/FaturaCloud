@@ -5,7 +5,6 @@ export interface Vendor {
   organizationId: string;
   name: string | null;
   code?: string | null;
-  address?: string | null;
   emails: string | null;
   phone?: string | null;
   website?: string | null;
@@ -14,4 +13,11 @@ export interface Vendor {
   defaultCurrency?: string | null;
   paymentTermsDays?: number | null;
   createdAt?: string | null;
+  // Structured address, matching clients/organizations — the single source
+  // of truth for display (purchase order PDFs, lists).
+  street?: string | null;
+  house_number?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  country_code?: string | null;
 }

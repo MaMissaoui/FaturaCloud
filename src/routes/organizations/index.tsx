@@ -50,7 +50,6 @@ import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/
 import { countries } from "src/utils/countries";
 
 const { Title } = Typography;
-const { TextArea } = Input;
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 
@@ -199,7 +198,7 @@ export default function Organizations() {
 
   return (
     <>
-      <Row style={{ marginBottom: 16 }}>
+      <Row style={{ marginBottom: 12 }}>
         <Col flex="auto">
           <Title level={3} style={{ margin: 0 }}>
             <ApartmentOutlined style={{ marginRight: 8 }} />
@@ -357,7 +356,7 @@ export default function Organizations() {
         }
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Card title={<Trans>Details</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Details</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={16}>
                 <Form.Item
@@ -418,16 +417,11 @@ export default function Organizations() {
                   <Input />
                 </Form.Item>
               </Col>
-              <Col xs={24}>
-                <Form.Item name="address" label={<Trans>Address</Trans>}>
-                  <TextArea rows={3} />
-                </Form.Item>
-              </Col>
             </Row>
           </Card>
 
           {isEdit && editingId && (
-            <Card title={<Trans>Logo</Trans>} style={{ marginBottom: 16 }}>
+            <Card size="small" title={<Trans>Logo</Trans>} style={{ marginBottom: 12 }}>
               <Space direction="vertical" size={12}>
                 {hasLogo && (
                   <img
@@ -472,7 +466,7 @@ export default function Organizations() {
             </Card>
           )}
 
-          <Card title={<Trans>Banking</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Banking</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item name="bank_name" label={<Trans>Bank name</Trans>}>
@@ -500,13 +494,8 @@ export default function Organizations() {
             </Row>
           </Card>
 
-          <Card title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
               <Col xs={24} md={12}>
                 <Form.Item
                   name="country_code"
@@ -538,14 +527,24 @@ export default function Organizations() {
                 </Form.Item>
               </Col>
               <Col xs={24} md={16}>
-                <Form.Item name="city" label={<Trans>City</Trans>}>
+                <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
                   <Input />
                 </Form.Item>
               </Col>
             </Row>
           </Card>
 
-          <Card title={<Trans>Formatting</Trans>}>
+          <Card size="small" title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 12 }}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24}>
+                <Form.Item name="tax_number" label={<Trans>Tax number</Trans>} style={{ marginBottom: 0 }}>
+                  <Input />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          <Card size="small" title={<Trans>Formatting</Trans>}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item name="date_format" label={<Trans>Date format</Trans>}>

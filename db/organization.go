@@ -12,7 +12,6 @@ type Organization struct {
 	Code                  *string  `db:"code"                    json:"code"`
 	Name                  *string  `db:"name"                    json:"name"`
 	Country               *string  `db:"country"                 json:"country"`
-	Address               *string  `db:"address"                 json:"address"`
 	Email                 *string  `db:"email"                   json:"email"`
 	Phone                 *string  `db:"phone"                   json:"phone"`
 	Website               *string  `db:"website"                 json:"website"`
@@ -52,7 +51,6 @@ type CreateOrganizationRequest struct {
 	Code                  *string  `json:"code"`
 	Name                  *string  `json:"name"`
 	Country               *string  `json:"country"`
-	Address               *string  `json:"address"`
 	Email                 *string  `json:"email"`
 	Phone                 *string  `json:"phone"`
 	Website               *string  `json:"website"`
@@ -85,7 +83,6 @@ type UpdateOrganizationRequest struct {
 	Code                  *string  `json:"code"`
 	Name                  *string  `json:"name"`
 	Country               *string  `json:"country"`
-	Address               *string  `json:"address"`
 	Email                 *string  `json:"email"`
 	Phone                 *string  `json:"phone"`
 	Website               *string  `json:"website"`
@@ -118,7 +115,7 @@ type UpdateOrganizationRequest struct {
 // GetOrganizations and GetOrganization. The logo BLOB is never loaded as part
 // of the Organization struct — GetOrganizationLogo reads it directly, and the
 // only way to read or write it over HTTP is the dedicated /logo endpoints.
-const organizationColumns = `id, code, name, country, address, email, phone, website,
+const organizationColumns = `id, code, name, country, email, phone, website,
 	       registration_number, vatin, bank_name, iban, currency,
 	       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
 	       createdAt, invoice_number_format, invoice_number_counter, date_format,
@@ -187,13 +184,13 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	}
 	_, err := d.DB.Exec(
 		`INSERT INTO organizations (
-			id, code, name, country, address, email, phone, website,
+			id, code, name, country, email, phone, website,
 			registration_number, vatin, bank_name, iban, currency,
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format,
 			bic, tax_number, street, house_number, postal_code, city, country_code
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.ID, req.Code, req.Name, req.Country, req.Address, req.Email, req.Phone, req.Website,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat,
@@ -211,7 +208,6 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		 SET code                   = COALESCE(?, code),
 		     name                   = COALESCE(?, name),
 		     country                = COALESCE(?, country),
-		     address                = COALESCE(?, address),
 		     email                  = COALESCE(?, email),
 		     phone                  = COALESCE(?, phone),
 		     website                = COALESCE(?, website),
@@ -237,7 +233,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     city                   = COALESCE(?, city),
 		     country_code           = COALESCE(?, country_code)
 		 WHERE id = ?`,
-		updates.Code, updates.Name, updates.Country, updates.Address, updates.Email, updates.Phone,
+		updates.Code, updates.Name, updates.Country, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
 		updates.IBAN, updates.Currency, updates.MinimumFractionDigits, updates.DueDays,
 		updates.OverdueCharge, updates.CustomerNotes,

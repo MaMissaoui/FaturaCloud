@@ -3,6 +3,8 @@ import { I18nProvider } from "@lingui/react";
 import { Trans } from "@lingui/react/macro";
 import dayjs from "dayjs";
 
+import { formatAddress } from "src/utils/address";
+
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
 // Dark slate header block + light neutral cards — matches the invoice PDF
@@ -182,7 +184,9 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
                 <Trans>Ordered By</Trans>
               </Text>
               <Text style={styles.partyName}>{organization?.name ?? ""}</Text>
-              {organization?.address && <Text style={styles.partyDetail}>{organization.address}</Text>}
+              {organization && formatAddress(organization) && (
+                <Text style={styles.partyDetail}>{formatAddress(organization)}</Text>
+              )}
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
               {organization?.vatin && (
@@ -196,7 +200,9 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
                 <Trans>Vendor</Trans>
               </Text>
               <Text style={styles.partyName}>{vendor?.name ?? ""}</Text>
-              {vendor?.address && <Text style={styles.partyDetail}>{vendor.address}</Text>}
+              {vendor && formatAddress(vendor) && (
+                <Text style={styles.partyDetail}>{formatAddress(vendor)}</Text>
+              )}
               {vendor?.phone && <Text style={styles.partyDetail}>{vendor.phone}</Text>}
               {vendor?.vatin && (
                 <Text style={styles.partyDetail}>

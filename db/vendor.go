@@ -19,7 +19,6 @@ type Vendor struct {
 	OrganizationID     string  `db:"organizationId"      json:"organizationId"`
 	Name               *string `db:"name"                json:"name"`
 	Code               *string `db:"code"                json:"code"`
-	Address            *string `db:"address"             json:"address"`
 	Emails             *string `db:"emails"              json:"emails"`
 	Phone              *string `db:"phone"               json:"phone"`
 	Website            *string `db:"website"             json:"website"`
@@ -28,6 +27,15 @@ type Vendor struct {
 	DefaultCurrency    *string `db:"defaultCurrency"     json:"defaultCurrency"`
 	PaymentTermsDays   *int64  `db:"paymentTermsDays"    json:"paymentTermsDays"`
 	CreatedAt          *string `db:"createdAt"           json:"createdAt"`
+
+	// Structured address, matching clients/organizations — the single
+	// source of truth for display (purchase order PDFs, lists); there is no
+	// separate free-text address field.
+	Street      *string `db:"street"       json:"street"`
+	HouseNumber *string `db:"house_number" json:"house_number"`
+	PostalCode  *string `db:"postal_code"  json:"postal_code"`
+	City        *string `db:"city"         json:"city"`
+	CountryCode *string `db:"country_code" json:"country_code"`
 }
 
 // CreateVendorRequest is the payload for creating a vendor.
@@ -36,7 +44,6 @@ type CreateVendorRequest struct {
 	OrganizationID     string  `json:"organizationId"`
 	Name               *string `json:"name"`
 	Code               *string `json:"code"`
-	Address            *string `json:"address"`
 	Emails             *string `json:"emails"`
 	Phone              *string `json:"phone"`
 	Website            *string `json:"website"`
@@ -44,13 +51,18 @@ type CreateVendorRequest struct {
 	Vatin              *string `json:"vatin"`
 	DefaultCurrency    *string `json:"defaultCurrency"`
 	PaymentTermsDays   *int64  `json:"paymentTermsDays"`
+
+	Street      *string `json:"street"`
+	HouseNumber *string `json:"house_number"`
+	PostalCode  *string `json:"postal_code"`
+	City        *string `json:"city"`
+	CountryCode *string `json:"country_code"`
 }
 
 // UpdateVendorRequest is the payload for updating a vendor.
 type UpdateVendorRequest struct {
 	Name               *string `json:"name"`
 	Code               *string `json:"code"`
-	Address            *string `json:"address"`
 	Emails             *string `json:"emails"`
 	Phone              *string `json:"phone"`
 	Website            *string `json:"website"`
@@ -58,6 +70,12 @@ type UpdateVendorRequest struct {
 	Vatin              *string `json:"vatin"`
 	DefaultCurrency    *string `json:"defaultCurrency"`
 	PaymentTermsDays   *int64  `json:"paymentTermsDays"`
+
+	Street      *string `json:"street"`
+	HouseNumber *string `json:"house_number"`
+	PostalCode  *string `json:"postal_code"`
+	City        *string `json:"city"`
+	CountryCode *string `json:"country_code"`
 }
 
 func (d *Database) GetVendors(organizationID string) ([]Vendor, error) {
@@ -89,12 +107,14 @@ func (d *Database) CreateVendor(req CreateVendorRequest) (*Vendor, error) {
 		req.ID, _ = gonanoid.New()
 	}
 	_, err := d.DB.Exec(
-		`INSERT INTO vendors (id, organizationId, name, code, address, emails, phone, website,
-		                      registration_number, vatin, defaultCurrency, paymentTermsDays)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.ID, req.OrganizationID, req.Name, req.Code, req.Address,
+		`INSERT INTO vendors (id, organizationId, name, code, emails, phone, website,
+		                      registration_number, vatin, defaultCurrency, paymentTermsDays,
+		                      street, house_number, postal_code, city, country_code)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.ID, req.OrganizationID, req.Name, req.Code,
 		req.Emails, req.Phone, req.Website, req.RegistrationNumber, req.Vatin,
 		req.DefaultCurrency, req.PaymentTermsDays,
+		req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_vendor: %w", err)
@@ -105,13 +125,15 @@ func (d *Database) CreateVendor(req CreateVendorRequest) (*Vendor, error) {
 func (d *Database) UpdateVendor(vendorID string, updates UpdateVendorRequest) (*Vendor, error) {
 	_, err := d.DB.Exec(
 		`UPDATE vendors
-		 SET name = ?, code = ?, address = ?, emails = ?, phone = ?,
+		 SET name = ?, code = ?, emails = ?, phone = ?,
 		     website = ?, registration_number = ?, vatin = ?,
-		     defaultCurrency = ?, paymentTermsDays = ?
+		     defaultCurrency = ?, paymentTermsDays = ?,
+		     street = ?, house_number = ?, postal_code = ?, city = ?, country_code = ?
 		 WHERE id = ?`,
-		updates.Name, updates.Code, updates.Address, updates.Emails, updates.Phone,
+		updates.Name, updates.Code, updates.Emails, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin,
 		updates.DefaultCurrency, updates.PaymentTermsDays,
+		updates.Street, updates.HouseNumber, updates.PostalCode, updates.City, updates.CountryCode,
 		vendorID,
 	)
 	if err != nil {

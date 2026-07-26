@@ -46,7 +46,6 @@ export interface Organization {
   code: string | null;
   name: string | null;
   country: string | null;
-  address: string | null;
   email: string | null;
   phone: string | null;
   website: string | null;
@@ -72,9 +71,10 @@ export interface Organization {
   // 3-way matching tolerance policy (percent) for incoming vendor invoices.
   match_price_tolerance_percent: number | null;
   match_quantity_tolerance_percent: number | null;
-  // EN 16931 (XRechnung/ZUGFeRD) seller fields. address/country above stay
-  // as free-text legacy display fields; these structured fields are what
-  // e-invoice export reads and validates.
+  // EN 16931 (XRechnung/ZUGFeRD) seller fields. Also the single source of
+  // truth for address display everywhere (forms, PDFs) — there is no
+  // separate free-text address field. `country` above stays a free-text
+  // display name, distinct from the ISO `country_code` below.
   bic: string | null;
   tax_number: string | null;
   street: string | null;

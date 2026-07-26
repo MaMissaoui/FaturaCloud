@@ -167,7 +167,7 @@ const ProductForm = () => {
           onFinish={handleSubmit}
           initialValues={{ type: "service", stockEnabled: false }}
         >
-          <Card title={<Trans>Details</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Details</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24}>
                 <Form.Item
@@ -228,7 +228,7 @@ const ProductForm = () => {
             </Row>
           </Card>
 
-          <Card title={<Trans>Pricing</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Pricing</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item

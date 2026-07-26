@@ -12,7 +12,6 @@ type Client struct {
 	OrganizationID     string  `db:"organizationId"      json:"organizationId"`
 	Name               *string `db:"name"                json:"name"`
 	Code               *string `db:"code"                json:"code"`
-	Address            *string `db:"address"             json:"address"`
 	Emails             *string `db:"emails"              json:"emails"`
 	Phone              *string `db:"phone"               json:"phone"`
 	Website            *string `db:"website"             json:"website"`
@@ -20,9 +19,10 @@ type Client struct {
 	Vatin              *string `db:"vatin"               json:"vatin"`
 	CreatedAt          *string `db:"createdAt"           json:"createdAt"`
 
-	// EN 16931 (XRechnung) buyer fields. address above is kept as a free-text
-	// legacy display field; these structured columns are what e-invoice
-	// export reads and validates. clients previously had no country at all.
+	// EN 16931 (XRechnung) buyer fields. Also the single source of truth for
+	// display everywhere else (PDFs, lists) — clients no longer have a
+	// separate free-text address blob. clients previously had no country at
+	// all.
 	Street                *string `db:"street"                  json:"street"`
 	HouseNumber           *string `db:"house_number"             json:"house_number"`
 	PostalCode            *string `db:"postal_code"              json:"postal_code"`
@@ -38,7 +38,6 @@ type CreateClientRequest struct {
 	OrganizationID     string  `json:"organizationId"`
 	Name               *string `json:"name"`
 	Code               *string `json:"code"`
-	Address            *string `json:"address"`
 	Emails             *string `json:"emails"`
 	Phone              *string `json:"phone"`
 	Website            *string `json:"website"`
@@ -58,7 +57,6 @@ type CreateClientRequest struct {
 type UpdateClientRequest struct {
 	Name               *string `json:"name"`
 	Code               *string `json:"code"`
-	Address            *string `json:"address"`
 	Emails             *string `json:"emails"`
 	Phone              *string `json:"phone"`
 	Website            *string `json:"website"`
@@ -104,11 +102,11 @@ func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
 	}
 	_, err := d.DB.Exec(
 		`INSERT INTO clients (
-			id, organizationId, name, code, address, emails, phone, website,
+			id, organizationId, name, code, emails, phone, website,
 			registration_number, vatin, street, house_number, postal_code, city,
 			country_code, tax_number, default_buyer_reference
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.ID, req.OrganizationID, req.Name, req.Code, req.Address,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.ID, req.OrganizationID, req.Name, req.Code,
 		req.Emails, req.Phone, req.Website, req.RegistrationNumber, req.Vatin,
 		req.Street, req.HouseNumber, req.PostalCode, req.City,
 		req.CountryCode, req.TaxNumber, req.DefaultBuyerReference,
@@ -122,12 +120,12 @@ func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
 func (d *Database) UpdateClient(clientID string, updates UpdateClientRequest) (*Client, error) {
 	_, err := d.DB.Exec(
 		`UPDATE clients
-		 SET name = ?, code = ?, address = ?, emails = ?, phone = ?,
+		 SET name = ?, code = ?, emails = ?, phone = ?,
 		     website = ?, registration_number = ?, vatin = ?,
 		     street = ?, house_number = ?, postal_code = ?, city = ?,
 		     country_code = ?, tax_number = ?, default_buyer_reference = ?
 		 WHERE id = ?`,
-		updates.Name, updates.Code, updates.Address, updates.Emails, updates.Phone,
+		updates.Name, updates.Code, updates.Emails, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin,
 		updates.Street, updates.HouseNumber, updates.PostalCode, updates.City,
 		updates.CountryCode, updates.TaxNumber, updates.DefaultBuyerReference,

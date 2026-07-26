@@ -26,15 +26,7 @@ import ScrollShadow from "src/components/scroll-shadow";
 
 // Fields inside the collapsed "E-invoicing" panel — used to auto-expand it if
 // validation fails on a field the user can't currently see.
-const E_INVOICING_FIELDS = [
-  "tax_number",
-  "street",
-  "house_number",
-  "postal_code",
-  "city",
-  "country_code",
-  "default_buyer_reference",
-];
+const E_INVOICING_FIELDS = ["tax_number", "default_buyer_reference"];
 
 const ClientForm = () => {
   const location = useLocation();
@@ -174,7 +166,7 @@ const ClientForm = () => {
     >
       <ScrollShadow>
         <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={handleFinishFailed}>
-          <Card title={<Trans>Contact</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Contact</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24}>
                 <Form.Item
@@ -218,13 +210,48 @@ const ClientForm = () => {
             </Row>
           </Card>
 
-          <Card title={<Trans>Address</Trans>} style={{ marginBottom: 16 }}>
-            <Form.Item name="address" label={<Trans>Address</Trans>} style={{ marginBottom: 0 }}>
-              <Input.TextArea rows={3} placeholder={t`Address`} />
-            </Form.Item>
+          <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="country_code"
+                  label={<Trans>Country code</Trans>}
+                  rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
+                >
+                  <Input
+                    maxLength={2}
+                    placeholder={t`e.g. DE`}
+                    onChange={(e) =>
+                      form.setFieldValue("country_code", e.target.value.toUpperCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={16}>
+                <Form.Item name="street" label={<Trans>Street</Trans>}>
+                  <Input placeholder={t`Street`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="house_number" label={<Trans>House number</Trans>}>
+                  <Input placeholder={t`House number`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="postal_code" label={<Trans>Postal code</Trans>} style={{ marginBottom: 0 }}>
+                  <Input placeholder={t`Postal code`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={16}>
+                <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
+                  <Input placeholder={t`City`} />
+                </Form.Item>
+              </Col>
+            </Row>
           </Card>
 
           <Collapse
+            size="small"
             activeKey={activeKeys}
             onChange={(keys) => setActiveKeys(keys as string[])}
             items={[
@@ -240,41 +267,6 @@ const ClientForm = () => {
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={12}>
-                      <Form.Item
-                        name="country_code"
-                        label={<Trans>Country code</Trans>}
-                        rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
-                      >
-                        <Input
-                          maxLength={2}
-                          placeholder={t`e.g. DE`}
-                          onChange={(e) =>
-                            form.setFieldValue("country_code", e.target.value.toUpperCase())
-                          }
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={16}>
-                      <Form.Item name="street" label={<Trans>Street</Trans>}>
-                        <Input placeholder={t`Street`} />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item name="house_number" label={<Trans>House number</Trans>}>
-                        <Input placeholder={t`House number`} />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
-                        <Input placeholder={t`Postal code`} />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={16}>
-                      <Form.Item name="city" label={<Trans>City</Trans>}>
-                        <Input placeholder={t`City`} />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24}>
                       <Form.Item
                         name="default_buyer_reference"
                         label={<Trans>Default buyer reference</Trans>}

@@ -16,6 +16,7 @@ import toString from "lodash/toString";
 
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import ClientForm from "src/components/clients/form";
+import { formatAddressOneLine } from "src/utils/address";
 
 const { Title } = Typography;
 
@@ -39,12 +40,16 @@ const Clients = () => {
 
   const searchClients = () => {
     return filter(clients, (client: Client) => {
-      return some(
-        ["name", "code", "registration_number", "address", "emails", "phone", "vatin", "website"],
+      const fieldsMatch = some(
+        ["name", "code", "registration_number", "emails", "phone", "vatin", "website"],
         (field) => {
           const value = get(client, field);
           return includes(toString(value).toLowerCase(), search.toLowerCase());
         },
+      );
+      return (
+        fieldsMatch ||
+        includes(formatAddressOneLine(client).toLowerCase(), search.toLowerCase())
       );
     });
   };
@@ -100,9 +105,11 @@ const Clients = () => {
             />
             <Table.Column
               title={<Trans>Address</Trans>}
-              dataIndex="address"
               key="address"
-              sorter={(a: Client, b: Client) => (a.address ?? "").localeCompare(b.address ?? "")}
+              sorter={(a: Client, b: Client) =>
+                formatAddressOneLine(a).localeCompare(formatAddressOneLine(b))
+              }
+              render={(client: Client) => formatAddressOneLine(client)}
             />
             <Table.Column
               title={<Trans>Emails</Trans>}

@@ -157,11 +157,16 @@ const AppContent = () => {
         token: {
           borderRadius: 2,
         },
-        // In dark mode, replace antd's legacy navy sider (#001529) with an elevated
-        // neutral grey so the sidebar harmonizes with the neutral-dark content while
-        // still standing out as the lightest surface against the black content gutters.
-        components:
-          themeMode === "dark"
+        components: {
+          // antd's default 24px Form.Item spacing is generous enough to turn
+          // any form of more than a handful of fields into a scrolling
+          // exercise — tighten it app-wide rather than per-form.
+          Form: { itemMarginBottom: 16 },
+          // In dark mode, replace antd's legacy navy sider (#001529) with an
+          // elevated neutral grey so the sidebar harmonizes with the
+          // neutral-dark content while still standing out as the lightest
+          // surface against the black content gutters.
+          ...(themeMode === "dark"
             ? {
                 Layout: { siderBg: "#1f1f1f", triggerBg: "#1f1f1f" },
                 Menu: {
@@ -170,7 +175,8 @@ const AppContent = () => {
                   darkPopupBg: "#1f1f1f",
                 },
               }
-            : undefined,
+            : {}),
+        },
       }}
     >
       {/* Brief loading spinner, inside ConfigProvider so it respects the theme (prevents CSS flicker) */}

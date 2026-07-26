@@ -5,16 +5,15 @@ export interface Client {
   organizationId: string;
   name: string | null;
   code?: string | null;
-  address?: string | null;
   emails: string | null;
   phone?: string | null;
   website?: string | null;
   registration_number?: string | null;
   vatin?: string | null;
   createdAt?: string | null;
-  // EN 16931 (XRechnung) buyer fields. address above stays a free-text
-  // legacy display field; these structured fields are what e-invoice
-  // export reads and validates. Clients previously had no country at all.
+  // EN 16931 (XRechnung) buyer fields. Also the single source of truth for
+  // address display everywhere (forms, lists, PDFs) — there is no separate
+  // free-text address field. Clients previously had no country at all.
   street?: string | null;
   house_number?: string | null;
   postal_code?: string | null;
