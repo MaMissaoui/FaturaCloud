@@ -55,16 +55,70 @@ type UpdateProductRequest struct {
 	StockEnabled int     `json:"stockEnabled"`
 }
 
-func (d *Database) GetProducts(organizationID string) ([]Product, error) {
-	products := []Product{}
-	err := d.DB.Select(&products,
-		`SELECT * FROM products WHERE organizationId = ? ORDER BY name ASC`,
-		organizationID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get_products: %w", err)
+// ProductListOptions filters/pages/sorts GetProducts. Limit == 0 means "no
+// limit" — the original full-fetch behavior every other caller (line-item
+// product pickers on invoices/orders/deliveries/purchase-orders/
+// inbound-deliveries) still relies on. SortField == "" keeps the original
+// default order (name ascending).
+type ProductListOptions struct {
+	Search    string
+	Limit     int
+	Offset    int
+	SortField string
+	SortDesc  bool
+}
+
+// productSortColumns whitelists the columns the Products list page can sort
+// by, mapped to the actual (possibly joined-table-qualified) SQL expression
+// — never interpolate the field name from the request directly into ORDER
+// BY. "taxRate" sorts by the tax rate's name, matching what the column
+// displayed before this was server-side (the old client-side sorter resolved
+// taxRateId to a name too, not the raw id).
+var productSortColumns = map[string]string{
+	"name":     "p.name",
+	"type":     "p.type",
+	"sku":      "p.sku",
+	"price":    "p.price",
+	"unitCost": "p.unitCost",
+	"taxRate":  "tr.name",
+	"stock":    "p.stockQuantity",
+}
+
+func (d *Database) GetProducts(organizationID string, opts ProductListOptions) ([]Product, int, error) {
+	from := "FROM products p LEFT JOIN taxRates tr ON p.taxRateId = tr.id"
+	where := "WHERE p.organizationId = ?"
+	args := []any{organizationID}
+	if opts.Search != "" {
+		where += " AND (p.name LIKE ? OR p.sku LIKE ? OR p.description LIKE ? OR p.unit LIKE ? OR p.type LIKE ?)"
+		like := "%" + opts.Search + "%"
+		args = append(args, like, like, like, like, like)
 	}
-	return products, nil
+
+	var total int
+	if err := d.DB.Get(&total, "SELECT COUNT(*) "+from+" "+where, args...); err != nil {
+		return nil, 0, fmt.Errorf("get_products_count: %w", err)
+	}
+
+	sortCol, ok := productSortColumns[opts.SortField]
+	if !ok {
+		sortCol = "p.name"
+	}
+	direction := "ASC"
+	if opts.SortDesc {
+		direction = "DESC"
+	}
+
+	query := "SELECT p.* " + from + " " + where + " ORDER BY " + sortCol + " " + direction
+	if opts.Limit > 0 {
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, opts.Limit, opts.Offset)
+	}
+
+	products := []Product{}
+	if err := d.DB.Select(&products, query, args...); err != nil {
+		return nil, 0, fmt.Errorf("get_products: %w", err)
+	}
+	return products, total, nil
 }
 
 func (d *Database) GetProduct(productID string) (*Product, error) {

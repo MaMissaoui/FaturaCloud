@@ -317,8 +317,33 @@ export const SetCountryActive = (code: string, active: boolean) =>
 
 // ---- Products ----
 
-export const GetProducts = (organizationId: string) =>
-  get<Product[]>(`/organizations/${organizationId}/products`);
+// The Go handler always answers with this envelope now (products can be
+// paginated), so every caller — including the ones below that pass no
+// params and therefore get everything, same as before — reads through it.
+export interface Page<T> {
+  data: T[];
+  total: number;
+}
+
+export const GetProducts = (
+  organizationId: string,
+  params?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+    sort?: string;
+    order?: "asc" | "desc";
+  },
+) => {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set("search", params.search);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  if (params?.sort) qs.set("sort", params.sort);
+  if (params?.order) qs.set("order", params.order);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return get<Page<Product>>(`/organizations/${organizationId}/products${suffix}`);
+};
 export const GetProduct = (id: string) => get<Product>(`/products/${id}`);
 export const CreateProduct = (req: Partial<Product>) => post<Product>("/products", req);
 export const UpdateProduct = (id: string, req: Partial<Product>) =>
@@ -330,8 +355,25 @@ export const GetProductStockMovements = (id: string) =>
 
 // ---- Stock Movements ----
 
-export const GetStockMovements = (organizationId: string) =>
-  get<StockMovement[]>(`/organizations/${organizationId}/stock-movements`);
+export const GetStockMovements = (
+  organizationId: string,
+  params?: {
+    productId?: string;
+    limit?: number;
+    offset?: number;
+    sort?: string;
+    order?: "asc" | "desc";
+  },
+) => {
+  const qs = new URLSearchParams();
+  if (params?.productId) qs.set("productId", params.productId);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  if (params?.sort) qs.set("sort", params.sort);
+  if (params?.order) qs.set("order", params.order);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return get<Page<StockMovement>>(`/organizations/${organizationId}/stock-movements${suffix}`);
+};
 export const CreateStockMovement = (req: Partial<StockMovement>) =>
   post<StockMovement>("/stock-movements", req);
 export const DeleteStockMovement = (id: string) =>

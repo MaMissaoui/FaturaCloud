@@ -64,16 +64,72 @@ type CreateStockMovementRequest struct {
 	Reference      *string `json:"reference"`
 }
 
-func (d *Database) GetStockMovements(organizationID string) ([]StockMovement, error) {
-	movements := []StockMovement{}
-	err := d.DB.Select(&movements,
-		`SELECT * FROM stockMovements WHERE organizationId = ? ORDER BY createdAt DESC`,
-		organizationID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get_stock_movements: %w", err)
+// StockMovementListOptions filters/pages/sorts GetStockMovements. Limit == 0
+// means "no limit", ProductID == "" means unfiltered — both preserve the
+// original full-fetch behavior. SortField == "" keeps the original default
+// order (createdAt descending).
+type StockMovementListOptions struct {
+	ProductID string
+	Limit     int
+	Offset    int
+	SortField string
+	SortDesc  bool
+}
+
+// stockMovementSortColumns whitelists Inventory's sortable columns. "product"
+// sorts by the linked product's name (matching the old client-side sorter,
+// which resolved productId to a name via lookup, not the raw id) — safe as
+// an INNER JOIN since stockMovements.productId is ON DELETE CASCADE, so
+// every movement always has a product.
+var stockMovementSortColumns = map[string]string{
+	"date":      "sm.createdAt",
+	"product":   "p.name",
+	"type":      "sm.type",
+	"quantity":  "sm.quantity",
+	"reference": "sm.reference",
+	"note":      "sm.note",
+}
+
+func (d *Database) GetStockMovements(organizationID string, opts StockMovementListOptions) ([]StockMovement, int, error) {
+	from := "FROM stockMovements sm JOIN products p ON sm.productId = p.id"
+	where := "WHERE sm.organizationId = ?"
+	args := []any{organizationID}
+	if opts.ProductID != "" {
+		where += " AND sm.productId = ?"
+		args = append(args, opts.ProductID)
 	}
-	return movements, nil
+
+	var total int
+	if err := d.DB.Get(&total, "SELECT COUNT(*) "+from+" "+where, args...); err != nil {
+		return nil, 0, fmt.Errorf("get_stock_movements_count: %w", err)
+	}
+
+	// createdAt DESC (newest first) is the original default — SortDesc's zero
+	// value (false/ascending) only applies once a field is actually requested.
+	sortField, sortDesc := opts.SortField, opts.SortDesc
+	if sortField == "" {
+		sortField, sortDesc = "date", true
+	}
+	sortCol, ok := stockMovementSortColumns[sortField]
+	if !ok {
+		sortCol = "sm.createdAt"
+	}
+	direction := "ASC"
+	if sortDesc {
+		direction = "DESC"
+	}
+
+	query := "SELECT sm.* " + from + " " + where + " ORDER BY " + sortCol + " " + direction
+	if opts.Limit > 0 {
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, opts.Limit, opts.Offset)
+	}
+
+	movements := []StockMovement{}
+	if err := d.DB.Select(&movements, query, args...); err != nil {
+		return nil, 0, fmt.Errorf("get_stock_movements: %w", err)
+	}
+	return movements, total, nil
 }
 
 func (d *Database) GetProductStockMovements(productID string) ([]StockMovement, error) {

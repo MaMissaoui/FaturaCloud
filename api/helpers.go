@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
 )
@@ -62,6 +63,17 @@ func writeDBError(w http.ResponseWriter, err error, notFoundMsg string) {
 func writeInternalError(w http.ResponseWriter, err error) {
 	log.Printf("internal error: %v", err)
 	writeError(w, http.StatusInternalServerError, "internal error")
+}
+
+// parseIntParam reads an integer query param, returning 0 if it's absent or
+// not a valid integer — callers treat 0 as "unset" (e.g. no LIMIT applied)
+// rather than surfacing a 400 for a malformed pagination param.
+func parseIntParam(r *http.Request, name string) int {
+	v, err := strconv.Atoi(r.URL.Query().Get(name))
+	if err != nil {
+		return 0
+	}
+	return v
 }
 
 // writeMutationError handles the error from a state-changing db call: a

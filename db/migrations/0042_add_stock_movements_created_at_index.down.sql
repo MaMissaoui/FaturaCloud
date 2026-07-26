@@ -1,0 +1,1 @@
+DROP INDEX idx_stockMovements_organizationId_createdAt;
