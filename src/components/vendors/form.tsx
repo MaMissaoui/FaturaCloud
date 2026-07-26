@@ -103,7 +103,7 @@ const VendorForm = () => {
       title={vendorId ? <Trans>Edit vendor</Trans> : <Trans>New vendor</Trans>}
       open={isVisible}
       placement="right"
-      width={480}
+      size={480}
       onClose={handleClose}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>

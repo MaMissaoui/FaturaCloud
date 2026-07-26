@@ -120,7 +120,7 @@ const ProductForm = () => {
       title={productId ? <Trans>Edit product</Trans> : <Trans>New product</Trans>}
       open={isVisible}
       placement="right"
-      width={480}
+      size={480}
       onClose={handleClose}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>

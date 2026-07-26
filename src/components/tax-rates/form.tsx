@@ -91,7 +91,7 @@ const TaxRateForm = () => {
       title={id ? <Trans>Edit tax rate</Trans> : <Trans>New tax rate</Trans>}
       open={true}
       placement="right"
-      width={480}
+      size={480}
       onClose={handleClose}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>

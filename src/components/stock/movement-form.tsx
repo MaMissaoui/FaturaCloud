@@ -71,7 +71,7 @@ const MovementForm = () => {
       title={<Trans>Record stock movement</Trans>}
       open={isVisible}
       placement="right"
-      width={480}
+      size={480}
       onClose={handleClose}
       footer={
         <Space style={{ justifyContent: "flex-end", width: "100%", display: "flex" }}>
