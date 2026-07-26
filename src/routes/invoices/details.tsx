@@ -501,7 +501,7 @@ const InvoiceDetails: React.FC = () => {
             style={{ display: previewMode ? "none" : "block" }}
           >
             <Row gutter={24}>
-              <Col span={12}>
+              <Col xs={24} md={24} xl={12}>
                 <Form.Item
                   label={t`Select or create a client`}
                   name="clientId"
@@ -573,7 +573,7 @@ const InvoiceDetails: React.FC = () => {
                   </Select>
                 </Form.Item>
               </Col>
-              <Col span={6}>
+              <Col xs={24} md={12} xl={6}>
                 <Form.Item
                   label={t`Invoice number`}
                   name="number"
@@ -582,7 +582,7 @@ const InvoiceDetails: React.FC = () => {
                   <Input />
                 </Form.Item>
               </Col>
-              <Col span={6}>
+              <Col xs={24} md={12} xl={6}>
                 <Form.Item
                   label={t`Currency`}
                   name="currency"
@@ -601,7 +601,7 @@ const InvoiceDetails: React.FC = () => {
               </Col>
             </Row>
             <Row gutter={24}>
-              <Col span={4} offset={12}>
+              <Col xs={24} md={12} xl={{ span: 4, offset: 12 }}>
                 <Form.Item
                   label="Date"
                   name="date"
@@ -610,7 +610,7 @@ const InvoiceDetails: React.FC = () => {
                   <DatePicker style={{ width: "100%" }} format={dateFormat} />
                 </Form.Item>
               </Col>
-              <Col span={4}>
+              <Col xs={24} md={12} xl={4}>
                 <Form.Item
                   label={t`Due date`}
                   name="dueDate"
@@ -619,7 +619,7 @@ const InvoiceDetails: React.FC = () => {
                   <DatePicker style={{ width: "100%" }} format={dateFormat} />
                 </Form.Item>
               </Col>
-              <Col span={4}>
+              <Col xs={24} md={12} xl={4}>
                 <Form.Item
                   label={t`Overdue charge`}
                   name="overdueCharge"
@@ -643,7 +643,7 @@ const InvoiceDetails: React.FC = () => {
             </Row>
 
             <Row gutter={24}>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item
                   label={t`Buyer reference`}
                   name="buyerReference"
@@ -652,7 +652,7 @@ const InvoiceDetails: React.FC = () => {
                   <Input />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item label={t`Payment terms`} name="paymentTerms">
                   <Input />
                 </Form.Item>
@@ -864,14 +864,14 @@ const InvoiceDetails: React.FC = () => {
             </Row>
 
             <Row gutter={16}>
-              <Col span={8}>
+              <Col xs={24} xl={8}>
                 <Form.Item label={t`Customer note`} name="customerNotes">
                   <TextArea rows={4} />
                 </Form.Item>
               </Col>
 
               {/* Totals */}
-              <Col span={12} offset={4}>
+              <Col xs={24} xl={{ span: 12, offset: 4 }}>
                 <Descriptions
                   column={1}
                   styles={{

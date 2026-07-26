@@ -2,11 +2,13 @@
 
 ## Status
 
-**Tier 0, Tier 1, and Tier 2 (including 2.3 visual polish) are all done**,
-verified in-browser, and committed — all six document detail pages now use
-the shared `src/components/line-items/table.tsx` shell, with the borderless
-cell/drag-handle polish applied on top. **Tier 3 (detail-page shells) is not
-started.**
+**Tier 0, Tier 1, Tier 2 (including 2.3), and Tier 3 are all done**, verified
+in-browser, and committed — all six document detail pages share the
+`src/components/line-items/table.tsx` shell with the borderless
+cell/drag-handle polish, and now use responsive header-field layouts. Tier
+3's original scope (Card-wrapping, totals unification) turned out to be based
+on stale premises and was corrected down to just the responsive-span
+conversion — see the Tier 3 section for the full write-up.
 
 Tier 2 progress:
 
@@ -610,23 +612,71 @@ reviewable independently of the mechanical extraction.
 
 ---
 
-## Tier 3 — Detail-page shells (optional; do last, or defer)
+## Tier 3 — Detail-page shells — CORRECTED SCOPE, done
 
-`invoices/details.tsx` wraps its content in `<Card>` sections. The other five
-use bare `<Row gutter={24}>` with hardcoded, non-responsive `span={N}` values
-that differ per page (8/6/5/4). Totals render three different ways: a custom
-Row/Col in invoices, `<Descriptions>` in orders/PO/incoming, nothing in
-deliveries/inbound.
+**Both premises behind this tier's original write-up were checked against the
+actual code and found stale**, the same way the Tier 2 "Open decision" was —
+correcting the record here rather than silently building on a wrong
+assumption:
 
-If picked up: wrap the five in `<Card>` to match invoices, replace fixed `span`
-with responsive `xs={24} md={12} xl={6}`, and standardise on the
-`<Descriptions>` totals block. This is the largest and least urgent change —
-treat it as explicitly optional.
+- **"`invoices/details.tsx` wraps its content in `<Card>` sections"** — false.
+  Grepped for `Card` in all six detail pages: zero matches, anywhere. The
+  white rounded box every page sits in is `<Content>` in `src/layouts/
+base.tsx` (`padding: 24`, `borderRadiusLG`), applied identically to every
+  route already — there is no per-page `<Card>` pattern to extract from
+  invoices, so "wrap the five to match invoices" had nothing to copy.
+  Introducing `<Card>` sections now would be a *new* visual pattern with no
+  existing reference anywhere in the app, not a consistency fix — out of
+  scope for the same reason Tier 2 refused to invent `disabled` gating for
+  purchase orders that the backend didn't enforce.
+- **"Totals render three different ways: custom Row/Col in invoices,
+  `<Descriptions>` in orders/PO/incoming, nothing in deliveries/inbound"** —
+  half true. Invoices *also* uses `<Descriptions>` (`details.tsx:875`), not a
+  custom Row/Col. Diffing the four documents that have a totals block:
+  orders and purchase-orders are **byte-identical** in structure and styling
+  (`<Row justify="end"><Col><Descriptions column={1} styles={{content:
+  {textAlign:"right", minWidth:100, fontSize:14}, label:{textAlign:"right",
+  fontWeight:500, fontSize:14}}}>`, one `Subtotal` item — correctly, since
+  neither `orders` nor `outbound_delivery` line items reference `taxRates` at
+  all). Incoming-invoices matches that same structure/styling almost exactly
+  (`minWidth:120` instead of `100`, plus `Tax`/`Total` items — because it
+  genuinely has tax data orders/PO don't). Invoices' version differs
+  cosmetically (`fontSize:15`, hardcoded `color:"rgba(0,0,0,0.88)"` — a
+  latent dark-mode bug, flagged not fixed, out of scope here — and a bold
+  `<strong>` Total) and sits in a shared row with the Customer note field via
+  `Col span={12} offset={4}` instead of its own `justify="end"` row.
+  **Unifying these four would mean either inventing totals for deliveries/
+  inbound that never had one (a real behavior change — deliveries must never
+  show prices per the non-goals list) or relocating a field on invoices, the
+  busiest screen, to match a `minWidth`/`fontSize` difference nobody would
+  ever notice.** Neither is worth doing. Dropped from scope entirely.
 
-Also minor, from the Organizations list screenshot: org names are plain text
-while every other list makes the name a link, and rows carry a text `Delete`
-button instead of the `⋮` overflow menu used on invoices. Align it with the
-others when convenient.
+**What was actually true and worth fixing**: all **six** documents —
+including invoices, which the original write-up incorrectly treated as the
+reference — use bare `<Row gutter={16|24}><Col span={N}>` for their header
+field rows, with hardcoded spans that never break to fewer columns on a
+narrow viewport (unlike the Tier 1 master-data drawers, which already use
+`xs={24} md={12}`). That's the one genuine, fixable inconsistency here, so
+Tier 3 became: **convert every header-field `Row`/`Col` group in all six
+detail pages to responsive breakpoints** (`xs={24}` stacks to one column,
+`md={12}` gives two-up on tablet widths, the original `span` value is
+restored at `xl` so desktop is pixel-identical to today), leaving line-item
+tables, totals blocks, and footer bars untouched. Verified at 1440×900
+(desktop, unchanged) **and** at ~900×800 and ~768×900 with the sider both
+expanded and collapsed — 1440×900 alone would have exercised only the `xl`
+breakpoint and shown nothing different from today.
+
+One trap specific to this page family: `invoices/details.tsx` has two
+`offset`-based columns (`Col span={4} offset={12}`, `Col span={12}
+offset={4}`). A bare `offset` prop applies at *every* breakpoint, so writing
+`xl={4}` while leaving `offset={12}` unscoped would push that column halfway
+across the screen once the layout stacks to `xs`. Both were converted to the
+object form (`xl={{ span: 4, offset: 12 }}`, no unscoped `offset`) instead.
+
+The Organizations-list item mentioned in the original write-up (name-as-link,
+`⋮` overflow menu) is **list-page** behavior, not detail-page shell layout —
+out of scope for this tier, and left alone rather than folded in as
+unrequested extra churn.
 
 ---
 
