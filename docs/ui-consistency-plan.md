@@ -3,10 +3,32 @@
 ## Status
 
 **Tier 0 and Tier 1 are done, verified in-browser, and committed.** **Tier 2
-(line-item tables) and Tier 3 (detail-page shells) are not started** — they
-are large enough to warrant their own branch/PR per the Workflow section
-below, and Tier 2 depends on the `disabled` contract now confirmed in this
-doc.
+(line-item tables) is in progress** — the shared shell exists and
+`orders/details.tsx` (migration 1 of 6) is done; the other five documents
+still use their own hand-rolled table. **Tier 3 (detail-page shells) is not
+started.**
+
+Tier 2 progress:
+- `src/components/line-items/table.tsx` — the config-driven shell from 2.1,
+  built with only the column kinds `orders` needs so far (`index`, `product`,
+  `description`, `quantity`, `unitPrice`, `custom`). `unit`, `taxRate`, and
+  `lineTotal` kinds will be added when the documents that need them
+  (deliveries/purchase-orders/inbound-deliveries for `unit`; invoices/
+  incoming-invoices for `taxRate`/`lineTotal`) are migrated, rather than
+  speculatively built now.
+- `orders/details.tsx` migrated: `#` column added, Qty/Unit price
+  right-aligned, `Delivered` custom column preserved via `kind: "custom"`.
+  Verified live: existing order loads/edits/saves correctly, product
+  selection still auto-fills description + unit price, new-order flow still
+  works (no `Delivered` column when `isNew`).
+- Tier 2.3 (borderless-cell / drag-handle visual polish) **deliberately
+  deferred** — per the plan, it's its own reviewable commit after the shell
+  exists across more than one document, not bundled into the first migration.
+- **Aside, not fixed**: saving an order always resets its `Delivered` column
+  to 0 — `db.UpdateOrder` replaces all line items (new IDs) on every save,
+  so `GetOrderDeliveredQuantities` (keyed by the old `orderLineItemId`) no
+  longer matches. Pre-existing backend behavior, unrelated to this migration
+  (confirmed identical on `main` before this change) — out of scope here.
 
 What actually shipped, with deviations from the original plan noted inline:
 - Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.

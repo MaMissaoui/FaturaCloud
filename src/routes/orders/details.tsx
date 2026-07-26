@@ -9,13 +9,11 @@ import {
   Divider,
   Form,
   Input,
-  InputNumber,
   Layout,
   Popconfirm,
   Row,
   Select,
   Space,
-  Table,
   Tag,
   theme,
 } from "antd";
@@ -43,7 +41,6 @@ import sum from "lodash/sum";
 import { SaveFile, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
-import { requiredForNewLineItem } from "src/utils/line-items";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { organizationAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
@@ -55,6 +52,7 @@ import {
   deleteOrderAtom,
 } from "src/atoms/order";
 import OrderConfirmationPDF from "src/components/orders/order-confirmation-pdf";
+import LineItemsTable from "src/components/line-items/table";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -68,7 +66,10 @@ const { Footer } = Layout;
 // suspending, same fix as src/routes/invoices/details.tsx (#31/#32).
 const loadableOrderAtom = loadable(orderAtom);
 
-const STATUS_TRANSITIONS: Record<string, { label: string; next: string; type?: "primary" | "default" | "dashed" }[]> = {
+const STATUS_TRANSITIONS: Record<
+  string,
+  { label: string; next: string; type?: "primary" | "default" | "dashed" }[]
+> = {
   draft: [{ label: "Confirm order", next: "confirmed", type: "primary" }],
   confirmed: [{ label: "Mark as shipped", next: "shipped", type: "primary" }],
   shipped: [{ label: "Mark as delivered", next: "delivered", type: "primary" }],
@@ -110,7 +111,9 @@ const OrderDetails = () => {
     if (!isNew) {
       setOrderId(id ?? null);
     }
-    return () => { setOrderId(null); };
+    return () => {
+      setOrderId(null);
+    };
   }, [id, isNew, setClients, setProducts, setOrderId]);
 
   // Track how much of each line item has already been delivered, so partial
@@ -176,7 +179,9 @@ const OrderDetails = () => {
       ...(!isNew && order && !(order as any).then ? order : {}),
       ...values,
       orderDate: values.orderDate?.valueOf ? values.orderDate.valueOf() : values.orderDate,
-      deliveryDate: values.deliveryDate?.valueOf ? values.deliveryDate.valueOf() : values.deliveryDate,
+      deliveryDate: values.deliveryDate?.valueOf
+        ? values.deliveryDate.valueOf()
+        : values.deliveryDate,
     };
 
     const lineItemsForPdf = (values.lineItems ?? []).map((item: any) => ({
@@ -196,7 +201,7 @@ const OrderDetails = () => {
     );
 
     const blob = await pdf(doc).toBlob();
-    const orderNum = values.orderNumber ?? (id ?? "order");
+    const orderNum = values.orderNumber ?? id ?? "order";
     await SaveFile(`order-confirmation-${orderNum}.pdf`, blob);
   };
 
@@ -209,9 +214,7 @@ const OrderDetails = () => {
       }
     : undefined;
 
-  const currentStatus = !isNew && order && !(order as any).then
-    ? (order as any).status
-    : "draft";
+  const currentStatus = !isNew && order && !(order as any).then ? (order as any).status : "draft";
 
   const transitions = STATUS_TRANSITIONS[currentStatus] ?? [];
 
@@ -219,12 +222,7 @@ const OrderDetails = () => {
   if (!isNew && !order) return null;
 
   return (
-    <Form
-      form={form}
-      onFinish={handleSubmit}
-      layout="vertical"
-      initialValues={initialValues}
-    >
+    <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
         <Col span={8}>
           <Form.Item
@@ -248,7 +246,10 @@ const OrderDetails = () => {
                     type="text"
                     block
                     icon={<UserAddOutlined />}
-                    onClick={(e) => { e.preventDefault(); navigate("/clients"); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate("/clients");
+                    }}
                     style={{ textAlign: "left", paddingLeft: 11 }}
                   >
                     <Trans>Manage clients</Trans>
@@ -257,7 +258,9 @@ const OrderDetails = () => {
               )}
             >
               {map(clients, (c: any) => (
-                <Option key={c.id} value={c.id}>{c.name}</Option>
+                <Option key={c.id} value={c.id}>
+                  {c.name}
+                </Option>
               ))}
             </Select>
           </Form.Item>
@@ -306,139 +309,65 @@ const OrderDetails = () => {
       </Row>
 
       {/* Line items */}
-      <Form.List name="lineItems">
-        {(fields, { add, remove }) => (
-          <>
-            <Table
-              dataSource={fields.map((field, index) => ({ ...field, index }))}
-              pagination={false}
-              size="middle"
-              locale={{ emptyText: t`No line items` }}
-              rowKey={(r) => r.index.toString()}
-              style={{ marginTop: 8 }}
-            >
-              <Table.Column
-                title={<Trans>Product</Trans>}
-                key="productId"
-                width={180}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "productId"]}
-                    rules={[requiredForNewLineItem(form, field.name, t`This field is required!`)]}
-                    noStyle
-                  >
-                    <Select
-                      showSearch
-                      style={{ width: "100%" }}
-                      placeholder={t`Select product`}
-                      optionFilterProp="children"
-                      onChange={(productId) => {
-                        const product = find(products, { id: productId });
-                        if (product) {
-                          const lineItems = form.getFieldValue("lineItems");
-                          lineItems[field.name] = {
-                            ...lineItems[field.name],
-                            description: (product as any).name,
-                            unitPrice: centsToUnits((product as any).price ?? 0),
-                          };
-                          form.setFieldValue("lineItems", [...lineItems]);
-                        }
-                      }}
-                    >
-                      {map(products, (p: any) => (
-                        <Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Description</Trans>}
-                key="description"
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "description"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Description required` }]}
-                  >
-                    <TextArea rows={1} autoSize />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Qty</Trans>}
-                key="quantity"
-                width={90}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "quantity"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Required` }]}
-                  >
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Unit price</Trans>}
-                key="unitPrice"
-                width={110}
-                render={(field) => (
-                  <Form.Item name={[field.name, "unitPrice"]} noStyle>
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} step={0.01} />
-                  </Form.Item>
-                )}
-              />
-              {!isNew && (
-                <Table.Column
-                  title={<Trans>Delivered</Trans>}
-                  key="delivered"
-                  width={90}
-                  render={(field) => (
+      <LineItemsTable
+        columns={[
+          { kind: "index" },
+          {
+            kind: "product",
+            products,
+            required: true,
+            onSelect: (productId, fieldName, formInstance) => {
+              const product = find(products, { id: productId });
+              if (product) {
+                const lineItems = formInstance.getFieldValue("lineItems");
+                lineItems[fieldName] = {
+                  ...lineItems[fieldName],
+                  description: (product as any).name,
+                  unitPrice: centsToUnits((product as any).price ?? 0),
+                };
+                formInstance.setFieldValue("lineItems", [...lineItems]);
+              }
+            },
+          },
+          { kind: "description", required: true },
+          { kind: "quantity" },
+          { kind: "unitPrice" },
+          ...(!isNew
+            ? [
+                {
+                  kind: "custom" as const,
+                  key: "delivered",
+                  title: <Trans>Delivered</Trans>,
+                  width: 90,
+                  render: (field: { name: number }) => (
                     <Form.Item shouldUpdate noStyle>
                       {() => {
                         const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
-                        const quantity = form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                        const quantity =
+                          form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
                         if (!itemId) return null;
                         const delivered = deliveredQuantities[itemId] ?? 0;
                         return (
-                          <Tag color={delivered >= quantity ? "success" : delivered > 0 ? "processing" : "default"}>
+                          <Tag
+                            color={
+                              delivered >= quantity
+                                ? "success"
+                                : delivered > 0
+                                  ? "processing"
+                                  : "default"
+                            }
+                          >
                             {delivered} / {quantity}
                           </Tag>
                         );
                       }}
                     </Form.Item>
-                  )}
-                />
-              )}
-              <Table.Column
-                key="remove"
-                width={40}
-                render={(field) => (
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => remove(field.name)}
-                    aria-label={t`Remove line item`}
-                  />
-                )}
-              />
-            </Table>
-
-            <Button
-              type="default"
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => add({ quantity: 1 })}
-              style={{ marginTop: 12 }}
-            >
-              <Trans>Add line item</Trans>
-            </Button>
-          </>
-        )}
-      </Form.List>
+                  ),
+                },
+              ]
+            : []),
+        ]}
+      />
 
       {/* Totals */}
       {subTotal > 0 && (
@@ -491,15 +420,16 @@ const OrderDetails = () => {
               </Col>
               <Col>
                 <Space>
-                  {!isNew && transitions.map((t2) => (
-                    <Button
-                      key={t2.next}
-                      type={t2.type ?? "default"}
-                      onClick={() => handleStatusChange(t2.next)}
-                    >
-                      {t2.label}
-                    </Button>
-                  ))}
+                  {!isNew &&
+                    transitions.map((t2) => (
+                      <Button
+                        key={t2.next}
+                        type={t2.type ?? "default"}
+                        onClick={() => handleStatusChange(t2.next)}
+                      >
+                        {t2.label}
+                      </Button>
+                    ))}
                   {!isNew && currentStatus !== "cancelled" && (
                     <Popconfirm
                       title={t`Cancel this order?`}
