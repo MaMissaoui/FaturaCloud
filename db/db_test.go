@@ -198,6 +198,69 @@ func TestInvoiceCRUD(t *testing.T) {
 	}
 }
 
+// TestInvoiceLineItemProductRoundTrips guards against the sales-invoice path
+// silently dropping productId the way it used to before the productId column
+// existed on invoiceLineItems (it was only ever wired for incoming invoices).
+func TestInvoiceLineItemProductRoundTrips(t *testing.T) {
+	d := newTestDB(t)
+
+	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	client, _ := d.CreateClient(CreateClientRequest{
+		ID: "client-1", OrganizationID: org.ID, Name: ptr("Client"),
+	})
+	product, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-1", OrganizationID: org.ID, Name: "Widget", Type: "product",
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID:             "inv-1",
+		OrganizationID: org.ID,
+		Number:         "INV-001",
+		ClientID:       client.ID,
+		Date:           1700000000000,
+		Currency:       "EUR",
+		Total:          5000,
+		SubTotal:       5000,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 5000, ProductID: &product.ID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	items, err := d.GetInvoiceLineItems(inv.ID)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("GetInvoiceLineItems: err=%v, len=%d", err, len(items))
+	}
+	if items[0].ProductID == nil || *items[0].ProductID != product.ID {
+		t.Fatalf("productId did not round-trip on create: got %v, want %q", items[0].ProductID, product.ID)
+	}
+
+	// UpdateInvoice replaces line items wholesale — confirm it persists
+	// productId too, not just CreateInvoice's insert path.
+	_, err = d.UpdateInvoice(inv.ID, UpdateInvoiceRequest{
+		LineItems: &[]CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 5000, ProductID: &product.ID},
+		},
+		Total:    ptr(int64(5000)),
+		SubTotal: ptr(int64(5000)),
+	})
+	if err != nil {
+		t.Fatalf("UpdateInvoice: %v", err)
+	}
+	items, err = d.GetInvoiceLineItems(inv.ID)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("GetInvoiceLineItems after update: err=%v, len=%d", err, len(items))
+	}
+	if items[0].ProductID == nil || *items[0].ProductID != product.ID {
+		t.Fatalf("productId did not round-trip on update: got %v", items[0].ProductID)
+	}
+}
+
 func TestOrganizationCascadeDeletesClients(t *testing.T) {
 	d := newTestDB(t)
 
