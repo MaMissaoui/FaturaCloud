@@ -19,7 +19,7 @@ import {
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { loadable } from "jotai/utils";
+import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined, PlusOutlined, SaveOutlined, UserAddOutlined } from "@ant-design/icons";
