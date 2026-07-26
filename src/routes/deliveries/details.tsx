@@ -30,6 +30,7 @@ import find from "lodash/find";
 import map from "lodash/map";
 import { SaveFile, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
+import { requiredForNewLineItem } from "src/utils/line-items";
 import { organizationAtom } from "src/atoms/organization";
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
@@ -316,12 +317,15 @@ const DeliveryDetails = () => {
                 key="productId"
                 width={180}
                 render={(field) => (
-                  <Form.Item name={[field.name, "productId"]} noStyle>
+                  <Form.Item
+                    name={[field.name, "productId"]}
+                    rules={[requiredForNewLineItem(form, field.name, t`This field is required!`)]}
+                    noStyle
+                  >
                     <Select
-                      allowClear
                       showSearch
                       style={{ width: "100%" }}
-                      placeholder={t`Optional`}
+                      placeholder={t`Select product`}
                       optionFilterProp="children"
                       onChange={(productId) => {
                         const lineItems = form.getFieldValue("lineItems");

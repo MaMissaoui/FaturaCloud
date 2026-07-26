@@ -34,6 +34,7 @@ import map from "lodash/map";
 import { GetPurchaseOrderLineItems, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
+import { requiredForNewLineItem } from "src/utils/line-items";
 import {
   inboundDeliveryStatusColor,
   inboundDeliveryStatusLabel,
@@ -320,13 +321,16 @@ const InboundDeliveryDetails = () => {
                 key="productId"
                 width={180}
                 render={(field) => (
-                  <Form.Item name={[field.name, "productId"]} noStyle>
+                  <Form.Item
+                    name={[field.name, "productId"]}
+                    rules={[requiredForNewLineItem(form, field.name, t`This field is required!`)]}
+                    noStyle
+                  >
                     <Select
-                      allowClear
                       showSearch
                       disabled={!isEditable}
                       style={{ width: "100%" }}
-                      placeholder={t`Optional`}
+                      placeholder={t`Select product`}
                       optionFilterProp="children"
                       onChange={(productId) => {
                         const product = find(products, { id: productId });
