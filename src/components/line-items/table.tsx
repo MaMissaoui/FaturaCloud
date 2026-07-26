@@ -29,6 +29,7 @@ export type LineItemColumn =
   | { kind: "quantity"; label?: ReactNode; width?: number }
   | { kind: "unit"; placeholder?: string; width?: number }
   | { kind: "unitPrice"; name?: string; label?: ReactNode; width?: number }
+  | { kind: "taxRate"; taxRates: any[]; width?: number }
   | {
       kind: "custom";
       key: string;
@@ -202,6 +203,30 @@ const LineItemsTable = ({
                             step={0.01}
                             disabled={disabled}
                           />
+                        </Form.Item>
+                      )}
+                    />
+                  );
+                case "taxRate":
+                  return (
+                    <Table.Column<LineItemField>
+                      title={<Trans>Tax</Trans>}
+                      key="taxRate"
+                      width={col.width ?? 130}
+                      render={(field) => (
+                        <Form.Item name={[field.name, "taxRate"]} noStyle>
+                          <Select
+                            allowClear
+                            placeholder={t`None`}
+                            style={{ width: "100%" }}
+                            disabled={disabled}
+                          >
+                            {map(col.taxRates, (r: any) => (
+                              <Option key={r.id} value={r.id}>
+                                {r.name}
+                              </Option>
+                            ))}
+                          </Select>
                         </Form.Item>
                       )}
                     />
