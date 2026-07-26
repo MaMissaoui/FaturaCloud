@@ -27,6 +27,7 @@ export type LineItemColumn =
     }
   | { kind: "description"; required?: boolean }
   | { kind: "quantity"; width?: number }
+  | { kind: "unit"; placeholder?: string; width?: number }
   | { kind: "unitPrice"; label?: ReactNode; width?: number }
   | {
       kind: "custom";
@@ -163,6 +164,22 @@ const LineItemsTable = ({
                             style={{ width: "100%", textAlign: "right" }}
                             min={0}
                             precision={2}
+                            disabled={disabled}
+                          />
+                        </Form.Item>
+                      )}
+                    />
+                  );
+                case "unit":
+                  return (
+                    <Table.Column<LineItemField>
+                      title={<Trans>Unit</Trans>}
+                      key="unit"
+                      width={col.width ?? 110}
+                      render={(field) => (
+                        <Form.Item name={[field.name, "unit"]} noStyle>
+                          <Input
+                            placeholder={col.placeholder ?? t`pcs, kg, m…`}
                             disabled={disabled}
                           />
                         </Form.Item>

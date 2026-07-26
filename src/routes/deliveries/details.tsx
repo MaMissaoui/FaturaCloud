@@ -8,13 +8,11 @@ import {
   Divider,
   Form,
   Input,
-  InputNumber,
   Layout,
   Popconfirm,
   Row,
   Select,
   Space,
-  Table,
   Tag,
   theme,
 } from "antd";
@@ -23,14 +21,13 @@ import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { DeleteOutlined, FilePdfOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { DeleteOutlined, FilePdfOutlined, SaveOutlined } from "@ant-design/icons";
 import { pdf } from "@react-pdf/renderer";
 import dayjs from "dayjs";
 import find from "lodash/find";
-import map from "lodash/map";
 import { SaveFile, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
-import { requiredForNewLineItem } from "src/utils/line-items";
+import LineItemsTable from "src/components/line-items/table";
 import { organizationAtom } from "src/atoms/organization";
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
@@ -48,7 +45,10 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
 
-const STATUS_TRANSITIONS: Record<string, { label: string; next: string; color: string; type?: "primary" | "default" }[]> = {
+const STATUS_TRANSITIONS: Record<
+  string,
+  { label: string; next: string; color: string; type?: "primary" | "default" }[]
+> = {
   draft: [{ label: "Mark as shipped", next: "shipped", color: "orange", type: "primary" }],
   shipped: [{ label: "Mark as delivered", next: "delivered", color: "green", type: "primary" }],
   delivered: [],
@@ -106,7 +106,9 @@ const DeliveryDetails = () => {
     if (!isNew) {
       setDeliveryId(id ?? null);
     }
-    return () => { setDeliveryId(null); };
+    return () => {
+      setDeliveryId(null);
+    };
   }, [id, isNew, setClients, setOrders, setProducts, setDeliveryId]);
 
   // When creating a delivery from an order, prefill line items with the
@@ -146,7 +148,9 @@ const DeliveryDetails = () => {
         form.setFieldsValue({ lineItems });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isNew, prefillOrderId, products, form]);
 
   // After create, navigate to the new delivery
@@ -186,7 +190,9 @@ const DeliveryDetails = () => {
     const deliveryData = {
       ...(!isNew && delivery && !(delivery as any).then ? delivery : {}),
       ...values,
-      deliveryDate: values.deliveryDate?.valueOf ? values.deliveryDate.valueOf() : values.deliveryDate,
+      deliveryDate: values.deliveryDate?.valueOf
+        ? values.deliveryDate.valueOf()
+        : values.deliveryDate,
     };
 
     const orderId = values.orderId;
@@ -214,7 +220,7 @@ const DeliveryDetails = () => {
     );
 
     const blob = await pdf(doc).toBlob();
-    const num = deliveryData.deliveryNumber ?? (id ?? "delivery");
+    const num = deliveryData.deliveryNumber ?? id ?? "delivery";
     await SaveFile(`delivery-note-${num}.pdf`, blob);
   };
 
@@ -228,9 +234,8 @@ const DeliveryDetails = () => {
       }
     : undefined;
 
-  const currentStatus = !isNew && delivery && !(delivery as any).then
-    ? (delivery as any).status ?? "draft"
-    : "draft";
+  const currentStatus =
+    !isNew && delivery && !(delivery as any).then ? ((delivery as any).status ?? "draft") : "draft";
 
   // Mirrors the server-side guard in db/delivery.go: line items are frozen
   // once a delivery is shipped/delivered. Header-only fields (tracking
@@ -243,18 +248,15 @@ const DeliveryDetails = () => {
   if (!isNew && !delivery) return null;
 
   return (
-    <Form
-      form={form}
-      onFinish={handleSubmit}
-      layout="vertical"
-      initialValues={initialValues}
-    >
+    <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
         <Col span={6}>
           <Form.Item label={<Trans>Linked order</Trans>} name="orderId">
             <Select allowClear showSearch optionFilterProp="children">
               {(orders as any[]).map((o: any) => (
-                <Option key={o.id} value={o.id}>{o.orderNumber}</Option>
+                <Option key={o.id} value={o.id}>
+                  {o.orderNumber}
+                </Option>
               ))}
             </Select>
           </Form.Item>
@@ -284,7 +286,10 @@ const DeliveryDetails = () => {
         </Col>
         <Col span={4}>
           <Form.Item label={<Trans>Status</Trans>}>
-            <Tag color={STATUS_COLORS[currentStatus] ?? "default"} style={{ fontSize: 13, padding: "4px 10px", marginTop: 4 }}>
+            <Tag
+              color={STATUS_COLORS[currentStatus] ?? "default"}
+              style={{ fontSize: 13, padding: "4px 10px", marginTop: 4 }}
+            >
               {currentStatus}
             </Tag>
           </Form.Item>
@@ -307,141 +312,54 @@ const DeliveryDetails = () => {
       <Divider style={{ marginTop: 0 }} />
 
       {/* Line items — no prices */}
-      <Form.List name="lineItems">
-        {(fields, { add, remove }) => (
-          <>
-            <Table
-              dataSource={fields.map((field, index) => ({ ...field, index }))}
-              pagination={false}
-              size="middle"
-              locale={{ emptyText: t`No line items` }}
-              rowKey={(r) => r.index.toString()}
-            >
-              <Table.Column
-                title={<Trans>Product</Trans>}
-                key="productId"
-                width={180}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "productId"]}
-                    rules={[requiredForNewLineItem(form, field.name, t`This field is required!`)]}
-                    noStyle
-                  >
-                    <Select
-                      showSearch
-                      disabled={!isEditable}
-                      style={{ width: "100%" }}
-                      placeholder={t`Select product`}
-                      optionFilterProp="children"
-                      onChange={(productId) => {
-                        const lineItems = form.getFieldValue("lineItems");
-                        const product = productId ? find(products, { id: productId }) : null;
-                        lineItems[field.name] = {
-                          ...lineItems[field.name],
-                          description: (product as any)?.name ?? lineItems[field.name]?.description,
-                          unit: (product as any)?.unit,
-                          stockEnabled: (product as any)?.stockEnabled,
-                          availableStock: (product as any)?.stockQuantity,
-                        };
-                        form.setFieldValue("lineItems", [...lineItems]);
-                      }}
-                    >
-                      {map(products, (p: any) => (
-                        <Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Description</Trans>}
-                key="description"
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "description"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Description required` }]}
-                  >
-                    <TextArea rows={1} autoSize disabled={!isEditable} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Qty</Trans>}
-                key="quantity"
-                width={110}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "quantity"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Required` }]}
-                  >
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} disabled={!isEditable} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Available stock</Trans>}
-                key="availableStock"
-                width={120}
-                render={(field) => (
-                  <Form.Item shouldUpdate noStyle>
-                    {() => {
-                      const stockEnabled = form.getFieldValue(["lineItems", field.name, "stockEnabled"]);
-                      if (!stockEnabled) return null;
-                      const available = form.getFieldValue(["lineItems", field.name, "availableStock"]) ?? 0;
-                      const requested = form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
-                      return (
-                        <Tag color={requested > available ? "error" : "default"}>
-                          {available}
-                        </Tag>
-                      );
-                    }}
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Unit</Trans>}
-                key="unit"
-                width={110}
-                render={(field) => (
-                  <Form.Item name={[field.name, "unit"]} noStyle>
-                    <Input placeholder={t`pcs, kg, m…`} disabled={!isEditable} />
-                  </Form.Item>
-                )}
-              />
-              {isEditable && (
-                <Table.Column
-                  key="remove"
-                  width={40}
-                  render={(field) => (
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={() => remove(field.name)}
-                      aria-label={t`Remove line item`}
-                    />
-                  )}
-                />
-              )}
-            </Table>
-
-            {isEditable && (
-              <Button
-                type="default"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={() => add({ quantity: 1 })}
-                style={{ marginTop: 12 }}
-              >
-                <Trans>Add line item</Trans>
-              </Button>
-            )}
-          </>
-        )}
-      </Form.List>
+      <LineItemsTable
+        disabled={!isEditable}
+        columns={[
+          { kind: "index" },
+          {
+            kind: "product",
+            products,
+            required: true,
+            onSelect: (productId, fieldName, formInstance) => {
+              const lineItems = formInstance.getFieldValue("lineItems");
+              const product = productId ? find(products, { id: productId }) : null;
+              lineItems[fieldName] = {
+                ...lineItems[fieldName],
+                description: (product as any)?.name ?? lineItems[fieldName]?.description,
+                unit: (product as any)?.unit,
+                stockEnabled: (product as any)?.stockEnabled,
+                availableStock: (product as any)?.stockQuantity,
+              };
+              formInstance.setFieldValue("lineItems", [...lineItems]);
+            },
+          },
+          { kind: "description", required: true },
+          { kind: "quantity", width: 110 },
+          {
+            kind: "custom",
+            key: "availableStock",
+            title: <Trans>Available stock</Trans>,
+            width: 120,
+            render: (field) => (
+              <Form.Item shouldUpdate noStyle>
+                {() => {
+                  const stockEnabled = form.getFieldValue([
+                    "lineItems",
+                    field.name,
+                    "stockEnabled",
+                  ]);
+                  if (!stockEnabled) return null;
+                  const available =
+                    form.getFieldValue(["lineItems", field.name, "availableStock"]) ?? 0;
+                  const requested = form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                  return <Tag color={requested > available ? "error" : "default"}>{available}</Tag>;
+                }}
+              </Form.Item>
+            ),
+          },
+          { kind: "unit" },
+        ]}
+      />
 
       {/* Footer bar */}
       {document.getElementById("footer") &&
@@ -472,15 +390,16 @@ const DeliveryDetails = () => {
               </Col>
               <Col>
                 <Space>
-                  {!isNew && transitions.map((tr) => (
-                    <Button
-                      key={tr.next}
-                      type={tr.type ?? "default"}
-                      onClick={() => handleStatusChange(tr.next)}
-                    >
-                      {tr.label}
-                    </Button>
-                  ))}
+                  {!isNew &&
+                    transitions.map((tr) => (
+                      <Button
+                        key={tr.next}
+                        type={tr.type ?? "default"}
+                        onClick={() => handleStatusChange(tr.next)}
+                      >
+                        {tr.label}
+                      </Button>
+                    ))}
                   {!isNew && !["cancelled", "delivered"].includes(currentStatus) && (
                     <Popconfirm
                       title={t`Cancel this delivery?`}
