@@ -2,10 +2,11 @@
 
 ## Status
 
-**Tier 0, Tier 1, and Tier 2 (line-item tables) are all done**, verified
-in-browser, and committed — all six document detail pages now use the shared
-`src/components/line-items/table.tsx` shell. **Tier 3 (detail-page shells)
-is not started.**
+**Tier 0, Tier 1, and Tier 2 (including 2.3 visual polish) are all done**,
+verified in-browser, and committed — all six document detail pages now use
+the shared `src/components/line-items/table.tsx` shell, with the borderless
+cell/drag-handle polish applied on top. **Tier 3 (detail-page shells) is not
+started.**
 
 Tier 2 progress:
 
@@ -36,9 +37,9 @@ Tier 2 progress:
   (The Tier 2.1 write-up's suspicion that this file was missing `disabled`
   gating did not hold up — the gating was already correct before this
   migration; only the extraction to the shared shell was needed.)
-- Tier 2.3 (borderless-cell / drag-handle visual polish) **deliberately
-  deferred** — per the plan, it's its own reviewable commit after the shell
-  exists across more than one document, not bundled into the first migration.
+- Tier 2.3 (borderless-cell / drag-handle visual polish) is **done**, as its
+  own commit after all six documents were on the shell (see below, after the
+  invoices entry).
 - **Aside, not fixed**: saving an order always resets its `Delivered` column
   to 0 — `db.UpdateOrder` replaces all line items (new IDs) on every save,
   so `GetOrderDeliveredQuantities` (keyed by the old `orderLineItemId`) no
@@ -152,6 +153,46 @@ purchaseOrderLineItemId` — and the 3-way match in
     tell the user why Save did nothing. Confirmed this is pre-existing
     (identical on `main`, unrelated to the table extraction) — out of scope
     here, but a real UX footgun worth a follow-up.
+- **Tier 2.3 (visual polish)**, done after all six documents were on the
+  shell, as its own commit:
+  - **Header background and row-hover highlight were already there** —
+    verified via computed styles that antd's `Table` ships both by default
+    (`headerBg`/`rowHoverBg` tokens, theme-aware, toggled by a
+    `.ant-table-cell-row-hover` class antd adds itself on
+    mouseenter/mouseleave). The plan's ask here needed no new code, just
+    confirmation it wasn't missing.
+  - **Borderless-until-hover/focus cell inputs**: added
+    `src/components/line-items/table.module.scss`, scoped to the table via a
+    `className` on antd's `<Table>` (so it can't leak onto ordinary inputs
+    elsewhere on the same page). The rule suppresses border/background on
+    `.ant-input`/`.ant-input-number`/`.ant-select` only while **not**
+    hovered/focused and **not** in an error/warning status — status always
+    keeps its border, and hover/focus styling is left to antd's own
+    (already theme-aware) CSS rather than reimplemented, so nothing here
+    hardcodes a light- or dark-mode color. Verified live in both themes,
+    including the one case that would have broken silently: a disabled
+    (frozen) delivery's line items stay borderless and legible with no hover
+    state to fall back on.
+  - **Drag handle merged into the `#` column**: added an `IndexCell`
+    component to the shell, used only when `reorderable` is set. It shows the
+    row number at rest and swaps to a `HolderOutlined` grip on row hover,
+    reusing the same `.ant-table-cell-row-hover` class the header/row
+    highlight already relies on rather than adding a second hover mechanism.
+    This replaced invoices' old `DragHandleCell` (an absolutely-positioned
+    `MoreOutlined` glyph sitting outside the table border, in the Product
+    cell's left gutter) — deleted along with the `onCell` padding hack it
+    needed. Since invoices was the only document that hadn't gotten the `#`
+    column in its own migration (an oversight from Tier 2.2, caught here),
+    it now has one, combined with the handle in the same cell everywhere
+    else gets a plain number.
+  - Verified live: hovering a single cell reveals just that cell's border;
+    focusing a field (e.g. via click) shows its border/focus ring with
+    everything else still borderless; row hover shows the row highlight and
+    swaps the `#` cell to the grip on all six documents (reorderable or not —
+    the other five just never show the grip since `reorderable` is unset);
+    dragged a row via the new handle position with real pointer events and
+    confirmed the reorder still applies; both light and dark theme
+    screenshotted directly, no hardcoded colors bleeding through either way.
 
 What actually shipped, with deviations from the original plan noted inline:
 
@@ -507,7 +548,7 @@ Check `purchase-orders/details.tsx` for the same gap (it has terminal
 - Enable `reorderable` on invoices only at first (preserves current behaviour);
   extending DnD to other docs is a separate, optional follow-up.
 
-### 2.3 Make the table _render_ better (not just consistently)
+### 2.3 Make the table _render_ better (not just consistently) — DONE
 
 Consistency work alone won't address the visual complaint. From the invoice
 screenshot at 1440×900, two things make the table read poorly:
@@ -527,6 +568,15 @@ Also: give the table a subtle header background and row-hover highlight so rows
 track horizontally, and keep row height compact (`size="small"` is worth trying
 against the current `size="middle"` once cells are borderless — borderless cells
 need less vertical padding).
+
+**What shipped** (see the Status section above for full detail): header
+background and row-hover highlight turned out to already be there — antd's
+`Table` ships both by default — so no code was needed for that part. The
+borderless-until-hover/focus treatment and the `#`/drag-handle merge were
+built as described. `size="small"` was **not** tried — `size="middle"` reads
+fine once cells are borderless, and swapping it was never required by the
+plan, just suggested as worth exploring; left alone to keep this commit
+scoped to what the plan actually asked for.
 
 Do this as its own commit _after_ the shell exists, so the visual change is
 reviewable independently of the mechanical extraction.

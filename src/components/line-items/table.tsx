@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Button, Form, Input, InputNumber, Select, Table } from "antd";
 import type { FormInstance } from "antd/es/form";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import map from "lodash/map";
@@ -23,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { requiredForNewLineItem } from "src/utils/line-items";
+import styles from "./table.module.scss";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -51,6 +52,20 @@ const SortableRow = ({ children, ...props }: any) => {
     <tr {...props} ref={setNodeRef} style={style}>
       {children}
     </tr>
+  );
+};
+
+// Row number at rest; on row hover it swaps for the drag handle, replacing
+// the old near-invisible glyph that used to sit outside the table border.
+const IndexCell = ({ index }: { index: number }) => {
+  const { attributes, listeners } = useSortable({ id: index.toString() });
+  return (
+    <span className={styles.indexCell}>
+      <span className={styles.indexNumber}>{index + 1}</span>
+      <span className={styles.indexHandle} {...attributes} {...listeners}>
+        <HolderOutlined />
+      </span>
+    </span>
   );
 };
 
@@ -130,6 +145,7 @@ const LineItemsTable = ({
       {(fields, { add, remove }) => {
         const table = (
           <Table
+            className={styles.wrapper}
             dataSource={fields.map((field, index) => ({ ...field, index }))}
             pagination={false}
             size="middle"
@@ -147,7 +163,9 @@ const LineItemsTable = ({
                       key="index"
                       width={40}
                       align="right"
-                      render={(field) => field.index + 1}
+                      render={(field) =>
+                        reorderable ? <IndexCell index={field.index} /> : field.index + 1
+                      }
                     />
                   );
                 case "product":

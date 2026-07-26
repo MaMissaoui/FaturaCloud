@@ -31,11 +31,9 @@ import {
   EyeOutlined,
   FilePdfOutlined,
   FileTextOutlined,
-  MoreOutlined,
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
-import { useSortable } from "@dnd-kit/sortable";
 import LineItemsTable from "src/components/line-items/table";
 import { SaveFile, DownloadInvoiceEInvoice } from "src/api";
 import QRCode from "qrcode";
@@ -105,27 +103,6 @@ const { Footer } = Layout;
 // resolves synchronously instead of suspending, same fix as
 // src/components/tax-rates/form.tsx.
 const loadableInvoiceAtom = loadable(invoiceAtom);
-
-// Drag handle component that works with the table cell
-const DragHandleCell: React.FC<{
-  children: React.ReactNode;
-  rowKey: string;
-}> = ({ children, rowKey }) => {
-  const { attributes, listeners } = useSortable({
-    id: rowKey,
-  });
-
-  return (
-    <>
-      <MoreOutlined
-        {...attributes}
-        {...listeners}
-        style={{ position: "absolute", top: 20, left: -20, cursor: "move", color: "#999" }}
-      />
-      {children}
-    </>
-  );
-};
 
 // PDF Preview component that generates blob manually (like PDF download)
 const PDFPreview: React.FC<{ createPDFDocument: () => React.ReactElement<any> | null }> = ({
@@ -691,54 +668,52 @@ const InvoiceDetails: React.FC = () => {
                     taxRate: get(find(taxRates, { isDefault: 1 }), "id"),
                   }}
                   columns={[
+                    { kind: "index" },
                     {
                       kind: "custom",
                       key: "productId",
                       title: t`Product`,
                       width: 180,
-                      onCell: () => ({ style: { paddingLeft: 0 } }),
                       render: (field) => (
-                        <DragHandleCell rowKey={field.index.toString()}>
-                          <Form.Item
-                            name={[field.name, "productId"]}
-                            rules={[
-                              requiredForNewLineItem(form, field.name, t`This field is required!`),
-                            ]}
-                            noStyle
+                        <Form.Item
+                          name={[field.name, "productId"]}
+                          rules={[
+                            requiredForNewLineItem(form, field.name, t`This field is required!`),
+                          ]}
+                          noStyle
+                        >
+                          <Select
+                            showSearch
+                            style={{ width: "100%" }}
+                            placeholder={t`Select product`}
+                            optionFilterProp="children"
+                            onChange={(productId) => {
+                              const product = find(products, { id: productId });
+                              if (product) {
+                                const lineItems = form.getFieldValue("lineItems");
+                                const quantity = get(lineItems[field.name], "quantity") || 1;
+                                const unitPrice = centsToUnits((product as any).price ?? 0);
+                                lineItems[field.name] = {
+                                  ...lineItems[field.name],
+                                  description: (product as any).name,
+                                  unitPrice,
+                                  total: multiplyDecimal(quantity, unitPrice),
+                                  ...((product as any).taxRateId
+                                    ? { taxRate: (product as any).taxRateId }
+                                    : {}),
+                                };
+                                form.setFieldValue("lineItems", [...lineItems]);
+                              }
+                            }}
                           >
-                            <Select
-                              showSearch
-                              style={{ width: "100%" }}
-                              placeholder={t`Select product`}
-                              optionFilterProp="children"
-                              onChange={(productId) => {
-                                const product = find(products, { id: productId });
-                                if (product) {
-                                  const lineItems = form.getFieldValue("lineItems");
-                                  const quantity = get(lineItems[field.name], "quantity") || 1;
-                                  const unitPrice = centsToUnits((product as any).price ?? 0);
-                                  lineItems[field.name] = {
-                                    ...lineItems[field.name],
-                                    description: (product as any).name,
-                                    unitPrice,
-                                    total: multiplyDecimal(quantity, unitPrice),
-                                    ...((product as any).taxRateId
-                                      ? { taxRate: (product as any).taxRateId }
-                                      : {}),
-                                  };
-                                  form.setFieldValue("lineItems", [...lineItems]);
-                                }
-                              }}
-                            >
-                              {map(products, (p: any) => (
-                                <Option key={p.id} value={p.id}>
-                                  {p.name}
-                                  {p.sku ? ` (${p.sku})` : ""}
-                                </Option>
-                              ))}
-                            </Select>
-                          </Form.Item>
-                        </DragHandleCell>
+                            {map(products, (p: any) => (
+                              <Option key={p.id} value={p.id}>
+                                {p.name}
+                                {p.sku ? ` (${p.sku})` : ""}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
                       ),
                     },
                     { kind: "description", required: true, rows: 4 },
