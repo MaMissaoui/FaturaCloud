@@ -402,6 +402,39 @@ others when convenient.
 
 ---
 
+## Tier 4 — Scale & reporting (separate initiative, not scoped in detail yet)
+
+Two items raised after Tier 0 shipped. Recorded here for planning; neither has
+an implementation plan yet, and **both break this doc's own non-goal of
+"frontend-only, no Go/API/DB changes"** — they're a distinct initiative from
+the Tier 0-3 UI-consistency pass, not a continuation of it.
+
+### 4.1 Inventory / product-list UI at scale
+Confirmed today: `GetProducts`/`GetStockMovements` (`src/atoms/product.ts`,
+`src/atoms/stock.ts`) fetch the *entire* table in one request with no
+`limit`/`offset`/`search` params anywhere in `api/products.go`; `/inventory`
+and `/products` paginate client-side only (`pagination={{ pageSize: 50 }}` at
+`src/routes/inventory.tsx:114`, `defaultPageSize: 25` in `products.tsx`). Fine
+at tens/hundreds of rows; at thousands this means a multi-MB payload on every
+load, full in-memory filter/sort, and no server-side search. Needs: paginated
++ filtered Go endpoints, matching server-side `Table` pagination/sorting and
+debounced search on the frontend, and likely a DB index on
+`products(organizationId, name/sku)`. Also worth checking whether the
+line-item product `Select`s (which assume the full product list fits in an
+in-browser `showSearch` dropdown) need to move to a search-as-you-type API
+call once this is in the thousands.
+
+### 4.2 Dashboard(s) and reports
+Confirmed today: no dashboard or reporting route/component exists anywhere in
+`src/routes/` or `src/layouts/`. This is a new feature area, not a refactor —
+needs a decision on what to report (revenue over time, outstanding invoices,
+stock valuation, top clients/products, sales vs. purchasing) before any
+implementation, new aggregate Go endpoints (`GROUP BY`/`SUM` queries, not just
+returning raw entity lists for the frontend to crunch), and a new sidebar
+entry/section.
+
+---
+
 ## Verification
 
 Run after each tier, not just at the end.
