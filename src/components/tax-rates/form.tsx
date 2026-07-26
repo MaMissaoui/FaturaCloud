@@ -11,6 +11,7 @@ import { GetTaxRateUsageCount } from "src/api";
 
 import { taxRateIdAtom, taxRateAtom, deleteTaxRateAtom } from "src/atoms/tax-rate";
 import Section from "src/components/form-section";
+import ScrollShadow from "src/components/scroll-shadow";
 
 const loadableTaxRateAtom = loadable(taxRateAtom);
 
@@ -129,67 +130,74 @@ const TaxRateForm = () => {
       }
     >
       {(!id || (taxRate.state === "hasData" && !isEmpty(taxRate.data))) && (
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={
-            taxRate.state === "hasData" && taxRate.data ? taxRate.data : { category_code: "S" }
-          }
-        >
-          <Section>
-            <Trans>Tax rate</Trans>
-          </Section>
-          <Form.Item
-            name="name"
-            label={<Trans>Name</Trans>}
-            rules={[{ required: true, message: t`Please input name!` }]}
-          >
-            <Input placeholder={t`Name`} />
-          </Form.Item>
-          <Form.Item name="description" label={<Trans>Description</Trans>}>
-            <Input.TextArea rows={4} placeholder={t`Description`} />
-          </Form.Item>
-          <Form.Item
-            name="percentage"
-            label={<Trans>Percentage</Trans>}
-            rules={[{ required: true, message: t`Please input a percentage!` }]}
-          >
-            <Input placeholder={t`Percentage`} />
-          </Form.Item>
-          <Form.Item name="isDefault" valuePropName="checked">
-            <Checkbox>
-              <Trans>Default</Trans>
-            </Checkbox>
-          </Form.Item>
-
-          <Section>
-            <Trans>E-invoicing</Trans>
-          </Section>
-          <Form.Item
-            name="category_code"
-            label={<Trans>VAT category</Trans>}
-            rules={[{ required: true, message: t`Please select a VAT category!` }]}
-          >
-            <Select
-              options={TAX_RATE_CATEGORY_CODES.map((code) => ({
-                value: code,
-                label: `${code} — ${categoryLabels[code]}`,
-              }))}
-            />
-          </Form.Item>
-          <Form.Item
-            name="exemption_reason"
-            label={<Trans>Exemption reason</Trans>}
-            rules={
-              exemptionReasonRequired
-                ? [{ required: true, message: t`This VAT category requires an exemption reason!` }]
-                : []
+        <ScrollShadow>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}
+            initialValues={
+              taxRate.state === "hasData" && taxRate.data ? taxRate.data : { category_code: "S" }
             }
           >
-            <Input placeholder={t`e.g. Intra-community supply`} />
-          </Form.Item>
-        </Form>
+            <Section>
+              <Trans>Tax rate</Trans>
+            </Section>
+            <Form.Item
+              name="name"
+              label={<Trans>Name</Trans>}
+              rules={[{ required: true, message: t`Please input name!` }]}
+            >
+              <Input placeholder={t`Name`} />
+            </Form.Item>
+            <Form.Item name="description" label={<Trans>Description</Trans>}>
+              <Input.TextArea rows={4} placeholder={t`Description`} />
+            </Form.Item>
+            <Form.Item
+              name="percentage"
+              label={<Trans>Percentage</Trans>}
+              rules={[{ required: true, message: t`Please input a percentage!` }]}
+            >
+              <Input placeholder={t`Percentage`} />
+            </Form.Item>
+            <Form.Item name="isDefault" valuePropName="checked">
+              <Checkbox>
+                <Trans>Default</Trans>
+              </Checkbox>
+            </Form.Item>
+
+            <Section>
+              <Trans>E-invoicing</Trans>
+            </Section>
+            <Form.Item
+              name="category_code"
+              label={<Trans>VAT category</Trans>}
+              rules={[{ required: true, message: t`Please select a VAT category!` }]}
+            >
+              <Select
+                options={TAX_RATE_CATEGORY_CODES.map((code) => ({
+                  value: code,
+                  label: `${code} — ${categoryLabels[code]}`,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item
+              name="exemption_reason"
+              label={<Trans>Exemption reason</Trans>}
+              rules={
+                exemptionReasonRequired
+                  ? [
+                      {
+                        required: true,
+                        message: t`This VAT category requires an exemption reason!`,
+                      },
+                    ]
+                  : []
+              }
+            >
+              <Input placeholder={t`e.g. Intra-community supply`} />
+            </Form.Item>
+          </Form>
+        </ScrollShadow>
       )}
     </Drawer>
   );

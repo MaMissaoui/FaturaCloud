@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Order } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Space, Table, Tag, Typography } from "antd";
+import { Button, Col, Row, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -9,11 +9,10 @@ import { useLingui } from "@lingui/react";
 import { ShoppingOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
 import includes from "lodash/includes";
-import { Input } from "antd";
 
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
+import PageHeader from "src/components/page-header";
 
-const { Title } = Typography;
 const searchAtom = atom<string>("");
 
 const statusTag = (status: string) => {
@@ -53,25 +52,16 @@ const Orders = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <ShoppingOutlined style={{ marginRight: 8 }} />
-            <Trans>Orders</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search
-              placeholder={t`Search`}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Button type="primary" onClick={() => navigate("/orders/new")}>
-              <Trans>New order</Trans>
-            </Button>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<ShoppingOutlined />}
+        title={<Trans>Orders</Trans>}
+        search={{ placeholder: t`Search`, onChange: setSearch }}
+        actions={
+          <Button type="primary" onClick={() => navigate("/orders/new")}>
+            <Trans>New order</Trans>
+          </Button>
+        }
+      />
 
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>

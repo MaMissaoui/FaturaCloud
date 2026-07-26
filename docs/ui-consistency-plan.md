@@ -2,16 +2,24 @@
 
 ## Status
 
-**Tier 0 and Tier 1 are done, verified in-browser, and committed** on
-`refactor/ui-consistency-tier0` (PR — see below). **Tier 2 (line-item tables)
-and Tier 3 (detail-page shells) are not started** — they are large enough to
-warrant their own branch/PR per the Workflow section below, and Tier 2 depends
-on the `disabled` contract now confirmed in this doc.
+**Tier 0 and Tier 1 are done, verified in-browser, and committed.** **Tier 2
+(line-item tables) and Tier 3 (detail-page shells) are not started** — they
+are large enough to warrant their own branch/PR per the Workflow section
+below, and Tier 2 depends on the `disabled` contract now confirmed in this
+doc.
 
 What actually shipped, with deviations from the original plan noted inline:
 - Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.
-- Tier 0.2 (`PageHeader` extraction), 0.4 (`ScrollShadow` consistency) — **not
-  done**, still open.
+- Tier 0.2 (`PageHeader` extraction) — done, on `refactor/page-header-extraction`.
+  Adopted in all 13 list/settings pages named in the original plan. `inventory`'s
+  product filter (a `Select`, not a search box) goes through a new `extra` slot
+  not in the original spec; `users`/`organizations` keep their per-page
+  `marginBottom` via a `style` prop since their tables aren't wrapped in their
+  own spacing `Row`.
+- Tier 0.4 (`ScrollShadow` consistency) — done, same branch. Added to
+  `tax-rates/form.tsx` and `stock/movement-form.tsx`, the two drawers Tier 1.1
+  found already fit without overflow (so weren't converted to the two-column
+  layout) but still lacked the scroll affordance the other three have.
 - Tier 1.1/1.2 — **only clients, vendors, and products needed conversion.**
   tax-rates and stock-movement were measured at 1440×900 first and already fit
   with zero overflow — converting them would have been unrequested churn. See

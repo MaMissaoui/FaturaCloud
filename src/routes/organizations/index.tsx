@@ -14,7 +14,6 @@ import {
   Select,
   Space,
   Table,
-  Typography,
   Upload,
   theme,
 } from "antd";
@@ -49,8 +48,7 @@ import { isAdminAtom } from "src/atoms/auth";
 import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
 import { countries } from "src/utils/countries";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
-
-const { Title } = Typography;
+import PageHeader from "src/components/page-header";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 
@@ -203,28 +201,23 @@ export default function Organizations() {
 
   return (
     <>
-      <Row style={{ marginBottom: 12 }}>
-        <Col flex="auto">
-          <Title level={3} style={{ margin: 0 }}>
-            <ApartmentOutlined style={{ marginRight: 8 }} />
-            <Trans>Organizations</Trans>
-          </Title>
-        </Col>
-        <Col>
-          <Space>
-            <Input.Search
-              placeholder={t`Search`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
-              onClear={() => setSearch("")}
-            />
-            <Button type="primary" onClick={openNew}>
-              <Trans>New organization</Trans>
-            </Button>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        style={{ marginBottom: 12 }}
+        icon={<ApartmentOutlined />}
+        title={<Trans>Organizations</Trans>}
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        actions={
+          <Button type="primary" onClick={openNew}>
+            <Trans>New organization</Trans>
+          </Button>
+        }
+      />
 
       <Table
         dataSource={filteredOrgs}

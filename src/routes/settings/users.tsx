@@ -13,7 +13,6 @@ import {
   Switch,
   Table,
   Tag,
-  Typography,
 } from "antd";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { DeleteOutlined, TeamOutlined } from "@ant-design/icons";
@@ -31,8 +30,7 @@ import {
   UpdateUser,
 } from "src/api";
 import { currentUserAtom } from "src/atoms/auth";
-
-const { Title } = Typography;
+import PageHeader from "src/components/page-header";
 
 const searchAtom = atom("");
 const drawerOpenAtom = atom(false);
@@ -142,29 +140,24 @@ export default function SettingsUsers() {
 
   return (
     <>
-      <Row style={{ marginBottom: 16 }}>
-        <Col flex="auto">
-          <Title level={3} style={{ margin: 0 }}>
-            <TeamOutlined style={{ marginRight: 8 }} />
-            <Trans>Users</Trans>
-          </Title>
-        </Col>
-        <Col>
-          <Space>
-            <Input.Search
-              placeholder={t`Search`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onSearch={(v) => fetchUsers(v)}
-              allowClear
-              onClear={() => { setSearch(""); fetchUsers(); }}
-            />
-            <Button type="primary" onClick={openNew}>
-              <Trans>New user</Trans>
-            </Button>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        style={{ marginBottom: 16 }}
+        icon={<TeamOutlined />}
+        title={<Trans>Users</Trans>}
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          onSearch: (v) => fetchUsers(v),
+          allowClear: true,
+          onClear: () => { setSearch(""); fetchUsers(); },
+        }}
+        actions={
+          <Button type="primary" onClick={openNew}>
+            <Trans>New user</Trans>
+          </Button>
+        }
+      />
 
       <Table<UserRecord>
         dataSource={users}

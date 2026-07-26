@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Client } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Input, Space, Table, Typography, Row, Tag, Tooltip } from "antd";
+import { Button, Col, Table, Row, Tag, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -16,9 +16,8 @@ import toString from "lodash/toString";
 
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import ClientForm from "src/components/clients/form";
+import PageHeader from "src/components/page-header";
 import { formatAddressOneLine } from "src/utils/address";
-
-const { Title } = Typography;
 
 const searchAtom = atom<string>("");
 
@@ -56,27 +55,18 @@ const Clients = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <TeamOutlined style={{ marginRight: 8 }} />
-            <Trans>Clients</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search
-              placeholder={t`Search text`}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Link to="/clients" state={{ clientModal: true }}>
-              <Button type="primary" style={{ marginBottom: 10 }}>
-                <Trans>New client</Trans>
-              </Button>
-            </Link>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<TeamOutlined />}
+        title={<Trans>Clients</Trans>}
+        search={{ placeholder: t`Search text`, onChange: setSearch }}
+        actions={
+          <Link to="/clients" state={{ clientModal: true }}>
+            <Button type="primary" style={{ marginBottom: 10 }}>
+              <Trans>New client</Trans>
+            </Button>
+          </Link>
+        }
+      />
       <Row>
         <Col span={24}>
           <Table

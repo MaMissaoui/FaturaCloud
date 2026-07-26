@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Vendor } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Input, Space, Table, Typography, Row, Tag, Tooltip } from "antd";
+import { Button, Col, Table, Row, Tag, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -16,9 +16,8 @@ import toString from "lodash/toString";
 
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import VendorForm from "src/components/vendors/form";
+import PageHeader from "src/components/page-header";
 import { formatAddressOneLine } from "src/utils/address";
-
-const { Title } = Typography;
 
 const searchAtom = atom<string>("");
 
@@ -56,27 +55,18 @@ const Vendors = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <SolutionOutlined style={{ marginRight: 8 }} />
-            <Trans>Vendors</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search
-              placeholder={t`Search text`}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Link to="/vendors" state={{ vendorModal: true }}>
-              <Button type="primary" style={{ marginBottom: 10 }}>
-                <Trans>New vendor</Trans>
-              </Button>
-            </Link>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<SolutionOutlined />}
+        title={<Trans>Vendors</Trans>}
+        search={{ placeholder: t`Search text`, onChange: setSearch }}
+        actions={
+          <Link to="/vendors" state={{ vendorModal: true }}>
+            <Button type="primary" style={{ marginBottom: 10 }}>
+              <Trans>New vendor</Trans>
+            </Button>
+          </Link>
+        }
+      />
       <Row>
         <Col span={24}>
           <Table

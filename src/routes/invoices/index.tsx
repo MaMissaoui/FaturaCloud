@@ -2,12 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Button,
-  Col,
-  Input,
-  Space,
   Table,
   Typography,
-  Row,
   Dropdown,
   MenuProps,
   Popconfirm,
@@ -41,10 +37,9 @@ import { organizationAtom } from "src/atoms/organization";
 import { getFormattedNumber } from "src/utils/currencies";
 import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
+import PageHeader from "src/components/page-header";
 import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
 import type { Invoice } from "src/types/models";
-
-const { Title } = Typography;
 
 const searchAtom = atom<string>("");
 
@@ -135,27 +130,18 @@ const Invoices = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ margin: 0 }}>
-            <FileTextOutlined style={{ marginRight: 8 }} />
-            <Trans>Invoices</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search
-              placeholder={t`Search text`}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Link to="/invoices/new">
-              <Button type="primary" style={{ marginBottom: 10 }}>
-                <Trans>New invoice</Trans>
-              </Button>
-            </Link>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<FileTextOutlined />}
+        title={<Trans>Invoices</Trans>}
+        search={{ placeholder: t`Search text`, onChange: setSearch }}
+        actions={
+          <Link to="/invoices/new">
+            <Button type="primary" style={{ marginBottom: 10 }}>
+              <Trans>New invoice</Trans>
+            </Button>
+          </Link>
+        }
+      />
 
       <Table
         dataSource={search ? searchInvoices() : invoices}

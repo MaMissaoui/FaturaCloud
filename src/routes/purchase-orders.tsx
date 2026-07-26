@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PurchaseOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Input, Row, Space, Table, Tag, Typography } from "antd";
+import { Button, Col, Row, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -18,8 +18,8 @@ import {
   type PurchaseOrderStatus,
 } from "src/types/purchase-order";
 import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-order";
+import PageHeader from "src/components/page-header";
 
-const { Title } = Typography;
 const searchAtom = atom<string>("");
 
 const PurchaseOrders = () => {
@@ -50,22 +50,16 @@ const PurchaseOrders = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <ShoppingCartOutlined style={{ marginRight: 8 }} />
-            <Trans>Purchase Orders</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search placeholder={t`Search`} onChange={(e) => setSearch(e.target.value)} />
-            <Button type="primary" onClick={() => navigate("/purchase-orders/new")}>
-              <Trans>New purchase order</Trans>
-            </Button>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<ShoppingCartOutlined />}
+        title={<Trans>Purchase Orders</Trans>}
+        search={{ placeholder: t`Search`, onChange: setSearch }}
+        actions={
+          <Button type="primary" onClick={() => navigate("/purchase-orders/new")}>
+            <Trans>New purchase order</Trans>
+          </Button>
+        }
+      />
 
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>

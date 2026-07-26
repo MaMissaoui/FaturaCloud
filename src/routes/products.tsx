@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Product, TaxRate } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Badge, Button, Col, Input, Row, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Badge, Button, Col, Row, Table, Tag, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -16,8 +16,7 @@ import toString from "lodash/toString";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import ProductForm from "src/components/products/form";
-
-const { Title } = Typography;
+import PageHeader from "src/components/page-header";
 
 const searchAtom = atom<string>("");
 
@@ -52,27 +51,18 @@ const Products = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <AppstoreOutlined style={{ marginRight: 8 }} />
-            <Trans>Products</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search
-              placeholder={t`Search`}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Link to="/products" state={{ productModal: true }}>
-              <Button type="primary">
-                <Trans>New product</Trans>
-              </Button>
-            </Link>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<AppstoreOutlined />}
+        title={<Trans>Products</Trans>}
+        search={{ placeholder: t`Search`, onChange: setSearch }}
+        actions={
+          <Link to="/products" state={{ productModal: true }}>
+            <Button type="primary">
+              <Trans>New product</Trans>
+            </Button>
+          </Link>
+        }
+      />
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
