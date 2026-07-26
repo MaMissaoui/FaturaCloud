@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-26
+
+A large release spanning e-invoicing groundwork, a PDF redesign, and a full UI
+consistency pass across the app (master-data forms, settings, and all six
+document detail pages now share the same layout and line-item table
+components). **One breaking change**: the free-text address field is gone
+(see Removed).
+
+### Removed
+- **BREAKING:** the free-text `address` field on clients, organizations, and
+  vendors has been removed from the API and the database — structured
+  `street`/`house_number`/`postal_code`/`city`/`country_code` fields (added
+  for e-invoicing) are now the single source of truth everywhere (forms,
+  lists, PDFs). **Migration:** on upgrade, any existing free-text address with
+  no structured data yet is best-effort backfilled into `street`; this is a
+  one-time backfill, not a parser, so review addresses on multi-line legacy
+  records after upgrading. The column drop cannot be reversed without data
+  loss
+- Duplicate Logo card removed from Settings → Invoice — Organizations → edit
+  already covers the same upload/delete for every organization, and the
+  removed card's caption wrongly implied a per-invoice override that never
+  existed
+
+### Added
+- **Country-aware e-invoicing** — `GET /api/invoices/{id}/e-invoice` renders
+  an invoice as an EN 16931 UBL 2.1 XML document, profile resolved from the
+  **buyer's** country (falling back to the seller's when unset): `"DE"` gets
+  XRechnung 3.0 (CustomizationID + mandatory buyer reference), every other
+  country gets a generic EN 16931 core profile rather than a guessed CIUS.
+  Peppol BIS Billing 3.0, Tunisia's TEIF/TTN, and ZUGFeRD are explicitly out
+  of scope — see `CLAUDE.md` for why. No EN 16931 validator is available in
+  this environment; validate externally before relying on this for real B2G
+  submission
+- **Redesigned PDF documents** — invoice, purchase order, order confirmation,
+  and delivery note now share a dark header block, boxed party cards, and a
+  dark table header with striped rows. Invoices additionally get a SEPA
+  payment QR code (EPC069-12 "GiroCode"), shown for EUR invoices on an
+  organization with an IBAN set
+- **Organization logo** moves to dedicated `GET/POST/DELETE
+  /api/organizations/{id}/logo` endpoints (raw bytes, sniffed content type,
+  2 MB cap) instead of a base64 blob inside the organization JSON, and gains
+  an upload card on the Organizations list edit drawer, not just Settings
+- **Country activation picklist** (Settings → Countries, admin-only) — every
+  ISO 3166-1 alpha-2 country can be individually activated; the Client,
+  Vendor, and Organization country fields become a `Select` scoped to the
+  active set instead of free text, with names resolved via
+  `Intl.DisplayNames` (no translation table to maintain)
+- **Product is now required on new line items** across invoices, purchase
+  orders, orders, and both delivery types (incoming invoices excluded — they
+  have no manual product picker). Applies only to newly added lines; existing
+  saved lines aren't retroactively required to have one. Invoice line items
+  also now actually persist their product link (`invoiceLineItems` was
+  missing the column entirely, silently discarding it on save)
+- **Unified line-item table** — all six document detail pages (invoices,
+  orders, deliveries, purchase orders, inbound deliveries, incoming invoices)
+  now share one config-driven `LineItemsTable` component instead of six
+  hand-rolled copies that had drifted apart on column order, labels, and
+  affordances. Cell inputs stay borderless until hovered or focused; the
+  drag-to-reorder handle (invoices only) moved into the row-number column,
+  visible on row hover or keyboard focus
+- **Responsive layout** for master-data drawers (clients, vendors, products),
+  Settings → Invoice, and every document detail page's header fields — none
+  of these reflowed below their designed desktop width before; they now stack
+  to fewer columns down to phone width
+
+### Changed
+- Invoices now lead with **Product**, matching purchase orders, orders, and
+  both delivery types (previously the only document leading with Description)
+- Toasts and confirm dialogs (`message.*`, `Modal.confirm`) now render with
+  the active theme — previously always light-styled regardless of dark mode,
+  since antd's static APIs can't see `ConfigProvider`'s theme context
+
+### Fixed
+- Settings → Invoice's Save button is now reachable via a sticky footer,
+  matching every other edit screen — previously the only Save button in the
+  app with no sticky affordance, scrolling out of view below ~750px viewport
+  height
+- Delivery line items are now frozen (matching the server's existing rule)
+  once a delivery is shipped or delivered — previously the UI let you edit
+  and hit Save only to get a 409, with no prior indication the fields were
+  off-limits
+- Order and delivery confirmation PDF pages had the same infinite-fetch-loop
+  bug already fixed for invoices/purchasing pages in 2.2.1/2.2.2, just not yet
+  hit by testing — same cause, same `loadable()`-based fix, now replaced
+  repo-wide by a non-deprecated userland implementation
+
 ## [2.2.2] - 2026-07-25
 
 ### Fixed
