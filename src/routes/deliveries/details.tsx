@@ -232,6 +232,11 @@ const DeliveryDetails = () => {
     ? (delivery as any).status ?? "draft"
     : "draft";
 
+  // Mirrors the server-side guard in db/delivery.go: line items are frozen
+  // once a delivery is shipped/delivered. Header-only fields (tracking
+  // number, notes) stay editable — this only gates the line-item table.
+  const isEditable = isNew || !["shipped", "delivered"].includes(currentStatus);
+
   const transitions = STATUS_TRANSITIONS[currentStatus] ?? [];
 
   if (!organization) return null;
@@ -324,6 +329,7 @@ const DeliveryDetails = () => {
                   >
                     <Select
                       showSearch
+                      disabled={!isEditable}
                       style={{ width: "100%" }}
                       placeholder={t`Select product`}
                       optionFilterProp="children"
@@ -356,7 +362,7 @@ const DeliveryDetails = () => {
                     noStyle
                     rules={[{ required: true, message: t`Description required` }]}
                   >
-                    <TextArea rows={1} autoSize />
+                    <TextArea rows={1} autoSize disabled={!isEditable} />
                   </Form.Item>
                 )}
               />
@@ -370,7 +376,7 @@ const DeliveryDetails = () => {
                     noStyle
                     rules={[{ required: true, message: t`Required` }]}
                   >
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} />
+                    <InputNumber style={{ width: "100%" }} min={0} precision={2} disabled={!isEditable} />
                   </Form.Item>
                 )}
               />
@@ -400,35 +406,39 @@ const DeliveryDetails = () => {
                 width={110}
                 render={(field) => (
                   <Form.Item name={[field.name, "unit"]} noStyle>
-                    <Input placeholder={t`pcs, kg, m…`} />
+                    <Input placeholder={t`pcs, kg, m…`} disabled={!isEditable} />
                   </Form.Item>
                 )}
               />
-              <Table.Column
-                key="remove"
-                width={40}
-                render={(field) => (
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => remove(field.name)}
-                    aria-label={t`Remove line item`}
-                  />
-                )}
-              />
+              {isEditable && (
+                <Table.Column
+                  key="remove"
+                  width={40}
+                  render={(field) => (
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => remove(field.name)}
+                      aria-label={t`Remove line item`}
+                    />
+                  )}
+                />
+              )}
             </Table>
 
-            <Button
-              type="default"
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => add({ quantity: 1 })}
-              style={{ marginTop: 12 }}
-            >
-              <Trans>Add line item</Trans>
-            </Button>
+            {isEditable && (
+              <Button
+                type="default"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => add({ quantity: 1 })}
+                style={{ marginTop: 12 }}
+              >
+                <Trans>Add line item</Trans>
+              </Button>
+            )}
           </>
         )}
       </Form.List>
