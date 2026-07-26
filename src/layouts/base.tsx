@@ -28,6 +28,7 @@ import {
   ApartmentOutlined,
   SunOutlined,
   MoonOutlined,
+  GlobalOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -386,6 +387,15 @@ export default function BaseLayout() {
                           </Link>
                         ),
                         key: "settings.users",
+                      },
+                      {
+                        icon: <GlobalOutlined />,
+                        label: (
+                          <Link to="/settings/countries">
+                            <Trans>Countries</Trans>
+                          </Link>
+                        ),
+                        key: "settings.countries",
                       },
                     ]
                   : []),

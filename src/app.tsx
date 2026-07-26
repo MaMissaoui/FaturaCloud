@@ -29,6 +29,7 @@ import { localeAtom, themeAtom } from "src/atoms/generic";
 import { dynamicActivate } from "src/utils/lingui";
 
 import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
+import { setActiveCountriesAtom } from "src/atoms/country";
 import { currentUserAtom } from "src/atoms/auth";
 import { GetMe } from "src/api";
 import BaseLayout from "src/layouts/base";
@@ -62,6 +63,7 @@ const SettingsTaxRates = lazy(() => import("src/routes/settings/tax-rates"));
 const OrganizationsList = lazy(() => import("src/routes/organizations/index"));
 const SettingsBackup = lazy(() => import("src/routes/settings/backup"));
 const SettingsUsers = lazy(() => import("src/routes/settings/users"));
+const SettingsCountries = lazy(() => import("src/routes/settings/countries"));
 const NewOrganization = lazy(() => import("src/routes/organizations/new"));
 const TaxRateForm = lazy(() => import("src/components/tax-rates/form.tsx"));
 
@@ -89,6 +91,7 @@ const AppContent = () => {
   // Organizations
   const organizationId = useAtomValue(organizationIdAtom);
   const setOrganizations = useSetAtom(setOrganizationsAtom);
+  const setActiveCountries = useSetAtom(setActiveCountriesAtom);
 
   // Map locale to Ant Design locale
   const antdLocale = useMemo(() => {
@@ -125,8 +128,9 @@ const AppContent = () => {
   useEffect(() => {
     if (currentUser) {
       setOrganizations();
+      setActiveCountries();
     }
-  }, [setOrganizations, currentUser]);
+  }, [setOrganizations, setActiveCountries, currentUser]);
 
   // Brief loading to prevent CSS flicker
   useEffect(() => {
@@ -245,6 +249,7 @@ const AppContent = () => {
             </Route>
             <Route path="backup" element={<SettingsBackup />} />
             <Route path="users" element={<SettingsUsers />} />
+            <Route path="countries" element={<SettingsCountries />} />
           </Route>
         </Routes>
         </Suspense>
