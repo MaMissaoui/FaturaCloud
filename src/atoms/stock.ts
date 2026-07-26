@@ -2,25 +2,16 @@ import { atom } from "jotai";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
-import { GetStockMovements, CreateStockMovement, DeleteStockMovement } from "src/api";
+import { CreateStockMovement, DeleteStockMovement } from "src/api";
 import { organizationIdAtom } from "./organization";
 import { productsAtom } from "./product";
 
-export const stockMovementsAtom = atom<any[]>([]);
-stockMovementsAtom.debugLabel = "stockMovementsAtom";
-
-export const setStockMovementsAtom = atom(null, async (get, set) => {
-  const organizationId = get(organizationIdAtom);
-  try {
-    const response = await GetStockMovements(organizationId!);
-    set(stockMovementsAtom, response);
-  } catch (error) {
-    console.error("Failed to fetch stock movements:", error);
-    message.error(t`Failed to fetch stock movements`);
-    set(stockMovementsAtom, []);
-  }
-});
-setStockMovementsAtom.debugLabel = "setStockMovementsAtom";
+// There's no shared stockMovementsAtom (unlike productsAtom) — the Inventory
+// page is the only consumer of the movements list, and it now fetches its
+// own paginated/sorted page directly rather than through a full-list atom.
+// These two write-atoms stay because other pages (Inventory's summary grid,
+// every line-item picker) read productsAtom.stockQuantity and expect it to
+// reflect a movement immediately, without waiting for a refetch.
 
 export const createStockMovementAtom = atom(null, async (get, set, req: any) => {
   try {
@@ -29,7 +20,6 @@ export const createStockMovementAtom = atom(null, async (get, set, req: any) => 
       id: nanoid(),
       organizationId: get(organizationIdAtom),
     });
-    set(stockMovementsAtom, [movement, ...get(stockMovementsAtom)]);
 
     // Update the product's stockQuantity in the products list
     const products: any[] = get(productsAtom);
@@ -51,18 +41,13 @@ export const createStockMovementAtom = atom(null, async (get, set, req: any) => 
   }
 });
 
-export const deleteStockMovementAtom = atom(null, async (get, set, movementId: string) => {
-  try {
-    const movement = get(stockMovementsAtom).find((m: any) => m.id === movementId);
-    const success = await DeleteStockMovement(movementId);
-    if (success) {
-      set(
-        stockMovementsAtom,
-        get(stockMovementsAtom).filter((m: any) => m.id !== movementId),
-      );
-
-      // Reverse the movement's effect on the product
-      if (movement) {
+export const deleteStockMovementAtom = atom(
+  null,
+  async (get, set, movement: { id: string; productId: string; quantity: number }) => {
+    try {
+      const success = await DeleteStockMovement(movement.id);
+      if (success) {
+        // Reverse the movement's effect on the product
         const products: any[] = get(productsAtom);
         set(
           productsAtom,
@@ -72,14 +57,16 @@ export const deleteStockMovementAtom = atom(null, async (get, set, movementId: s
               : p,
           ),
         );
-      }
 
-      message.success(t`Stock movement deleted`);
-    } else {
+        message.success(t`Stock movement deleted`);
+      } else {
+        message.error(t`Failed to delete stock movement`);
+      }
+      return success;
+    } catch (error) {
+      console.error("Failed to delete stock movement:", error);
       message.error(t`Failed to delete stock movement`);
+      return false;
     }
-  } catch (error) {
-    console.error("Failed to delete stock movement:", error);
-    message.error(t`Failed to delete stock movement`);
-  }
-});
+  },
+);

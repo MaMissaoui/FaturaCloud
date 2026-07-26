@@ -7,13 +7,7 @@ import orderBy from "lodash/orderBy";
 import keyBy from "lodash/keyBy";
 import map from "lodash/map";
 import reject from "lodash/reject";
-import {
-  GetProducts,
-  GetProduct,
-  CreateProduct,
-  UpdateProduct,
-  DeleteProduct,
-} from "src/api";
+import { GetProducts, GetProduct, CreateProduct, UpdateProduct, DeleteProduct } from "src/api";
 
 import { organizationIdAtom } from "./organization";
 
@@ -24,7 +18,7 @@ export const setProductsAtom = atom(null, async (get, set) => {
   const organizationId = get(organizationIdAtom);
   try {
     const response = await GetProducts(organizationId!);
-    set(productsAtom, response);
+    set(productsAtom, response.data);
   } catch (error) {
     console.error("Failed to fetch products:", error);
     message.error(t`Failed to fetch products`);
@@ -82,7 +76,10 @@ export const deleteProductAtom = atom(null, async (get, set, productId: string) 
   try {
     const success = await DeleteProduct(productId);
     if (success) {
-      set(productsAtom, reject(get(productsAtom), (p: any) => isEqual(p.id, productId)));
+      set(
+        productsAtom,
+        reject(get(productsAtom), (p: any) => isEqual(p.id, productId)),
+      );
       message.success(t`Product deleted`);
     } else {
       message.error(t`Product deletion failed`);
