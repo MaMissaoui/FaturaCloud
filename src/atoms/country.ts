@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { message } from "antd";
+import { message } from "src/utils/message";
 import { t } from "@lingui/core/macro";
 import { GetActiveCountries, SetCountryActive } from "src/api";
 

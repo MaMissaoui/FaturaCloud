@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Button, Divider, Layout, Menu, Select, Space, Row, Col, message, theme } from "antd";
+import { Button, Divider, Layout, Menu, Select, Space, Row, Col, theme } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   MenuFoldOutlined,
@@ -57,7 +57,6 @@ export default function BaseLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [, contextHolder] = message.useMessage();
   const {
     token: { colorBgContainer, borderRadiusLG, colorBorderSecondary },
   } = theme.useToken();
@@ -554,7 +553,6 @@ export default function BaseLayout() {
         <div id="footer" />
       </Layout>
       <FeedbackModal open={feedbackModalOpen} onClose={() => setFeedbackModalOpen(false)} />
-      {contextHolder}
     </Layout>
   );
 }

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import {
+  App,
   Button,
   Col,
   Drawer,
   Form,
   Input,
-  message,
   Popconfirm,
   Row,
   Select,
@@ -41,6 +41,7 @@ const editingIdAtom = atom<string | null>(null);
 export default function SettingsUsers() {
   useLingui();
   const [form] = Form.useForm();
+  const { message } = App.useApp();
   const me = useAtomValue(currentUserAtom);
 
   const [users, setUsers] = useState<UserRecord[]>([]);

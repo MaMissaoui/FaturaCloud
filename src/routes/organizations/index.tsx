@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Organization } from "src/types/models";
 import {
+  App,
   Button,
   Card,
   Col,
@@ -8,7 +9,6 @@ import {
   Form,
   Input,
   InputNumber,
-  message,
   Popconfirm,
   Row,
   Select,
@@ -57,6 +57,7 @@ const currencies = compact(uniq(map(countries, "currency_code")));
 export default function Organizations() {
   useLingui();
   const { token } = theme.useToken();
+  const { message } = App.useApp();
   const isAdmin = useAtomValue(isAdminAtom);
   const [form] = Form.useForm();
 

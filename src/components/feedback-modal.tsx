@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, Form, Input, message } from "antd";
+import { App, Modal, Form, Input } from "antd";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { Sentry } from "src/utils/sentry";
@@ -14,6 +14,7 @@ interface FeedbackModalProps {
 const FeedbackModal = ({ open, onClose }: FeedbackModalProps) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { message } = App.useApp();
 
   const handleSubmit = async () => {
     try {
