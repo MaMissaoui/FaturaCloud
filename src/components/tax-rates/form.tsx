@@ -1,18 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import {
-  Button,
-  Checkbox,
-  Drawer,
-  Form,
-  Input,
-  Popconfirm,
-  Select,
-  Space,
-  Tooltip,
-  theme,
-  Typography,
-} from "antd";
+import { Button, Checkbox, Drawer, Form, Input, Popconfirm, Select, Space, Tooltip } from "antd";
 import { useSetAtom, useAtomValue } from "jotai";
 import { loadable } from "jotai/utils";
 import { Trans } from "@lingui/react/macro";
@@ -22,6 +10,7 @@ import isEmpty from "lodash/isEmpty";
 import { GetTaxRateUsageCount } from "src/api";
 
 import { taxRateIdAtom, taxRateAtom, deleteTaxRateAtom } from "src/atoms/tax-rate";
+import Section from "src/components/form-section";
 
 const loadableTaxRateAtom = loadable(taxRateAtom);
 
@@ -44,18 +33,6 @@ const useTaxRateCategoryLabels = (): Record<(typeof TAX_RATE_CATEGORY_CODES)[num
   L: t`Canary Islands general indirect tax`,
   M: t`Tax for production, services and importation in Ceuta and Melilla`,
 });
-
-const Section = ({ children }: { children: React.ReactNode }) => {
-  const { token } = theme.useToken();
-  return (
-    <Typography.Text
-      strong
-      style={{ color: token.colorPrimary, display: "block", marginBottom: 12, marginTop: 4 }}
-    >
-      {children}
-    </Typography.Text>
-  );
-};
 
 const TaxRateForm = () => {
   const navigate = useNavigate();

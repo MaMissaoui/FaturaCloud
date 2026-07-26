@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Button, Drawer, Form, Input, InputNumber, Select, Space, theme, Typography } from "antd";
+import { Button, Drawer, Form, Input, InputNumber, Select, Space } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -9,18 +9,7 @@ import filter from "lodash/filter";
 
 import { productsAtom } from "src/atoms/product";
 import { createStockMovementAtom } from "src/atoms/stock";
-
-const Section = ({ children }: { children: React.ReactNode }) => {
-  const { token } = theme.useToken();
-  return (
-    <Typography.Text
-      strong
-      style={{ color: token.colorPrimary, display: "block", marginBottom: 12, marginTop: 4 }}
-    >
-      {children}
-    </Typography.Text>
-  );
-};
+import Section from "src/components/form-section";
 
 const MovementForm = () => {
   const location = useLocation();

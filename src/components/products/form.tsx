@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Switch, theme, Typography } from "antd";
+import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Switch } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -10,6 +10,7 @@ import get from "lodash/get";
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import ScrollShadow from "src/components/scroll-shadow";
+import Section from "src/components/form-section";
 
 const UNIT_OPTIONS = ["hour", "day", "week", "month", "piece", "kg", "g", "lb", "oz", "l", "ml", "m", "km"];
 
@@ -21,18 +22,6 @@ const deriveProductCode = (name: string, existingCodes: Set<string>): string => 
   let suffix = 2;
   while (existingCodes.has(`${base}-${suffix}`)) suffix += 1;
   return `${base}-${suffix}`;
-};
-
-const Section = ({ children }: { children: React.ReactNode }) => {
-  const { token } = theme.useToken();
-  return (
-    <Typography.Text
-      strong
-      style={{ color: token.colorPrimary, display: "block", marginBottom: 12, marginTop: 4 }}
-    >
-      {children}
-    </Typography.Text>
-  );
 };
 
 const ProductForm = () => {

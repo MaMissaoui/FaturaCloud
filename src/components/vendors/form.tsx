@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, theme, Typography } from "antd";
+import { Button, Drawer, Form, Input, InputNumber, Popconfirm, Select, Space, Typography } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -13,18 +13,7 @@ import { vendorIdAtom, vendorAtom, vendorsAtom, deleteVendorAtom } from "src/ato
 import { generateClientCode } from "src/utils/client";
 import { currencies } from "src/utils/currencies";
 import ScrollShadow from "src/components/scroll-shadow";
-
-const Section = ({ children }: { children: React.ReactNode }) => {
-  const { token } = theme.useToken();
-  return (
-    <Typography.Text
-      strong
-      style={{ color: token.colorPrimary, display: "block", marginBottom: 12, marginTop: 4 }}
-    >
-      {children}
-    </Typography.Text>
-  );
-};
+import Section from "src/components/form-section";
 
 const VendorForm = () => {
   const location = useLocation();
