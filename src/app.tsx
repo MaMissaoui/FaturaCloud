@@ -15,7 +15,7 @@ import "dayjs/locale/fr";
 
 import { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from "react-router";
-import { ConfigProvider, theme as antdTheme } from "antd";
+import { App as AntApp, ConfigProvider, theme as antdTheme } from "antd";
 import enUS from "antd/locale/en_US";
 import deDE from "antd/locale/de_DE";
 import frFR from "antd/locale/fr_FR";
@@ -27,6 +27,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 
 import { localeAtom, themeAtom } from "src/atoms/generic";
 import { dynamicActivate } from "src/utils/lingui";
+import { setThemedMessage } from "src/utils/message";
 
 import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
 import { setActiveCountriesAtom } from "src/atoms/country";
@@ -74,6 +75,19 @@ const DevTools =
   import.meta.env.DEV && import.meta.env.VITE_JOTAI_DEVTOOLS_ENABLED === "true"
     ? lazy(() => import("jotai-devtools").then((module) => ({ default: module.DevTools })))
     : () => null;
+
+// antd's static message.* API can't read the ConfigProvider theme, so
+// toasts render light-styled even in dark mode. App.useApp() is the fix,
+// but most callers are Jotai atom write functions (plain functions, can't
+// call hooks) — so this bridges the themed instance out to a module those
+// atoms can import instead. See src/utils/message.ts.
+const MessageBridge = () => {
+  const { message } = AntApp.useApp();
+  useEffect(() => {
+    setThemedMessage(message);
+  }, [message]);
+  return null;
+};
 
 const AppContent = () => {
   const navigate = useNavigate();
@@ -183,6 +197,8 @@ const AppContent = () => {
         },
       }}
     >
+      <AntApp>
+      <MessageBridge />
       {/* Brief loading spinner, inside ConfigProvider so it respects the theme (prevents CSS flicker) */}
       {isInitialLoading ? (
         <Loading />
@@ -256,6 +272,7 @@ const AppContent = () => {
           </I18nProvider>
         </>
       )}
+      </AntApp>
     </ConfigProvider>
   );
 };

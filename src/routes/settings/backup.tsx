@@ -51,6 +51,7 @@ function formatSize(bytes: number): string {
 function SettingsBackup() {
   useLingui();
   const [messageApi, contextHolder] = message.useMessage();
+  const [modalApi, modalContextHolder] = Modal.useModal();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [backups, setBackups] = useState<BackupEntry[]>([]);
@@ -116,7 +117,7 @@ function SettingsBackup() {
   };
 
   const confirmRestoreNamed = (name: string) => {
-    Modal.confirm({
+    modalApi.confirm({
       title: t`Restore database`,
       content: t`Replace all current data with backup "${name}"? This cannot be undone.`,
       okText: t`Restore`,
@@ -140,7 +141,7 @@ function SettingsBackup() {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    Modal.confirm({
+    modalApi.confirm({
       title: t`Restore database`,
       content: t`Replace all current data with the uploaded file? This cannot be undone.`,
       okText: t`Restore`,
@@ -165,6 +166,7 @@ function SettingsBackup() {
   return (
     <div style={{ maxWidth: 720 }}>
       {contextHolder}
+      {modalContextHolder}
       <input
         ref={fileInputRef}
         type="file"
@@ -281,7 +283,7 @@ function SettingsBackup() {
                   loading={uploadRestoring}
                   onClick={() => {
                     if (uploadFile?.originFileObj) {
-                      Modal.confirm({
+                      modalApi.confirm({
                         title: t`Restore database`,
                         content: t`Replace all current data with the uploaded file? This cannot be undone.`,
                         okText: t`Restore`,

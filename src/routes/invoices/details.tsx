@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
+  App,
   Button,
   DatePicker,
   Divider,
@@ -15,7 +16,6 @@ import {
   Space,
   Descriptions,
   Layout,
-  message,
   Popconfirm,
   theme,
   Spin,
@@ -313,6 +313,7 @@ const InvoiceDetails: React.FC = () => {
   const {
     token: { colorBgContainer },
   } = theme.useToken();
+  const { message } = App.useApp();
   const organization = useAtomValue(organizationAtom);
   const [invoiceId, setInvoiceId] = useAtom(invoiceIdAtom);
   const invoiceLoadable = useAtomValue(loadableInvoiceAtom);
