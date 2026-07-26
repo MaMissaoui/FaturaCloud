@@ -250,7 +250,7 @@ const DeliveryDetails = () => {
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
-        <Col span={6}>
+        <Col xs={24} md={12} xl={6}>
           <Form.Item label={<Trans>Linked order</Trans>} name="orderId">
             <Select allowClear showSearch optionFilterProp="children">
               {(orders as any[]).map((o: any) => (
@@ -261,7 +261,7 @@ const DeliveryDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Delivery number</Trans>}
             name="deliveryNumber"
@@ -270,7 +270,7 @@ const DeliveryDetails = () => {
             <Input />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Delivery date</Trans>}
             name="deliveryDate"
@@ -279,12 +279,12 @@ const DeliveryDetails = () => {
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
             <Input />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Status</Trans>}>
             <Tag
               color={STATUS_COLORS[currentStatus] ?? "default"}
@@ -297,12 +297,12 @@ const DeliveryDetails = () => {
       </Row>
 
       <Row gutter={24}>
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item label={<Trans>Shipping address</Trans>} name="shippingAddress">
             <TextArea rows={2} />
           </Form.Item>
         </Col>
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item label={<Trans>Notes</Trans>} name="notes">
             <TextArea rows={2} />
           </Form.Item>
