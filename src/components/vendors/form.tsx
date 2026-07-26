@@ -150,7 +150,7 @@ const VendorForm = () => {
     >
       <ScrollShadow>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Card title={<Trans>Contact</Trans>} style={{ marginBottom: 12 }}>
+          <Card size="small" title={<Trans>Contact</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24}>
                 <Form.Item
@@ -194,7 +194,7 @@ const VendorForm = () => {
             </Row>
           </Card>
 
-          <Card title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
+          <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item
@@ -234,7 +234,7 @@ const VendorForm = () => {
             </Row>
           </Card>
 
-          <Card title={<Trans>Purchasing</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Purchasing</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item name="defaultCurrency" label={<Trans>Default currency</Trans>}>

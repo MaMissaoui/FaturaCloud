@@ -463,7 +463,7 @@ msgstr "Bestätigt"
 msgid "Contact"
 msgstr "Kontakt"
 
-#: src/components/clients/form.tsx:272
+#: src/components/clients/form.tsx:273
 msgid "Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G."
 msgstr "Wird in neue Rechnungen für diesen Kunden übernommen, z. B. eine Leitweg-ID für deutsche B2G-Rechnungen."
 
@@ -585,8 +585,8 @@ msgstr "Dezimalstellen"
 msgid "Default"
 msgstr "Standard"
 
-#: src/components/clients/form.tsx:271
-#: src/components/clients/form.tsx:275
+#: src/components/clients/form.tsx:272
+#: src/components/clients/form.tsx:276
 msgid "Default buyer reference"
 msgstr "Standard-Käuferreferenz"
 
@@ -808,7 +808,7 @@ msgstr "E-Rechnung (XML)"
 msgid "E-invoice export failed"
 msgstr "E-Rechnungs-Export fehlgeschlagen"
 
-#: src/components/clients/form.tsx:259
+#: src/components/clients/form.tsx:260
 #: src/components/tax-rates/form.tsx:167
 #: src/routes/organizations/index.tsx:537
 msgid "E-invoicing"
@@ -2714,8 +2714,8 @@ msgstr "Steuer 0%"
 msgid "Tax for production, services and importation in Ceuta and Melilla"
 msgstr "Steuer für Produktion, Dienstleistungen und Einfuhr in Ceuta und Melilla"
 
-#: src/components/clients/form.tsx:264
 #: src/components/clients/form.tsx:265
+#: src/components/clients/form.tsx:266
 #: src/routes/organizations/index.tsx:540
 msgid "Tax number"
 msgstr "Steuernummer"

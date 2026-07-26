@@ -166,7 +166,7 @@ const ClientForm = () => {
     >
       <ScrollShadow>
         <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={handleFinishFailed}>
-          <Card title={<Trans>Contact</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Contact</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24}>
                 <Form.Item
@@ -210,7 +210,7 @@ const ClientForm = () => {
             </Row>
           </Card>
 
-          <Card title={<Trans>Address</Trans>} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item
@@ -251,6 +251,7 @@ const ClientForm = () => {
           </Card>
 
           <Collapse
+            size="small"
             activeKey={activeKeys}
             onChange={(keys) => setActiveKeys(keys as string[])}
             items={[
