@@ -193,6 +193,23 @@ purchaseOrderLineItemId` — and the 3-way match in
     dragged a row via the new handle position with real pointer events and
     confirmed the reorder still applies; both light and dark theme
     screenshotted directly, no hardcoded colors bleeding through either way.
+  - **Two gaps found in review, both fixed before this shipped:**
+    - The `:not(.ant-input-status-error)` exclusion looked untested — cleared
+      a required Description on an invoice, saved, and confirmed the
+      `ant-input-status-error` class does reach the child even through
+      `noStyle` (antd propagates status regardless), and its red border
+      renders unaffected by the borderless rule. The comment claiming this
+      was accurate, not just asserted.
+    - The drag handle's visibility was keyed only to
+      `.ant-table-cell-row-hover` (mouseenter-driven), so a keyboard user
+      tabbing onto the handle — a real activator, since `useSortable`'s
+      `attributes` put `tabIndex`/`role` on it for the `KeyboardSensor` —
+      would land on something fully transparent. Added a `:focus-visible`
+      rule to `.indexHandle` (and a `:has()` rule to hide `.indexNumber` in
+      that state) so keyboard focus reveals the handle the same way mouse
+      hover does. Verified via real `Tab` key presses (not a scripted
+      `.focus()`, which doesn't reliably set `:focus-visible`) that the
+      handle reaches opacity 1 and the number drops to 0 when tabbed onto.
 
 What actually shipped, with deviations from the original plan noted inline:
 

@@ -38,6 +38,14 @@
   opacity: 0;
   cursor: grab;
   transition: opacity 0.1s ease;
+
+  // Keyboard users tab onto this span directly (useSortable's `attributes`
+  // put tabIndex/role on it) without ever triggering antd's mouseenter-driven
+  // row-hover class below — without this it would be a focusable but
+  // invisible drag activator.
+  &:focus-visible {
+    opacity: 1;
+  }
 }
 
 :global(.ant-table-cell-row-hover) .indexNumber {
@@ -46,4 +54,8 @@
 
 :global(.ant-table-cell-row-hover) .indexHandle {
   opacity: 1;
+}
+
+.indexCell:has(.indexHandle:focus-visible) .indexNumber {
+  opacity: 0;
 }
