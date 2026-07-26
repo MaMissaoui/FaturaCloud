@@ -6,6 +6,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Layout,
   Row,
   Select,
   Space,
@@ -15,6 +16,7 @@ import {
 import { atom, useAtom, useSetAtom } from "jotai";
 import { CaretDownOutlined, CaretRightOutlined, FileTextOutlined, SaveOutlined } from "@ant-design/icons";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -28,6 +30,7 @@ import { validateInvoiceFormat, generateInvoiceNumber } from "src/utils/invoice"
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
+const { Footer } = Layout;
 
 const submittingAtom = atom(false);
 
@@ -257,19 +260,38 @@ function SettingsInvoice() {
             </Col>
           </Row>
         </Card>
-
-        <Divider style={{ margin: "8px 0 16px" }} />
-
-        <Button
-          type="primary"
-          htmlType="submit"
-          icon={<SaveOutlined />}
-          loading={submitting}
-          style={{ marginBottom: 8 }}
-        >
-          <Trans>Save</Trans>
-        </Button>
       </Form>
+
+      {/* Footer bar — portaled into the slot BaseLayout renders, so Save
+          stays reachable regardless of viewport height or scroll position,
+          matching the document detail pages (e.g. purchase-orders/details.tsx)
+          rather than scrolling out of view as a trailing in-flow button. */}
+      {document.getElementById("footer") &&
+        createPortal(
+          <Footer
+            style={{
+              position: "sticky",
+              bottom: 0,
+              zIndex: 1,
+              padding: "0 16px",
+              background: token.colorBgContainer,
+            }}
+          >
+            <Row align="middle" justify="end" style={{ height: 64 }}>
+              <Col>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  loading={submitting}
+                  onClick={() => form.submit()}
+                >
+                  <Trans>Save</Trans>
+                </Button>
+              </Col>
+            </Row>
+          </Footer>,
+          document.getElementById("footer") as HTMLElement,
+        )}
     </div>
   );
 }
