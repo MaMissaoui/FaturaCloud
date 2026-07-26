@@ -4,6 +4,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/render
 
 import { getFormattedNumber } from "src/utils/currencies";
 import { formatDate } from "src/utils/date";
+import { formatAddress } from "src/utils/address";
 
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
@@ -248,7 +249,9 @@ const InvoicePDF = ({
                 <Trans>Bill From</Trans>
               </Text>
               <Text style={styles.partyName}>{organization.name}</Text>
-              {organization.address && <Text style={styles.partyDetail}>{organization.address}</Text>}
+              {formatAddress(organization) && (
+                <Text style={styles.partyDetail}>{formatAddress(organization)}</Text>
+              )}
               {organization.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization.website && <Text style={styles.partyDetail}>{organization.website}</Text>}
             </View>
@@ -257,7 +260,9 @@ const InvoicePDF = ({
                 <Trans>Bill To</Trans>
               </Text>
               <Text style={styles.partyName}>{client.name}</Text>
-              {client.address && <Text style={styles.partyDetail}>{client.address}</Text>}
+              {formatAddress(client) && (
+                <Text style={styles.partyDetail}>{formatAddress(client)}</Text>
+              )}
               {clientEmail && <Text style={styles.partyDetail}>{clientEmail}</Text>}
               {client.website && <Text style={styles.partyDetail}>{client.website}</Text>}
             </View>

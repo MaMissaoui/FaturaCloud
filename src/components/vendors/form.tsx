@@ -187,13 +187,48 @@ const VendorForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="website" label={<Trans>Website</Trans>}>
+                <Form.Item name="website" label={<Trans>Website</Trans>} style={{ marginBottom: 0 }}>
                   <Input placeholder={t`Website`} />
                 </Form.Item>
               </Col>
-              <Col xs={24}>
-                <Form.Item name="address" label={<Trans>Address</Trans>} style={{ marginBottom: 0 }}>
-                  <Input.TextArea rows={2} placeholder={t`Address`} />
+            </Row>
+          </Card>
+
+          <Card title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="country_code"
+                  label={<Trans>Country code</Trans>}
+                  rules={[{ len: 2, message: t`Use the 2-letter ISO 3166-1 code!` }]}
+                >
+                  <Input
+                    maxLength={2}
+                    placeholder={t`e.g. DE`}
+                    onChange={(e) =>
+                      form.setFieldValue("country_code", e.target.value.toUpperCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={16}>
+                <Form.Item name="street" label={<Trans>Street</Trans>}>
+                  <Input placeholder={t`Street`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="house_number" label={<Trans>House number</Trans>}>
+                  <Input placeholder={t`House number`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
+                  <Input placeholder={t`Postal code`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={16}>
+                <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
+                  <Input placeholder={t`City`} />
                 </Form.Item>
               </Col>
             </Row>

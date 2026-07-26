@@ -50,7 +50,6 @@ import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/
 import { countries } from "src/utils/countries";
 
 const { Title } = Typography;
-const { TextArea } = Input;
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 
@@ -418,11 +417,6 @@ export default function Organizations() {
                   <Input />
                 </Form.Item>
               </Col>
-              <Col xs={24}>
-                <Form.Item name="address" label={<Trans>Address</Trans>}>
-                  <TextArea rows={3} />
-                </Form.Item>
-              </Col>
             </Row>
           </Card>
 
@@ -500,13 +494,8 @@ export default function Organizations() {
             </Row>
           </Card>
 
-          <Card title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 16 }}>
+          <Card title={<Trans>Address</Trans>} style={{ marginBottom: 16 }}>
             <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="tax_number" label={<Trans>Tax number</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
               <Col xs={24} md={12}>
                 <Form.Item
                   name="country_code"
@@ -538,7 +527,17 @@ export default function Organizations() {
                 </Form.Item>
               </Col>
               <Col xs={24} md={16}>
-                <Form.Item name="city" label={<Trans>City</Trans>}>
+                <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
+                  <Input />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          <Card title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 16 }}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24}>
+                <Form.Item name="tax_number" label={<Trans>Tax number</Trans>} style={{ marginBottom: 0 }}>
                   <Input />
                 </Form.Item>
               </Col>

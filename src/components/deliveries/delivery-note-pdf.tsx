@@ -3,6 +3,8 @@ import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import dayjs from "dayjs";
 
+import { formatAddress } from "src/utils/address";
+
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
 // Dark slate header block + light neutral cards — matches the invoice PDF
@@ -156,7 +158,9 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
             <View style={styles.card}>
               <Text style={styles.partyLabel}>From</Text>
               <Text style={styles.partyName}>{organization?.name ?? ""}</Text>
-              {organization?.address && <Text style={styles.partyDetail}>{organization.address}</Text>}
+              {organization && formatAddress(organization) && (
+                <Text style={styles.partyDetail}>{formatAddress(organization)}</Text>
+              )}
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
               {organization?.vatin && <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>}
@@ -164,8 +168,10 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
             <View style={styles.card}>
               <Text style={styles.partyLabel}>Deliver To</Text>
               <Text style={styles.partyName}>{client?.name ?? ""}</Text>
-              {client?.address && <Text style={styles.partyDetail}>{client.address}</Text>}
-              {delivery.shippingAddress && delivery.shippingAddress !== client?.address && (
+              {client && formatAddress(client) && (
+                <Text style={styles.partyDetail}>{formatAddress(client)}</Text>
+              )}
+              {delivery.shippingAddress && delivery.shippingAddress !== formatAddress(client ?? {}) && (
                 <Text style={[styles.partyDetail, { marginTop: 6 }]}>
                   Ship to: {delivery.shippingAddress}
                 </Text>

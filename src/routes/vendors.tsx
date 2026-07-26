@@ -16,6 +16,7 @@ import toString from "lodash/toString";
 
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import VendorForm from "src/components/vendors/form";
+import { formatAddressOneLine } from "src/utils/address";
 
 const { Title } = Typography;
 
@@ -39,12 +40,16 @@ const Vendors = () => {
 
   const searchVendors = () => {
     return filter(vendors, (vendor: Vendor) => {
-      return some(
-        ["name", "code", "registration_number", "address", "emails", "phone", "vatin", "website"],
+      const fieldsMatch = some(
+        ["name", "code", "registration_number", "emails", "phone", "vatin", "website"],
         (field) => {
           const value = get(vendor, field);
           return includes(toString(value).toLowerCase(), search.toLowerCase());
         },
+      );
+      return (
+        fieldsMatch ||
+        includes(formatAddressOneLine(vendor).toLowerCase(), search.toLowerCase())
       );
     });
   };
@@ -100,9 +105,11 @@ const Vendors = () => {
             />
             <Table.Column
               title={<Trans>Address</Trans>}
-              dataIndex="address"
               key="address"
-              sorter={(a: Vendor, b: Vendor) => (a.address ?? "").localeCompare(b.address ?? "")}
+              sorter={(a: Vendor, b: Vendor) =>
+                formatAddressOneLine(a).localeCompare(formatAddressOneLine(b))
+              }
+              render={(vendor: Vendor) => formatAddressOneLine(vendor)}
             />
             <Table.Column
               title={<Trans>Emails</Trans>}
