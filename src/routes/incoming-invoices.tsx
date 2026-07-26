@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { IncomingInvoice } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Input, Row, Space, Table, Tag, Typography } from "antd";
+import { Button, Col, Row, Space, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -21,8 +21,8 @@ import {
 } from "src/types/incoming-invoice";
 import { organizationAtom } from "src/atoms/organization";
 import { incomingInvoicesAtom, setIncomingInvoicesAtom } from "src/atoms/incoming-invoice";
+import PageHeader from "src/components/page-header";
 
-const { Title } = Typography;
 const searchAtom = atom<string>("");
 
 const IncomingInvoices = () => {
@@ -55,22 +55,16 @@ const IncomingInvoices = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <AuditOutlined style={{ marginRight: 8 }} />
-            <Trans>Incoming Invoices</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search placeholder={t`Search`} onChange={(e) => setSearch(e.target.value)} />
-            <Button type="primary" onClick={() => navigate("/incoming-invoices/new")}>
-              <Trans>New incoming invoice</Trans>
-            </Button>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<AuditOutlined />}
+        title={<Trans>Incoming Invoices</Trans>}
+        search={{ placeholder: t`Search`, onChange: setSearch }}
+        actions={
+          <Button type="primary" onClick={() => navigate("/incoming-invoices/new")}>
+            <Trans>New incoming invoice</Trans>
+          </Button>
+        }
+      />
 
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>

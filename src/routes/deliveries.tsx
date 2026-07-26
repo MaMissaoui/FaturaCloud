@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Delivery } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Input, Row, Space, Table, Tag, Typography } from "antd";
+import { Button, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -12,8 +12,8 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
+import PageHeader from "src/components/page-header";
 
-const { Title } = Typography;
 const searchAtom = atom<string>("");
 
 const statusTag = (status: string) => {
@@ -52,27 +52,18 @@ const Deliveries = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <SendOutlined style={{ marginRight: 8 }} />
-            <Trans>Outbound Deliveries</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Input.Search
-              placeholder={t`Search`}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Link to="/deliveries/new">
-              <Button type="primary" style={{ marginBottom: 10 }}>
-                <Trans>New delivery</Trans>
-              </Button>
-            </Link>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<SendOutlined />}
+        title={<Trans>Outbound Deliveries</Trans>}
+        search={{ placeholder: t`Search`, onChange: setSearch }}
+        actions={
+          <Link to="/deliveries/new">
+            <Button type="primary" style={{ marginBottom: 10 }}>
+              <Trans>New delivery</Trans>
+            </Button>
+          </Link>
+        }
+      />
       <Table
         dataSource={filtered}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { Product, StockMovement } from "src/types/models";
 import { Link, useLocation } from "react-router";
-import { Button, Col, Popconfirm, Row, Select, Space, Table, Tag, theme, Tooltip, Typography } from "antd";
+import { Button, Col, Popconfirm, Row, Select, Table, Tag, theme, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -13,8 +13,7 @@ import find from "lodash/find";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { stockMovementsAtom, setStockMovementsAtom, deleteStockMovementAtom } from "src/atoms/stock";
 import MovementForm from "src/components/stock/movement-form";
-
-const { Title } = Typography;
+import PageHeader from "src/components/page-header";
 
 const productFilterAtom = atom<string | null>(null);
 
@@ -55,34 +54,30 @@ const Inventory = () => {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
-          <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
-            <InboxOutlined style={{ marginRight: 8 }} />
-            <Trans>Inventory</Trans>
-          </Title>
-        </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Space style={{ alignItems: "start" }}>
-            <Select
-              allowClear
-              placeholder={t`Filter by product`}
-              style={{ width: 200 }}
-              onChange={(val) => setProductFilter(val ?? null)}
-              value={productFilter}
-            >
-              {trackedProducts.map((p: Product) => (
-                <Select.Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Select.Option>
-              ))}
-            </Select>
-            <Link to="/inventory" state={{ movementModal: true }}>
-              <Button type="primary">
-                <Trans>Record movement</Trans>
-              </Button>
-            </Link>
-          </Space>
-        </Col>
-      </Row>
+      <PageHeader
+        icon={<InboxOutlined />}
+        title={<Trans>Inventory</Trans>}
+        extra={
+          <Select
+            allowClear
+            placeholder={t`Filter by product`}
+            style={{ width: 200 }}
+            onChange={(val) => setProductFilter(val ?? null)}
+            value={productFilter}
+          >
+            {trackedProducts.map((p: Product) => (
+              <Select.Option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</Select.Option>
+            ))}
+          </Select>
+        }
+        actions={
+          <Link to="/inventory" state={{ movementModal: true }}>
+            <Button type="primary">
+              <Trans>Record movement</Trans>
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Stock levels summary */}
       {trackedProducts.length > 0 && (
