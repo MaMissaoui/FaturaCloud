@@ -8,12 +8,19 @@ import (
 
 func (h *handler) listStockMovements(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	movements, err := h.db.GetStockMovements(orgID)
+	opts := db.StockMovementListOptions{
+		ProductID: r.URL.Query().Get("productId"),
+		Limit:     parseIntParam(r, "limit"),
+		Offset:    parseIntParam(r, "offset"),
+		SortField: r.URL.Query().Get("sort"),
+		SortDesc:  r.URL.Query().Get("order") == "desc",
+	}
+	movements, total, err := h.db.GetStockMovements(orgID, opts)
 	if err != nil {
 		writeInternalError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, movements)
+	writeJSON(w, http.StatusOK, map[string]any{"data": movements, "total": total})
 }
 
 func (h *handler) listProductStockMovements(w http.ResponseWriter, r *http.Request) {

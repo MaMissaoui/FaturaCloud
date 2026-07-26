@@ -519,6 +519,271 @@ func TestProductCodeUniquePerOrganization(t *testing.T) {
 	}
 }
 
+// TestGetProductsPagination covers the Limit/Offset behavior added for the
+// Products list page: Limit == 0 must still return everything (the behavior
+// every other caller — the line-item product pickers — relies on), and a
+// nonzero Limit/Offset must page correctly while total always reflects the
+// full matching count, not just the current page's length.
+func TestGetProductsPagination(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	for _, name := range []string{"Alpha", "Bravo", "Charlie", "Delta", "Echo"} {
+		if _, err := d.CreateProduct(CreateProductRequest{
+			OrganizationID: org.ID, Name: name, Type: "product",
+		}); err != nil {
+			t.Fatalf("CreateProduct(%s): %v", name, err)
+		}
+	}
+
+	// Limit == 0: unpaginated, full-fetch behavior preserved.
+	all, total, err := d.GetProducts(org.ID, ProductListOptions{})
+	if err != nil {
+		t.Fatalf("GetProducts (no limit): %v", err)
+	}
+	if len(all) != 5 || total != 5 {
+		t.Fatalf("got len=%d total=%d, want 5/5", len(all), total)
+	}
+	if all[0].Name != "Alpha" || all[4].Name != "Echo" {
+		t.Fatalf("expected name-ascending order, got %q..%q", all[0].Name, all[4].Name)
+	}
+
+	// Page through with Limit=2: three pages, the last partial, total always 5.
+	page1, total, err := d.GetProducts(org.ID, ProductListOptions{Limit: 2, Offset: 0})
+	if err != nil || len(page1) != 2 || total != 5 {
+		t.Fatalf("page1: err=%v len=%d total=%d, want 2/5", err, len(page1), total)
+	}
+	if page1[0].Name != "Alpha" || page1[1].Name != "Bravo" {
+		t.Fatalf("page1 names: got %q, %q", page1[0].Name, page1[1].Name)
+	}
+
+	page3, total, err := d.GetProducts(org.ID, ProductListOptions{Limit: 2, Offset: 4})
+	if err != nil || len(page3) != 1 || total != 5 {
+		t.Fatalf("page3: err=%v len=%d total=%d, want 1/5", err, len(page3), total)
+	}
+	if page3[0].Name != "Echo" {
+		t.Fatalf("page3 name: got %q, want Echo", page3[0].Name)
+	}
+}
+
+// TestGetProductsSearch pins the search semantics to substring ("contains"),
+// matching the client-side `includes()` filter this replaces — not a
+// prefix/leading-anchor search — and confirms it matches across every field
+// the old client-side filter covered (name, sku, description, unit, type).
+func TestGetProductsSearch(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Steel Bracket", SKU: ptr("PRD-BRK-042"), Type: "product",
+	}); err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Consulting Hour", Type: "service",
+	}); err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+
+	// Mid-string match on name — would fail if search were prefix-only.
+	got, total, err := d.GetProducts(org.ID, ProductListOptions{Search: "Bracket"})
+	if err != nil || total != 1 || len(got) != 1 || got[0].Name != "Steel Bracket" {
+		t.Fatalf("search %q: err=%v total=%d results=%+v", "Bracket", err, total, got)
+	}
+
+	// Mid-string match on SKU.
+	got, total, err = d.GetProducts(org.ID, ProductListOptions{Search: "BRK"})
+	if err != nil || total != 1 || len(got) != 1 || got[0].Name != "Steel Bracket" {
+		t.Fatalf("search %q: err=%v total=%d results=%+v", "BRK", err, total, got)
+	}
+
+	// Match on type.
+	got, total, err = d.GetProducts(org.ID, ProductListOptions{Search: "service"})
+	if err != nil || total != 1 || len(got) != 1 || got[0].Name != "Consulting Hour" {
+		t.Fatalf("search %q: err=%v total=%d results=%+v", "service", err, total, got)
+	}
+
+	// No match.
+	if _, total, err := d.GetProducts(org.ID, ProductListOptions{Search: "nonexistent"}); err != nil || total != 0 {
+		t.Fatalf("search with no match: err=%v total=%d, want 0", err, total)
+	}
+}
+
+// TestGetStockMovementsPagination covers the same Limit/Offset contract as
+// GetProducts, plus the ProductID filter that replaced Inventory's
+// client-side filtering.
+func TestGetStockMovementsPagination(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget A", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct A: %v", err)
+	}
+	productB, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget B", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct B: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+			OrganizationID: org.ID, ProductID: productA.ID, Type: "in", Quantity: 1,
+		}); err != nil {
+			t.Fatalf("CreateStockMovement A: %v", err)
+		}
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: productB.ID, Type: "in", Quantity: 1,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement B: %v", err)
+	}
+
+	// Unfiltered, unpaginated: all 4 movements across both products.
+	all, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{})
+	if err != nil || len(all) != 4 || total != 4 {
+		t.Fatalf("GetStockMovements (no filter): err=%v len=%d total=%d, want 4/4", err, len(all), total)
+	}
+
+	// Filtered to product A only.
+	forA, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{ProductID: productA.ID})
+	if err != nil || len(forA) != 3 || total != 3 {
+		t.Fatalf("GetStockMovements (product A): err=%v len=%d total=%d, want 3/3", err, len(forA), total)
+	}
+
+	// Paginated: first page of 2 out of the unfiltered 4, total still 4.
+	page1, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{Limit: 2, Offset: 0})
+	if err != nil || len(page1) != 2 || total != 4 {
+		t.Fatalf("GetStockMovements page1: err=%v len=%d total=%d, want 2/4", err, len(page1), total)
+	}
+}
+
+// TestGetProductsSort covers server-side sorting: the default (name
+// ascending, unchanged from before pagination existed), an explicit
+// descending sort on a plain column, and — the case that actually needs a
+// JOIN — sorting by "taxRate", which must order by the tax rate's *name*
+// (matching the old client-side sorter's resolved-name comparison), not the
+// raw taxRateId. An unrecognized SortField must not error or inject
+// anything; it falls back to the default.
+func TestGetProductsSort(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	// Tax rate names deliberately sort opposite to their id order, so a
+	// correct name-sort and an accidental id-sort disagree on the result.
+	rateZ, err := d.CreateTaxRate(CreateTaxRateRequest{ID: "tax-a", OrganizationID: org.ID, Name: "Zulu", Percentage: 10})
+	if err != nil {
+		t.Fatalf("CreateTaxRate Zulu: %v", err)
+	}
+	rateA, err := d.CreateTaxRate(CreateTaxRateRequest{ID: "tax-b", OrganizationID: org.ID, Name: "Alpha", Percentage: 20})
+	if err != nil {
+		t.Fatalf("CreateTaxRate Alpha: %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget", Type: "product", TaxRateID: &rateZ.ID,
+	}); err != nil {
+		t.Fatalf("CreateProduct Widget: %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Gadget", Type: "product", TaxRateID: &rateA.ID,
+	}); err != nil {
+		t.Fatalf("CreateProduct Gadget: %v", err)
+	}
+
+	// Default: name ascending, unchanged from the pre-pagination behavior.
+	byDefault, _, err := d.GetProducts(org.ID, ProductListOptions{})
+	if err != nil || len(byDefault) != 2 || byDefault[0].Name != "Gadget" || byDefault[1].Name != "Widget" {
+		t.Fatalf("default sort: err=%v names=%v, want [Gadget Widget]", err, namesOf(byDefault))
+	}
+
+	// Explicit descending on a plain column.
+	nameDesc, _, err := d.GetProducts(org.ID, ProductListOptions{SortField: "name", SortDesc: true})
+	if err != nil || len(nameDesc) != 2 || nameDesc[0].Name != "Widget" || nameDesc[1].Name != "Gadget" {
+		t.Fatalf("name desc: err=%v names=%v, want [Widget Gadget]", err, namesOf(nameDesc))
+	}
+
+	// "taxRate" sorts by the joined tax rate's name (Alpha < Zulu), which is
+	// the opposite order from the products' own name or the raw taxRateId
+	// ("tax-a" < "tax-b") — proves the JOIN, not an id-sort, is what ran.
+	byTaxRate, _, err := d.GetProducts(org.ID, ProductListOptions{SortField: "taxRate"})
+	if err != nil || len(byTaxRate) != 2 || byTaxRate[0].Name != "Gadget" || byTaxRate[1].Name != "Widget" {
+		t.Fatalf("taxRate sort: err=%v names=%v, want [Gadget Widget] (Alpha before Zulu)", err, namesOf(byTaxRate))
+	}
+
+	// Unrecognized field: falls back to the default, does not error.
+	fallback, _, err := d.GetProducts(org.ID, ProductListOptions{SortField: "'; DROP TABLE products; --"})
+	if err != nil || len(fallback) != 2 || fallback[0].Name != "Gadget" {
+		t.Fatalf("unrecognized sort field should fall back to default: err=%v names=%v", err, namesOf(fallback))
+	}
+}
+
+func namesOf(products []Product) []string {
+	names := make([]string, len(products))
+	for i, p := range products {
+		names[i] = p.Name
+	}
+	return names
+}
+
+// TestGetStockMovementsSort mirrors TestGetProductsSort for the movements
+// list: default (createdAt descending, unchanged), explicit ascending on a
+// plain column, and "product" sorting by the joined product's *name* rather
+// than productId.
+func TestGetStockMovementsSort(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	// Product names deliberately sort opposite to creation/id order.
+	productZ, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Zulu Widget", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct Zulu: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Alpha Widget", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct Alpha: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: productZ.ID, Type: "in", Quantity: 1,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (Zulu's): %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: productA.ID, Type: "in", Quantity: 2,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (Alpha's): %v", err)
+	}
+
+	// Quantity ascending — a plain, unjoined column.
+	byQty, _, err := d.GetStockMovements(org.ID, StockMovementListOptions{SortField: "quantity"})
+	if err != nil || len(byQty) != 2 || byQty[0].Quantity != 1 || byQty[1].Quantity != 2 {
+		t.Fatalf("quantity asc: err=%v quantities=[%v %v], want [1 2]", err, byQty[0].Quantity, byQty[1].Quantity)
+	}
+
+	// "product" sorts by the joined product's name (Alpha before Zulu) —
+	// opposite of creation order, proving the JOIN drove the sort.
+	byProduct, _, err := d.GetStockMovements(org.ID, StockMovementListOptions{SortField: "product"})
+	if err != nil || len(byProduct) != 2 || byProduct[0].ProductID != productA.ID || byProduct[1].ProductID != productZ.ID {
+		t.Fatalf("product sort: err=%v productIds=[%v %v], want [%v %v]",
+			err, byProduct[0].ProductID, byProduct[1].ProductID, productA.ID, productZ.ID)
+	}
+}
+
 func ptr[T any](v T) *T { return &v }
 
 // TestDeliveryStatusTransitions is a table-driven matrix covering every
