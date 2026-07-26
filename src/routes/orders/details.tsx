@@ -224,7 +224,7 @@ const OrderDetails = () => {
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
-        <Col span={8}>
+        <Col xs={24} md={12} xl={8}>
           <Form.Item
             label={<Trans>Client</Trans>}
             name="clientId"
@@ -265,7 +265,7 @@ const OrderDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Order number</Trans>}
             name="orderNumber"
@@ -274,7 +274,7 @@ const OrderDetails = () => {
             <Input />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Order date</Trans>}
             name="orderDate"
@@ -283,12 +283,12 @@ const OrderDetails = () => {
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Expected delivery</Trans>} name="deliveryDate">
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
             <Input placeholder="e.g. FX1234567890" />
           </Form.Item>
@@ -296,12 +296,12 @@ const OrderDetails = () => {
       </Row>
 
       <Row gutter={24}>
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item label={<Trans>Shipping address</Trans>} name="shippingAddress">
             <TextArea rows={2} placeholder={t`Leave blank to use client address`} />
           </Form.Item>
         </Col>
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item label={<Trans>Notes</Trans>} name="notes">
             <TextArea rows={2} />
           </Form.Item>
