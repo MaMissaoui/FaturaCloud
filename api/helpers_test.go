@@ -50,7 +50,7 @@ func TestDecodeJSON_NormalBodyAccepted(t *testing.T) {
 		"id":             "client-1",
 		"organizationId": "org-1",
 		"name":           name,
-		"address":        big,
+		"street":         big,
 	}
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest(http.MethodPost, "/api/clients", bytes.NewReader(body))
