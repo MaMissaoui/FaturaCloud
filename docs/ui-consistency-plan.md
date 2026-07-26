@@ -4,23 +4,34 @@
 
 **Tier 0 and Tier 1 are done, verified in-browser, and committed.** **Tier 2
 (line-item tables) is in progress** — the shared shell exists and
-`orders/details.tsx` (migration 1 of 6) is done; the other five documents
-still use their own hand-rolled table. **Tier 3 (detail-page shells) is not
-started.**
+`orders/details.tsx` and `deliveries/details.tsx` (migrations 1-2 of 6) are
+done; the other four documents still use their own hand-rolled table. **Tier 3
+(detail-page shells) is not started.**
 
 Tier 2 progress:
-- `src/components/line-items/table.tsx` — the config-driven shell from 2.1,
-  built with only the column kinds `orders` needs so far (`index`, `product`,
-  `description`, `quantity`, `unitPrice`, `custom`). `unit`, `taxRate`, and
-  `lineTotal` kinds will be added when the documents that need them
-  (deliveries/purchase-orders/inbound-deliveries for `unit`; invoices/
-  incoming-invoices for `taxRate`/`lineTotal`) are migrated, rather than
-  speculatively built now.
+- `src/components/line-items/table.tsx` — the config-driven shell from 2.1.
+  Column kinds so far: `index`, `product`, `description`, `quantity`, `unit`,
+  `unitPrice`, `custom`. `taxRate` and `lineTotal` kinds will be added when the
+  documents that need them (invoices/incoming-invoices) are migrated, rather
+  than speculatively built now.
 - `orders/details.tsx` migrated: `#` column added, Qty/Unit price
   right-aligned, `Delivered` custom column preserved via `kind: "custom"`.
   Verified live: existing order loads/edits/saves correctly, product
   selection still auto-fills description + unit price, new-order flow still
   works (no `Delivered` column when `isNew`).
+- `deliveries/details.tsx` migrated (no price columns, per the non-goals
+  list): `#` column added; `unit` promoted from a page-local custom column to
+  a first-class shell kind (also needed by purchase-orders and
+  inbound-deliveries next); `availableStock` stays `kind: "custom"` since it's
+  delivery-specific (reads `stockEnabled`/`availableStock`/`quantity` off the
+  form to render a colored `Tag`). The `isEditable` (shipped/delivered freeze)
+  gating this file already had was carried through as the shell's `disabled`
+  prop — verified live that a `shipped` delivery still renders every cell
+  disabled with the remove/Add affordances hidden, and that a new delivery's
+  product selection still auto-fills description/unit/availableStock.
+  (The Tier 2.1 write-up's suspicion that this file was missing `disabled`
+  gating did not hold up — the gating was already correct before this
+  migration; only the extraction to the shared shell was needed.)
 - Tier 2.3 (borderless-cell / drag-handle visual polish) **deliberately
   deferred** — per the plan, it's its own reviewable commit after the shell
   exists across more than one document, not bundled into the first migration.
@@ -29,6 +40,10 @@ Tier 2 progress:
   so `GetOrderDeliveredQuantities` (keyed by the old `orderLineItemId`) no
   longer matches. Pre-existing backend behavior, unrelated to this migration
   (confirmed identical on `main` before this change) — out of scope here.
+- `purchase-orders/details.tsx` is still flagged (per Tier 2.1) as missing
+  `disabled` gating on its line items despite having terminal
+  `received`/`cancelled` statuses — worth checking for real when that
+  document is migrated next.
 
 What actually shipped, with deviations from the original plan noted inline:
 - Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.
