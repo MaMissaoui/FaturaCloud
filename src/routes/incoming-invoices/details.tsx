@@ -11,7 +11,6 @@ import {
   Divider,
   Form,
   Input,
-  InputNumber,
   Layout,
   Popconfirm,
   Row,
@@ -26,7 +25,7 @@ import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SaveOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import map from "lodash/map";
@@ -36,6 +35,7 @@ import { GetIncomingInvoiceMatch, GetPurchaseOrderLineItems } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
 import { addDecimal, calculateTax, centsToUnits, multiplyDecimal } from "src/utils/currency";
+import LineItemsTable from "src/components/line-items/table";
 import {
   INCOMING_INVOICE_STATES,
   incomingInvoiceStateColor,
@@ -342,117 +342,35 @@ const IncomingInvoiceDetails = () => {
         </Col>
       </Row>
 
-      <Form.List name="lineItems">
-        {(fields, { add, remove }) => (
-          <>
-            <Table
-              dataSource={fields.map((field, index) => ({ ...field, index }))}
-              pagination={false}
-              size="middle"
-              locale={{ emptyText: t`No line items` }}
-              rowKey={(r) => r.index.toString()}
-              style={{ marginTop: 8 }}
-            >
-              <Table.Column
-                title={<Trans>Description</Trans>}
-                key="description"
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "description"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Description required` }]}
-                  >
-                    <TextArea rows={1} autoSize />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Qty</Trans>}
-                key="quantity"
-                width={90}
-                render={(field) => (
-                  <Form.Item
-                    name={[field.name, "quantity"]}
-                    noStyle
-                    rules={[{ required: true, message: t`Required` }]}
-                  >
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Unit price</Trans>}
-                key="unitPrice"
-                width={110}
-                render={(field) => (
-                  <Form.Item name={[field.name, "unitPrice"]} noStyle>
-                    <InputNumber style={{ width: "100%" }} min={0} precision={2} step={0.01} />
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Tax</Trans>}
-                key="taxRate"
-                width={130}
-                render={(field) => (
-                  <Form.Item name={[field.name, "taxRate"]} noStyle>
-                    <Select allowClear placeholder={t`None`} style={{ width: "100%" }}>
-                      {map(taxRates, (r: any) => (
-                        <Option key={r.id} value={r.id}>
-                          {r.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Match</Trans>}
-                key="match"
-                width={140}
-                render={(field) => (
-                  <Form.Item shouldUpdate noStyle>
-                    {() => {
-                      const lineId = form.getFieldValue(["lineItems", field.name, "id"]);
-                      const line = matchLines.find((l) => l.lineItemId === lineId);
-                      if (!line) return null;
-                      return (
-                        <Tag color={matchStatusColor[line.status]} title={matchStatusDetail(line)}>
-                          {matchStatusLabel(line.status)}
-                        </Tag>
-                      );
-                    }}
-                  </Form.Item>
-                )}
-              />
-              <Table.Column
-                key="remove"
-                width={40}
-                render={(field) => (
-                  <Button
-                    type="text"
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    onClick={() => remove(field.name)}
-                    aria-label={t`Remove line item`}
-                  />
-                )}
-              />
-            </Table>
-
-            <Button
-              type="default"
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => add({ quantity: 1 })}
-              style={{ marginTop: 12 }}
-            >
-              <Trans>Add line item</Trans>
-            </Button>
-          </>
-        )}
-      </Form.List>
+      <LineItemsTable
+        columns={[
+          { kind: "index" },
+          { kind: "description", required: true },
+          { kind: "quantity", width: 90 },
+          { kind: "unitPrice" },
+          { kind: "taxRate", taxRates },
+          {
+            kind: "custom",
+            key: "match",
+            title: <Trans>Match</Trans>,
+            width: 140,
+            render: (field) => (
+              <Form.Item shouldUpdate noStyle>
+                {() => {
+                  const lineId = form.getFieldValue(["lineItems", field.name, "id"]);
+                  const line = matchLines.find((l) => l.lineItemId === lineId);
+                  if (!line) return null;
+                  return (
+                    <Tag color={matchStatusColor[line.status]} title={matchStatusDetail(line)}>
+                      {matchStatusLabel(line.status)}
+                    </Tag>
+                  );
+                }}
+              </Form.Item>
+            ),
+          },
+        ]}
+      />
 
       <Row justify="end" style={{ marginTop: 16 }}>
         <Col>

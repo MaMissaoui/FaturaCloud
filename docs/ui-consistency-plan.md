@@ -5,20 +5,21 @@
 **Tier 0 and Tier 1 are done, verified in-browser, and committed.** **Tier 2
 (line-item tables) is in progress** — the shared shell exists and
 `orders/details.tsx`, `deliveries/details.tsx`, `purchase-orders/details.tsx`,
-and `inbound-deliveries/details.tsx` (migrations 1-4 of 6) are done; the other
-two documents still use their own hand-rolled table. **Tier 3 (detail-page
-shells) is not started.**
+`inbound-deliveries/details.tsx`, and `incoming-invoices/details.tsx`
+(migrations 1-5 of 6) are done; only `invoices/details.tsx` (the riskiest —
+DnD + editable back-computing Total) remains. **Tier 3 (detail-page shells)
+is not started.**
 
 Tier 2 progress:
 - `src/components/line-items/table.tsx` — the config-driven shell from 2.1.
   Column kinds so far: `index`, `product`, `description`, `quantity`, `unit`,
-  `unitPrice`, `custom`. The `quantity` kind gained an optional `label` and
-  `unitPrice` an optional `name` (the form field to bind, default
+  `unitPrice`, `taxRate`, `custom`. The `quantity` kind gained an optional
+  `label` and `unitPrice` an optional `name` (the form field to bind, default
   `"unitPrice"`) during the inbound-deliveries migration, since that document
   uses `unitCost` and "Qty received" instead of the defaults — both additive,
-  no existing usage changed. `taxRate` and `lineTotal` kinds will be added
-  when the documents that need them (invoices/incoming-invoices) are
-  migrated, rather than speculatively built now.
+  no existing usage changed. `taxRate` was added as a proper kind during the
+  incoming-invoices migration (below). `lineTotal` will be added when
+  `invoices/details.tsx` is migrated, rather than speculatively built now.
 - `orders/details.tsx` migrated: `#` column added, Qty/Unit price
   right-aligned, `Delivered` custom column preserved via `kind: "custom"`.
   Verified live: existing order loads/edits/saves correctly, product
@@ -76,6 +77,22 @@ Tier 2 progress:
   already had it correctly wired on every input plus remove/Add, same as
   deliveries. Verified live: product selection still auto-fills
   description/unit/unitCost/currentStock on a draft receipt.
+- `incoming-invoices/details.tsx` migrated: `#` column added; `taxRate`
+  promoted from a page-local custom column to a first-class shell kind. This
+  document has **no product column** at all in its UI (unlike every other
+  purchasing document) — `productId` is only ever carried through silently
+  when a line is prefilled from a purchase order, never shown or edited —
+  so the migrated columns are just `index`/`description`/`quantity`/
+  `unitPrice`/`taxRate`/`match`, with no `kind: "product"` entry. `match`
+  stays `kind: "custom"` (per-line 3-way-match status `Tag`, keyed off
+  `matchLines` state, not the form). No `disabled` gating existed before or
+  after — this document has no frozen-state concept for line items, only
+  the state-level block on `approved`/`paid` enforced server-side by 3-way
+  match. Verified live: tax-rate select populates from `taxRates`, and
+  choosing a rate plus typing a unit price correctly recomputes the
+  Subtotal/Tax/Total `Descriptions` block (which reads the same
+  `Form.useWatch("lineItems")` + `useMemo` as before, untouched by the
+  table extraction).
 
 What actually shipped, with deviations from the original plan noted inline:
 - Tier 0.1 (shared `Section`), 0.3 (Drawer `size` rename) — done as planned.
