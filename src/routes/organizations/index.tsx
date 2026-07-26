@@ -343,7 +343,7 @@ export default function Organizations() {
         title={isEdit ? <Trans>Edit organization</Trans> : <Trans>New organization</Trans>}
         open={drawerOpen}
         placement="right"
-        width={640}
+        size={640}
         onClose={handleClose}
         footer={
           <Space style={{ justifyContent: "flex-end", width: "100%", display: "flex" }}>

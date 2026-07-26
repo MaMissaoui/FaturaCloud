@@ -60,151 +60,179 @@ function SettingsInvoice() {
   if (isEmpty(organization)) return null;
 
   return (
-    <div style={{ maxWidth: 720 }}>
-      <Title level={4} style={{ marginTop: 0, marginBottom: 20 }}>
+    <div style={{ maxWidth: 1100 }}>
+      <Title level={3} style={{ marginTop: 0, marginBottom: 12 }}>
         <FileTextOutlined style={{ marginRight: 8 }} />
         <Trans>Invoice settings</Trans>
       </Title>
 
       <Form form={form} layout="vertical" onFinish={onSubmit} initialValues={organization}>
-        <Card title={<Trans>Defaults</Trans>} style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={12}>
-              <Form.Item
-                label={t`Currency`}
-                name="currency"
-                rules={[{ required: true, message: t`This field is required!` }]}
-              >
-                <Select showSearch>
-                  {map(currencies, (currency) => {
-                    const symbol = getCurrencySymbol(i18n.locale, currency);
-                    return (
-                      <Option value={currency} key={currency}>
-                        {`${currency}${currency !== symbol ? ` ${symbol}` : ""}`}
-                      </Option>
-                    );
-                  })}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item label={t`Decimal places`} name="minimum_fraction_digits">
-                <InputNumber min={0} max={10} style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item label={t`Due days`} name="due_days">
-                <InputNumber min={0} style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item
-                label={t`Overdue charge`}
-                help={<Trans>% per day</Trans>}
-                name="overdueCharge"
-              >
-                <InputNumber
-                  min={0}
-                  step={0.01}
-                  style={{ width: "100%" }}
-                  formatter={(value) => `${value} %`}
-                  parser={(value) => value?.replace("%", "") as any}
-                  placeholder="0%"
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24}>
-              <Form.Item label={t`Notes`} name="customerNotes">
-                <TextArea rows={3} />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
+        <Row gutter={[16, 0]}>
+          <Col xs={24} xl={12}>
+            <Card size="small" title={<Trans>Defaults</Trans>} style={{ marginBottom: 16 }}>
+              <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={t`Currency`}
+                    name="currency"
+                    rules={[{ required: true, message: t`This field is required!` }]}
+                  >
+                    <Select showSearch>
+                      {map(currencies, (currency) => {
+                        const symbol = getCurrencySymbol(i18n.locale, currency);
+                        return (
+                          <Option value={currency} key={currency}>
+                            {`${currency}${currency !== symbol ? ` ${symbol}` : ""}`}
+                          </Option>
+                        );
+                      })}
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item label={t`Decimal places`} name="minimum_fraction_digits">
+                    <InputNumber min={0} max={10} style={{ width: "100%" }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item label={t`Due days`} name="due_days">
+                    <InputNumber min={0} style={{ width: "100%" }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={t`Overdue charge`}
+                    help={<Trans>% per day</Trans>}
+                    name="overdueCharge"
+                  >
+                    <InputNumber
+                      min={0}
+                      step={0.01}
+                      style={{ width: "100%" }}
+                      formatter={(value) => `${value} %`}
+                      parser={(value) => value?.replace("%", "") as any}
+                      placeholder="0%"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24}>
+                  <Form.Item label={t`Notes`} name="customerNotes">
+                    <TextArea rows={2} />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
 
-        <Card title={<Trans>Numbering</Trans>} style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={14}>
-              <Form.Item
-                label={t`Invoice number format`}
-                name="invoiceNumberFormat"
-                rules={[
-                  { required: true, message: t`This field is required!` },
-                  {
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve();
-                      const validation = validateInvoiceFormat(value);
-                      return validation.isValid
-                        ? Promise.resolve()
-                        : Promise.reject(new Error(validation.error));
-                    },
-                  },
-                ]}
+          <Col xs={24} xl={12}>
+            <Card size="small" title={<Trans>Numbering</Trans>} style={{ marginBottom: 16 }}>
+              <Row gutter={[16, 0]}>
+                <Col xs={24}>
+                  <Form.Item
+                    label={t`Invoice number format`}
+                    name="invoiceNumberFormat"
+                    rules={[
+                      { required: true, message: t`This field is required!` },
+                      {
+                        validator: (_, value) => {
+                          if (!value) return Promise.resolve();
+                          const validation = validateInvoiceFormat(value);
+                          return validation.isValid
+                            ? Promise.resolve()
+                            : Promise.reject(new Error(validation.error));
+                        },
+                      },
+                    ]}
+                  >
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col xs={24}>
+                  <Form.Item label={t`Preview`} style={{ marginBottom: 0 }}>
+                    <Text code style={{ fontSize: 14 }}>
+                      {invoiceNumberPreview || t`Enter format to see preview`}
+                    </Text>
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowVariables(!showVariables)}
+                style={{ padding: 0, height: "auto", gap: 4, marginBottom: 8 }}
               >
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={10}>
-              <Form.Item label={t`Preview`}>
-                <Text code style={{ fontSize: 14 }}>
-                  {invoiceNumberPreview || t`Enter format to see preview`}
-                </Text>
-              </Form.Item>
-            </Col>
-          </Row>
+                {showVariables ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                <Trans>Available variables</Trans>
+              </Button>
+              {showVariables && (
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    backgroundColor: token.colorFillAlter,
+                    borderRadius: 4,
+                    marginBottom: 16,
+                  }}
+                >
+                  <Space direction="vertical" size={4} style={{ width: "100%" }}>
+                    {[
+                      ["{number}", <Trans key="n">Sequential number</Trans>],
+                      [
+                        "{year}",
+                        <Trans key="y">{`4-digit year (${new Date().getFullYear()})`}</Trans>,
+                      ],
+                      [
+                        "{y}",
+                        <Trans key="y2">{`2-digit year (${String(new Date().getFullYear() % 100).padStart(2, "0")})`}</Trans>,
+                      ],
+                      [
+                        "{month}",
+                        <Trans key="mo">{`2-digit month (${String(new Date().getMonth() + 1).padStart(2, "0")})`}</Trans>,
+                      ],
+                      [
+                        "{m}",
+                        <Trans key="m">{`Month name (${new Date().toLocaleString("en", { month: "short" })})`}</Trans>,
+                      ],
+                      [
+                        "{day}",
+                        <Trans key="d">{`Day of month (${String(new Date().getDate()).padStart(2, "0")})`}</Trans>,
+                      ],
+                      ["{clientCode}", <Trans key="cc">Client code (e.g. AP, MS)</Trans>],
+                    ].map(([code, desc]) => (
+                      <div key={String(code)}>
+                        <Text code>{code}</Text> — {desc}
+                      </div>
+                    ))}
+                  </Space>
+                </div>
+              )}
 
-          <Button
-            type="link"
-            size="small"
-            onClick={() => setShowVariables(!showVariables)}
-            style={{ padding: 0, height: "auto", gap: 4, marginBottom: 8 }}
-          >
-            {showVariables ? <CaretDownOutlined /> : <CaretRightOutlined />}
-            <Trans>Available variables</Trans>
-          </Button>
-          {showVariables && (
-            <div style={{ padding: "12px 16px", backgroundColor: token.colorFillAlter, borderRadius: 4, marginBottom: 16 }}>
-              <Space direction="vertical" size={4} style={{ width: "100%" }}>
-                {[
-                  ["{number}", <Trans key="n">Sequential number</Trans>],
-                  ["{year}", <Trans key="y">{`4-digit year (${new Date().getFullYear()})`}</Trans>],
-                  ["{y}", <Trans key="y2">{`2-digit year (${String(new Date().getFullYear() % 100).padStart(2, "0")})`}</Trans>],
-                  ["{month}", <Trans key="mo">{`2-digit month (${String(new Date().getMonth() + 1).padStart(2, "0")})`}</Trans>],
-                  ["{m}", <Trans key="m">{`Month name (${new Date().toLocaleString("en", { month: "short" })})`}</Trans>],
-                  ["{day}", <Trans key="d">{`Day of month (${String(new Date().getDate()).padStart(2, "0")})`}</Trans>],
-                  ["{clientCode}", <Trans key="cc">Client code (e.g. AP, MS)</Trans>],
-                ].map(([code, desc]) => (
-                  <div key={String(code)}>
-                    <Text code>{code}</Text> — {desc}
-                  </div>
-                ))}
-              </Space>
-            </div>
-          )}
+              <Divider style={{ marginTop: 0 }} />
 
-          <Divider style={{ marginTop: 0 }} />
-
-          <Row gutter={[16, 0]}>
-            <Col xs={24} md={12}>
-              <Form.Item
-                label={t`Invoice number counter`}
-                name="invoiceNumberCounter"
-                help={t`Next invoice will use this number + 1`}
-                rules={[
-                  { required: true, message: t`This field is required!` },
-                  { type: "number", min: 0, message: t`Counter must be 0 or greater` },
-                ]}
-              >
-                <InputNumber min={0} style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
+              <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={t`Invoice number counter`}
+                    name="invoiceNumberCounter"
+                    help={t`Next invoice will use this number + 1`}
+                    rules={[
+                      { required: true, message: t`This field is required!` },
+                      { type: "number", min: 0, message: t`Counter must be 0 or greater` },
+                    ]}
+                  >
+                    <InputNumber min={0} style={{ width: "100%" }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
 
         {/* 3-way matching policy for incoming (vendor) invoices. Zero means any
             variance is flagged and blocks approval until it's resolved or
             explicitly overridden with a reason. */}
-        <Card title={<Trans>Vendor invoice matching</Trans>} style={{ marginBottom: 24 }}>
-          <Row gutter={24}>
+        <Card size="small" title={<Trans>Vendor invoice matching</Trans>} style={{ marginBottom: 16 }}>
+          <Row gutter={[16, 0]}>
             <Col xs={24} md={12}>
               <Form.Item
                 name="match_price_tolerance_percent"
@@ -230,14 +258,14 @@ function SettingsInvoice() {
           </Row>
         </Card>
 
-        <Divider />
+        <Divider style={{ margin: "8px 0 16px" }} />
 
         <Button
           type="primary"
           htmlType="submit"
           icon={<SaveOutlined />}
           loading={submitting}
-          style={{ marginBottom: 40 }}
+          style={{ marginBottom: 8 }}
         >
           <Trans>Save</Trans>
         </Button>

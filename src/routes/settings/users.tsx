@@ -246,7 +246,7 @@ export default function SettingsUsers() {
         title={isEdit ? <Trans>Edit user</Trans> : <Trans>New user</Trans>}
         open={drawerOpen}
         placement="right"
-        width={480}
+        size={480}
         onClose={handleClose}
         footer={
           <div style={{ display: "flex", justifyContent: "space-between" }}>
