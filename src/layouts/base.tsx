@@ -5,6 +5,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  DashboardOutlined,
   FileTextOutlined,
   TeamOutlined,
   SolutionOutlined,
@@ -217,6 +218,15 @@ export default function BaseLayout() {
           defaultSelectedKeys={selectedKeys}
           onClick={closeMobileMenu}
           items={[
+            {
+              icon: <DashboardOutlined />,
+              label: (
+                <Link to="/dashboard">
+                  <Trans>Dashboard</Trans>
+                </Link>
+              ),
+              key: "dashboard",
+            },
             {
               icon: <ShopOutlined />,
               label: <Trans>Sales</Trans>,
