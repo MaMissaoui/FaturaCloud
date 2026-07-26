@@ -21,7 +21,7 @@ import {
   Spin,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { loadable } from "jotai/utils";
+import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Button, Checkbox, Drawer, Form, Input, Popconfirm, Select, Space, Tooltip } from "antd";
 import { useSetAtom, useAtomValue } from "jotai";
-import { loadable } from "jotai/utils";
+import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
