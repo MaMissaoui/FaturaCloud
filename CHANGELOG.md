@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-07-27
+
+Tier 4 of the UI-consistency plan: server-side scale for Products/Inventory,
+and a new Dashboard page.
+
+### Added
+- **Dashboard** (`/dashboard`) — a new standalone top-level page (not nested
+  in a sidebar group) with revenue over time, outstanding invoices aged into
+  buckets (Current, 1-30, 31-60, 61-90, 90+ days), stock valuation, and top
+  clients/products by revenue, over a selectable 3/6/12/24-month window.
+  "Revenue" is defined consistently as `sent`/`paid` invoices only. First use
+  of a charting library (`@ant-design/plots`) in this app, chosen for its
+  built-in antd dark-mode theming. Known limitation: totals sum naively
+  across an organization's invoices regardless of currency — there is no
+  currency-conversion logic anywhere in this codebase, so a mixed-currency
+  organization's totals are not currency-converted.
+- Server-side pagination, search, and sorting for the Products and Inventory
+  (stock movements) list pages, replacing full-table client-side fetch and
+  filtering — the five line-item product pickers elsewhere in the app
+  (invoices, orders, deliveries, purchase orders, inbound deliveries)
+  continue to receive the complete, unpaginated product list unaffected.
+
 ## [3.0.0] - 2026-07-26
 
 A large release spanning e-invoicing groundwork, a PDF redesign, and a full UI
