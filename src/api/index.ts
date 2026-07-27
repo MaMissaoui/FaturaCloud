@@ -379,6 +379,71 @@ export const CreateStockMovement = (req: Partial<StockMovement>) =>
 export const DeleteStockMovement = (id: string) =>
   del<{ deleted: boolean }>(`/stock-movements/${id}`).then((r) => r.deleted);
 
+// ---- Dashboard ----
+
+// "Revenue" is defined consistently the same way in every field below: sent
+// or paid invoices only (mirrors db/dashboard.go's revenueStates).
+export interface MonthlyRevenue {
+  month: string; // "2026-01"
+  revenue: number;
+}
+
+export interface OutstandingInvoiceSummary {
+  id: string;
+  number: string;
+  clientName: string;
+  dueDate: number | null;
+  total: number;
+  daysOverdue: number;
+}
+
+export interface OutstandingSummary {
+  total: number;
+  current: number;
+  days1To30: number;
+  days31To60: number;
+  days61To90: number;
+  days90Plus: number;
+  invoices: OutstandingInvoiceSummary[]; // most overdue first
+}
+
+export interface StockValuationItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  value: number;
+}
+
+export interface StockValuation {
+  total: number;
+  items: StockValuationItem[]; // top 10 by value
+}
+
+export interface ClientRevenue {
+  clientId: string;
+  name: string;
+  revenue: number;
+}
+
+export interface ProductRevenue {
+  productId: string;
+  name: string;
+  revenue: number;
+}
+
+export interface DashboardData {
+  revenueByMonth: MonthlyRevenue[];
+  outstanding: OutstandingSummary;
+  stockValuation: StockValuation;
+  topClients: ClientRevenue[];
+  topProducts: ProductRevenue[];
+}
+
+export const GetDashboard = (organizationId: string, months?: number) => {
+  const suffix = months ? `?months=${months}` : "";
+  return get<DashboardData>(`/organizations/${organizationId}/dashboard${suffix}`);
+};
+
 // ---- Orders ----
 
 export const GetOrders = (organizationId: string) =>

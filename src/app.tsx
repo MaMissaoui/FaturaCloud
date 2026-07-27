@@ -43,6 +43,7 @@ import Loading from "src/components/loading";
 // settings pages. BaseLayout, Index, Login and Loading stay eager
 // as the shell/first-paint set. Each lazy chunk loads on first navigation to
 // its route, behind the <Suspense> fallback below.
+const Dashboard = lazy(() => import("src/routes/dashboard"));
 const Clients = lazy(() => import("src/routes/clients"));
 const Vendors = lazy(() => import("src/routes/vendors"));
 const PurchaseOrders = lazy(() => import("src/routes/purchase-orders"));
@@ -240,6 +241,9 @@ const AppContent = () => {
           <Route path="/incoming-invoices" element={<BaseLayout />}>
             <Route index element={<IncomingInvoices />} />
             <Route path=":id" element={<IncomingInvoiceDetails />} />
+          </Route>
+          <Route path="/dashboard" element={<BaseLayout />}>
+            <Route index element={<Dashboard />} />
           </Route>
           <Route path="/products" element={<BaseLayout />}>
             <Route index element={<Products />} />
