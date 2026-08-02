@@ -2611,6 +2611,37 @@ func createIncomingInvoice(t *testing.T, d *Database, f matchFixture, number str
 	return inv
 }
 
+// A paid vendor bill can't be deleted outright — mirrors DeleteInvoice's
+// guard on sales invoices — since that would silently drop it from other
+// invoices' double-billing check against the same order/receipt line.
+func TestDeleteIncomingInvoiceBlockedWhenPaid(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-paid", 10, 250, 10)
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "paid"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(paid): %v", err)
+	}
+
+	_, err := d.DeleteIncomingInvoice(inv.ID)
+	if err == nil {
+		t.Fatal("expected deleting a paid incoming invoice to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+
+	// A non-paid state (approved) may still be deleted.
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+	ok, err := d.DeleteIncomingInvoice(inv.ID)
+	if err != nil || !ok {
+		t.Fatalf("DeleteIncomingInvoice(approved): ok=%v, err=%v", ok, err)
+	}
+}
+
 // An invoice matching what was ordered and received is clean, and approving it
 // is allowed.
 func TestIncomingInvoiceMatches(t *testing.T) {
