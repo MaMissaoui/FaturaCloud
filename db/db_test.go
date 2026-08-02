@@ -1520,6 +1520,218 @@ func TestVendorDocumentCountCoversEveryReference(t *testing.T) {
 	}
 }
 
+// TestResetOrganizationDataCoversEveryOrganizationScopedTable is a tripwire
+// for the opposite mistake from TestVendorDocumentCountCoversEveryReference:
+// a migration that adds a new organizationId-scoped table without adding it
+// to transactionalDataTables or masterDataTables wouldn't fail loudly — it
+// would just leave that table's rows behind, silently, every time someone
+// resets an organization's data.
+//
+// legacyUnusedTables are schema leftovers from before the current app's
+// feature set (see CLAUDE.md's Project Origin note) with no Go or frontend
+// code referencing them at all — nothing ever populates them, so there's
+// nothing for a reset to cover.
+func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
+	d := newTestDB(t)
+
+	legacyUnusedTables := map[string]bool{
+		"tags":        true,
+		"timeEntries": true,
+		"projects":    true,
+	}
+
+	tables := []string{}
+	if err := d.DB.Select(&tables,
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
+	); err != nil {
+		t.Fatalf("list tables: %v", err)
+	}
+
+	covered := map[string]bool{"organizations": true}
+	for _, name := range transactionalDataTables {
+		covered[name] = true
+	}
+	for _, name := range masterDataTables {
+		covered[name] = true
+	}
+
+	for _, table := range tables {
+		columns := []struct {
+			Name string `db:"name"`
+		}{}
+		if err := d.DB.Select(&columns, `SELECT name FROM pragma_table_info(?)`, table); err != nil {
+			t.Fatalf("pragma_table_info(%s): %v", table, err)
+		}
+		hasOrgColumn := false
+		for _, col := range columns {
+			if col.Name == "organizationId" {
+				hasOrgColumn = true
+				break
+			}
+		}
+		if !hasOrgColumn {
+			continue
+		}
+		if !covered[table] && !legacyUnusedTables[table] {
+			t.Errorf(
+				"table %q has an organizationId column but is not in transactionalDataTables or "+
+					"masterDataTables — ResetOrganizationData would leave its rows behind; add it to "+
+					"one of those lists in db/reset.go (or to legacyUnusedTables in this test, if it's "+
+					"genuinely dead)",
+				table,
+			)
+		}
+	}
+}
+
+// TestResetOrganizationData exercises all three modes: transactional-only
+// (master data survives untouched), the neither-checked validation error, and
+// master data forcing transactional data along with it (the referential-
+// integrity constraint documented on ResetOrganizationData).
+func TestResetOrganizationData(t *testing.T) {
+	d := newTestDB(t)
+
+	seed := func(t *testing.T, orgID string) (client *Client, product *Product) {
+		t.Helper()
+		client, err := d.CreateClient(CreateClientRequest{
+			ID: orgID + "-client", OrganizationID: orgID, Name: ptr("Client"),
+		})
+		if err != nil {
+			t.Fatalf("CreateClient: %v", err)
+		}
+		if _, err := d.CreateVendor(CreateVendorRequest{
+			ID: orgID + "-vendor", OrganizationID: orgID, Name: ptr("Vendor"),
+		}); err != nil {
+			t.Fatalf("CreateVendor: %v", err)
+		}
+		product, err = d.CreateProduct(CreateProductRequest{
+			ID: orgID + "-product", OrganizationID: orgID, Name: "Widget",
+			Type: "product", StockEnabled: 1,
+		})
+		if err != nil {
+			t.Fatalf("CreateProduct: %v", err)
+		}
+		if _, err := d.CreateTaxRate(CreateTaxRateRequest{
+			ID: orgID + "-tax", OrganizationID: orgID, Name: "VAT", Percentage: 20,
+		}); err != nil {
+			t.Fatalf("CreateTaxRate: %v", err)
+		}
+		if _, err := d.CreateInvoice(CreateInvoiceRequest{
+			ID: orgID + "-inv", OrganizationID: orgID, Number: "INV-001",
+			ClientID: client.ID, Date: 1700000000000, Currency: "EUR",
+			Total: 5000, SubTotal: 5000,
+			LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 5000}},
+		}); err != nil {
+			t.Fatalf("CreateInvoice: %v", err)
+		}
+		if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+			ID: orgID + "-move", OrganizationID: orgID, ProductID: product.ID,
+			Type: "in", Quantity: 10,
+		}); err != nil {
+			t.Fatalf("CreateStockMovement: %v", err)
+		}
+		if _, err := d.DB.Exec(
+			`UPDATE organizations SET invoice_number_counter = 5 WHERE id = ?`, orgID,
+		); err != nil {
+			t.Fatalf("bump invoice_number_counter: %v", err)
+		}
+		return client, product
+	}
+
+	assertGone := func(t *testing.T, table, orgID string) {
+		t.Helper()
+		var n int64
+		if err := d.DB.Get(&n, `SELECT COUNT(*) FROM `+table+` WHERE organizationId = ?`, orgID); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if n != 0 {
+			t.Errorf("%s: got %d rows, want 0", table, n)
+		}
+	}
+	assertPresent := func(t *testing.T, table, orgID string) {
+		t.Helper()
+		var n int64
+		if err := d.DB.Get(&n, `SELECT COUNT(*) FROM `+table+` WHERE organizationId = ?`, orgID); err != nil {
+			t.Fatalf("count %s: %v", table, err)
+		}
+		if n == 0 {
+			t.Errorf("%s: got 0 rows, want at least 1", table)
+		}
+	}
+
+	t.Run("neither flag is rejected", func(t *testing.T) {
+		org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-neither"})
+		seed(t, org.ID)
+		if _, err := d.ResetOrganizationData(org.ID, ResetOrganizationDataRequest{}); err == nil {
+			t.Fatal("expected a validation error, got nil")
+		}
+	})
+
+	t.Run("transactional only leaves master data untouched", func(t *testing.T) {
+		org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-txn"})
+		_, product := seed(t, org.ID)
+
+		deleted, err := d.ResetOrganizationData(org.ID, ResetOrganizationDataRequest{ResetTransactionalData: true})
+		if err != nil {
+			t.Fatalf("ResetOrganizationData: %v", err)
+		}
+		if deleted.Invoices != 1 || deleted.StockMovements != 1 {
+			t.Fatalf("unexpected deleted counts: %+v", deleted)
+		}
+		if deleted.Clients != 0 || deleted.Vendors != 0 || deleted.Products != 0 || deleted.TaxRates != 0 {
+			t.Fatalf("master data counts should read 0 (not requested): %+v", deleted)
+		}
+
+		for _, table := range []string{"invoices", "stockMovements"} {
+			assertGone(t, table, org.ID)
+		}
+		for _, table := range []string{"clients", "vendors", "products", "taxRates"} {
+			assertPresent(t, table, org.ID)
+		}
+
+		refreshed, err := d.GetProduct(product.ID)
+		if err != nil {
+			t.Fatalf("GetProduct: %v", err)
+		}
+		if refreshed.StockQuantity != 0 {
+			t.Errorf("stockQuantity: got %v, want 0", refreshed.StockQuantity)
+		}
+
+		refreshedOrg, err := d.GetOrganization(org.ID)
+		if err != nil {
+			t.Fatalf("GetOrganization: %v", err)
+		}
+		if refreshedOrg.InvoiceNumberCounter == nil || *refreshedOrg.InvoiceNumberCounter != 0 {
+			t.Errorf("invoice_number_counter: got %v, want 0", refreshedOrg.InvoiceNumberCounter)
+		}
+	})
+
+	t.Run("master data forces transactional data along with it", func(t *testing.T) {
+		org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-master"})
+		seed(t, org.ID)
+
+		// Deliberately requesting master data ONLY — transactional data must
+		// still be wiped, since clients.CASCADE/vendors.RESTRICT make the two
+		// inseparable (see the comment on ResetOrganizationData).
+		deleted, err := d.ResetOrganizationData(org.ID, ResetOrganizationDataRequest{ResetMasterData: true})
+		if err != nil {
+			t.Fatalf("ResetOrganizationData: %v", err)
+		}
+		if deleted.Clients != 1 || deleted.Vendors != 1 || deleted.Products != 1 || deleted.TaxRates != 1 {
+			t.Fatalf("unexpected master data counts: %+v", deleted)
+		}
+		if deleted.Invoices != 1 || deleted.StockMovements != 1 {
+			t.Fatalf("transactional data should have been wiped too: %+v", deleted)
+		}
+
+		for _, table := range []string{
+			"invoices", "stockMovements", "clients", "vendors", "products", "taxRates",
+		} {
+			assertGone(t, table, org.ID)
+		}
+	})
+}
+
 // TestPurchaseOrderStatusTransitions mirrors TestOrderStatusTransitions for the
 // purchase order lifecycle: draft→{confirmed,cancelled},
 // confirmed→{received,cancelled}; received/cancelled terminal; same-status a

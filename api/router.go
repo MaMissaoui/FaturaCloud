@@ -133,6 +133,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Deleting an organization cascade-deletes all of its clients, invoices,
 	// orders, and deliveries — admin only.
 	adminProtected("DELETE", "/api/organizations/{id}", h.deleteOrganization)
+	adminProtected("POST", "/api/organizations/{id}/reset", h.resetOrganizationData)
 	protected("GET", "/api/organizations/{id}/usage-count", h.getOrganizationUsageCount)
 	protected("GET", "/api/organizations/{id}/logo", h.getOrganizationLogo)
 	protected("POST", "/api/organizations/{id}/logo", h.uploadOrganizationLogo)

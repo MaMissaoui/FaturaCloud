@@ -54,6 +54,20 @@ func (h *handler) updateOrganization(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, org)
 }
 
+func (h *handler) resetOrganizationData(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req db.ResetOrganizationDataRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		return
+	}
+	deleted, err := h.db.ResetOrganizationData(id, req)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, deleted)
+}
+
 func (h *handler) deleteOrganization(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ok, err := h.db.DeleteOrganization(id)

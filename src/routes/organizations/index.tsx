@@ -4,6 +4,7 @@ import {
   App,
   Button,
   Card,
+  Checkbox,
   Col,
   Drawer,
   Form,
@@ -14,11 +15,17 @@ import {
   Select,
   Space,
   Table,
+  Typography,
   Upload,
   theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ApartmentOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import {
+  ApartmentOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -40,6 +47,7 @@ import {
   DeleteOrganization,
   DeleteOrganizationLogo,
   GetOrganizationUsageCount,
+  ResetOrganizationData,
   type OrganizationUsageCount,
 } from "src/api";
 import { CSRF_HEADER } from "src/api/client";
@@ -51,6 +59,7 @@ import { useCountryOptions } from "src/hooks/useCountryOptions";
 import PageHeader from "src/components/page-header";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
+const { Text } = Typography;
 
 export default function Organizations() {
   useLingui();
@@ -69,6 +78,9 @@ export default function Organizations() {
   const [logoKey, setLogoKey] = useState(0);
   const [hasLogo, setHasLogo] = useState(true);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [resetMasterData, setResetMasterData] = useState(false);
+  const [resetTransactionalData, setResetTransactionalData] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const [organizationId, setOrganizationId] = useAtom(organizationIdAtom);
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
@@ -110,6 +122,8 @@ export default function Organizations() {
     form.resetFields();
     setHasLogo(true);
     setLogoKey((k) => k + 1);
+    setResetMasterData(false);
+    setResetTransactionalData(false);
     setDrawerOpen(true);
     try {
       const org = await GetOrganization(id);
@@ -122,6 +136,8 @@ export default function Organizations() {
     setDrawerOpen(false);
     setEditingId(null);
     form.resetFields();
+    setResetMasterData(false);
+    setResetTransactionalData(false);
   };
 
   const refreshLogo = () => {
@@ -197,7 +213,66 @@ export default function Organizations() {
     }
   };
 
+  const handleReset = async (id: string) => {
+    setResetting(true);
+    try {
+      const deleted = await ResetOrganizationData(id, {
+        resetMasterData,
+        resetTransactionalData,
+      });
+      const total = Object.values(deleted).reduce((sum, n) => sum + n, 0);
+      message.success(
+        total > 0
+          ? t`Deleted ${total} record(s)`
+          : t`Nothing to delete — this organization was empty`,
+      );
+      // The counts just shown are now stale (this org has fewer, or no,
+      // records); drop the cache entry so the next Popconfirm open refetches.
+      setUsageCounts((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setResetMasterData(false);
+      setResetTransactionalData(false);
+      // Invoice numbering and other profile-derived fields the drawer/settings
+      // pages read (e.g. the invoice number preview) just changed under it.
+      if (id === organizationId) reloadActiveOrganization();
+    } catch (error) {
+      console.error("Failed to reset organization data:", error);
+      message.error(error instanceof Error ? error.message : t`Reset failed`);
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const isEdit = !!editingId;
+
+  const resetCounts = editingId ? usageCounts[editingId] : undefined;
+  const resetBreakdown = resetCounts
+    ? [
+        ...(resetMasterData
+          ? [
+              [resetCounts.clients, t`client(s)`],
+              [resetCounts.vendors, t`vendor(s)`],
+              [resetCounts.products, t`product(s)`],
+              [resetCounts.taxRates, t`tax rate(s)`],
+            ]
+          : []),
+        ...(resetMasterData || resetTransactionalData
+          ? [
+              [resetCounts.invoices, t`invoice(s)`],
+              [resetCounts.orders, t`order(s)`],
+              [resetCounts.deliveries, t`delivery(ies)`],
+              [resetCounts.purchaseOrders, t`purchase order(s)`],
+              [resetCounts.inboundDeliveries, t`goods receipt(s)`],
+              [resetCounts.incomingInvoices, t`incoming invoice(s)`],
+              [resetCounts.stockMovements, t`stock movement(s)`],
+            ]
+          : []),
+      ].filter(([n]) => (n as number) > 0)
+    : [];
+  const resetSelected = resetMasterData || resetTransactionalData;
 
   return (
     <>
@@ -560,6 +635,97 @@ export default function Organizations() {
               </Col>
             </Row>
           </Card>
+
+          {isEdit && editingId && isAdmin && (
+            <Card
+              size="small"
+              title={<Trans>Danger zone</Trans>}
+              style={{ marginTop: 12, borderColor: token.colorErrorBorder }}
+            >
+              <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                <Text type="secondary">
+                  <Trans>
+                    Permanently delete this organization's data without deleting the organization
+                    itself.
+                  </Trans>
+                </Text>
+                <Checkbox
+                  checked={resetMasterData}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setResetMasterData(checked);
+                    if (checked) setResetTransactionalData(true);
+                  }}
+                >
+                  <Trans>Master data</Trans>{" "}
+                  <Text type="secondary">({t`clients, vendors, products, tax rates`})</Text>
+                </Checkbox>
+                <Checkbox
+                  checked={resetTransactionalData}
+                  disabled={resetMasterData}
+                  onChange={(e) => setResetTransactionalData(e.target.checked)}
+                >
+                  <Trans>Transactional data</Trans>{" "}
+                  <Text type="secondary">
+                    (
+                    {t`invoices, orders, deliveries, purchase orders, goods receipts, incoming invoices, stock movements`}
+                    )
+                  </Text>
+                </Checkbox>
+                {resetMasterData && (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    <Trans>
+                      Master data can't be reset on its own — documents reference clients and
+                      vendors, so transactional data is included automatically.
+                    </Trans>
+                  </Text>
+                )}
+                <Popconfirm
+                  title={t`Reset this organization's data?`}
+                  description={
+                    <div style={{ maxWidth: 280 }}>
+                      {resetBreakdown.length > 0 ? (
+                        <>
+                          <div>
+                            <Trans>This will permanently delete:</Trans>
+                          </div>
+                          <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                            {resetBreakdown.map(([n, label]) => (
+                              <li key={label as string}>
+                                {n} {label}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : (
+                        <div>
+                          <Trans>Nothing matches the current selection.</Trans>
+                        </div>
+                      )}
+                      <div>
+                        <Trans>This cannot be undone.</Trans>
+                      </div>
+                    </div>
+                  }
+                  okButtonProps={{ danger: true }}
+                  onOpenChange={(open) => {
+                    if (open) fetchUsageCount(editingId);
+                  }}
+                  onConfirm={() => handleReset(editingId)}
+                  disabled={!resetSelected}
+                >
+                  <Button
+                    danger
+                    icon={<ExclamationCircleOutlined />}
+                    loading={resetting}
+                    disabled={!resetSelected}
+                  >
+                    <Trans>Reset selected data</Trans>
+                  </Button>
+                </Popconfirm>
+              </Space>
+            </Card>
+          )}
         </Form>
       </Drawer>
     </>
