@@ -240,7 +240,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/routes/purchase-orders.tsx` + `src/routes/purchase-orders/details.tsx` — purchase order list and detail/edit pages
 - `src/types/incoming-invoice.ts`, `src/atoms/incoming-invoice.ts`, `src/routes/incoming-invoices.tsx`, `src/routes/incoming-invoices/details.tsx` — vendor bills with the 3-way match panel (no PDF: these are received, not issued)
 - `src/types/inbound-delivery.ts`, `src/atoms/inbound-delivery.ts`, `src/routes/inbound-deliveries.tsx`, `src/routes/inbound-deliveries/details.tsx` — goods receipts (no PDF: these are internal)
-- `src/components/purchase-orders/purchase-order-pdf.tsx` — purchase order PDF (with prices; sent to the vendor). Takes an `i18n` prop and translates, following `invoices/pdf.tsx` rather than the hardcoded-English order/delivery PDFs
+- `src/components/purchase-orders/purchase-order-pdf.tsx` — purchase order PDF (with prices; sent to the vendor). Takes an `i18n` prop and translates, following `invoices/pdf.tsx`
 - `src/routes/` — main application pages
 - `src/routes/login.tsx` — login page (public, redirects to `/` on success); shows an "Sign in with SSO" button when `GET /api/auth/oidc/enabled` reports true
 - `src/routes/deliveries.tsx` — outbound deliveries list
@@ -248,9 +248,9 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/routes/orders/details.tsx` — order detail/edit page
 - `src/routes/organizations/index.tsx` — organizations list page (standalone, not under Settings); the edit drawer's Logo card (shown only for an existing org, not while creating one) is the STBvirement-style pattern: a plain `<img>` against the `/logo` URL with a local cache-busting key, not the data-URI atom the settings page and PDFs use, since this drawer can be editing an org other than the currently-selected one
 - `src/components/` — reusable React components
-- `src/components/deliveries/delivery-note-pdf.tsx` — delivery note PDF (no prices)
-- `src/components/orders/order-confirmation-pdf.tsx` — order confirmation PDF (with prices)
-- `src/components/orders/delivery-note-pdf.tsx` — legacy delivery note from orders (kept for reference)
+- `src/components/deliveries/delivery-note-pdf.tsx` — delivery note PDF (no prices). Takes an `i18n` prop and translates, following `invoices/pdf.tsx`
+- `src/components/orders/order-confirmation-pdf.tsx` — order confirmation PDF (with prices). Takes an `i18n` prop and translates, following `invoices/pdf.tsx`
+- `src/components/orders/delivery-note-pdf.tsx` — legacy delivery note from orders (kept for reference; unused, still hardcoded English)
 - `src/components/feedback-modal.tsx` — Sentry user feedback modal
 - `src/layouts/base.tsx` — main application layout with sidebar and header
 - `src/types/` — shared TypeScript type definitions

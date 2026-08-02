@@ -206,7 +206,7 @@ const DeliveryDetails = () => {
         lineItems={lineItemsForPdf}
         client={clientData}
         organization={organization}
-        locale={i18n.locale}
+        i18n={i18n}
       />
     );
 

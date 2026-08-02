@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { I18nProvider } from "@lingui/react";
-import { i18n } from "@lingui/core";
+import { Trans } from "@lingui/react/macro";
 import dayjs from "dayjs";
 
 import { formatAddress } from "src/utils/address";
@@ -117,11 +117,12 @@ interface Props {
   lineItems: any[];
   client: any;
   organization: any;
-  locale?: string;
+  i18n: any;
 }
 
-const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }: Props) => {
-  const dateLocale = locale ?? "en";
+// Strings are translated via the passed-in i18n (the invoices/pdf.tsx /
+// purchase-order-pdf.tsx pattern), not hardcoded English.
+const OrderConfirmationPDF = ({ order, lineItems, client, organization, i18n }: Props) => {
   const currency = order?.currency ?? organization?.currency ?? "EUR";
   // organizationAtom already resolves logo to a ready-to-use data URI
   // (fetched from GET /organizations/{id}/logo) — don't re-wrap it.
@@ -130,7 +131,7 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
   // places" setting rather than always falling back to the currency's own
   // ICU default, matching invoices/pdf.tsx.
   const fmt = (cents: number) =>
-    Intl.NumberFormat(dateLocale, {
+    Intl.NumberFormat(i18n.locale, {
       style: "currency",
       currency,
       minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
@@ -153,18 +154,24 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
               {logoSrc && <Image src={logoSrc} style={styles.logo} />}
             </View>
             <View>
-              <Text style={styles.docTitle}>ORDER CONFIRMATION</Text>
+              <Text style={styles.docTitle}>
+                <Trans>ORDER CONFIRMATION</Trans>
+              </Text>
               <View style={styles.docNumberPill}>
                 <Text style={styles.docNumberText}>{order.orderNumber}</Text>
               </View>
               <View style={styles.headerMeta}>
                 <View style={styles.headerMetaRow}>
-                  <Text style={styles.headerMetaLabel}>Order Date:</Text>
+                  <Text style={styles.headerMetaLabel}>
+                    <Trans>Order Date</Trans>:
+                  </Text>
                   <Text style={styles.headerMetaValue}>{dayjs(order.orderDate).format("L")}</Text>
                 </View>
                 {order.deliveryDate && (
                   <View style={styles.headerMetaRow}>
-                    <Text style={styles.headerMetaLabel}>Expected Delivery:</Text>
+                    <Text style={styles.headerMetaLabel}>
+                      <Trans>Delivery date</Trans>:
+                    </Text>
                     <Text style={styles.headerMetaValue}>
                       {dayjs(order.deliveryDate).format("L")}
                     </Text>
@@ -172,7 +179,9 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
                 )}
                 {order.shippingAddress && (
                   <View style={styles.headerMetaRow}>
-                    <Text style={styles.headerMetaLabel}>Ship To:</Text>
+                    <Text style={styles.headerMetaLabel}>
+                      <Trans>Ship To</Trans>:
+                    </Text>
                     <Text style={styles.headerMetaValue}>{order.shippingAddress}</Text>
                   </View>
                 )}
@@ -183,7 +192,9 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
           {/* From / To */}
           <View style={styles.parties}>
             <View style={styles.card}>
-              <Text style={styles.partyLabel}>From</Text>
+              <Text style={styles.partyLabel}>
+                <Trans>From</Trans>
+              </Text>
               <Text style={styles.partyName}>{organization?.name ?? ""}</Text>
               {organization && formatAddress(organization) && (
                 <Text style={styles.partyDetail}>{formatAddress(organization)}</Text>
@@ -191,27 +202,43 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
               {organization?.vatin && (
-                <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>
+                <Text style={styles.partyDetail}>
+                  <Trans>VAT</Trans>: {organization.vatin}
+                </Text>
               )}
             </View>
             <View style={styles.card}>
-              <Text style={styles.partyLabel}>Bill To</Text>
+              <Text style={styles.partyLabel}>
+                <Trans>Bill To</Trans>
+              </Text>
               <Text style={styles.partyName}>{client?.name ?? ""}</Text>
               {client && formatAddress(client) && (
                 <Text style={styles.partyDetail}>{formatAddress(client)}</Text>
               )}
               {client?.email && <Text style={styles.partyDetail}>{client.email}</Text>}
-              {client?.vatin && <Text style={styles.partyDetail}>VAT: {client.vatin}</Text>}
+              {client?.vatin && (
+                <Text style={styles.partyDetail}>
+                  <Trans>VAT</Trans>: {client.vatin}
+                </Text>
+              )}
             </View>
           </View>
 
           {/* Items table */}
           <View style={styles.tableHeader}>
             <Text style={[styles.colNum, styles.tableHeaderText]}>#</Text>
-            <Text style={[styles.colDesc, styles.tableHeaderText]}>Description</Text>
-            <Text style={[styles.colQty, styles.tableHeaderText]}>Qty</Text>
-            <Text style={[styles.colPrice, styles.tableHeaderText]}>Unit Price</Text>
-            <Text style={[styles.colTotal, styles.tableHeaderText]}>Total</Text>
+            <Text style={[styles.colDesc, styles.tableHeaderText]}>
+              <Trans>Description</Trans>
+            </Text>
+            <Text style={[styles.colQty, styles.tableHeaderText]}>
+              <Trans>Qty</Trans>
+            </Text>
+            <Text style={[styles.colPrice, styles.tableHeaderText]}>
+              <Trans>Unit price</Trans>
+            </Text>
+            <Text style={[styles.colTotal, styles.tableHeaderText]}>
+              <Trans>Total</Trans>
+            </Text>
           </View>
 
           {lineItems.map((item, idx) => {
@@ -237,24 +264,31 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
           {/* Totals */}
           <View style={styles.totals}>
             <View style={styles.totalRow}>
-              <Text style={styles.grandTotalLabel}>Total</Text>
+              <Text style={styles.grandTotalLabel}>
+                <Trans>Total</Trans>
+              </Text>
               <Text style={styles.grandTotalValue}>{fmt(subtotal)}</Text>
             </View>
           </View>
 
           {order.notes && (
             <View style={styles.noteCard}>
-              <Text style={styles.noteCardTitle}>Notes</Text>
+              <Text style={styles.noteCardTitle}>
+                <Trans>Notes</Trans>
+              </Text>
               <Text style={styles.noteCardText}>{order.notes}</Text>
             </View>
           )}
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Thank you for your order. This document confirms your order as listed above.
+              <Trans>Thank you for your order. This document confirms your order as listed above.</Trans>
             </Text>
           </View>
 
+          {/* react-pdf's render prop runs outside React's normal reconciler
+              (resolveDynamicNodes), so hooks-based i18n like <Trans> throws
+              "Invalid hook call" here — plain text only, like the other PDFs. */}
           <Text
             style={styles.pageNumber}
             fixed
