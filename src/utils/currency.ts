@@ -82,7 +82,15 @@ export function subtractDecimal(a: number | string, b: number | string): number 
 }
 
 /**
- * Calculate tax amount with precise decimal arithmetic
+ * Calculate tax amount with precise decimal arithmetic.
+ *
+ * Deliberately always rounds to 2 decimal places regardless of the
+ * organization's configured "Decimal places" (minimum_fraction_digits) or
+ * the invoice's currency (e.g. JPY): storage stays cents (× 100) everywhere,
+ * always — decimals are a display-only concern, applied by the formatter at
+ * render time, never by the arithmetic that produces the stored total. This
+ * mirrors db/invoice_totals.go's ratToCents on the Go side, which the server
+ * cross-checks this against; changing this would desync the two.
  * @param amount - Base amount
  * @param percentage - Tax percentage (e.g., 20 for 20%)
  * @returns Tax amount as a number

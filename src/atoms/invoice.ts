@@ -65,6 +65,7 @@ export const invoiceAtom = atom(
         ...invoice,
         date: dayjs(invoice.date),
         dueDate: invoice.dueDate ? dayjs(invoice.dueDate) : null,
+        exchangeRateDate: invoice.exchangeRateDate ? dayjs(invoice.exchangeRateDate) : null,
         // Convert cents to currency units for display
         total: centsToUnits(invoice.total),
         taxTotal: centsToUnits(invoice.taxTotal),
@@ -98,6 +99,9 @@ export const invoiceAtom = atom(
           // Convert dayjs objects to unix timestamps
           date: invoice.date?.valueOf ? invoice.date.valueOf() : invoice.date,
           dueDate: invoice.dueDate?.valueOf ? invoice.dueDate.valueOf() : invoice.dueDate,
+          exchangeRateDate: invoice.exchangeRateDate?.valueOf
+            ? invoice.exchangeRateDate.valueOf()
+            : invoice.exchangeRateDate,
           // Convert currency units to cents for storage
           total: unitsToCents(invoice.total),
           taxTotal: unitsToCents(invoice.taxTotal),
@@ -133,6 +137,9 @@ export const invoiceAtom = atom(
           // Convert dayjs objects to unix timestamps
           date: invoice.date?.valueOf ? invoice.date.valueOf() : invoice.date,
           dueDate: invoice.dueDate?.valueOf ? invoice.dueDate.valueOf() : invoice.dueDate,
+          exchangeRateDate: invoice.exchangeRateDate?.valueOf
+            ? invoice.exchangeRateDate.valueOf()
+            : invoice.exchangeRateDate,
           // Convert currency units to cents for storage
           total: invoice.total != null ? unitsToCents(invoice.total) : undefined,
           taxTotal: invoice.taxTotal != null ? unitsToCents(invoice.taxTotal) : undefined,
@@ -244,6 +251,11 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
             .valueOf()
         : null,
       currency: originalInvoice.currency,
+      // Carry the rate forward (the server requires one whenever currency
+      // differs from the organization's), but date it today like a freshly
+      // captured document rather than keeping the original's now-stale date.
+      exchangeRate: originalInvoice.exchangeRate,
+      exchangeRateDate: originalInvoice.exchangeRate ? currentDate.valueOf() : null,
       total: originalInvoice.total,
       taxTotal: originalInvoice.taxTotal,
       subTotal: originalInvoice.subTotal,

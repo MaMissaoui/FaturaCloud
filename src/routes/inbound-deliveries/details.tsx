@@ -32,6 +32,10 @@ import map from "lodash/map";
 import { GetPurchaseOrderLineItems, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
+import { currencies } from "src/utils/currencies";
+import ExchangeRateFields, {
+  prefillExchangeRate,
+} from "src/components/currency/exchange-rate-fields";
 import LineItemsTable from "src/components/line-items/table";
 import {
   inboundDeliveryStatusColor,
@@ -134,11 +138,22 @@ const InboundDeliveryDetails = () => {
           .filter((item: any) => item.quantity > 0);
 
         const order: any = find(purchaseOrders, { id: prefillOrderId });
+        const orderCurrency = order?.currency ?? organization?.currency ?? "EUR";
         form.setFieldsValue({
           purchaseOrderId: prefillOrderId,
           vendorId: order?.vendorId,
+          currency: orderCurrency,
           lineItems: outstanding.length > 0 ? outstanding : [{ quantity: 1 }],
         });
+        // The receipt is captured today, independent of whatever rate the
+        // order itself used — see the identical reasoning on the incoming
+        // invoice's purchase-order prefill.
+        await prefillExchangeRate(
+          form,
+          organization?.id,
+          orderCurrency,
+          organization?.currency ?? "EUR",
+        );
       } catch {
         // Leave the blank line the form starts with.
       }
@@ -147,7 +162,7 @@ const InboundDeliveryDetails = () => {
     return () => {
       cancelled = true;
     };
-  }, [isNew, prefillOrderId, purchaseOrders, form]);
+  }, [isNew, prefillOrderId, purchaseOrders, organization, form]);
 
   // After create, navigate to the new receipt.
   useEffect(() => {
@@ -184,11 +199,15 @@ const InboundDeliveryDetails = () => {
     if (ok) setStatusOverride(next);
   };
 
+  const watchedCurrency = Form.useWatch("currency", form);
+  const orgCurrency = organization?.currency ?? "EUR";
+
   const initialValues = isNew
     ? {
         deliveryNumber: nextNumber,
         deliveryDate: dayjs(),
         status: "draft",
+        currency: orgCurrency,
         purchaseOrderId: prefillOrderId ?? undefined,
         lineItems: [{ quantity: 1 }],
       }
@@ -219,6 +238,16 @@ const InboundDeliveryDetails = () => {
               filterOption={(input, option) => {
                 const name = get(option, ["props", "children"]);
                 return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
+              }}
+              onChange={(vendorId) => {
+                // Only cascade on a new receipt — see the identical guard on
+                // src/routes/orders/details.tsx's clientId.
+                if (!isNew) return;
+                const vendor = find(vendors, { id: vendorId }) as any;
+                if (vendor?.defaultCurrency) {
+                  form.setFieldValue("currency", vendor.defaultCurrency);
+                  prefillExchangeRate(form, organization?.id, vendor.defaultCurrency, orgCurrency);
+                }
               }}
               popupRender={(menu) => (
                 <>
@@ -283,6 +312,34 @@ const InboundDeliveryDetails = () => {
             </Tag>
           </Form.Item>
         </Col>
+      </Row>
+
+      <Row gutter={24}>
+        <Col xs={24} md={12} xl={4}>
+          <Form.Item
+            label={<Trans>Currency</Trans>}
+            name="currency"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <Select
+              disabled={!isEditable}
+              onChange={(newCurrency: string) =>
+                prefillExchangeRate(form, organization?.id, newCurrency, orgCurrency)
+              }
+            >
+              {map(currencies, (c) => (
+                <Option value={c} key={c}>
+                  {c}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Col>
+        <ExchangeRateFields
+          currency={watchedCurrency}
+          orgCurrency={orgCurrency}
+          disabled={!isEditable}
+        />
       </Row>
 
       <Row gutter={24}>

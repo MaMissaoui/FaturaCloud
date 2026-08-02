@@ -64,6 +64,7 @@ export const inboundDeliveryAtom = atom(
       return {
         ...delivery,
         deliveryDate: dayjs(delivery.deliveryDate),
+        exchangeRateDate: delivery.exchangeRateDate ? dayjs(delivery.exchangeRateDate) : null,
         lineItems: (lineItems || []).map((item: any) => ({
           ...item,
           unitCost: item.unitCost === null ? null : centsToUnits(item.unitCost),
@@ -99,6 +100,9 @@ export const inboundDeliveryAtom = atom(
           id: nanoid(),
           organizationId: get(organizationIdAtom),
           deliveryDate: toTimestamp(delivery.deliveryDate),
+          exchangeRateDate: delivery.exchangeRateDate
+            ? toTimestamp(delivery.exchangeRateDate)
+            : null,
           lineItems: toPayloadLineItems(lineItems),
         };
         const created = await CreateInboundDelivery(data);
@@ -110,6 +114,9 @@ export const inboundDeliveryAtom = atom(
         const data = {
           ...delivery,
           deliveryDate: toTimestamp(delivery.deliveryDate),
+          exchangeRateDate: delivery.exchangeRateDate
+            ? toTimestamp(delivery.exchangeRateDate)
+            : null,
           lineItems: toPayloadLineItems(lineItems),
         };
         const updated = await UpdateInboundDelivery(deliveryId, data);
@@ -120,7 +127,9 @@ export const inboundDeliveryAtom = atom(
       }
     } catch (error) {
       console.error("Goods receipt operation failed:", error);
-      const fallback = deliveryId ? t`Goods receipt update failed` : t`Goods receipt creation failed`;
+      const fallback = deliveryId
+        ? t`Goods receipt update failed`
+        : t`Goods receipt creation failed`;
       message.error(error instanceof Error ? error.message : fallback);
     }
   },

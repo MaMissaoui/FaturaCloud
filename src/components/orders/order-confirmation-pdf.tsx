@@ -87,7 +87,13 @@ const styles = StyleSheet.create({
 
   totals: { marginTop: 16, alignItems: "flex-end" },
   totalRow: { flexDirection: "row", paddingVertical: 4 },
-  grandTotalLabel: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right", marginRight: 16 },
+  grandTotalLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 12,
+    width: 80,
+    textAlign: "right",
+    marginRight: 16,
+  },
   grandTotalValue: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right" },
 
   noteCard: {
@@ -116,12 +122,19 @@ interface Props {
 
 const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }: Props) => {
   const dateLocale = locale ?? "en";
-  const currency = organization?.currency ?? "EUR";
+  const currency = order?.currency ?? organization?.currency ?? "EUR";
   // organizationAtom already resolves logo to a ready-to-use data URI
   // (fetched from GET /organizations/{id}/logo) — don't re-wrap it.
   const logoSrc = organization?.logo ?? null;
+  // minimumFractionDigits honors the organization's configured "Decimal
+  // places" setting rather than always falling back to the currency's own
+  // ICU default, matching invoices/pdf.tsx.
   const fmt = (cents: number) =>
-    Intl.NumberFormat(dateLocale, { style: "currency", currency }).format(cents / 100);
+    Intl.NumberFormat(dateLocale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
+    }).format(cents / 100);
 
   const subtotal = lineItems.reduce((sum, item) => {
     const qty = item.quantity ?? 1;
@@ -152,7 +165,9 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
                 {order.deliveryDate && (
                   <View style={styles.headerMetaRow}>
                     <Text style={styles.headerMetaLabel}>Expected Delivery:</Text>
-                    <Text style={styles.headerMetaValue}>{dayjs(order.deliveryDate).format("L")}</Text>
+                    <Text style={styles.headerMetaValue}>
+                      {dayjs(order.deliveryDate).format("L")}
+                    </Text>
                   </View>
                 )}
                 {order.shippingAddress && (
@@ -175,7 +190,9 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, locale }
               )}
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
-              {organization?.vatin && <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>}
+              {organization?.vatin && (
+                <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>
+              )}
             </View>
             <View style={styles.card}>
               <Text style={styles.partyLabel}>Bill To</Text>

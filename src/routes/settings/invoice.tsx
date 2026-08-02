@@ -14,7 +14,12 @@ import {
   theme,
 } from "antd";
 import { atom, useAtom, useSetAtom } from "jotai";
-import { CaretDownOutlined, CaretRightOutlined, FileTextOutlined, SaveOutlined } from "@ant-design/icons";
+import {
+  CaretDownOutlined,
+  CaretRightOutlined,
+  FileTextOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Trans } from "@lingui/react/macro";
@@ -24,7 +29,7 @@ import map from "lodash/map";
 import isEmpty from "lodash/isEmpty";
 
 import { organizationAtom, setOrganizationsAtom } from "src/atoms/organization";
-import { currencies, getCurrencySymbol } from "src/utils/currencies";
+import { currencies, getCurrencySymbol, getDefaultFractionDigits } from "src/utils/currencies";
 import { validateInvoiceFormat, generateInvoiceNumber } from "src/utils/invoice";
 
 const { Title, Text } = Typography;
@@ -80,7 +85,15 @@ function SettingsInvoice() {
                     name="currency"
                     rules={[{ required: true, message: t`This field is required!` }]}
                   >
-                    <Select showSearch>
+                    <Select
+                      showSearch
+                      onChange={(currency: string) =>
+                        form.setFieldValue(
+                          "minimum_fraction_digits",
+                          getDefaultFractionDigits(currency, i18n.locale),
+                        )
+                      }
+                    >
                       {map(currencies, (currency) => {
                         const symbol = getCurrencySymbol(i18n.locale, currency);
                         return (
@@ -234,7 +247,11 @@ function SettingsInvoice() {
         {/* 3-way matching policy for incoming (vendor) invoices. Zero means any
             variance is flagged and blocks approval until it's resolved or
             explicitly overridden with a reason. */}
-        <Card size="small" title={<Trans>Vendor invoice matching</Trans>} style={{ marginBottom: 16 }}>
+        <Card
+          size="small"
+          title={<Trans>Vendor invoice matching</Trans>}
+          style={{ marginBottom: 16 }}
+        >
           <Row gutter={[16, 0]}>
             <Col xs={24} md={12}>
               <Form.Item

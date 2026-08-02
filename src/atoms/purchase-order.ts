@@ -69,6 +69,7 @@ export const purchaseOrderAtom = atom(
         ...order,
         orderDate: dayjs(order.orderDate),
         expectedDate: order.expectedDate ? dayjs(order.expectedDate) : null,
+        exchangeRateDate: order.exchangeRateDate ? dayjs(order.exchangeRateDate) : null,
         lineItems: (lineItems || []).map((item: any) => ({
           ...item,
           unitPrice: centsToUnits(item.unitPrice),
@@ -101,6 +102,7 @@ export const purchaseOrderAtom = atom(
           status: order.status || "draft",
           orderDate: toTimestamp(order.orderDate),
           expectedDate: order.expectedDate ? toTimestamp(order.expectedDate) : null,
+          exchangeRateDate: order.exchangeRateDate ? toTimestamp(order.exchangeRateDate) : null,
           lineItems: toPayloadLineItems(lineItems),
         };
         const created = await CreatePurchaseOrder(data);
@@ -113,6 +115,7 @@ export const purchaseOrderAtom = atom(
           ...order,
           orderDate: toTimestamp(order.orderDate),
           expectedDate: order.expectedDate ? toTimestamp(order.expectedDate) : null,
+          exchangeRateDate: order.exchangeRateDate ? toTimestamp(order.exchangeRateDate) : null,
           lineItems: toPayloadLineItems(lineItems),
         };
         const updated = await UpdatePurchaseOrder(orderId, data);
@@ -125,7 +128,9 @@ export const purchaseOrderAtom = atom(
       // Server-side rejections (invalid status, totals) arrive as a 409 whose
       // message is written for the user.
       console.error("Purchase order operation failed:", error);
-      const fallback = orderId ? t`Purchase order update failed` : t`Purchase order creation failed`;
+      const fallback = orderId
+        ? t`Purchase order update failed`
+        : t`Purchase order creation failed`;
       message.error(error instanceof Error ? error.message : fallback);
     }
   },

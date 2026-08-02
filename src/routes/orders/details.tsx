@@ -41,6 +41,7 @@ import sum from "lodash/sum";
 import { SaveFile, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
+import { currencies } from "src/utils/currencies";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { organizationAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
@@ -210,9 +211,13 @@ const OrderDetails = () => {
         orderNumber: nextNumber,
         orderDate: dayjs(),
         status: "draft",
+        currency: organization?.currency ?? "EUR",
         lineItems: [{ quantity: 1 }],
       }
     : undefined;
+
+  const watchedCurrency = Form.useWatch("currency", form);
+  const currency = watchedCurrency ?? organization?.currency ?? "EUR";
 
   const currentStatus = !isNew && order && !(order as any).then ? (order as any).status : "draft";
 
@@ -237,6 +242,16 @@ const OrderDetails = () => {
               filterOption={(input, option) => {
                 const name = get(option, ["props", "children"]);
                 return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
+              }}
+              onChange={(clientId) => {
+                // Only cascade the default on a new order — resetting the
+                // currency of an already-saved order just because its client
+                // changed would silently disturb an existing document.
+                if (!isNew) return;
+                const client = find(clients, { id: clientId }) as any;
+                if (client?.defaultCurrency) {
+                  form.setFieldValue("currency", client.defaultCurrency);
+                }
               }}
               popupRender={(menu) => (
                 <>
@@ -291,6 +306,21 @@ const OrderDetails = () => {
         <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
             <Input placeholder="e.g. FX1234567890" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Form.Item
+            label={<Trans>Currency</Trans>}
+            name="currency"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <Select>
+              {map(currencies, (c) => (
+                <Option value={c} key={c}>
+                  {c}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
         </Col>
       </Row>
@@ -383,7 +413,8 @@ const OrderDetails = () => {
               <Descriptions.Item label={<Trans>Subtotal</Trans>}>
                 {Intl.NumberFormat(i18n.locale, {
                   style: "currency",
-                  currency: organization.currency ?? "EUR",
+                  currency,
+                  minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                 }).format(subTotal)}
               </Descriptions.Item>
             </Descriptions>

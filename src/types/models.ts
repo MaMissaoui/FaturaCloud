@@ -92,6 +92,7 @@ export interface Order {
   status: string;
   orderDate: number;
   deliveryDate: number | null;
+  currency: string | null;
   shippingAddress: string | null;
   trackingNumber: string | null;
   notes: string | null;
@@ -160,6 +161,10 @@ export interface PurchaseOrder {
   orderDate: number;
   expectedDate: number | null;
   currency: string | null;
+  // 1 unit of `currency` = exchangeRate units of the organization's own
+  // currency, frozen at save time. Nil when currency equals the org's.
+  exchangeRate: number | null;
+  exchangeRateDate: number | null;
   deliveryAddress: string | null;
   notes: string | null;
   vendorName: string | null;
@@ -190,6 +195,11 @@ export interface InboundDelivery {
   notes: string | null;
   status: string;
   createdAt: number;
+  // Nullable — null means "the organization's own currency". Drives how
+  // unitCost on each line converts into stockMovements at receipt time.
+  currency: string | null;
+  exchangeRate: number | null;
+  exchangeRateDate: number | null;
   orderNumber: string | null;
   vendorName: string | null;
 }
@@ -220,6 +230,8 @@ export interface IncomingInvoice {
   date: number;
   dueDate: number | null;
   currency: string;
+  exchangeRate: number | null;
+  exchangeRateDate: number | null;
   notes: string | null;
   total: number;
   taxTotal: number;

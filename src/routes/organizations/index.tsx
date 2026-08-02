@@ -43,10 +43,15 @@ import {
   type OrganizationUsageCount,
 } from "src/api";
 import { CSRF_HEADER } from "src/api/client";
-import { organizationIdAtom, reloadOrganizationAtom, setOrganizationsAtom } from "src/atoms/organization";
+import {
+  organizationIdAtom,
+  reloadOrganizationAtom,
+  setOrganizationsAtom,
+} from "src/atoms/organization";
 import { isAdminAtom } from "src/atoms/auth";
 import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
 import { countries } from "src/utils/countries";
+import { getDefaultFractionDigits } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import PageHeader from "src/components/page-header";
 
@@ -386,7 +391,12 @@ export default function Organizations() {
               </Col>
               <Col xs={24} md={12}>
                 <Form.Item name="currency" label={<Trans>Currency</Trans>}>
-                  <Select showSearch>
+                  <Select
+                    showSearch
+                    onChange={(c: string) =>
+                      form.setFieldValue("minimum_fraction_digits", getDefaultFractionDigits(c))
+                    }
+                  >
                     {currencies.map((c) => (
                       <Select.Option key={c} value={c}>
                         {c}
@@ -455,7 +465,12 @@ export default function Organizations() {
                     </Button>
                   </Upload>
                   {hasLogo && (
-                    <Button danger icon={<DeleteOutlined />} loading={logoBusy} onClick={handleLogoRemove}>
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      loading={logoBusy}
+                      onClick={handleLogoRemove}
+                    >
                       <Trans>Remove logo</Trans>
                     </Button>
                   )}
@@ -533,7 +548,11 @@ export default function Organizations() {
           <Card size="small" title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24}>
-                <Form.Item name="tax_number" label={<Trans>Tax number</Trans>} style={{ marginBottom: 0 }}>
+                <Form.Item
+                  name="tax_number"
+                  label={<Trans>Tax number</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
                   <Input />
                 </Form.Item>
               </Col>

@@ -18,10 +18,12 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
+import map from "lodash/map";
 import { GetClientInvoiceCount } from "src/api";
 
 import { clientIdAtom, clientAtom, clientsAtom, deleteClientAtom } from "src/atoms/client";
 import { generateClientCode } from "src/utils/client";
+import { currencies } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import ScrollShadow from "src/components/scroll-shadow";
 
@@ -66,8 +68,14 @@ const ClientForm = () => {
     navigate(location.pathname, { state: { clientModal: false } });
   };
 
-  const handleFinishFailed = ({ errorFields }: { errorFields: { name: (string | number)[] }[] }) => {
-    const hasHiddenError = errorFields.some((field) => E_INVOICING_FIELDS.includes(String(field.name[0])));
+  const handleFinishFailed = ({
+    errorFields,
+  }: {
+    errorFields: { name: (string | number)[] }[];
+  }) => {
+    const hasHiddenError = errorFields.some((field) =>
+      E_INVOICING_FIELDS.includes(String(field.name[0])),
+    );
     if (hasHiddenError) {
       setActiveKeys((keys) => (keys.includes("einvoicing") ? keys : [...keys, "einvoicing"]));
     }
@@ -168,7 +176,12 @@ const ClientForm = () => {
       }
     >
       <ScrollShadow>
-        <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={handleFinishFailed}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          onFinishFailed={handleFinishFailed}
+        >
           <Card size="small" title={<Trans>Contact</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24}>
@@ -239,13 +252,37 @@ const ClientForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={8}>
-                <Form.Item name="postal_code" label={<Trans>Postal code</Trans>} style={{ marginBottom: 0 }}>
+                <Form.Item
+                  name="postal_code"
+                  label={<Trans>Postal code</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
                   <Input placeholder={t`Postal code`} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={16}>
                 <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
                   <Input placeholder={t`City`} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          <Card size="small" title={<Trans>Sales</Trans>} style={{ marginBottom: 12 }}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="defaultCurrency"
+                  label={<Trans>Default currency</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select placeholder={t`Default currency`} allowClear showSearch>
+                    {map(currencies, (currency) => (
+                      <Select.Option value={currency} key={currency}>
+                        {currency}
+                      </Select.Option>
+                    ))}
+                  </Select>
                 </Form.Item>
               </Col>
             </Row>
