@@ -18,12 +18,15 @@ type Order struct {
 	DeliveryDate   *int64  `db:"deliveryDate"    json:"deliveryDate"`
 	// Nullable, like purchase_orders.currency — null means "the
 	// organization's own currency".
-	Currency        *string `db:"currency"        json:"currency"`
-	ShippingAddress *string `db:"shippingAddress" json:"shippingAddress"`
-	TrackingNumber  *string `db:"trackingNumber"  json:"trackingNumber"`
-	Notes           *string `db:"notes"           json:"notes"`
-	ClientName      *string `db:"clientName"      json:"clientName"`
-	CreatedAt       string  `db:"createdAt"       json:"createdAt"`
+	Currency *string `db:"currency" json:"currency"`
+	// See db/exchange_rate.go for the rate direction convention.
+	ExchangeRate     *string `db:"exchangeRate"     json:"exchangeRate"`
+	ExchangeRateDate *int64  `db:"exchangeRateDate" json:"exchangeRateDate"`
+	ShippingAddress  *string `db:"shippingAddress" json:"shippingAddress"`
+	TrackingNumber   *string `db:"trackingNumber"  json:"trackingNumber"`
+	Notes            *string `db:"notes"           json:"notes"`
+	ClientName       *string `db:"clientName"      json:"clientName"`
+	CreatedAt        string  `db:"createdAt"       json:"createdAt"`
 }
 
 type OrderLineItem struct {
@@ -44,30 +47,34 @@ type CreateOrderLineItemRequest struct {
 }
 
 type CreateOrderRequest struct {
-	ID              string                       `json:"id"`
-	OrganizationID  string                       `json:"organizationId"`
-	ClientID        *string                      `json:"clientId"`
-	OrderNumber     string                       `json:"orderNumber"`
-	Status          string                       `json:"status"`
-	OrderDate       int64                        `json:"orderDate"`
-	DeliveryDate    *int64                       `json:"deliveryDate"`
-	Currency        *string                      `json:"currency"`
-	ShippingAddress *string                      `json:"shippingAddress"`
-	TrackingNumber  *string                      `json:"trackingNumber"`
-	Notes           *string                      `json:"notes"`
-	LineItems       []CreateOrderLineItemRequest `json:"lineItems"`
+	ID               string                       `json:"id"`
+	OrganizationID   string                       `json:"organizationId"`
+	ClientID         *string                      `json:"clientId"`
+	OrderNumber      string                       `json:"orderNumber"`
+	Status           string                       `json:"status"`
+	OrderDate        int64                        `json:"orderDate"`
+	DeliveryDate     *int64                       `json:"deliveryDate"`
+	Currency         *string                      `json:"currency"`
+	ExchangeRate     *float64                     `json:"exchangeRate"`
+	ExchangeRateDate *int64                       `json:"exchangeRateDate"`
+	ShippingAddress  *string                      `json:"shippingAddress"`
+	TrackingNumber   *string                      `json:"trackingNumber"`
+	Notes            *string                      `json:"notes"`
+	LineItems        []CreateOrderLineItemRequest `json:"lineItems"`
 }
 
 type UpdateOrderRequest struct {
-	ClientID        *string                       `json:"clientId"`
-	OrderNumber     *string                       `json:"orderNumber"`
-	OrderDate       *int64                        `json:"orderDate"`
-	DeliveryDate    *int64                        `json:"deliveryDate"`
-	Currency        *string                       `json:"currency"`
-	ShippingAddress *string                       `json:"shippingAddress"`
-	TrackingNumber  *string                       `json:"trackingNumber"`
-	Notes           *string                       `json:"notes"`
-	LineItems       *[]CreateOrderLineItemRequest `json:"lineItems"`
+	ClientID         *string                       `json:"clientId"`
+	OrderNumber      *string                       `json:"orderNumber"`
+	OrderDate        *int64                        `json:"orderDate"`
+	DeliveryDate     *int64                        `json:"deliveryDate"`
+	Currency         *string                       `json:"currency"`
+	ExchangeRate     *float64                      `json:"exchangeRate"`
+	ExchangeRateDate *int64                        `json:"exchangeRateDate"`
+	ShippingAddress  *string                       `json:"shippingAddress"`
+	TrackingNumber   *string                       `json:"trackingNumber"`
+	Notes            *string                       `json:"notes"`
+	LineItems        *[]CreateOrderLineItemRequest `json:"lineItems"`
 }
 
 // validOrderStatuses are the only values orders.status may take (see
@@ -165,6 +172,16 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	if !validOrderStatuses[req.Status] {
 		return nil, newValidationError("invalid order status %q", req.Status)
 	}
+	org, err := d.GetOrganization(req.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("create_order organization: %w", err)
+	}
+	exchangeRate, err := resolveExchangeRateForSave(
+		orgCurrencyOrDefault(org), "", nil, req.Currency, req.ExchangeRate,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -173,10 +190,12 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	defer tx.Rollback() //nolint:errcheck
 
 	_, err = tx.Exec(`
-		INSERT INTO orders (id, organizationId, clientId, orderNumber, status, orderDate, deliveryDate, currency, shippingAddress, trackingNumber, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO orders (id, organizationId, clientId, orderNumber, status, orderDate, deliveryDate,
+		                     currency, exchangeRate, exchangeRateDate, shippingAddress, trackingNumber, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.ClientID, req.OrderNumber, req.Status,
-		req.OrderDate, req.DeliveryDate, req.Currency, req.ShippingAddress, req.TrackingNumber, req.Notes,
+		req.OrderDate, req.DeliveryDate, req.Currency, exchangeRate, req.ExchangeRateDate,
+		req.ShippingAddress, req.TrackingNumber, req.Notes,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_order insert: %w", err)
@@ -202,6 +221,26 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 }
 
 func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Order, error) {
+	current, err := d.GetOrder(orderID)
+	if err != nil {
+		return nil, fmt.Errorf("update_order fetch current: %w", err)
+	}
+	org, err := d.GetOrganization(current.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("update_order organization: %w", err)
+	}
+	currentCurrency := ""
+	if current.Currency != nil {
+		currentCurrency = *current.Currency
+	}
+	exchangeRate, err := resolveExchangeRateForSave(
+		orgCurrencyOrDefault(org), currentCurrency, current.ExchangeRate,
+		updates.Currency, updates.ExchangeRate,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("update_order begin: %w", err)
@@ -210,18 +249,21 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 
 	_, err = tx.Exec(`
 		UPDATE orders
-		SET clientId        = ?,
-		    orderNumber     = COALESCE(?, orderNumber),
-		    orderDate       = COALESCE(?, orderDate),
-		    deliveryDate    = ?,
-		    currency        = ?,
-		    shippingAddress = ?,
-		    trackingNumber  = ?,
-		    notes           = ?
+		SET clientId         = ?,
+		    orderNumber      = COALESCE(?, orderNumber),
+		    orderDate        = COALESCE(?, orderDate),
+		    deliveryDate     = ?,
+		    currency         = ?,
+		    exchangeRate     = ?,
+		    exchangeRateDate = ?,
+		    shippingAddress  = ?,
+		    trackingNumber   = ?,
+		    notes            = ?
 		WHERE id = ?`,
 		updates.ClientID,
 		updates.OrderNumber, updates.OrderDate,
-		updates.DeliveryDate, updates.Currency, updates.ShippingAddress, updates.TrackingNumber, updates.Notes,
+		updates.DeliveryDate, updates.Currency, exchangeRate, updates.ExchangeRateDate,
+		updates.ShippingAddress, updates.TrackingNumber, updates.Notes,
 		orderID,
 	)
 	if err != nil {

@@ -42,6 +42,9 @@ import { SaveFile, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import { currencies } from "src/utils/currencies";
+import ExchangeRateFields, {
+  prefillExchangeRate,
+} from "src/components/currency/exchange-rate-fields";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { organizationAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
@@ -54,6 +57,7 @@ import {
 } from "src/atoms/order";
 import OrderConfirmationPDF from "src/components/orders/order-confirmation-pdf";
 import LineItemsTable from "src/components/line-items/table";
+import { orderTransitions } from "src/types/order";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -66,17 +70,6 @@ const { Footer } = Layout;
 // id back — an infinite loop. loadable() resolves synchronously instead of
 // suspending, same fix as src/routes/invoices/details.tsx (#31/#32).
 const loadableOrderAtom = loadable(orderAtom);
-
-const STATUS_TRANSITIONS: Record<
-  string,
-  { label: string; next: string; type?: "primary" | "default" | "dashed" }[]
-> = {
-  draft: [{ label: "Confirm order", next: "confirmed", type: "primary" }],
-  confirmed: [{ label: "Mark as shipped", next: "shipped", type: "primary" }],
-  shipped: [{ label: "Mark as delivered", next: "delivered", type: "primary" }],
-  delivered: [],
-  cancelled: [],
-};
 
 const OrderDetails = () => {
   const { id } = useParams<string>();
@@ -197,7 +190,7 @@ const OrderDetails = () => {
         lineItems={lineItemsForPdf}
         client={clientData}
         organization={organization}
-        locale={i18n.locale}
+        i18n={i18n}
       />
     );
 
@@ -217,11 +210,15 @@ const OrderDetails = () => {
     : undefined;
 
   const watchedCurrency = Form.useWatch("currency", form);
-  const currency = watchedCurrency ?? organization?.currency ?? "EUR";
+  const orgCurrency = organization?.currency ?? "EUR";
+  const currency =
+    watchedCurrency ??
+    (!isNew && order && !(order as any).then ? (order as any).currency : null) ??
+    orgCurrency;
 
   const currentStatus = !isNew && order && !(order as any).then ? (order as any).status : "draft";
 
-  const transitions = STATUS_TRANSITIONS[currentStatus] ?? [];
+  const transitions = orderTransitions(currentStatus);
 
   if (!organization) return null;
   if (!isNew && !order) return null;
@@ -251,6 +248,7 @@ const OrderDetails = () => {
                 const client = find(clients, { id: clientId }) as any;
                 if (client?.defaultCurrency) {
                   form.setFieldValue("currency", client.defaultCurrency);
+                  prefillExchangeRate(form, organization?.id, client.defaultCurrency, orgCurrency);
                 }
               }}
               popupRender={(menu) => (
@@ -314,7 +312,11 @@ const OrderDetails = () => {
             name="currency"
             rules={[{ required: true, message: t`This field is required!` }]}
           >
-            <Select>
+            <Select
+              onChange={(newCurrency: string) =>
+                prefillExchangeRate(form, organization?.id, newCurrency, orgCurrency)
+              }
+            >
               {map(currencies, (c) => (
                 <Option value={c} key={c}>
                   {c}
@@ -323,6 +325,7 @@ const OrderDetails = () => {
             </Select>
           </Form.Item>
         </Col>
+        <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
       </Row>
 
       <Row gutter={24}>

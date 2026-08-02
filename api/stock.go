@@ -50,7 +50,7 @@ func (h *handler) deleteStockMovement(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ok, err := h.db.DeleteStockMovement(id)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})

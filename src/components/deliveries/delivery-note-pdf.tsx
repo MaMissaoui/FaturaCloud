@@ -1,9 +1,10 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { I18nProvider } from "@lingui/react";
-import { i18n } from "@lingui/core";
+import { Trans } from "@lingui/react/macro";
 import dayjs from "dayjs";
 
 import { formatAddress } from "src/utils/address";
+import { deliveryStatusLabel } from "src/types/delivery";
 
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
@@ -108,10 +109,12 @@ interface Props {
   lineItems: any[];
   client: any;
   organization: any;
-  locale?: string;
+  i18n: any;
 }
 
-const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _locale }: Props) => {
+// Strings are translated via the passed-in i18n (the invoices/pdf.tsx /
+// purchase-order-pdf.tsx pattern), not hardcoded English.
+const DeliveryNotePDF = ({ delivery, lineItems, client, organization, i18n }: Props) => {
   // organizationAtom already resolves logo to a ready-to-use data URI
   // (fetched from GET /organizations/{id}/logo) — don't re-wrap it.
   const logoSrc = organization?.logo ?? null;
@@ -127,27 +130,37 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
               {logoSrc && <Image src={logoSrc} style={styles.logo} />}
             </View>
             <View>
-              <Text style={styles.docTitle}>DELIVERY NOTE</Text>
+              <Text style={styles.docTitle}>
+                <Trans>DELIVERY NOTE</Trans>
+              </Text>
               <View style={styles.docNumberPill}>
                 <Text style={styles.docNumberText}>{delivery.deliveryNumber}</Text>
               </View>
-              {delivery.orderNumber && <Text style={styles.docRef}>Order: {delivery.orderNumber}</Text>}
+              {delivery.orderNumber && (
+                <Text style={styles.docRef}>
+                  <Trans>Order</Trans>: {delivery.orderNumber}
+                </Text>
+              )}
               <View style={styles.headerMeta}>
                 <View style={styles.headerMetaRow}>
-                  <Text style={styles.headerMetaLabel}>Delivery Date:</Text>
+                  <Text style={styles.headerMetaLabel}>
+                    <Trans>Delivery date</Trans>:
+                  </Text>
                   <Text style={styles.headerMetaValue}>{dayjs(delivery.deliveryDate).format("L")}</Text>
                 </View>
                 {delivery.trackingNumber && (
                   <View style={styles.headerMetaRow}>
-                    <Text style={styles.headerMetaLabel}>Tracking:</Text>
+                    <Text style={styles.headerMetaLabel}>
+                      <Trans>Tracking</Trans>:
+                    </Text>
                     <Text style={styles.headerMetaValue}>{delivery.trackingNumber}</Text>
                   </View>
                 )}
                 <View style={styles.headerMetaRow}>
-                  <Text style={styles.headerMetaLabel}>Status:</Text>
-                  <Text style={[styles.headerMetaValue, { textTransform: "capitalize" }]}>
-                    {delivery.status}
+                  <Text style={styles.headerMetaLabel}>
+                    <Trans>Status</Trans>:
                   </Text>
+                  <Text style={styles.headerMetaValue}>{deliveryStatusLabel(delivery.status)}</Text>
                 </View>
               </View>
             </View>
@@ -156,24 +169,32 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
           {/* From / To */}
           <View style={styles.parties}>
             <View style={styles.card}>
-              <Text style={styles.partyLabel}>From</Text>
+              <Text style={styles.partyLabel}>
+                <Trans>From</Trans>
+              </Text>
               <Text style={styles.partyName}>{organization?.name ?? ""}</Text>
               {organization && formatAddress(organization) && (
                 <Text style={styles.partyDetail}>{formatAddress(organization)}</Text>
               )}
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
-              {organization?.vatin && <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>}
+              {organization?.vatin && (
+                <Text style={styles.partyDetail}>
+                  <Trans>VAT</Trans>: {organization.vatin}
+                </Text>
+              )}
             </View>
             <View style={styles.card}>
-              <Text style={styles.partyLabel}>Deliver To</Text>
+              <Text style={styles.partyLabel}>
+                <Trans>Deliver To</Trans>
+              </Text>
               <Text style={styles.partyName}>{client?.name ?? ""}</Text>
               {client && formatAddress(client) && (
                 <Text style={styles.partyDetail}>{formatAddress(client)}</Text>
               )}
               {delivery.shippingAddress && delivery.shippingAddress !== formatAddress(client ?? {}) && (
                 <Text style={[styles.partyDetail, { marginTop: 6 }]}>
-                  Ship to: {delivery.shippingAddress}
+                  <Trans>Ship To</Trans>: {delivery.shippingAddress}
                 </Text>
               )}
               {client?.email && <Text style={styles.partyDetail}>{client.email}</Text>}
@@ -183,9 +204,15 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
           {/* Items table — no prices on delivery notes */}
           <View style={styles.tableHeader}>
             <Text style={[styles.colNum, styles.tableHeaderText]}>#</Text>
-            <Text style={[styles.colDesc, styles.tableHeaderText]}>Description</Text>
-            <Text style={[styles.colQty, styles.tableHeaderText]}>Qty</Text>
-            <Text style={[styles.colUnit, styles.tableHeaderText]}>Unit</Text>
+            <Text style={[styles.colDesc, styles.tableHeaderText]}>
+              <Trans>Description</Trans>
+            </Text>
+            <Text style={[styles.colQty, styles.tableHeaderText]}>
+              <Trans>Qty</Trans>
+            </Text>
+            <Text style={[styles.colUnit, styles.tableHeaderText]}>
+              <Trans>Unit</Trans>
+            </Text>
           </View>
 
           {lineItems.map((item, idx) => {
@@ -208,7 +235,9 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
 
           {delivery.notes && (
             <View style={styles.noteCard}>
-              <Text style={styles.noteCardTitle}>Notes</Text>
+              <Text style={styles.noteCardTitle}>
+                <Trans>Notes</Trans>
+              </Text>
               <Text style={styles.noteCardText}>{delivery.notes}</Text>
             </View>
           )}
@@ -216,14 +245,21 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, locale: _l
           <View style={styles.signatureArea}>
             <View style={styles.signatureBlock}>
               <View style={styles.signatureLine} />
-              <Text style={styles.signatureLabel}>Received by / Date</Text>
+              <Text style={styles.signatureLabel}>
+                <Trans>Received by / Date</Trans>
+              </Text>
             </View>
             <View style={styles.signatureBlock}>
               <View style={styles.signatureLine} />
-              <Text style={styles.signatureLabel}>Authorized signature</Text>
+              <Text style={styles.signatureLabel}>
+                <Trans>Authorized signature</Trans>
+              </Text>
             </View>
           </View>
 
+          {/* react-pdf's render prop runs outside React's normal reconciler
+              (resolveDynamicNodes), so hooks-based i18n like <Trans> throws
+              "Invalid hook call" here — plain text only, like the other PDFs. */}
           <Text
             style={styles.pageNumber}
             fixed

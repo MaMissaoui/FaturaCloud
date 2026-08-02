@@ -93,6 +93,10 @@ export interface Order {
   orderDate: number;
   deliveryDate: number | null;
   currency: string | null;
+  // 1 unit of `currency` = exchangeRate units of the organization's own
+  // currency, frozen at save time. Nil when currency equals the org's.
+  exchangeRate: number | null;
+  exchangeRateDate: number | null;
   shippingAddress: string | null;
   trackingNumber: string | null;
   notes: string | null;

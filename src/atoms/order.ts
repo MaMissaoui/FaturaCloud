@@ -64,6 +64,7 @@ export const orderAtom = atom(
         ...order,
         orderDate: dayjs(order.orderDate),
         deliveryDate: order.deliveryDate ? dayjs(order.deliveryDate) : null,
+        exchangeRateDate: order.exchangeRateDate ? dayjs(order.exchangeRateDate) : null,
         lineItems: (lineItems || []).map((item: any) => ({
           ...item,
           unitPrice: centsToUnits(item.unitPrice),
@@ -91,6 +92,7 @@ export const orderAtom = atom(
           status: order.status || "draft",
           orderDate: toTimestamp(order.orderDate),
           deliveryDate: order.deliveryDate ? toTimestamp(order.deliveryDate) : null,
+          exchangeRateDate: order.exchangeRateDate ? toTimestamp(order.exchangeRateDate) : null,
           lineItems: lineItems.map((item: any) => ({
             ...omit(item, ["id"]),
             unitPrice: unitsToCents(item.unitPrice ?? 0),
@@ -106,6 +108,7 @@ export const orderAtom = atom(
           ...order,
           orderDate: toTimestamp(order.orderDate),
           deliveryDate: order.deliveryDate ? toTimestamp(order.deliveryDate) : null,
+          exchangeRateDate: order.exchangeRateDate ? toTimestamp(order.exchangeRateDate) : null,
           lineItems: lineItems.map((item: any) => ({
             ...omit(item, ["id"]),
             unitPrice: unitsToCents(item.unitPrice ?? 0),
@@ -119,7 +122,8 @@ export const orderAtom = atom(
       }
     } catch (error) {
       console.error("Order operation failed:", error);
-      message.error(orderId ? t`Order update failed` : t`Order creation failed`);
+      const fallback = orderId ? t`Order update failed` : t`Order creation failed`;
+      message.error(error instanceof Error ? error.message : fallback);
     }
   },
 );

@@ -416,6 +416,17 @@ func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoic
 }
 
 func (d *Database) DeleteIncomingInvoice(id string) (bool, error) {
+	current, err := d.GetIncomingInvoice(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	if current.State == "paid" {
+		return false, newValidationError("cannot delete a paid incoming invoice — cancel it instead")
+	}
+
 	res, err := d.DB.Exec(`DELETE FROM incoming_invoices WHERE id = ?`, id)
 	if err != nil {
 		return false, fmt.Errorf("delete_incoming_invoice: %w", err)
