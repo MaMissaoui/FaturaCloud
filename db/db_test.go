@@ -924,6 +924,63 @@ func TestCreateOrderStatusValidation(t *testing.T) {
 	}
 }
 
+// Orders got a currency column but were missed when exchangeRate/
+// exchangeRateDate were added to every other document type. This covers the
+// same resolveExchangeRateForSave cases purchase_order.go relies on:
+// required when the currency differs from the org's, carried over on update
+// when the currency doesn't change, and rejected if the currency changes
+// without a fresh rate.
+func TestOrderExchangeRate(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-fx-1", Currency: ptr("EUR")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	// Foreign currency with no rate: rejected.
+	if _, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-fx-1", OrganizationID: org.ID, OrderNumber: "ORD-FX-1",
+		OrderDate: 1700000000000, Currency: ptr("USD"),
+	}); err == nil {
+		t.Fatal("expected a foreign-currency order with no exchange rate to be rejected")
+	}
+
+	// Foreign currency with a rate: accepted and stored.
+	order, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-fx-2", OrganizationID: org.ID, OrderNumber: "ORD-FX-2",
+		OrderDate: 1700000000000, Currency: ptr("USD"), ExchangeRate: ptr(0.92),
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder with exchange rate: %v", err)
+	}
+	if order.ExchangeRate == nil {
+		t.Fatal("expected exchangeRate to be stored")
+	}
+
+	// Same currency on update, no new rate submitted: the stored rate carries over.
+	updated, err := d.UpdateOrder(order.ID, UpdateOrderRequest{Notes: ptr("updated")})
+	if err != nil {
+		t.Fatalf("UpdateOrder (no currency change): %v", err)
+	}
+	if updated.ExchangeRate == nil || *updated.ExchangeRate != *order.ExchangeRate {
+		t.Fatalf("exchange rate did not carry over: got %v, want %v", updated.ExchangeRate, order.ExchangeRate)
+	}
+
+	// Currency changes without a fresh rate: rejected.
+	if _, err := d.UpdateOrder(order.ID, UpdateOrderRequest{Currency: ptr("GBP")}); err == nil {
+		t.Fatal("expected a currency change with no new exchange rate to be rejected")
+	}
+
+	// Currency changes back to the org's own currency: rate is cleared.
+	cleared, err := d.UpdateOrder(order.ID, UpdateOrderRequest{Currency: ptr("EUR")})
+	if err != nil {
+		t.Fatalf("UpdateOrder (revert to org currency): %v", err)
+	}
+	if cleared.ExchangeRate != nil {
+		t.Fatalf("expected exchangeRate to be cleared, got %v", *cleared.ExchangeRate)
+	}
+}
+
 // TestCreateDeliveryLineItemFailureRollsBackAtomically covers F8: a
 // mid-batch line-item failure (here, a FK violation from a nonexistent
 // productId) must not leave a delivery header persisted with only some of

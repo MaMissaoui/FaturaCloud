@@ -83,9 +83,9 @@ func resolveExchangeRateForSave(
 
 // GetLastExchangeRate returns the most recently used exchangeRate for the
 // given currency within this organization — across invoices, purchase
-// orders, and incoming invoices, whichever was saved most recently — purely
-// as a prefill convenience for the next document in that currency. It is
-// never used to auto-derive a rate that gets stored: the user still confirms
+// orders, incoming invoices, and orders, whichever was saved most recently —
+// purely as a prefill convenience for the next document in that currency. It
+// is never used to auto-derive a rate that gets stored: the user still confirms
 // it (see resolveExchangeRateForSave's "no live FX API" reasoning).
 func (d *Database) GetLastExchangeRate(organizationID, currency string) (*float64, *int64, error) {
 	var row struct {
@@ -107,10 +107,14 @@ func (d *Database) GetLastExchangeRate(organizationID, currency string) (*float6
 			UNION ALL
 			SELECT exchangeRate, exchangeRateDate FROM incoming_invoices
 				WHERE organizationId = ? AND currency = ? AND exchangeRate IS NOT NULL
+			UNION ALL
+			SELECT exchangeRate, exchangeRateDate FROM orders
+				WHERE organizationId = ? AND currency = ? AND exchangeRate IS NOT NULL
 		)
 		ORDER BY COALESCE(exchangeRateDate, 0) DESC
 		LIMIT 1`,
 		organizationID, currency, organizationID, currency, organizationID, currency,
+		organizationID, currency,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {

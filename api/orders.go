@@ -68,7 +68,7 @@ func (h *handler) updateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	order, err := h.db.UpdateOrder(id, req)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, order)
