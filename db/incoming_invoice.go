@@ -30,6 +30,9 @@ type IncomingInvoice struct {
 	Date                int64   `db:"date"                json:"date"`
 	DueDate             *int64  `db:"dueDate"             json:"dueDate"`
 	Currency            string  `db:"currency"            json:"currency"`
+	// See db/exchange_rate.go for the rate direction convention.
+	ExchangeRate        *string `db:"exchangeRate"     json:"exchangeRate"`
+	ExchangeRateDate    *int64  `db:"exchangeRateDate" json:"exchangeRateDate"`
 	Notes               *string `db:"notes"               json:"notes"`
 	Total               int64   `db:"total"               json:"total"`
 	TaxTotal            int64   `db:"taxTotal"            json:"taxTotal"`
@@ -65,6 +68,8 @@ type CreateIncomingInvoiceRequest struct {
 	Date                int64                          `json:"date"`
 	DueDate             *int64                         `json:"dueDate"`
 	Currency            string                         `json:"currency"`
+	ExchangeRate        *float64                       `json:"exchangeRate"`
+	ExchangeRateDate    *int64                         `json:"exchangeRateDate"`
 	Notes               *string                        `json:"notes"`
 	Total               int64                          `json:"total"`
 	TaxTotal            int64                          `json:"taxTotal"`
@@ -84,6 +89,8 @@ type UpdateIncomingInvoiceRequest struct {
 	Date                *int64                          `json:"date"`
 	DueDate             *int64                          `json:"dueDate"`
 	Currency            *string                         `json:"currency"`
+	ExchangeRate        *float64                        `json:"exchangeRate"`
+	ExchangeRateDate    *int64                          `json:"exchangeRateDate"`
 	Notes               *string                         `json:"notes"`
 	Total               *int64                          `json:"total"`
 	TaxTotal            *int64                          `json:"taxTotal"`
@@ -168,6 +175,16 @@ func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*Inc
 	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total); err != nil {
 		return nil, err
 	}
+	org, err := d.GetOrganization(req.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("create_incoming_invoice organization: %w", err)
+	}
+	exchangeRate, err := resolveExchangeRateForSave(
+		orgCurrencyOrDefault(org), "", nil, &req.Currency, req.ExchangeRate,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -178,12 +195,12 @@ func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*Inc
 	_, err = tx.Exec(`
 		INSERT INTO incoming_invoices (
 			id, organizationId, vendorId, purchaseOrderId, vendorInvoiceNumber, reference,
-			state, date, dueDate, currency, notes, total, taxTotal, subTotal,
+			state, date, dueDate, currency, exchangeRate, exchangeRateDate, notes, total, taxTotal, subTotal,
 			matchOverride, matchOverrideReason
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.VendorID, req.PurchaseOrderID,
 		req.VendorInvoiceNumber, req.Reference, req.State, req.Date, req.DueDate,
-		req.Currency, req.Notes, req.Total, req.TaxTotal, req.SubTotal,
+		req.Currency, exchangeRate, req.ExchangeRateDate, req.Notes, req.Total, req.TaxTotal, req.SubTotal,
 		req.MatchOverride, req.MatchOverrideReason,
 	)
 	if err != nil {
@@ -278,6 +295,30 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		}
 	}
 
+	// Same "only when touched" rule as totals above: resolving/validating the
+	// exchange rate needs the invoice's current currency+rate only when this
+	// request is actually changing one of them.
+	var exchangeRate *string
+	exchangeRateSet := 0
+	if updates.Currency != nil || updates.ExchangeRate != nil {
+		current, err := d.GetIncomingInvoice(id)
+		if err != nil {
+			return nil, fmt.Errorf("update_incoming_invoice fetch current: %w", err)
+		}
+		org, err := d.GetOrganization(current.OrganizationID)
+		if err != nil {
+			return nil, fmt.Errorf("update_incoming_invoice organization: %w", err)
+		}
+		rate, err := resolveExchangeRateForSave(
+			orgCurrencyOrDefault(org), current.Currency, current.ExchangeRate,
+			updates.Currency, updates.ExchangeRate,
+		)
+		if err != nil {
+			return nil, err
+		}
+		exchangeRate, exchangeRateSet = rate, 1
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("update_incoming_invoice begin: %w", err)
@@ -293,6 +334,8 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		  date                = COALESCE(?, date),
 		  dueDate             = COALESCE(?, dueDate),
 		  currency            = COALESCE(?, currency),
+		  exchangeRate        = CASE WHEN ? THEN ? ELSE exchangeRate END,
+		  exchangeRateDate    = CASE WHEN ? THEN ? ELSE exchangeRateDate END,
 		  notes               = COALESCE(?, notes),
 		  total               = COALESCE(?, total),
 		  taxTotal            = COALESCE(?, taxTotal),
@@ -301,7 +344,10 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		  matchOverrideReason = COALESCE(?, matchOverrideReason)
 		WHERE id = ?`,
 		updates.VendorID, updates.PurchaseOrderID, updates.VendorInvoiceNumber, updates.Reference,
-		updates.Date, updates.DueDate, updates.Currency, updates.Notes,
+		updates.Date, updates.DueDate, updates.Currency,
+		exchangeRateSet, exchangeRate,
+		exchangeRateSet, updates.ExchangeRateDate,
+		updates.Notes,
 		updates.Total, updates.TaxTotal, updates.SubTotal,
 		updates.MatchOverride, updates.MatchOverrideReason,
 		id,

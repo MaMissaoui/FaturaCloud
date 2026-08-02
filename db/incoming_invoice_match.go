@@ -52,6 +52,16 @@ func (d *Database) GetIncomingInvoiceMatch(invoiceID string) ([]MatchLine, error
 	priceTolerance := valueOrZero(org.MatchPriceTolerancePercent)
 	quantityTolerance := valueOrZero(org.MatchQuantityTolerancePercent)
 
+	// The invoice and its linked purchase order each carry their own
+	// currency+exchangeRate independently (nothing forces them to match).
+	// Comparing raw cent amounts across two different currencies would be
+	// comparing apples to oranges, so the price check below converts both
+	// sides to organization-currency terms first — see db/exchange_rate.go.
+	invoiceRate, err := parseExchangeRate(invoice.ExchangeRate)
+	if err != nil {
+		return nil, fmt.Errorf("get_incoming_invoice_match invoice rate: %w", err)
+	}
+
 	lines := make([]MatchLine, 0, len(items))
 	for _, item := range items {
 		line := MatchLine{
@@ -71,11 +81,15 @@ func (d *Database) GetIncomingInvoiceMatch(invoiceID string) ([]MatchLine, error
 		poLineID := *item.PurchaseOrderLineItemID
 
 		var ordered struct {
-			Quantity  float64 `db:"quantity"`
-			UnitPrice int64   `db:"unitPrice"`
+			Quantity     float64 `db:"quantity"`
+			UnitPrice    int64   `db:"unitPrice"`
+			ExchangeRate *string `db:"exchangeRate"`
 		}
-		if err := d.DB.Get(&ordered,
-			`SELECT quantity, unitPrice FROM purchase_order_line_items WHERE id = ?`, poLineID,
+		if err := d.DB.Get(&ordered, `
+			SELECT poli.quantity AS quantity, poli.unitPrice AS unitPrice, po.exchangeRate AS exchangeRate
+			FROM purchase_order_line_items poli
+			JOIN purchase_orders po ON poli.purchaseOrderId = po.id
+			WHERE poli.id = ?`, poLineID,
 		); err != nil {
 			line.Message = "the linked purchase order line no longer exists"
 			lines = append(lines, line)
@@ -83,6 +97,10 @@ func (d *Database) GetIncomingInvoiceMatch(invoiceID string) ([]MatchLine, error
 		}
 		line.OrderedQuantity = &ordered.Quantity
 		line.OrderedUnitPrice = &ordered.UnitPrice
+		orderedRate, err := parseExchangeRate(ordered.ExchangeRate)
+		if err != nil {
+			return nil, fmt.Errorf("get_incoming_invoice_match order rate: %w", err)
+		}
 
 		var received float64
 		if err := d.DB.Get(&received, `
@@ -112,7 +130,7 @@ func (d *Database) GetIncomingInvoiceMatch(invoiceID string) ([]MatchLine, error
 		}
 		line.PreviouslyInvoiced = previouslyInvoiced
 
-		line.Status, line.Message = classifyMatch(line, quantityTolerance, priceTolerance)
+		line.Status, line.Message = classifyMatch(line, quantityTolerance, priceTolerance, orderedRate, invoiceRate)
 		lines = append(lines, line)
 	}
 
@@ -121,7 +139,14 @@ func (d *Database) GetIncomingInvoiceMatch(invoiceID string) ([]MatchLine, error
 
 // classifyMatch applies the tolerances. Comparisons use exact rationals rather
 // than float64 so a quantity like 0.1+0.2 can't trip a zero tolerance.
-func classifyMatch(line MatchLine, quantityTolerance, priceTolerance float64) (string, string) {
+//
+// orderedRate/invoicedRate convert the order's and the invoice's own unit
+// prices to organization-currency terms before the price check — the two
+// documents each carry an independent currency, so comparing raw cents would
+// silently compare two different currencies whenever they don't match.
+func classifyMatch(
+	line MatchLine, quantityTolerance, priceTolerance float64, orderedRate, invoicedRate *big.Rat,
+) (string, string) {
 	invoiced, err := floatToRat(line.InvoicedQuantity)
 	if err != nil {
 		return MatchQuantityVariance, "invalid invoiced quantity"
@@ -155,10 +180,12 @@ func classifyMatch(line MatchLine, quantityTolerance, priceTolerance float64) (s
 		}
 	}
 
-	// Unit price drift against the order.
+	// Unit price drift against the order, compared in organization-currency
+	// terms so a PO and invoice booked in different currencies aren't
+	// compared as if they were the same one.
 	if line.OrderedUnitPrice != nil {
-		ordered := new(big.Rat).SetInt64(*line.OrderedUnitPrice)
-		billed := new(big.Rat).SetInt64(line.InvoicedUnitPrice)
+		ordered := new(big.Rat).Mul(new(big.Rat).SetInt64(*line.OrderedUnitPrice), orderedRate)
+		billed := new(big.Rat).Mul(new(big.Rat).SetInt64(line.InvoicedUnitPrice), invoicedRate)
 		diff := new(big.Rat).Sub(billed, ordered)
 		diff.Abs(diff)
 		allowed := new(big.Rat).Mul(ordered, big.NewRat(int64(priceTolerance*1e6), 100*1e6))

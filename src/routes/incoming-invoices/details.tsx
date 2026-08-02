@@ -33,9 +33,12 @@ import sum from "lodash/sum";
 
 import { GetIncomingInvoiceMatch, GetPurchaseOrderLineItems } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
-import { getFormattedNumber } from "src/utils/currencies";
+import { currencies, getFormattedNumber } from "src/utils/currencies";
 import { addDecimal, calculateTax, centsToUnits, multiplyDecimal } from "src/utils/currency";
 import LineItemsTable from "src/components/line-items/table";
+import ExchangeRateFields, {
+  prefillExchangeRate,
+} from "src/components/currency/exchange-rate-fields";
 import {
   INCOMING_INVOICE_STATES,
   incomingInvoiceStateColor,
@@ -139,10 +142,11 @@ const IncomingInvoiceDetails = () => {
         const lineItems = await GetPurchaseOrderLineItems(prefillOrderId);
         if (cancelled) return;
         const order: any = find(purchaseOrders, { id: prefillOrderId });
+        const orderCurrency = order?.currency ?? organization?.currency ?? "EUR";
         form.setFieldsValue({
           purchaseOrderId: prefillOrderId,
           vendorId: order?.vendorId,
-          currency: order?.currency ?? organization?.currency ?? "EUR",
+          currency: orderCurrency,
           lineItems: (lineItems || []).map((item: any) => ({
             purchaseOrderLineItemId: item.id,
             productId: item.productId,
@@ -152,6 +156,14 @@ const IncomingInvoiceDetails = () => {
             taxRate: item.taxRate,
           })),
         });
+        // The bill is a separate financial event from the order — prefill a
+        // rate for today rather than reusing the order's, which may be stale.
+        await prefillExchangeRate(
+          form,
+          organization?.id,
+          orderCurrency,
+          organization?.currency ?? "EUR",
+        );
       } catch {
         // Leave the blank line the form starts with.
       }
@@ -207,10 +219,12 @@ const IncomingInvoiceDetails = () => {
   const currentState =
     stateOverride ??
     (!isNew && invoice && !(invoice as any).then ? (invoice as any).state : "draft");
+  const watchedCurrency = Form.useWatch("currency", form);
+  const orgCurrency = organization?.currency ?? "EUR";
   const currency =
+    watchedCurrency ??
     (!isNew && invoice && !(invoice as any).then ? (invoice as any).currency : null) ??
-    organization?.currency ??
-    "EUR";
+    orgCurrency;
   const blocked = hasBlockingVariance(matchLines);
   const overrideActive = Form.useWatch("matchOverride", form) === true;
 
@@ -266,7 +280,21 @@ const IncomingInvoiceDetails = () => {
             name="vendorId"
             rules={[{ required: true, message: t`Vendor is required` }]}
           >
-            <Select showSearch allowClear optionFilterProp="children">
+            <Select
+              showSearch
+              allowClear
+              optionFilterProp="children"
+              onChange={(vendorId) => {
+                // Only cascade on a new invoice — see the identical guard on
+                // src/routes/orders/details.tsx's clientId.
+                if (!isNew) return;
+                const vendor = find(vendors, { id: vendorId }) as any;
+                if (vendor?.defaultCurrency) {
+                  form.setFieldValue("currency", vendor.defaultCurrency);
+                  prefillExchangeRate(form, organization?.id, vendor.defaultCurrency, orgCurrency);
+                }
+              }}
+            >
               {map(vendors, (v: any) => (
                 <Option key={v.id} value={v.id}>
                   {v.name}
@@ -318,9 +346,20 @@ const IncomingInvoiceDetails = () => {
             name="currency"
             rules={[{ required: true, message: t`This field is required!` }]}
           >
-            <Input />
+            <Select
+              onChange={(newCurrency: string) =>
+                prefillExchangeRate(form, organization?.id, newCurrency, orgCurrency)
+              }
+            >
+              {map(currencies, (c) => (
+                <Option value={c} key={c}>
+                  {c}
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
         </Col>
+        <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
         <Col xs={24} md={12} xl={5}>
           <Form.Item label={<Trans>Our reference</Trans>} name="reference">
             <Input />
@@ -384,8 +423,12 @@ const IncomingInvoiceDetails = () => {
             <Descriptions.Item label={<Trans>Subtotal</Trans>}>
               {money(totals.subTotal)}
             </Descriptions.Item>
-            <Descriptions.Item label={<Trans>Tax</Trans>}>{money(totals.taxTotal)}</Descriptions.Item>
-            <Descriptions.Item label={<Trans>Total</Trans>}>{money(totals.total)}</Descriptions.Item>
+            <Descriptions.Item label={<Trans>Tax</Trans>}>
+              {money(totals.taxTotal)}
+            </Descriptions.Item>
+            <Descriptions.Item label={<Trans>Total</Trans>}>
+              {money(totals.total)}
+            </Descriptions.Item>
           </Descriptions>
         </Col>
       </Row>
@@ -403,7 +446,11 @@ const IncomingInvoiceDetails = () => {
             size="small"
             style={{ marginBottom: 16 }}
           >
-            <Table.Column title={<Trans>Description</Trans>} dataIndex="description" key="description" />
+            <Table.Column
+              title={<Trans>Description</Trans>}
+              dataIndex="description"
+              key="description"
+            />
             <Table.Column
               title={<Trans>Ordered</Trans>}
               key="ordered"
@@ -447,7 +494,9 @@ const IncomingInvoiceDetails = () => {
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}
-              message={<Trans>This invoice does not match the purchase order and goods received</Trans>}
+              message={
+                <Trans>This invoice does not match the purchase order and goods received</Trans>
+              }
               description={
                 <Trans>
                   Approval is blocked until the variance is resolved, or recorded as an override
@@ -476,7 +525,10 @@ const IncomingInvoiceDetails = () => {
                       : []
                   }
                 >
-                  <Input placeholder={t`Why is this variance acceptable?`} disabled={!overrideActive} />
+                  <Input
+                    placeholder={t`Why is this variance acceptable?`}
+                    disabled={!overrideActive}
+                  />
                 </Form.Item>
               </Col>
             </Row>

@@ -444,6 +444,20 @@ export const GetDashboard = (organizationId: string, months?: number) => {
   return get<DashboardData>(`/organizations/${organizationId}/dashboard${suffix}`);
 };
 
+// ---- Exchange rate prefill ----
+
+export interface LastExchangeRate {
+  rate: number | null;
+  date: number | null;
+}
+
+// Prefill convenience only — the rate the user actually saves is always
+// confirmed by them, never auto-applied (see db/exchange_rate.go).
+export const GetLastExchangeRate = (organizationId: string, currency: string) =>
+  get<LastExchangeRate>(
+    `/organizations/${organizationId}/exchange-rate?currency=${encodeURIComponent(currency)}`,
+  );
+
 // ---- Orders ----
 
 export const GetOrders = (organizationId: string) =>

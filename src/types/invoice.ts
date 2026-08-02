@@ -12,6 +12,10 @@ export interface Invoice {
   date: number;
   dueDate: number | null;
   currency: string;
+  // 1 unit of `currency` = exchangeRate units of the organization's own
+  // currency, frozen at save time. Nil when currency equals the org's.
+  exchangeRate: number | null;
+  exchangeRateDate: number | null;
   customerNotes: string | null;
   overdueCharge: number | null;
   total: number;

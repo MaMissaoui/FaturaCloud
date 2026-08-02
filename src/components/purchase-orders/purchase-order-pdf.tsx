@@ -88,7 +88,13 @@ const styles = StyleSheet.create({
 
   totals: { marginTop: 16, alignItems: "flex-end" },
   totalRow: { flexDirection: "row", paddingVertical: 4 },
-  grandTotalLabel: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right", marginRight: 16 },
+  grandTotalLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 12,
+    width: 80,
+    textAlign: "right",
+    marginRight: 16,
+  },
   grandTotalValue: { fontFamily: FONT_BOLD, fontSize: 12, width: 80, textAlign: "right" },
 
   noteCard: {
@@ -123,9 +129,15 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
   // organizationAtom already resolves logo to a ready-to-use data URI
   // (fetched from GET /organizations/{id}/logo) — don't re-wrap it.
   const logoSrc = organization?.logo ?? null;
-  // Takes cents — the caller pre-multiplies.
+  // Takes cents — the caller pre-multiplies. minimumFractionDigits honors the
+  // organization's configured "Decimal places" setting rather than always
+  // falling back to the currency's own ICU default, matching invoices/pdf.tsx.
   const fmt = (cents: number) =>
-    Intl.NumberFormat(i18n.locale, { style: "currency", currency }).format(cents / 100);
+    Intl.NumberFormat(i18n.locale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
+    }).format(cents / 100);
 
   const subtotal = lineItems.reduce((total, item) => {
     const qty = item.quantity ?? 1;
@@ -162,7 +174,9 @@ const PurchaseOrderPDF = ({ order, lineItems, vendor, organization, i18n }: Prop
                     <Text style={styles.headerMetaLabel}>
                       <Trans>Expected Date</Trans>:
                     </Text>
-                    <Text style={styles.headerMetaValue}>{dayjs(order.expectedDate).format("L")}</Text>
+                    <Text style={styles.headerMetaValue}>
+                      {dayjs(order.expectedDate).format("L")}
+                    </Text>
                   </View>
                 )}
                 {order.deliveryAddress && (

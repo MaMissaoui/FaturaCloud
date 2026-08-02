@@ -10,6 +10,7 @@ import uniq from "lodash/uniq";
 
 import { organizationAtom, organizationsAtom, organizationIdAtom } from "src/atoms/organization";
 import { countries } from "src/utils/countries";
+import { getDefaultFractionDigits } from "src/utils/currencies";
 
 const { Title, Text } = Typography;
 
@@ -75,7 +76,15 @@ const NewOrganization = () => {
                 </Col>
                 <Col span={6}>
                   <Form.Item name="currency" label={t`Currency`}>
-                    <Select showSearch>
+                    <Select
+                      showSearch
+                      onChange={(currency: string) =>
+                        form.setFieldValue(
+                          "minimum_fraction_digits",
+                          getDefaultFractionDigits(currency),
+                        )
+                      }
+                    >
                       {currencies.map((currency) => (
                         <Select.Option key={currency} value={currency}>
                           {currency}

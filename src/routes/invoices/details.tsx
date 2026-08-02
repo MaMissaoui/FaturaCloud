@@ -79,6 +79,9 @@ import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
 import InvoicePDF from "src/components/invoices/pdf";
 import { currencies } from "src/utils/currencies";
+import ExchangeRateFields, {
+  prefillExchangeRate,
+} from "src/components/currency/exchange-rate-fields";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
 import { generateInvoiceNumber } from "src/utils/invoice";
 import { requiredForNewLineItem } from "src/utils/line-items";
@@ -409,6 +412,7 @@ const InvoiceDetails: React.FC = () => {
   // transfers don't exist for other currencies. Regenerated whenever the
   // total, currency, invoice number, or organization's bank details change.
   const watchedCurrency = Form.useWatch("currency", form);
+  const orgCurrency = organization?.currency ?? "EUR";
   const watchedNumber = Form.useWatch("number", form);
   const [qrCodeDataUri, setQrCodeDataUri] = useState<string | null>(null);
   useEffect(() => {
@@ -588,7 +592,11 @@ const InvoiceDetails: React.FC = () => {
                   name="currency"
                   rules={[{ required: true, message: t`This field is required!` }]}
                 >
-                  <Select>
+                  <Select
+                    onChange={(currency: string) =>
+                      prefillExchangeRate(form, organization?.id, currency, orgCurrency)
+                    }
+                  >
                     {map(currencies, (currency) => {
                       return (
                         <Option value={currency} key={currency}>
@@ -599,6 +607,7 @@ const InvoiceDetails: React.FC = () => {
                   </Select>
                 </Form.Item>
               </Col>
+              <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
             </Row>
             <Row gutter={24}>
               <Col xs={24} md={12} xl={{ span: 4, offset: 12 }}>
@@ -897,7 +906,7 @@ const InvoiceDetails: React.FC = () => {
                   <Descriptions.Item label={<Trans>Subtotal</Trans>}>
                     {Intl.NumberFormat(i18n.locale, {
                       style: "currency",
-                      currency: organization.currency ?? "EUR",
+                      currency: watchedCurrency ?? organization.currency ?? "EUR",
                       minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                     }).format(subTotal)}
                   </Descriptions.Item>
@@ -909,7 +918,7 @@ const InvoiceDetails: React.FC = () => {
                       >
                         {Intl.NumberFormat(i18n.locale, {
                           style: "currency",
-                          currency: organization.currency ?? "EUR",
+                          currency: watchedCurrency ?? organization.currency ?? "EUR",
                           minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                         }).format(group.tax)}
                       </Descriptions.Item>
@@ -918,7 +927,7 @@ const InvoiceDetails: React.FC = () => {
                     <Descriptions.Item label={<Trans>Tax</Trans>}>
                       {Intl.NumberFormat(i18n.locale, {
                         style: "currency",
-                        currency: organization.currency ?? "EUR",
+                        currency: watchedCurrency ?? organization.currency ?? "EUR",
                         minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                       }).format(0)}
                     </Descriptions.Item>
@@ -933,7 +942,7 @@ const InvoiceDetails: React.FC = () => {
                     <strong>
                       {Intl.NumberFormat(i18n.locale, {
                         style: "currency",
-                        currency: organization.currency ?? "EUR",
+                        currency: watchedCurrency ?? organization.currency ?? "EUR",
                         minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
                       }).format(total)}
                     </strong>

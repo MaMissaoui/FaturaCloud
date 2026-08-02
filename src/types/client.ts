@@ -10,6 +10,7 @@ export interface Client {
   website?: string | null;
   registration_number?: string | null;
   vatin?: string | null;
+  defaultCurrency?: string | null;
   createdAt?: string | null;
   // EN 16931 (XRechnung) buyer fields. Also the single source of truth for
   // address display everywhere (forms, lists, PDFs) — there is no separate

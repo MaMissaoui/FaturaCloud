@@ -10,15 +10,22 @@ import { useLingui } from "@lingui/react";
 import { AppstoreOutlined } from "@ant-design/icons";
 import debounce from "lodash/debounce";
 
-import { organizationIdAtom } from "src/atoms/organization";
+import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import { setProductsAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { GetProducts } from "src/api";
 import ProductForm from "src/components/products/form";
 import PageHeader from "src/components/page-header";
 
-const formatPrice = (cents: number) =>
-  (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Decimals are a display concern only — storage stays cents regardless (see
+// db/exchange_rate.go's decimals note) — so this takes the organization's
+// configured precision rather than hardcoding 2, matching every other money
+// formatter in the app (getFormattedNumber, invoice/PDF totals, …).
+const formatPrice = (cents: number, fractionDigits: number) =>
+  (cents / 100).toLocaleString(undefined, {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -27,6 +34,8 @@ const Products = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const organizationId = useAtomValue(organizationIdAtom);
+  const organization = useAtomValue(organizationAtom);
+  const fractionDigits = organization?.minimum_fraction_digits ?? 2;
   // The table itself no longer reads the shared productsAtom — it fetches
   // its own paginated page below — but ProductForm still does, both to look
   // up the product being edited and to derive a collision-free SKU proposal
@@ -184,7 +193,7 @@ const Products = () => {
               align="right"
               sorter
               render={(price: number, p: Product) =>
-                `${formatPrice(price)}${p.unit ? ` / ${p.unit}` : ""}`
+                `${formatPrice(price, fractionDigits)}${p.unit ? ` / ${p.unit}` : ""}`
               }
             />
             <Table.Column
@@ -193,7 +202,9 @@ const Products = () => {
               key="unitCost"
               align="right"
               sorter
-              render={(cost: number | null) => (cost != null ? formatPrice(cost) : "—")}
+              render={(cost: number | null) =>
+                cost != null ? formatPrice(cost, fractionDigits) : "—"
+              }
             />
             <Table.Column
               title={<Trans>Tax rate</Trans>}
