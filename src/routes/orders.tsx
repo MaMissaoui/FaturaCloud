@@ -11,21 +11,14 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
+import { orderStatusColor, orderStatusLabel, type OrderStatus } from "src/types/order";
 import PageHeader from "src/components/page-header";
 
 const searchAtom = atom<string>("");
 
-const statusTag = (status: string) => {
-  const map: Record<string, { color: string; label: string }> = {
-    draft: { color: "default", label: "Draft" },
-    confirmed: { color: "blue", label: "Confirmed" },
-    shipped: { color: "orange", label: "Shipped" },
-    delivered: { color: "green", label: "Delivered" },
-    cancelled: { color: "red", label: "Cancelled" },
-  };
-  const s = map[status] ?? { color: "default", label: status };
-  return <Tag color={s.color}>{s.label}</Tag>;
-};
+const statusTag = (status: string) => (
+  <Tag color={orderStatusColor[status as OrderStatus]}>{orderStatusLabel(status)}</Tag>
+);
 
 const Orders = () => {
   useLingui();

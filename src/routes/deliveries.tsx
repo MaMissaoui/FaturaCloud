@@ -12,19 +12,14 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
+import { deliveryStatusColor, deliveryStatusLabel, type DeliveryStatus } from "src/types/delivery";
 import PageHeader from "src/components/page-header";
 
 const searchAtom = atom<string>("");
 
-const statusTag = (status: string) => {
-  const map: Record<string, { color: string; label: string }> = {
-    draft: { color: "default", label: "Draft" },
-    shipped: { color: "orange", label: "Shipped" },
-    delivered: { color: "green", label: "Delivered" },
-  };
-  const s = map[status] ?? { color: "default", label: status };
-  return <Tag color={s.color}>{s.label}</Tag>;
-};
+const statusTag = (status: string) => (
+  <Tag color={deliveryStatusColor[status as DeliveryStatus]}>{deliveryStatusLabel(status)}</Tag>
+);
 
 const Deliveries = () => {
   useLingui();

@@ -40,25 +40,16 @@ import {
   deleteDeliveryAtom,
 } from "src/atoms/delivery";
 import DeliveryNotePDF from "src/components/deliveries/delivery-note-pdf";
+import {
+  deliveryStatusColor,
+  deliveryStatusLabel,
+  deliveryTransitions,
+  type DeliveryStatus,
+} from "src/types/delivery";
 
 const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
-
-const STATUS_TRANSITIONS: Record<
-  string,
-  { label: string; next: string; color: string; type?: "primary" | "default" }[]
-> = {
-  draft: [{ label: "Mark as shipped", next: "shipped", color: "orange", type: "primary" }],
-  shipped: [{ label: "Mark as delivered", next: "delivered", color: "green", type: "primary" }],
-  delivered: [],
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: "default",
-  shipped: "orange",
-  delivered: "green",
-};
 
 // deliveryAtom is async; reading it with plain useAtom throws to the app's
 // single top-level Suspense boundary whenever deliveryIdAtom changes after
@@ -242,7 +233,7 @@ const DeliveryDetails = () => {
   // number, notes) stay editable — this only gates the line-item table.
   const isEditable = isNew || !["shipped", "delivered"].includes(currentStatus);
 
-  const transitions = STATUS_TRANSITIONS[currentStatus] ?? [];
+  const transitions = deliveryTransitions(currentStatus);
 
   if (!organization) return null;
   if (!isNew && !delivery) return null;
@@ -287,10 +278,10 @@ const DeliveryDetails = () => {
         <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Status</Trans>}>
             <Tag
-              color={STATUS_COLORS[currentStatus] ?? "default"}
+              color={deliveryStatusColor[currentStatus as DeliveryStatus]}
               style={{ fontSize: 13, padding: "4px 10px", marginTop: 4 }}
             >
-              {currentStatus}
+              {deliveryStatusLabel(currentStatus)}
             </Tag>
           </Form.Item>
         </Col>
