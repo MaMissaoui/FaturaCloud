@@ -208,9 +208,19 @@ export type OrganizationUsageCount = {
   purchaseOrders: number;
   inboundDeliveries: number;
   incomingInvoices: number;
+  stockMovements: number;
 };
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
+
+// Wipes selected record collections for an organization without deleting the
+// organization itself. Requesting master data always wipes transactional
+// data too — see db/reset.go for why the two can't be separated. Returns how
+// many rows of each kind were actually removed.
+export const ResetOrganizationData = (
+  id: string,
+  req: { resetMasterData: boolean; resetTransactionalData: boolean },
+) => post<OrganizationUsageCount>(`/organizations/${id}/reset`, req);
 
 // The logo lives outside the Organization JSON (excluded server-side via
 // json:"-") — GET /logo is a raw image response, not JSON, so this fetches

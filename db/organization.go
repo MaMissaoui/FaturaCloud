@@ -260,7 +260,8 @@ func (d *Database) DeleteOrganization(organizationID string) (bool, error) {
 
 // OrganizationUsageCount reports how many records under each domain would be
 // cascade-deleted along with the organization, so the UI can warn about the
-// blast radius before the user confirms.
+// blast radius before the user confirms. Reused by ResetOrganizationData for
+// the same reason, minus the organization itself.
 type OrganizationUsageCount struct {
 	Clients    int64 `db:"clients"    json:"clients"`
 	Vendors    int64 `db:"vendors"    json:"vendors"`
@@ -273,6 +274,7 @@ type OrganizationUsageCount struct {
 	PurchaseOrders    int64 `db:"purchaseOrders"    json:"purchaseOrders"`
 	InboundDeliveries int64 `db:"inboundDeliveries" json:"inboundDeliveries"`
 	IncomingInvoices  int64 `db:"incomingInvoices"  json:"incomingInvoices"`
+	StockMovements    int64 `db:"stockMovements"    json:"stockMovements"`
 }
 
 func (d *Database) GetOrganizationUsageCount(organizationID string) (*OrganizationUsageCount, error) {
@@ -288,9 +290,11 @@ func (d *Database) GetOrganizationUsageCount(organizationID string) (*Organizati
 			(SELECT COUNT(*) FROM taxRates WHERE organizationId = ?) AS taxRates,
 			(SELECT COUNT(*) FROM purchase_orders WHERE organizationId = ?) AS purchaseOrders,
 			(SELECT COUNT(*) FROM inbound_deliveries WHERE organizationId = ?) AS inboundDeliveries,
-			(SELECT COUNT(*) FROM incoming_invoices WHERE organizationId = ?) AS incomingInvoices`,
+			(SELECT COUNT(*) FROM incoming_invoices WHERE organizationId = ?) AS incomingInvoices,
+			(SELECT COUNT(*) FROM stockMovements WHERE organizationId = ?) AS stockMovements`,
 		organizationID, organizationID, organizationID, organizationID, organizationID,
 		organizationID, organizationID, organizationID, organizationID, organizationID,
+		organizationID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_organization_usage_count: %w", err)
