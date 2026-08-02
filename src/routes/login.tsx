@@ -99,7 +99,7 @@ export default function LoginPage() {
               name="email"
               rules={[{ required: true, type: "email", message: t`Please enter a valid email` }]}
             >
-              <Input prefix={<UserOutlined />} placeholder="Email" size="large" />
+              <Input prefix={<UserOutlined />} placeholder={t`Email`} size="large" />
             </Form.Item>
             <Form.Item
               name="password"

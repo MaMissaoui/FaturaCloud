@@ -612,7 +612,7 @@ const InvoiceDetails: React.FC = () => {
             <Row gutter={24}>
               <Col xs={24} md={12} xl={{ span: 4, offset: 12 }}>
                 <Form.Item
-                  label="Date"
+                  label={t`Date`}
                   name="date"
                   rules={[{ required: true, message: t`This field is required!` }]}
                 >
@@ -813,7 +813,7 @@ const InvoiceDetails: React.FC = () => {
                       width: 120,
                       render: (field) => (
                         <Form.Item name={[field.name, "taxRate"]} noStyle>
-                          <Select style={{ width: "100%" }} allowClear placeholder="Select tax">
+                          <Select style={{ width: "100%" }} allowClear placeholder={t`Select tax rate`}>
                             {map(taxRates, (rate: any) => (
                               <Option value={rate.id} key={rate.id}>
                                 {rate.name} {rate.percentage}%
