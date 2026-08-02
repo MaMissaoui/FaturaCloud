@@ -26,7 +26,6 @@ FaturaCloud is a web-based invoicing application. It runs as a single Docker ima
 - `decimal.js` — precise decimal arithmetic for all financial calculations
 - `@dnd-kit` — drag-and-drop for invoice line item reordering
 - `@sentry/react` — frontend error tracking
-- `zod` — schema validation
 - `oxlint` + `oxfmt` — linting and formatting (replaces ESLint)
 - `coreos/go-oidc` + `golang.org/x/oauth2` — OIDC SSO login (Authorization Code + PKCE), provider-agnostic (Authelia, Keycloak, Auth0, …)
 
