@@ -17,7 +17,10 @@ type Client struct {
 	Website            *string `db:"website"             json:"website"`
 	RegistrationNumber *string `db:"registration_number" json:"registration_number"`
 	Vatin              *string `db:"vatin"               json:"vatin"`
-	CreatedAt          *string `db:"createdAt"           json:"createdAt"`
+	// Mirrors vendors.defaultCurrency — the client's usual invoicing
+	// currency, used only to prefill a new invoice's currency field.
+	DefaultCurrency *string `db:"defaultCurrency"     json:"defaultCurrency"`
+	CreatedAt       *string `db:"createdAt"           json:"createdAt"`
 
 	// EN 16931 (XRechnung) buyer fields. Also the single source of truth for
 	// display everywhere else (PDFs, lists) — clients no longer have a
@@ -43,6 +46,7 @@ type CreateClientRequest struct {
 	Website            *string `json:"website"`
 	RegistrationNumber *string `json:"registration_number"`
 	Vatin              *string `json:"vatin"`
+	DefaultCurrency    *string `json:"defaultCurrency"`
 
 	Street                *string `json:"street"`
 	HouseNumber           *string `json:"house_number"`
@@ -62,6 +66,7 @@ type UpdateClientRequest struct {
 	Website            *string `json:"website"`
 	RegistrationNumber *string `json:"registration_number"`
 	Vatin              *string `json:"vatin"`
+	DefaultCurrency    *string `json:"defaultCurrency"`
 
 	Street                *string `json:"street"`
 	HouseNumber           *string `json:"house_number"`
@@ -103,11 +108,11 @@ func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
 	_, err := d.DB.Exec(
 		`INSERT INTO clients (
 			id, organizationId, name, code, emails, phone, website,
-			registration_number, vatin, street, house_number, postal_code, city,
+			registration_number, vatin, defaultCurrency, street, house_number, postal_code, city,
 			country_code, tax_number, default_buyer_reference
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Code,
-		req.Emails, req.Phone, req.Website, req.RegistrationNumber, req.Vatin,
+		req.Emails, req.Phone, req.Website, req.RegistrationNumber, req.Vatin, req.DefaultCurrency,
 		req.Street, req.HouseNumber, req.PostalCode, req.City,
 		req.CountryCode, req.TaxNumber, req.DefaultBuyerReference,
 	)
@@ -121,12 +126,12 @@ func (d *Database) UpdateClient(clientID string, updates UpdateClientRequest) (*
 	_, err := d.DB.Exec(
 		`UPDATE clients
 		 SET name = ?, code = ?, emails = ?, phone = ?,
-		     website = ?, registration_number = ?, vatin = ?,
+		     website = ?, registration_number = ?, vatin = ?, defaultCurrency = ?,
 		     street = ?, house_number = ?, postal_code = ?, city = ?,
 		     country_code = ?, tax_number = ?, default_buyer_reference = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Code, updates.Emails, updates.Phone,
-		updates.Website, updates.RegistrationNumber, updates.Vatin,
+		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.DefaultCurrency,
 		updates.Street, updates.HouseNumber, updates.PostalCode, updates.City,
 		updates.CountryCode, updates.TaxNumber, updates.DefaultBuyerReference,
 		clientID,

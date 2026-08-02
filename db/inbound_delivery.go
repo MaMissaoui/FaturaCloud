@@ -19,7 +19,15 @@ type InboundDelivery struct {
 	TrackingNumber     *string `db:"trackingNumber"     json:"trackingNumber"`
 	Notes              *string `db:"notes"              json:"notes"`
 	Status             string  `db:"status"             json:"status"`
-	CreatedAt          int64   `db:"createdAt"          json:"createdAt"`
+	// Nullable — null means "the organization's own currency", same
+	// convention as orders.currency/purchase_orders.currency. See
+	// db/exchange_rate.go for the exchangeRate direction/storage convention;
+	// this is what UpdateInboundDeliveryStatus uses to convert unitCost to
+	// organization-currency terms before it reaches stockMovements.
+	Currency         *string `db:"currency"         json:"currency"`
+	ExchangeRate     *string `db:"exchangeRate"     json:"exchangeRate"`
+	ExchangeRateDate *int64  `db:"exchangeRateDate" json:"exchangeRateDate"`
+	CreatedAt        int64   `db:"createdAt"          json:"createdAt"`
 	// Joined
 	OrderNumber *string `db:"orderNumber" json:"orderNumber"`
 	VendorName  *string `db:"vendorName"  json:"vendorName"`
@@ -37,9 +45,9 @@ type InboundDeliveryLineItem struct {
 	Position                int     `db:"position"                json:"position"`
 	// Joined from products via productId; nil when the line has no product
 	// (free-text line) or the product isn't stock-tracked.
-	StockEnabled  *int     `db:"stockEnabled"  json:"stockEnabled"`
-	CurrentStock  *float64 `db:"currentStock"  json:"currentStock"`
-	ProductName   *string  `db:"productName"   json:"productName"`
+	StockEnabled *int     `db:"stockEnabled"  json:"stockEnabled"`
+	CurrentStock *float64 `db:"currentStock"  json:"currentStock"`
+	ProductName  *string  `db:"productName"   json:"productName"`
 }
 
 type CreateInboundDeliveryLineItemRequest struct {
@@ -58,6 +66,9 @@ type CreateInboundDeliveryRequest struct {
 	VendorID           *string                                `json:"vendorId"`
 	DeliveryNumber     string                                 `json:"deliveryNumber"`
 	DeliveryDate       int64                                  `json:"deliveryDate"`
+	Currency           *string                                `json:"currency"`
+	ExchangeRate       *float64                               `json:"exchangeRate"`
+	ExchangeRateDate   *int64                                 `json:"exchangeRateDate"`
 	VendorDeliveryNote *string                                `json:"vendorDeliveryNote"`
 	TrackingNumber     *string                                `json:"trackingNumber"`
 	Notes              *string                                `json:"notes"`
@@ -71,6 +82,9 @@ type UpdateInboundDeliveryRequest struct {
 	VendorID           *string                                 `json:"vendorId"`
 	DeliveryNumber     *string                                 `json:"deliveryNumber"`
 	DeliveryDate       *int64                                  `json:"deliveryDate"`
+	Currency           *string                                 `json:"currency"`
+	ExchangeRate       *float64                                `json:"exchangeRate"`
+	ExchangeRateDate   *int64                                  `json:"exchangeRateDate"`
 	VendorDeliveryNote *string                                 `json:"vendorDeliveryNote"`
 	TrackingNumber     *string                                 `json:"trackingNumber"`
 	Notes              *string                                 `json:"notes"`
@@ -194,6 +208,17 @@ func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*Inb
 		req.ID, _ = gonanoid.New()
 	}
 
+	org, err := d.GetOrganization(req.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("create_inbound_delivery organization: %w", err)
+	}
+	exchangeRate, err := resolveExchangeRateForSave(
+		orgCurrencyOrDefault(org), "", nil, req.Currency, req.ExchangeRate,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("create_inbound_delivery begin: %w", err)
@@ -203,10 +228,12 @@ func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*Inb
 	_, err = tx.Exec(`
 		INSERT INTO inbound_deliveries
 		  (id, organizationId, purchaseOrderId, vendorId, deliveryNumber, deliveryDate,
+		   currency, exchangeRate, exchangeRateDate,
 		   vendorDeliveryNote, trackingNumber, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.PurchaseOrderID, req.VendorID, req.DeliveryNumber,
-		req.DeliveryDate, req.VendorDeliveryNote, req.TrackingNumber, req.Notes,
+		req.DeliveryDate, req.Currency, exchangeRate, req.ExchangeRateDate,
+		req.VendorDeliveryNote, req.TrackingNumber, req.Notes,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_inbound_delivery: %w", err)
@@ -222,14 +249,46 @@ func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*Inb
 }
 
 func (d *Database) UpdateInboundDelivery(id string, req UpdateInboundDeliveryRequest) (*InboundDelivery, error) {
-	if req.LineItems != nil {
-		current, err := d.GetInboundDelivery(id)
+	current, err := d.GetInboundDelivery(id)
+	if err != nil {
+		return nil, fmt.Errorf("update_inbound_delivery lookup: %w", err)
+	}
+	if req.LineItems != nil && current.Status != "draft" {
+		return nil, newValidationError("cannot edit line items of a %s goods receipt", current.Status)
+	}
+	// Once received, this receipt's stockMovements/average cost were already
+	// converted using the rate in effect at that moment (see
+	// UpdateInboundDeliveryStatus). Changing currency/exchangeRate afterwards
+	// wouldn't retroactively fix those movements — it would just decouple the
+	// header from what was actually posted.
+	if (req.Currency != nil || req.ExchangeRate != nil) && current.Status != "draft" {
+		return nil, newValidationError(
+			"cannot change currency or exchange rate of a %s goods receipt", current.Status,
+		)
+	}
+
+	// Same "only when touched" rule as the other document types: resolving/
+	// validating the exchange rate needs the receipt's current currency+rate
+	// only when this request is actually changing one of them.
+	var exchangeRate *string
+	exchangeRateSet := 0
+	if req.Currency != nil || req.ExchangeRate != nil {
+		org, err := d.GetOrganization(current.OrganizationID)
 		if err != nil {
-			return nil, fmt.Errorf("update_inbound_delivery lookup: %w", err)
+			return nil, fmt.Errorf("update_inbound_delivery organization: %w", err)
 		}
-		if current.Status != "draft" {
-			return nil, newValidationError("cannot edit line items of a %s goods receipt", current.Status)
+		currentCurrency := ""
+		if current.Currency != nil {
+			currentCurrency = *current.Currency
 		}
+		rate, err := resolveExchangeRateForSave(
+			orgCurrencyOrDefault(org), currentCurrency, current.ExchangeRate,
+			req.Currency, req.ExchangeRate,
+		)
+		if err != nil {
+			return nil, err
+		}
+		exchangeRate, exchangeRateSet = rate, 1
 	}
 
 	tx, err := d.DB.Beginx()
@@ -240,18 +299,25 @@ func (d *Database) UpdateInboundDelivery(id string, req UpdateInboundDeliveryReq
 
 	// Every field is COALESCE'd: a header-only edit (tracking number, notes)
 	// must not blank the rest, and this endpoint is explicitly used for such
-	// edits once a receipt is no longer a draft.
+	// edits once a receipt is no longer a draft. exchangeRate/exchangeRateDate
+	// are the exception — nullable, and only written when this request
+	// actually touches currency/exchangeRate (see exchangeRateSet above).
 	_, err = tx.Exec(`
 		UPDATE inbound_deliveries SET
 		  purchaseOrderId    = COALESCE(?, purchaseOrderId),
 		  vendorId           = COALESCE(?, vendorId),
 		  deliveryNumber     = COALESCE(?, deliveryNumber),
 		  deliveryDate       = COALESCE(?, deliveryDate),
+		  currency           = COALESCE(?, currency),
+		  exchangeRate       = CASE WHEN ? THEN ? ELSE exchangeRate END,
+		  exchangeRateDate   = CASE WHEN ? THEN ? ELSE exchangeRateDate END,
 		  vendorDeliveryNote = COALESCE(?, vendorDeliveryNote),
 		  trackingNumber     = COALESCE(?, trackingNumber),
 		  notes              = COALESCE(?, notes)
 		WHERE id = ?`,
-		req.PurchaseOrderID, req.VendorID, req.DeliveryNumber, req.DeliveryDate,
+		req.PurchaseOrderID, req.VendorID, req.DeliveryNumber, req.DeliveryDate, req.Currency,
+		exchangeRateSet, exchangeRate,
+		exchangeRateSet, req.ExchangeRateDate,
 		req.VendorDeliveryNote, req.TrackingNumber, req.Notes,
 		id,
 	)
@@ -334,7 +400,20 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string) (*InboundDeliv
 		if err != nil {
 			return nil, err
 		}
+		// unitCost on each line is in the receipt's own currency; convert to
+		// organization-currency terms before it reaches stockMovements — the
+		// weighted-average replay in product_cost.go has no per-currency
+		// concept and would otherwise mix currencies into one "average".
+		rate, err := parseExchangeRate(current.ExchangeRate)
+		if err != nil {
+			return nil, fmt.Errorf("update_inbound_delivery_status rate: %w", err)
+		}
 		for _, line := range lines {
+			unitCost := line.UnitCost
+			if unitCost != nil {
+				converted := convertCents(*unitCost, rate)
+				unitCost = &converted
+			}
 			movementID, _ := gonanoid.New()
 			if err := insertStockMovementTx(tx, CreateStockMovementRequest{
 				ID:             movementID,
@@ -342,7 +421,7 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string) (*InboundDeliv
 				ProductID:      line.ProductID,
 				Type:           "in",
 				Quantity:       line.Quantity,
-				UnitCost:       line.UnitCost,
+				UnitCost:       unitCost,
 				Note:           ptrStr("Goods receipt " + current.DeliveryNumber),
 				Reference:      &current.DeliveryNumber,
 			}); err != nil {

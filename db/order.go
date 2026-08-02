@@ -9,13 +9,16 @@ import (
 )
 
 type Order struct {
-	ID              string  `db:"id"              json:"id"`
-	OrganizationID  string  `db:"organizationId"  json:"organizationId"`
-	ClientID        *string `db:"clientId"        json:"clientId"`
-	OrderNumber     string  `db:"orderNumber"     json:"orderNumber"`
-	Status          string  `db:"status"          json:"status"`
-	OrderDate       int64   `db:"orderDate"       json:"orderDate"`
-	DeliveryDate    *int64  `db:"deliveryDate"    json:"deliveryDate"`
+	ID             string  `db:"id"              json:"id"`
+	OrganizationID string  `db:"organizationId"  json:"organizationId"`
+	ClientID       *string `db:"clientId"        json:"clientId"`
+	OrderNumber    string  `db:"orderNumber"     json:"orderNumber"`
+	Status         string  `db:"status"          json:"status"`
+	OrderDate      int64   `db:"orderDate"       json:"orderDate"`
+	DeliveryDate   *int64  `db:"deliveryDate"    json:"deliveryDate"`
+	// Nullable, like purchase_orders.currency — null means "the
+	// organization's own currency".
+	Currency        *string `db:"currency"        json:"currency"`
 	ShippingAddress *string `db:"shippingAddress" json:"shippingAddress"`
 	TrackingNumber  *string `db:"trackingNumber"  json:"trackingNumber"`
 	Notes           *string `db:"notes"           json:"notes"`
@@ -48,6 +51,7 @@ type CreateOrderRequest struct {
 	Status          string                       `json:"status"`
 	OrderDate       int64                        `json:"orderDate"`
 	DeliveryDate    *int64                       `json:"deliveryDate"`
+	Currency        *string                      `json:"currency"`
 	ShippingAddress *string                      `json:"shippingAddress"`
 	TrackingNumber  *string                      `json:"trackingNumber"`
 	Notes           *string                      `json:"notes"`
@@ -59,6 +63,7 @@ type UpdateOrderRequest struct {
 	OrderNumber     *string                       `json:"orderNumber"`
 	OrderDate       *int64                        `json:"orderDate"`
 	DeliveryDate    *int64                        `json:"deliveryDate"`
+	Currency        *string                       `json:"currency"`
 	ShippingAddress *string                       `json:"shippingAddress"`
 	TrackingNumber  *string                       `json:"trackingNumber"`
 	Notes           *string                       `json:"notes"`
@@ -168,10 +173,10 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	defer tx.Rollback() //nolint:errcheck
 
 	_, err = tx.Exec(`
-		INSERT INTO orders (id, organizationId, clientId, orderNumber, status, orderDate, deliveryDate, shippingAddress, trackingNumber, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO orders (id, organizationId, clientId, orderNumber, status, orderDate, deliveryDate, currency, shippingAddress, trackingNumber, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.ClientID, req.OrderNumber, req.Status,
-		req.OrderDate, req.DeliveryDate, req.ShippingAddress, req.TrackingNumber, req.Notes,
+		req.OrderDate, req.DeliveryDate, req.Currency, req.ShippingAddress, req.TrackingNumber, req.Notes,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_order insert: %w", err)
@@ -209,13 +214,14 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 		    orderNumber     = COALESCE(?, orderNumber),
 		    orderDate       = COALESCE(?, orderDate),
 		    deliveryDate    = ?,
+		    currency        = ?,
 		    shippingAddress = ?,
 		    trackingNumber  = ?,
 		    notes           = ?
 		WHERE id = ?`,
 		updates.ClientID,
 		updates.OrderNumber, updates.OrderDate,
-		updates.DeliveryDate, updates.ShippingAddress, updates.TrackingNumber, updates.Notes,
+		updates.DeliveryDate, updates.Currency, updates.ShippingAddress, updates.TrackingNumber, updates.Notes,
 		orderID,
 	)
 	if err != nil {

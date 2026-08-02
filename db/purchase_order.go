@@ -9,18 +9,21 @@ import (
 )
 
 type PurchaseOrder struct {
-	ID              string  `db:"id"              json:"id"`
-	OrganizationID  string  `db:"organizationId"  json:"organizationId"`
-	VendorID        *string `db:"vendorId"        json:"vendorId"`
-	OrderNumber     string  `db:"orderNumber"     json:"orderNumber"`
-	Status          string  `db:"status"          json:"status"`
-	OrderDate       int64   `db:"orderDate"       json:"orderDate"`
-	ExpectedDate    *int64  `db:"expectedDate"    json:"expectedDate"`
-	Currency        *string `db:"currency"        json:"currency"`
-	DeliveryAddress *string `db:"deliveryAddress" json:"deliveryAddress"`
-	Notes           *string `db:"notes"           json:"notes"`
-	VendorName      *string `db:"vendorName"      json:"vendorName"`
-	CreatedAt       int64   `db:"createdAt"       json:"createdAt"`
+	ID             string  `db:"id"              json:"id"`
+	OrganizationID string  `db:"organizationId"  json:"organizationId"`
+	VendorID       *string `db:"vendorId"        json:"vendorId"`
+	OrderNumber    string  `db:"orderNumber"     json:"orderNumber"`
+	Status         string  `db:"status"          json:"status"`
+	OrderDate      int64   `db:"orderDate"       json:"orderDate"`
+	ExpectedDate   *int64  `db:"expectedDate"    json:"expectedDate"`
+	Currency       *string `db:"currency"        json:"currency"`
+	// See db/exchange_rate.go for the rate direction convention.
+	ExchangeRate     *string `db:"exchangeRate"     json:"exchangeRate"`
+	ExchangeRateDate *int64  `db:"exchangeRateDate" json:"exchangeRateDate"`
+	DeliveryAddress  *string `db:"deliveryAddress" json:"deliveryAddress"`
+	Notes            *string `db:"notes"           json:"notes"`
+	VendorName       *string `db:"vendorName"      json:"vendorName"`
+	CreatedAt        int64   `db:"createdAt"       json:"createdAt"`
 }
 
 type PurchaseOrderLineItem struct {
@@ -45,31 +48,35 @@ type CreatePurchaseOrderLineItemRequest struct {
 }
 
 type CreatePurchaseOrderRequest struct {
-	ID              string                               `json:"id"`
-	OrganizationID  string                               `json:"organizationId"`
-	VendorID        *string                              `json:"vendorId"`
-	OrderNumber     string                               `json:"orderNumber"`
-	Status          string                               `json:"status"`
-	OrderDate       int64                                `json:"orderDate"`
-	ExpectedDate    *int64                               `json:"expectedDate"`
-	Currency        *string                              `json:"currency"`
-	DeliveryAddress *string                              `json:"deliveryAddress"`
-	Notes           *string                              `json:"notes"`
-	LineItems       []CreatePurchaseOrderLineItemRequest `json:"lineItems"`
+	ID               string                               `json:"id"`
+	OrganizationID   string                               `json:"organizationId"`
+	VendorID         *string                              `json:"vendorId"`
+	OrderNumber      string                               `json:"orderNumber"`
+	Status           string                               `json:"status"`
+	OrderDate        int64                                `json:"orderDate"`
+	ExpectedDate     *int64                               `json:"expectedDate"`
+	Currency         *string                              `json:"currency"`
+	ExchangeRate     *float64                             `json:"exchangeRate"`
+	ExchangeRateDate *int64                               `json:"exchangeRateDate"`
+	DeliveryAddress  *string                              `json:"deliveryAddress"`
+	Notes            *string                              `json:"notes"`
+	LineItems        []CreatePurchaseOrderLineItemRequest `json:"lineItems"`
 }
 
 // UpdatePurchaseOrderRequest deliberately has no Status field — status changes
 // go through PATCH /api/purchase-orders/{id}/status only, so a PUT can't skip
 // the transition matrix.
 type UpdatePurchaseOrderRequest struct {
-	VendorID        *string                               `json:"vendorId"`
-	OrderNumber     *string                               `json:"orderNumber"`
-	OrderDate       *int64                                `json:"orderDate"`
-	ExpectedDate    *int64                                `json:"expectedDate"`
-	Currency        *string                               `json:"currency"`
-	DeliveryAddress *string                               `json:"deliveryAddress"`
-	Notes           *string                               `json:"notes"`
-	LineItems       *[]CreatePurchaseOrderLineItemRequest `json:"lineItems"`
+	VendorID         *string                               `json:"vendorId"`
+	OrderNumber      *string                               `json:"orderNumber"`
+	OrderDate        *int64                                `json:"orderDate"`
+	ExpectedDate     *int64                                `json:"expectedDate"`
+	Currency         *string                               `json:"currency"`
+	ExchangeRate     *float64                              `json:"exchangeRate"`
+	ExchangeRateDate *int64                                `json:"exchangeRateDate"`
+	DeliveryAddress  *string                               `json:"deliveryAddress"`
+	Notes            *string                               `json:"notes"`
+	LineItems        *[]CreatePurchaseOrderLineItemRequest `json:"lineItems"`
 }
 
 // validPurchaseOrderStatuses are the only values purchase_orders.status may
@@ -164,6 +171,16 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 	if !validPurchaseOrderStatuses[req.Status] {
 		return nil, newValidationError("invalid purchase order status %q", req.Status)
 	}
+	org, err := d.GetOrganization(req.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("create_purchase_order organization: %w", err)
+	}
+	exchangeRate, err := resolveExchangeRateForSave(
+		orgCurrencyOrDefault(org), "", nil, req.Currency, req.ExchangeRate,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -173,10 +190,11 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 
 	_, err = tx.Exec(`
 		INSERT INTO purchase_orders (id, organizationId, vendorId, orderNumber, status, orderDate,
-		                             expectedDate, currency, deliveryAddress, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                             expectedDate, currency, exchangeRate, exchangeRateDate, deliveryAddress, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.VendorID, req.OrderNumber, req.Status,
-		req.OrderDate, req.ExpectedDate, req.Currency, req.DeliveryAddress, req.Notes,
+		req.OrderDate, req.ExpectedDate, req.Currency, exchangeRate, req.ExchangeRateDate,
+		req.DeliveryAddress, req.Notes,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_purchase_order insert: %w", err)
@@ -194,6 +212,26 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 }
 
 func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrderRequest) (*PurchaseOrder, error) {
+	current, err := d.GetPurchaseOrder(orderID)
+	if err != nil {
+		return nil, fmt.Errorf("update_purchase_order fetch current: %w", err)
+	}
+	org, err := d.GetOrganization(current.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("update_purchase_order organization: %w", err)
+	}
+	currentCurrency := ""
+	if current.Currency != nil {
+		currentCurrency = *current.Currency
+	}
+	exchangeRate, err := resolveExchangeRateForSave(
+		orgCurrencyOrDefault(org), currentCurrency, current.ExchangeRate,
+		updates.Currency, updates.ExchangeRate,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("update_purchase_order begin: %w", err)
@@ -209,17 +247,20 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 	// ON DELETE SET NULL on that foreign key exists to prevent.
 	_, err = tx.Exec(`
 		UPDATE purchase_orders
-		SET vendorId        = COALESCE(?, vendorId),
-		    orderNumber     = COALESCE(?, orderNumber),
-		    orderDate       = COALESCE(?, orderDate),
-		    expectedDate    = ?,
-		    currency        = ?,
-		    deliveryAddress = ?,
-		    notes           = ?
+		SET vendorId         = COALESCE(?, vendorId),
+		    orderNumber      = COALESCE(?, orderNumber),
+		    orderDate        = COALESCE(?, orderDate),
+		    expectedDate     = ?,
+		    currency         = ?,
+		    exchangeRate     = ?,
+		    exchangeRateDate = ?,
+		    deliveryAddress  = ?,
+		    notes            = ?
 		WHERE id = ?`,
 		updates.VendorID,
 		updates.OrderNumber, updates.OrderDate,
-		updates.ExpectedDate, updates.Currency, updates.DeliveryAddress, updates.Notes,
+		updates.ExpectedDate, updates.Currency, exchangeRate, updates.ExchangeRateDate,
+		updates.DeliveryAddress, updates.Notes,
 		orderID,
 	)
 	if err != nil {

@@ -10,6 +10,15 @@ import (
 // voided. Neither counts.
 const revenueStates = `('sent', 'paid')`
 
+// Every SUM/aggregate below multiplies by COALESCE(exchangeRate, 1) before
+// summing: invoices can each be in a different currency (invoices.currency),
+// but this whole page — every stat tile, every table cell — renders every
+// number through the organization's own currency formatter
+// (src/routes/dashboard.tsx's `money`), never the invoice's. Without the
+// conversion, summing raw cents across currencies would silently produce a
+// number in no currency at all. See db/exchange_rate.go for the
+// exchangeRate direction/storage convention this relies on.
+
 type MonthlyRevenue struct {
 	Month   string `db:"month"   json:"month"`
 	Revenue int64  `db:"revenue" json:"revenue"`
@@ -105,7 +114,8 @@ func (d *Database) getRevenueByMonth(organizationID string, months int) ([]Month
 	cutoff := time.Now().AddDate(0, -months, 0).UnixMilli()
 	rows := []MonthlyRevenue{}
 	err := d.DB.Select(&rows, `
-		SELECT strftime('%Y-%m', date / 1000, 'unixepoch') AS month, SUM(total) AS revenue
+		SELECT strftime('%Y-%m', date / 1000, 'unixepoch') AS month,
+		       CAST(ROUND(SUM(total * COALESCE(exchangeRate, 1))) AS INTEGER) AS revenue
 		FROM invoices
 		WHERE organizationId = ? AND state IN `+revenueStates+` AND date >= ?
 		GROUP BY month
@@ -121,7 +131,8 @@ func (d *Database) getRevenueByMonth(organizationID string, months int) ([]Month
 func (d *Database) getOutstandingInvoices(organizationID string) (OutstandingSummary, error) {
 	invoices := []OutstandingInvoice{}
 	err := d.DB.Select(&invoices, `
-		SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.total
+		SELECT i.id, i.number, c.name AS clientName, i.dueDate,
+		       CAST(ROUND(i.total * COALESCE(i.exchangeRate, 1)) AS INTEGER) AS total
 		FROM invoices i
 		JOIN clients c ON i.clientId = c.id
 		WHERE i.organizationId = ? AND i.state = 'sent'
@@ -195,7 +206,8 @@ func (d *Database) getTopClients(organizationID string, months, limit int) ([]Cl
 	cutoff := time.Now().AddDate(0, -months, 0).UnixMilli()
 	rows := []ClientRevenue{}
 	err := d.DB.Select(&rows, `
-		SELECT i.clientId AS clientId, c.name AS name, SUM(i.total) AS revenue
+		SELECT i.clientId AS clientId, c.name AS name,
+		       CAST(ROUND(SUM(i.total * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS revenue
 		FROM invoices i
 		JOIN clients c ON i.clientId = c.id
 		WHERE i.organizationId = ? AND i.state IN `+revenueStates+` AND i.date >= ?
@@ -215,7 +227,7 @@ func (d *Database) getTopProducts(organizationID string, months, limit int) ([]P
 	rows := []ProductRevenue{}
 	err := d.DB.Select(&rows, `
 		SELECT ili.productId AS productId, p.name AS name,
-		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice)) AS INTEGER) AS revenue
+		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS revenue
 		FROM invoiceLineItems ili
 		JOIN invoices i ON ili.invoiceId = i.id
 		JOIN products p ON ili.productId = p.id

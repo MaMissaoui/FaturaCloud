@@ -21,21 +21,25 @@ var invoiceStates = map[string]bool{
 
 // Invoice mirrors the invoices table (with an optional joined clientName).
 type Invoice struct {
-	ID             string   `db:"id"             json:"id"`
-	OrganizationID string   `db:"organizationId" json:"organizationId"`
-	Number         string   `db:"number"         json:"number"`
-	State          string   `db:"state"          json:"state"`
-	ClientID       string   `db:"clientId"       json:"clientId"`
-	Date           int64    `db:"date"           json:"date"`
-	DueDate        *int64   `db:"dueDate"        json:"dueDate"`
-	Currency       string   `db:"currency"       json:"currency"`
-	CustomerNotes  *string  `db:"customerNotes"  json:"customerNotes"`
-	OverdueCharge  *float64 `db:"overdueCharge"  json:"overdueCharge"`
-	Total          int64    `db:"total"          json:"total"`
-	TaxTotal       int64    `db:"taxTotal"       json:"taxTotal"`
-	SubTotal       int64    `db:"subTotal"       json:"subTotal"`
-	CreatedAt      *string  `db:"createdAt"      json:"createdAt"`
-	ClientName     *string  `db:"clientName"     json:"clientName"`
+	ID             string `db:"id"             json:"id"`
+	OrganizationID string `db:"organizationId" json:"organizationId"`
+	Number         string `db:"number"         json:"number"`
+	State          string `db:"state"          json:"state"`
+	ClientID       string `db:"clientId"       json:"clientId"`
+	Date           int64  `db:"date"           json:"date"`
+	DueDate        *int64 `db:"dueDate"        json:"dueDate"`
+	Currency       string `db:"currency"       json:"currency"`
+	// See db/exchange_rate.go for the rate direction convention. Nil when
+	// Currency equals the organization's own currency.
+	ExchangeRate     *string  `db:"exchangeRate"     json:"exchangeRate"`
+	ExchangeRateDate *int64   `db:"exchangeRateDate" json:"exchangeRateDate"`
+	CustomerNotes    *string  `db:"customerNotes"  json:"customerNotes"`
+	OverdueCharge    *float64 `db:"overdueCharge"  json:"overdueCharge"`
+	Total            int64    `db:"total"          json:"total"`
+	TaxTotal         int64    `db:"taxTotal"       json:"taxTotal"`
+	SubTotal         int64    `db:"subTotal"       json:"subTotal"`
+	CreatedAt        *string  `db:"createdAt"      json:"createdAt"`
+	ClientName       *string  `db:"clientName"     json:"clientName"`
 
 	// BT-10 buyer reference (e.g. a German Leitweg-ID), mandatory for
 	// XRechnung/B2G. BT-20 payment terms free text; BT-9 due date is dueDate.
@@ -75,22 +79,24 @@ type CreateInvoiceLineItemRequest struct {
 
 // CreateInvoiceRequest is the payload for creating an invoice.
 type CreateInvoiceRequest struct {
-	ID             string                         `json:"id"`
-	OrganizationID string                         `json:"organizationId"`
-	Number         string                         `json:"number"`
-	State          string                         `json:"state"`
-	ClientID       string                         `json:"clientId"`
-	Date           int64                          `json:"date"`
-	DueDate        *int64                         `json:"dueDate"`
-	Currency       string                         `json:"currency"`
-	CustomerNotes  *string                        `json:"customerNotes"`
-	OverdueCharge  *float64                       `json:"overdueCharge"`
-	Total          int64                          `json:"total"`
-	TaxTotal       int64                          `json:"taxTotal"`
-	SubTotal       int64                          `json:"subTotal"`
-	LineItems      []CreateInvoiceLineItemRequest `json:"lineItems"`
-	BuyerReference *string                        `json:"buyerReference"`
-	PaymentTerms   *string                        `json:"paymentTerms"`
+	ID               string                         `json:"id"`
+	OrganizationID   string                         `json:"organizationId"`
+	Number           string                         `json:"number"`
+	State            string                         `json:"state"`
+	ClientID         string                         `json:"clientId"`
+	Date             int64                          `json:"date"`
+	DueDate          *int64                         `json:"dueDate"`
+	Currency         string                         `json:"currency"`
+	ExchangeRate     *float64                       `json:"exchangeRate"`
+	ExchangeRateDate *int64                         `json:"exchangeRateDate"`
+	CustomerNotes    *string                        `json:"customerNotes"`
+	OverdueCharge    *float64                       `json:"overdueCharge"`
+	Total            int64                          `json:"total"`
+	TaxTotal         int64                          `json:"taxTotal"`
+	SubTotal         int64                          `json:"subTotal"`
+	LineItems        []CreateInvoiceLineItemRequest `json:"lineItems"`
+	BuyerReference   *string                        `json:"buyerReference"`
+	PaymentTerms     *string                        `json:"paymentTerms"`
 }
 
 // UpdateInvoiceRequest is the payload for updating an invoice. State is
@@ -98,19 +104,21 @@ type CreateInvoiceRequest struct {
 // only (which validates against invoiceStates), matching the orders/deliveries
 // convention, so a PUT can't set an arbitrary state and bypass validation.
 type UpdateInvoiceRequest struct {
-	Number         *string                         `json:"number"`
-	ClientID       *string                         `json:"clientId"`
-	Date           *int64                          `json:"date"`
-	DueDate        *int64                          `json:"dueDate"`
-	Currency       *string                         `json:"currency"`
-	CustomerNotes  *string                         `json:"customerNotes"`
-	OverdueCharge  *float64                        `json:"overdueCharge"`
-	Total          *int64                          `json:"total"`
-	TaxTotal       *int64                          `json:"taxTotal"`
-	SubTotal       *int64                          `json:"subTotal"`
-	LineItems      *[]CreateInvoiceLineItemRequest `json:"lineItems"`
-	BuyerReference *string                         `json:"buyerReference"`
-	PaymentTerms   *string                         `json:"paymentTerms"`
+	Number           *string                         `json:"number"`
+	ClientID         *string                         `json:"clientId"`
+	Date             *int64                          `json:"date"`
+	DueDate          *int64                          `json:"dueDate"`
+	Currency         *string                         `json:"currency"`
+	ExchangeRate     *float64                        `json:"exchangeRate"`
+	ExchangeRateDate *int64                          `json:"exchangeRateDate"`
+	CustomerNotes    *string                         `json:"customerNotes"`
+	OverdueCharge    *float64                        `json:"overdueCharge"`
+	Total            *int64                          `json:"total"`
+	TaxTotal         *int64                          `json:"taxTotal"`
+	SubTotal         *int64                          `json:"subTotal"`
+	LineItems        *[]CreateInvoiceLineItemRequest `json:"lineItems"`
+	BuyerReference   *string                         `json:"buyerReference"`
+	PaymentTerms     *string                         `json:"paymentTerms"`
 }
 
 func (d *Database) GetInvoices(organizationID string) ([]Invoice, error) {
@@ -167,6 +175,16 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total); err != nil {
 		return nil, err
 	}
+	org, err := d.GetOrganization(req.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("create_invoice organization: %w", err)
+	}
+	exchangeRate, err := resolveExchangeRateForSave(
+		orgCurrencyOrDefault(org), "", nil, &req.Currency, req.ExchangeRate,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -177,11 +195,11 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 	_, err = tx.Exec(`
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
-			currency, customerNotes, overdueCharge, total, taxTotal, subTotal,
+			currency, exchangeRate, exchangeRateDate, customerNotes, overdueCharge, total, taxTotal, subTotal,
 			buyerReference, paymentTerms
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Number, req.State, req.ClientID,
-		req.Date, req.DueDate, req.Currency, req.CustomerNotes, req.OverdueCharge,
+		req.Date, req.DueDate, req.Currency, exchangeRate, req.ExchangeRateDate, req.CustomerNotes, req.OverdueCharge,
 		req.Total, req.TaxTotal, req.SubTotal, req.BuyerReference, req.PaymentTerms,
 	)
 	if err != nil {
@@ -262,6 +280,30 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		}
 	}
 
+	// Same "only when touched" rule as totals above: resolving/validating the
+	// exchange rate needs the invoice's current currency+rate only when this
+	// request is actually changing one of them.
+	var exchangeRate *string
+	exchangeRateSet := 0
+	if updates.Currency != nil || updates.ExchangeRate != nil {
+		current, err := d.GetInvoice(invoiceID)
+		if err != nil {
+			return nil, fmt.Errorf("update_invoice fetch current: %w", err)
+		}
+		org, err := d.GetOrganization(current.OrganizationID)
+		if err != nil {
+			return nil, fmt.Errorf("update_invoice organization: %w", err)
+		}
+		rate, err := resolveExchangeRateForSave(
+			orgCurrencyOrDefault(org), current.Currency, current.ExchangeRate,
+			updates.Currency, updates.ExchangeRate,
+		)
+		if err != nil {
+			return nil, err
+		}
+		exchangeRate, exchangeRateSet = rate, 1
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("update_invoice begin: %w", err)
@@ -269,7 +311,9 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 	defer tx.Rollback() //nolint:errcheck
 
 	// Required fields use COALESCE (kept when nil); nullable fields are set
-	// directly so users can clear them by passing null.
+	// directly so users can clear them by passing null. exchangeRate/
+	// exchangeRateDate are only written when this request touches
+	// currency/exchangeRate — otherwise COALESCE keeps what's stored.
 	_, err = tx.Exec(`
 		UPDATE invoices
 		SET number        = COALESCE(?, number),
@@ -277,6 +321,8 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		    date          = COALESCE(?, date),
 		    dueDate       = ?,
 		    currency      = COALESCE(?, currency),
+		    exchangeRate     = CASE WHEN ? THEN ? ELSE exchangeRate END,
+		    exchangeRateDate = CASE WHEN ? THEN ? ELSE exchangeRateDate END,
 		    customerNotes = ?,
 		    overdueCharge = ?,
 		    total         = COALESCE(?, total),
@@ -287,6 +333,8 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		WHERE id = ?`,
 		updates.Number, updates.ClientID,
 		updates.Date, updates.DueDate, updates.Currency,
+		exchangeRateSet, exchangeRate,
+		exchangeRateSet, updates.ExchangeRateDate,
 		updates.CustomerNotes, updates.OverdueCharge,
 		updates.Total, updates.TaxTotal, updates.SubTotal,
 		updates.BuyerReference, updates.PaymentTerms,

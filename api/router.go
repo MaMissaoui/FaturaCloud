@@ -198,6 +198,9 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Dashboard
 	protected("GET", "/api/organizations/{orgId}/dashboard", h.getDashboard)
 
+	// Exchange rate prefill (manual entry only — see db/exchange_rate.go)
+	protected("GET", "/api/organizations/{orgId}/exchange-rate", h.getLastExchangeRate)
+
 	// Tax rates
 	protected("GET", "/api/organizations/{orgId}/tax-rates", h.listTaxRates)
 	protected("POST", "/api/tax-rates", h.createTaxRate)
