@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-08-02
+
+Multi-currency support across master data and documents, plus a per-organization
+data reset tool.
+
+### Added
+- **Multi-currency support**: organizations get a currency + decimal-precision
+  setting (precision defaults from the currency, e.g. JPY → 0, BHD → 3, still
+  user-overridable); clients get a default currency (mirroring vendors); orders,
+  purchase orders, and incoming invoices all get a currency picker (incoming
+  invoices' free-text currency field is now a proper picker). Invoices, purchase
+  orders, incoming invoices, and goods receipts gain `exchangeRate`/
+  `exchangeRateDate` fields (1 unit of document currency = `exchangeRate` units
+  of organization currency), manually entered and frozen at save time, prefilled
+  from the last rate used for that currency pair. Goods-receipt unit costs
+  convert to organization currency before feeding `stockMovements`/average
+  cost; 3-way matching and dashboard aggregates (revenue, outstanding, top
+  clients/products) now compare/sum in organization-currency terms rather than
+  mixing raw amounts across currencies — resolving the mixed-currency
+  limitation called out in the 3.1.0 Dashboard notes above.
+- **Per-organization data reset** (Organizations page, admin only): a "Danger
+  zone" section with **Master data** (clients, vendors, products, tax rates)
+  and **Transactional data** (invoices, orders, deliveries, purchase orders,
+  goods receipts, incoming invoices, stock movements) checkboxes to wipe an
+  organization's records without deleting the organization itself. Selecting
+  master data always includes transactional data, since clients cascade onto
+  invoices and vendors are referentially protected against purchasing
+  documents. Resetting transactional data also zeroes the invoice number
+  counter and product stock quantities.
+
+### Fixed
+- Invoice detail page formatted every amount using the organization's currency
+  instead of the invoice's own.
+
 ## [3.1.0] - 2026-07-27
 
 Tier 4 of the UI-consistency plan: server-side scale for Products/Inventory,
