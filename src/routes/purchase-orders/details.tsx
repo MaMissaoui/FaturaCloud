@@ -42,10 +42,11 @@ import sum from "lodash/sum";
 import { SaveFile, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
-import { currencies } from "src/utils/currencies";
 import ExchangeRateFields, {
+  CurrencySelect,
   prefillExchangeRate,
-} from "src/components/currency/exchange-rate-fields";
+  showExchangeRateFields,
+} from "src/components/currency/currency-fields";
 import LineItemsTable from "src/components/line-items/table";
 import {
   purchaseOrderStatusColor,
@@ -265,7 +266,7 @@ const PurchaseOrderDetails = () => {
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
-        <Col xs={24} md={12} xl={8}>
+        <Col xs={24} md={12} xl={7}>
           <Form.Item
             label={<Trans>Vendor</Trans>}
             name="vendorId"
@@ -316,7 +317,7 @@ const PurchaseOrderDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={4}>
+        <Col xs={24} md={12} xl={3}>
           <Form.Item
             label={<Trans>Order number</Trans>}
             name="orderNumber"
@@ -325,7 +326,7 @@ const PurchaseOrderDetails = () => {
             <Input />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={4}>
+        <Col xs={24} md={12} xl={3}>
           <Form.Item
             label={<Trans>Order date</Trans>}
             name="orderDate"
@@ -334,7 +335,7 @@ const PurchaseOrderDetails = () => {
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={4}>
+        <Col xs={24} md={12} xl={3}>
           <Form.Item label={<Trans>Expected date</Trans>} name="expectedDate">
             <DatePicker style={{ width: "100%" }} format={dateFormat} />
           </Form.Item>
@@ -346,30 +347,14 @@ const PurchaseOrderDetails = () => {
             </Tag>
           </Form.Item>
         </Col>
+        <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
       </Row>
 
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Currency</Trans>}
-            name="currency"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Select
-              onChange={(newCurrency: string) =>
-                prefillExchangeRate(form, organization?.id, newCurrency, orgCurrency)
-              }
-            >
-              {map(currencies, (c) => (
-                <Option value={c} key={c}>
-                  {c}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
-      </Row>
+      {showExchangeRateFields(watchedCurrency, orgCurrency) && (
+        <Row gutter={24}>
+          <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
+        </Row>
+      )}
 
       <Row gutter={24}>
         <Col xs={24} md={12}>

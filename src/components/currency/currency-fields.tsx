@@ -1,10 +1,68 @@
-import { Col, DatePicker, Form, InputNumber } from "antd";
+import { Col, DatePicker, Form, InputNumber, Select } from "antd";
 import type { FormInstance } from "antd";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import dayjs from "dayjs";
+import map from "lodash/map";
 
 import { GetLastExchangeRate } from "src/api";
+import { currencies } from "src/utils/currencies";
+
+const { Option } = Select;
+
+/**
+ * True whenever the document's currency differs from the organization's —
+ * the only time there's anything to convert, and the only time
+ * <ExchangeRateFields> renders anything. Exported so callers can decide
+ * whether to render the Row wrapping it at all, rather than rendering a Row
+ * that's empty whenever this is false.
+ */
+export const showExchangeRateFields = (
+  currency: string | undefined | null,
+  orgCurrency: string,
+): currency is string => !!currency && currency !== orgCurrency;
+
+/**
+ * The currency picker, split out from <ExchangeRateFields> so a page can
+ * place it wherever its own header row has room, instead of always pairing
+ * it with the (usually-hidden) rate fields in a dedicated row — a lone
+ * Currency field in an otherwise-empty Row is what made it look like it was
+ * taking up a lot of space for no reason.
+ */
+export const CurrencySelect = ({
+  form,
+  organizationId,
+  orgCurrency,
+  disabled,
+  xl = 4,
+}: {
+  form: FormInstance;
+  organizationId: string | undefined;
+  orgCurrency: string;
+  disabled?: boolean;
+  xl?: number;
+}) => (
+  <Col xs={24} md={12} xl={xl}>
+    <Form.Item
+      label={<Trans>Currency</Trans>}
+      name="currency"
+      rules={[{ required: true, message: t`This field is required!` }]}
+    >
+      <Select
+        disabled={disabled}
+        onChange={(newCurrency: string) =>
+          prefillExchangeRate(form, organizationId, newCurrency, orgCurrency)
+        }
+      >
+        {map(currencies, (c) => (
+          <Option value={c} key={c}>
+            {c}
+          </Option>
+        ))}
+      </Select>
+    </Form.Item>
+  </Col>
+);
 
 /**
  * The two fields every document currency lives next to: the rate used to
@@ -23,7 +81,7 @@ const ExchangeRateFields = ({
   orgCurrency: string;
   disabled?: boolean;
 }) => {
-  if (!currency || currency === orgCurrency) return null;
+  if (!showExchangeRateFields(currency, orgCurrency)) return null;
 
   return (
     <>

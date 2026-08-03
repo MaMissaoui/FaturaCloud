@@ -41,10 +41,10 @@ import sum from "lodash/sum";
 import { SaveFile, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
-import { currencies } from "src/utils/currencies";
 import ExchangeRateFields, {
+  CurrencySelect,
   prefillExchangeRate,
-} from "src/components/currency/exchange-rate-fields";
+} from "src/components/currency/currency-fields";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { organizationAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
@@ -306,25 +306,7 @@ const OrderDetails = () => {
             <Input placeholder="e.g. FX1234567890" />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Currency</Trans>}
-            name="currency"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Select
-              onChange={(newCurrency: string) =>
-                prefillExchangeRate(form, organization?.id, newCurrency, orgCurrency)
-              }
-            >
-              {map(currencies, (c) => (
-                <Option value={c} key={c}>
-                  {c}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
+        <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
         <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
       </Row>
 

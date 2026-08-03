@@ -33,12 +33,13 @@ import sum from "lodash/sum";
 
 import { GetIncomingInvoiceMatch, GetPurchaseOrderLineItems } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
-import { currencies, getFormattedNumber } from "src/utils/currencies";
+import { getFormattedNumber } from "src/utils/currencies";
 import { addDecimal, calculateTax, centsToUnits, multiplyDecimal } from "src/utils/currency";
 import LineItemsTable from "src/components/line-items/table";
 import ExchangeRateFields, {
+  CurrencySelect,
   prefillExchangeRate,
-} from "src/components/currency/exchange-rate-fields";
+} from "src/components/currency/currency-fields";
 import {
   INCOMING_INVOICE_STATES,
   incomingInvoiceStateColor,
@@ -340,25 +341,7 @@ const IncomingInvoiceDetails = () => {
       </Row>
 
       <Row gutter={24}>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Currency</Trans>}
-            name="currency"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Select
-              onChange={(newCurrency: string) =>
-                prefillExchangeRate(form, organization?.id, newCurrency, orgCurrency)
-              }
-            >
-              {map(currencies, (c) => (
-                <Option value={c} key={c}>
-                  {c}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
+        <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
         <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
         <Col xs={24} md={12} xl={5}>
           <Form.Item label={<Trans>Our reference</Trans>} name="reference">

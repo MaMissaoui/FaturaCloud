@@ -78,10 +78,7 @@ import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
 import InvoicePDF from "src/components/invoices/pdf";
-import { currencies } from "src/utils/currencies";
-import ExchangeRateFields, {
-  prefillExchangeRate,
-} from "src/components/currency/exchange-rate-fields";
+import ExchangeRateFields, { CurrencySelect } from "src/components/currency/currency-fields";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
 import { generateInvoiceNumber } from "src/utils/invoice";
 import { requiredForNewLineItem } from "src/utils/line-items";
@@ -586,27 +583,11 @@ const InvoiceDetails: React.FC = () => {
                   <Input />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12} xl={6}>
-                <Form.Item
-                  label={t`Currency`}
-                  name="currency"
-                  rules={[{ required: true, message: t`This field is required!` }]}
-                >
-                  <Select
-                    onChange={(currency: string) =>
-                      prefillExchangeRate(form, organization?.id, currency, orgCurrency)
-                    }
-                  >
-                    {map(currencies, (currency) => {
-                      return (
-                        <Option value={currency} key={currency}>
-                          {currency}
-                        </Option>
-                      );
-                    })}
-                  </Select>
-                </Form.Item>
-              </Col>
+              <CurrencySelect
+                form={form}
+                organizationId={organization?.id}
+                orgCurrency={orgCurrency}
+              />
               <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
             </Row>
             <Row gutter={24}>
@@ -813,7 +794,11 @@ const InvoiceDetails: React.FC = () => {
                       width: 120,
                       render: (field) => (
                         <Form.Item name={[field.name, "taxRate"]} noStyle>
-                          <Select style={{ width: "100%" }} allowClear placeholder={t`Select tax rate`}>
+                          <Select
+                            style={{ width: "100%" }}
+                            allowClear
+                            placeholder={t`Select tax rate`}
+                          >
                             {map(taxRates, (rate: any) => (
                               <Option value={rate.id} key={rate.id}>
                                 {rate.name} {rate.percentage}%

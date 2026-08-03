@@ -32,10 +32,11 @@ import map from "lodash/map";
 import { GetPurchaseOrderLineItems, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
-import { currencies } from "src/utils/currencies";
 import ExchangeRateFields, {
+  CurrencySelect,
   prefillExchangeRate,
-} from "src/components/currency/exchange-rate-fields";
+  showExchangeRateFields,
+} from "src/components/currency/currency-fields";
 import LineItemsTable from "src/components/line-items/table";
 import {
   inboundDeliveryStatusColor,
@@ -225,7 +226,7 @@ const InboundDeliveryDetails = () => {
   return (
     <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
       <Row gutter={24}>
-        <Col xs={24} md={12} xl={6}>
+        <Col xs={24} md={12} xl={5}>
           <Form.Item
             label={<Trans>Vendor</Trans>}
             name="vendorId"
@@ -276,7 +277,7 @@ const InboundDeliveryDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={5}>
+        <Col xs={24} md={12} xl={4}>
           <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
             <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
               {map(purchaseOrders, (o: any) => (
@@ -287,7 +288,7 @@ const InboundDeliveryDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={4}>
+        <Col xs={24} md={12} xl={3}>
           <Form.Item
             label={<Trans>Receipt number</Trans>}
             name="deliveryNumber"
@@ -296,7 +297,7 @@ const InboundDeliveryDetails = () => {
             <Input />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={4}>
+        <Col xs={24} md={12} xl={3}>
           <Form.Item
             label={<Trans>Receipt date</Trans>}
             name="deliveryDate"
@@ -312,35 +313,23 @@ const InboundDeliveryDetails = () => {
             </Tag>
           </Form.Item>
         </Col>
-      </Row>
-
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Currency</Trans>}
-            name="currency"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Select
-              disabled={!isEditable}
-              onChange={(newCurrency: string) =>
-                prefillExchangeRate(form, organization?.id, newCurrency, orgCurrency)
-              }
-            >
-              {map(currencies, (c) => (
-                <Option value={c} key={c}>
-                  {c}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <ExchangeRateFields
-          currency={watchedCurrency}
+        <CurrencySelect
+          form={form}
+          organizationId={organization?.id}
           orgCurrency={orgCurrency}
           disabled={!isEditable}
         />
       </Row>
+
+      {showExchangeRateFields(watchedCurrency, orgCurrency) && (
+        <Row gutter={24}>
+          <ExchangeRateFields
+            currency={watchedCurrency}
+            orgCurrency={orgCurrency}
+            disabled={!isEditable}
+          />
+        </Row>
+      )}
 
       <Row gutter={24}>
         <Col xs={24} md={12} xl={8}>
