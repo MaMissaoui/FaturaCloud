@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.1] - 2026-08-03
+
+### Fixed
+- Product unit words ("hour", "day", "week", "month", "piece") were
+  hardcoded in the product form's Unit dropdown and re-displayed raw on
+  the products list and inventory grid regardless of the active locale —
+  they bypassed LinguiJS extraction entirely rather than being untranslated
+  entries in the catalog. Now translate correctly in German and French,
+  same as everywhere else in the app. Two hardcoded error messages in the
+  invoice PDF-preview panel and a hardcoded "Tax" fallback label got the
+  same fix.
+
 ## [3.4.0] - 2026-08-03
 
 Per-unit serial number tracking for stock-enabled products, plus a currency
