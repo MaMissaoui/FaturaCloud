@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-08-03
+
+Per-unit serial number tracking for stock-enabled products, plus a currency
+field layout fix across purchase orders and goods receipts.
+
+### Added
+- **Serial number tracking**: a stock-enabled product can now be marked as
+  individually serialized. Manual stock movements, goods receipts, and
+  deliveries for a serialized product require exact serial numbers on
+  in/out movements instead of a bare quantity, posting one stock movement
+  per physical unit rather than one aggregate row per line. A product's
+  serial history is available per unit, with in-stock status computed from
+  its latest movement rather than stored. Toggling serialization is
+  blocked in either direction while a product's stock is non-zero, since
+  either direction would strand the registry against untracked stock.
+
+### Fixed
+- Purchase orders and goods receipts gave the Currency field its own
+  dedicated row alongside the (usually hidden) exchange rate fields — when
+  the document currency matched the organization's, that row rendered
+  nothing but a lone dropdown with most of the row empty. Currency now
+  shares its header row with the document's other fields on every
+  document page, and the exchange rate row only appears when there's
+  actually a conversion to show.
+
 ## [3.3.0] - 2026-08-02
 
 Closes the last gap in 3.2.0's multi-currency rollout, tightens a couple of
