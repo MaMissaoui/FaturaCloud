@@ -17,6 +17,7 @@ import { deleteStockMovementAtom } from "src/atoms/stock";
 import { GetStockMovements } from "src/api";
 import MovementForm from "src/components/stock/movement-form";
 import PageHeader from "src/components/page-header";
+import { unitLabel } from "src/utils/units";
 
 const movementTypeTag = (type: string) => {
   if (type === "in")
@@ -200,7 +201,9 @@ const Inventory = () => {
                   <div style={{ fontSize: 20, fontWeight: 600, color }}>
                     {qty % 1 === 0 ? qty : qty.toFixed(2)}
                     {p.unit && (
-                      <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 4 }}>{p.unit}</span>
+                      <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 4 }}>
+                        {unitLabel(p.unit)}
+                      </span>
                     )}
                   </div>
                 </div>

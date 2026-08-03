@@ -16,6 +16,7 @@ import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { GetProducts } from "src/api";
 import ProductForm from "src/components/products/form";
 import PageHeader from "src/components/page-header";
+import { unitLabel } from "src/utils/units";
 
 // Decimals are a display concern only — storage stays cents regardless (see
 // db/exchange_rate.go's decimals note) — so this takes the organization's
@@ -193,7 +194,7 @@ const Products = () => {
               align="right"
               sorter
               render={(price: number, p: Product) =>
-                `${formatPrice(price, fractionDigits)}${p.unit ? ` / ${p.unit}` : ""}`
+                `${formatPrice(price, fractionDigits)}${p.unit ? ` / ${unitLabel(p.unit)}` : ""}`
               }
             />
             <Table.Column
@@ -227,7 +228,7 @@ const Products = () => {
                 const qty: number = p.stockQuantity ?? 0;
                 const status = qty <= 0 ? "error" : qty <= 5 ? "warning" : "success";
                 return (
-                  <Tooltip title={`${qty} ${p.unit ?? "units"}`}>
+                  <Tooltip title={`${qty} ${p.unit ? unitLabel(p.unit) : t`units`}`}>
                     <Badge status={status} text={qty % 1 === 0 ? String(qty) : qty.toFixed(2)} />
                   </Tooltip>
                 );
