@@ -24,22 +24,7 @@ import get from "lodash/get";
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import ScrollShadow from "src/components/scroll-shadow";
-
-const UNIT_OPTIONS = [
-  "hour",
-  "day",
-  "week",
-  "month",
-  "piece",
-  "kg",
-  "g",
-  "lb",
-  "oz",
-  "l",
-  "ml",
-  "m",
-  "km",
-];
+import { UNIT_OPTIONS, unitLabel } from "src/utils/units";
 
 // Derives a product code from its name (e.g. "Steel Bracket" -> "STEEL-BRACKET"),
 // appending "-2", "-3", ... if that code is already used by another product.
@@ -348,7 +333,7 @@ const ProductForm = () => {
                   <Select allowClear showSearch placeholder={t`Select or type a unit`}>
                     {UNIT_OPTIONS.map((u) => (
                       <Select.Option key={u} value={u}>
-                        {u}
+                        {unitLabel(u)}
                       </Select.Option>
                     ))}
                   </Select>

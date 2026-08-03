@@ -189,7 +189,7 @@ const PDFPreview: React.FC<{ createPDFDocument: () => React.ReactElement<any> | 
       try {
         const document = createPDFDocument();
         if (!document) {
-          setError("Please select a client to view PDF preview.");
+          setError(t`Please select a client to view PDF preview.`);
           setLoading(false);
           return;
         }
@@ -199,7 +199,7 @@ const PDFPreview: React.FC<{ createPDFDocument: () => React.ReactElement<any> | 
         setPdfUrl(url);
       } catch (err) {
         console.error("PDF generation error:", err);
-        setError("Error generating PDF preview. Please try again.");
+        setError(t`Error generating PDF preview. Please try again.`);
       } finally {
         setLoading(false);
       }
@@ -899,7 +899,7 @@ const InvoiceDetails: React.FC = () => {
                     taxGroups.map((group) => (
                       <Descriptions.Item
                         key={group.taxRate?.id}
-                        label={`${group.taxRate?.name || "Tax"} ${group.taxRate?.percentage || 0}%`}
+                        label={`${group.taxRate?.name || t`Tax`} ${group.taxRate?.percentage || 0}%`}
                       >
                         {Intl.NumberFormat(i18n.locale, {
                           style: "currency",
