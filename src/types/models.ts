@@ -24,7 +24,22 @@ export interface Product {
   taxRateId: string | null;
   stockEnabled: number;
   stockQuantity: number;
+  // Individually-tracked units (see SerialNumber) rather than a fungible
+  // quantity. Only meaningful when stockEnabled is set; the server blocks
+  // toggling this while stockQuantity is non-zero, in either direction.
+  serialized: number;
   createdAt: string | null;
+}
+
+export interface SerialNumber {
+  id: string;
+  organizationId: string;
+  productId: string;
+  serialNumber: string;
+  createdAt: string | null;
+  // 0/1, computed server-side from the sign of the unit's most recent
+  // linked stock movement — not a value you set directly.
+  inStock: number;
 }
 
 export interface TaxRate {
@@ -141,6 +156,7 @@ export interface DeliveryLineItem {
   position: number;
   stockEnabled: number | null;
   availableStock: number | null;
+  serialized: number | null;
 }
 
 export interface StockMovement {
@@ -152,8 +168,14 @@ export interface StockMovement {
   unitCost: number | null;
   note: string | null;
   reference: string | null;
+  // Set only for a serialized product, where this row represents exactly
+  // one physical unit (quantity is always ±1).
+  serialNumberId: string | null;
+  sourceDocumentId: string | null;
   createdAt: string | null;
   productName?: string | null;
+  // Joined display value of serialNumberId, for the Inventory ledger.
+  serialNumberValue?: string | null;
 }
 
 export interface PurchaseOrder {
@@ -221,6 +243,7 @@ export interface InboundDeliveryLineItem {
   stockEnabled: number | null;
   currentStock: number | null;
   productName: string | null;
+  serialized: number | null;
 }
 
 export interface IncomingInvoice {

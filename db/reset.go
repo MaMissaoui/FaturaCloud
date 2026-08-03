@@ -26,6 +26,10 @@ type ResetOrganizationDataRequest struct {
 // of silently breaking a delete.
 var transactionalDataTables = []string{
 	"stockMovements",
+	// Serial identity is tied to receiving/shipping history, the same as the
+	// movements themselves — a unit's serial record without any movement
+	// history to explain how it got here would be orphaned, meaningless data.
+	"product_serial_numbers",
 	"incoming_invoices",
 	"inbound_deliveries",
 	"purchase_orders",

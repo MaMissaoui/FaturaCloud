@@ -137,9 +137,17 @@ export const inboundDeliveryAtom = atom(
 
 export const updateInboundDeliveryStatusAtom = atom(
   null,
-  async (get, set, { deliveryId, status }: { deliveryId: string; status: string }) => {
+  async (
+    get,
+    set,
+    {
+      deliveryId,
+      status,
+      serialNumbers,
+    }: { deliveryId: string; status: string; serialNumbers?: Record<string, string[]> },
+  ) => {
     try {
-      const updated = await UpdateInboundDeliveryStatus(deliveryId, status);
+      const updated = await UpdateInboundDeliveryStatus(deliveryId, status, serialNumbers);
       message.success(t`Goods receipt status updated`);
       const list: any = get(inboundDeliveriesAtom);
       const merged: any = keyBy([...list, updated], "id");

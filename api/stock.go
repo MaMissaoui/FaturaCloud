@@ -38,12 +38,22 @@ func (h *handler) createStockMovement(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
-	movement, err := h.db.CreateStockMovement(req)
+	result, err := h.db.CreateStockMovement(req)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
+}
+
+func (h *handler) listProductSerialNumbers(w http.ResponseWriter, r *http.Request) {
+	productID := r.PathValue("id")
+	rows, err := h.db.GetProductSerialNumbers(productID)
 	if err != nil {
 		writeInternalError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, movement)
+	writeJSON(w, http.StatusOK, rows)
 }
 
 func (h *handler) deleteStockMovement(w http.ResponseWriter, r *http.Request) {

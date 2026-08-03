@@ -49,7 +49,7 @@ func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, product)

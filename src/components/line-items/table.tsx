@@ -79,7 +79,17 @@ export type LineItemColumn =
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
     }
   | { kind: "description"; required?: boolean; rows?: number }
-  | { kind: "quantity"; label?: ReactNode; width?: number }
+  | {
+      kind: "quantity";
+      label?: ReactNode;
+      width?: number;
+      // Defaults to 2 (fractional quantities). A serialized product's line
+      // must be a whole number — pages that carry a per-line `serialized`
+      // flag (autofilled by their product-select onSelect) pass a function
+      // to force precision 0 on those rows specifically; this is UX only,
+      // the DB layer is the actual guard.
+      precision?: number | ((fieldName: number, form: FormInstance) => number);
+    }
   | { kind: "unit"; placeholder?: string; width?: number }
   | { kind: "unitPrice"; name?: string; label?: ReactNode; width?: number }
   | { kind: "taxRate"; taxRates: any[]; width?: number }
@@ -237,17 +247,27 @@ const LineItemsTable = ({
                       width={col.width ?? 90}
                       align="right"
                       render={(field) => (
-                        <Form.Item
-                          name={[field.name, "quantity"]}
-                          noStyle
-                          rules={[{ required: true, message: t`Required` }]}
-                        >
-                          <InputNumber
-                            style={{ width: "100%", textAlign: "right" }}
-                            min={0}
-                            precision={2}
-                            disabled={disabled}
-                          />
+                        <Form.Item shouldUpdate noStyle>
+                          {() => {
+                            const precision =
+                              typeof col.precision === "function"
+                                ? col.precision(field.name, form)
+                                : (col.precision ?? 2);
+                            return (
+                              <Form.Item
+                                name={[field.name, "quantity"]}
+                                noStyle
+                                rules={[{ required: true, message: t`Required` }]}
+                              >
+                                <InputNumber
+                                  style={{ width: "100%", textAlign: "right" }}
+                                  min={0}
+                                  precision={precision}
+                                  disabled={disabled}
+                                />
+                              </Form.Item>
+                            );
+                          }}
                         </Form.Item>
                       )}
                     />

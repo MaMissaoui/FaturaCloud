@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -26,7 +27,14 @@ type Product struct {
 	TaxRateID      *string `db:"taxRateId"      json:"taxRateId"`
 	StockEnabled   int     `db:"stockEnabled"   json:"stockEnabled"`
 	StockQuantity  float64 `db:"stockQuantity"  json:"stockQuantity"`
-	CreatedAt      *string `db:"createdAt"      json:"createdAt"`
+	// Serialized products track individual physical units (product_serial_numbers)
+	// rather than a fungible quantity; only meaningful when StockEnabled == 1.
+	// Toggling it is blocked (see UpdateProduct) while StockQuantity is non-zero
+	// in either direction, since there's no principled way to either fabricate
+	// serial identity for untracked legacy stock or reconcile already-serialized
+	// stock against a suddenly-untracked quantity.
+	Serialized int     `db:"serialized"    json:"serialized"`
+	CreatedAt  *string `db:"createdAt"     json:"createdAt"`
 }
 
 type CreateProductRequest struct {
@@ -41,6 +49,7 @@ type CreateProductRequest struct {
 	Type           string  `json:"type"`
 	TaxRateID      *string `json:"taxRateId"`
 	StockEnabled   int     `json:"stockEnabled"`
+	Serialized     int     `json:"serialized"`
 }
 
 type UpdateProductRequest struct {
@@ -53,6 +62,7 @@ type UpdateProductRequest struct {
 	Type         string  `json:"type"`
 	TaxRateID    *string `json:"taxRateId"`
 	StockEnabled int     `json:"stockEnabled"`
+	Serialized   int     `json:"serialized"`
 }
 
 // ProductListOptions filters/pages/sorts GetProducts. Limit == 0 means "no
@@ -140,11 +150,16 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if req.Type == "" {
 		req.Type = "service"
 	}
+	if req.StockEnabled == 0 {
+		req.Serialized = 0
+	}
+	// A brand-new product always has zero stock, so the toggle guard
+	// UpdateProduct enforces has nothing to check here.
 	_, err := d.DB.Exec(
-		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, type, taxRateId, stockEnabled)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, type, taxRateId, stockEnabled, serialized)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Description, req.SKU,
-		req.Price, req.UnitCost, req.Unit, req.Type, req.TaxRateID, req.StockEnabled,
+		req.Price, req.UnitCost, req.Unit, req.Type, req.TaxRateID, req.StockEnabled, req.Serialized,
 	)
 	if err != nil {
 		if isDuplicateSKU(err) {
@@ -159,12 +174,34 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 	if updates.Type == "" {
 		updates.Type = "service"
 	}
-	_, err := d.DB.Exec(
+	if updates.StockEnabled == 0 {
+		updates.Serialized = 0
+	}
+
+	current, err := d.GetProduct(productID)
+	if err != nil {
+		return nil, fmt.Errorf("update_product lookup: %w", err)
+	}
+	// Blocked in both directions: turning serial tracking ON while legacy
+	// stock exists would fabricate identity for units that were never
+	// actually serialized; turning it OFF while serialized stock exists
+	// would strand the registry with no way to reconcile against a now-
+	// untracked quantity. Tolerance, not `!= 0` — stockQuantity is a
+	// SUM(REAL) and fractional movements are already supported, so exact
+	// zero isn't guaranteed even when the "real" count is zero.
+	if updates.Serialized != current.Serialized && math.Abs(current.StockQuantity) > 1e-9 {
+		return nil, newValidationError(
+			"cannot change serial number tracking for %q while stock is non-zero (%.2f) — adjust stock to zero first",
+			current.Name, current.StockQuantity,
+		)
+	}
+
+	_, err = d.DB.Exec(
 		`UPDATE products
-		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, type = ?, taxRateId = ?, stockEnabled = ?
+		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, type = ?, taxRateId = ?, stockEnabled = ?, serialized = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Description, updates.SKU, updates.Price,
-		updates.UnitCost, updates.Unit, updates.Type, updates.TaxRateID, updates.StockEnabled,
+		updates.UnitCost, updates.Unit, updates.Type, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
 		productID,
 	)
 	if err != nil {

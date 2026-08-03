@@ -224,6 +224,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PUT", "/api/products/{id}", h.updateProduct)
 	protected("DELETE", "/api/products/{id}", h.deleteProduct)
 	protected("GET", "/api/products/{id}/stock-movements", h.listProductStockMovements)
+	protected("GET", "/api/products/{id}/serial-numbers", h.listProductSerialNumbers)
 
 	// Stock movements
 	protected("GET", "/api/organizations/{orgId}/stock-movements", h.listStockMovements)
