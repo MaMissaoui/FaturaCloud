@@ -67,11 +67,14 @@ func (h *handler) updateDeliveryStatus(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var body struct {
 		Status string `json:"status"`
+		// SerialNumbers is keyed by line-item id, required for any line
+		// whose product is serialized when transitioning draft->shipped.
+		SerialNumbers map[string][]string `json:"serialNumbers"`
 	}
 	if err := decodeJSON(w, r, &body); err != nil {
 		return
 	}
-	row, err := h.db.UpdateDeliveryStatus(id, body.Status)
+	row, err := h.db.UpdateDeliveryStatus(id, body.Status, body.SerialNumbers)
 	if err != nil {
 		writeMutationError(w, err)
 		return

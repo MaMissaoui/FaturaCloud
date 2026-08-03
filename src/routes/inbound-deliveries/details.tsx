@@ -38,6 +38,7 @@ import ExchangeRateFields, {
   showExchangeRateFields,
 } from "src/components/currency/currency-fields";
 import LineItemsTable from "src/components/line-items/table";
+import SerialCaptureModal from "src/components/stock/serial-capture-modal";
 import {
   inboundDeliveryStatusColor,
   inboundDeliveryStatusLabel,
@@ -99,6 +100,13 @@ const InboundDeliveryDetails = () => {
 
   const [form] = Form.useForm();
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
+  const [serialCapture, setSerialCapture] = useState<{
+    open: boolean;
+    pendingStatus: string | null;
+  }>({
+    open: false,
+    pendingStatus: null,
+  });
 
   useEffect(() => {
     setVendors();
@@ -192,12 +200,42 @@ const InboundDeliveryDetails = () => {
     if (success) navigate("/inbound-deliveries");
   };
 
-  const handleStatusChange = async (next: string) => {
+  // Serialized lines this receipt would receive, resolved from the
+  // persisted line items (not form state) — a receipt's productId/unitCost
+  // can be resolved server-side from a linked purchase-order line, so
+  // neither is reliably present client-side before that save round-trips.
+  const serializedReceiveLines = (
+    delivery && !(delivery as any).then ? (delivery as any).lineItems : []
+  )
+    .filter((l: any) => l.serialized && l.stockEnabled && l.productId)
+    .map((l: any) => ({
+      lineItemId: l.id,
+      productId: l.productId,
+      productName: l.productName ?? l.description,
+      quantity: l.quantity,
+    }));
+
+  const applyStatusChange = async (next: string, serialNumbers?: Record<string, string[]>) => {
     if (!id || isNew) return;
-    const ok = await updateStatus({ deliveryId: id, status: next });
+    const ok = await updateStatus({ deliveryId: id, status: next, serialNumbers });
     // Only reflect the new status if the server accepted it — cancelling a
     // receipt whose goods are gone is rejected.
     if (ok) setStatusOverride(next);
+  };
+
+  const handleStatusChange = async (next: string) => {
+    if (!id || isNew) return;
+    if (next === "received" && serializedReceiveLines.length > 0) {
+      setSerialCapture({ open: true, pendingStatus: next });
+      return;
+    }
+    await applyStatusChange(next);
+  };
+
+  const handleSerialCaptureConfirm = async (serialNumbers: Record<string, string[]>) => {
+    if (!serialCapture.pendingStatus) return;
+    await applyStatusChange(serialCapture.pendingStatus, serialNumbers);
+    setSerialCapture({ open: false, pendingStatus: null });
   };
 
   const watchedCurrency = Form.useWatch("currency", form);
@@ -366,13 +404,20 @@ const InboundDeliveryDetails = () => {
                   description: (product as any).name,
                   unit: (product as any).unit,
                   unitCost: centsToUnits((product as any).unitCost ?? 0),
+                  serialized: (product as any).serialized,
                 };
                 formInstance.setFieldValue("lineItems", [...items]);
               }
             },
           },
           { kind: "description", required: true },
-          { kind: "quantity", label: <Trans>Qty received</Trans>, width: 110 },
+          {
+            kind: "quantity",
+            label: <Trans>Qty received</Trans>,
+            width: 110,
+            precision: (fieldName, formInstance) =>
+              formInstance.getFieldValue(["lineItems", fieldName, "serialized"]) ? 0 : 2,
+          },
           { kind: "unit", width: 80 },
           { kind: "unitPrice", name: "unitCost", label: <Trans>Unit cost</Trans> },
           {
@@ -459,6 +504,13 @@ const InboundDeliveryDetails = () => {
           </Footer>,
           document.getElementById("footer") as HTMLElement,
         )}
+      <SerialCaptureModal
+        open={serialCapture.open}
+        mode="receive"
+        lines={serializedReceiveLines}
+        onCancel={() => setSerialCapture({ open: false, pendingStatus: null })}
+        onConfirm={handleSerialCaptureConfirm}
+      />
     </Form>
   );
 };

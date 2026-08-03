@@ -331,7 +331,7 @@ func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
 	}
 
 	// Ship — should reduce stock and record a referenced "out" movement.
-	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err != nil {
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil); err != nil {
 		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
 	}
 	shipped, err := d.GetProduct(product.ID)
@@ -348,7 +348,7 @@ func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
 	}
 
 	// Cancel the shipped delivery — should restore stock via a reversing "in" movement.
-	if _, err := d.UpdateDeliveryStatus(delivery.ID, "cancelled"); err != nil {
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "cancelled", nil); err != nil {
 		t.Fatalf("UpdateDeliveryStatus(cancelled): %v", err)
 	}
 	restored, err := d.GetProduct(product.ID)
@@ -395,7 +395,7 @@ func TestDeleteStockMovementBlockedForShippedDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateDelivery: %v", err)
 	}
-	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err != nil {
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil); err != nil {
 		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
 	}
 
@@ -421,7 +421,7 @@ func TestDeleteStockMovementBlockedForReceivedReceipt(t *testing.T) {
 	d := newTestDB(t)
 	product, receipt := seedReceipt(t, d, "org-recv-mv-1", 10, 250)
 
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 		t.Fatalf("UpdateInboundDeliveryStatus(received): %v", err)
 	}
 
@@ -496,7 +496,7 @@ func TestDeliveryShipInsufficientStockBlocked(t *testing.T) {
 		t.Fatalf("CreateDelivery: %v", err)
 	}
 
-	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err == nil {
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil); err == nil {
 		t.Fatal("expected shipping to be blocked by insufficient stock, got nil error")
 	}
 
@@ -542,7 +542,7 @@ func TestStandaloneDeliveryShipReducesStock(t *testing.T) {
 		t.Fatalf("CreateDelivery: %v", err)
 	}
 
-	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err != nil {
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil); err != nil {
 		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
 	}
 	shipped, err := d.GetProduct(product.ID)
@@ -907,7 +907,7 @@ func TestDeliveryStatusTransitions(t *testing.T) {
 				t.Fatalf("force status to %q: %v", tc.from, err)
 			}
 
-			_, err = d.UpdateDeliveryStatus(delivery.ID, tc.to)
+			_, err = d.UpdateDeliveryStatus(delivery.ID, tc.to, nil)
 			if tc.wantErr && err == nil {
 				t.Fatalf("expected transition %s -> %s to be rejected", tc.from, tc.to)
 			}
@@ -1163,7 +1163,7 @@ func TestUpdateDeliveryRejectsLineItemEditAfterShip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateDelivery: %v", err)
 	}
-	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped"); err != nil {
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil); err != nil {
 		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
 	}
 
@@ -2283,7 +2283,7 @@ func TestInboundReceiptRaisesStockAndSetsCost(t *testing.T) {
 		t.Fatalf("unitCost not resolved from the purchase order line: %v", items[0].UnitCost)
 	}
 
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 		t.Fatalf("UpdateInboundDeliveryStatus: %v", err)
 	}
 
@@ -2323,10 +2323,10 @@ func TestInboundCancelReversesStock(t *testing.T) {
 	d := newTestDB(t)
 	product, receipt := seedReceipt(t, d, "org-inb-2", 10, 250)
 
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled", nil); err != nil {
 		t.Fatalf("cancel: %v", err)
 	}
 
@@ -2355,7 +2355,7 @@ func TestInboundCancelRejectedWhenStockAlreadyConsumed(t *testing.T) {
 	d := newTestDB(t)
 	product, receipt := seedReceipt(t, d, "org-inb-3", 10, 250)
 
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 	// Ship 6 of the 10 units out.
@@ -2365,7 +2365,7 @@ func TestInboundCancelRejectedWhenStockAlreadyConsumed(t *testing.T) {
 		t.Fatalf("CreateStockMovement: %v", err)
 	}
 
-	_, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled")
+	_, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled", nil)
 	if err == nil {
 		t.Fatal("expected cancelling a partly-consumed receipt to be rejected")
 	}
@@ -2399,7 +2399,7 @@ func TestInboundStandaloneReceiptMovesStock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateInboundDelivery: %v", err)
 	}
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 
@@ -2418,7 +2418,7 @@ func TestInboundLineItemsFrozenAfterReceipt(t *testing.T) {
 	d := newTestDB(t)
 	_, receipt := seedReceipt(t, d, "org-inb-5", 10, 250)
 
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 
@@ -2485,7 +2485,7 @@ func TestInboundDeliveryStatusTransitions(t *testing.T) {
 				t.Fatalf("force status to %q: %v", tc.from, err)
 			}
 
-			_, err = d.UpdateInboundDeliveryStatus(receipt.ID, tc.to)
+			_, err = d.UpdateInboundDeliveryStatus(receipt.ID, tc.to, nil)
 			if tc.wantErr && err == nil {
 				t.Fatalf("expected transition %s -> %s to be rejected", tc.from, tc.to)
 			}
@@ -2583,7 +2583,7 @@ func seedMatch(t *testing.T, d *Database, orgID string, ordered float64, unitPri
 		if err != nil {
 			t.Fatalf("CreateInboundDelivery: %v", err)
 		}
-		if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+		if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 			t.Fatalf("receive: %v", err)
 		}
 	}
@@ -3006,12 +3006,12 @@ func TestReceivedQuantityAgreesBetweenOrderAndMatch(t *testing.T) {
 	// A draft receipt has moved no stock, so nothing is received yet.
 	assertAgrees("draft", 0)
 
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 	assertAgrees("received", 10)
 
-	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled"); err != nil {
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "cancelled", nil); err != nil {
 		t.Fatalf("cancel: %v", err)
 	}
 	assertAgrees("cancelled", 0)

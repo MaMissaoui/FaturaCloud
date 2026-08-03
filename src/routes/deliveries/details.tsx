@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
@@ -40,6 +40,7 @@ import {
   deleteDeliveryAtom,
 } from "src/atoms/delivery";
 import DeliveryNotePDF from "src/components/deliveries/delivery-note-pdf";
+import SerialCaptureModal from "src/components/stock/serial-capture-modal";
 import {
   deliveryStatusColor,
   deliveryStatusLabel,
@@ -89,6 +90,13 @@ const DeliveryDetails = () => {
   const deleteDelivery = useSetAtom(deleteDeliveryAtom);
 
   const [form] = Form.useForm();
+  const [serialCapture, setSerialCapture] = useState<{
+    open: boolean;
+    pendingStatus: string | null;
+  }>({
+    open: false,
+    pendingStatus: null,
+  });
 
   useEffect(() => {
     setClients();
@@ -169,11 +177,43 @@ const DeliveryDetails = () => {
     if (success) navigate("/deliveries");
   };
 
+  // Serialized lines this delivery would ship, resolved from the persisted
+  // line items (not form state) — an outbound delivery's productId can be
+  // resolved server-side from a linked order line, so it isn't reliably
+  // present client-side before that save round-trips.
+  const serializedShipLines = (
+    delivery && !(delivery as any).then ? (delivery as any).lineItems : []
+  )
+    .filter((l: any) => l.serialized && l.stockEnabled && l.productId)
+    .map((l: any) => ({
+      lineItemId: l.id,
+      productId: l.productId,
+      productName: l.description,
+      quantity: l.quantity,
+    }));
+
+  const applyStatusChange = async (next: string, serialNumbers?: Record<string, string[]>) => {
+    if (!id || isNew) return;
+    const ok = await updateStatus({ deliveryId: id, status: next, serialNumbers });
+    if (ok) {
+      setDeliveryId(null);
+      setTimeout(() => setDeliveryId(id), 0);
+    }
+  };
+
   const handleStatusChange = async (next: string) => {
     if (!id || isNew) return;
-    await updateStatus({ deliveryId: id, status: next });
-    setDeliveryId(null);
-    setTimeout(() => setDeliveryId(id), 0);
+    if (next === "shipped" && serializedShipLines.length > 0) {
+      setSerialCapture({ open: true, pendingStatus: next });
+      return;
+    }
+    await applyStatusChange(next);
+  };
+
+  const handleSerialCaptureConfirm = async (serialNumbers: Record<string, string[]>) => {
+    if (!serialCapture.pendingStatus) return;
+    await applyStatusChange(serialCapture.pendingStatus, serialNumbers);
+    setSerialCapture({ open: false, pendingStatus: null });
   };
 
   const handlePrintDeliveryNote = async () => {
@@ -320,12 +360,18 @@ const DeliveryDetails = () => {
                 unit: (product as any)?.unit,
                 stockEnabled: (product as any)?.stockEnabled,
                 availableStock: (product as any)?.stockQuantity,
+                serialized: (product as any)?.serialized,
               };
               formInstance.setFieldValue("lineItems", [...lineItems]);
             },
           },
           { kind: "description", required: true },
-          { kind: "quantity", width: 110 },
+          {
+            kind: "quantity",
+            width: 110,
+            precision: (fieldName, formInstance) =>
+              formInstance.getFieldValue(["lineItems", fieldName, "serialized"]) ? 0 : 2,
+          },
           {
             kind: "custom",
             key: "availableStock",
@@ -417,6 +463,13 @@ const DeliveryDetails = () => {
           </Footer>,
           document.getElementById("footer") as HTMLElement,
         )}
+      <SerialCaptureModal
+        open={serialCapture.open}
+        mode="ship"
+        lines={serializedShipLines}
+        onCancel={() => setSerialCapture({ open: false, pendingStatus: null })}
+        onConfirm={handleSerialCaptureConfirm}
+      />
     </Form>
   );
 };

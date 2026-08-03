@@ -22,6 +22,7 @@ import type {
   Delivery,
   DeliveryLineItem,
   StockMovement,
+  SerialNumber,
 } from "src/types/models";
 
 // ---- Auth ----
@@ -362,6 +363,8 @@ export const DeleteProduct = (id: string) =>
   del<{ deleted: boolean }>(`/products/${id}`).then((r) => r.deleted);
 export const GetProductStockMovements = (id: string) =>
   get<StockMovement[]>(`/products/${id}/stock-movements`);
+export const GetProductSerialNumbers = (id: string) =>
+  get<SerialNumber[]>(`/products/${id}/serial-numbers`);
 
 // ---- Stock Movements ----
 
@@ -384,8 +387,14 @@ export const GetStockMovements = (
   const suffix = qs.toString() ? `?${qs}` : "";
   return get<Page<StockMovement>>(`/organizations/${organizationId}/stock-movements${suffix}`);
 };
-export const CreateStockMovement = (req: Partial<StockMovement>) =>
-  post<StockMovement>("/stock-movements", req);
+// serialNumbers is only meaningful for a serialized product: new/returning
+// serials for type "in", existing in-stock serials to remove for type "out".
+// The server returns every movement row the request produced (more than one
+// for a serialized product's fan-out, exactly one otherwise) plus the
+// refreshed product, since a per-row stockQuantity delta the caller could
+// apply locally no longer exists once a request can post multiple rows.
+export const CreateStockMovement = (req: Partial<StockMovement> & { serialNumbers?: string[] }) =>
+  post<{ movements: StockMovement[]; product: Product }>("/stock-movements", req);
 export const DeleteStockMovement = (id: string) =>
   del<{ deleted: boolean }>(`/stock-movements/${id}`).then((r) => r.deleted);
 
@@ -496,8 +505,13 @@ export const GetDeliveryLineItems = (id: string) =>
   get<DeliveryLineItem[]>(`/deliveries/${id}/line-items`);
 export const CreateDelivery = (req: unknown) => post<Delivery>("/deliveries", req);
 export const UpdateDelivery = (id: string, req: unknown) => put<Delivery>(`/deliveries/${id}`, req);
-export const UpdateDeliveryStatus = (id: string, status: string) =>
-  patch<Delivery>(`/deliveries/${id}/status`, { status });
+// serialNumbers, keyed by line-item id, is required for any line whose
+// product is serialized when transitioning draft -> shipped.
+export const UpdateDeliveryStatus = (
+  id: string,
+  status: string,
+  serialNumbers?: Record<string, string[]>,
+) => patch<Delivery>(`/deliveries/${id}/status`, { status, serialNumbers });
 export const DeleteDelivery = (id: string) =>
   del<{ success: boolean }>(`/deliveries/${id}`).then((r) => r.success);
 
@@ -550,8 +564,13 @@ export const CreateInboundDelivery = (req: unknown) =>
   post<InboundDelivery>("/inbound-deliveries", req);
 export const UpdateInboundDelivery = (id: string, req: unknown) =>
   put<InboundDelivery>(`/inbound-deliveries/${id}`, req);
-export const UpdateInboundDeliveryStatus = (id: string, status: string) =>
-  patch<InboundDelivery>(`/inbound-deliveries/${id}/status`, { status });
+// serialNumbers, keyed by line-item id, is required for any line whose
+// product is serialized when transitioning draft -> received.
+export const UpdateInboundDeliveryStatus = (
+  id: string,
+  status: string,
+  serialNumbers?: Record<string, string[]>,
+) => patch<InboundDelivery>(`/inbound-deliveries/${id}/status`, { status, serialNumbers });
 export const DeleteInboundDelivery = (id: string) =>
   del<{ deleted: boolean }>(`/inbound-deliveries/${id}`).then((r) => r.deleted);
 

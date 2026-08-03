@@ -102,13 +102,23 @@ export const deliveryAtom = atom(
 
 export const updateDeliveryStatusAtom = atom(
   null,
-  async (_get, _set, { deliveryId, status }: { deliveryId: string; status: string }) => {
+  async (
+    _get,
+    _set,
+    {
+      deliveryId,
+      status,
+      serialNumbers,
+    }: { deliveryId: string; status: string; serialNumbers?: Record<string, string[]> },
+  ) => {
     try {
-      await UpdateDeliveryStatus(deliveryId, status);
+      await UpdateDeliveryStatus(deliveryId, status, serialNumbers);
       message.success(t`Delivery status updated`);
+      return true;
     } catch (error) {
       console.error("Failed to update delivery status:", error);
       message.error(error instanceof Error ? error.message : t`Failed to update delivery status`);
+      return false;
     }
   },
 );

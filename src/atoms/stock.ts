@@ -15,28 +15,27 @@ import { productsAtom } from "./product";
 
 export const createStockMovementAtom = atom(null, async (get, set, req: any) => {
   try {
-    const movement = await CreateStockMovement({
+    const { movements, product } = await CreateStockMovement({
       ...req,
       id: nanoid(),
       organizationId: get(organizationIdAtom),
     });
 
-    // Update the product's stockQuantity in the products list
+    // Replace the product wholesale from the server's own refreshed state,
+    // rather than patching stockQuantity by a single movement's quantity —
+    // a serialized request can post many movement rows at once (one per
+    // unit), so there's no single delta to apply locally.
     const products: any[] = get(productsAtom);
     set(
       productsAtom,
-      products.map((p: any) =>
-        p.id === movement.productId
-          ? { ...p, stockQuantity: p.stockQuantity + movement.quantity }
-          : p,
-      ),
+      products.map((p: any) => (p.id === product.id ? product : p)),
     );
 
     message.success(t`Stock movement recorded`);
-    return movement;
+    return movements;
   } catch (error) {
     console.error("Failed to create stock movement:", error);
-    message.error(t`Failed to record stock movement`);
+    message.error(error instanceof Error ? error.message : t`Failed to record stock movement`);
     return null;
   }
 });

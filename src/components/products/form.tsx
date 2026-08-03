@@ -13,6 +13,7 @@ import {
   Select,
   Space,
   Switch,
+  Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -24,12 +25,31 @@ import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import ScrollShadow from "src/components/scroll-shadow";
 
-const UNIT_OPTIONS = ["hour", "day", "week", "month", "piece", "kg", "g", "lb", "oz", "l", "ml", "m", "km"];
+const UNIT_OPTIONS = [
+  "hour",
+  "day",
+  "week",
+  "month",
+  "piece",
+  "kg",
+  "g",
+  "lb",
+  "oz",
+  "l",
+  "ml",
+  "m",
+  "km",
+];
 
 // Derives a product code from its name (e.g. "Steel Bracket" -> "STEEL-BRACKET"),
 // appending "-2", "-3", ... if that code is already used by another product.
 const deriveProductCode = (name: string, existingCodes: Set<string>): string => {
-  const base = name.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "PRODUCT";
+  const base =
+    name
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 24) || "PRODUCT";
   if (!existingCodes.has(base)) return base;
   let suffix = 2;
   while (existingCodes.has(`${base}-${suffix}`)) suffix += 1;
@@ -94,6 +114,7 @@ const ProductForm = () => {
         price: product.price / 100,
         unitCost: product.unitCost != null ? product.unitCost / 100 : null,
         stockEnabled: product.stockEnabled === 1,
+        serialized: product.serialized === 1,
       });
     } else if (!productId) {
       form.resetFields();
@@ -108,11 +129,13 @@ const ProductForm = () => {
 
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
+    const stockEnabled = values.type === "product" && values.stockEnabled ? 1 : 0;
     await setProduct({
       ...values,
       price: Math.round((values.price ?? 0) * 100),
       unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
-      stockEnabled: values.type === "product" && values.stockEnabled ? 1 : 0,
+      stockEnabled,
+      serialized: stockEnabled && values.serialized ? 1 : 0,
     });
     handleClose();
     setSubmitting(false);
@@ -152,7 +175,9 @@ const ProductForm = () => {
             )}
           </div>
           <Space>
-            <Button onClick={handleClose}><Trans>Cancel</Trans></Button>
+            <Button onClick={handleClose}>
+              <Trans>Cancel</Trans>
+            </Button>
             <Button type="primary" loading={submitting} onClick={() => form.submit()}>
               <Trans>Save</Trans>
             </Button>
@@ -165,7 +190,7 @@ const ProductForm = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={{ type: "service", stockEnabled: false }}
+          initialValues={{ type: "service", stockEnabled: false, serialized: false }}
         >
           <Card size="small" title={<Trans>Details</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
@@ -213,15 +238,65 @@ const ProductForm = () => {
                         label={<Trans>Track inventory</Trans>}
                         valuePropName="checked"
                       >
-                        <Switch />
+                        <Switch
+                          onChange={(checked) => {
+                            if (!checked) form.setFieldValue("serialized", false);
+                          }}
+                        />
                       </Form.Item>
+                    ) : null
+                  }
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  noStyle
+                  shouldUpdate={(prev, cur) =>
+                    prev.type !== cur.type || prev.stockEnabled !== cur.stockEnabled
+                  }
+                >
+                  {({ getFieldValue }) =>
+                    getFieldValue("type") === "product" && getFieldValue("stockEnabled") ? (
+                      // Tooltip must wrap the whole Form.Item, not sit inside it as
+                      // the Switch's parent — Form.Item injects `checked`/`onChange`
+                      // onto its direct child, and Tooltip doesn't forward those
+                      // through to Switch, which silently breaks the field (the
+                      // switch visually toggles via its own uncontrolled state, but
+                      // the value never reaches the form).
+                      <Tooltip
+                        title={
+                          product && product.stockQuantity !== 0 ? (
+                            <Trans>Adjust stock to zero first</Trans>
+                          ) : undefined
+                        }
+                      >
+                        <Form.Item
+                          name="serialized"
+                          label={<Trans>Track serial numbers</Trans>}
+                          valuePropName="checked"
+                          extra={
+                            product && product.stockQuantity !== 0 ? (
+                              <Trans>
+                                Cannot change while stock is non-zero ({product.stockQuantity}) —
+                                adjust stock to zero first.
+                              </Trans>
+                            ) : undefined
+                          }
+                        >
+                          <Switch disabled={!!product && product.stockQuantity !== 0} />
+                        </Form.Item>
+                      </Tooltip>
                     ) : null
                   }
                 </Form.Item>
               </Col>
 
               <Col xs={24}>
-                <Form.Item name="description" label={<Trans>Description</Trans>} style={{ marginBottom: 0 }}>
+                <Form.Item
+                  name="description"
+                  label={<Trans>Description</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
                   <Input.TextArea rows={2} placeholder={t`Optional description or notes`} />
                 </Form.Item>
               </Col>
@@ -236,7 +311,13 @@ const ProductForm = () => {
                   label={<Trans>Price</Trans>}
                   rules={[{ required: true, message: t`Price is required` }]}
                 >
-                  <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
+                  <InputNumber
+                    min={0}
+                    precision={2}
+                    step={0.01}
+                    style={{ width: "100%" }}
+                    placeholder="0.00"
+                  />
                 </Form.Item>
               </Col>
               {/* Once goods are received at a cost, this becomes a weighted
@@ -247,9 +328,19 @@ const ProductForm = () => {
                 <Form.Item
                   name="unitCost"
                   label={<Trans>Cost price</Trans>}
-                  extra={<Trans>Calculated as a weighted average once goods are received at a cost.</Trans>}
+                  extra={
+                    <Trans>
+                      Calculated as a weighted average once goods are received at a cost.
+                    </Trans>
+                  }
                 >
-                  <InputNumber min={0} precision={2} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
+                  <InputNumber
+                    min={0}
+                    precision={2}
+                    step={0.01}
+                    style={{ width: "100%" }}
+                    placeholder="0.00"
+                  />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>

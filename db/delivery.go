@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"math"
 
 	"github.com/jmoiron/sqlx"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -50,6 +51,7 @@ type OutboundDeliveryLineItem struct {
 	// (free-text line) or the product isn't stock-tracked.
 	StockEnabled   *int     `db:"stockEnabled"   json:"stockEnabled"`
 	AvailableStock *float64 `db:"availableStock" json:"availableStock"`
+	Serialized     *int     `db:"serialized"     json:"serialized"`
 }
 
 type CreateDeliveryLineItemRequest struct {
@@ -127,7 +129,8 @@ func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLi
 	err := d.DB.Select(&items, `
 		SELECT dli.*,
 		       p.stockEnabled AS stockEnabled,
-		       p.stockQuantity AS availableStock
+		       p.stockQuantity AS availableStock,
+		       p.serialized AS serialized
 		FROM outbound_delivery_line_items dli
 		LEFT JOIN products p ON dli.productId = p.id
 		WHERE dli.deliveryId = ?
@@ -214,10 +217,12 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 
 // deliveryStockLine is a delivery line item resolved to its stock-enabled product.
 type deliveryStockLine struct {
+	LineItemID     string  `db:"lineItemId"`
 	ProductID      string  `db:"productId"`
 	ProductName    string  `db:"productName"`
 	Quantity       float64 `db:"quantity"`
 	AvailableStock float64 `db:"availableStock"`
+	Serialized     int     `db:"serialized"`
 }
 
 // getShippableStockLines returns the delivery's line items that are linked to a
@@ -226,10 +231,12 @@ type deliveryStockLine struct {
 func getShippableStockLines(tx *sqlx.Tx, deliveryID string) ([]deliveryStockLine, error) {
 	lines := []deliveryStockLine{}
 	err := tx.Select(&lines, `
-		SELECT p.id AS productId,
+		SELECT dli.id AS lineItemId,
+		       p.id AS productId,
 		       p.name AS productName,
 		       dli.quantity AS quantity,
-		       p.stockQuantity AS availableStock
+		       p.stockQuantity AS availableStock,
+		       p.serialized AS serialized
 		FROM outbound_delivery_line_items dli
 		JOIN products p ON dli.productId = p.id
 		WHERE dli.deliveryId = ? AND p.stockEnabled = 1`,
@@ -256,7 +263,13 @@ var deliveryStatusTransitions = map[string]map[string]bool{
 // already-shipped delivery is cancelled. Any transition not in
 // deliveryStatusTransitions (including out of a terminal state) is rejected;
 // setting a delivery to its current status is a no-op.
-func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, error) {
+//
+// serialNumbers is keyed by line-item id and is required (exactly matching
+// each line's quantity, each already in stock) for any line whose product is
+// serialized — mandatory so the registry never falls behind actual stock
+// movements. It's ignored for non-serialized lines and unused on any
+// transition other than draft->shipped.
+func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[string][]string) (*OutboundDelivery, error) {
 	current, err := d.GetDelivery(id)
 	if err != nil {
 		return nil, fmt.Errorf("update_delivery_status lookup: %w", err)
@@ -280,6 +293,9 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 			return nil, err
 		}
 		for _, line := range lines {
+			if line.Serialized == 1 {
+				continue // validated per-serial below, a superset of this aggregate check
+			}
 			if line.Quantity > line.AvailableStock {
 				return nil, newValidationError(
 					"insufficient stock for %q: available %.2f, requested %.2f",
@@ -287,7 +303,80 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 				)
 			}
 		}
+
+		// Validate every serialized line before writing anything: whole-number
+		// quantity, exactly that many (deduped) serials supplied, no serial
+		// reused across lines of the same product in this one request, and —
+		// stricter than receive — every serial must already be registered
+		// *and* currently in stock (an unregistered serial obviously isn't in
+		// this org's stock, so it fails the same way).
+		perProductSerials := map[string][]string{}
 		for _, line := range lines {
+			if line.Serialized != 1 {
+				continue
+			}
+			if line.Quantity != math.Trunc(line.Quantity) {
+				return nil, newValidationError(
+					"%q is serialized — quantity must be a whole number, got %.2f",
+					line.ProductName, line.Quantity,
+				)
+			}
+			given := dedupeStrings(serialNumbers[line.LineItemID])
+			if len(given) != int(line.Quantity) {
+				return nil, newValidationError(
+					"%q requires exactly %d serial number(s), got %d",
+					line.ProductName, int(line.Quantity), len(given),
+				)
+			}
+			perProductSerials[line.ProductID] = append(perProductSerials[line.ProductID], given...)
+		}
+		resolvedSerials := map[string]map[string]string{} // productId -> serial -> serialNumberId
+		for productID, serials := range perProductSerials {
+			if len(dedupeStrings(serials)) != len(serials) {
+				return nil, newValidationError("duplicate serial number(s) supplied for the same product in this delivery")
+			}
+			lookups, err := lookupSerialNumbersTx(tx, productID, serials)
+			if err != nil {
+				return nil, err
+			}
+			ids := make(map[string]string, len(serials))
+			for _, s := range serials {
+				lu, ok := lookups[s]
+				if !ok || !lu.InStock {
+					return nil, newValidationError("serial %q is not currently in stock", s)
+				}
+				ids[s] = lu.ID
+			}
+			resolvedSerials[productID] = ids
+		}
+
+		for _, line := range lines {
+			if line.Serialized == 1 {
+				serials := dedupeStrings(serialNumbers[line.LineItemID])
+				for _, s := range serials {
+					serialID := resolvedSerials[line.ProductID][s]
+					movementID, _ := gonanoid.New()
+					if err := insertStockMovementRowTx(tx, CreateStockMovementRequest{
+						ID:               movementID,
+						OrganizationID:   current.OrganizationID,
+						ProductID:        line.ProductID,
+						Type:             "out",
+						Quantity:         -1,
+						Note:             ptrStr("Delivery " + current.DeliveryNumber),
+						Reference:        &current.DeliveryNumber,
+						SerialNumberID:   &serialID,
+						SourceDocumentID: &current.ID,
+					}); err != nil {
+						return nil, fmt.Errorf("update_delivery_status reduce_stock: %w", err)
+					}
+				}
+				if err := recomputeStockQuantityTx(tx, line.ProductID); err != nil {
+					return nil, err
+				}
+				touchedProducts = append(touchedProducts, line.ProductID)
+				continue
+			}
+
 			movementID, _ := gonanoid.New()
 			if err := insertStockMovementTx(tx, CreateStockMovementRequest{
 				ID:             movementID,
@@ -308,7 +397,57 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 		if err != nil {
 			return nil, err
 		}
+
+		// Serialized products dedupe by productId here (not per line) since
+		// reversal looks up everything this delivery posted for that product
+		// across all its lines combined, not line-by-line.
+		serializedProductNames := map[string]string{}
 		for _, line := range lines {
+			if line.Serialized == 1 {
+				serializedProductNames[line.ProductID] = line.ProductName
+			}
+		}
+
+		// For each serialized product, resolve exactly the serial units this
+		// delivery shipped — via sourceDocumentId, never `reference` (free
+		// text a manual movement could coincidentally reuse) — and confirm
+		// none has already come back into stock through some other movement
+		// before restoring any of them.
+		postedByProduct := map[string][]string{}
+		for productID, productName := range serializedProductNames {
+			var posted []struct {
+				SerialNumberID string `db:"serialNumberId"`
+			}
+			if err := tx.Select(&posted, `
+				SELECT serialNumberId FROM stockMovements
+				WHERE productId = ? AND sourceDocumentId = ? AND type = 'out' AND serialNumberId IS NOT NULL`,
+				productID, current.ID,
+			); err != nil {
+				return nil, fmt.Errorf("update_delivery_status lookup_serials: %w", err)
+			}
+			ids := make([]string, len(posted))
+			for i, p := range posted {
+				ids[i] = p.SerialNumberID
+			}
+			inStock, err := serialInStockByIDTx(tx, ids)
+			if err != nil {
+				return nil, err
+			}
+			for _, sid := range ids {
+				if inStock[sid] {
+					return nil, newValidationError(
+						"cannot cancel: %q has a unit shipped by this delivery that's already back in stock through another movement",
+						productName,
+					)
+				}
+			}
+			postedByProduct[productID] = ids
+		}
+
+		for _, line := range lines {
+			if line.Serialized == 1 {
+				continue // restored once per product below, not per line
+			}
 			movementID, _ := gonanoid.New()
 			if err := insertStockMovementTx(tx, CreateStockMovementRequest{
 				ID:             movementID,
@@ -322,6 +461,29 @@ func (d *Database) UpdateDeliveryStatus(id, status string) (*OutboundDelivery, e
 				return nil, fmt.Errorf("update_delivery_status restore_stock: %w", err)
 			}
 			touchedProducts = append(touchedProducts, line.ProductID)
+		}
+		for productID, ids := range postedByProduct {
+			for _, sid := range ids {
+				serialID := sid
+				movementID, _ := gonanoid.New()
+				if err := insertStockMovementRowTx(tx, CreateStockMovementRequest{
+					ID:               movementID,
+					OrganizationID:   current.OrganizationID,
+					ProductID:        productID,
+					Type:             "in",
+					Quantity:         1,
+					Note:             ptrStr("Delivery " + current.DeliveryNumber + " cancelled"),
+					Reference:        &current.DeliveryNumber,
+					SerialNumberID:   &serialID,
+					SourceDocumentID: &current.ID,
+				}); err != nil {
+					return nil, fmt.Errorf("update_delivery_status restore_stock: %w", err)
+				}
+			}
+			if err := recomputeStockQuantityTx(tx, productID); err != nil {
+				return nil, err
+			}
+			touchedProducts = append(touchedProducts, productID)
 		}
 	}
 
