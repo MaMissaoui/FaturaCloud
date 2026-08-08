@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -207,20 +208,28 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
+	// Phase 7: every row this request writes shares this one batch id —
+	// previously only the serialized fan-out set SourceDocumentID at all.
+	// This is what makes the request's GL entry (if any) findable via
+	// FindPostedEntryForSourceDocument regardless of whether it fans out to
+	// one row or many, and what DeleteStockMovement's new guard keys off.
+	req.SourceDocumentID = &req.ID
 
 	product, err := d.GetProduct(req.ProductID)
 	if err != nil {
 		return nil, fmt.Errorf("create_stock_movement product: %w", err)
 	}
 
-	tx, err := d.DB.Beginx()
-	if err != nil {
-		return nil, fmt.Errorf("create_stock_movement begin: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	var movementIDs []string
-
+	// Phase 7: every d.DB read this request needs (serial lookups, the
+	// resulting GL lines) happens here, before the transaction opens — a
+	// second connection request while a tx holds the only one blocks
+	// forever under db.SetMaxOpenConns(1) rather than erroring, the same
+	// constraint UpdateInvoiceState/UpdateInboundDeliveryStatus/
+	// UpdateDeliveryStatus already follow. lookupSerialNumbersTx/
+	// getOrCreateSerialNumbersTx already accept a generic execer (not
+	// *sqlx.Tx specifically), so resolving serials here and reusing the
+	// result inside the transaction needs no signature changes there.
+	var serialIDsIn, serialIDsOut map[string]string // serial -> serialNumberId
 	if product.Serialized == 1 {
 		if req.Type != "in" && req.Type != "out" {
 			return nil, newValidationError(
@@ -234,7 +243,7 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 			return nil, newValidationError("at least one serial number is required for a serialized product")
 		}
 
-		lookups, err := lookupSerialNumbersTx(tx, req.ProductID, serials)
+		lookups, err := lookupSerialNumbersTx(d.DB, req.ProductID, serials)
 		if err != nil {
 			return nil, err
 		}
@@ -245,22 +254,11 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 					return nil, newValidationError("serial %q is already in stock for %q", s, product.Name)
 				}
 			}
-			ids, err := getOrCreateSerialNumbersTx(tx, req.OrganizationID, req.ProductID, serials)
+			ids, err := getOrCreateSerialNumbersTx(d.DB, req.OrganizationID, req.ProductID, serials)
 			if err != nil {
 				return nil, err
 			}
-			for _, s := range serials {
-				serialID := ids[s]
-				movementID, _ := gonanoid.New()
-				if err := insertStockMovementRowTx(tx, CreateStockMovementRequest{
-					ID: movementID, OrganizationID: req.OrganizationID, ProductID: req.ProductID,
-					Type: "in", Quantity: 1, UnitCost: req.UnitCost, Note: req.Note, Reference: req.Reference,
-					SerialNumberID: &serialID,
-				}); err != nil {
-					return nil, fmt.Errorf("create_stock_movement insert: %w", err)
-				}
-				movementIDs = append(movementIDs, movementID)
-			}
+			serialIDsIn = ids
 		} else { // "out"
 			for _, s := range serials {
 				lu, ok := lookups[s]
@@ -268,15 +266,50 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 					return nil, newValidationError("serial %q is not currently in stock for %q", s, product.Name)
 				}
 			}
+			serialIDsOut = make(map[string]string, len(serials))
 			for _, s := range serials {
-				serialID := lookups[s].ID
+				serialIDsOut[s] = lookups[s].ID
+			}
+		}
+	}
+
+	glLines, glJournal, err := buildStockAdjustmentGLLines(d, req, product, serialIDsIn, serialIDsOut)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("create_stock_movement begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var movementIDs []string
+
+	if product.Serialized == 1 {
+		if req.Type == "in" {
+			for s, serialID := range serialIDsIn {
+				sid := serialID
+				movementID, _ := gonanoid.New()
+				if err := insertStockMovementRowTx(tx, CreateStockMovementRequest{
+					ID: movementID, OrganizationID: req.OrganizationID, ProductID: req.ProductID,
+					Type: "in", Quantity: 1, UnitCost: req.UnitCost, Note: req.Note, Reference: req.Reference,
+					SerialNumberID: &sid, SourceDocumentID: req.SourceDocumentID,
+				}); err != nil {
+					return nil, fmt.Errorf("create_stock_movement insert %s: %w", s, err)
+				}
+				movementIDs = append(movementIDs, movementID)
+			}
+		} else { // "out"
+			for s, serialID := range serialIDsOut {
+				sid := serialID
 				movementID, _ := gonanoid.New()
 				if err := insertStockMovementRowTx(tx, CreateStockMovementRequest{
 					ID: movementID, OrganizationID: req.OrganizationID, ProductID: req.ProductID,
 					Type: "out", Quantity: -1, Note: req.Note, Reference: req.Reference,
-					SerialNumberID: &serialID,
+					SerialNumberID: &sid, SourceDocumentID: req.SourceDocumentID,
 				}); err != nil {
-					return nil, fmt.Errorf("create_stock_movement insert: %w", err)
+					return nil, fmt.Errorf("create_stock_movement insert %s: %w", s, err)
 				}
 				movementIDs = append(movementIDs, movementID)
 			}
@@ -296,6 +329,15 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 	// always derived from the movement history rather than adjusted in place.
 	if err := recomputeAverageCostTx(tx, req.ProductID); err != nil {
 		return nil, fmt.Errorf("create_stock_movement: %w", err)
+	}
+
+	if glLines != nil {
+		if _, err := postAutoEntryTx(
+			tx, req.OrganizationID, glJournal.ID, "stock_movement", req.ID,
+			time.Now().UnixMilli(), derefString(req.Reference), "Stock adjustment", glLines,
+		); err != nil {
+			return nil, err
+		}
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -325,15 +367,35 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 // desync stockQuantity/average cost from a document that still claims it happened.
 func (d *Database) DeleteStockMovement(movementID string) (bool, error) {
 	var m struct {
-		ProductID string  `db:"productId"`
-		Reference *string `db:"reference"`
+		ProductID        string  `db:"productId"`
+		Reference        *string `db:"reference"`
+		SourceDocumentID *string `db:"sourceDocumentId"`
 	}
 	if err := d.DB.Get(&m,
-		`SELECT productId, reference FROM stockMovements WHERE id = ?`, movementID,
+		`SELECT productId, reference, sourceDocumentId FROM stockMovements WHERE id = ?`, movementID,
 	); err != nil {
 		return false, fmt.Errorf("delete_stock_movement lookup: %w", err)
 	}
 	productID := m.ProductID
+
+	// Phase 7: a manual movement's own GL entry (if any) is tagged
+	// sourceDocumentType="stock_movement" against this same batch id — a
+	// receipt/delivery's serialized fan-out also sets sourceDocumentId, but
+	// under "inbound_delivery"/"outbound_delivery" instead, so this lookup
+	// only ever matches a movement this function itself posted for.
+	// allocateAndFinalizeEntryTx immutability means there's no undo path
+	// for a manual adjustment once posted — record an offsetting one instead.
+	if m.SourceDocumentID != nil {
+		entry, err := d.FindPostedEntryForSourceDocument("stock_movement", *m.SourceDocumentID)
+		if err != nil {
+			return false, err
+		}
+		if entry != nil {
+			return false, newValidationError(
+				"cannot delete a stock movement with a posted GL entry — record an offsetting adjustment instead",
+			)
+		}
+	}
 
 	if m.Reference != nil {
 		var deliveryStatus sql.NullString

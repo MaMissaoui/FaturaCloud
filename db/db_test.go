@@ -297,17 +297,19 @@ func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateProduct: %v", err)
 	}
+	// Wide enough to cover both the delivery's fixed date (1700000000000,
+	// Nov 2023) and time.Now() — the initial CreateStockMovement below now
+	// also posts a GL entry (it's costed), dated "now" since stockMovements
+	// has no business-date field of its own.
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
 	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
 		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
 	}); err != nil {
 		t.Fatalf("CreateStockMovement (initial stock): %v", err)
-	}
-	// Shipping now posts COGS, which needs an open fiscal year covering
-	// the delivery's date (1700000000000, Nov 2023).
-	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
-		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
-	}); err != nil {
-		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 
 	order, err := d.CreateOrder(CreateOrderRequest{
@@ -388,17 +390,19 @@ func TestDeleteStockMovementBlockedForShippedDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateProduct: %v", err)
 	}
+	// Wide enough to cover both the delivery's fixed date (1700000000000,
+	// Nov 2023) and time.Now() — the initial CreateStockMovement below now
+	// also posts a GL entry (it's costed), dated "now" since stockMovements
+	// has no business-date field of its own.
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
 	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
 		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
 	}); err != nil {
 		t.Fatalf("CreateStockMovement (initial stock): %v", err)
-	}
-	// Shipping now posts COGS, which needs an open fiscal year covering
-	// the delivery's date (1700000000000, Nov 2023).
-	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
-		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
-	}); err != nil {
-		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
 		ID: "del-mv-1", OrganizationID: org.ID, DeliveryNumber: "DEL-MV-1", DeliveryDate: 1700000000000,
@@ -538,17 +542,19 @@ func TestStandaloneDeliveryShipReducesStock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateProduct: %v", err)
 	}
+	// Wide enough to cover both the delivery's fixed date (1700000000000,
+	// Nov 2023) and time.Now() — the initial CreateStockMovement below now
+	// also posts a GL entry (it's costed), dated "now" since stockMovements
+	// has no business-date field of its own.
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
 	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
 		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
 	}); err != nil {
 		t.Fatalf("CreateStockMovement (initial stock): %v", err)
-	}
-	// Shipping now posts COGS, which needs an open fiscal year covering
-	// the delivery's date (1700000000000, Nov 2023).
-	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
-		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
-	}); err != nil {
-		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 
 	// No order involved — the line item picks the product directly.
@@ -2197,8 +2203,12 @@ func seedCostProduct(t *testing.T, d *Database, orgID string) *Product {
 	if err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
 	}
+	// Wide enough to cover both the fixed historical dates several tests use
+	// and time.Now() — CreateStockMovement's GL entry is dated "now" (there's
+	// no business-date field on stockMovements), unlike every other posting
+	// path in this codebase which uses a document's own date.
 	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
-		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
 	}); err != nil {
 		t.Fatalf("CreateFiscalYear: %v", err)
 	}
@@ -2269,6 +2279,11 @@ func TestAverageCostWeightsInflows(t *testing.T) {
 func TestAverageCostLeavesManualCostAloneWithoutCostedInflows(t *testing.T) {
 	d := newTestDB(t)
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cost-2"})
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
 	product, err := d.CreateProduct(CreateProductRequest{
 		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"),
 		Type: "product", StockEnabled: 1, UnitCost: ptr(int64(4242)),

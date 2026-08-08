@@ -785,21 +785,39 @@ func resolveMovementCost(exec sqlGetExecer, product *Product, serialNumberID *st
 			ORDER BY createdAt DESC, rowid DESC LIMIT 1`,
 			*serialNumberID,
 		)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return 0, newValidationError("cannot post COGS: %q has no cost basis (no receiving movement found for this unit)", product.Name)
-			}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, fmt.Errorf("resolve_movement_cost serial: %w", err)
 		}
-		if !unitCost.Valid {
-			return 0, newValidationError("cannot post COGS: %q has no cost basis (its receiving movement was never costed)", product.Name)
+		if err == nil && unitCost.Valid {
+			return unitCost.Int64, nil
 		}
-		return unitCost.Int64, nil
+		// This specific unit's own receiving movement carries no cost (or
+		// none was found) — fall back to the product's blended average
+		// rather than leaving it permanently unshippable/unadjustable:
+		// once received, a receipt's line items are frozen, so there is no
+		// way to retroactively cost this exact unit.
+		if product.UnitCost == nil {
+			return 0, newValidationError("%q has no cost basis (no receiving movement found for this unit, and no average cost to fall back to)", product.Name)
+		}
+		return *product.UnitCost, nil
 	}
 	if product.UnitCost == nil {
-		return 0, newValidationError("cannot post COGS: %q has no cost basis", product.Name)
+		return 0, newValidationError("%q has no cost basis", product.Name)
 	}
 	return *product.UnitCost, nil
+}
+
+// wrapCostBasisError prefixes a resolveMovementCost failure with the
+// caller's own context ("cannot post COGS" for a shipment, "cannot post
+// stock adjustment" for a manual movement) — the underlying message is
+// neutral so it reads correctly from either call site. Only a
+// *ValidationError (already end-user-safe) gets the prefix; any other
+// error (a genuine DB failure) is passed through unwrapped.
+func wrapCostBasisError(err error, prefix string) error {
+	if ve, ok := errors.AsType[*ValidationError](err); ok {
+		return newValidationError("%s: %s", prefix, ve.Error())
+	}
+	return err
 }
 
 // buildDeliveryCOGSGLLines posts Dr COGS / Cr Inventory for a shipment's
@@ -841,7 +859,7 @@ func buildDeliveryCOGSGLLines(d *Database, delivery *OutboundDelivery, lines []d
 				sid := serialID
 				unitCost, err := resolveMovementCost(d.DB, product, &sid)
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, wrapCostBasisError(err, "cannot post COGS")
 				}
 				total.Add(total, new(big.Rat).SetInt64(unitCost)) // one serial row is always exactly 1 unit
 			}
@@ -849,7 +867,7 @@ func buildDeliveryCOGSGLLines(d *Database, delivery *OutboundDelivery, lines []d
 		}
 		unitCost, err := resolveMovementCost(d.DB, product, nil)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, wrapCostBasisError(err, "cannot post COGS")
 		}
 		qty, err := floatToRat(line.Quantity)
 		if err != nil {
@@ -880,5 +898,118 @@ func buildDeliveryCOGSGLLines(d *Database, delivery *OutboundDelivery, lines []d
 	return []CreateJournalLineRequest{
 		{AccountID: *org.DefaultCOGSAccountID, Debit: totalCents},
 		{AccountID: *org.DefaultInventoryAccountID, Credit: totalCents},
+	}, journal, nil
+}
+
+// buildStockAdjustmentGLLines posts one signed Inventory line against the
+// Inventory Adjustment account for a manual stock movement request — Dr
+// Inventory / Cr Inventory Adjustment for a net inflow, the reverse for a
+// net outflow.
+//
+// Valuation: an explicit req.UnitCost values a non-serialized inflow (or
+// every unit of a serialized "in" fan-out, sharing the one value the same
+// way insertStockMovementRowTx already does) directly, the same as a
+// costed receipt would. Anything without an explicit cost resolves via
+// resolveMovementCost — product.UnitCost (the current average) for a
+// non-serialized line or a serialized "in" with no stated cost, or that
+// specific serial's own prior receipt cost for a serialized "out" (real
+// specific identification, matching COGS). A non-serialized *outflow*
+// always resolves this way — "explicit cost" isn't a concept for removing
+// stock.
+//
+// An inflow that resolves to no cost basis at all (nothing stated, no
+// average yet established) contributes nothing — consistent with GRNI's
+// "uncosted inflows stay out of the valuation pool" rule. An outflow with
+// no cost basis is a *ValidationError (409), consistent with COGS: a real
+// stock loss needs a value to record, not a silently understated write-off.
+//
+// serialIDsIn/serialIDsOut (serial -> serialNumberId) are pre-resolved by
+// the caller before its transaction opens — see CreateStockMovement's
+// comment on the SetMaxOpenConns(1) constraint this avoids.
+func buildStockAdjustmentGLLines(
+	d *Database, req CreateStockMovementRequest, product *Product,
+	serialIDsIn, serialIDsOut map[string]string,
+) ([]CreateJournalLineRequest, *Journal, error) {
+	org, err := d.GetOrganization(req.OrganizationID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("build_stock_adjustment_gl_lines organization: %w", err)
+	}
+
+	net := new(big.Rat) // positive = net debit to Inventory, negative = net credit
+	switch {
+	case product.Serialized == 1 && req.Type == "in":
+		for range serialIDsIn {
+			if req.UnitCost != nil {
+				net.Add(net, new(big.Rat).SetInt64(*req.UnitCost))
+			} else if product.UnitCost != nil {
+				net.Add(net, new(big.Rat).SetInt64(*product.UnitCost))
+			}
+			// else: no cost anywhere for this unit — contributes nothing.
+		}
+	case product.Serialized == 1 && req.Type == "out":
+		for _, serialID := range serialIDsOut {
+			sid := serialID
+			unitCost, err := resolveMovementCost(d.DB, product, &sid)
+			if err != nil {
+				return nil, nil, wrapCostBasisError(err, "cannot post stock adjustment")
+			}
+			net.Sub(net, new(big.Rat).SetInt64(unitCost))
+		}
+	case req.Quantity > 0:
+		var unitCost int64
+		switch {
+		case req.UnitCost != nil:
+			unitCost = *req.UnitCost
+		case product.UnitCost != nil:
+			unitCost = *product.UnitCost
+		default:
+			return nil, nil, nil // nothing to value this inflow at
+		}
+		qty, err := floatToRat(req.Quantity)
+		if err != nil {
+			return nil, nil, newValidationError("invalid quantity")
+		}
+		net.Add(net, new(big.Rat).Mul(qty, new(big.Rat).SetInt64(unitCost)))
+	case req.Quantity < 0:
+		unitCost, err := resolveMovementCost(d.DB, product, nil)
+		if err != nil {
+			return nil, nil, wrapCostBasisError(err, "cannot post stock adjustment")
+		}
+		qty, err := floatToRat(req.Quantity) // already negative
+		if err != nil {
+			return nil, nil, newValidationError("invalid quantity")
+		}
+		net.Add(net, new(big.Rat).Mul(qty, new(big.Rat).SetInt64(unitCost)))
+	}
+
+	netCents := roundHalfUp(net, 0).Num().Int64()
+	if netCents == 0 {
+		return nil, nil, nil
+	}
+
+	if org.DefaultInventoryAccountID == nil {
+		return nil, nil, newValidationError("cannot post stock adjustment: organization has no default Inventory account configured")
+	}
+	if org.DefaultInventoryAdjustmentAccountID == nil {
+		return nil, nil, newValidationError("cannot post stock adjustment: organization has no default Inventory Adjustment account configured")
+	}
+
+	// Mirrors fiscal_year_closing.go's use of the miscellaneous journal for
+	// non-transactional entries — a manual stock adjustment has no natural
+	// sales/purchases counterpart.
+	journal, err := getJournalByTypeTx(d.DB, req.OrganizationID, "miscellaneous")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if netCents > 0 {
+		return []CreateJournalLineRequest{
+			{AccountID: *org.DefaultInventoryAccountID, Debit: netCents},
+			{AccountID: *org.DefaultInventoryAdjustmentAccountID, Credit: netCents},
+		}, journal, nil
+	}
+	return []CreateJournalLineRequest{
+		{AccountID: *org.DefaultInventoryAdjustmentAccountID, Debit: -netCents},
+		{AccountID: *org.DefaultInventoryAccountID, Credit: -netCents},
 	}, journal, nil
 }

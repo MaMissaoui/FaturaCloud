@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -10,16 +11,17 @@ import (
 // already placed, so a test can receive against it and exercise Phase 7's
 // GRNI accrual.
 type grniTestFixture struct {
-	orgID              string
-	vendorID           string
-	productID          string
-	poID               string
-	poLineID           string
-	inventoryAccountID string
-	grniAccountID      string
-	cogsAccountID      string
-	apAccountID        string
-	date               int64
+	orgID                        string
+	vendorID                     string
+	productID                    string
+	poID                         string
+	poLineID                     string
+	inventoryAccountID           string
+	grniAccountID                string
+	cogsAccountID                string
+	apAccountID                  string
+	inventoryAdjustmentAccountID string
+	date                         int64
 }
 
 func newGRNITestFixture(t *testing.T, d *Database, orgID string, ordered float64, unitPrice int64) grniTestFixture {
@@ -61,16 +63,17 @@ func newGRNITestFixture(t *testing.T, d *Database, orgID string, ordered float64
 	}
 
 	return grniTestFixture{
-		orgID:              org.ID,
-		vendorID:           vendor.ID,
-		productID:          product.ID,
-		poID:               po.ID,
-		poLineID:           poItems[0].ID,
-		inventoryAccountID: *org.DefaultInventoryAccountID,
-		grniAccountID:      *org.DefaultGRNIAccountID,
-		cogsAccountID:      *org.DefaultCOGSAccountID,
-		apAccountID:        *org.DefaultApAccountID,
-		date:               date,
+		orgID:                        org.ID,
+		vendorID:                     vendor.ID,
+		productID:                    product.ID,
+		poID:                         po.ID,
+		poLineID:                     poItems[0].ID,
+		inventoryAccountID:           *org.DefaultInventoryAccountID,
+		grniAccountID:                *org.DefaultGRNIAccountID,
+		cogsAccountID:                *org.DefaultCOGSAccountID,
+		apAccountID:                  *org.DefaultApAccountID,
+		inventoryAdjustmentAccountID: *org.DefaultInventoryAdjustmentAccountID,
+		date:                         date,
 	}
 }
 
@@ -769,5 +772,200 @@ func TestCancelShippedDeliveryReversesCOGS(t *testing.T) {
 		if r.AccountID == fx.cogsAccountID && r.Debit-r.Credit != 0 {
 			t.Fatalf("trial balance COGS net after reversal = %d, want 0", r.Debit-r.Credit)
 		}
+	}
+}
+
+// requireFiscalYearCoveringNow gives an org a fiscal year covering
+// time.Now() — CreateStockMovement dates its GL entry "now" (stockMovements
+// has no business-date field of its own), unlike every other posting path
+// in this codebase, which dates its entry off the source document itself.
+func requireFiscalYearCoveringNow(t *testing.T, d *Database, orgID string) {
+	t.Helper()
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: orgID, Name: "current", StartDate: 1735689600000, EndDate: 4102444799000, // 2025-2099
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+}
+
+// A manual stock adjustment posts one signed Inventory line against the
+// Inventory Adjustment account — Dr Inventory for a net increase, Cr
+// Inventory for a net decrease, valued at the product's current average.
+func TestManualStockAdjustmentPostsSignedInventoryLine(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-adj-signed", 10, 250) // establishes average via receive below
+	fx.receive(t, d, "GR-0001", 10)                           // average now 2.50/unit
+	requireFiscalYearCoveringNow(t, d, fx.orgID)
+
+	// Increase: +3 units with no explicit cost falls back to the current
+	// average (2.50) — Dr Inventory 750 / Cr Inventory Adjustment 750.
+	increase, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: fx.orgID, ProductID: fx.productID, Type: "in", Quantity: 3,
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement (increase): %v", err)
+	}
+	incEntry, err := d.FindPostedEntryForSourceDocument("stock_movement", increase.Movements[0].ID)
+	if err != nil || incEntry == nil {
+		t.Fatalf("expected a posted adjustment entry, err=%v entry=%v", err, incEntry)
+	}
+	incLines, err := d.GetJournalEntryLines(incEntry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	invDebit, invCredit := sumLines(incLines, fx.inventoryAccountID)
+	if invDebit != 750 || invCredit != 0 {
+		t.Fatalf("Inventory line (increase) = debit %d credit %d, want debit 750 credit 0", invDebit, invCredit)
+	}
+	adjDebit, adjCredit := sumLines(incLines, fx.inventoryAdjustmentAccountID)
+	if adjDebit != 0 || adjCredit != 750 {
+		t.Fatalf("Adjustment line (increase) = debit %d credit %d, want debit 0 credit 750", adjDebit, adjCredit)
+	}
+
+	// Decrease: -2 units at the same average — Dr Inventory Adjustment 500 /
+	// Cr Inventory 500.
+	decrease, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: fx.orgID, ProductID: fx.productID, Type: "out", Quantity: -2,
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement (decrease): %v", err)
+	}
+	decEntry, err := d.FindPostedEntryForSourceDocument("stock_movement", decrease.Movements[0].ID)
+	if err != nil || decEntry == nil {
+		t.Fatalf("expected a posted adjustment entry, err=%v entry=%v", err, decEntry)
+	}
+	decLines, err := d.GetJournalEntryLines(decEntry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	invDebit2, invCredit2 := sumLines(decLines, fx.inventoryAccountID)
+	if invDebit2 != 0 || invCredit2 != 500 {
+		t.Fatalf("Inventory line (decrease) = debit %d credit %d, want debit 0 credit 500", invDebit2, invCredit2)
+	}
+	adjDebit2, adjCredit2 := sumLines(decLines, fx.inventoryAdjustmentAccountID)
+	if adjDebit2 != 500 || adjCredit2 != 0 {
+		t.Fatalf("Adjustment line (decrease) = debit %d credit %d, want debit 500 credit 0", adjDebit2, adjCredit2)
+	}
+}
+
+// An uncosted inflow on a product with no cost basis at all — nothing
+// stated, no average yet established — contributes nothing and posts no
+// entry, mirroring GRNI's "uncosted inflows stay out of the valuation pool"
+// rule rather than COGS's 409.
+func TestUncostedStockAdjustmentWithNoAveragePostsNoEntry(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-adj-nocost", Name: ptr("No Cost Org")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	requireFiscalYearCoveringNow(t, d, org.ID)
+	product, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"), Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+
+	result, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 5,
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("stock_movement", result.Movements[0].ID)
+	if err != nil {
+		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
+	}
+	if entry != nil {
+		t.Fatalf("expected no posted entry for an uncosted adjustment with no average, got %+v", entry)
+	}
+}
+
+// An outflow with no cost basis anywhere is a 409, consistent with COGS —
+// a real stock loss needs a value to record, not a silently understated
+// write-off — and the error message reads correctly for a manual
+// adjustment, not COGS's wording.
+func TestOutflowStockAdjustmentWithNoCostBasisIsRejected(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-adj-out-nocost", Name: ptr("No Cost Org")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	requireFiscalYearCoveringNow(t, d, org.ID)
+	product, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"), Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 5,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (uncosted in): %v", err)
+	}
+
+	_, err = d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "out", Quantity: -2,
+	})
+	if err == nil {
+		t.Fatal("expected an outflow with no cost basis to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+	if !strings.Contains(err.Error(), "cannot post stock adjustment") {
+		t.Fatalf("expected the error to read as a stock adjustment, not COGS: %v", err)
+	}
+}
+
+// A zero-value adjustment (net signed value rounds to exactly zero cents)
+// posts no entry at all.
+func TestZeroValueStockAdjustmentPostsNoEntry(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-adj-zero", 10, 0) // 0 unit price -> zero-cost average
+	fx.receive(t, d, "GR-0001", 10)
+	requireFiscalYearCoveringNow(t, d, fx.orgID)
+
+	result, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: fx.orgID, ProductID: fx.productID, Type: "in", Quantity: 3,
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("stock_movement", result.Movements[0].ID)
+	if err != nil {
+		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
+	}
+	if entry != nil {
+		t.Fatalf("expected no posted entry for a zero-value adjustment, got %+v", entry)
+	}
+}
+
+// Once a manual stock movement has a posted GL entry, deleting it is
+// blocked — the same immutability every other posted entry gets, corrected
+// by recording an offsetting adjustment instead.
+func TestDeleteStockMovementBlockedOnceGLPosted(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-adj-delete", 10, 250)
+	fx.receive(t, d, "GR-0001", 10)
+	requireFiscalYearCoveringNow(t, d, fx.orgID)
+
+	result, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: fx.orgID, ProductID: fx.productID, Type: "in", Quantity: 3,
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	_, err = d.DeleteStockMovement(result.Movements[0].ID)
+	if err == nil {
+		t.Fatal("expected deleting a GL-posted stock movement to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
 	}
 }
