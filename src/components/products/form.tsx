@@ -23,6 +23,7 @@ import get from "lodash/get";
 
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
+import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import ScrollShadow from "src/components/scroll-shadow";
 import { UNIT_OPTIONS, unitLabel } from "src/utils/units";
 
@@ -57,6 +58,16 @@ const ProductForm = () => {
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
 
+  const accounts = useAtomValue(accountsAtom);
+  const setAccounts = useSetAtom(setAccountsAtom);
+  const leafAccountOptions = useMemo(
+    () =>
+      accounts
+        .filter((a) => !a.isGroup)
+        .map((a) => ({ value: a.id, label: `${a.code} · ${a.name}` })),
+    [accounts],
+  );
+
   const isVisible = get(location.state, "productModal", false);
 
   const product = useMemo(() => {
@@ -65,8 +76,11 @@ const ProductForm = () => {
   }, [products, productId]);
 
   useEffect(() => {
-    if (isVisible) setTaxRates();
-  }, [isVisible, setTaxRates]);
+    if (isVisible) {
+      setTaxRates();
+      setAccounts();
+    }
+  }, [isVisible, setTaxRates, setAccounts]);
 
   useEffect(() => {
     const navProductId = get(location.state, "productId");
@@ -348,6 +362,50 @@ const ProductForm = () => {
                       </Select.Option>
                     ))}
                   </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          <Card size="small" title={<Trans>Accounting</Trans>}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="revenueAccountId"
+                  label={<Trans>Revenue account</Trans>}
+                  tooltip={
+                    <Trans>
+                      Overrides the organization's default revenue account on a sales invoice line.
+                    </Trans>
+                  }
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder={t`Organization default`}
+                    options={leafAccountOptions}
+                    optionFilterProp="label"
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="expenseAccountId"
+                  label={<Trans>Expense account</Trans>}
+                  tooltip={
+                    <Trans>
+                      Overrides the organization's default expense account on a vendor bill line.
+                    </Trans>
+                  }
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder={t`Organization default`}
+                    options={leafAccountOptions}
+                    optionFilterProp="label"
+                  />
                 </Form.Item>
               </Col>
             </Row>

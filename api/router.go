@@ -251,5 +251,46 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PATCH", "/api/deliveries/{id}/status", h.updateDeliveryStatus)
 	protected("DELETE", "/api/deliveries/{id}", h.deleteDelivery)
 
+	// Chart of accounts
+	protected("GET", "/api/organizations/{orgId}/accounts", h.listAccounts)
+	protected("POST", "/api/accounts", h.createAccount)
+	protected("GET", "/api/accounts/{id}", h.getAccount)
+	protected("PUT", "/api/accounts/{id}", h.updateAccount)
+	protected("DELETE", "/api/accounts/{id}", h.deleteAccount)
+
+	// Journals
+	protected("GET", "/api/organizations/{orgId}/journals", h.listJournals)
+	protected("POST", "/api/journals", h.createJournal)
+	protected("PUT", "/api/journals/{id}", h.updateJournal)
+	protected("DELETE", "/api/journals/{id}", h.deleteJournal)
+
+	// Fiscal years / periods
+	protected("GET", "/api/organizations/{orgId}/fiscal-years", h.listFiscalYears)
+	protected("POST", "/api/fiscal-years", h.createFiscalYear)
+	protected("GET", "/api/fiscal-years/{id}/periods", h.listFiscalPeriods)
+	protected("POST", "/api/fiscal-periods", h.createFiscalPeriod)
+	protected("PATCH", "/api/fiscal-periods/{id}/status", h.updateFiscalPeriodStatus)
+
+	// Journal entries
+	protected("GET", "/api/organizations/{orgId}/journal-entries", h.listJournalEntries)
+	protected("POST", "/api/journal-entries", h.createJournalEntry)
+	protected("GET", "/api/journal-entries/{id}", h.getJournalEntry)
+	protected("GET", "/api/journal-entries/{id}/lines", h.getJournalEntryLines)
+	protected("PATCH", "/api/journal-entries/{id}/post", h.postJournalEntry)
+	protected("POST", "/api/journal-entries/{id}/reverse", h.reverseJournalEntry)
+	protected("DELETE", "/api/journal-entries/{id}", h.deleteJournalEntry)
+
+	// Payments
+	protected("GET", "/api/organizations/{orgId}/payments", h.listPayments)
+	protected("POST", "/api/payments", h.createPayment)
+	protected("GET", "/api/payments/{id}", h.getPayment)
+	protected("GET", "/api/payments/{id}/applications", h.getPaymentApplications)
+	protected("POST", "/api/payments/{id}/void", h.voidPayment)
+	protected("GET", "/api/invoices/{id}/payments", h.getInvoicePayments)
+	protected("GET", "/api/incoming-invoices/{id}/payments", h.getIncomingInvoicePayments)
+
+	// Reports
+	protected("GET", "/api/organizations/{orgId}/reports/trial-balance", h.getTrialBalance)
+
 	return mux
 }

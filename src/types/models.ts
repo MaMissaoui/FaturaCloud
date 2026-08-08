@@ -281,3 +281,153 @@ export interface IncomingInvoiceLineItem {
   taxRate: string | null;
   position: number;
 }
+
+// ---- Accounting (general ledger) ----
+
+export interface Account {
+  id: string;
+  organizationId: string;
+  parentId: string | null;
+  code: string;
+  name: string;
+  type: "asset" | "liability" | "equity" | "revenue" | "expense";
+  isGroup: number;
+  isActive: number;
+  datevAccountNumber: string | null;
+  description: string | null;
+  createdAt: number;
+}
+
+export interface Journal {
+  id: string;
+  organizationId: string;
+  code: string;
+  name: string;
+  type: "sales" | "purchases" | "cash" | "bank" | "miscellaneous";
+  isSystem: number;
+  createdAt: number;
+}
+
+export interface FiscalYear {
+  id: string;
+  organizationId: string;
+  name: string;
+  startDate: number;
+  endDate: number;
+  status: "open" | "closed";
+  lockDate: number | null;
+  closedAt: number | null;
+  createdAt: number;
+}
+
+export interface FiscalPeriod {
+  id: string;
+  organizationId: string;
+  fiscalYearId: string;
+  name: string;
+  startDate: number;
+  endDate: number;
+  status: "open" | "closed";
+  closedAt: number | null;
+  createdAt: number;
+}
+
+export interface JournalLine {
+  id: string;
+  journalEntryId: string;
+  accountId: string;
+  description: string | null;
+  debit: number;
+  credit: number;
+  currency: string | null;
+  foreignAmount: number | null;
+  exchangeRate: string | null;
+  clientId: string | null;
+  vendorId: string | null;
+  taxRateId: string | null;
+  reconciliationGroupId: string | null;
+  position: number;
+  createdAt: number;
+}
+
+export interface JournalEntry {
+  id: string;
+  organizationId: string;
+  journalId: string;
+  fiscalYearId: string;
+  fiscalPeriodId: string | null;
+  entryNumber: number | null;
+  date: number;
+  reference: string | null;
+  description: string;
+  sourceDocumentType: string | null;
+  sourceDocumentId: string | null;
+  status: "draft" | "posted" | "reversed";
+  reversalOfEntryId: string | null;
+  reversalReason: string | null;
+  postedAt: number | null;
+  createdBy: string | null;
+  createdAt: number;
+}
+
+export interface TrialBalanceRow {
+  accountId: string;
+  code: string;
+  name: string;
+  type: string;
+  debit: number;
+  credit: number;
+}
+
+export interface Payment {
+  id: string;
+  organizationId: string;
+  direction: "inbound" | "outbound";
+  clientId: string | null;
+  vendorId: string | null;
+  bankAccountId: string;
+  amount: number;
+  currency: string;
+  exchangeRate: string | null;
+  exchangeRateDate: number | null;
+  date: number;
+  method: "bank_transfer" | "cash" | "card" | "direct_debit" | "check" | "other";
+  reference: string | null;
+  notes: string | null;
+  status: "posted" | "voided";
+  journalEntryId: string | null;
+  voidingEntryId: string | null;
+  createdAt: number;
+}
+
+export interface PaymentApplication {
+  id: string;
+  paymentId: string;
+  documentType: "invoice" | "incoming_invoice";
+  documentId: string;
+  amount: number;
+  createdAt: number;
+}
+
+export interface CreatePaymentApplicationRequest {
+  documentType: "invoice" | "incoming_invoice";
+  documentId: string;
+  amount: number;
+}
+
+export interface CreatePaymentRequest {
+  organizationId: string;
+  direction: "inbound" | "outbound";
+  clientId?: string | null;
+  vendorId?: string | null;
+  bankAccountId: string;
+  amount: number;
+  currency: string;
+  exchangeRate?: number | null;
+  exchangeRateDate?: number | null;
+  date: number;
+  method: "bank_transfer" | "cash" | "card" | "direct_debit" | "check" | "other";
+  reference?: string | null;
+  notes?: string | null;
+  applications: CreatePaymentApplicationRequest[];
+}

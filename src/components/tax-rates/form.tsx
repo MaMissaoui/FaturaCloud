@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Button, Checkbox, Drawer, Form, Input, Popconfirm, Select, Space, Tooltip } from "antd";
 import { useSetAtom, useAtomValue } from "jotai";
@@ -10,6 +10,7 @@ import isEmpty from "lodash/isEmpty";
 import { GetTaxRateUsageCount } from "src/api";
 
 import { taxRateIdAtom, taxRateAtom, deleteTaxRateAtom } from "src/atoms/tax-rate";
+import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import Section from "src/components/form-section";
 import ScrollShadow from "src/components/scroll-shadow";
 
@@ -50,6 +51,28 @@ const TaxRateForm = () => {
   const categoryLabels = useTaxRateCategoryLabels();
   const categoryCode = Form.useWatch("category_code", form);
   const exemptionReasonRequired = CATEGORIES_REQUIRING_EXEMPTION_REASON.has(categoryCode);
+
+  const accounts = useAtomValue(accountsAtom);
+  const setAccounts = useSetAtom(setAccountsAtom);
+  useEffect(() => {
+    setAccounts();
+  }, [setAccounts]);
+  // Output VAT is a liability (owed to the tax authority); input VAT is a
+  // reclaimable asset — the same two-account split db/tax_rate.go documents.
+  const outputTaxAccountOptions = useMemo(
+    () =>
+      accounts
+        .filter((a) => !a.isGroup && a.type === "liability")
+        .map((a) => ({ value: a.id, label: `${a.code} · ${a.name}` })),
+    [accounts],
+  );
+  const inputTaxAccountOptions = useMemo(
+    () =>
+      accounts
+        .filter((a) => !a.isGroup && a.type === "asset")
+        .map((a) => ({ value: a.id, label: `${a.code} · ${a.name}` })),
+    [accounts],
+  );
 
   const handleClose = () => {
     form.resetFields();
@@ -195,6 +218,42 @@ const TaxRateForm = () => {
               }
             >
               <Input placeholder={t`e.g. Intra-community supply`} />
+            </Form.Item>
+
+            <Section>
+              <Trans>Accounting</Trans>
+            </Section>
+            <Form.Item
+              name="outputTaxAccountId"
+              label={<Trans>Output tax account</Trans>}
+              tooltip={
+                <Trans>Used when this rate applies to a sales invoice — a liability account.</Trans>
+              }
+            >
+              <Select
+                allowClear
+                showSearch
+                placeholder={t`None`}
+                options={outputTaxAccountOptions}
+                optionFilterProp="label"
+              />
+            </Form.Item>
+            <Form.Item
+              name="inputTaxAccountId"
+              label={<Trans>Input tax account</Trans>}
+              tooltip={
+                <Trans>
+                  Used when this rate applies to a vendor bill — a reclaimable asset account.
+                </Trans>
+              }
+            >
+              <Select
+                allowClear
+                showSearch
+                placeholder={t`None`}
+                options={inputTaxAccountOptions}
+                optionFilterProp="label"
+              />
             </Form.Item>
           </Form>
         </ScrollShadow>

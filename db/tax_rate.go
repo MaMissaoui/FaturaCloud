@@ -42,6 +42,14 @@ type TaxRate struct {
 	// the category needs one (e.g. E, Z, O).
 	CategoryCode    string  `db:"category_code"    json:"category_code"`
 	ExemptionReason *string `db:"exemption_reason" json:"exemption_reason"`
+
+	// Two accounts, not one: this same rate is referenced by both sales and
+	// purchase line items (taxRateReferencingTables) — output VAT is a
+	// liability owed to the state, input VAT is a reclaimable asset.
+	OutputTaxAccountID *string `db:"outputTaxAccountId" json:"outputTaxAccountId"`
+	InputTaxAccountID  *string `db:"inputTaxAccountId"  json:"inputTaxAccountId"`
+	// DATEV BU-Schlüssel (tax key), independent of the percentage.
+	DatevBuKey *string `db:"datev_bu_key" json:"datev_bu_key"`
 }
 
 // CreateTaxRateRequest is the payload for creating a tax rate.
@@ -55,6 +63,10 @@ type CreateTaxRateRequest struct {
 
 	CategoryCode    string  `json:"category_code"`
 	ExemptionReason *string `json:"exemption_reason"`
+
+	OutputTaxAccountID *string `json:"outputTaxAccountId"`
+	InputTaxAccountID  *string `json:"inputTaxAccountId"`
+	DatevBuKey         *string `json:"datev_bu_key"`
 }
 
 // UpdateTaxRateRequest is the payload for updating a tax rate.
@@ -66,6 +78,10 @@ type UpdateTaxRateRequest struct {
 
 	CategoryCode    *string `json:"category_code"`
 	ExemptionReason *string `json:"exemption_reason"`
+
+	OutputTaxAccountID *string `json:"outputTaxAccountId"`
+	InputTaxAccountID  *string `json:"inputTaxAccountId"`
+	DatevBuKey         *string `json:"datev_bu_key"`
 }
 
 func (d *Database) GetTaxRates(organizationID string) ([]TaxRate, error) {
@@ -117,10 +133,10 @@ func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
 	}
 
 	if _, err = tx.Exec(
-		`INSERT INTO taxRates (id, organizationId, name, description, percentage, isDefault, category_code, exemption_reason)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO taxRates (id, organizationId, name, description, percentage, isDefault, category_code, exemption_reason, outputTaxAccountId, inputTaxAccountId, datev_bu_key)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Description, req.Percentage, req.IsDefault,
-		req.CategoryCode, req.ExemptionReason,
+		req.CategoryCode, req.ExemptionReason, req.OutputTaxAccountID, req.InputTaxAccountID, req.DatevBuKey,
 	); err != nil {
 		return nil, fmt.Errorf("create_tax_rate insert: %w", err)
 	}
@@ -158,15 +174,20 @@ func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest)
 
 	if _, err = tx.Exec(`
 		UPDATE taxRates
-		SET name             = COALESCE(?, name),
-		    description      = COALESCE(?, description),
-		    percentage       = COALESCE(?, percentage),
-		    isDefault        = COALESCE(?, isDefault),
-		    category_code    = COALESCE(?, category_code),
-		    exemption_reason = ?
+		SET name                = COALESCE(?, name),
+		    description         = COALESCE(?, description),
+		    percentage          = COALESCE(?, percentage),
+		    isDefault           = COALESCE(?, isDefault),
+		    category_code       = COALESCE(?, category_code),
+		    exemption_reason    = ?,
+		    outputTaxAccountId  = COALESCE(?, outputTaxAccountId),
+		    inputTaxAccountId   = COALESCE(?, inputTaxAccountId),
+		    datev_bu_key        = COALESCE(?, datev_bu_key)
 		WHERE id = ?`,
 		updates.Name, updates.Description, updates.Percentage, updates.IsDefault,
-		updates.CategoryCode, updates.ExemptionReason, taxRateID,
+		updates.CategoryCode, updates.ExemptionReason,
+		updates.OutputTaxAccountID, updates.InputTaxAccountID, updates.DatevBuKey,
+		taxRateID,
 	); err != nil {
 		return nil, fmt.Errorf("update_tax_rate exec: %w", err)
 	}

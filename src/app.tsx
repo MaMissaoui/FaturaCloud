@@ -68,6 +68,12 @@ const SettingsUsers = lazy(() => import("src/routes/settings/users"));
 const SettingsCountries = lazy(() => import("src/routes/settings/countries"));
 const NewOrganization = lazy(() => import("src/routes/organizations/new"));
 const TaxRateForm = lazy(() => import("src/components/tax-rates/form.tsx"));
+const ChartOfAccounts = lazy(() => import("src/routes/accounting/chart-of-accounts"));
+const Journals = lazy(() => import("src/routes/accounting/journals"));
+const FiscalPeriods = lazy(() => import("src/routes/accounting/fiscal-periods"));
+const JournalEntries = lazy(() => import("src/routes/accounting/journal-entries"));
+const JournalEntryDetails = lazy(() => import("src/routes/accounting/journal-entries/details"));
+const TrialBalance = lazy(() => import("src/routes/accounting/trial-balance"));
 
 dayjs.extend(localizedFormat);
 
@@ -199,83 +205,91 @@ const AppContent = () => {
       }}
     >
       <AntApp>
-      <MessageBridge />
-      {/* Brief loading spinner, inside ConfigProvider so it respects the theme (prevents CSS flicker) */}
-      {isInitialLoading ? (
-        <Loading />
-      ) : (
-        <>
-          {import.meta.env.DEV && import.meta.env.VITE_JOTAI_DEVTOOLS_ENABLED === "true" && (
-            <Suspense fallback={null}>
-              <DevTools />
-            </Suspense>
-          )}
-          <I18nProvider i18n={i18n}>
-        <Suspense fallback={<Loading />}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<Index />} />
-          <Route path="/organizations/new" element={<NewOrganization />} />
-          <Route path="/organizations" element={<BaseLayout />}>
-            <Route index element={<OrganizationsList />} />
-          </Route>
-          <Route path="/invoices" element={<BaseLayout />}>
-            <Route index element={<Invoices />} />
-            <Route path=":id" element={<InvoiceDetails />} />
-            <Route path=":id/pdf" element={<InvoiceDetails />} />
-          </Route>
-          <Route path="/clients" element={<BaseLayout />}>
-            <Route index element={<Clients />} />
-          </Route>
-          <Route path="/vendors" element={<BaseLayout />}>
-            <Route index element={<Vendors />} />
-          </Route>
-          <Route path="/purchase-orders" element={<BaseLayout />}>
-            <Route index element={<PurchaseOrders />} />
-            <Route path=":id" element={<PurchaseOrderDetails />} />
-          </Route>
-          <Route path="/inbound-deliveries" element={<BaseLayout />}>
-            <Route index element={<InboundDeliveries />} />
-            <Route path=":id" element={<InboundDeliveryDetails />} />
-          </Route>
-          <Route path="/incoming-invoices" element={<BaseLayout />}>
-            <Route index element={<IncomingInvoices />} />
-            <Route path=":id" element={<IncomingInvoiceDetails />} />
-          </Route>
-          <Route path="/dashboard" element={<BaseLayout />}>
-            <Route index element={<Dashboard />} />
-          </Route>
-          <Route path="/products" element={<BaseLayout />}>
-            <Route index element={<Products />} />
-          </Route>
-          <Route path="/inventory" element={<BaseLayout />}>
-            <Route index element={<Inventory />} />
-          </Route>
-          <Route path="/orders" element={<BaseLayout />}>
-            <Route index element={<Orders />} />
-            <Route path=":id" element={<OrderDetails />} />
-          </Route>
-          <Route path="/deliveries" element={<BaseLayout />}>
-            <Route index element={<Deliveries />} />
-            <Route path=":id" element={<DeliveryDetails />} />
-          </Route>
-          <Route path="/settings" element={<BaseLayout />}>
-            <Route index element={<Navigate to="/settings/invoice" />} />
-            <Route path="invoice" element={<SettingsInvoice />} />
-            <Route path="organization" element={<Navigate to="/organizations" />} />
-            <Route path="tax-rates" element={<SettingsTaxRates />}>
-              <Route path="new" element={<TaxRateForm />} />
-              <Route path=":id" element={<TaxRateForm />} />
-            </Route>
-            <Route path="backup" element={<SettingsBackup />} />
-            <Route path="users" element={<SettingsUsers />} />
-            <Route path="countries" element={<SettingsCountries />} />
-          </Route>
-        </Routes>
-        </Suspense>
-          </I18nProvider>
-        </>
-      )}
+        <MessageBridge />
+        {/* Brief loading spinner, inside ConfigProvider so it respects the theme (prevents CSS flicker) */}
+        {isInitialLoading ? (
+          <Loading />
+        ) : (
+          <>
+            {import.meta.env.DEV && import.meta.env.VITE_JOTAI_DEVTOOLS_ENABLED === "true" && (
+              <Suspense fallback={null}>
+                <DevTools />
+              </Suspense>
+            )}
+            <I18nProvider i18n={i18n}>
+              <Suspense fallback={<Loading />}>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/" element={<Index />} />
+                  <Route path="/organizations/new" element={<NewOrganization />} />
+                  <Route path="/organizations" element={<BaseLayout />}>
+                    <Route index element={<OrganizationsList />} />
+                  </Route>
+                  <Route path="/invoices" element={<BaseLayout />}>
+                    <Route index element={<Invoices />} />
+                    <Route path=":id" element={<InvoiceDetails />} />
+                    <Route path=":id/pdf" element={<InvoiceDetails />} />
+                  </Route>
+                  <Route path="/clients" element={<BaseLayout />}>
+                    <Route index element={<Clients />} />
+                  </Route>
+                  <Route path="/vendors" element={<BaseLayout />}>
+                    <Route index element={<Vendors />} />
+                  </Route>
+                  <Route path="/purchase-orders" element={<BaseLayout />}>
+                    <Route index element={<PurchaseOrders />} />
+                    <Route path=":id" element={<PurchaseOrderDetails />} />
+                  </Route>
+                  <Route path="/inbound-deliveries" element={<BaseLayout />}>
+                    <Route index element={<InboundDeliveries />} />
+                    <Route path=":id" element={<InboundDeliveryDetails />} />
+                  </Route>
+                  <Route path="/incoming-invoices" element={<BaseLayout />}>
+                    <Route index element={<IncomingInvoices />} />
+                    <Route path=":id" element={<IncomingInvoiceDetails />} />
+                  </Route>
+                  <Route path="/dashboard" element={<BaseLayout />}>
+                    <Route index element={<Dashboard />} />
+                  </Route>
+                  <Route path="/products" element={<BaseLayout />}>
+                    <Route index element={<Products />} />
+                  </Route>
+                  <Route path="/inventory" element={<BaseLayout />}>
+                    <Route index element={<Inventory />} />
+                  </Route>
+                  <Route path="/orders" element={<BaseLayout />}>
+                    <Route index element={<Orders />} />
+                    <Route path=":id" element={<OrderDetails />} />
+                  </Route>
+                  <Route path="/deliveries" element={<BaseLayout />}>
+                    <Route index element={<Deliveries />} />
+                    <Route path=":id" element={<DeliveryDetails />} />
+                  </Route>
+                  <Route path="/accounting" element={<BaseLayout />}>
+                    <Route path="chart-of-accounts" element={<ChartOfAccounts />} />
+                    <Route path="journals" element={<Journals />} />
+                    <Route path="fiscal-periods" element={<FiscalPeriods />} />
+                    <Route path="journal-entries" element={<JournalEntries />} />
+                    <Route path="journal-entries/:id" element={<JournalEntryDetails />} />
+                    <Route path="trial-balance" element={<TrialBalance />} />
+                  </Route>
+                  <Route path="/settings" element={<BaseLayout />}>
+                    <Route index element={<Navigate to="/settings/invoice" />} />
+                    <Route path="invoice" element={<SettingsInvoice />} />
+                    <Route path="organization" element={<Navigate to="/organizations" />} />
+                    <Route path="tax-rates" element={<SettingsTaxRates />}>
+                      <Route path="new" element={<TaxRateForm />} />
+                      <Route path=":id" element={<TaxRateForm />} />
+                    </Route>
+                    <Route path="backup" element={<SettingsBackup />} />
+                    <Route path="users" element={<SettingsUsers />} />
+                    <Route path="countries" element={<SettingsCountries />} />
+                  </Route>
+                </Routes>
+              </Suspense>
+            </I18nProvider>
+          </>
+        )}
       </AntApp>
     </ConfigProvider>
   );

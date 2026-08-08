@@ -23,6 +23,16 @@ import type {
   DeliveryLineItem,
   StockMovement,
   SerialNumber,
+  Account,
+  Journal,
+  FiscalYear,
+  FiscalPeriod,
+  JournalEntry,
+  JournalLine,
+  TrialBalanceRow,
+  Payment,
+  PaymentApplication,
+  CreatePaymentRequest,
 } from "src/types/models";
 
 // ---- Auth ----
@@ -593,3 +603,85 @@ export const UpdateIncomingInvoiceState = (id: string, state: string) =>
   patch<IncomingInvoice>(`/incoming-invoices/${id}/state`, { state });
 export const DeleteIncomingInvoice = (id: string) =>
   del<{ deleted: boolean }>(`/incoming-invoices/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Chart of accounts ----
+
+export const GetAccounts = (organizationId: string) =>
+  get<Account[]>(`/organizations/${organizationId}/accounts`);
+export const GetAccount = (id: string) => get<Account>(`/accounts/${id}`);
+export const CreateAccount = (req: Partial<Account>) => post<Account>("/accounts", req);
+export const UpdateAccount = (id: string, req: Partial<Account>) =>
+  put<Account>(`/accounts/${id}`, req);
+export const DeleteAccount = (id: string) =>
+  del<{ deleted: boolean }>(`/accounts/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Journals ----
+
+export const GetJournals = (organizationId: string) =>
+  get<Journal[]>(`/organizations/${organizationId}/journals`);
+export const CreateJournal = (req: Partial<Journal>) => post<Journal>("/journals", req);
+export const UpdateJournal = (id: string, req: Partial<Journal>) =>
+  put<Journal>(`/journals/${id}`, req);
+export const DeleteJournal = (id: string) =>
+  del<{ deleted: boolean }>(`/journals/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Fiscal years / periods ----
+
+export const GetFiscalYears = (organizationId: string) =>
+  get<FiscalYear[]>(`/organizations/${organizationId}/fiscal-years`);
+export const CreateFiscalYear = (req: Partial<FiscalYear>) =>
+  post<FiscalYear>("/fiscal-years", req);
+export const GetFiscalPeriods = (fiscalYearId: string) =>
+  get<FiscalPeriod[]>(`/fiscal-years/${fiscalYearId}/periods`);
+export const CreateFiscalPeriod = (req: Partial<FiscalPeriod>) =>
+  post<FiscalPeriod>("/fiscal-periods", req);
+export const UpdateFiscalPeriodStatus = (id: string, status: string) =>
+  patch<FiscalPeriod>(`/fiscal-periods/${id}/status`, { status });
+
+// ---- Accounting: Journal entries ----
+
+export const GetJournalEntries = (
+  organizationId: string,
+  filters?: { journalId?: string; status?: string },
+) => {
+  const params = new URLSearchParams();
+  if (filters?.journalId) params.set("journalId", filters.journalId);
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return get<JournalEntry[]>(
+    `/organizations/${organizationId}/journal-entries${qs ? `?${qs}` : ""}`,
+  );
+};
+export const GetJournalEntry = (id: string) => get<JournalEntry>(`/journal-entries/${id}`);
+export const GetJournalEntryLines = (id: string) =>
+  get<JournalLine[]>(`/journal-entries/${id}/lines`);
+export const CreateJournalEntry = (req: unknown) => post<JournalEntry>("/journal-entries", req);
+export const PostJournalEntry = (id: string) =>
+  patch<JournalEntry>(`/journal-entries/${id}/post`, {});
+export const ReverseJournalEntry = (id: string, reason: string, date: number) =>
+  post<JournalEntry>(`/journal-entries/${id}/reverse`, { reason, date });
+export const DeleteJournalEntry = (id: string) =>
+  del<{ deleted: boolean }>(`/journal-entries/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Payments ----
+
+export const GetPayments = (organizationId: string) =>
+  get<Payment[]>(`/organizations/${organizationId}/payments`);
+export const GetPayment = (id: string) => get<Payment>(`/payments/${id}`);
+export const GetPaymentApplications = (id: string) =>
+  get<PaymentApplication[]>(`/payments/${id}/applications`);
+export const CreatePayment = (req: CreatePaymentRequest) => post<Payment>("/payments", req);
+export const VoidPayment = (id: string) => post<Payment>(`/payments/${id}/void`, {});
+export const GetInvoicePayments = (id: string) =>
+  get<PaymentApplication[]>(`/invoices/${id}/payments`);
+export const GetIncomingInvoicePayments = (id: string) =>
+  get<PaymentApplication[]>(`/incoming-invoices/${id}/payments`);
+
+// ---- Accounting: Reports ----
+
+export const GetTrialBalance = (organizationId: string, fiscalPeriodId?: string) =>
+  get<TrialBalanceRow[]>(
+    `/organizations/${organizationId}/reports/trial-balance${
+      fiscalPeriodId ? `?fiscalPeriodId=${encodeURIComponent(fiscalPeriodId)}` : ""
+    }`,
+  );

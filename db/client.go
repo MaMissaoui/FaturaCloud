@@ -1,10 +1,21 @@
 package db
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
+
+// ErrClientInUse is returned by DeleteClient when the client is still
+// referenced by GL history (journal lines or payments). Deleting it anyway
+// would fail on a foreign key — journal_lines.clientId/payments.clientId
+// carry no ON DELETE clause, deliberately, since silently detaching a
+// client from posted accounting history would be worse than refusing the
+// delete. invoices.clientId still cascades (see DeleteClient below), so a
+// client with only invoices and no GL history deletes exactly as before.
+var ErrClientInUse = errors.New("client is still referenced by ledger entries or payments")
 
 // Client mirrors the clients table.
 type Client struct {
@@ -142,7 +153,45 @@ func (d *Database) UpdateClient(clientID string, updates UpdateClientRequest) (*
 	return d.GetClient(clientID)
 }
 
+// clientReferencingTables lists tables that reference a client with no
+// ON DELETE clause — an unguarded delete would surface a raw driver foreign
+// key error as an opaque 500, the same hazard vendorReferencingTables
+// guards against. invoices.clientId is NOT here: it cascades on delete by
+// design, which is what makes DeleteClient's plain DELETE below safe for a
+// client that only has invoices and no GL history.
+// TestClientDocumentCountCoversEveryReference reads the live schema and
+// fails if a table gains a clientId column without being listed here.
+var clientReferencingTables = []string{"journal_lines", "payments"}
+
+func (d *Database) GetClientDocumentCount(clientID string) (int64, error) {
+	subqueries := make([]string, len(clientReferencingTables))
+	args := make([]any, len(clientReferencingTables))
+	for i, table := range clientReferencingTables {
+		subqueries[i] = fmt.Sprintf("(SELECT COUNT(*) FROM %s WHERE clientId = ?)", table)
+		args[i] = clientID
+	}
+
+	var count int64
+	if err := d.DB.Get(&count, "SELECT "+strings.Join(subqueries, " + "), args...); err != nil {
+		return 0, fmt.Errorf("get_client_document_count: %w", err)
+	}
+	return count, nil
+}
+
+// DeleteClient refuses to delete a client that still has GL history —
+// journal_lines/payments reference clients with no ON DELETE clause.
+// Invoices are unaffected by this guard: invoices.clientId cascades on
+// delete by design, so a client with only invoices (no ledger activity yet)
+// deletes exactly as before.
 func (d *Database) DeleteClient(clientID string) (bool, error) {
+	count, err := d.GetClientDocumentCount(clientID)
+	if err != nil {
+		return false, err
+	}
+	if count > 0 {
+		return false, ErrClientInUse
+	}
+
 	res, err := d.DB.Exec(`DELETE FROM clients WHERE id = ?`, clientID)
 	if err != nil {
 		return false, fmt.Errorf("delete_client: %w", err)
