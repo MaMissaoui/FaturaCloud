@@ -542,7 +542,7 @@ msgstr "client(s)"
 msgid "Clients"
 msgstr "Clients"
 
-#: src/routes/organizations/index.tsx:826
+#: src/routes/organizations/index.tsx:905
 msgid "clients, vendors, products, tax rates"
 msgstr "clients, vendors, products, tax rates"
 
@@ -617,6 +617,10 @@ msgstr "Copied into new invoices for this client, e.g. a Leitweg-ID for German B
 msgid "Cost"
 msgstr "Cost"
 
+#: src/routes/organizations/index.tsx:804
+msgid "Cost of goods sold, recognized against inventory when a shipment ships."
+msgstr "Cost of goods sold, recognized against inventory when a shipment ships."
+
 #: src/components/products/form.tsx:329
 msgid "Cost price"
 msgstr "Cost price"
@@ -624,6 +628,10 @@ msgstr "Cost price"
 #: src/routes/settings/invoice.tsx:236
 msgid "Counter must be 0 or greater"
 msgstr "Counter must be 0 or greater"
+
+#: src/routes/organizations/index.tsx:823
+msgid "Counter-account for a manual stock adjustment's signed inventory value change."
+msgstr "Counter-account for a manual stock adjustment's signed inventory value change."
 
 #: src/layouts/base.tsx:507
 #: src/routes/settings/countries.tsx:56
@@ -679,7 +687,7 @@ msgstr "Customer note"
 msgid "Daily %"
 msgstr "Daily %"
 
-#: src/routes/organizations/index.tsx:807
+#: src/routes/organizations/index.tsx:886
 msgid "Danger zone"
 msgstr "Danger zone"
 
@@ -725,15 +733,15 @@ msgstr "DATEV account number"
 #~ msgid "DATEV Buchungsstapel export requires validating the exact column layout and format version against a current DATEV EXTF specification, which isn't available in this environment. Shipping an unverified layout risks producing a file that looks plausible but is rejected on import, so this export is deferred rather than guessed at."
 #~ msgstr "DATEV Buchungsstapel export requires validating the exact column layout and format version against a current DATEV EXTF specification, which isn't available in this environment. Shipping an unverified layout risks producing a file that looks plausible but is rejected on import, so this export is deferred rather than guessed at."
 
-#: src/routes/organizations/index.tsx:762
+#: src/routes/organizations/index.tsx:841
 msgid "DATEV clearing account"
 msgstr "DATEV clearing account"
 
-#: src/routes/organizations/index.tsx:793
+#: src/routes/organizations/index.tsx:872
 msgid "DATEV client number"
 msgstr "DATEV client number"
 
-#: src/routes/organizations/index.tsx:784
+#: src/routes/organizations/index.tsx:863
 msgid "DATEV consultant number"
 msgstr "DATEV consultant number"
 
@@ -791,6 +799,10 @@ msgstr "Default buyer reference"
 msgid "Default cash account"
 msgstr "Default cash account"
 
+#: src/routes/organizations/index.tsx:802
+msgid "Default COGS account"
+msgstr "Default COGS account"
+
 #: src/components/clients/form.tsx:276
 #: src/components/clients/form.tsx:279
 #: src/components/vendors/form.tsx:241
@@ -801,6 +813,18 @@ msgstr "Default currency"
 #: src/routes/organizations/index.tsx:731
 msgid "Default expense account"
 msgstr "Default expense account"
+
+#: src/routes/organizations/index.tsx:782
+msgid "Default GRNI account"
+msgstr "Default GRNI account"
+
+#: src/routes/organizations/index.tsx:762
+msgid "Default inventory account"
+msgstr "Default inventory account"
+
+#: src/routes/organizations/index.tsx:821
+msgid "Default inventory adjustment account"
+msgstr "Default inventory adjustment account"
 
 #: src/routes/organizations/index.tsx:714
 msgid "Default revenue account"
@@ -1047,7 +1071,7 @@ msgstr "E-mail"
 msgid "E-mails"
 msgstr "E-mails"
 
-#: src/routes/organizations/index.tsx:787
+#: src/routes/organizations/index.tsx:866
 msgid "e.g. 1001"
 msgstr "e.g. 1001"
 
@@ -1063,7 +1087,7 @@ msgstr "e.g. 1200"
 msgid "e.g. 2026"
 msgstr "e.g. 2026"
 
-#: src/routes/organizations/index.tsx:797
+#: src/routes/organizations/index.tsx:876
 msgid "e.g. 456"
 msgstr "e.g. 456"
 
@@ -1558,6 +1582,10 @@ msgstr "goods receipt(s)"
 msgid "Goods Receipts"
 msgstr "Goods Receipts"
 
+#: src/routes/organizations/index.tsx:784
+msgid "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
+msgstr "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
+
 #: src/routes/accounting/chart-of-accounts.tsx:138
 msgid "Group"
 msgstr "Group"
@@ -1745,7 +1773,7 @@ msgstr "invoice(s)"
 msgid "Invoices"
 msgstr "Invoices"
 
-#: src/routes/organizations/index.tsx:836
+#: src/routes/organizations/index.tsx:915
 msgid "invoices, orders, deliveries, purchase orders, goods receipts, incoming invoices, stock movements"
 msgstr "invoices, orders, deliveries, purchase orders, goods receipts, incoming invoices, stock movements"
 
@@ -1894,7 +1922,7 @@ msgstr "Mark as received"
 msgid "Mark as shipped"
 msgstr "Mark as shipped"
 
-#: src/routes/organizations/index.tsx:825
+#: src/routes/organizations/index.tsx:904
 msgid "Master data"
 msgstr "Master data"
 
@@ -1902,7 +1930,7 @@ msgstr "Master data"
 msgid "Master Data"
 msgstr "Master Data"
 
-#: src/routes/organizations/index.tsx:842
+#: src/routes/organizations/index.tsx:921
 msgid "Master data can't be reset on its own — documents reference clients and vendors, so transactional data is included automatically."
 msgstr "Master data can't be reset on its own — documents reference clients and vendors, so transactional data is included automatically."
 
@@ -2161,7 +2189,11 @@ msgstr "No stock-tracked products"
 #: src/routes/organizations/index.tsx:722
 #: src/routes/organizations/index.tsx:739
 #: src/routes/organizations/index.tsx:753
-#: src/routes/organizations/index.tsx:775
+#: src/routes/organizations/index.tsx:773
+#: src/routes/organizations/index.tsx:793
+#: src/routes/organizations/index.tsx:812
+#: src/routes/organizations/index.tsx:832
+#: src/routes/organizations/index.tsx:854
 msgid "None"
 msgstr "None"
 
@@ -2200,7 +2232,7 @@ msgstr "Note"
 msgid "Notes"
 msgstr "Notes"
 
-#: src/routes/organizations/index.tsx:867
+#: src/routes/organizations/index.tsx:946
 msgid "Nothing matches the current selection."
 msgstr "Nothing matches the current selection."
 
@@ -2506,7 +2538,7 @@ msgstr "pcs, kg, m…"
 msgid "Percentage"
 msgstr "Percentage"
 
-#: src/routes/organizations/index.tsx:812
+#: src/routes/organizations/index.tsx:891
 msgid "Permanently delete this organization's data without deleting the organization itself."
 msgstr "Permanently delete this organization's data without deleting the organization itself."
 
@@ -2926,11 +2958,11 @@ msgstr "Replace all current data with the uploaded file? This cannot be undone."
 msgid "Required"
 msgstr "Required"
 
-#: src/routes/organizations/index.tsx:794
+#: src/routes/organizations/index.tsx:873
 msgid "Required to generate a DATEV export (1–99999)."
 msgstr "Required to generate a DATEV export (1–99999)."
 
-#: src/routes/organizations/index.tsx:785
+#: src/routes/organizations/index.tsx:864
 msgid "Required to generate a DATEV export (1001–9999999)."
 msgstr "Required to generate a DATEV export (1001–9999999)."
 
@@ -2938,11 +2970,11 @@ msgstr "Required to generate a DATEV export (1001–9999999)."
 msgid "Reset failed"
 msgstr "Reset failed"
 
-#: src/routes/organizations/index.tsx:888
+#: src/routes/organizations/index.tsx:967
 msgid "Reset selected data"
 msgstr "Reset selected data"
 
-#: src/routes/organizations/index.tsx:849
+#: src/routes/organizations/index.tsx:928
 msgid "Reset this organization's data?"
 msgstr "Reset this organization's data?"
 
@@ -3342,7 +3374,7 @@ msgstr "Switch to dark mode"
 msgid "Switch to light mode"
 msgstr "Switch to light mode"
 
-#: src/routes/organizations/index.tsx:764
+#: src/routes/organizations/index.tsx:843
 msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 msgstr "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 
@@ -3430,7 +3462,7 @@ msgstr "The number on the vendor's invoice"
 
 #: src/routes/organizations/index.tsx:414
 #: src/routes/organizations/index.tsx:418
-#: src/routes/organizations/index.tsx:871
+#: src/routes/organizations/index.tsx:950
 msgid "This cannot be undone."
 msgstr "This cannot be undone."
 
@@ -3480,7 +3512,7 @@ msgid "This will add the received quantities to stock. Continue?"
 msgstr "This will add the received quantities to stock. Continue?"
 
 #: src/routes/organizations/index.tsx:404
-#: src/routes/organizations/index.tsx:855
+#: src/routes/organizations/index.tsx:934
 msgid "This will permanently delete:"
 msgstr "This will permanently delete:"
 
@@ -3554,7 +3586,7 @@ msgstr "Tracking"
 msgid "Tracking number"
 msgstr "Tracking number"
 
-#: src/routes/organizations/index.tsx:833
+#: src/routes/organizations/index.tsx:912
 msgid "Transactional data"
 msgstr "Transactional data"
 
@@ -3631,6 +3663,10 @@ msgstr "Used for the AP line when a vendor bill posts."
 #: src/routes/organizations/index.tsx:685
 msgid "Used for the AR line when a sales invoice posts."
 msgstr "Used for the AR line when a sales invoice posts."
+
+#: src/routes/organizations/index.tsx:764
+msgid "Used to capitalize a stock-enabled product's value when it's received or adjusted."
+msgstr "Used to capitalize a stock-enabled product's value when it's received or adjusted."
 
 #: src/components/tax-rates/form.tsx:230
 msgid "Used when this rate applies to a sales invoice — a liability account."

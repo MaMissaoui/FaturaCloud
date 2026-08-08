@@ -758,6 +758,85 @@ export default function Organizations() {
                 </Col>
                 <Col xs={24} md={12}>
                   <Form.Item
+                    name="defaultInventoryAccountId"
+                    label={<Trans>Default inventory account</Trans>}
+                    tooltip={
+                      <Trans>
+                        Used to capitalize a stock-enabled product's value when it's received or
+                        adjusted.
+                      </Trans>
+                    }
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultGRNIAccountId"
+                    label={<Trans>Default GRNI account</Trans>}
+                    tooltip={
+                      <Trans>
+                        Goods Received Not Invoiced — accrues a liability when a receipt is
+                        received, cleared when the matching vendor bill is approved.
+                      </Trans>
+                    }
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultCOGSAccountId"
+                    label={<Trans>Default COGS account</Trans>}
+                    tooltip={
+                      <Trans>
+                        Cost of goods sold, recognized against inventory when a shipment ships.
+                      </Trans>
+                    }
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultInventoryAdjustmentAccountId"
+                    label={<Trans>Default inventory adjustment account</Trans>}
+                    tooltip={
+                      <Trans>
+                        Counter-account for a manual stock adjustment's signed inventory value
+                        change.
+                      </Trans>
+                    }
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
                     name="datevClearingAccountId"
                     label={<Trans>DATEV clearing account</Trans>}
                     tooltip={
