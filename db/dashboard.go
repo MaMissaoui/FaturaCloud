@@ -128,14 +128,30 @@ func (d *Database) getRevenueByMonth(organizationID string, months int) ([]Month
 	return rows, nil
 }
 
+// getOutstandingInvoices keeps the pre-Phase-3 filter of state == 'sent'
+// only — 'paid' is a manual, free-transitioning flag disconnected from real
+// payments (see CLAUDE.md), and second-guessing it here would be a product
+// decision this function shouldn't make silently. What Phase 3 payments do
+// fix: a 'sent' invoice that already has a real partial (or full) payment
+// applied now shows its actual remaining balance — previously this always
+// showed the full total, and a fully-paid-via-real-payments invoice never
+// dropped off the list at all.
 func (d *Database) getOutstandingInvoices(organizationID string) (OutstandingSummary, error) {
 	invoices := []OutstandingInvoice{}
 	err := d.DB.Select(&invoices, `
 		SELECT i.id, i.number, c.name AS clientName, i.dueDate,
-		       CAST(ROUND(i.total * COALESCE(i.exchangeRate, 1)) AS INTEGER) AS total
+		       CAST(ROUND((i.total - COALESCE(paid.amount, 0)) * COALESCE(i.exchangeRate, 1)) AS INTEGER) AS total
 		FROM invoices i
 		JOIN clients c ON i.clientId = c.id
+		LEFT JOIN (
+			SELECT pa.documentId, SUM(pa.amount) AS amount
+			FROM payment_applications pa
+			JOIN payments p ON p.id = pa.paymentId
+			WHERE pa.documentType = 'invoice' AND p.status != 'voided'
+			GROUP BY pa.documentId
+		) paid ON paid.documentId = i.id
 		WHERE i.organizationId = ? AND i.state = 'sent'
+		      AND (i.total - COALESCE(paid.amount, 0)) > 0
 		ORDER BY i.dueDate ASC`,
 		organizationID,
 	)
@@ -143,6 +159,83 @@ func (d *Database) getOutstandingInvoices(organizationID string) (OutstandingSum
 		return OutstandingSummary{}, fmt.Errorf("get_outstanding_invoices: %w", err)
 	}
 	return bucketOutstanding(invoices, time.Now()), nil
+}
+
+// GetReceivableAging is the AR aging report (Phase 4) — a thin public name
+// for the same computation the dashboard's "Outstanding" widget already
+// does, rather than rebuilding it under a different query.
+func (d *Database) GetReceivableAging(organizationID string) (OutstandingSummary, error) {
+	return d.getOutstandingInvoices(organizationID)
+}
+
+// OutstandingBill is getOutstandingInvoices' purchases counterpart.
+type OutstandingBill struct {
+	ID          string `db:"id"         json:"id"`
+	Number      string `db:"number"     json:"number"`
+	VendorName  string `db:"vendorName" json:"vendorName"`
+	DueDate     *int64 `db:"dueDate"    json:"dueDate"`
+	Total       int64  `db:"total"      json:"total"`
+	DaysOverdue int    `json:"daysOverdue"`
+}
+
+// OutstandingBillSummary mirrors OutstandingSummary for bills.
+type OutstandingBillSummary struct {
+	Total      int64             `json:"total"`
+	Current    int64             `json:"current"`
+	Days1To30  int64             `json:"days1To30"`
+	Days31To60 int64             `json:"days31To60"`
+	Days61To90 int64             `json:"days61To90"`
+	Days90Plus int64             `json:"days90Plus"`
+	Bills      []OutstandingBill `json:"bills"`
+}
+
+// GetPayableAging is the AP aging report (Phase 4) — getOutstandingInvoices'
+// purchases counterpart. Filter choices mirror it exactly: state == 'approved'
+// only (not 'paid', same manual-flag reasoning), remaining balance computed
+// against real, non-voided payments.
+func (d *Database) GetPayableAging(organizationID string) (OutstandingBillSummary, error) {
+	bills := []OutstandingBill{}
+	err := d.DB.Select(&bills, `
+		SELECT ii.id, ii.vendorInvoiceNumber AS number, v.name AS vendorName, ii.dueDate,
+		       CAST(ROUND((ii.total - COALESCE(paid.amount, 0)) * COALESCE(ii.exchangeRate, 1)) AS INTEGER) AS total
+		FROM incoming_invoices ii
+		JOIN vendors v ON ii.vendorId = v.id
+		LEFT JOIN (
+			SELECT pa.documentId, SUM(pa.amount) AS amount
+			FROM payment_applications pa
+			JOIN payments p ON p.id = pa.paymentId
+			WHERE pa.documentType = 'incoming_invoice' AND p.status != 'voided'
+			GROUP BY pa.documentId
+		) paid ON paid.documentId = ii.id
+		WHERE ii.organizationId = ? AND ii.state = 'approved'
+		      AND (ii.total - COALESCE(paid.amount, 0)) > 0
+		ORDER BY ii.dueDate ASC`,
+		organizationID,
+	)
+	if err != nil {
+		return OutstandingBillSummary{}, fmt.Errorf("get_payable_aging: %w", err)
+	}
+	return bucketOutstandingBills(bills, time.Now()), nil
+}
+
+// agingBucketFor classifies a single outstanding amount by days overdue
+// against its due date — the one piece of bucketing logic bucketOutstanding
+// and bucketOutstandingBills actually share.
+func agingBucketFor(dueDate *int64, nowMillis int64) (bucket string, daysOverdue int) {
+	if dueDate == nil || *dueDate >= nowMillis {
+		return "current", 0
+	}
+	daysOverdue = int((nowMillis - *dueDate) / 86400000)
+	switch {
+	case daysOverdue <= 30:
+		return "days1To30", daysOverdue
+	case daysOverdue <= 60:
+		return "days31To60", daysOverdue
+	case daysOverdue <= 90:
+		return "days61To90", daysOverdue
+	default:
+		return "days90Plus", daysOverdue
+	}
 }
 
 // bucketOutstanding computes each invoice's days-overdue against now and
@@ -156,24 +249,45 @@ func bucketOutstanding(invoices []OutstandingInvoice, now time.Time) Outstanding
 		inv := &invoices[i]
 		summary.Total += inv.Total
 
-		if inv.DueDate == nil || *inv.DueDate >= nowMillis {
-			inv.DaysOverdue = 0
-			summary.Current += inv.Total
-			continue
-		}
-
-		daysOverdue := int((nowMillis - *inv.DueDate) / 86400000)
+		bucket, daysOverdue := agingBucketFor(inv.DueDate, nowMillis)
 		inv.DaysOverdue = daysOverdue
-
-		switch {
-		case daysOverdue <= 30:
+		switch bucket {
+		case "current":
+			summary.Current += inv.Total
+		case "days1To30":
 			summary.Days1To30 += inv.Total
-		case daysOverdue <= 60:
+		case "days31To60":
 			summary.Days31To60 += inv.Total
-		case daysOverdue <= 90:
+		case "days61To90":
 			summary.Days61To90 += inv.Total
 		default:
 			summary.Days90Plus += inv.Total
+		}
+	}
+	return summary
+}
+
+// bucketOutstandingBills is bucketOutstanding's purchases counterpart.
+func bucketOutstandingBills(bills []OutstandingBill, now time.Time) OutstandingBillSummary {
+	summary := OutstandingBillSummary{Bills: bills}
+	nowMillis := now.UnixMilli()
+	for i := range bills {
+		bill := &bills[i]
+		summary.Total += bill.Total
+
+		bucket, daysOverdue := agingBucketFor(bill.DueDate, nowMillis)
+		bill.DaysOverdue = daysOverdue
+		switch bucket {
+		case "current":
+			summary.Current += bill.Total
+		case "days1To30":
+			summary.Days1To30 += bill.Total
+		case "days31To60":
+			summary.Days31To60 += bill.Total
+		case "days61To90":
+			summary.Days61To90 += bill.Total
+		default:
+			summary.Days90Plus += bill.Total
 		}
 	}
 	return summary

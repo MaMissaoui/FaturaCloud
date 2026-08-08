@@ -35,6 +35,10 @@ import {
   CalendarOutlined,
   UnorderedListOutlined,
   TableOutlined,
+  LineChartOutlined,
+  FundOutlined,
+  ClockCircleOutlined,
+  FieldTimeOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -413,6 +417,42 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "accounting.trial-balance",
+                },
+                {
+                  icon: <LineChartOutlined />,
+                  label: (
+                    <Link to="/accounting/profit-and-loss">
+                      <Trans>Profit &amp; Loss</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.profit-and-loss",
+                },
+                {
+                  icon: <FundOutlined />,
+                  label: (
+                    <Link to="/accounting/balance-sheet">
+                      <Trans>Balance Sheet</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.balance-sheet",
+                },
+                {
+                  icon: <ClockCircleOutlined />,
+                  label: (
+                    <Link to="/accounting/ar-aging">
+                      <Trans>AR Aging</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.ar-aging",
+                },
+                {
+                  icon: <FieldTimeOutlined />,
+                  label: (
+                    <Link to="/accounting/ap-aging">
+                      <Trans>AP Aging</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.ap-aging",
                 },
               ],
             },

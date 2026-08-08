@@ -379,6 +379,38 @@ export interface TrialBalanceRow {
   credit: number;
 }
 
+export interface ProfitAndLossLine {
+  accountId: string;
+  code: string;
+  name: string;
+  amount: number;
+}
+
+export interface ProfitAndLoss {
+  revenue: ProfitAndLossLine[];
+  totalRevenue: number;
+  expenses: ProfitAndLossLine[];
+  totalExpenses: number;
+  netIncome: number;
+}
+
+export interface BalanceSheetLine {
+  accountId: string;
+  code: string;
+  name: string;
+  amount: number;
+}
+
+export interface BalanceSheet {
+  assets: BalanceSheetLine[];
+  totalAssets: number;
+  liabilities: BalanceSheetLine[];
+  totalLiabilities: number;
+  equity: BalanceSheetLine[];
+  currentEarnings: number;
+  totalEquity: number;
+}
+
 export interface Payment {
   id: string;
   organizationId: string;

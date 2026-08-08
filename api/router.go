@@ -291,6 +291,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 
 	// Reports
 	protected("GET", "/api/organizations/{orgId}/reports/trial-balance", h.getTrialBalance)
+	protected("GET", "/api/organizations/{orgId}/reports/profit-and-loss", h.getProfitAndLoss)
+	protected("GET", "/api/organizations/{orgId}/reports/balance-sheet", h.getBalanceSheet)
+	protected("GET", "/api/organizations/{orgId}/reports/ar-aging", h.getReceivableAging)
+	protected("GET", "/api/organizations/{orgId}/reports/ap-aging", h.getPayableAging)
 
 	return mux
 }

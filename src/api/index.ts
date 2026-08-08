@@ -30,6 +30,8 @@ import type {
   JournalEntry,
   JournalLine,
   TrialBalanceRow,
+  ProfitAndLoss,
+  BalanceSheet,
   Payment,
   PaymentApplication,
   CreatePaymentRequest,
@@ -685,3 +687,36 @@ export const GetTrialBalance = (organizationId: string, fiscalPeriodId?: string)
       fiscalPeriodId ? `?fiscalPeriodId=${encodeURIComponent(fiscalPeriodId)}` : ""
     }`,
   );
+
+export const GetProfitAndLoss = (organizationId: string, startDate: number, endDate: number) =>
+  get<ProfitAndLoss>(
+    `/organizations/${organizationId}/reports/profit-and-loss?startDate=${startDate}&endDate=${endDate}`,
+  );
+
+export const GetBalanceSheet = (organizationId: string, asOfDate: number) =>
+  get<BalanceSheet>(`/organizations/${organizationId}/reports/balance-sheet?asOfDate=${asOfDate}`);
+
+export const GetReceivableAging = (organizationId: string) =>
+  get<OutstandingSummary>(`/organizations/${organizationId}/reports/ar-aging`);
+
+export interface OutstandingBillSummary {
+  id: string;
+  number: string;
+  vendorName: string;
+  dueDate: number | null;
+  total: number;
+  daysOverdue: number;
+}
+
+export interface PayableAgingSummary {
+  total: number;
+  current: number;
+  days1To30: number;
+  days31To60: number;
+  days61To90: number;
+  days90Plus: number;
+  bills: OutstandingBillSummary[];
+}
+
+export const GetPayableAging = (organizationId: string) =>
+  get<PayableAgingSummary>(`/organizations/${organizationId}/reports/ap-aging`);

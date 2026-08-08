@@ -74,6 +74,10 @@ const FiscalPeriods = lazy(() => import("src/routes/accounting/fiscal-periods"))
 const JournalEntries = lazy(() => import("src/routes/accounting/journal-entries"));
 const JournalEntryDetails = lazy(() => import("src/routes/accounting/journal-entries/details"));
 const TrialBalance = lazy(() => import("src/routes/accounting/trial-balance"));
+const ProfitAndLoss = lazy(() => import("src/routes/accounting/reports/profit-and-loss"));
+const BalanceSheet = lazy(() => import("src/routes/accounting/reports/balance-sheet"));
+const ARAging = lazy(() => import("src/routes/accounting/reports/ar-aging"));
+const APAging = lazy(() => import("src/routes/accounting/reports/ap-aging"));
 
 dayjs.extend(localizedFormat);
 
@@ -272,6 +276,10 @@ const AppContent = () => {
                     <Route path="journal-entries" element={<JournalEntries />} />
                     <Route path="journal-entries/:id" element={<JournalEntryDetails />} />
                     <Route path="trial-balance" element={<TrialBalance />} />
+                    <Route path="profit-and-loss" element={<ProfitAndLoss />} />
+                    <Route path="balance-sheet" element={<BalanceSheet />} />
+                    <Route path="ar-aging" element={<ARAging />} />
+                    <Route path="ap-aging" element={<APAging />} />
                   </Route>
                   <Route path="/settings" element={<BaseLayout />}>
                     <Route index element={<Navigate to="/settings/invoice" />} />
