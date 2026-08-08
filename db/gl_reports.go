@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // TrialBalanceRow is one account's posted debit/credit totals — computed on
@@ -171,6 +172,13 @@ type BalanceSheet struct {
 }
 
 func (d *Database) GetBalanceSheet(organizationID string, asOfDate int64) (*BalanceSheet, error) {
+	// asOfDate == 0 (epoch) almost certainly means a caller omitted the query
+	// param rather than deliberately asking for a balance sheet from before
+	// any data could exist — treat it as "now" rather than silently returning
+	// an all-zero report that reads as "no activity" instead of "bad request".
+	if asOfDate == 0 {
+		asOfDate = time.Now().UnixMilli()
+	}
 	rows, err := d.getAccountActivity(
 		organizationID, []string{"asset", "liability", "equity", "revenue", "expense"},
 		" AND je.date <= ?", []any{asOfDate},

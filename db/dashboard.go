@@ -192,7 +192,11 @@ type OutstandingBillSummary struct {
 // GetPayableAging is the AP aging report (Phase 4) — getOutstandingInvoices'
 // purchases counterpart. Filter choices mirror it exactly: state == 'approved'
 // only (not 'paid', same manual-flag reasoning), remaining balance computed
-// against real, non-voided payments.
+// against real, non-voided payments. A bill bounced back to 'approved' from
+// 'paid' with a real remaining balance (e.g. a reversed/bounced payment) is
+// picked up here since it's back in scope; a bill still flagged 'paid' with
+// an actual outstanding balance is not — same intentional gap as AR aging's
+// 'sent'-only filter, not second-guessed here either.
 func (d *Database) GetPayableAging(organizationID string) (OutstandingBillSummary, error) {
 	bills := []OutstandingBill{}
 	err := d.DB.Select(&bills, `
