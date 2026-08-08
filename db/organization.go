@@ -64,6 +64,13 @@ type Organization struct {
 	DatevClearingAccountID *string `db:"datevClearingAccountId" json:"datevClearingAccountId"`
 	DatevConsultantNumber  *string `db:"datev_consultant_number" json:"datev_consultant_number"`
 	DatevClientNumber      *string `db:"datev_client_number"     json:"datev_client_number"`
+
+	// Phase 7 (inventory/COGS GL integration). No per-product override —
+	// one Inventory/GRNI/COGS/Adjustment account per organization.
+	DefaultInventoryAccountID           *string `db:"defaultInventoryAccountId"           json:"defaultInventoryAccountId"`
+	DefaultGRNIAccountID                *string `db:"defaultGRNIAccountId"                json:"defaultGRNIAccountId"`
+	DefaultCOGSAccountID                *string `db:"defaultCOGSAccountId"                json:"defaultCOGSAccountId"`
+	DefaultInventoryAdjustmentAccountID *string `db:"defaultInventoryAdjustmentAccountId" json:"defaultInventoryAdjustmentAccountId"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -142,6 +149,11 @@ type UpdateOrganizationRequest struct {
 	DatevClearingAccountID    *string `json:"datevClearingAccountId"`
 	DatevConsultantNumber     *string `json:"datev_consultant_number"`
 	DatevClientNumber         *string `json:"datev_client_number"`
+
+	DefaultInventoryAccountID           *string `json:"defaultInventoryAccountId"`
+	DefaultGRNIAccountID                *string `json:"defaultGRNIAccountId"`
+	DefaultCOGSAccountID                *string `json:"defaultCOGSAccountId"`
+	DefaultInventoryAdjustmentAccountID *string `json:"defaultInventoryAdjustmentAccountId"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -157,7 +169,9 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultArAccountId, defaultApAccountId, defaultRevenueAccountId,
 	       defaultExpenseAccountId, defaultCashAccountId, fxGainAccountId, fxLossAccountId,
 	       retainedEarningsAccountId, datevClearingAccountId,
-	       datev_consultant_number, datev_client_number`
+	       datev_consultant_number, datev_client_number,
+	       defaultInventoryAccountId, defaultGRNIAccountId,
+	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
@@ -301,7 +315,11 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     retainedEarningsAccountId = COALESCE(?, retainedEarningsAccountId),
 		     datevClearingAccountId    = COALESCE(?, datevClearingAccountId),
 		     datev_consultant_number   = COALESCE(?, datev_consultant_number),
-		     datev_client_number       = COALESCE(?, datev_client_number)
+		     datev_client_number       = COALESCE(?, datev_client_number),
+		     defaultInventoryAccountId           = COALESCE(?, defaultInventoryAccountId),
+		     defaultGRNIAccountId                = COALESCE(?, defaultGRNIAccountId),
+		     defaultCOGSAccountId                = COALESCE(?, defaultCOGSAccountId),
+		     defaultInventoryAdjustmentAccountId = COALESCE(?, defaultInventoryAdjustmentAccountId)
 		 WHERE id = ?`,
 		updates.Code, updates.Name, updates.Country, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
@@ -315,6 +333,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DefaultExpenseAccountID, updates.DefaultCashAccountID,
 		updates.FxGainAccountID, updates.FxLossAccountID, updates.RetainedEarningsAccountID,
 		updates.DatevClearingAccountID, updates.DatevConsultantNumber, updates.DatevClientNumber,
+		updates.DefaultInventoryAccountID, updates.DefaultGRNIAccountID,
+		updates.DefaultCOGSAccountID, updates.DefaultInventoryAdjustmentAccountID,
 		organizationID,
 	)
 	if err != nil {

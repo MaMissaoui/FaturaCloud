@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -167,6 +168,8 @@ var accountReferencingOrganizationColumns = []string{
 	"defaultArAccountId", "defaultApAccountId", "defaultRevenueAccountId",
 	"defaultExpenseAccountId", "defaultCashAccountId", "fxGainAccountId",
 	"fxLossAccountId", "retainedEarningsAccountId", "datevClearingAccountId",
+	"defaultInventoryAccountId", "defaultGRNIAccountId",
+	"defaultCOGSAccountId", "defaultInventoryAdjustmentAccountId",
 }
 
 // GetAccountUsageCount returns how many rows reference this account, so
@@ -259,8 +262,30 @@ var defaultChartOfAccounts = []defaultChartAccount{
 	{code: "4200", name: "Foreign Exchange Gain", accountType: "revenue", parentCode: "4000"},
 
 	{code: "5000", name: "Expenses", accountType: "expense", isGroup: true},
-	{code: "5100", name: "Purchases / Cost of Goods Sold", accountType: "expense", parentCode: "5000"},
+	// Renamed from "Purchases / Cost of Goods Sold" once Phase 7 gave COGS
+	// its own dedicated account (5150) — this one now only ever receives an
+	// immediate-expense bill line for a non-stock-tracked product. Go-literal
+	// rename only: an organization created before this change keeps whatever
+	// its own 5100 row is already named (see phase7ChartAdditions below).
+	{code: "5100", name: "General Purchases", accountType: "expense", parentCode: "5000"},
 	{code: "5200", name: "Foreign Exchange Loss", accountType: "expense", parentCode: "5000"},
+}
+
+// phase7ChartAdditions are the four accounts inventory/COGS GL integration
+// needs, inserted under the same top-level groups as defaultChartOfAccounts
+// above. Kept as a separate slice (not merged into defaultChartOfAccounts)
+// so seedInventoryAccountsTx can resolve each row's parent by *code lookup*
+// against an organization's already-existing chart, rather than assuming
+// its own insertion order — the two seeding paths (a brand-new org via
+// seedDefaultChartOfAccounts, an existing org via the Phase 7 backfill) are
+// otherwise structurally different (the former builds parent ids from a
+// codeToID map it's populating in the same pass; the latter has to look an
+// existing org's group ids up from the database).
+var phase7ChartAdditions = []defaultChartAccount{
+	{code: "1150", name: "Inventory", accountType: "asset", parentCode: "1000"},
+	{code: "2150", name: "Goods Received Not Invoiced", accountType: "liability", parentCode: "2000"},
+	{code: "5150", name: "Cost of Goods Sold", accountType: "expense", parentCode: "5000"},
+	{code: "5900", name: "Inventory Adjustment", accountType: "expense", parentCode: "5000"},
 }
 
 // seedDefaultChartOfAccounts inserts the minimal generic starter chart for
@@ -269,8 +294,8 @@ var defaultChartOfAccounts = []defaultChartAccount{
 // on the given exec so callers can fold it into their own transaction
 // (CreateOrganization) or run it standalone (the startup backfill in main.go).
 func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string) error {
-	codeToID := make(map[string]string, len(defaultChartOfAccounts))
-	for _, a := range defaultChartOfAccounts {
+	codeToID := make(map[string]string, len(defaultChartOfAccounts)+len(phase7ChartAdditions))
+	for _, a := range append(append([]defaultChartAccount{}, defaultChartOfAccounts...), phase7ChartAdditions...) {
 		id, err := gonanoid.New()
 		if err != nil {
 			return fmt.Errorf("seed_default_chart_of_accounts new_id: %w", err)
@@ -298,14 +323,118 @@ func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string) error 
 		`UPDATE organizations
 		 SET defaultArAccountId = ?, defaultApAccountId = ?, defaultRevenueAccountId = ?,
 		     defaultExpenseAccountId = ?, defaultCashAccountId = ?,
-		     fxGainAccountId = ?, fxLossAccountId = ?, retainedEarningsAccountId = ?
+		     fxGainAccountId = ?, fxLossAccountId = ?, retainedEarningsAccountId = ?,
+		     defaultInventoryAccountId = ?, defaultGRNIAccountId = ?,
+		     defaultCOGSAccountId = ?, defaultInventoryAdjustmentAccountId = ?
 		 WHERE id = ?`,
 		codeToID["1100"], codeToID["2100"], codeToID["4100"],
 		codeToID["5100"], codeToID["1020"],
 		codeToID["4200"], codeToID["5200"], codeToID["3100"],
+		codeToID["1150"], codeToID["2150"], codeToID["5150"], codeToID["5900"],
 		organizationID,
 	); err != nil {
 		return fmt.Errorf("seed_default_chart_of_accounts wire_defaults: %w", err)
+	}
+	return nil
+}
+
+// seedInventoryAccountsTx installs phase7ChartAdditions for an organization
+// that already has a chart of accounts (every organization that ran Phases
+// 1-6 before Phase 7 shipped — see SeedInventoryAccountingDefaultsForAllOrganizations).
+// Unlike seedDefaultChartOfAccounts, which builds parent ids from a
+// codeToID map it populates in the same pass, this resolves each new row's
+// parent group by looking its code up in the organization's existing
+// chart — the group accounts (1000/2000/5000) already exist and their ids
+// aren't known in advance. A code collision (the organization already has
+// its own account at, say, code "1150") skips just that one insert rather
+// than failing the whole backfill; the organization can wire its own
+// account to the new default column manually afterward.
+func seedInventoryAccountsTx(exec sqlGetExecer, organizationID string) error {
+	codeToID := map[string]string{}
+	for _, a := range phase7ChartAdditions {
+		var parentID *string
+		if a.parentCode != "" {
+			var existing string
+			err := exec.Get(&existing, `SELECT id FROM accounts WHERE organizationId = ? AND code = ?`, organizationID, a.parentCode)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("seed_inventory_accounts parent_lookup %s: %w", a.parentCode, err)
+			}
+			if existing != "" {
+				parentID = &existing
+			}
+		}
+
+		id, err := gonanoid.New()
+		if err != nil {
+			return fmt.Errorf("seed_inventory_accounts new_id: %w", err)
+		}
+		isGroup := 0
+		if a.isGroup {
+			isGroup = 1
+		}
+		_, err = exec.Exec(
+			`INSERT INTO accounts (id, organizationId, parentId, code, name, type, isGroup)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			id, organizationID, parentID, a.code, a.name, a.accountType, isGroup,
+		)
+		if err != nil {
+			if isDuplicateAccountCode(err) {
+				continue
+			}
+			return fmt.Errorf("seed_inventory_accounts insert %s: %w", a.code, err)
+		}
+		codeToID[a.code] = id
+	}
+
+	// COALESCE, not a bare assignment: an organization that already wired
+	// one of these columns manually (or from a partially-applied earlier
+	// backfill attempt) keeps its own choice rather than being overwritten.
+	// A code that collided above and was skipped has no entry in codeToID —
+	// its column simply stays whatever it already was (likely NULL).
+	if _, err := exec.Exec(
+		`UPDATE organizations
+		 SET defaultInventoryAccountId = COALESCE(defaultInventoryAccountId, ?),
+		     defaultGRNIAccountId = COALESCE(defaultGRNIAccountId, ?),
+		     defaultCOGSAccountId = COALESCE(defaultCOGSAccountId, ?),
+		     defaultInventoryAdjustmentAccountId = COALESCE(defaultInventoryAdjustmentAccountId, ?)
+		 WHERE id = ?`,
+		nullableString(codeToID["1150"]), nullableString(codeToID["2150"]),
+		nullableString(codeToID["5150"]), nullableString(codeToID["5900"]),
+		organizationID,
+	); err != nil {
+		return fmt.Errorf("seed_inventory_accounts wire_defaults: %w", err)
+	}
+	return nil
+}
+
+// nullableString turns an empty string (a code that collided and was
+// skipped, so codeToID has no entry for it) into a real NULL rather than
+// an empty-string value that COALESCE would treat as "already set".
+func nullableString(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+// SeedInventoryAccountingDefaultsForAllOrganizations installs Phase 7's
+// four inventory/COGS accounts for every organization that doesn't have
+// them yet — called once at startup (main.go), alongside
+// SeedAccountingDefaultsForAllOrganizations. That function's account-count
+// gate ("seed if this org has zero accounts") can't reach these: every
+// organization that ran Phases 1-6 already has a non-empty chart, so it
+// would never re-enter seeding for them. Gated on
+// defaultInventoryAccountId IS NULL instead, and idempotent — safe to run
+// on every startup.
+func (d *Database) SeedInventoryAccountingDefaultsForAllOrganizations() error {
+	var orgIDs []string
+	if err := d.DB.Select(&orgIDs, `SELECT id FROM organizations WHERE defaultInventoryAccountId IS NULL`); err != nil {
+		return fmt.Errorf("seed_inventory_accounting_defaults list_organizations: %w", err)
+	}
+	for _, orgID := range orgIDs {
+		if err := seedInventoryAccountsTx(d.DB, orgID); err != nil {
+			return fmt.Errorf("seed_inventory_accounting_defaults %s: %w", orgID, err)
+		}
 	}
 	return nil
 }

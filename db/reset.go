@@ -136,18 +136,21 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 	}
 
 	if req.ResetMasterData {
-		// organizations itself is never deleted by a reset, but carries nine
-		// FK columns pointing into accounts (set by seedDefaultChartOfAccounts
-		// or manual configuration). Null them before accounts rows are
-		// deleted below, or those columns would dangle — a foreign key
-		// violation with enforcement on, silent corruption without it. Same
-		// placement/style as the invoice_number_counter reset above.
+		// organizations itself is never deleted by a reset, but carries
+		// thirteen FK columns pointing into accounts (set by
+		// seedDefaultChartOfAccounts/seedInventoryAccountsTx or manual
+		// configuration). Null them before accounts rows are deleted below,
+		// or those columns would dangle — a foreign key violation with
+		// enforcement on, silent corruption without it. Same placement/style
+		// as the invoice_number_counter reset above.
 		if _, err := tx.Exec(`
 			UPDATE organizations
 			SET defaultArAccountId = NULL, defaultApAccountId = NULL, defaultRevenueAccountId = NULL,
 			    defaultExpenseAccountId = NULL, defaultCashAccountId = NULL,
 			    fxGainAccountId = NULL, fxLossAccountId = NULL, retainedEarningsAccountId = NULL,
-			    datevClearingAccountId = NULL
+			    datevClearingAccountId = NULL,
+			    defaultInventoryAccountId = NULL, defaultGRNIAccountId = NULL,
+			    defaultCOGSAccountId = NULL, defaultInventoryAdjustmentAccountId = NULL
 			WHERE id = ?`, organizationID,
 		); err != nil {
 			return nil, fmt.Errorf("reset_organization_data clear_gl_defaults: %w", err)
