@@ -79,6 +79,7 @@ import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
 import InvoicePDF from "src/components/invoices/pdf";
 import ExchangeRateFields, { CurrencySelect } from "src/components/currency/currency-fields";
+import PaymentPanel from "src/components/payments/payment-panel";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
 import { generateInvoiceNumber } from "src/utils/invoice";
 import { requiredForNewLineItem } from "src/utils/line-items";
@@ -88,6 +89,7 @@ import {
   calculateTax,
   addDecimal,
   centsToUnits,
+  unitsToCents,
 } from "src/utils/currency";
 
 const { TextArea } = Input;
@@ -1064,6 +1066,24 @@ const InvoiceDetails: React.FC = () => {
           )}
         </Col>
       </Row>
+
+      {!isNew && invoice && (
+        <Row>
+          <Col span={24}>
+            <PaymentPanel
+              organizationId={organization.id}
+              documentType="invoice"
+              documentId={id!}
+              direction="inbound"
+              clientId={(invoice as any).clientId}
+              currency={(invoice as any).currency ?? orgCurrency}
+              orgCurrency={orgCurrency}
+              total={unitsToCents((invoice as any).total ?? 0)}
+              hasPostedEntry={currentInvoiceState === "sent" || currentInvoiceState === "paid"}
+            />
+          </Col>
+        </Row>
+      )}
 
       <ClientForm />
     </>

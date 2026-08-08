@@ -56,20 +56,20 @@ type CreatePaymentApplicationRequest struct {
 
 // CreatePaymentRequest is the payload for CreatePayment.
 type CreatePaymentRequest struct {
-	ID               string                             `json:"id"`
-	OrganizationID   string                             `json:"organizationId"`
-	Direction        string                             `json:"direction"`
-	ClientID         *string                             `json:"clientId"`
-	VendorID         *string                             `json:"vendorId"`
-	BankAccountID    string                             `json:"bankAccountId"`
-	Amount           int64                              `json:"amount"`
-	Currency         string                             `json:"currency"`
-	ExchangeRate     *float64                           `json:"exchangeRate"`
-	ExchangeRateDate *int64                             `json:"exchangeRateDate"`
-	Date             int64                              `json:"date"`
-	Method           string                             `json:"method"`
-	Reference        *string                            `json:"reference"`
-	Notes            *string                            `json:"notes"`
+	ID               string                            `json:"id"`
+	OrganizationID   string                            `json:"organizationId"`
+	Direction        string                            `json:"direction"`
+	ClientID         *string                           `json:"clientId"`
+	VendorID         *string                           `json:"vendorId"`
+	BankAccountID    string                            `json:"bankAccountId"`
+	Amount           int64                             `json:"amount"`
+	Currency         string                            `json:"currency"`
+	ExchangeRate     *float64                          `json:"exchangeRate"`
+	ExchangeRateDate *int64                            `json:"exchangeRateDate"`
+	Date             int64                             `json:"date"`
+	Method           string                            `json:"method"`
+	Reference        *string                           `json:"reference"`
+	Notes            *string                           `json:"notes"`
 	Applications     []CreatePaymentApplicationRequest `json:"applications"`
 }
 

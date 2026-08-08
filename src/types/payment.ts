@@ -2,13 +2,7 @@ import { t } from "@lingui/core/macro";
 
 export type PaymentDirection = "inbound" | "outbound";
 
-export type PaymentMethod =
-  | "bank_transfer"
-  | "cash"
-  | "card"
-  | "direct_debit"
-  | "check"
-  | "other";
+export type PaymentMethod = "bank_transfer" | "cash" | "card" | "direct_debit" | "check" | "other";
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
   "bank_transfer",

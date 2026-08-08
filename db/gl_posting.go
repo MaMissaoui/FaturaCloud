@@ -327,11 +327,20 @@ func (d *Database) buildInvoiceGLLines(invoice *Invoice, lineItems []InvoiceLine
 	taxFunctional, taxSum := convertGroup(taxAmountsDoc, taxOrder, convert)
 	absorbResidual(revenueFunctional, revenueOrder, arFunctional-taxSum)
 
+	// journal_lines has CHECK((debit=0) <> (credit=0)) — a group that nets to
+	// exactly zero (e.g. a 0% tax rate, or a free line item) must not emit a
+	// row at all rather than a debit=0/credit=0 line, which the DB rejects.
 	var lines []CreateJournalLineRequest
 	for _, accountID := range revenueOrder {
+		if revenueFunctional[accountID] == 0 {
+			continue
+		}
 		lines = append(lines, glLine(accountID, 0, revenueFunctional[accountID], invoice.Currency, revenueAmountsDoc[accountID], invoice.ExchangeRate, foreign, nil, nil, nil))
 	}
 	for _, taxRateID := range taxOrder {
+		if taxFunctional[taxRateID] == 0 {
+			continue
+		}
 		lines = append(lines, glLine(taxAccounts[taxRateID], 0, taxFunctional[taxRateID], invoice.Currency, taxAmountsDoc[taxRateID], invoice.ExchangeRate, foreign, nil, nil, &taxRateID))
 	}
 	lines = append(lines, glLine(*org.DefaultArAccountID, arFunctional, 0, invoice.Currency, invoice.Total, invoice.ExchangeRate, foreign, &invoice.ClientID, nil, nil))
@@ -446,11 +455,19 @@ func (d *Database) buildIncomingInvoiceGLLines(bill *IncomingInvoice, lineItems 
 	taxFunctional, taxSum := convertGroup(taxAmountsDoc, taxOrder, convert)
 	absorbResidual(expenseFunctional, expenseOrder, apFunctional-taxSum)
 
+	// See buildInvoiceGLLines: a group netting to exactly zero must not emit
+	// a row — journal_lines' CHECK((debit=0) <> (credit=0)) rejects it.
 	var lines []CreateJournalLineRequest
 	for _, accountID := range expenseOrder {
+		if expenseFunctional[accountID] == 0 {
+			continue
+		}
 		lines = append(lines, glLine(accountID, expenseFunctional[accountID], 0, bill.Currency, expenseAmountsDoc[accountID], bill.ExchangeRate, foreign, nil, nil, nil))
 	}
 	for _, taxRateID := range taxOrder {
+		if taxFunctional[taxRateID] == 0 {
+			continue
+		}
 		lines = append(lines, glLine(taxAccounts[taxRateID], taxFunctional[taxRateID], 0, bill.Currency, taxAmountsDoc[taxRateID], bill.ExchangeRate, foreign, nil, nil, &taxRateID))
 	}
 	lines = append(lines, glLine(*org.DefaultApAccountID, 0, apFunctional, bill.Currency, bill.Total, bill.ExchangeRate, foreign, nil, &bill.VendorID, nil))

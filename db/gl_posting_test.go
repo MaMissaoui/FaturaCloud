@@ -366,3 +366,53 @@ func TestZeroTotalInvoiceSkipsGLPosting(t *testing.T) {
 		t.Fatalf("expected no GL entry for a zero-total invoice, got %+v", entry)
 	}
 }
+
+// A 0%-percentage tax rate (e.g. an export exemption) with an output tax
+// account configured computes to a zero-amount tax group — that group must
+// not emit a journal line at all, since journal_lines' CHECK((debit=0) <>
+// (credit=0)) rejects a debit=0/credit=0 row outright (caught live: sending
+// an invoice under a real 0% VAT rate 500'd instead of posting).
+func TestInvoiceWithZeroPercentTaxRateSkipsZeroTaxLine(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-inv-zero-pct-tax")
+
+	zeroRate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		OrganizationID: fx.orgID, Name: "VAT 0% (Export)", Percentage: 0,
+		OutputTaxAccountID: &fx.outputTaxAccountID,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: fx.orgID, Number: "inv-zero-pct", ClientID: fx.clientID,
+		Date: fx.date, Currency: "EUR",
+		SubTotal: 1000, TaxTotal: 0, Total: 1000,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &zeroRate.ID, ProductID: &fx.productID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+	entry, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	taxDebit, taxCredit := sumLines(lines, fx.outputTaxAccountID)
+	if taxDebit != 0 || taxCredit != 0 {
+		t.Fatalf("expected no output tax line at all for a 0%% rate, found debit %d credit %d", taxDebit, taxCredit)
+	}
+	arDebit, _ := sumLines(lines, fx.arAccountID)
+	if arDebit != 1000 {
+		t.Fatalf("AR debit = %d, want 1000", arDebit)
+	}
+}
