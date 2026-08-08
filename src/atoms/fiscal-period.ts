@@ -11,6 +11,7 @@ import {
   GetFiscalPeriods,
   CreateFiscalPeriod,
   UpdateFiscalPeriodStatus,
+  CloseFiscalYear,
 } from "src/api";
 
 import { organizationIdAtom } from "./organization";
@@ -89,6 +90,24 @@ export const createFiscalPeriodAtom = atom(
     }
   },
 );
+
+// Irreversible — there is no reopen endpoint. The confirmation modal is
+// where the user is told this; this atom just does what it's asked.
+export const closeFiscalYearAtom = atom(null, async (get, set, fiscalYearId: string) => {
+  try {
+    const closed = await CloseFiscalYear(fiscalYearId);
+    message.success(t`Fiscal year closed`);
+    set(
+      fiscalYearsAtom,
+      get(fiscalYearsAtom).map((y) => (y.id === closed.id ? closed : y)),
+    );
+    return closed;
+  } catch (error) {
+    console.error("Failed to close fiscal year:", error);
+    message.error(error instanceof Error ? error.message : t`Failed to close fiscal year`);
+    return null;
+  }
+});
 
 export const updateFiscalPeriodStatusAtom = atom(
   null,

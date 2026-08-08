@@ -67,3 +67,17 @@ func (h *handler) updateFiscalPeriodStatus(w http.ResponseWriter, r *http.Reques
 	}
 	writeJSON(w, http.StatusOK, period)
 }
+
+// closeFiscalYear is irreversible — there is no ReopenFiscalYear — so it's
+// admin-only, the same class as backup/GL export/organization reset, unlike
+// its protected-but-not-admin siblings above (creating a year, toggling a
+// single period) which are easy to undo.
+func (h *handler) closeFiscalYear(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	year, err := h.db.CloseFiscalYear(id)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, year)
+}

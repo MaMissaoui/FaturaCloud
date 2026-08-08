@@ -18,7 +18,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { CalendarOutlined, PlusOutlined } from "@ant-design/icons";
+import { CalendarOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 import {
@@ -29,7 +29,9 @@ import {
   loadFiscalPeriodsAtom,
   createFiscalPeriodAtom,
   updateFiscalPeriodStatusAtom,
+  closeFiscalYearAtom,
 } from "src/atoms/fiscal-period";
+import { isAdminAtom } from "src/atoms/auth";
 import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 
@@ -45,11 +47,15 @@ const FiscalPeriods = () => {
   const loadFiscalPeriods = useSetAtom(loadFiscalPeriodsAtom);
   const createFiscalPeriod = useSetAtom(createFiscalPeriodAtom);
   const updateFiscalPeriodStatus = useSetAtom(updateFiscalPeriodStatusAtom);
+  const closeFiscalYear = useSetAtom(closeFiscalYearAtom);
+  const isAdmin = useAtomValue(isAdminAtom);
+  const [modalApi, modalContextHolder] = Modal.useModal();
 
   const [loading, setLoading] = useState(false);
   const [yearModalOpen, setYearModalOpen] = useState(false);
   const [yearSubmitting, setYearSubmitting] = useState(false);
   const [yearForm] = Form.useForm();
+  const [closingYearId, setClosingYearId] = useState<string | null>(null);
 
   const [periodModalYearId, setPeriodModalYearId] = useState<string | null>(null);
   const [periodSubmitting, setPeriodSubmitting] = useState(false);
@@ -92,8 +98,34 @@ const FiscalPeriods = () => {
     }
   };
 
+  const confirmCloseYear = (year: FiscalYear) => {
+    modalApi.confirm({
+      title: t`Close fiscal year "${year.name}"?`,
+      icon: <LockOutlined />,
+      content: (
+        <Trans>
+          This posts a closing entry moving net revenue and expense into retained earnings, then
+          permanently blocks posting any new journal entry dated within this year. This cannot be
+          undone — there is no way to reopen a closed fiscal year.
+        </Trans>
+      ),
+      okText: <Trans>Close year</Trans>,
+      okButtonProps: { danger: true },
+      cancelText: <Trans>Cancel</Trans>,
+      onOk: async () => {
+        setClosingYearId(year.id);
+        try {
+          await closeFiscalYear(year.id);
+        } finally {
+          setClosingYearId(null);
+        }
+      },
+    });
+  };
+
   return (
     <>
+      {modalContextHolder}
       <PageHeader
         icon={<CalendarOutlined />}
         title={<Trans>Fiscal Periods</Trans>}
@@ -231,6 +263,25 @@ const FiscalPeriods = () => {
                 </Tag>
               )}
             />
+            {isAdmin && (
+              <Table.Column<FiscalYear>
+                key="actions"
+                render={(year) =>
+                  year.status === "open" ? (
+                    <Button
+                      size="small"
+                      danger
+                      icon={<LockOutlined />}
+                      loading={closingYearId === year.id}
+                      disabled={closingYearId !== null && closingYearId !== year.id}
+                      onClick={() => confirmCloseYear(year)}
+                    >
+                      <Trans>Close year</Trans>
+                    </Button>
+                  ) : null
+                }
+              />
+            )}
           </Table>
         </Col>
       </Row>

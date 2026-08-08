@@ -178,6 +178,22 @@ func resolveFiscalPeriodForDate(exec sqlGetExecer, organizationID string, date i
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			// Distinguish "nothing was ever set up here" (point the user at
+			// creating a year) from "a year exists but CloseFiscalYear
+			// already closed it" (a materially different, now-common
+			// situation once Phase 6 is in use — "create one first" would
+			// send the user the wrong way when a year already covers this
+			// date, just not an open one).
+			var closedYearExists bool
+			if err := exec.Get(&closedYearExists,
+				`SELECT EXISTS(SELECT 1 FROM fiscal_years WHERE organizationId = ? AND status = 'closed' AND startDate <= ? AND endDate >= ?)`,
+				organizationID, date, date,
+			); err != nil {
+				return "", nil, fmt.Errorf("resolve_fiscal_period_for_date closed_year_check: %w", err)
+			}
+			if closedYearExists {
+				return "", nil, newValidationError("cannot post: the fiscal year covering this date is closed")
+			}
 			return "", nil, newValidationError("no open fiscal year covers this date — create one first")
 		}
 		return "", nil, fmt.Errorf("resolve_fiscal_period_for_date year: %w", err)

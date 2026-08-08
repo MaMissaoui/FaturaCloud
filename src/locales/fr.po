@@ -389,6 +389,7 @@ msgstr "Taxe générale indirecte des îles Canaries"
 #: src/components/stock/serial-capture-modal.tsx:96
 #: src/components/tax-rates/form.tsx:146
 #: src/components/vendors/form.tsx:146
+#: src/routes/accounting/fiscal-periods.tsx:114
 #: src/routes/organizations/index.tsx:448
 #: src/routes/organizations/new.tsx:113
 #: src/routes/settings/backup.tsx:125
@@ -545,16 +546,26 @@ msgstr "Clients"
 msgid "clients, vendors, products, tax rates"
 msgstr "clients, fournisseurs, produits, taux de taxe"
 
-#: src/routes/accounting/fiscal-periods.tsx:197
+#: src/routes/accounting/fiscal-periods.tsx:229
 msgid "Close"
 msgstr "Clôturer"
 
-#: src/routes/accounting/fiscal-periods.tsx:181
+#. placeholder {0}: year.name
+#: src/routes/accounting/fiscal-periods.tsx:103
+msgid "Close fiscal year \"{0}\"?"
+msgstr "Clôturer l'exercice « {0} » ?"
+
+#: src/routes/accounting/fiscal-periods.tsx:213
 msgid "Close this period? New entries will be blocked."
 msgstr "Clôturer cette période ? Les nouvelles écritures seront bloquées."
 
-#: src/routes/accounting/fiscal-periods.tsx:171
-#: src/routes/accounting/fiscal-periods.tsx:230
+#: src/routes/accounting/fiscal-periods.tsx:112
+#: src/routes/accounting/fiscal-periods.tsx:279
+msgid "Close year"
+msgstr "Clôturer l'exercice"
+
+#: src/routes/accounting/fiscal-periods.tsx:203
+#: src/routes/accounting/fiscal-periods.tsx:262
 msgid "Closed"
 msgstr "Clôturée"
 
@@ -701,8 +712,8 @@ msgstr "Date"
 msgid "Date format"
 msgstr "Format de date"
 
-#: src/routes/accounting/fiscal-periods.tsx:256
-#: src/routes/accounting/fiscal-periods.tsx:282
+#: src/routes/accounting/fiscal-periods.tsx:307
+#: src/routes/accounting/fiscal-periods.tsx:333
 msgid "Date range"
 msgstr "Période"
 
@@ -1012,7 +1023,7 @@ msgstr "E-mails"
 msgid "e.g. 1010"
 msgstr "ex. 1010"
 
-#: src/routes/accounting/fiscal-periods.tsx:252
+#: src/routes/accounting/fiscal-periods.tsx:303
 msgid "e.g. 2026"
 msgstr "ex. 2026"
 
@@ -1028,7 +1039,7 @@ msgstr "ex. Caisse"
 msgid "e.g. Intra-community supply"
 msgstr "p. ex. livraison intracommunautaire"
 
-#: src/routes/accounting/fiscal-periods.tsx:278
+#: src/routes/accounting/fiscal-periods.tsx:329
 msgid "e.g. January"
 msgstr "ex. Janvier"
 
@@ -1098,8 +1109,8 @@ msgstr "E-mails"
 msgid "Enable automatic backups"
 msgstr "Activer les sauvegardes automatiques"
 
-#: src/routes/accounting/fiscal-periods.tsx:160
-#: src/routes/accounting/fiscal-periods.tsx:219
+#: src/routes/accounting/fiscal-periods.tsx:192
+#: src/routes/accounting/fiscal-periods.tsx:251
 msgid "End"
 msgstr "Fin"
 
@@ -1176,6 +1187,10 @@ msgstr "Exporter le FEC"
 msgid "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 msgstr "Exporte chaque ligne d'écriture validée de l'exercice sélectionné sous forme de fichier SirenFECAAAAMMJJ.txt, conformément au format imposé par l'administration fiscale française. Nécessite un SIREN à 9 chiffres dans le numéro d'immatriculation de l'organisation."
 
+#: src/atoms/fiscal-period.ts:107
+msgid "Failed to close fiscal year"
+msgstr "Échec de la clôture de l'exercice"
+
 #: src/atoms/stock.ts:62
 #: src/atoms/stock.ts:67
 msgid "Failed to delete stock movement"
@@ -1209,11 +1224,11 @@ msgstr "Échec de la récupération des livraisons"
 msgid "Failed to fetch delivery"
 msgstr "Échec de la récupération de la livraison"
 
-#: src/atoms/fiscal-period.ts:65
+#: src/atoms/fiscal-period.ts:66
 msgid "Failed to fetch fiscal periods"
 msgstr "Échec du chargement des périodes"
 
-#: src/atoms/fiscal-period.ts:29
+#: src/atoms/fiscal-period.ts:30
 msgid "Failed to fetch fiscal years"
 msgstr "Échec du chargement des exercices"
 
@@ -1393,32 +1408,36 @@ msgstr "Fichier"
 msgid "Filter by product"
 msgstr "Filtrer par produit"
 
-#: src/atoms/fiscal-period.ts:78
+#: src/atoms/fiscal-period.ts:79
 msgid "Fiscal period created"
 msgstr "Période créée"
 
-#: src/atoms/fiscal-period.ts:87
+#: src/atoms/fiscal-period.ts:88
 msgid "Fiscal period creation failed"
 msgstr "Échec de la création de la période"
 
-#: src/atoms/fiscal-period.ts:107
+#: src/atoms/fiscal-period.ts:126
 msgid "Fiscal period update failed"
 msgstr "Échec de la mise à jour de la période"
 
-#: src/atoms/fiscal-period.ts:98
+#: src/atoms/fiscal-period.ts:117
 msgid "Fiscal period updated"
 msgstr "Période mise à jour"
 
 #: src/layouts/base.tsx:399
-#: src/routes/accounting/fiscal-periods.tsx:99
+#: src/routes/accounting/fiscal-periods.tsx:131
 msgid "Fiscal Periods"
 msgstr "Exercices comptables"
 
-#: src/atoms/fiscal-period.ts:44
+#: src/atoms/fiscal-period.ts:99
+msgid "Fiscal year closed"
+msgstr "Exercice clôturé"
+
+#: src/atoms/fiscal-period.ts:45
 msgid "Fiscal year created"
 msgstr "Exercice créé"
 
-#: src/atoms/fiscal-period.ts:49
+#: src/atoms/fiscal-period.ts:50
 msgid "Fiscal year creation failed"
 msgstr "Échec de la création de l'exercice"
 
@@ -1701,7 +1720,7 @@ msgstr "Échec de la suppression du journal"
 msgid "Journal Entries"
 msgstr "Écritures"
 
-#: src/routes/accounting/fiscal-periods.tsx:114
+#: src/routes/accounting/fiscal-periods.tsx:146
 msgid "Journal entries can only be posted within an open fiscal year. Create one to start using the general ledger."
 msgstr "Les écritures ne peuvent être comptabilisées que dans un exercice ouvert. Créez-en un pour commencer à utiliser la comptabilité générale."
 
@@ -1886,10 +1905,10 @@ msgstr "Mouvement"
 #: src/components/vendors/form.tsx:161
 #: src/components/vendors/form.tsx:165
 #: src/routes/accounting/chart-of-accounts.tsx:104
-#: src/routes/accounting/fiscal-periods.tsx:152
-#: src/routes/accounting/fiscal-periods.tsx:211
-#: src/routes/accounting/fiscal-periods.tsx:249
-#: src/routes/accounting/fiscal-periods.tsx:275
+#: src/routes/accounting/fiscal-periods.tsx:184
+#: src/routes/accounting/fiscal-periods.tsx:243
+#: src/routes/accounting/fiscal-periods.tsx:300
+#: src/routes/accounting/fiscal-periods.tsx:326
 #: src/routes/accounting/journals.tsx:84
 #: src/routes/accounting/trial-balance.tsx:126
 #: src/routes/clients.tsx:83
@@ -1929,12 +1948,12 @@ msgstr "Nouveau client"
 msgid "New delivery"
 msgstr "Nouvelle livraison"
 
-#: src/routes/accounting/fiscal-periods.tsx:265
+#: src/routes/accounting/fiscal-periods.tsx:316
 msgid "New fiscal period"
 msgstr "Nouvelle période"
 
-#: src/routes/accounting/fiscal-periods.tsx:102
-#: src/routes/accounting/fiscal-periods.tsx:239
+#: src/routes/accounting/fiscal-periods.tsx:134
+#: src/routes/accounting/fiscal-periods.tsx:290
 msgid "New fiscal year"
 msgstr "Nouvel exercice"
 
@@ -1979,7 +1998,7 @@ msgstr "Nouvelle organisation"
 msgid "New password (leave blank to keep current)"
 msgstr "Nouveau mot de passe (laisser vide pour conserver l'actuel)"
 
-#: src/routes/accounting/fiscal-periods.tsx:148
+#: src/routes/accounting/fiscal-periods.tsx:180
 msgid "New period"
 msgstr "Nouvelle période"
 
@@ -2026,7 +2045,7 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 #: src/components/products/form.tsx:167
 #: src/components/tax-rates/form.tsx:135
 #: src/components/vendors/form.tsx:131
-#: src/routes/accounting/fiscal-periods.tsx:193
+#: src/routes/accounting/fiscal-periods.tsx:225
 #: src/routes/accounting/journal-entries/details.tsx:356
 #: src/routes/accounting/journal-entries/details.tsx:366
 #: src/routes/deliveries/details.tsx:420
@@ -2047,7 +2066,7 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 msgid "No"
 msgstr "Non"
 
-#: src/routes/accounting/fiscal-periods.tsx:112
+#: src/routes/accounting/fiscal-periods.tsx:144
 msgid "No fiscal year yet"
 msgstr "Aucun exercice pour l'instant"
 
@@ -2156,8 +2175,8 @@ msgstr "Sur cette facture"
 msgid "Only active countries appear in the country picklist on organizations, vendors and clients. Existing records keep whatever country they already have, even if it's later deactivated here."
 msgstr "Seuls les pays actifs apparaissent dans la liste des pays des organisations, fournisseurs et clients. Les enregistrements existants conservent leur pays actuel, même s'il est désactivé ici par la suite."
 
-#: src/routes/accounting/fiscal-periods.tsx:171
-#: src/routes/accounting/fiscal-periods.tsx:230
+#: src/routes/accounting/fiscal-periods.tsx:203
+#: src/routes/accounting/fiscal-periods.tsx:262
 msgid "Open"
 msgstr "Ouvert"
 
@@ -2488,8 +2507,8 @@ msgstr "Veuillez saisir une description !"
 
 #: src/components/accounting/account-form.tsx:162
 #: src/components/accounting/journal-form.tsx:147
-#: src/routes/accounting/fiscal-periods.tsx:250
-#: src/routes/accounting/fiscal-periods.tsx:276
+#: src/routes/accounting/fiscal-periods.tsx:301
+#: src/routes/accounting/fiscal-periods.tsx:327
 msgid "Please input a name!"
 msgstr "Veuillez saisir un nom !"
 
@@ -2508,8 +2527,8 @@ msgstr "Veuillez saisir un nom !"
 msgid "Please select a client to view PDF preview."
 msgstr "Veuillez sélectionner un client pour afficher l'aperçu du PDF."
 
-#: src/routes/accounting/fiscal-periods.tsx:257
-#: src/routes/accounting/fiscal-periods.tsx:283
+#: src/routes/accounting/fiscal-periods.tsx:308
+#: src/routes/accounting/fiscal-periods.tsx:334
 msgid "Please select a date range!"
 msgstr "Veuillez sélectionner une période !"
 
@@ -2831,11 +2850,11 @@ msgstr "Supprimer la ligne"
 msgid "Remove logo"
 msgstr "Supprimer le logo"
 
-#: src/routes/accounting/fiscal-periods.tsx:199
+#: src/routes/accounting/fiscal-periods.tsx:231
 msgid "Reopen"
 msgstr "Rouvrir"
 
-#: src/routes/accounting/fiscal-periods.tsx:183
+#: src/routes/accounting/fiscal-periods.tsx:215
 msgid "Reopen this period?"
 msgstr "Rouvrir cette période ?"
 
@@ -3157,8 +3176,8 @@ msgstr "SKU / Code produit"
 msgid "Standard rate"
 msgstr "Taux normal"
 
-#: src/routes/accounting/fiscal-periods.tsx:154
-#: src/routes/accounting/fiscal-periods.tsx:213
+#: src/routes/accounting/fiscal-periods.tsx:186
+#: src/routes/accounting/fiscal-periods.tsx:245
 msgid "Start"
 msgstr "Début"
 
@@ -3170,8 +3189,8 @@ msgstr "État"
 
 #: src/components/deliveries/delivery-note-pdf.tsx:161
 #: src/components/payments/payment-panel.tsx:228
-#: src/routes/accounting/fiscal-periods.tsx:166
-#: src/routes/accounting/fiscal-periods.tsx:225
+#: src/routes/accounting/fiscal-periods.tsx:198
+#: src/routes/accounting/fiscal-periods.tsx:257
 #: src/routes/accounting/journal-entries.tsx:137
 #: src/routes/deliveries.tsx:102
 #: src/routes/deliveries/details.tsx:319
@@ -3373,6 +3392,10 @@ msgstr "Ce champ est obligatoire !"
 #: src/routes/incoming-invoices/details.tsx:488
 msgid "This invoice does not match the purchase order and goods received"
 msgstr "Cette facture ne concorde pas avec la commande d'achat et les marchandises reçues"
+
+#: src/routes/accounting/fiscal-periods.tsx:106
+msgid "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
+msgstr "Ceci comptabilise une écriture de clôture qui transfère le résultat net (produits moins charges) vers les réserves, puis bloque définitivement toute nouvelle écriture datée dans cet exercice. Cette action est irréversible — un exercice clôturé ne peut pas être rouvert."
 
 #: src/components/payments/payment-panel.tsx:242
 msgid "This reverses its journal entry and restores the balance due."
@@ -3703,7 +3726,7 @@ msgstr "Pourquoi cet écart est-il acceptable ?"
 #: src/components/products/form.tsx:166
 #: src/components/tax-rates/form.tsx:134
 #: src/components/vendors/form.tsx:130
-#: src/routes/accounting/fiscal-periods.tsx:192
+#: src/routes/accounting/fiscal-periods.tsx:224
 #: src/routes/accounting/journal-entries/details.tsx:355
 #: src/routes/accounting/journal-entries/details.tsx:365
 #: src/routes/deliveries/details.tsx:419

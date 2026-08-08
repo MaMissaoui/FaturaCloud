@@ -251,6 +251,25 @@ func (d *Database) PostJournalEntry(entryID string) (*JournalEntry, error) {
 // through it. Mirrors insertStockMovementTx being the sole place stock
 // actually moves.
 func allocateAndFinalizeEntryTx(tx *sqlx.Tx, entryID, organizationID, fiscalYearID, journalID string) error {
+	// A draft entry created while the year was open carries the fiscalYearId
+	// it resolved at creation time (see CreateJournalEntry) and is never
+	// re-resolved on post — so without this check, posting a stranded draft
+	// after CloseFiscalYear would land revenue/expense into a year whose
+	// closing entry has already been computed, silently invalidating it.
+	// Every other posting path (auto-post, payments, reversal) already goes
+	// through resolveFiscalPeriodForDate first, which only matches an open
+	// year — this is the one gap PostJournalEntry has that the others don't,
+	// so it's closed here instead, at the one choke point all of them share.
+	// CloseFiscalYear's own closing entry still posts fine: it runs before
+	// the UPDATE that flips the year to 'closed'.
+	var fiscalYearStatus string
+	if err := tx.Get(&fiscalYearStatus, `SELECT status FROM fiscal_years WHERE id = ?`, fiscalYearID); err != nil {
+		return fmt.Errorf("allocate_and_finalize_entry fiscal_year_status: %w", err)
+	}
+	if fiscalYearStatus != "open" {
+		return newValidationError("cannot post: fiscal year is closed")
+	}
+
 	// isGroup=1 accounts are headers only, never postable — this is the one
 	// place that's enforced, not a DB constraint.
 	var groupLineCount int64

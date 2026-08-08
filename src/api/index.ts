@@ -639,6 +639,8 @@ export const CreateFiscalPeriod = (req: Partial<FiscalPeriod>) =>
   post<FiscalPeriod>("/fiscal-periods", req);
 export const UpdateFiscalPeriodStatus = (id: string, status: string) =>
   patch<FiscalPeriod>(`/fiscal-periods/${id}/status`, { status });
+// Irreversible — there is no reopen endpoint (db.CloseFiscalYear).
+export const CloseFiscalYear = (id: string) => post<FiscalYear>(`/fiscal-years/${id}/close`, {});
 
 // ---- Accounting: Journal entries ----
 

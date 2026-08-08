@@ -270,6 +270,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/fiscal-years/{id}/periods", h.listFiscalPeriods)
 	protected("POST", "/api/fiscal-periods", h.createFiscalPeriod)
 	protected("PATCH", "/api/fiscal-periods/{id}/status", h.updateFiscalPeriodStatus)
+	adminProtected("POST", "/api/fiscal-years/{id}/close", h.closeFiscalYear)
 
 	// Journal entries
 	protected("GET", "/api/organizations/{orgId}/journal-entries", h.listJournalEntries)
