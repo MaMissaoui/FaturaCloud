@@ -5,8 +5,10 @@ CREATE TABLE IF NOT EXISTS fiscal_years (
     startDate INTEGER NOT NULL,
     endDate INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
-    -- FEC's ValidDate: entries dated on/before this are locked even if the
-    -- year isn't formally closed yet (a partial lock during audit prep).
+    -- A year-level partial lock during audit prep: entries dated on/before
+    -- this are locked even though the year isn't formally closed yet. NOT
+    -- FEC's per-entry ValidDate (db/export_fec.go uses each entry's own
+    -- postedAt for that) — this is a coarser, year-wide cutoff.
     lockDate INTEGER,
     closedAt INTEGER,
     createdAt INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),

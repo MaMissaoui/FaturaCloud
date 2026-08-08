@@ -296,5 +296,11 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/organizations/{orgId}/reports/ar-aging", h.getReceivableAging)
 	protected("GET", "/api/organizations/{orgId}/reports/ap-aging", h.getPayableAging)
 
+	// GL export — France FEC only; DATEV is deliberately not implemented
+	// yet (see db/export_fec.go and the GL Export settings page). Admin-only,
+	// same sensitivity class as the database backup download: a full ledger
+	// dump for the fiscal year, not a single document.
+	adminProtected("GET", "/api/organizations/{orgId}/gl-export/fec", h.getFECExport)
+
 	return mux
 }

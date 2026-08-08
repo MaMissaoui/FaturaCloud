@@ -66,6 +66,7 @@ const OrganizationsList = lazy(() => import("src/routes/organizations/index"));
 const SettingsBackup = lazy(() => import("src/routes/settings/backup"));
 const SettingsUsers = lazy(() => import("src/routes/settings/users"));
 const SettingsCountries = lazy(() => import("src/routes/settings/countries"));
+const SettingsGLExport = lazy(() => import("src/routes/settings/gl-export"));
 const NewOrganization = lazy(() => import("src/routes/organizations/new"));
 const TaxRateForm = lazy(() => import("src/components/tax-rates/form.tsx"));
 const ChartOfAccounts = lazy(() => import("src/routes/accounting/chart-of-accounts"));
@@ -292,6 +293,7 @@ const AppContent = () => {
                     <Route path="backup" element={<SettingsBackup />} />
                     <Route path="users" element={<SettingsUsers />} />
                     <Route path="countries" element={<SettingsCountries />} />
+                    <Route path="gl-export" element={<SettingsGLExport />} />
                   </Route>
                 </Routes>
               </Suspense>

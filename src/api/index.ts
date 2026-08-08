@@ -720,3 +720,33 @@ export interface PayableAgingSummary {
 
 export const GetPayableAging = (organizationId: string) =>
   get<PayableAgingSummary>(`/organizations/${organizationId}/reports/ap-aging`);
+
+// ---- Accounting: GL Export ----
+
+// Downloads a fiscal year's France FEC flat file (SirenFECAAAAMMJJ.txt —
+// see db/export_fec.go). DATEV is deliberately not offered — see the GL
+// Export settings page.
+export const DownloadFEC = async (organizationId: string, fiscalYearId: string): Promise<void> => {
+  const res = await fetch(
+    `/api/organizations/${organizationId}/gl-export/fec?fiscalYearId=${encodeURIComponent(fiscalYearId)}`,
+    { credentials: "same-origin" },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "FEC.txt";
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(href);
+    a.remove();
+  }, 1000);
+};

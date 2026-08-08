@@ -39,6 +39,7 @@ import {
   FundOutlined,
   ClockCircleOutlined,
   FieldTimeOutlined,
+  ExportOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -507,6 +508,15 @@ export default function BaseLayout() {
                           </Link>
                         ),
                         key: "settings.countries",
+                      },
+                      {
+                        icon: <ExportOutlined />,
+                        label: (
+                          <Link to="/settings/gl-export">
+                            <Trans>GL Export</Trans>
+                          </Link>
+                        ),
+                        key: "settings.gl-export",
                       },
                     ]
                   : []),
