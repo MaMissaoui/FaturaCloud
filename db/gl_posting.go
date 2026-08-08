@@ -382,6 +382,16 @@ func (d *Database) buildIncomingInvoiceGLLines(bill *IncomingInvoice, lineItems 
 	var taxOrder []string
 	taxAccounts := map[string]string{}
 
+	// Phase 7: how much of each resolved account has already been accrued
+	// by a linked, received purchase order line. Already functional-
+	// currency (resolveGRNIClearing converts via the *receipt's* own
+	// frozen exchangeRate, not this bill's) — deliberately kept separate
+	// from expenseRats/expenseAmountsDoc, which are document-currency and
+	// only converted to functional terms by this function's own `convert`
+	// further down. Netted against expenseFunctional after that
+	// conversion, never converted a second time itself.
+	grniClearedByAccount := map[string]int64{}
+
 	productCache := map[string]*Product{}
 	taxRateCache := map[string]*TaxRate{}
 
@@ -404,7 +414,7 @@ func (d *Database) buildIncomingInvoiceGLLines(bill *IncomingInvoice, lineItems 
 				productCache[*item.ProductID] = product
 			}
 		}
-		expenseAccountID, err := resolveExpenseAccount(product, org.DefaultExpenseAccountID)
+		expenseAccountID, isInventory, err := resolvePurchaseAccount(product, org.DefaultExpenseAccountID, org.DefaultInventoryAccountID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -413,6 +423,14 @@ func (d *Database) buildIncomingInvoiceGLLines(bill *IncomingInvoice, lineItems 
 			expenseOrder = append(expenseOrder, expenseAccountID)
 		}
 		expenseRats[expenseAccountID].Add(expenseRats[expenseAccountID], lineCents)
+
+		if isInventory && item.PurchaseOrderLineItemID != nil {
+			clearCents, err := resolveGRNIClearing(d.DB, *item.PurchaseOrderLineItemID, bill.ID, item.Quantity)
+			if err != nil {
+				return nil, nil, err
+			}
+			grniClearedByAccount[expenseAccountID] += clearCents
+		}
 
 		if item.TaxRate != nil && *item.TaxRate != "" {
 			taxRate, ok := taxRateCache[*item.TaxRate]
@@ -457,18 +475,56 @@ func (d *Database) buildIncomingInvoiceGLLines(bill *IncomingInvoice, lineItems 
 
 	// See buildInvoiceGLLines: a group netting to exactly zero must not emit
 	// a row — journal_lines' CHECK((debit=0) <> (credit=0)) rejects it.
+	//
+	// Phase 7: each account's line is now its *net* position after
+	// subtracting whatever GRNI clearing already attributed to it —
+	// expenseFunctional[accountID] minus grniClearedByAccount[accountID].
+	// This is a value-neutral redistribution: summed across every account,
+	// the cleared amounts cancel out (each is subtracted here and added
+	// back once as a single GRNI debit line below), so the entry balances
+	// unconditionally without any new assertion, whatever sign `net` ends
+	// up with — a negative net (this bill charges less than what was
+	// already accrued for the account) is a legitimate credit, not an
+	// error requiring a cap.
 	var lines []CreateJournalLineRequest
+	var totalGRNICleared int64
 	for _, accountID := range expenseOrder {
-		if expenseFunctional[accountID] == 0 {
+		cleared := grniClearedByAccount[accountID]
+		totalGRNICleared += cleared
+		net := expenseFunctional[accountID] - cleared
+		if net == 0 {
 			continue
 		}
-		lines = append(lines, glLine(accountID, expenseFunctional[accountID], 0, bill.Currency, expenseAmountsDoc[accountID], bill.ExchangeRate, foreign, nil, nil, nil))
+		if cleared != 0 {
+			// GRNI clearing touched this account, so `net` no longer has a
+			// clean equivalent in the bill's own document currency (part of
+			// it was fixed at the *receipt's* exchange rate, not this
+			// bill's) — the functional-currency amount is what the ledger
+			// actually needs; the foreign-currency memo is dropped for this
+			// one line rather than shown misleadingly.
+			if net > 0 {
+				lines = append(lines, glLine(accountID, net, 0, "", 0, nil, false, nil, nil, nil))
+			} else {
+				lines = append(lines, glLine(accountID, 0, -net, "", 0, nil, false, nil, nil, nil))
+			}
+			continue
+		}
+		lines = append(lines, glLine(accountID, net, 0, bill.Currency, expenseAmountsDoc[accountID], bill.ExchangeRate, foreign, nil, nil, nil))
 	}
 	for _, taxRateID := range taxOrder {
 		if taxFunctional[taxRateID] == 0 {
 			continue
 		}
 		lines = append(lines, glLine(taxAccounts[taxRateID], taxFunctional[taxRateID], 0, bill.Currency, taxAmountsDoc[taxRateID], bill.ExchangeRate, foreign, nil, nil, &taxRateID))
+	}
+	if totalGRNICleared != 0 {
+		if org.DefaultGRNIAccountID == nil {
+			return nil, nil, newValidationError("cannot post bill: organization has no default GRNI account configured")
+		}
+		// No foreign-currency shadow (see the netting comment above) — this
+		// line's functional-currency amount was fixed at receipt time,
+		// independent of this bill's own currency/rate.
+		lines = append(lines, glLine(*org.DefaultGRNIAccountID, totalGRNICleared, 0, "", 0, nil, false, nil, nil, nil))
 	}
 	lines = append(lines, glLine(*org.DefaultApAccountID, 0, apFunctional, bill.Currency, bill.Total, bill.ExchangeRate, foreign, nil, &bill.VendorID, nil))
 
@@ -589,4 +645,122 @@ func grniClearedQtyForPOLine(exec sqlSelectExecer, poLineID, excludeBillID strin
 		total += r.Quantity
 	}
 	return total, nil
+}
+
+// resolvePurchaseAccount is buildIncomingInvoiceGLLines' account-resolution
+// step, extended for Phase 7: a stock-enabled product's bill line
+// capitalizes to Inventory (one org-level account, no per-product override
+// — even if the product also has a legacy ExpenseAccountID from before
+// Phase 7 existed, stock-enabled always means Inventory now), everything
+// else still resolves via resolveExpenseAccount exactly as today. isInventory
+// tells the caller whether this account is eligible for GRNI clearing.
+func resolvePurchaseAccount(product *Product, defaultExpenseAccountID, defaultInventoryAccountID *string) (accountID string, isInventory bool, err error) {
+	if product != nil && product.StockEnabled == 1 {
+		if defaultInventoryAccountID == nil {
+			return "", false, newValidationError("cannot post bill: organization has no default Inventory account configured")
+		}
+		return *defaultInventoryAccountID, true, nil
+	}
+	accountID, err = resolveExpenseAccount(product, defaultExpenseAccountID)
+	return accountID, false, err
+}
+
+// grniAccrualForPOLine recomputes, from every received (not draft/cancelled)
+// receipt's own frozen unitCost and exchangeRate, the total functional-
+// currency GRNI value accrued for purchase order line poLineID, and the
+// total quantity that accrual covers. Safe to recompute at read time
+// because a receipt's line items/unitCost are frozen the moment it leaves
+// "draft" (UpdateInboundDelivery). A receipt line with no unitCost
+// contributed nothing to the accrual when it was received
+// (buildReceiptGRNILines skips uncosted lines) and is excluded here the
+// same way — its quantity doesn't enter receivedQty either, so the
+// resulting average stays a true per-unit accrued cost, not diluted by
+// uncosted quantity.
+func grniAccrualForPOLine(exec sqlSelectExecer, poLineID string) (accruedCents int64, receivedQty float64, err error) {
+	var rows []struct {
+		Quantity     float64 `db:"quantity"`
+		UnitCost     *int64  `db:"unitCost"`
+		ExchangeRate *string `db:"exchangeRate"`
+	}
+	if err := exec.Select(&rows, `
+		SELECT dli.quantity AS quantity, dli.unitCost AS unitCost, d.exchangeRate AS exchangeRate
+		FROM inbound_delivery_line_items dli
+		JOIN inbound_deliveries d ON d.id = dli.deliveryId
+		WHERE dli.purchaseOrderLineItemId = ? AND d.status = 'received'`,
+		poLineID,
+	); err != nil {
+		return 0, 0, fmt.Errorf("grni_accrual_for_po_line: %w", err)
+	}
+
+	totalValue := new(big.Rat)
+	for _, r := range rows {
+		if r.UnitCost == nil {
+			continue
+		}
+		rate, err := parseExchangeRate(r.ExchangeRate)
+		if err != nil {
+			return 0, 0, err
+		}
+		converted := convertCents(*r.UnitCost, rate)
+		qty, err := floatToRat(r.Quantity)
+		if err != nil {
+			return 0, 0, fmt.Errorf("grni_accrual_for_po_line: invalid quantity")
+		}
+		totalValue.Add(totalValue, new(big.Rat).Mul(qty, new(big.Rat).SetInt64(converted)))
+		receivedQty += r.Quantity
+	}
+	accruedCents = roundHalfUp(totalValue, 0).Num().Int64()
+	return accruedCents, receivedQty, nil
+}
+
+// resolveGRNIClearing computes how much of one bill line's capitalized
+// amount clears an existing GRNI accrual versus lands as fresh Inventory
+// value, for a line linked to purchase order line poLineID on bill billID.
+//
+//	remaining  = max(0, receivedQty - alreadyClearedByOtherBills)
+//	Q_clear    = min(qtyBilled, remaining)
+//	clearCents = round(Q_clear * accruedCents / receivedQty)
+//
+// Valued at the accrued average (not the bill's own price) deliberately —
+// GRNI clears by quantity, and any difference between the accrued cost and
+// what this bill actually charges is a price variance the caller lands on
+// Inventory (buildIncomingInvoiceGLLines), not something this function
+// decides. Returns 0 (not an error) when nothing on this PO line was ever
+// costed (receivedQty == 0) or nothing remains to clear.
+func resolveGRNIClearing(exec sqlSelectExecer, poLineID, billID string, qtyBilled float64) (int64, error) {
+	accruedCents, receivedQty, err := grniAccrualForPOLine(exec, poLineID)
+	if err != nil {
+		return 0, err
+	}
+	if receivedQty == 0 || accruedCents == 0 {
+		return 0, nil
+	}
+
+	clearedQty, err := grniClearedQtyForPOLine(exec, poLineID, billID)
+	if err != nil {
+		return 0, err
+	}
+	remaining := receivedQty - clearedQty
+	if remaining < 0 {
+		remaining = 0
+	}
+	qClear := qtyBilled
+	if qClear > remaining {
+		qClear = remaining
+	}
+	if qClear <= 0 {
+		return 0, nil
+	}
+
+	qClearRat, err := floatToRat(qClear)
+	if err != nil {
+		return 0, fmt.Errorf("resolve_grni_clearing: invalid quantity")
+	}
+	receivedQtyRat, err := floatToRat(receivedQty)
+	if err != nil {
+		return 0, fmt.Errorf("resolve_grni_clearing: invalid received quantity")
+	}
+	clear := new(big.Rat).Mul(qClearRat, new(big.Rat).SetInt64(accruedCents))
+	clear.Quo(clear, receivedQtyRat)
+	return roundHalfUp(clear, 0).Num().Int64(), nil
 }

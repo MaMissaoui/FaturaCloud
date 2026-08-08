@@ -72,6 +72,33 @@ func newGRNITestFixture(t *testing.T, d *Database, orgID string, ordered float64
 	}
 }
 
+// bill creates a vendor bill for qty units at unitPrice, linked to the
+// fixture's purchase order line (poLineID != nil) or standalone
+// (poLineID == nil, used to test the no-PO-link capitalization path).
+func (f grniTestFixture) bill(t *testing.T, d *Database, number string, qty float64, unitPrice int64, linkPO bool) *IncomingInvoice {
+	t.Helper()
+	subTotal := int64(qty * float64(unitPrice))
+	item := CreateInvoiceLineItemRequest{
+		Description: ptr("Widget"), Quantity: qty, UnitPrice: float64(unitPrice), ProductID: &f.productID,
+	}
+	if linkPO {
+		item.PurchaseOrderLineItemID = &f.poLineID
+	}
+	req := CreateIncomingInvoiceRequest{
+		OrganizationID: f.orgID, VendorID: f.vendorID, VendorInvoiceNumber: number,
+		Date: f.date, Currency: "EUR", SubTotal: subTotal, TaxTotal: 0, Total: subTotal,
+		LineItems: []CreateInvoiceLineItemRequest{item},
+	}
+	if linkPO {
+		req.PurchaseOrderID = &f.poID
+	}
+	inv, err := d.CreateIncomingInvoice(req)
+	if err != nil {
+		t.Fatalf("CreateIncomingInvoice: %v", err)
+	}
+	return inv
+}
+
 // receive creates and receives a goods receipt against the fixture's
 // purchase order line, resolving product+cost from the PO the same way
 // production code does when a receipt line names neither directly.
@@ -307,5 +334,218 @@ func TestCancelReceivedReceiptBlockedOnceBilled(t *testing.T) {
 	}
 	if current.Status != "received" {
 		t.Fatalf("status changed despite rejection: %q", current.Status)
+	}
+}
+
+// A stock-enabled product's bill line with no purchase order link (nothing
+// to clear against) capitalizes straight to Inventory — the behavior
+// change to existing Phase 2 code: previously every bill line expensed
+// immediately regardless of whether the product was stock-tracked.
+func TestBillForStockEnabledProductWithNoPOLinkCapitalizesToInventory(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-grni-nolink", 10, 250)
+	inv := fx.bill(t, d, "V-001", 4, 300, false) // no PO link, priced independently
+
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	invDebit, invCredit := sumLines(lines, fx.inventoryAccountID)
+	if invDebit != 1200 || invCredit != 0 {
+		t.Fatalf("Inventory line = debit %d credit %d, want debit 1200 credit 0", invDebit, invCredit)
+	}
+	grniDebit, grniCredit := sumLines(lines, fx.grniAccountID)
+	if grniDebit != 0 || grniCredit != 0 {
+		t.Fatalf("expected no GRNI line for an unlinked bill, got debit %d credit %d", grniDebit, grniCredit)
+	}
+}
+
+// A bill exactly matching what a receipt already accrued clears GRNI in
+// full and posts zero net Inventory — the goods were already capitalized
+// at receipt time; nothing new to add.
+func TestBillMatchingReceiptClearsGRNIWithNoNetInventoryLine(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-grni-match", 10, 250) // 10 @ 2.50
+	fx.receive(t, d, "GR-0001", 10)                           // accrues 2500
+
+	inv := fx.bill(t, d, "V-001", 10, 250, true) // bills the same 10 @ 2.50 = 2500
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	invDebit, invCredit := sumLines(lines, fx.inventoryAccountID)
+	if invDebit != 0 || invCredit != 0 {
+		t.Fatalf("expected no net Inventory line, got debit %d credit %d", invDebit, invCredit)
+	}
+	grniDebit, grniCredit := sumLines(lines, fx.grniAccountID)
+	if grniDebit != 2500 || grniCredit != 0 {
+		t.Fatalf("GRNI line = debit %d credit %d, want debit 2500 credit 0 (fully cleared)", grniDebit, grniCredit)
+	}
+	apDebit, apCredit := sumLines(lines, fx.apAccountID)
+	if apDebit != 0 || apCredit != 2500 {
+		t.Fatalf("AP line = debit %d credit %d, want debit 0 credit 2500", apDebit, apCredit)
+	}
+
+	// Balanced by construction.
+	var totalDebit, totalCredit int64
+	for _, l := range lines {
+		totalDebit += l.Debit
+		totalCredit += l.Credit
+	}
+	if totalDebit != totalCredit {
+		t.Fatalf("entry does not balance: debit %d, credit %d", totalDebit, totalCredit)
+	}
+}
+
+// A bill priced ABOVE the receipt's accrued cost clears GRNI at the
+// accrued value and lands the difference on Inventory as a positive price
+// variance.
+func TestBillAboveReceiptCostPostsPositiveInventoryVariance(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-grni-above", 10, 250) // accrues 2500
+	fx.receive(t, d, "GR-0001", 10)
+
+	inv := fx.bill(t, d, "V-001", 10, 260, true) // bills 10 @ 2.60 = 2600
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("test: price above accrual"),
+	}); err != nil {
+		t.Fatalf("UpdateIncomingInvoice (override): %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	invDebit, invCredit := sumLines(lines, fx.inventoryAccountID)
+	if invDebit != 100 || invCredit != 0 {
+		t.Fatalf("Inventory variance line = debit %d credit %d, want debit 100 credit 0", invDebit, invCredit)
+	}
+	grniDebit, _ := sumLines(lines, fx.grniAccountID)
+	if grniDebit != 2500 {
+		t.Fatalf("GRNI line debit = %d, want 2500 (full accrual, valued at accrued cost)", grniDebit)
+	}
+	_, apCredit := sumLines(lines, fx.apAccountID)
+	if apCredit != 2600 {
+		t.Fatalf("AP credit = %d, want 2600 (the bill's own total)", apCredit)
+	}
+}
+
+// A bill priced BELOW the receipt's accrued cost still clears GRNI in full
+// (quantity-first, valued at the accrued cost — not the bill's lower
+// price), and the difference lands on Inventory as a write-down (credit).
+func TestBillBelowReceiptCostPostsNegativeInventoryVariance(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-grni-below", 10, 250) // accrues 2500
+	fx.receive(t, d, "GR-0001", 10)
+
+	inv := fx.bill(t, d, "V-001", 10, 240, true) // bills 10 @ 2.40 = 2400
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("test: price below accrual"),
+	}); err != nil {
+		t.Fatalf("UpdateIncomingInvoice (override): %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	invDebit, invCredit := sumLines(lines, fx.inventoryAccountID)
+	if invDebit != 0 || invCredit != 100 {
+		t.Fatalf("Inventory write-down line = debit %d credit %d, want debit 0 credit 100", invDebit, invCredit)
+	}
+	grniDebit, _ := sumLines(lines, fx.grniAccountID)
+	if grniDebit != 2500 {
+		t.Fatalf("GRNI line debit = %d, want 2500 (full accrual cleared regardless of the bill's lower price)", grniDebit)
+	}
+	_, apCredit := sumLines(lines, fx.apAccountID)
+	if apCredit != 2400 {
+		t.Fatalf("AP credit = %d, want 2400 (the bill's own lower total)", apCredit)
+	}
+
+	var totalDebit, totalCredit int64
+	for _, l := range lines {
+		totalDebit += l.Debit
+		totalCredit += l.Credit
+	}
+	if totalDebit != totalCredit {
+		t.Fatalf("entry does not balance: debit %d, credit %d", totalDebit, totalCredit)
+	}
+}
+
+// Two bills, each covering half the received quantity, each clear their
+// own proportional share of GRNI — no double-clearing, and the remainder
+// stays open after the first.
+func TestPartialBillingAcrossTwoBillsClearsGRNIProportionally(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-grni-partial", 10, 250) // accrues 2500 for 10 units
+	fx.receive(t, d, "GR-0001", 10)
+
+	first := fx.bill(t, d, "V-001", 5, 250, true) // half the quantity, matching price
+	if _, err := d.UpdateIncomingInvoiceState(first.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved) first: %v", err)
+	}
+	firstEntry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", first.ID)
+	if err != nil || firstEntry == nil {
+		t.Fatalf("expected a posted entry for the first bill, err=%v entry=%v", err, firstEntry)
+	}
+	firstLines, _ := d.GetJournalEntryLines(firstEntry.ID)
+	grniDebit1, _ := sumLines(firstLines, fx.grniAccountID)
+	if grniDebit1 != 1250 {
+		t.Fatalf("first bill GRNI debit = %d, want 1250 (half of 2500)", grniDebit1)
+	}
+
+	second := fx.bill(t, d, "V-002", 5, 250, true) // the other half
+	if _, err := d.UpdateIncomingInvoiceState(second.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved) second: %v", err)
+	}
+	secondEntry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", second.ID)
+	if err != nil || secondEntry == nil {
+		t.Fatalf("expected a posted entry for the second bill, err=%v entry=%v", err, secondEntry)
+	}
+	secondLines, _ := d.GetJournalEntryLines(secondEntry.ID)
+	grniDebit2, _ := sumLines(secondLines, fx.grniAccountID)
+	if grniDebit2 != 1250 {
+		t.Fatalf("second bill GRNI debit = %d, want 1250 (the remaining half)", grniDebit2)
+	}
+
+	// Together, both bills fully clear the 2500 accrued — GRNI nets to zero.
+	rows, err := d.GetTrialBalance(fx.orgID, "")
+	if err != nil {
+		t.Fatalf("GetTrialBalance: %v", err)
+	}
+	for _, r := range rows {
+		if r.AccountID == fx.grniAccountID && r.Debit-r.Credit != 0 {
+			t.Fatalf("trial balance GRNI net = %d, want 0 (the 2500 credit accrual is now fully offset by both bills' debits)", r.Debit-r.Credit)
+		}
 	}
 }
