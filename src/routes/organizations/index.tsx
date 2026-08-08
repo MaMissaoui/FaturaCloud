@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { Organization } from "src/types/models";
+import { useEffect, useMemo, useState } from "react";
+import type { Account, Organization } from "src/types/models";
 import {
   App,
   Button,
@@ -48,6 +48,7 @@ import {
   DeleteOrganizationLogo,
   GetOrganizationUsageCount,
   ResetOrganizationData,
+  GetAccounts,
   type OrganizationUsageCount,
 } from "src/api";
 import { CSRF_HEADER } from "src/api/client";
@@ -86,6 +87,10 @@ export default function Organizations() {
   const [resetMasterData, setResetMasterData] = useState(false);
   const [resetTransactionalData, setResetTransactionalData] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // Fetched per-editingId (not the shared accountsAtom, which is scoped to
+  // the globally-selected organization) — this drawer can edit an org other
+  // than the currently-selected one, same reasoning as the Logo card above.
+  const [editingAccounts, setEditingAccounts] = useState<Account[]>([]);
 
   const [organizationId, setOrganizationId] = useAtom(organizationIdAtom);
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
@@ -129,12 +134,18 @@ export default function Organizations() {
     setLogoKey((k) => k + 1);
     setResetMasterData(false);
     setResetTransactionalData(false);
+    setEditingAccounts([]);
     setDrawerOpen(true);
     try {
       const org = await GetOrganization(id);
       // Convert null date_format to undefined so the Select shows placeholder
       form.setFieldsValue({ ...org, date_format: org.date_format ?? undefined });
     } catch {}
+    try {
+      setEditingAccounts(await GetAccounts(id));
+    } catch {
+      // Accounting selects just render empty if this fails.
+    }
   };
 
   const handleClose = () => {
@@ -143,7 +154,16 @@ export default function Organizations() {
     form.resetFields();
     setResetMasterData(false);
     setResetTransactionalData(false);
+    setEditingAccounts([]);
   };
+
+  const leafAccountOptions = useMemo(
+    () =>
+      editingAccounts
+        .filter((a) => !a.isGroup)
+        .map((a) => ({ value: a.id, label: `${a.code} · ${a.name}` })),
+    [editingAccounts],
+  );
 
   const refreshLogo = () => {
     setHasLogo(true);
@@ -654,6 +674,132 @@ export default function Organizations() {
               </Col>
             </Row>
           </Card>
+
+          {isEdit && editingId && (
+            <Card size="small" title={<Trans>Accounting</Trans>} style={{ marginBottom: 12 }}>
+              <Row gutter={[16, 0]}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultArAccountId"
+                    label={<Trans>Accounts receivable</Trans>}
+                    tooltip={<Trans>Used for the AR line when a sales invoice posts.</Trans>}
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultApAccountId"
+                    label={<Trans>Accounts payable</Trans>}
+                    tooltip={<Trans>Used for the AP line when a vendor bill posts.</Trans>}
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultRevenueAccountId"
+                    label={<Trans>Default revenue account</Trans>}
+                    tooltip={
+                      <Trans>Used for a sales invoice line whose product has no override.</Trans>
+                    }
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultExpenseAccountId"
+                    label={<Trans>Default expense account</Trans>}
+                    tooltip={
+                      <Trans>Used for a vendor bill line whose product has no override.</Trans>
+                    }
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="defaultCashAccountId"
+                    label={<Trans>Default cash account</Trans>}
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="datevClearingAccountId"
+                    label={<Trans>DATEV clearing account</Trans>}
+                    tooltip={
+                      <Trans>
+                        Synthetic counter-account for a manual journal entry with more than one
+                        line on both sides (no natural anchor line) when exporting to DATEV. Leave
+                        blank if you don't use DATEV.
+                      </Trans>
+                    }
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="datev_consultant_number"
+                    label={<Trans>DATEV consultant number</Trans>}
+                    tooltip={<Trans>Required to generate a DATEV export (1001–9999999).</Trans>}
+                  >
+                    <Input placeholder={t`e.g. 1001`} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="datev_client_number"
+                    label={<Trans>DATEV client number</Trans>}
+                    tooltip={<Trans>Required to generate a DATEV export (1–99999).</Trans>}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Input placeholder={t`e.g. 456`} />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          )}
 
           {isEdit && editingId && isAdmin && (
             <Card

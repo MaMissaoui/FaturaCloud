@@ -30,6 +30,16 @@ import {
   SunOutlined,
   MoonOutlined,
   GlobalOutlined,
+  BankOutlined,
+  BookOutlined,
+  CalendarOutlined,
+  UnorderedListOutlined,
+  TableOutlined,
+  LineChartOutlined,
+  FundOutlined,
+  ClockCircleOutlined,
+  FieldTimeOutlined,
+  ExportOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -142,6 +152,8 @@ export default function BaseLayout() {
       openKeys = ["group-inventory"];
     } else if (masterDataSections.includes(section)) {
       openKeys = ["group-masterdata"];
+    } else if (section === "accounting") {
+      openKeys = ["group-accounting"];
     }
     selectedKeys = [join(take(compact(pathArray), 2), ".")];
   }
@@ -193,7 +205,10 @@ export default function BaseLayout() {
           borderRight: `1px solid ${colorBorderSecondary}`,
         }}
       >
-        <div className="logo" style={{ padding: siderIsCollapsed ? "16px 8px 12px" : "18px 16px 14px" }}>
+        <div
+          className="logo"
+          style={{ padding: siderIsCollapsed ? "16px 8px 12px" : "18px 16px 14px" }}
+        >
           <Link
             to="/invoices"
             style={{
@@ -355,6 +370,94 @@ export default function BaseLayout() {
               ],
             },
             {
+              icon: <BankOutlined />,
+              label: <Trans>Accounting</Trans>,
+              key: "group-accounting",
+              children: [
+                {
+                  icon: <BankOutlined />,
+                  label: (
+                    <Link to="/accounting/chart-of-accounts">
+                      <Trans>Chart of Accounts</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.chart-of-accounts",
+                },
+                {
+                  icon: <BookOutlined />,
+                  label: (
+                    <Link to="/accounting/journals">
+                      <Trans>Journals</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.journals",
+                },
+                {
+                  icon: <CalendarOutlined />,
+                  label: (
+                    <Link to="/accounting/fiscal-periods">
+                      <Trans>Fiscal Periods</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.fiscal-periods",
+                },
+                {
+                  icon: <UnorderedListOutlined />,
+                  label: (
+                    <Link to="/accounting/journal-entries">
+                      <Trans>Journal Entries</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.journal-entries",
+                },
+                {
+                  icon: <TableOutlined />,
+                  label: (
+                    <Link to="/accounting/trial-balance">
+                      <Trans>Trial Balance</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.trial-balance",
+                },
+                {
+                  icon: <LineChartOutlined />,
+                  label: (
+                    <Link to="/accounting/profit-and-loss">
+                      <Trans>Profit &amp; Loss</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.profit-and-loss",
+                },
+                {
+                  icon: <FundOutlined />,
+                  label: (
+                    <Link to="/accounting/balance-sheet">
+                      <Trans>Balance Sheet</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.balance-sheet",
+                },
+                {
+                  icon: <ClockCircleOutlined />,
+                  label: (
+                    <Link to="/accounting/ar-aging">
+                      <Trans>AR Aging</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.ar-aging",
+                },
+                {
+                  icon: <FieldTimeOutlined />,
+                  label: (
+                    <Link to="/accounting/ap-aging">
+                      <Trans>AP Aging</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.ap-aging",
+                },
+              ],
+            },
+            {
               icon: <SettingOutlined />,
               label: <Trans>Settings</Trans>,
               key: "settings",
@@ -406,6 +509,15 @@ export default function BaseLayout() {
                         ),
                         key: "settings.countries",
                       },
+                      {
+                        icon: <ExportOutlined />,
+                        label: (
+                          <Link to="/settings/gl-export">
+                            <Trans>GL Export</Trans>
+                          </Link>
+                        ),
+                        key: "settings.gl-export",
+                      },
                     ]
                   : []),
               ],
@@ -436,7 +548,11 @@ export default function BaseLayout() {
                 <Button
                   type="text"
                   icon={siderIsCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                  onClick={() => (isMobile ? setMobileMenuOpen(!mobileMenuOpen) : setSiderCollapsed(!siderCollapsed))}
+                  onClick={() =>
+                    isMobile
+                      ? setMobileMenuOpen(!mobileMenuOpen)
+                      : setSiderCollapsed(!siderCollapsed)
+                  }
                   style={{
                     fontSize: "16px",
                     width: 64,
@@ -534,7 +650,9 @@ export default function BaseLayout() {
                 {currentUser && (
                   <Space size={4} style={{ marginRight: 24 }}>
                     <UserOutlined />
-                    <span style={{ fontSize: 13 }}>{currentUser.displayName || currentUser.email}</span>
+                    <span style={{ fontSize: 13 }}>
+                      {currentUser.displayName || currentUser.email}
+                    </span>
                     <Button
                       type="text"
                       icon={<LogoutOutlined />}

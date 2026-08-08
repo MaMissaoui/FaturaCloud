@@ -34,8 +34,15 @@ import sum from "lodash/sum";
 import { GetIncomingInvoiceMatch, GetPurchaseOrderLineItems } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
-import { addDecimal, calculateTax, centsToUnits, multiplyDecimal } from "src/utils/currency";
+import {
+  addDecimal,
+  calculateTax,
+  centsToUnits,
+  multiplyDecimal,
+  unitsToCents,
+} from "src/utils/currency";
 import LineItemsTable from "src/components/line-items/table";
+import PaymentPanel from "src/components/payments/payment-panel";
 import ExchangeRateFields, {
   CurrencySelect,
   prefillExchangeRate,
@@ -517,6 +524,20 @@ const IncomingInvoiceDetails = () => {
             </Row>
           )}
         </>
+      )}
+
+      {!isNew && invoice && (
+        <PaymentPanel
+          organizationId={organization?.id ?? ""}
+          documentType="incoming_invoice"
+          documentId={id!}
+          direction="outbound"
+          vendorId={(invoice as any).vendorId}
+          currency={(invoice as any).currency ?? orgCurrency}
+          orgCurrency={orgCurrency}
+          total={unitsToCents((invoice as any).total ?? 0)}
+          hasPostedEntry={currentState === "approved" || currentState === "paid"}
+        />
       )}
 
       {document.getElementById("footer") &&

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -57,6 +58,10 @@ func (h *handler) deleteClient(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ok, err := h.db.DeleteClient(id)
 	if err != nil {
+		if errors.Is(err, db.ErrClientInUse) {
+			writeError(w, http.StatusConflict, err.Error())
+			return
+		}
 		writeInternalError(w, err)
 		return
 	}

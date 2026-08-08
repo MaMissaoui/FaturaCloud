@@ -1652,6 +1652,69 @@ func TestVendorDocumentCountCoversEveryReference(t *testing.T) {
 	}
 }
 
+// TestClientDocumentCountCoversEveryReference mirrors
+// TestVendorDocumentCountCoversEveryReference for clientId columns —
+// DeleteClient's guard (clientReferencingTables, db/client.go) only covers
+// tables that reference a client with no ON DELETE clause; invoices.clientId
+// cascades on delete by design and is deliberately not in that list.
+func TestClientDocumentCountCoversEveryReference(t *testing.T) {
+	d := newTestDB(t)
+
+	tables := []string{}
+	if err := d.DB.Select(&tables,
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
+	); err != nil {
+		t.Fatalf("list tables: %v", err)
+	}
+
+	covered := map[string]bool{
+		"invoices": true, // ON DELETE CASCADE — deliberately unguarded, see db/client.go
+		// ON DELETE SET NULL — an unguarded delete just detaches the
+		// reference rather than failing on a foreign key, same tolerance
+		// products.taxRateId already has elsewhere. orders/projects/
+		// timeEntries all predate the GL work; projects/timeEntries are also
+		// legacyUnusedTables in TestResetOrganizationDataCoversEveryOrganizationScopedTable.
+		"orders":      true,
+		"projects":    true,
+		"timeEntries": true,
+	}
+	for _, name := range clientReferencingTables {
+		covered[name] = true
+	}
+
+	for _, table := range tables {
+		columns := []struct {
+			Name string `db:"name"`
+		}{}
+		if err := d.DB.Select(&columns, `SELECT name FROM pragma_table_info(?)`, table); err != nil {
+			t.Fatalf("pragma_table_info(%s): %v", table, err)
+		}
+		for _, col := range columns {
+			if col.Name != "clientId" {
+				continue
+			}
+			if !covered[table] {
+				t.Errorf(
+					"table %q has a clientId column but is not in clientReferencingTables (or invoices' "+
+						"deliberate cascade exception) — DeleteClient's guard would not see its rows; "+
+						"add it to the list in db/client.go",
+					table,
+				)
+			}
+		}
+	}
+
+	existing := map[string]bool{}
+	for _, name := range tables {
+		existing[name] = true
+	}
+	for _, name := range clientReferencingTables {
+		if !existing[name] {
+			t.Errorf("clientReferencingTables lists %q, which is not a table in the schema", name)
+		}
+	}
+}
+
 // TestResetOrganizationDataCoversEveryOrganizationScopedTable is a tripwire
 // for the opposite mistake from TestVendorDocumentCountCoversEveryReference:
 // a migration that adds a new organizationId-scoped table without adding it
@@ -2551,6 +2614,14 @@ func seedMatch(t *testing.T, d *Database, orgID string, ordered float64, unitPri
 	if err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
 	}
+	// Covers every fixed timestamp (1700000000000, Nov 2023) this fixture and
+	// its callers use — approving a bill auto-posts a GL entry, which needs
+	// an open fiscal year covering the bill's date.
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "FY2023", StartDate: 1690000000000, EndDate: 1710000000000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
 	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")})
 	if err != nil {
 		t.Fatalf("CreateVendor: %v", err)
@@ -2613,7 +2684,12 @@ func createIncomingInvoice(t *testing.T, d *Database, f matchFixture, number str
 
 // A paid vendor bill can't be deleted outright — mirrors DeleteInvoice's
 // guard on sales invoices — since that would silently drop it from other
-// invoices' double-billing check against the same order/receipt line.
+// invoices' double-billing check against the same order/receipt line. Once
+// GL auto-posting (Phase 2) is in play, the same guard also covers
+// "approved": that state posts a GL entry too, and sourceDocumentId isn't a
+// real foreign key, so deleting the document out from under a posted entry
+// would silently orphan it — only "cancelled" reverses the entry and clears
+// the way to delete.
 func TestDeleteIncomingInvoiceBlockedWhenPaid(t *testing.T) {
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-paid", 10, 250, 10)
@@ -2632,13 +2708,24 @@ func TestDeleteIncomingInvoiceBlockedWhenPaid(t *testing.T) {
 		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
 	}
 
-	// A non-paid state (approved) may still be deleted.
+	// Bouncing back to "approved" still needs GL presence, so the posted
+	// entry survives and deletion is still rejected.
 	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
+	if _, err := d.DeleteIncomingInvoice(inv.ID); err == nil {
+		t.Fatal("expected deleting an approved incoming invoice with a posted GL entry to be rejected")
+	} else if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+
+	// Cancelling reverses the GL entry, which clears the way to delete.
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "cancelled"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(cancelled): %v", err)
+	}
 	ok, err := d.DeleteIncomingInvoice(inv.ID)
 	if err != nil || !ok {
-		t.Fatalf("DeleteIncomingInvoice(approved): ok=%v, err=%v", ok, err)
+		t.Fatalf("DeleteIncomingInvoice(cancelled): ok=%v, err=%v", ok, err)
 	}
 }
 
@@ -3020,7 +3107,11 @@ func TestReceivedQuantityAgreesBetweenOrderAndMatch(t *testing.T) {
 // An override justifies one specific variance. Editing the financials can turn
 // it into a different one, so the flag is cleared unless the same request
 // re-states it — otherwise an approved invoice could be edited and re-approved
-// against a reason that no longer describes it.
+// against a reason that no longer describes it. Once GL auto-posting (Phase 2)
+// is in play, an approved invoice also has a posted GL entry, and
+// UpdateIncomingInvoice's own posted-entry guard rejects the financial edit
+// outright — so this scenario now only reaches the override-clearing logic
+// after the entry has been reversed (cancelled) first.
 func TestIncomingInvoiceOverrideClearedWhenFinancialsChange(t *testing.T) {
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-override-stale", 10, 250, 4)
@@ -3033,6 +3124,24 @@ func TestIncomingInvoiceOverrideClearedWhenFinancialsChange(t *testing.T) {
 	}
 	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
 		t.Fatalf("approve with override: %v", err)
+	}
+
+	// A financial edit is rejected outright while a posted GL entry exists.
+	if _, err := d.UpdateIncomingInvoice(inv.ID, UpdateIncomingInvoiceRequest{
+		SubTotal: ptr(int64(5000)), TaxTotal: ptr(int64(0)), Total: ptr(int64(5000)),
+		LineItems: &[]CreateInvoiceLineItemRequest{
+			{
+				Description: ptr("Widget"), Quantity: 20, UnitPrice: 250,
+				PurchaseOrderLineItemID: &f.POLineID,
+			},
+		},
+	}); err == nil {
+		t.Fatal("expected a financial edit to be rejected while a posted GL entry exists")
+	}
+
+	// Cancelling reverses the entry, which clears the way to edit.
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "cancelled"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(cancelled): %v", err)
 	}
 
 	// Now edit the line items — a different variance entirely.

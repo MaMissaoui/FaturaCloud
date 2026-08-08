@@ -43,6 +43,27 @@ type Organization struct {
 	PostalCode  *string `db:"postal_code"   json:"postal_code"`
 	City        *string `db:"city"          json:"city"`
 	CountryCode *string `db:"country_code"  json:"country_code"`
+
+	// GL default accounts auto-posting resolves against when a document/tax
+	// rate/product doesn't name a more specific account — seeded by
+	// seedDefaultChartOfAccounts (db/account.go), editable afterward here.
+	// Nullable: an org can use the chart of accounts + manual entries before
+	// any of these are wired up; auto-posting is refused with a 409 (not a
+	// 500) when a default it needs is unset.
+	DefaultArAccountID        *string `db:"defaultArAccountId"        json:"defaultArAccountId"`
+	DefaultApAccountID        *string `db:"defaultApAccountId"        json:"defaultApAccountId"`
+	DefaultRevenueAccountID   *string `db:"defaultRevenueAccountId"   json:"defaultRevenueAccountId"`
+	DefaultExpenseAccountID   *string `db:"defaultExpenseAccountId"   json:"defaultExpenseAccountId"`
+	DefaultCashAccountID      *string `db:"defaultCashAccountId"      json:"defaultCashAccountId"`
+	FxGainAccountID           *string `db:"fxGainAccountId"           json:"fxGainAccountId"`
+	FxLossAccountID           *string `db:"fxLossAccountId"           json:"fxLossAccountId"`
+	RetainedEarningsAccountID *string `db:"retainedEarningsAccountId" json:"retainedEarningsAccountId"`
+	// DATEV export (Phase 5). datevClearingAccountId is the multi-line
+	// Gegenkonto fallback for manual entries with more than one line per
+	// side — see the design decision in the plan.
+	DatevClearingAccountID *string `db:"datevClearingAccountId" json:"datevClearingAccountId"`
+	DatevConsultantNumber  *string `db:"datev_consultant_number" json:"datev_consultant_number"`
+	DatevClientNumber      *string `db:"datev_client_number"     json:"datev_client_number"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -109,6 +130,18 @@ type UpdateOrganizationRequest struct {
 	PostalCode  *string `json:"postal_code"`
 	City        *string `json:"city"`
 	CountryCode *string `json:"country_code"`
+
+	DefaultArAccountID        *string `json:"defaultArAccountId"`
+	DefaultApAccountID        *string `json:"defaultApAccountId"`
+	DefaultRevenueAccountID   *string `json:"defaultRevenueAccountId"`
+	DefaultExpenseAccountID   *string `json:"defaultExpenseAccountId"`
+	DefaultCashAccountID      *string `json:"defaultCashAccountId"`
+	FxGainAccountID           *string `json:"fxGainAccountId"`
+	FxLossAccountID           *string `json:"fxLossAccountId"`
+	RetainedEarningsAccountID *string `json:"retainedEarningsAccountId"`
+	DatevClearingAccountID    *string `json:"datevClearingAccountId"`
+	DatevConsultantNumber     *string `json:"datev_consultant_number"`
+	DatevClientNumber         *string `json:"datev_client_number"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -120,7 +153,11 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
 	       createdAt, invoice_number_format, invoice_number_counter, date_format,
 	       match_price_tolerance_percent, match_quantity_tolerance_percent,
-	       bic, tax_number, street, house_number, postal_code, city, country_code`
+	       bic, tax_number, street, house_number, postal_code, city, country_code,
+	       defaultArAccountId, defaultApAccountId, defaultRevenueAccountId,
+	       defaultExpenseAccountId, defaultCashAccountId, fxGainAccountId, fxLossAccountId,
+	       retainedEarningsAccountId, datevClearingAccountId,
+	       datev_consultant_number, datev_client_number`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
@@ -182,7 +219,14 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		empty := ""
 		req.Code = &empty
 	}
-	_, err := d.DB.Exec(
+
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("create_organization begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.Exec(
 		`INSERT INTO organizations (
 			id, code, name, country, email, phone, website,
 			registration_number, vatin, bank_name, iban, currency,
@@ -195,9 +239,24 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat,
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
-	)
-	if err != nil {
+	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
+	}
+
+	// Every organization gets a starter chart of accounts + default journals
+	// immediately, so the GL module (manual journal entries at minimum) is
+	// usable right away rather than requiring a separate setup step. See
+	// seedDefaultChartOfAccounts (db/account.go) for what "minimal generic
+	// starter chart" means and why it's not country-specific.
+	if err := seedDefaultChartOfAccounts(tx, req.ID); err != nil {
+		return nil, fmt.Errorf("create_organization seed_accounts: %w", err)
+	}
+	if err := seedDefaultJournals(tx, req.ID); err != nil {
+		return nil, fmt.Errorf("create_organization seed_journals: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("create_organization commit: %w", err)
 	}
 	return d.GetOrganization(req.ID)
 }
@@ -231,7 +290,18 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     house_number           = COALESCE(?, house_number),
 		     postal_code            = COALESCE(?, postal_code),
 		     city                   = COALESCE(?, city),
-		     country_code           = COALESCE(?, country_code)
+		     country_code           = COALESCE(?, country_code),
+		     defaultArAccountId        = COALESCE(?, defaultArAccountId),
+		     defaultApAccountId        = COALESCE(?, defaultApAccountId),
+		     defaultRevenueAccountId   = COALESCE(?, defaultRevenueAccountId),
+		     defaultExpenseAccountId   = COALESCE(?, defaultExpenseAccountId),
+		     defaultCashAccountId      = COALESCE(?, defaultCashAccountId),
+		     fxGainAccountId           = COALESCE(?, fxGainAccountId),
+		     fxLossAccountId           = COALESCE(?, fxLossAccountId),
+		     retainedEarningsAccountId = COALESCE(?, retainedEarningsAccountId),
+		     datevClearingAccountId    = COALESCE(?, datevClearingAccountId),
+		     datev_consultant_number   = COALESCE(?, datev_consultant_number),
+		     datev_client_number       = COALESCE(?, datev_client_number)
 		 WHERE id = ?`,
 		updates.Code, updates.Name, updates.Country, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
@@ -241,6 +311,10 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.MatchPriceTolerancePercent, updates.MatchQuantityTolerancePercent,
 		updates.BIC, updates.TaxNumber, updates.Street, updates.HouseNumber,
 		updates.PostalCode, updates.City, updates.CountryCode,
+		updates.DefaultArAccountID, updates.DefaultApAccountID, updates.DefaultRevenueAccountID,
+		updates.DefaultExpenseAccountID, updates.DefaultCashAccountID,
+		updates.FxGainAccountID, updates.FxLossAccountID, updates.RetainedEarningsAccountID,
+		updates.DatevClearingAccountID, updates.DatevConsultantNumber, updates.DatevClientNumber,
 		organizationID,
 	)
 	if err != nil {
@@ -275,6 +349,11 @@ type OrganizationUsageCount struct {
 	InboundDeliveries int64 `db:"inboundDeliveries" json:"inboundDeliveries"`
 	IncomingInvoices  int64 `db:"incomingInvoices"  json:"incomingInvoices"`
 	StockMovements    int64 `db:"stockMovements"    json:"stockMovements"`
+
+	Accounts       int64 `db:"accounts"      json:"accounts"`
+	Journals       int64 `db:"journals"      json:"journals"`
+	JournalEntries int64 `db:"journalEntries" json:"journalEntries"`
+	Payments       int64 `db:"payments"      json:"payments"`
 }
 
 func (d *Database) GetOrganizationUsageCount(organizationID string) (*OrganizationUsageCount, error) {
@@ -291,10 +370,14 @@ func (d *Database) GetOrganizationUsageCount(organizationID string) (*Organizati
 			(SELECT COUNT(*) FROM purchase_orders WHERE organizationId = ?) AS purchaseOrders,
 			(SELECT COUNT(*) FROM inbound_deliveries WHERE organizationId = ?) AS inboundDeliveries,
 			(SELECT COUNT(*) FROM incoming_invoices WHERE organizationId = ?) AS incomingInvoices,
-			(SELECT COUNT(*) FROM stockMovements WHERE organizationId = ?) AS stockMovements`,
+			(SELECT COUNT(*) FROM stockMovements WHERE organizationId = ?) AS stockMovements,
+			(SELECT COUNT(*) FROM accounts WHERE organizationId = ?) AS accounts,
+			(SELECT COUNT(*) FROM journals WHERE organizationId = ?) AS journals,
+			(SELECT COUNT(*) FROM journal_entries WHERE organizationId = ?) AS journalEntries,
+			(SELECT COUNT(*) FROM payments WHERE organizationId = ?) AS payments`,
 		organizationID, organizationID, organizationID, organizationID, organizationID,
 		organizationID, organizationID, organizationID, organizationID, organizationID,
-		organizationID,
+		organizationID, organizationID, organizationID, organizationID, organizationID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_organization_usage_count: %w", err)

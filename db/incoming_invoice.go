@@ -219,7 +219,28 @@ func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*Inc
 	return d.GetIncomingInvoice(req.ID)
 }
 
+// incomingInvoiceUpdateTouchesGLFields mirrors invoiceUpdateTouchesGLFields:
+// whether updates would change anything a posted GL entry was built from.
+func incomingInvoiceUpdateTouchesGLFields(updates UpdateIncomingInvoiceRequest) bool {
+	return updates.LineItems != nil || updates.SubTotal != nil || updates.TaxTotal != nil ||
+		updates.Total != nil || updates.Currency != nil || updates.ExchangeRate != nil ||
+		updates.VendorID != nil
+}
+
 func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoiceRequest) (*IncomingInvoice, error) {
+	// See UpdateInvoice's identical guard: a posted GL entry was built from
+	// these fields, and PUT never re-triggers a re-post, so editing them out
+	// from under a posted entry would leave it silently stale.
+	if incomingInvoiceUpdateTouchesGLFields(updates) {
+		entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", id)
+		if err != nil {
+			return nil, err
+		}
+		if entry != nil {
+			return nil, newValidationError("cannot change line items, totals, currency, or vendor on a bill with a posted GL entry — cancel it instead")
+		}
+	}
+
 	// Validate the *effective* resulting state whenever any financial field is
 	// touched, filling in whichever of lineItems/total/taxTotal/subTotal this
 	// request omits from what's stored — so a partial update can't bypass the
@@ -381,10 +402,28 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 	return d.GetIncomingInvoice(id)
 }
 
-// UpdateIncomingInvoiceState is where 3-way matching is enforced. Saving a
-// draft with variances is deliberately allowed so they can be investigated;
-// approving (or paying without having approved) is not, unless the invoice
-// carries an explicit override with a reason.
+// needsIncomingInvoiceGLPresence reports whether state requires a posted GL
+// entry — expense recognition happens at "approved" and also holds at
+// "paid" (reachable directly from "draft", since incomingInvoiceStates has
+// no transition matrix). A zero-total bill has nothing to post — see
+// needsInvoiceGLPresence's comment for why that's skipped rather than
+// handed to buildIncomingInvoiceGLLines.
+func needsIncomingInvoiceGLPresence(state string, total int64) bool {
+	return (state == "approved" || state == "paid") && total != 0
+}
+
+// UpdateIncomingInvoiceState is where 3-way matching is enforced, strictly
+// before GL posting is even attempted — an invoice with an unresolved
+// variance never reaches buildIncomingInvoiceGLLines. Once past the gate,
+// GL presence is synced in the same transaction as the state change, using
+// the same idempotent "does a posted entry exist" check as
+// UpdateInvoiceState (see its comment for why the reads below must finish
+// before Beginx: db.SetMaxOpenConns(1) makes a second connection request
+// while a tx is open block forever, not error).
+//
+// Saving a draft with variances is deliberately allowed so they can be
+// investigated; approving (or paying without having approved) is not,
+// unless the invoice carries an explicit override with a reason.
 func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoice, error) {
 	if !incomingInvoiceStates[state] {
 		return nil, newValidationError("invalid incoming invoice state %q", state)
@@ -409,8 +448,67 @@ func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoic
 		}
 	}
 
-	if _, err := d.DB.Exec(`UPDATE incoming_invoices SET state = ? WHERE id = ?`, state, id); err != nil {
-		return nil, fmt.Errorf("update_incoming_invoice_state: %w", err)
+	existingEntry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", id)
+	if err != nil {
+		return nil, err
+	}
+	needsGL := needsIncomingInvoiceGLPresence(state, current.Total)
+
+	// Reversing the bill's posted entry while a payment has already settled
+	// against it would leave that payment's AP clearing line with no
+	// matching original credit — void the payment(s) first.
+	if !needsGL && existingEntry != nil {
+		paid, err := d.GetIncomingInvoiceAmountPaid(id)
+		if err != nil {
+			return nil, err
+		}
+		if paid > 0 {
+			return nil, newValidationError(
+				"cannot change bill state: payments totaling %d are still applied to this bill — void them first", paid,
+			)
+		}
+	}
+
+	var glLines []CreateJournalLineRequest
+	var journal *Journal
+	if needsGL && existingEntry == nil {
+		lineItems, err := d.GetIncomingInvoiceLineItems(id)
+		if err != nil {
+			return nil, fmt.Errorf("update_incoming_invoice_state line_items: %w", err)
+		}
+		glLines, journal, err = d.buildIncomingInvoiceGLLines(current, lineItems)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("update_incoming_invoice_state begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.Exec(`UPDATE incoming_invoices SET state = ? WHERE id = ?`, state, id); err != nil {
+		return nil, fmt.Errorf("update_incoming_invoice_state exec: %w", err)
+	}
+
+	switch {
+	case needsGL && existingEntry == nil:
+		reference := current.VendorInvoiceNumber
+		description := "Bill " + current.VendorInvoiceNumber
+		if _, err := postAutoEntryTx(
+			tx, current.OrganizationID, journal.ID, "incoming_invoice", current.ID, current.Date, reference, description, glLines,
+		); err != nil {
+			return nil, err
+		}
+	case !needsGL && existingEntry != nil:
+		if _, err := reverseEntryTx(tx, existingEntry, "bill state changed to "+state, current.Date); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("update_incoming_invoice_state commit: %w", err)
 	}
 	return d.GetIncomingInvoice(id)
 }
@@ -425,6 +523,11 @@ func (d *Database) DeleteIncomingInvoice(id string) (bool, error) {
 	}
 	if current.State == "paid" {
 		return false, newValidationError("cannot delete a paid incoming invoice — cancel it instead")
+	}
+	if entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", id); err != nil {
+		return false, err
+	} else if entry != nil {
+		return false, newValidationError("cannot delete a bill with a posted GL entry — cancel it instead")
 	}
 
 	res, err := d.DB.Exec(`DELETE FROM incoming_invoices WHERE id = ?`, id)

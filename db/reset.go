@@ -36,6 +36,17 @@ var transactionalDataTables = []string{
 	"outbound_deliveries",
 	"orders",
 	"invoices",
+	// payments before journal_entries: payments.journalEntryId/voidingEntryId
+	// reference journal_entries with no ON DELETE clause, so the referencing
+	// row must go first. journal_lines and payment_applications are NOT
+	// listed here — neither has an organizationId column (both reach it
+	// transitively through journal_entries/payments, both ON DELETE CASCADE),
+	// the same reason invoiceLineItems is never listed alongside invoices.
+	// fiscal_periods cascades from fiscal_years (in masterDataTables) the
+	// same way and is likewise not listed separately.
+	"payments",
+	"journal_entries",
+	"reconciliation_groups",
 }
 
 // masterDataTables lists the organizationId-scoped reference-data tables.
@@ -44,7 +55,20 @@ var transactionalDataTables = []string{
 // of transactional data would work at the DB level; they're included in the
 // same all-or-nothing rule anyway for one consistent, predictable behavior
 // rather than a partial one.
-var masterDataTables = []string{"clients", "vendors", "products", "taxRates"}
+// journals/fiscal_periods/fiscal_years/accounts are appended with accounts
+// LAST: taxRates.outputTaxAccountId/inputTaxAccountId and
+// products.revenueAccountId/expenseAccountId reference accounts with no
+// ON DELETE clause, so accounts can only be deleted once taxRates and
+// products (both earlier in this list) are already gone. fiscal_periods is
+// listed explicitly even though it would also cascade from fiscal_years
+// (ON DELETE CASCADE) — unlike line-item tables, it carries its own
+// organizationId column, so the schema-introspection tripwire test
+// (TestResetOrganizationDataCoversEveryOrganizationScopedTable) requires it
+// to be named here directly.
+var masterDataTables = []string{
+	"clients", "vendors", "products", "taxRates",
+	"journals", "fiscal_periods", "fiscal_years", "accounts",
+}
 
 // ResetOrganizationData deletes the selected record collections for an
 // organization and returns how many rows of each kind were removed, so the
@@ -80,6 +104,7 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 	}
 	if !req.ResetMasterData {
 		deleted.Clients, deleted.Vendors, deleted.Products, deleted.TaxRates = 0, 0, 0, 0
+		deleted.Accounts, deleted.Journals = 0, 0
 	}
 
 	tx, err := d.DB.Beginx()
@@ -111,6 +136,23 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 	}
 
 	if req.ResetMasterData {
+		// organizations itself is never deleted by a reset, but carries nine
+		// FK columns pointing into accounts (set by seedDefaultChartOfAccounts
+		// or manual configuration). Null them before accounts rows are
+		// deleted below, or those columns would dangle — a foreign key
+		// violation with enforcement on, silent corruption without it. Same
+		// placement/style as the invoice_number_counter reset above.
+		if _, err := tx.Exec(`
+			UPDATE organizations
+			SET defaultArAccountId = NULL, defaultApAccountId = NULL, defaultRevenueAccountId = NULL,
+			    defaultExpenseAccountId = NULL, defaultCashAccountId = NULL,
+			    fxGainAccountId = NULL, fxLossAccountId = NULL, retainedEarningsAccountId = NULL,
+			    datevClearingAccountId = NULL
+			WHERE id = ?`, organizationID,
+		); err != nil {
+			return nil, fmt.Errorf("reset_organization_data clear_gl_defaults: %w", err)
+		}
+
 		for _, table := range masterDataTables {
 			if _, err := tx.Exec(`DELETE FROM `+table+` WHERE organizationId = ?`, organizationID); err != nil {
 				return nil, fmt.Errorf("reset_organization_data delete %s: %w", table, err)
@@ -126,6 +168,7 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 		deleted.Invoices, deleted.Orders, deleted.Deliveries = 0, 0, 0
 		deleted.PurchaseOrders, deleted.InboundDeliveries, deleted.IncomingInvoices = 0, 0, 0
 		deleted.StockMovements = 0
+		deleted.JournalEntries, deleted.Payments = 0, 0
 	}
 	return deleted, nil
 }

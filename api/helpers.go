@@ -76,6 +76,17 @@ func parseIntParam(r *http.Request, name string) int {
 	return v
 }
 
+// parseInt64Param reads a query param as an int64 (millisecond timestamps
+// exceed parseIntParam's platform-int range on 32-bit builds), returning 0
+// if it's absent or not a valid integer.
+func parseInt64Param(r *http.Request, name string) int64 {
+	v, err := strconv.ParseInt(r.URL.Query().Get(name), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return v
+}
+
 // writeMutationError handles the error from a state-changing db call: a
 // *db.ValidationError carries an already user-safe business-rule message
 // (e.g. insufficient stock, invalid status transition) and is returned as a

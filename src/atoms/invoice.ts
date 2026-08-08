@@ -208,8 +208,10 @@ export const updateInvoiceStateAtom = atom(
       const mergedInvoices: any = keyBy([...invoices, invoiceToDisplay(updatedInvoice)], "id");
       set(invoicesAtom, orderBy(map(mergedInvoices), "date", "desc"));
     } catch (error) {
+      // Surface the server's message (e.g. a posted GL entry blocked by an
+      // open payment, or a 3-way match variance) rather than a generic one.
       console.error("Failed to update invoice state:", error);
-      message.error(t`Failed to update invoice state`);
+      message.error(error instanceof Error ? error.message : t`Failed to update invoice state`);
     }
   },
 );

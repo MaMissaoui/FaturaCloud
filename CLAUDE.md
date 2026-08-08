@@ -212,6 +212,56 @@ GET    /api/deliveries/{id}/line-items
 PUT    /api/deliveries/{id}
 PATCH  /api/deliveries/{id}/status
 DELETE /api/deliveries/{id}
+
+# Accounting — Chart of Accounts
+GET    /api/organizations/{orgId}/accounts
+POST   /api/accounts
+GET    /api/accounts/{id}
+PUT    /api/accounts/{id}
+DELETE /api/accounts/{id}
+
+# Accounting — Journals
+GET    /api/organizations/{orgId}/journals
+POST   /api/journals
+PUT    /api/journals/{id}
+DELETE /api/journals/{id}
+
+# Accounting — Fiscal Years / Periods
+GET    /api/organizations/{orgId}/fiscal-years
+POST   /api/fiscal-years
+POST   /api/fiscal-years/{id}/close        admin only, irreversible — see Database section
+GET    /api/fiscal-years/{id}/periods
+POST   /api/fiscal-periods
+PATCH  /api/fiscal-periods/{id}/status
+
+# Accounting — Journal Entries
+GET    /api/organizations/{orgId}/journal-entries
+POST   /api/journal-entries
+GET    /api/journal-entries/{id}
+GET    /api/journal-entries/{id}/lines
+PATCH  /api/journal-entries/{id}/post
+POST   /api/journal-entries/{id}/reverse
+DELETE /api/journal-entries/{id}           draft only — reverse a posted entry instead
+
+# Accounting — Payments
+GET    /api/organizations/{orgId}/payments
+POST   /api/payments
+GET    /api/payments/{id}
+GET    /api/payments/{id}/applications
+POST   /api/payments/{id}/void
+GET    /api/invoices/{id}/payments
+GET    /api/incoming-invoices/{id}/payments
+
+# Accounting — Reports (all computed on read from journal_lines)
+GET    /api/organizations/{orgId}/reports/trial-balance
+GET    /api/organizations/{orgId}/reports/profit-and-loss
+GET    /api/organizations/{orgId}/reports/balance-sheet
+GET    /api/organizations/{orgId}/reports/ar-aging
+GET    /api/organizations/{orgId}/reports/ap-aging
+
+# Accounting — GL Export
+GET    /api/organizations/{orgId}/gl-export/fec      admin only — France FEC
+GET    /api/organizations/{orgId}/gl-export/datev    admin only — Germany DATEV Buchungsstapel EXTF
 ```
 
 All handlers return JSON. Errors use `{"error": "message"}`.
@@ -230,6 +280,16 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `db/einvoice.go` / `GET /api/invoices/{id}/e-invoice` — renders an invoice as an EN 16931 UBL 2.1 XML document. Country-aware via a small profile registry (`eInvoiceProfile`, `resolveEInvoiceProfile`): only two profiles exist — `"DE"` (XRechnung 3.0, the CustomizationID + mandatory buyer reference) and a generic EN 16931 core profile for every other country (France, UK, US, …), which is a deliberately honest default rather than a guessed CIUS for each of them. The profile is resolved from the **buyer's** country code (`client.CountryCode`, falling back to the seller's `org.CountryCode` only when the buyer's is unset) — e-invoicing mandates like XRechnung are triggered by the recipient's jurisdiction, not the issuer's, which is also why `default_buyer_reference` lives on `clients`. Peppol BIS Billing 3.0 (which would cover GB/US Peppol-network recipients, and is also EN 16931 UBL) is deliberately **not** modeled — it mandates `cbc:EndpointID` with a scheme ID on both parties, which has no column and no reliable scheme to infer; claiming that CustomizationID without it would be a false conformance claim, not a missing-field 409. Beyond the profile, the generator maps only the BT fields with real columns (seller/buyer structured address, VAT ID, tax category + exemption reason, payment terms) and skips the rest of the BR-*/BR-DE-* business rules rather than guessing at them — there is no EN 16931 validator (e.g. KoSIT) available to check against in this environment, so `db/einvoice_test.go`'s golden tests only catch output regressions, not conformance. Validate externally before relying on it for real B2G submission. Rejects with a 409 (`*db.ValidationError`) listing every missing mandatory field at once rather than failing on the first. Tunisia's TEIF/TTN e-invoicing (a completely different XML schema requiring a TTN-issued signing certificate) and ZUGFeRD (a PDF/A-3 with this XML embedded, which `@react-pdf/renderer` can't produce) are both explicitly out of scope — separate initiatives, not extensions of this generator
 - `db/` — Go database layer (SQLite connection, migrations, CRUD per domain)
 - `db/migrations/` — SQL migration files (`*.up.sql`), applied automatically on startup
+- `db/account.go` — chart of accounts CRUD; `AccountNormalBalance` (debit for asset/expense, credit for liability/equity/revenue) is a pure function of `type`, never stored. `seedDefaultChartOfAccounts`/`seedDefaultJournals` install a minimal generic starter chart + journal set for every organization (at creation, and via a startup backfill in `main.go` for pre-existing ones) — not a country-specific SKR03/SKR04/PCG import, the same honesty stance as the e-invoice generator's Peppol decision below
+- `db/journal.go` — journals (`VK`/Sales, `EK`/Purchases, `BK`/Bank, `KA`/Cash, `OD`/Miscellaneous), seeded `isSystem=1` so `DeleteJournal` refuses to remove them
+- `db/fiscal_period.go` — fiscal years/periods. `resolveFiscalPeriodForDate` is what every posting path calls to resolve — and require — an **open** fiscal year covering a date; its error distinguishes "no year at all" (create one) from "a year covers this date but it's closed" (post-Phase-6, a materially different situation)
+- `db/journal_entry.go` — `JournalEntry`/`JournalLine`; manual entry create (`draft`) → `PostJournalEntry` → `ReverseJournalEntry`. `allocateAndFinalizeEntryTx` is the **single choke point** every posting path (manual post, invoice/bill auto-post, payments, closing) must call: asserts the entry balances (the per-line `CHECK (debit=0)<>(credit=0)` only guarantees one side per row, not that debit totals equal credit totals), rejects posting into a **closed** fiscal year (the one gap `PostJournalEntry` would otherwise have — a draft's `fiscalYearId` is resolved once at creation and never re-checked, unlike every other posting path which re-resolves via `resolveFiscalPeriodForDate` on its own date), and allocates `entryNumber` via `MAX+1` scoped to `entryNumber IS NOT NULL` — not `status='posted'`, since a reversed entry keeps its number — race-free only because `db.SetMaxOpenConns(1)` serializes every write through one connection. Posted entries are never updated or deleted, only reversed (a new entry with `reversalOfEntryId` set; the original flips to `status='reversed'`)
+- `db/gl_posting.go` — auto-posting: `postAutoEntryTx` (create+post as one atomic step); `buildInvoiceGLLines`/`buildIncomingInvoiceGLLines` build one revenue/expense line per resolved account and one tax line per distinct tax rate, skipping any that nets to exactly zero (e.g. a 0% rate) since `journal_lines`' CHECK forbids a zero-amount row, plus one AR/AP line computed as the remainder so the entry balances by construction with no rounding plug. `UpdateInvoiceState`/`UpdateIncomingInvoiceState` look up any existing posted entry via `FindPostedEntryForSourceDocument` and post or reverse based on whether the new state needs GL presence — correct for **every** legal state transition, since `invoices.state`/`incoming_invoices.state` have no transition matrix
+- `db/payment.go` — `CreatePayment`/`VoidPayment`: settles AR/AP at the **document's own frozen exchange rate**, not the payment's; the difference against the payment's own rate posts as a realized FX gain/loss plug line, never a retroactive edit to the original invoice's entry. Lettrage (tagging settled lines with a `reconciliation_groups` code, which would feed FEC's `EcritureLet`/`DateLet`) is **not implemented** — those two FEC columns are always blank, a legal value for an unlettered line, not a missing-field error
+- `db/gl_reports.go` — trial balance, P&L, balance sheet, AR/AP aging, all **computed on read** from `journal_lines`, the same "compute, don't cache" philosophy as `products.stockQuantity`. `BalanceSheet.CurrentEarnings` (revenue − expense over the cumulative window) is folded into `TotalEquity` so the sheet balances — nothing closes to retained earnings until a fiscal year is actually closed. AR/AP aging reuses `db/dashboard.go`'s existing outstanding-invoice query rather than a separate implementation, but computes the outstanding *amount* from `total − non-voided payment_applications`, not the document's raw total
+- `db/export_fec.go` / `GET /api/organizations/{orgId}/gl-export/fec` — France FEC statutory export (admin only): every posted/reversed journal line for a fiscal year as a tab-separated `SirenFECAAAAMMJJ.txt`. Every free-text source field is sanitized (tabs/newlines replaced with spaces) before joining, since one would otherwise silently shift every later column without raising an error. `ValidDate` is each entry's own `postedAt`, not `fiscal_years.lockDate` (a coarser year-level audit-prep lock, always NULL until something sets it — no UI does yet)
+- `db/export_datev.go` / `GET /api/organizations/{orgId}/gl-export/datev` — Germany DATEV Buchungsstapel EXTF export (admin only), Windows-1252, semicolon-separated, CRLF. Its column layout, header structure, and field-encoding rules are cross-verified against two independently maintained open-source implementations (`ledermann/datev`, a Ruby gem, and `ameax/datev-extf`, a PHP library) plus a real `EXTF_Buchungsstapel.csv` example file — format category 21 ("Buchungsstapel") / format version 13, still **unvalidated against a live DATEV import**. DATEV's Buchungsstapel is a Konto/Gegenkonto (account/counter-account) format — one row per elementary two-sided posting, not one row per `journal_lines` row like FEC — so every auto-posted entry's single "anchor" line (AR/AP/bank/retained-earnings) becomes the implicit Gegenkonto for every other line; a manual entry with more than one line on *both* sides has no such anchor and either splits against `organizations.datevClearingAccountId` (if configured) or is collected as a blocking validation problem. Requires `organizations.datev_consultant_number` (1001–9999999), `datev_client_number` (1–99999), and a `datevAccountNumber` on every account referenced by a posted entry, all the same length (DATEV's single-value-per-batch Sachkontenlänge, 4–8 digits) — every missing/invalid field is collected into one `*db.ValidationError` rather than failing on the first, same idiom as `db/einvoice.go`. Belegdatum (column 10) is DDMM only (no year) — a different format from every other date field in this exporter, which is why it isn't `formatDATEVDate`. Encoding an out-of-cp1252 rune (free text is multi-locale here) replaces it with `encoding.ReplaceUnsupported` rather than failing the whole export. Deliberately unset: "Generalumkehr" (column 118) — a reversed entry and its reversal both export as ordinary opposite-side bookings, arithmetically correct but not specially flagged as a reversal for the importer
+- `db/fiscal_year_closing.go` / `POST /api/fiscal-years/{id}/close` — `CloseFiscalYear` (admin only, **irreversible — there is no reopen endpoint**): posts one closing entry zeroing every revenue/expense account active in the year into `organizations.retainedEarningsAccountId`, closes every still-open `fiscal_periods` row under it, then marks the year `closed`. Must post the closing entry **before** flipping the year's own status — `resolveFiscalPeriodForDate` only resolves an open year. Unrealized FX revaluation (also originally scoped here) is **not implemented**: it needs a period-end market exchange rate, and this system has no rate oracle or period-end-rate input anywhere — every `exchangeRate` column (`db/exchange_rate.go`) is a one-time, manually-entered, frozen rate — so the computation has no input to work from, not just a missing implementation
 - `src/api/client.ts` — base fetch wrapper; sends the httpOnly auth cookie (`credentials: same-origin`) + the `X-CSRF-Protection` header
 - `src/api/index.ts` — typed API functions, one per REST endpoint
 - `src/atoms/` — Jotai state atoms; import from `src/api`
@@ -253,6 +313,10 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/components/orders/order-confirmation-pdf.tsx` — order confirmation PDF (with prices). Takes an `i18n` prop and translates, following `invoices/pdf.tsx`
 - `src/components/orders/delivery-note-pdf.tsx` — legacy delivery note from orders (kept for reference; unused, still hardcoded English)
 - `src/components/feedback-modal.tsx` — Sentry user feedback modal
+- `src/routes/accounting/` — chart of accounts, journals, fiscal periods (with the admin-only "Close year" action, an irreversible `Modal.confirm` — see `db/fiscal_year_closing.go`), journal entries, trial balance, and `reports/` (P&L, balance sheet, AR/AP aging)
+- `src/routes/settings/gl-export.tsx` — France FEC and Germany DATEV downloads, each behind its own fiscal year picker; a 409 with a validation problem list surfaces via `message.error`, same as the e-invoice endpoint's missing-field handling
+- `src/components/payments/payment-panel.tsx` — payment recording/void UI embedded in invoice/incoming-invoice detail pages; amounts passed in must already be cents (`unitsToCents`), not the raw invoice/bill `total`
+- `src/atoms/account.ts`, `journal.ts`, `fiscal-period.ts`, `journal-entry.ts`, `payment.ts` — mirror `src/atoms/vendor.ts`'s `xAtom`/`setXAtom` shape
 - `src/layouts/base.tsx` — main application layout with sidebar and header
 - `src/types/` — shared TypeScript type definitions
 - `src/utils/` — lingui.tsx (i18n setup), sentry.ts, currency.ts, currencies.tsx, countries.tsx, date.ts, invoice.ts
@@ -261,6 +325,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `docker-compose.yml` — single service, `/data` volume for SQLite
 - `docker-compose.oidc.yml` — overlay enabling OIDC SSO against homelab-auth's Authelia via Nginx Proxy Manager (no Traefik — see `docs/oidc-sso.md`); merge with `-f docker-compose.yml -f docker-compose.oidc.yml`
 - `docs/oidc-sso.md` — OIDC SSO design doc: generic provider-agnostic pattern, FaturaCloud-specific implementation, security model, Authelia-side client setup
+- `docs/inventory-cogs-integration.md` — design note for the deferred Phase 7 (GRNI on receipt, COGS on shipment): why weighted-average cost (`recomputeAverageCostTx`) vs. immutable posted GL entries is safer than it first looks, the open policy decisions (no-cost-basis shipments, serialized specific-identification, manual adjustments, GRNI/bill matching, long-run reconciliation), and the finding that today's bill posting (`resolveExpenseAccount`) expenses stock-tracked purchases immediately with no inventory capitalization — a real behavior change Phase 7 has to make, not just add to
 
 ## Database
 SQLite is accessed from Go via `jmoiron/sqlx`. All schema migrations live in `db/migrations/` as `*.up.sql` files and run automatically on every startup. The database file is located at:
@@ -297,6 +362,11 @@ Schema conventions:
 - `db.GetOrderDeliveredQuantities(orderID)` sums delivered quantity per `orderLineItemId` across non-cancelled deliveries, used to prefill a new delivery from an order with only the outstanding quantity per line (supports full or partial fulfilment)
 - `invoiceLineItems.taxRate` has an `ON DELETE CASCADE` foreign key to `taxRates(id)` — deleting a tax rate still referenced by any invoice line item would silently strip those line items off existing invoices. `db.DeleteTaxRate` guards against this via `GetTaxRateUsageCount` and returns `ErrTaxRateInUse` (surfaced as 409) instead of deleting; the frontend only offers deletion for unused tax rates
 - `invoices.total`/`taxTotal`/`subTotal` are recomputed and checked server-side against line items + tax rate percentages before every create/update (`db.validateInvoiceTotals` in `db/invoice_totals.go`) and rejected with a 409 on mismatch — the frontend still does the actual computation (`src/routes/invoices/details.tsx` + `src/utils/currency.ts`, decimal.js `ROUND_HALF_UP`), this is a server-side check that it agrees. The Go side uses exact rational arithmetic (`math/big`), not float64, to avoid rounding-boundary mismatches (e.g. a 3.33 unit price at 19.5% tax lands exactly on a half-cent boundary). `UpdateInvoice` validates whenever any of `lineItems`/`total`/`taxTotal`/`subTotal` is present, filling in whichever of those a partial request omits from what's already stored — a request can't bypass the check by sending only new totals (validated against stored line items) or only new line items (validated against stored totals). A pure header-only edit (neither line items nor any total) has nothing financial to recompute and is skipped
+- `accounts.isGroup=1` rows are headers only (e.g. "Assets", "Revenue") — never postable, enforced by `allocateAndFinalizeEntryTx`, not a DB constraint. `accounts.datevAccountNumber` (Chart of Accounts form), `taxRates.datev_bu_key` (tax rate form's Accounting section), and `organizations.datev_consultant_number`/`datev_client_number`/`datevClearingAccountId` (Organization settings' Accounting card) are all editable in the UI and required — the first three, `datevClearingAccountId` only for manual entries with no natural anchor — before `db/export_datev.go` can generate a file
+- `journal_lines` has `CHECK ((debit = 0) <> (credit = 0))` — exactly one side of any line must be nonzero, so a group that nets to exactly zero (a 0% tax rate, a free line item) must not emit a row at all rather than a `0`/`0` one. `currency`/`foreignAmount`/`exchangeRate` are a foreign-currency shadow of `debit`/`credit`, populated only when the line's originating document was foreign-currency — `debit`/`credit` themselves are always functional-currency cents. `clientId`/`vendorId` are real typed FKs (`CHECK (clientId IS NULL OR vendorId IS NULL)`), matching the existing `invoices.clientId`/`purchase_orders.vendorId` precedent rather than a polymorphic partner reference
+- `payments` has `CHECK` enforcing direction↔partner (`inbound` requires `clientId` set and `vendorId` NULL, and vice versa for `outbound`). `payment_applications` supports partial payments and one payment settling multiple documents; `GetInvoiceAmountPaid`/`GetIncomingInvoiceAmountPaid` sum non-voided applications, computed on read like everything else derived in this codebase — `invoices.state`/`incoming_invoices.state` are never derived from payments, staying the free-transitioning manual flags they've always been
+- `reconciliation_groups` exists (migration 0057) but nothing writes to it yet — `journal_lines.reconciliationGroupId` is always NULL. Lettrage was deferred until the FEC exporter's exact needs were known; the exporter shipped without needing it (`EcritureLet`/`DateLet` are legally blank for an unlettered line)
+- `fiscal_years.lockDate` is a coarser, year-level partial lock during audit prep — **not** FEC's per-entry `ValidDate`, which instead reads each `journal_entries.postedAt`. Nothing sets `lockDate` yet (no UI). `fiscal_years.status`/`fiscal_periods.status` both go `open`→`closed` only — there is no reopen path for either once `CloseFiscalYear` runs
 
 ## State Management
 Uses Jotai atoms pattern with:
@@ -313,7 +383,8 @@ The sidebar is grouped into collapsible submenus (click the group to expand/coll
 - **Purchasing**: Purchase Orders → Goods Receipts → Incoming Invoices
 - **Inventory**: Inventory
 - **Master Data**: Clients → Vendors → Products → Organizations
-- **Settings**: Invoice, Tax Rates, Backup, Users (admin only)
+- **Accounting**: Chart of Accounts → Journals → Fiscal Periods → Journal Entries → Trial Balance → Profit & Loss → Balance Sheet → AR Aging → AP Aging (no standalone Payments page — recording/voiding a payment happens from the invoice/incoming-invoice detail page's `PaymentPanel`)
+- **Settings**: Invoice, Tax Rates, Backup (admin only), Users (admin only), Countries (admin only), GL Export (admin only)
 
 ## Internationalization
 - Uses LinguiJS with macro-based extraction

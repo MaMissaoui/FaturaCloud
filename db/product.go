@@ -35,34 +35,44 @@ type Product struct {
 	// stock against a suddenly-untracked quantity.
 	Serialized int     `db:"serialized"    json:"serialized"`
 	CreatedAt  *string `db:"createdAt"     json:"createdAt"`
+
+	// Per-product override of organizations.defaultRevenueAccountId /
+	// defaultExpenseAccountId — same override shape as TaxRateID overriding
+	// taxRates.isDefault. Nil means "use the organization's default".
+	RevenueAccountID *string `db:"revenueAccountId" json:"revenueAccountId"`
+	ExpenseAccountID *string `db:"expenseAccountId" json:"expenseAccountId"`
 }
 
 type CreateProductRequest struct {
-	ID             string  `json:"id"`
-	OrganizationID string  `json:"organizationId"`
-	Name           string  `json:"name"`
-	Description    *string `json:"description"`
-	SKU            *string `json:"sku"`
-	Price          int64   `json:"price"`
-	UnitCost       *int64  `json:"unitCost"`
-	Unit           *string `json:"unit"`
-	Type           string  `json:"type"`
-	TaxRateID      *string `json:"taxRateId"`
-	StockEnabled   int     `json:"stockEnabled"`
-	Serialized     int     `json:"serialized"`
+	ID               string  `json:"id"`
+	OrganizationID   string  `json:"organizationId"`
+	Name             string  `json:"name"`
+	Description      *string `json:"description"`
+	SKU              *string `json:"sku"`
+	Price            int64   `json:"price"`
+	UnitCost         *int64  `json:"unitCost"`
+	Unit             *string `json:"unit"`
+	Type             string  `json:"type"`
+	TaxRateID        *string `json:"taxRateId"`
+	StockEnabled     int     `json:"stockEnabled"`
+	Serialized       int     `json:"serialized"`
+	RevenueAccountID *string `json:"revenueAccountId"`
+	ExpenseAccountID *string `json:"expenseAccountId"`
 }
 
 type UpdateProductRequest struct {
-	Name         string  `json:"name"`
-	Description  *string `json:"description"`
-	SKU          *string `json:"sku"`
-	Price        int64   `json:"price"`
-	UnitCost     *int64  `json:"unitCost"`
-	Unit         *string `json:"unit"`
-	Type         string  `json:"type"`
-	TaxRateID    *string `json:"taxRateId"`
-	StockEnabled int     `json:"stockEnabled"`
-	Serialized   int     `json:"serialized"`
+	Name             string  `json:"name"`
+	Description      *string `json:"description"`
+	SKU              *string `json:"sku"`
+	Price            int64   `json:"price"`
+	UnitCost         *int64  `json:"unitCost"`
+	Unit             *string `json:"unit"`
+	Type             string  `json:"type"`
+	TaxRateID        *string `json:"taxRateId"`
+	StockEnabled     int     `json:"stockEnabled"`
+	Serialized       int     `json:"serialized"`
+	RevenueAccountID *string `json:"revenueAccountId"`
+	ExpenseAccountID *string `json:"expenseAccountId"`
 }
 
 // ProductListOptions filters/pages/sorts GetProducts. Limit == 0 means "no
@@ -156,10 +166,11 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	// A brand-new product always has zero stock, so the toggle guard
 	// UpdateProduct enforces has nothing to check here.
 	_, err := d.DB.Exec(
-		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, type, taxRateId, stockEnabled, serialized)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, type, taxRateId, stockEnabled, serialized, revenueAccountId, expenseAccountId)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Description, req.SKU,
 		req.Price, req.UnitCost, req.Unit, req.Type, req.TaxRateID, req.StockEnabled, req.Serialized,
+		req.RevenueAccountID, req.ExpenseAccountID,
 	)
 	if err != nil {
 		if isDuplicateSKU(err) {
@@ -198,10 +209,12 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 
 	_, err = d.DB.Exec(
 		`UPDATE products
-		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, type = ?, taxRateId = ?, stockEnabled = ?, serialized = ?
+		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, type = ?, taxRateId = ?,
+		     stockEnabled = ?, serialized = ?, revenueAccountId = ?, expenseAccountId = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Description, updates.SKU, updates.Price,
 		updates.UnitCost, updates.Unit, updates.Type, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
+		updates.RevenueAccountID, updates.ExpenseAccountID,
 		productID,
 	)
 	if err != nil {

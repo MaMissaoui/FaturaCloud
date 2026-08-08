@@ -154,6 +154,8 @@ var vendorReferencingTables = []string{
 	"purchase_orders",
 	"inbound_deliveries",
 	"incoming_invoices",
+	"payments",
+	"journal_lines",
 }
 
 func (d *Database) GetVendorDocumentCount(vendorID string) (int64, error) {

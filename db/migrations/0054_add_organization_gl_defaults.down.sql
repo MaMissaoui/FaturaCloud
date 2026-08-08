@@ -1,0 +1,11 @@
+ALTER TABLE organizations DROP COLUMN datev_client_number;
+ALTER TABLE organizations DROP COLUMN datev_consultant_number;
+ALTER TABLE organizations DROP COLUMN datevClearingAccountId;
+ALTER TABLE organizations DROP COLUMN retainedEarningsAccountId;
+ALTER TABLE organizations DROP COLUMN fxLossAccountId;
+ALTER TABLE organizations DROP COLUMN fxGainAccountId;
+ALTER TABLE organizations DROP COLUMN defaultCashAccountId;
+ALTER TABLE organizations DROP COLUMN defaultExpenseAccountId;
+ALTER TABLE organizations DROP COLUMN defaultRevenueAccountId;
+ALTER TABLE organizations DROP COLUMN defaultApAccountId;
+ALTER TABLE organizations DROP COLUMN defaultArAccountId;

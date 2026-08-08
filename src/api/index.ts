@@ -23,6 +23,18 @@ import type {
   DeliveryLineItem,
   StockMovement,
   SerialNumber,
+  Account,
+  Journal,
+  FiscalYear,
+  FiscalPeriod,
+  JournalEntry,
+  JournalLine,
+  TrialBalanceRow,
+  ProfitAndLoss,
+  BalanceSheet,
+  Payment,
+  PaymentApplication,
+  CreatePaymentRequest,
 } from "src/types/models";
 
 // ---- Auth ----
@@ -593,3 +605,163 @@ export const UpdateIncomingInvoiceState = (id: string, state: string) =>
   patch<IncomingInvoice>(`/incoming-invoices/${id}/state`, { state });
 export const DeleteIncomingInvoice = (id: string) =>
   del<{ deleted: boolean }>(`/incoming-invoices/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Chart of accounts ----
+
+export const GetAccounts = (organizationId: string) =>
+  get<Account[]>(`/organizations/${organizationId}/accounts`);
+export const GetAccount = (id: string) => get<Account>(`/accounts/${id}`);
+export const CreateAccount = (req: Partial<Account>) => post<Account>("/accounts", req);
+export const UpdateAccount = (id: string, req: Partial<Account>) =>
+  put<Account>(`/accounts/${id}`, req);
+export const DeleteAccount = (id: string) =>
+  del<{ deleted: boolean }>(`/accounts/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Journals ----
+
+export const GetJournals = (organizationId: string) =>
+  get<Journal[]>(`/organizations/${organizationId}/journals`);
+export const CreateJournal = (req: Partial<Journal>) => post<Journal>("/journals", req);
+export const UpdateJournal = (id: string, req: Partial<Journal>) =>
+  put<Journal>(`/journals/${id}`, req);
+export const DeleteJournal = (id: string) =>
+  del<{ deleted: boolean }>(`/journals/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Fiscal years / periods ----
+
+export const GetFiscalYears = (organizationId: string) =>
+  get<FiscalYear[]>(`/organizations/${organizationId}/fiscal-years`);
+export const CreateFiscalYear = (req: Partial<FiscalYear>) =>
+  post<FiscalYear>("/fiscal-years", req);
+export const GetFiscalPeriods = (fiscalYearId: string) =>
+  get<FiscalPeriod[]>(`/fiscal-years/${fiscalYearId}/periods`);
+export const CreateFiscalPeriod = (req: Partial<FiscalPeriod>) =>
+  post<FiscalPeriod>("/fiscal-periods", req);
+export const UpdateFiscalPeriodStatus = (id: string, status: string) =>
+  patch<FiscalPeriod>(`/fiscal-periods/${id}/status`, { status });
+// Irreversible — there is no reopen endpoint (db.CloseFiscalYear).
+export const CloseFiscalYear = (id: string) => post<FiscalYear>(`/fiscal-years/${id}/close`, {});
+
+// ---- Accounting: Journal entries ----
+
+export const GetJournalEntries = (
+  organizationId: string,
+  filters?: { journalId?: string; status?: string },
+) => {
+  const params = new URLSearchParams();
+  if (filters?.journalId) params.set("journalId", filters.journalId);
+  if (filters?.status) params.set("status", filters.status);
+  const qs = params.toString();
+  return get<JournalEntry[]>(
+    `/organizations/${organizationId}/journal-entries${qs ? `?${qs}` : ""}`,
+  );
+};
+export const GetJournalEntry = (id: string) => get<JournalEntry>(`/journal-entries/${id}`);
+export const GetJournalEntryLines = (id: string) =>
+  get<JournalLine[]>(`/journal-entries/${id}/lines`);
+export const CreateJournalEntry = (req: unknown) => post<JournalEntry>("/journal-entries", req);
+export const PostJournalEntry = (id: string) =>
+  patch<JournalEntry>(`/journal-entries/${id}/post`, {});
+export const ReverseJournalEntry = (id: string, reason: string, date: number) =>
+  post<JournalEntry>(`/journal-entries/${id}/reverse`, { reason, date });
+export const DeleteJournalEntry = (id: string) =>
+  del<{ deleted: boolean }>(`/journal-entries/${id}`).then((r) => r.deleted);
+
+// ---- Accounting: Payments ----
+
+export const GetPayments = (organizationId: string) =>
+  get<Payment[]>(`/organizations/${organizationId}/payments`);
+export const GetPayment = (id: string) => get<Payment>(`/payments/${id}`);
+export const GetPaymentApplications = (id: string) =>
+  get<PaymentApplication[]>(`/payments/${id}/applications`);
+export const CreatePayment = (req: CreatePaymentRequest) => post<Payment>("/payments", req);
+export const VoidPayment = (id: string) => post<Payment>(`/payments/${id}/void`, {});
+export const GetInvoicePayments = (id: string) =>
+  get<PaymentApplication[]>(`/invoices/${id}/payments`);
+export const GetIncomingInvoicePayments = (id: string) =>
+  get<PaymentApplication[]>(`/incoming-invoices/${id}/payments`);
+
+// ---- Accounting: Reports ----
+
+export const GetTrialBalance = (organizationId: string, fiscalPeriodId?: string) =>
+  get<TrialBalanceRow[]>(
+    `/organizations/${organizationId}/reports/trial-balance${
+      fiscalPeriodId ? `?fiscalPeriodId=${encodeURIComponent(fiscalPeriodId)}` : ""
+    }`,
+  );
+
+export const GetProfitAndLoss = (organizationId: string, startDate: number, endDate: number) =>
+  get<ProfitAndLoss>(
+    `/organizations/${organizationId}/reports/profit-and-loss?startDate=${startDate}&endDate=${endDate}`,
+  );
+
+export const GetBalanceSheet = (organizationId: string, asOfDate: number) =>
+  get<BalanceSheet>(`/organizations/${organizationId}/reports/balance-sheet?asOfDate=${asOfDate}`);
+
+export const GetReceivableAging = (organizationId: string) =>
+  get<OutstandingSummary>(`/organizations/${organizationId}/reports/ar-aging`);
+
+export interface OutstandingBillSummary {
+  id: string;
+  number: string;
+  vendorName: string;
+  dueDate: number | null;
+  total: number;
+  daysOverdue: number;
+}
+
+export interface PayableAgingSummary {
+  total: number;
+  current: number;
+  days1To30: number;
+  days31To60: number;
+  days61To90: number;
+  days90Plus: number;
+  bills: OutstandingBillSummary[];
+}
+
+export const GetPayableAging = (organizationId: string) =>
+  get<PayableAgingSummary>(`/organizations/${organizationId}/reports/ap-aging`);
+
+// ---- Accounting: GL Export ----
+
+// Shared by DownloadFEC/DownloadDATEV — fetches a gl-export sub-route as a
+// blob and triggers a browser download using the filename the server chose
+// (SirenFECAAAAMMJJ.txt / EXTF_Buchungsstapel_<year>.csv).
+const downloadGLExport = async (url: string, fallbackFilename: string): Promise<void> => {
+  const res = await fetch(url, { credentials: "same-origin" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? fallbackFilename;
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(href);
+    a.remove();
+  }, 1000);
+};
+
+// Downloads a fiscal year's France FEC flat file (SirenFECAAAAMMJJ.txt —
+// see db/export_fec.go).
+export const DownloadFEC = (organizationId: string, fiscalYearId: string): Promise<void> =>
+  downloadGLExport(
+    `/api/organizations/${organizationId}/gl-export/fec?fiscalYearId=${encodeURIComponent(fiscalYearId)}`,
+    "FEC.txt",
+  );
+
+// Downloads a fiscal year's DATEV Buchungsstapel EXTF file (Windows-1252,
+// semicolon-separated — see db/export_datev.go).
+export const DownloadDATEV = (organizationId: string, fiscalYearId: string): Promise<void> =>
+  downloadGLExport(
+    `/api/organizations/${organizationId}/gl-export/datev?fiscalYearId=${encodeURIComponent(fiscalYearId)}`,
+    "Buchungsstapel.csv",
+  );
