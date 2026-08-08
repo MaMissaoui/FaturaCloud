@@ -6,12 +6,21 @@ import (
 )
 
 // seedSerializedProduct creates an organization and a stock-enabled,
-// serialized product with zero stock.
+// serialized product with zero stock. Also creates a fiscal year covering
+// 2023 (every fixture in this file dates its receipts/shipments
+// 1700000000000) — Phase 7's GRNI/COGS auto-posting needs an open fiscal
+// year covering that date, same as invoice/bill auto-posting already does.
 func seedSerializedProduct(t *testing.T, orgID string) (*Database, *Product) {
 	t.Helper()
 	d := newTestDB(t)
-	if _, err := d.CreateOrganization(CreateOrganizationRequest{ID: orgID}); err != nil {
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: orgID})
+	if err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 	product, err := d.CreateProduct(CreateProductRequest{
 		ID: orgID + "-prod", OrganizationID: orgID, Name: "Serial Widget",

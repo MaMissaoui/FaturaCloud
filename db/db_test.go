@@ -2165,11 +2165,21 @@ func TestUpdatePurchaseOrderKeepsVendorOnPartialUpdate(t *testing.T) {
 }
 
 // seedCostProduct creates an org + stock-tracked product for the costing tests.
+// Also creates a fiscal year covering 2023 (every fixture in this file that
+// receives against a purchase order dates it 1700000000000) — Phase 7's GRNI
+// accrual on receipt needs an open fiscal year covering that date the same
+// way invoice/bill auto-posting already does, via postAutoEntryTx's
+// resolveFiscalPeriodForDate.
 func seedCostProduct(t *testing.T, d *Database, orgID string) *Product {
 	t.Helper()
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: orgID})
 	if err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 	product, err := d.CreateProduct(CreateProductRequest{
 		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"), Type: "product", StockEnabled: 1,
