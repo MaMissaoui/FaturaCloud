@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -763,4 +765,120 @@ func resolveGRNIClearing(exec sqlSelectExecer, poLineID, billID string, qtyBille
 	clear := new(big.Rat).Mul(qClearRat, new(big.Rat).SetInt64(accruedCents))
 	clear.Quo(clear, receivedQtyRat)
 	return roundHalfUp(clear, 0).Num().Int64(), nil
+}
+
+// resolveMovementCost resolves the frozen unit cost (functional-currency
+// cents) to value one unit of a fungible-or-serialized outflow:
+// product.UnitCost for a fungible product — the current weighted average,
+// safe to read synchronously because an outflow never moves it (see
+// docs/inventory-cogs-integration.md) — or that specific serial's own most
+// recent "in" stockMovements.unitCost for a serialized one (real specific
+// identification, not the blended average). Returns a *ValidationError
+// (409-shaped) when no cost basis exists — never a value of zero standing
+// in for "unknown."
+func resolveMovementCost(exec sqlGetExecer, product *Product, serialNumberID *string) (int64, error) {
+	if serialNumberID != nil {
+		var unitCost sql.NullInt64
+		err := exec.Get(&unitCost, `
+			SELECT unitCost FROM stockMovements
+			WHERE serialNumberId = ? AND type = 'in'
+			ORDER BY createdAt DESC, rowid DESC LIMIT 1`,
+			*serialNumberID,
+		)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return 0, newValidationError("cannot post COGS: %q has no cost basis (no receiving movement found for this unit)", product.Name)
+			}
+			return 0, fmt.Errorf("resolve_movement_cost serial: %w", err)
+		}
+		if !unitCost.Valid {
+			return 0, newValidationError("cannot post COGS: %q has no cost basis (its receiving movement was never costed)", product.Name)
+		}
+		return unitCost.Int64, nil
+	}
+	if product.UnitCost == nil {
+		return 0, newValidationError("cannot post COGS: %q has no cost basis", product.Name)
+	}
+	return *product.UnitCost, nil
+}
+
+// buildDeliveryCOGSGLLines posts Dr COGS / Cr Inventory for a shipment's
+// stock-enabled lines, resolving each line's cost via resolveMovementCost.
+// Returns a 409 the moment any line has no cost basis at all — blocking
+// the whole entry, not silently zero-costing one line while posting the
+// rest (the caller must check for this error *before* touching stock — see
+// UpdateDeliveryStatus). A product whose resolved cost rounds to zero
+// cents (legitimately free) simply contributes zero to the total; if every
+// line is zero, no entry posts at all — the same "a zero-amount group
+// emits no row" rule buildInvoiceGLLines already follows.
+func buildDeliveryCOGSGLLines(d *Database, delivery *OutboundDelivery, lines []deliveryStockLine, resolvedSerials map[string]map[string]string) ([]CreateJournalLineRequest, *Journal, error) {
+	org, err := d.GetOrganization(delivery.OrganizationID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("build_delivery_cogs_gl_lines organization: %w", err)
+	}
+
+	productCache := map[string]*Product{}
+	getProduct := func(id string) (*Product, error) {
+		if p, ok := productCache[id]; ok {
+			return p, nil
+		}
+		p, err := d.GetProduct(id)
+		if err != nil {
+			return nil, fmt.Errorf("build_delivery_cogs_gl_lines product: %w", err)
+		}
+		productCache[id] = p
+		return p, nil
+	}
+
+	total := new(big.Rat)
+	for _, line := range lines {
+		product, err := getProduct(line.ProductID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if line.Serialized == 1 {
+			for _, serialID := range resolvedSerials[line.ProductID] {
+				sid := serialID
+				unitCost, err := resolveMovementCost(d.DB, product, &sid)
+				if err != nil {
+					return nil, nil, err
+				}
+				total.Add(total, new(big.Rat).SetInt64(unitCost)) // one serial row is always exactly 1 unit
+			}
+			continue
+		}
+		unitCost, err := resolveMovementCost(d.DB, product, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		qty, err := floatToRat(line.Quantity)
+		if err != nil {
+			return nil, nil, newValidationError("line for %q: invalid quantity", line.ProductName)
+		}
+		total.Add(total, new(big.Rat).Mul(qty, new(big.Rat).SetInt64(unitCost)))
+	}
+
+	totalCents := roundHalfUp(total, 0).Num().Int64()
+	if totalCents == 0 {
+		return nil, nil, nil
+	}
+
+	if org.DefaultCOGSAccountID == nil {
+		return nil, nil, newValidationError("cannot post shipment: organization has no default COGS account configured")
+	}
+	if org.DefaultInventoryAccountID == nil {
+		return nil, nil, newValidationError("cannot post shipment: organization has no default Inventory account configured")
+	}
+
+	// Pairs with the revenue-recognizing transaction, same journal an
+	// invoice's own auto-posted entry uses.
+	journal, err := getJournalByTypeTx(d.DB, delivery.OrganizationID, "sales")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return []CreateJournalLineRequest{
+		{AccountID: *org.DefaultCOGSAccountID, Debit: totalCents},
+		{AccountID: *org.DefaultInventoryAccountID, Credit: totalCents},
+	}, journal, nil
 }

@@ -298,9 +298,16 @@ func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
 		t.Fatalf("CreateProduct: %v", err)
 	}
 	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
-		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10,
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
 	}); err != nil {
 		t.Fatalf("CreateStockMovement (initial stock): %v", err)
+	}
+	// Shipping now posts COGS, which needs an open fiscal year covering
+	// the delivery's date (1700000000000, Nov 2023).
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 
 	order, err := d.CreateOrder(CreateOrderRequest{
@@ -382,9 +389,16 @@ func TestDeleteStockMovementBlockedForShippedDelivery(t *testing.T) {
 		t.Fatalf("CreateProduct: %v", err)
 	}
 	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
-		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10,
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
 	}); err != nil {
 		t.Fatalf("CreateStockMovement (initial stock): %v", err)
+	}
+	// Shipping now posts COGS, which needs an open fiscal year covering
+	// the delivery's date (1700000000000, Nov 2023).
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
 		ID: "del-mv-1", OrganizationID: org.ID, DeliveryNumber: "DEL-MV-1", DeliveryDate: 1700000000000,
@@ -525,9 +539,16 @@ func TestStandaloneDeliveryShipReducesStock(t *testing.T) {
 		t.Fatalf("CreateProduct: %v", err)
 	}
 	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
-		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10,
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
 	}); err != nil {
 		t.Fatalf("CreateStockMovement (initial stock): %v", err)
+	}
+	// Shipping now posts COGS, which needs an open fiscal year covering
+	// the delivery's date (1700000000000, Nov 2023).
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1704067199000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 
 	// No order involved — the line item picks the product directly.

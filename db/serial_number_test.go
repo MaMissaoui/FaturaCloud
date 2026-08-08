@@ -379,11 +379,11 @@ func TestSerializedOutboundShipAndCancel(t *testing.T) {
 	})
 	mustValidationError(t, err)
 
-	// Receive stock first.
+	// Receive stock first — costed, since shipping now requires a cost basis.
 	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
 		OrganizationID: product.OrganizationID, DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
 		LineItems: []CreateInboundDeliveryLineItemRequest{
-			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 2},
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 2, UnitCost: ptr(float64(700))},
 		},
 	})
 	if err != nil {

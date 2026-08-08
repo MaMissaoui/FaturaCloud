@@ -17,6 +17,7 @@ type grniTestFixture struct {
 	poLineID           string
 	inventoryAccountID string
 	grniAccountID      string
+	cogsAccountID      string
 	apAccountID        string
 	date               int64
 }
@@ -67,9 +68,30 @@ func newGRNITestFixture(t *testing.T, d *Database, orgID string, ordered float64
 		poLineID:           poItems[0].ID,
 		inventoryAccountID: *org.DefaultInventoryAccountID,
 		grniAccountID:      *org.DefaultGRNIAccountID,
+		cogsAccountID:      *org.DefaultCOGSAccountID,
 		apAccountID:        *org.DefaultApAccountID,
 		date:               date,
 	}
+}
+
+// ship creates and ships a standalone (no order) delivery for qty units of
+// the fixture's product.
+func (f grniTestFixture) ship(t *testing.T, d *Database, deliveryNumber string, qty float64) *OutboundDelivery {
+	t.Helper()
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		OrganizationID: f.orgID, DeliveryNumber: deliveryNumber, DeliveryDate: f.date,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &f.productID, Description: "Widget", Quantity: qty},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+	updated, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil)
+	if err != nil {
+		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
+	}
+	return updated
 }
 
 // bill creates a vendor bill for qty units at unitPrice, linked to the
@@ -546,6 +568,206 @@ func TestPartialBillingAcrossTwoBillsClearsGRNIProportionally(t *testing.T) {
 	for _, r := range rows {
 		if r.AccountID == fx.grniAccountID && r.Debit-r.Credit != 0 {
 			t.Fatalf("trial balance GRNI net = %d, want 0 (the 2500 credit accrual is now fully offset by both bills' debits)", r.Debit-r.Credit)
+		}
+	}
+}
+
+// Shipping a fungible product posts Dr COGS / Cr Inventory at the current
+// weighted average.
+func TestShipmentPostsCOGSAtWeightedAverage(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-cogs-avg", 10, 250) // accrues at 2.50/unit
+	fx.receive(t, d, "GR-0001", 10)
+
+	delivery := fx.ship(t, d, "DEL-0001", 4)
+
+	entry, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, entry)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	cogsDebit, cogsCredit := sumLines(lines, fx.cogsAccountID)
+	if cogsDebit != 1000 || cogsCredit != 0 { // 4 units @ 250
+		t.Fatalf("COGS line = debit %d credit %d, want debit 1000 credit 0", cogsDebit, cogsCredit)
+	}
+	invDebit, invCredit := sumLines(lines, fx.inventoryAccountID)
+	if invDebit != 0 || invCredit != 1000 {
+		t.Fatalf("Inventory line = debit %d credit %d, want debit 0 credit 1000", invDebit, invCredit)
+	}
+}
+
+// A serialized product's COGS is that specific unit's own receipt cost —
+// specific identification — not the blended weighted average across other
+// units of the same product.
+func TestShipmentPostsCOGSAtSpecificSerialCostNotAverage(t *testing.T) {
+	d, product := seedSerializedProduct(t, "org-cogs-serial")
+	date := int64(1700000000000)
+
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: product.OrganizationID, DeliveryNumber: "GR-0001", DeliveryDate: date,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1, UnitCost: ptr(float64(700))},
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1, UnitCost: ptr(float64(900))},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+	rItems, _ := d.GetInboundDeliveryLineItems(receipt.ID)
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", map[string][]string{
+		rItems[0].ID: {"SN-CHEAP"},
+		rItems[1].ID: {"SN-EXPENSIVE"},
+	}); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+	// Blended average would be 800 — confirm the two units really did land
+	// at their own distinct costs, not that average, before shipping.
+	afterReceive, err := d.GetProduct(product.ID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	if afterReceive.UnitCost == nil || *afterReceive.UnitCost != 800 {
+		t.Fatalf("sanity check: blended average = %v, want 800", afterReceive.UnitCost)
+	}
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		OrganizationID: product.OrganizationID, DeliveryNumber: "DEL-0001", DeliveryDate: date,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+	dItems, _ := d.GetDeliveryLineItems(delivery.ID)
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", map[string][]string{
+		dItems[0].ID: {"SN-CHEAP"},
+	}); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, entry)
+	}
+	org, err := d.GetOrganization(product.OrganizationID)
+	if err != nil {
+		t.Fatalf("GetOrganization: %v", err)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	cogsDebit, _ := sumLines(lines, *org.DefaultCOGSAccountID)
+	if cogsDebit != 700 {
+		t.Fatalf("COGS debit = %d, want 700 (SN-CHEAP's own receipt cost, not the 800 blended average)", cogsDebit)
+	}
+}
+
+// Shipping a product with no cost basis at all is a clean 409 — and, since
+// buildDeliveryCOGSGLLines runs before the transaction opens, no stock
+// movement is ever attempted.
+func TestShipmentWithNoCostBasisIsRejectedAndTouchesNoStock(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cogs-nocost", Name: ptr("No Cost Org")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	date := int64(1738368000000)
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2025", StartDate: 1735689600000, EndDate: 1767225599000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	product, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget", SKU: ptr("WID-1"), Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	// Stock in with no cost — legal (an opening-balance adjustment with no
+	// price attached), but leaves nothing for COGS to value a sale at.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 5,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		OrganizationID: org.ID, DeliveryNumber: "DEL-0001", DeliveryDate: date,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: 2},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+
+	_, err = d.UpdateDeliveryStatus(delivery.ID, "shipped", nil)
+	if err == nil {
+		t.Fatal("expected shipping a product with no cost basis to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+
+	p, err := d.GetProduct(product.ID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	if p.StockQuantity != 5 {
+		t.Fatalf("stockQuantity: got %v, want 5 (unchanged — no movement should have been attempted)", p.StockQuantity)
+	}
+	current, err := d.GetDelivery(delivery.ID)
+	if err != nil {
+		t.Fatalf("GetDelivery: %v", err)
+	}
+	if current.Status != "draft" {
+		t.Fatalf("status changed despite rejection: %q", current.Status)
+	}
+}
+
+func TestCancelShippedDeliveryReversesCOGS(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-cogs-cancel", 10, 250)
+	fx.receive(t, d, "GR-0001", 10)
+	delivery := fx.ship(t, d, "DEL-0001", 4)
+
+	original, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	if err != nil || original == nil {
+		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, original)
+	}
+
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "cancelled", nil); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(cancelled): %v", err)
+	}
+
+	stillLive, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	if err != nil {
+		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
+	}
+	if stillLive != nil {
+		t.Fatalf("expected no live posted entry after cancelling, got %+v", stillLive)
+	}
+	reversedOriginal, err := d.GetJournalEntry(original.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntry(original): %v", err)
+	}
+	if reversedOriginal.Status != "reversed" {
+		t.Fatalf("original entry status = %q, want reversed", reversedOriginal.Status)
+	}
+
+	rows, err := d.GetTrialBalance(fx.orgID, "")
+	if err != nil {
+		t.Fatalf("GetTrialBalance: %v", err)
+	}
+	for _, r := range rows {
+		if r.AccountID == fx.cogsAccountID && r.Debit-r.Credit != 0 {
+			t.Fatalf("trial balance COGS net after reversal = %d, want 0", r.Debit-r.Credit)
 		}
 	}
 }
