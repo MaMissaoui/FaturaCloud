@@ -325,6 +325,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `docker-compose.yml` — single service, `/data` volume for SQLite
 - `docker-compose.oidc.yml` — overlay enabling OIDC SSO against homelab-auth's Authelia via Nginx Proxy Manager (no Traefik — see `docs/oidc-sso.md`); merge with `-f docker-compose.yml -f docker-compose.oidc.yml`
 - `docs/oidc-sso.md` — OIDC SSO design doc: generic provider-agnostic pattern, FaturaCloud-specific implementation, security model, Authelia-side client setup
+- `docs/inventory-cogs-integration.md` — design note for the deferred Phase 7 (GRNI on receipt, COGS on shipment): why weighted-average cost (`recomputeAverageCostTx`) vs. immutable posted GL entries is safer than it first looks, the open policy decisions (no-cost-basis shipments, serialized specific-identification, manual adjustments, GRNI/bill matching, long-run reconciliation), and the finding that today's bill posting (`resolveExpenseAccount`) expenses stock-tracked purchases immediately with no inventory capitalization — a real behavior change Phase 7 has to make, not just add to
 
 ## Database
 SQLite is accessed from Go via `jmoiron/sqlx`. All schema migrations live in `db/migrations/` as `*.up.sql` files and run automatically on every startup. The database file is located at:
