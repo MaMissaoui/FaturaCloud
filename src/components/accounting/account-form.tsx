@@ -201,6 +201,19 @@ const AccountForm = () => {
         <Form.Item name="description" label={<Trans>Description</Trans>}>
           <Input.TextArea rows={2} />
         </Form.Item>
+        <Form.Item
+          name="datevAccountNumber"
+          label={<Trans>DATEV account number</Trans>}
+          tooltip={
+            <Trans>
+              SKR03/SKR04-style numeric account code for the DATEV export's "Konto" column.
+              Required on every account referenced by a posted entry before a DATEV export can be
+              generated.
+            </Trans>
+          }
+        >
+          <Input placeholder={t`e.g. 1200`} />
+        </Form.Item>
       </Form>
     </Drawer>
   );

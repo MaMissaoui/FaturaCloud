@@ -746,6 +746,27 @@ export default function Organizations() {
                   <Form.Item
                     name="defaultCashAccountId"
                     label={<Trans>Default cash account</Trans>}
+                  >
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder={t`None`}
+                      options={leafAccountOptions}
+                      optionFilterProp="label"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="datevClearingAccountId"
+                    label={<Trans>DATEV clearing account</Trans>}
+                    tooltip={
+                      <Trans>
+                        Synthetic counter-account for a manual journal entry with more than one
+                        line on both sides (no natural anchor line) when exporting to DATEV. Leave
+                        blank if you don't use DATEV.
+                      </Trans>
+                    }
                     style={{ marginBottom: 0 }}
                   >
                     <Select
@@ -755,6 +776,25 @@ export default function Organizations() {
                       options={leafAccountOptions}
                       optionFilterProp="label"
                     />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="datev_consultant_number"
+                    label={<Trans>DATEV consultant number</Trans>}
+                    tooltip={<Trans>Required to generate a DATEV export (1001–9999999).</Trans>}
+                  >
+                    <Input placeholder={t`e.g. 1001`} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    name="datev_client_number"
+                    label={<Trans>DATEV client number</Trans>}
+                    tooltip={<Trans>Required to generate a DATEV export (1–99999).</Trans>}
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Input placeholder={t`e.g. 456`} />
                   </Form.Item>
                 </Col>
               </Row>

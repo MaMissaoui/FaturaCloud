@@ -255,6 +255,18 @@ const TaxRateForm = () => {
                 optionFilterProp="label"
               />
             </Form.Item>
+            <Form.Item
+              name="datev_bu_key"
+              label={<Trans>DATEV tax key (BU-Schlüssel)</Trans>}
+              tooltip={
+                <Trans>
+                  DATEV's own tax key, independent of the percentage above. Leave blank if this
+                  rate isn't used with the DATEV export.
+                </Trans>
+              }
+            >
+              <Input placeholder={t`e.g. 9`} />
+            </Form.Item>
           </Form>
         </ScrollShadow>
       )}

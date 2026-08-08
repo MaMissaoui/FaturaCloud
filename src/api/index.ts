@@ -725,21 +725,18 @@ export const GetPayableAging = (organizationId: string) =>
 
 // ---- Accounting: GL Export ----
 
-// Downloads a fiscal year's France FEC flat file (SirenFECAAAAMMJJ.txt —
-// see db/export_fec.go). DATEV is deliberately not offered — see the GL
-// Export settings page.
-export const DownloadFEC = async (organizationId: string, fiscalYearId: string): Promise<void> => {
-  const res = await fetch(
-    `/api/organizations/${organizationId}/gl-export/fec?fiscalYearId=${encodeURIComponent(fiscalYearId)}`,
-    { credentials: "same-origin" },
-  );
+// Shared by DownloadFEC/DownloadDATEV — fetches a gl-export sub-route as a
+// blob and triggers a browser download using the filename the server chose
+// (SirenFECAAAAMMJJ.txt / EXTF_Buchungsstapel_<year>.csv).
+const downloadGLExport = async (url: string, fallbackFilename: string): Promise<void> => {
+  const res = await fetch(url, { credentials: "same-origin" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error ?? res.statusText);
   }
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
-  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "FEC.txt";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? fallbackFilename;
   const href = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = href;
@@ -752,3 +749,19 @@ export const DownloadFEC = async (organizationId: string, fiscalYearId: string):
     a.remove();
   }, 1000);
 };
+
+// Downloads a fiscal year's France FEC flat file (SirenFECAAAAMMJJ.txt —
+// see db/export_fec.go).
+export const DownloadFEC = (organizationId: string, fiscalYearId: string): Promise<void> =>
+  downloadGLExport(
+    `/api/organizations/${organizationId}/gl-export/fec?fiscalYearId=${encodeURIComponent(fiscalYearId)}`,
+    "FEC.txt",
+  );
+
+// Downloads a fiscal year's DATEV Buchungsstapel EXTF file (Windows-1252,
+// semicolon-separated — see db/export_datev.go).
+export const DownloadDATEV = (organizationId: string, fiscalYearId: string): Promise<void> =>
+  downloadGLExport(
+    `/api/organizations/${organizationId}/gl-export/datev?fiscalYearId=${encodeURIComponent(fiscalYearId)}`,
+    "Buchungsstapel.csv",
+  );

@@ -302,6 +302,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// same sensitivity class as the database backup download: a full ledger
 	// dump for the fiscal year, not a single document.
 	adminProtected("GET", "/api/organizations/{orgId}/gl-export/fec", h.getFECExport)
+	adminProtected("GET", "/api/organizations/{orgId}/gl-export/datev", h.getDATEVExport)
 
 	return mux
 }

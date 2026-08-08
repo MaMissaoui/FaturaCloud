@@ -542,7 +542,7 @@ msgstr "client(s)"
 msgid "Clients"
 msgstr "Clients"
 
-#: src/routes/organizations/index.tsx:786
+#: src/routes/organizations/index.tsx:826
 msgid "clients, vendors, products, tax rates"
 msgstr "clients, fournisseurs, produits, taux de taxe"
 
@@ -679,7 +679,7 @@ msgstr "Note client"
 msgid "Daily %"
 msgstr "Quotidien %"
 
-#: src/routes/organizations/index.tsx:767
+#: src/routes/organizations/index.tsx:807
 msgid "Danger zone"
 msgstr "Zone de danger"
 
@@ -717,9 +717,37 @@ msgstr "Format de date"
 msgid "Date range"
 msgstr "Période"
 
+#: src/components/accounting/account-form.tsx:206
+msgid "DATEV account number"
+msgstr "Numéro de compte DATEV"
+
 #: src/routes/settings/gl-export.tsx:92
-msgid "DATEV Buchungsstapel export requires validating the exact column layout and format version against a current DATEV EXTF specification, which isn't available in this environment. Shipping an unverified layout risks producing a file that looks plausible but is rejected on import, so this export is deferred rather than guessed at."
-msgstr "L'export DATEV Buchungsstapel nécessite de valider la disposition exacte des colonnes et la version du format par rapport à une spécification DATEV EXTF actuelle, non disponible dans cet environnement. Publier une disposition non vérifiée risquerait de produire un fichier plausible mais rejeté à l'import ; cet export est donc reporté plutôt que deviné."
+#~ msgid "DATEV Buchungsstapel export requires validating the exact column layout and format version against a current DATEV EXTF specification, which isn't available in this environment. Shipping an unverified layout risks producing a file that looks plausible but is rejected on import, so this export is deferred rather than guessed at."
+#~ msgstr "L'export DATEV Buchungsstapel nécessite de valider la disposition exacte des colonnes et la version du format par rapport à une spécification DATEV EXTF actuelle, non disponible dans cet environnement. Publier une disposition non vérifiée risquerait de produire un fichier plausible mais rejeté à l'import ; cet export est donc reporté plutôt que deviné."
+
+#: src/routes/organizations/index.tsx:762
+msgid "DATEV clearing account"
+msgstr "Compte de compensation DATEV"
+
+#: src/routes/organizations/index.tsx:793
+msgid "DATEV client number"
+msgstr "Numéro de client DATEV"
+
+#: src/routes/organizations/index.tsx:784
+msgid "DATEV consultant number"
+msgstr "Numéro de conseiller DATEV"
+
+#: src/routes/settings/gl-export.tsx:55
+msgid "DATEV export failed"
+msgstr "Échec de l'export DATEV"
+
+#: src/components/tax-rates/form.tsx:260
+msgid "DATEV tax key (BU-Schlüssel)"
+msgstr "Clé fiscale DATEV (BU-Schlüssel)"
+
+#: src/components/tax-rates/form.tsx:262
+msgid "DATEV's own tax key, independent of the percentage above. Leave blank if this rate isn't used with the DATEV export."
+msgstr "Clé fiscale propre à DATEV, indépendante du pourcentage ci-dessus. Laisser vide si ce taux n'est pas utilisé avec l'export DATEV."
 
 #: src/utils/units.ts:30
 msgid "day"
@@ -1019,13 +1047,29 @@ msgstr "E-mail"
 msgid "E-mails"
 msgstr "E-mails"
 
+#: src/routes/organizations/index.tsx:787
+msgid "e.g. 1001"
+msgstr "ex. 1001"
+
 #: src/components/accounting/account-form.tsx:157
 msgid "e.g. 1010"
 msgstr "ex. 1010"
 
+#: src/components/accounting/account-form.tsx:215
+msgid "e.g. 1200"
+msgstr "ex. 1200"
+
 #: src/routes/accounting/fiscal-periods.tsx:303
 msgid "e.g. 2026"
 msgstr "ex. 2026"
+
+#: src/routes/organizations/index.tsx:797
+msgid "e.g. 456"
+msgstr "ex. 456"
+
+#: src/components/tax-rates/form.tsx:268
+msgid "e.g. 9"
+msgstr "ex. 9"
 
 #: src/routes/accounting/journal-entries/details.tsx:209
 msgid "e.g. Bank fee"
@@ -1179,11 +1223,19 @@ msgstr "Compte de charges"
 msgid "Expenses"
 msgstr "Charges"
 
-#: src/routes/settings/gl-export.tsx:80
+#: src/routes/settings/gl-export.tsx:124
+msgid "Export DATEV"
+msgstr "Exporter DATEV"
+
+#: src/routes/settings/gl-export.tsx:93
 msgid "Export FEC"
 msgstr "Exporter le FEC"
 
-#: src/routes/settings/gl-export.tsx:59
+#: src/routes/settings/gl-export.tsx:102
+msgid "Exports every posted journal line for the selected fiscal year as a DATEV Buchungsstapel EXTF file. Requires a DATEV consultant number, client number, and a DATEV account number on every account referenced by a posted entry — configure these under Accounting → Chart of Accounts and Organization settings."
+msgstr "Exporte chaque ligne d'écriture comptabilisée de l'exercice sélectionné sous forme de fichier DATEV Buchungsstapel EXTF. Nécessite un numéro de conseiller DATEV, un numéro de client et un numéro de compte DATEV sur chaque compte référencé par une écriture comptabilisée — configurez-les dans Comptabilité → Plan comptable et dans les paramètres de l'organisation."
+
+#: src/routes/settings/gl-export.tsx:72
 msgid "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 msgstr "Exporte chaque ligne d'écriture validée de l'exercice sélectionné sous forme de fichier SirenFECAAAAMMJJ.txt, conformément au format imposé par l'administration fiscale française. Nécessite un SIREN à 9 chiffres dans le numéro d'immatriculation de l'organisation."
 
@@ -1392,7 +1444,7 @@ msgstr "Échec de la mise à jour de l'utilisateur"
 msgid "Failed to void payment"
 msgstr "Échec de l'annulation du paiement"
 
-#: src/routes/settings/gl-export.tsx:42
+#: src/routes/settings/gl-export.tsx:43
 msgid "FEC export failed"
 msgstr "Échec de l'export FEC"
 
@@ -1445,7 +1497,7 @@ msgstr "Échec de la création de l'exercice"
 msgid "Formatting"
 msgstr "Mise en forme"
 
-#: src/routes/settings/gl-export.tsx:56
+#: src/routes/settings/gl-export.tsx:69
 msgid "France — FEC"
 msgstr "France — FEC"
 
@@ -1458,12 +1510,12 @@ msgstr "Article d'exportation en franchise, taxe non facturée"
 msgid "From"
 msgstr "De"
 
-#: src/routes/settings/gl-export.tsx:86
+#: src/routes/settings/gl-export.tsx:99
 msgid "Germany — DATEV"
 msgstr "Allemagne — DATEV"
 
 #: src/layouts/base.tsx:516
-#: src/routes/settings/gl-export.tsx:52
+#: src/routes/settings/gl-export.tsx:65
 msgid "GL Export"
 msgstr "Export comptable"
 
@@ -1693,7 +1745,7 @@ msgstr "facture(s)"
 msgid "Invoices"
 msgstr "Factures"
 
-#: src/routes/organizations/index.tsx:796
+#: src/routes/organizations/index.tsx:836
 msgid "invoices, orders, deliveries, purchase orders, goods receipts, incoming invoices, stock movements"
 msgstr "factures, commandes, livraisons, commandes d'achat, réceptions de marchandises, factures fournisseurs, mouvements de stock"
 
@@ -1842,7 +1894,7 @@ msgstr "Marquer comme reçue"
 msgid "Mark as shipped"
 msgstr "Marquer comme expédiée"
 
-#: src/routes/organizations/index.tsx:785
+#: src/routes/organizations/index.tsx:825
 msgid "Master data"
 msgstr "Données de base"
 
@@ -1850,7 +1902,7 @@ msgstr "Données de base"
 msgid "Master Data"
 msgstr "Données de base"
 
-#: src/routes/organizations/index.tsx:802
+#: src/routes/organizations/index.tsx:842
 msgid "Master data can't be reset on its own — documents reference clients and vendors, so transactional data is included automatically."
 msgstr "Les données de base ne peuvent pas être réinitialisées seules — les documents référencent des clients et fournisseurs, les données transactionnelles sont donc incluses automatiquement."
 
@@ -2108,7 +2160,8 @@ msgstr "Aucun produit suivi en stock"
 #: src/routes/organizations/index.tsx:705
 #: src/routes/organizations/index.tsx:722
 #: src/routes/organizations/index.tsx:739
-#: src/routes/organizations/index.tsx:754
+#: src/routes/organizations/index.tsx:753
+#: src/routes/organizations/index.tsx:775
 msgid "None"
 msgstr "Aucune"
 
@@ -2125,8 +2178,8 @@ msgid "Not linked to a purchase order line."
 msgstr "Non liée à une ligne de commande d'achat."
 
 #: src/routes/settings/gl-export.tsx:90
-msgid "Not yet available"
-msgstr "Pas encore disponible"
+#~ msgid "Not yet available"
+#~ msgstr "Pas encore disponible"
 
 #: src/components/stock/movement-form.tsx:261
 #: src/routes/inventory.tsx:275
@@ -2147,7 +2200,7 @@ msgstr "Note"
 msgid "Notes"
 msgstr "Notes"
 
-#: src/routes/organizations/index.tsx:827
+#: src/routes/organizations/index.tsx:867
 msgid "Nothing matches the current selection."
 msgstr "Rien ne correspond à la sélection actuelle."
 
@@ -2453,7 +2506,7 @@ msgstr "pcs, kg, m…"
 msgid "Percentage"
 msgstr "Pourcentage"
 
-#: src/routes/organizations/index.tsx:772
+#: src/routes/organizations/index.tsx:812
 msgid "Permanently delete this organization's data without deleting the organization itself."
 msgstr "Supprime définitivement les données de cette organisation sans supprimer l'organisation elle-même."
 
@@ -2873,15 +2926,23 @@ msgstr "Remplacer toutes les données actuelles par le fichier téléchargé ? C
 msgid "Required"
 msgstr "Obligatoire"
 
+#: src/routes/organizations/index.tsx:794
+msgid "Required to generate a DATEV export (1–99999)."
+msgstr "Requis pour générer un export DATEV (1–99999)."
+
+#: src/routes/organizations/index.tsx:785
+msgid "Required to generate a DATEV export (1001–9999999)."
+msgstr "Requis pour générer un export DATEV (1001–9999999)."
+
 #: src/routes/organizations/index.tsx:268
 msgid "Reset failed"
 msgstr "Échec de la réinitialisation"
 
-#: src/routes/organizations/index.tsx:848
+#: src/routes/organizations/index.tsx:888
 msgid "Reset selected data"
 msgstr "Réinitialiser les données sélectionnées"
 
-#: src/routes/organizations/index.tsx:809
+#: src/routes/organizations/index.tsx:849
 msgid "Reset this organization's data?"
 msgstr "Réinitialiser les données de cette organisation ?"
 
@@ -3028,7 +3089,8 @@ msgid "Select a country"
 msgstr "Sélectionner un pays"
 
 #: src/routes/accounting/reports/profit-and-loss.tsx:81
-#: src/routes/settings/gl-export.tsx:67
+#: src/routes/settings/gl-export.tsx:80
+#: src/routes/settings/gl-export.tsx:111
 msgid "Select a fiscal year"
 msgstr "Sélectionner un exercice"
 
@@ -3164,6 +3226,10 @@ msgstr "Échec de la connexion via l'authentification unique — réessayez, ou 
 msgid "Size"
 msgstr "Taille"
 
+#: src/components/accounting/account-form.tsx:208
+msgid "SKR03/SKR04-style numeric account code for the DATEV export's \"Konto\" column. Required on every account referenced by a posted entry before a DATEV export can be generated."
+msgstr "Code de compte numérique de style SKR03/SKR04 pour la colonne « Konto » de l'export DATEV. Requis sur chaque compte référencé par une écriture comptabilisée avant de pouvoir générer un export DATEV."
+
 #: src/routes/products.tsx:189
 msgid "SKU"
 msgstr "SKU"
@@ -3276,6 +3342,10 @@ msgstr "Passer au mode sombre"
 msgid "Switch to light mode"
 msgstr "Passer au mode clair"
 
+#: src/routes/organizations/index.tsx:764
+msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
+msgstr "Contre-compte synthétique pour une écriture manuelle comportant plusieurs lignes des deux côtés (sans ligne d'ancrage naturelle) lors de l'export vers DATEV. Laisser vide si vous n'utilisez pas DATEV."
+
 #: src/components/line-items/table.tsx:314
 #: src/routes/incoming-invoices/details.tsx:416
 #: src/routes/invoices/details.tsx:904
@@ -3360,7 +3430,7 @@ msgstr "Le numéro figurant sur la facture du fournisseur"
 
 #: src/routes/organizations/index.tsx:414
 #: src/routes/organizations/index.tsx:418
-#: src/routes/organizations/index.tsx:831
+#: src/routes/organizations/index.tsx:871
 msgid "This cannot be undone."
 msgstr "Cette action est irréversible."
 
@@ -3410,7 +3480,7 @@ msgid "This will add the received quantities to stock. Continue?"
 msgstr "Les quantités reçues seront ajoutées au stock. Continuer ?"
 
 #: src/routes/organizations/index.tsx:404
-#: src/routes/organizations/index.tsx:815
+#: src/routes/organizations/index.tsx:855
 msgid "This will permanently delete:"
 msgstr "Ceci supprimera définitivement :"
 
@@ -3484,7 +3554,7 @@ msgstr "Suivi"
 msgid "Tracking number"
 msgstr "Numéro de suivi"
 
-#: src/routes/organizations/index.tsx:793
+#: src/routes/organizations/index.tsx:833
 msgid "Transactional data"
 msgstr "Données transactionnelles"
 

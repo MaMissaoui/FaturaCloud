@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Select, Space, Typography } from "antd";
+import { Button, Card, Select, Space, Typography } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ExportOutlined } from "@ant-design/icons";
 
-import { DownloadFEC } from "src/api";
+import { DownloadDATEV, DownloadFEC } from "src/api";
 import { organizationIdAtom } from "src/atoms/organization";
 import { fiscalYearsAtom, setFiscalYearsAtom } from "src/atoms/fiscal-period";
 import { message } from "src/utils/message";
@@ -20,7 +20,8 @@ const SettingsGLExport = () => {
   const setFiscalYears = useSetAtom(setFiscalYearsAtom);
 
   const [fiscalYearId, setFiscalYearId] = useState<string>("");
-  const [downloading, setDownloading] = useState(false);
+  const [downloadingFEC, setDownloadingFEC] = useState(false);
+  const [downloadingDATEV, setDownloadingDATEV] = useState(false);
 
   useEffect(() => {
     setFiscalYears();
@@ -35,13 +36,25 @@ const SettingsGLExport = () => {
 
   const handleDownloadFEC = async () => {
     if (!organizationId || !fiscalYearId) return;
-    setDownloading(true);
+    setDownloadingFEC(true);
     try {
       await DownloadFEC(organizationId, fiscalYearId);
     } catch (err) {
       message.error(err instanceof Error ? err.message : t`FEC export failed`);
     } finally {
-      setDownloading(false);
+      setDownloadingFEC(false);
+    }
+  };
+
+  const handleDownloadDATEV = async () => {
+    if (!organizationId || !fiscalYearId) return;
+    setDownloadingDATEV(true);
+    try {
+      await DownloadDATEV(organizationId, fiscalYearId);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : t`DATEV export failed`);
+    } finally {
+      setDownloadingDATEV(false);
     }
   };
 
@@ -73,7 +86,7 @@ const SettingsGLExport = () => {
               <Button
                 type="primary"
                 icon={<ExportOutlined />}
-                loading={downloading}
+                loading={downloadingFEC}
                 disabled={!fiscalYearId}
                 onClick={handleDownloadFEC}
               >
@@ -84,20 +97,34 @@ const SettingsGLExport = () => {
         </Card>
 
         <Card title={<Trans>Germany — DATEV</Trans>}>
-          <Alert
-            type="info"
-            showIcon
-            message={<Trans>Not yet available</Trans>}
-            description={
+          <Space direction="vertical" size={12} style={{ width: "100%" }}>
+            <Text type="secondary">
               <Trans>
-                DATEV Buchungsstapel export requires validating the exact column layout and format
-                version against a current DATEV EXTF specification, which isn't available in this
-                environment. Shipping an unverified layout risks producing a file that looks
-                plausible but is rejected on import, so this export is deferred rather than guessed
-                at.
+                Exports every posted journal line for the selected fiscal year as a DATEV
+                Buchungsstapel EXTF file. Requires a DATEV consultant number, client number, and a
+                DATEV account number on every account referenced by a posted entry — configure
+                these under Accounting → Chart of Accounts and Organization settings.
               </Trans>
-            }
-          />
+            </Text>
+            <Space>
+              <Select
+                placeholder={t`Select a fiscal year`}
+                style={{ width: 180 }}
+                value={fiscalYearId || undefined}
+                onChange={setFiscalYearId}
+                options={fiscalYears.map((y) => ({ value: y.id, label: y.name }))}
+              />
+              <Button
+                type="primary"
+                icon={<ExportOutlined />}
+                loading={downloadingDATEV}
+                disabled={!fiscalYearId}
+                onClick={handleDownloadDATEV}
+              >
+                <Trans>Export DATEV</Trans>
+              </Button>
+            </Space>
+          </Space>
         </Card>
       </Space>
     </div>

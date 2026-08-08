@@ -54,6 +54,13 @@ export interface TaxRate {
   // BT-120 exemption reason, required by EN 16931 when the category needs one.
   category_code: string;
   exemption_reason: string | null;
+  // Accounting (general ledger): same rate row serves both sales (a
+  // liability) and purchase (a reclaimable asset) line items, so two
+  // separate FKs rather than one.
+  outputTaxAccountId: string | null;
+  inputTaxAccountId: string | null;
+  // DATEV's own tax key (BU-Schlüssel), independent of `percentage`.
+  datev_bu_key: string | null;
 }
 
 export interface Organization {
@@ -97,6 +104,22 @@ export interface Organization {
   postal_code: string | null;
   city: string | null;
   country_code: string | null;
+  // Accounting (general ledger) defaults — nullable so an org can use
+  // manual journal entries before wiring auto-posting; seeded automatically
+  // at org creation against the default chart of accounts.
+  defaultArAccountId: string | null;
+  defaultApAccountId: string | null;
+  defaultRevenueAccountId: string | null;
+  defaultExpenseAccountId: string | null;
+  defaultCashAccountId: string | null;
+  fxGainAccountId: string | null;
+  fxLossAccountId: string | null;
+  retainedEarningsAccountId: string | null;
+  // DATEV export. datevClearingAccountId is the synthetic Gegenkonto for a
+  // manual entry with more than one line on both sides (no natural anchor).
+  datevClearingAccountId: string | null;
+  datev_consultant_number: string | null;
+  datev_client_number: string | null;
 }
 
 export interface Order {
