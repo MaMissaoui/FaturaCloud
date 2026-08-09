@@ -508,7 +508,7 @@ msgstr "City"
 #: src/routes/invoices/index.tsx:165
 #: src/routes/orders.tsx:80
 #: src/routes/orders/details.tsx:231
-#: src/routes/reporting/sales-by-client.tsx:83
+#: src/routes/reporting/sales-by-client.tsx:87
 msgid "Client"
 msgstr "Client"
 
@@ -2209,15 +2209,15 @@ msgstr "No outstanding invoices"
 msgid "No payments recorded yet"
 msgstr "No payments recorded yet"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:85
+#: src/routes/reporting/purchases-by-vendor.tsx:89
 msgid "No purchases in this period"
 msgstr "No purchases in this period"
 
 #: src/routes/dashboard.tsx:224
 #: src/routes/dashboard.tsx:244
 #: src/routes/reporting/revenue-trend.tsx:83
-#: src/routes/reporting/sales-by-client.tsx:81
-#: src/routes/reporting/sales-by-product.tsx:81
+#: src/routes/reporting/sales-by-client.tsx:85
+#: src/routes/reporting/sales-by-product.tsx:85
 msgid "No revenue in this period"
 msgstr "No revenue in this period"
 
@@ -2749,7 +2749,7 @@ msgstr "Pricing"
 #: src/routes/inventory.tsx:233
 #: src/routes/invoices/details.tsx:667
 #: src/routes/products.tsx:180
-#: src/routes/reporting/sales-by-product.tsx:83
+#: src/routes/reporting/sales-by-product.tsx:87
 msgid "Product"
 msgstr "Product"
 
@@ -3081,8 +3081,8 @@ msgstr "Retention (days)"
 #: src/routes/dashboard.tsx:228
 #: src/routes/dashboard.tsx:248
 #: src/routes/reporting/revenue-trend.tsx:87
-#: src/routes/reporting/sales-by-client.tsx:85
-#: src/routes/reporting/sales-by-product.tsx:85
+#: src/routes/reporting/sales-by-client.tsx:89
+#: src/routes/reporting/sales-by-product.tsx:89
 msgid "Revenue"
 msgstr "Revenue"
 
@@ -3361,7 +3361,7 @@ msgstr "SKU"
 msgid "SKU / Product code"
 msgstr "SKU / Product code"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:89
+#: src/routes/reporting/purchases-by-vendor.tsx:93
 msgid "Spend"
 msgstr "Spend"
 
@@ -3625,6 +3625,15 @@ msgstr "This will permanently delete:"
 msgid "This will reverse the stock this receipt added. Continue?"
 msgstr "This will reverse the stock this receipt added. Continue?"
 
+#: src/routes/reporting/sales-by-client.tsx:66
+#: src/routes/reporting/sales-by-product.tsx:66
+msgid "Top 20 by revenue"
+msgstr "Top 20 by revenue"
+
+#: src/routes/reporting/purchases-by-vendor.tsx:70
+msgid "Top 20 by spend"
+msgstr "Top 20 by spend"
+
 #: src/routes/dashboard.tsx:218
 msgid "Top clients"
 msgstr "Top clients"
@@ -3844,7 +3853,7 @@ msgstr "VATIN"
 #: src/routes/incoming-invoices/details.tsx:287
 #: src/routes/purchase-orders.tsx:89
 #: src/routes/purchase-orders/details.tsx:271
-#: src/routes/reporting/purchases-by-vendor.tsx:87
+#: src/routes/reporting/purchases-by-vendor.tsx:91
 msgid "Vendor"
 msgstr "Vendor"
 

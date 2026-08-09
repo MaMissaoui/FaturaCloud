@@ -318,3 +318,52 @@ func TestGetTaxSummary(t *testing.T) {
 		t.Fatalf("input line = %+v, want base=500 tax=100", summary.Input[0])
 	}
 }
+
+// TestGetTaxSummaryRoundsPerDocument pins the rounding granularity: tax must
+// be rounded once per tax-rate group PER DOCUMENT (matching
+// validateInvoiceTotals, which is what produces invoices.taxTotal), then
+// those already-rounded cents summed — not summed raw and rounded once at
+// the end. Two documents each at base=300, rate=8.5%: per document,
+// 300*0.085=25.5 rounds half-up to 26, so the correct total is 52. Rounding
+// the combined 600*0.085=51.0 once would wrongly give 51 — a real
+// divergence even in a single currency with no FX involved.
+func TestGetTaxSummaryRoundsPerDocument(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	rate, err := d.CreateTaxRate(CreateTaxRateRequest{ID: "rate-8.5", OrganizationID: org.ID, Name: "8.5%", Percentage: 8.5})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	now := time.Now().UnixMilli()
+	for _, id := range []string{"inv-a", "inv-b"} {
+		if _, err := d.CreateInvoice(CreateInvoiceRequest{
+			ID: id, OrganizationID: org.ID, Number: id, State: "sent", ClientID: client.ID,
+			Date: now, Currency: "EUR", Total: 326, TaxTotal: 26, SubTotal: 300,
+			LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 300, TaxRate: &rate.ID}},
+		}); err != nil {
+			t.Fatalf("CreateInvoice(%s): %v", id, err)
+		}
+	}
+
+	summary, err := d.GetTaxSummary(org.ID, time.Now().AddDate(0, -12, 0).UnixMilli(), 0)
+	if err != nil {
+		t.Fatalf("GetTaxSummary: %v", err)
+	}
+	if len(summary.Output) != 1 {
+		t.Fatalf("got %d output lines, want 1: %+v", len(summary.Output), summary.Output)
+	}
+	if summary.Output[0].Tax != 52 {
+		t.Fatalf("Tax = %d, want 52 (26+26 rounded per document, not round(51.0))", summary.Output[0].Tax)
+	}
+	if summary.Output[0].Base != 600 {
+		t.Fatalf("Base = %d, want 600", summary.Output[0].Base)
+	}
+}

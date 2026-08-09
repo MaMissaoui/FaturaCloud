@@ -189,6 +189,18 @@ type TaxSummaryLine struct {
 // organization collected) and input VAT (purchases side, what it paid),
 // each grouped by tax rate over a date range.
 //
+// Tax is rounded once per tax-rate group PER DOCUMENT, then those
+// already-rounded per-document cents are summed across documents — the same
+// order db/invoice_totals.go's validateInvoiceTotals uses to produce the
+// invoices.taxTotal/incoming_invoices.taxTotal this report is meant to add
+// up to. Summing raw amounts first and rounding once at the end (rounding
+// at the wrong granularity) would NOT reliably equal Σ(taxTotal): e.g. two
+// documents each with a single 300-cent line at 8.5% round individually to
+// 26 cents (300×0.085=25.5, half-up), summing to 52, while rounding the
+// combined 600×0.085=51.0 once gives 51 — a real one-cent divergence with a
+// single currency and no FX involved. getOutputTaxSummary/getInputTaxSummary
+// implement this via an inner per-(document, tax rate) subquery.
+//
 // This deliberately diverges from db/gl_posting.go's buildInvoiceGLLines/
 // buildIncomingInvoiceGLLines in two ways:
 //
@@ -205,7 +217,10 @@ type TaxSummaryLine struct {
 //
 // There is no discount column on invoiceLineItems/incoming_invoice_line_items,
 // so quantity*unitPrice is the correct taxable base — the same base the GL
-// itself computes.
+// itself computes. Base itself is summed-then-rounded (not per-document):
+// unlike Tax, there is no stored per-rate "base" figure it needs to
+// reconcile against — invoices.subTotal is a single whole-document number,
+// never split by tax rate.
 type TaxSummary struct {
 	Output []TaxSummaryLine `json:"output"` // sales / output VAT
 	Input  []TaxSummaryLine `json:"input"`  // purchases / input VAT
@@ -228,16 +243,22 @@ func (d *Database) getOutputTaxSummary(organizationID string, startDate, endDate
 	rangeClause := dateRangeFilter("i.date", startDate, endDate, &args)
 	rows := []TaxSummaryLine{}
 	err := d.DB.Select(&rows, `
-		SELECT COALESCE(tr.id, '') AS taxRateId, COALESCE(tr.name, '') AS name,
-		       COALESCE(tr.category_code, '') AS categoryCode, COALESCE(tr.percentage, 0) AS percentage,
-		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS base,
-		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS tax
-		FROM invoiceLineItems ili
-		JOIN invoices i ON ili.invoiceId = i.id
-		LEFT JOIN taxRates tr ON ili.taxRate = tr.id
-		WHERE i.organizationId = ? AND i.state IN `+revenueStates+rangeClause+`
-		GROUP BY tr.id
-		ORDER BY tr.percentage DESC`,
+		SELECT taxRateId, MAX(name) AS name, MAX(categoryCode) AS categoryCode, MAX(percentage) AS percentage,
+		       CAST(ROUND(SUM(rawBase)) AS INTEGER) AS base,
+		       CAST(SUM(docTax) AS INTEGER) AS tax
+		FROM (
+			SELECT COALESCE(tr.id, '') AS taxRateId, COALESCE(tr.name, '') AS name,
+			       COALESCE(tr.category_code, '') AS categoryCode, COALESCE(tr.percentage, 0) AS percentage,
+			       SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1)) AS rawBase,
+			       ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(i.exchangeRate, 1))) AS docTax
+			FROM invoiceLineItems ili
+			JOIN invoices i ON ili.invoiceId = i.id
+			LEFT JOIN taxRates tr ON ili.taxRate = tr.id
+			WHERE i.organizationId = ? AND i.state IN `+revenueStates+rangeClause+`
+			GROUP BY ili.invoiceId, tr.id
+		)
+		GROUP BY taxRateId
+		ORDER BY percentage DESC`,
 		args...,
 	)
 	if err != nil {
@@ -251,16 +272,22 @@ func (d *Database) getInputTaxSummary(organizationID string, startDate, endDate 
 	rangeClause := dateRangeFilter("ii.date", startDate, endDate, &args)
 	rows := []TaxSummaryLine{}
 	err := d.DB.Select(&rows, `
-		SELECT COALESCE(tr.id, '') AS taxRateId, COALESCE(tr.name, '') AS name,
-		       COALESCE(tr.category_code, '') AS categoryCode, COALESCE(tr.percentage, 0) AS percentage,
-		       CAST(ROUND(SUM(iili.quantity * iili.unitPrice * COALESCE(ii.exchangeRate, 1))) AS INTEGER) AS base,
-		       CAST(ROUND(SUM(iili.quantity * iili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(ii.exchangeRate, 1))) AS INTEGER) AS tax
-		FROM incoming_invoice_line_items iili
-		JOIN incoming_invoices ii ON iili.incomingInvoiceId = ii.id
-		LEFT JOIN taxRates tr ON iili.taxRate = tr.id
-		WHERE ii.organizationId = ? AND ii.state IN `+committedStates+rangeClause+`
-		GROUP BY tr.id
-		ORDER BY tr.percentage DESC`,
+		SELECT taxRateId, MAX(name) AS name, MAX(categoryCode) AS categoryCode, MAX(percentage) AS percentage,
+		       CAST(ROUND(SUM(rawBase)) AS INTEGER) AS base,
+		       CAST(SUM(docTax) AS INTEGER) AS tax
+		FROM (
+			SELECT COALESCE(tr.id, '') AS taxRateId, COALESCE(tr.name, '') AS name,
+			       COALESCE(tr.category_code, '') AS categoryCode, COALESCE(tr.percentage, 0) AS percentage,
+			       SUM(iili.quantity * iili.unitPrice * COALESCE(ii.exchangeRate, 1)) AS rawBase,
+			       ROUND(SUM(iili.quantity * iili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(ii.exchangeRate, 1))) AS docTax
+			FROM incoming_invoice_line_items iili
+			JOIN incoming_invoices ii ON iili.incomingInvoiceId = ii.id
+			LEFT JOIN taxRates tr ON iili.taxRate = tr.id
+			WHERE ii.organizationId = ? AND ii.state IN `+committedStates+rangeClause+`
+			GROUP BY iili.incomingInvoiceId, tr.id
+		)
+		GROUP BY taxRateId
+		ORDER BY percentage DESC`,
 		args...,
 	)
 	if err != nil {

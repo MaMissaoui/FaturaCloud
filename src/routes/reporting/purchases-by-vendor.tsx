@@ -64,13 +64,17 @@ const PurchasesByVendor = () => {
         }
       />
 
-      <Card style={{ marginTop: 16 }} loading={loading}>
+      <Card
+        style={{ marginTop: 16 }}
+        loading={loading}
+        title={rows.length > 20 ? <Trans>Top 20 by spend</Trans> : undefined}
+      >
         <Bar
-          data={rows}
+          data={rows.slice(0, 20)}
           xField="name"
           yField="spend"
           theme={themeMode === "dark" ? "classicDark" : "classic"}
-          height={Math.max(240, rows.length * 32)}
+          height={280}
           axis={{ y: { labelFormatter: (v: number) => money(v) } }}
           tooltip={{ items: [{ field: "spend", valueFormatter: (v: number) => money(v) }] }}
         />
