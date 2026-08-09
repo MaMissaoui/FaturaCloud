@@ -38,6 +38,7 @@ import {
   LineChartOutlined,
   FundOutlined,
   ClockCircleOutlined,
+  GoldOutlined,
   FieldTimeOutlined,
   ExportOutlined,
 } from "@ant-design/icons";
@@ -454,6 +455,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "accounting.ap-aging",
+                },
+                {
+                  icon: <GoldOutlined />,
+                  label: (
+                    <Link to="/accounting/inventory-valuation">
+                      <Trans>Inventory Valuation</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.inventory-valuation",
                 },
               ],
             },

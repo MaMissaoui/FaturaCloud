@@ -55,3 +55,13 @@ func (h *handler) getPayableAging(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, summary)
 }
+
+func (h *handler) getInventoryValuation(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	report, err := h.db.GetInventoryValuation(orgID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
+}

@@ -79,6 +79,9 @@ const ProfitAndLoss = lazy(() => import("src/routes/accounting/reports/profit-an
 const BalanceSheet = lazy(() => import("src/routes/accounting/reports/balance-sheet"));
 const ARAging = lazy(() => import("src/routes/accounting/reports/ar-aging"));
 const APAging = lazy(() => import("src/routes/accounting/reports/ap-aging"));
+const InventoryValuationReport = lazy(
+  () => import("src/routes/accounting/reports/inventory-valuation"),
+);
 
 dayjs.extend(localizedFormat);
 
@@ -281,6 +284,10 @@ const AppContent = () => {
                     <Route path="balance-sheet" element={<BalanceSheet />} />
                     <Route path="ar-aging" element={<ARAging />} />
                     <Route path="ap-aging" element={<APAging />} />
+                    <Route
+                      path="inventory-valuation"
+                      element={<InventoryValuationReport />}
+                    />
                   </Route>
                   <Route path="/settings" element={<BaseLayout />}>
                     <Route index element={<Navigate to="/settings/invoice" />} />
