@@ -208,3 +208,60 @@ func TestGetPayableAging(t *testing.T) {
 		t.Fatal("expected the joined vendor name")
 	}
 }
+
+// TestGetInventoryValuationMatchesGLAfterReceiptAndShipment exercises the
+// report across a real GRNI accrual (receipt) followed by a real COGS
+// posting (partial shipment) and checks that the GL side and the computed
+// side land on the same number — the whole point of the report is that
+// these two independently-derived values agree when nothing has drifted.
+func TestGetInventoryValuationMatchesGLAfterReceiptAndShipment(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-inv-valuation", 10, 250)
+
+	fx.receive(t, d, "REC-0001", 10) // Dr Inventory 2500 / Cr GRNI 2500
+	fx.ship(t, d, "DEL-0001", 4)     // Dr COGS 1000 / Cr Inventory 1000
+
+	report, err := d.GetInventoryValuation(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetInventoryValuation: %v", err)
+	}
+	if report.ComputedValue != 1500 {
+		t.Fatalf("ComputedValue = %d, want 1500 (6 remaining @ 250)", report.ComputedValue)
+	}
+	if report.GLBalance != 1500 {
+		t.Fatalf("GLBalance = %d, want 1500", report.GLBalance)
+	}
+	if report.Difference != 0 {
+		t.Fatalf("Difference = %d, want 0", report.Difference)
+	}
+	if len(report.Products) != 1 || report.Products[0].ProductID != fx.productID {
+		t.Fatalf("unexpected products: %+v", report.Products)
+	}
+	if report.Products[0].Quantity != 6 {
+		t.Fatalf("product quantity = %v, want 6", report.Products[0].Quantity)
+	}
+	if report.Products[0].Value != 1500 {
+		t.Fatalf("product value = %d, want 1500", report.Products[0].Value)
+	}
+}
+
+// TestGetInventoryValuationWithNoActivityIsZero covers a stock-enabled
+// product that has never moved: it must still appear in Products (it's
+// eligible for tracking) but contribute nothing to either side of the
+// report, and GLBalance must be 0 even though defaultInventoryAccountId is
+// configured but has no posted lines yet.
+func TestGetInventoryValuationWithNoActivityIsZero(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-inv-valuation-empty", 10, 250)
+
+	report, err := d.GetInventoryValuation(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetInventoryValuation: %v", err)
+	}
+	if report.GLBalance != 0 || report.ComputedValue != 0 || report.Difference != 0 {
+		t.Fatalf("expected an all-zero report, got %+v", report)
+	}
+	if len(report.Products) != 1 || report.Products[0].Quantity != 0 || report.Products[0].Value != 0 {
+		t.Fatalf("expected one untouched product at zero, got %+v", report.Products)
+	}
+}

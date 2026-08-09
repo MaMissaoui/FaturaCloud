@@ -115,6 +115,12 @@ export interface Organization {
   fxGainAccountId: string | null;
   fxLossAccountId: string | null;
   retainedEarningsAccountId: string | null;
+  // Inventory/COGS GL integration (Phase 7) — same nullable-until-wired
+  // convention as the accounts above.
+  defaultInventoryAccountId: string | null;
+  defaultGRNIAccountId: string | null;
+  defaultCOGSAccountId: string | null;
+  defaultInventoryAdjustmentAccountId: string | null;
   // DATEV export. datevClearingAccountId is the synthetic Gegenkonto for a
   // manual entry with more than one line on both sides (no natural anchor).
   datevClearingAccountId: string | null;

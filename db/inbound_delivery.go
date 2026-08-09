@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/jmoiron/sqlx"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -348,21 +347,29 @@ type inboundStockLine struct {
 	UnitCost     *int64  `db:"unitCost"`
 	CurrentStock float64 `db:"currentStock"`
 	Serialized   int     `db:"serialized"`
+	// Phase 7: which purchase order line this receipt line accrued GRNI
+	// against, if any — used by the received->cancelled Finding B guard to
+	// check whether that accrual has already been cleared by an approved bill.
+	PurchaseOrderLineItemID *string `db:"purchaseOrderLineItemId"`
 }
 
 // getReceivableStockLines returns the receipt's line items linked to a
 // stock-enabled product (picked directly or resolved from a purchase order
-// line) — the only lines that affect inventory.
-func getReceivableStockLines(tx *sqlx.Tx, deliveryID string) ([]inboundStockLine, error) {
+// line) — the only lines that affect inventory. Takes a generic execer (not
+// *sqlx.Tx) so UpdateInboundDeliveryStatus can read it once via d.DB before
+// its transaction opens — see that function's comment on why no d.DB read
+// may happen once Beginx has run.
+func getReceivableStockLines(exec sqlSelectExecer, deliveryID string) ([]inboundStockLine, error) {
 	lines := []inboundStockLine{}
-	err := tx.Select(&lines, `
+	err := exec.Select(&lines, `
 		SELECT dli.id AS lineItemId,
 		       p.id AS productId,
 		       p.name AS productName,
 		       dli.quantity AS quantity,
 		       dli.unitCost AS unitCost,
 		       p.stockQuantity AS currentStock,
-		       p.serialized AS serialized
+		       p.serialized AS serialized,
+		       dli.purchaseOrderLineItemId AS purchaseOrderLineItemId
 		FROM inbound_delivery_line_items dli
 		JOIN products p ON dli.productId = p.id
 		WHERE dli.deliveryId = ? AND p.stockEnabled = 1`,
@@ -399,17 +406,26 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		)
 	}
 
-	tx, err := d.DB.Beginx()
-	if err != nil {
-		return nil, fmt.Errorf("update_inbound_delivery_status begin: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	touched := []string{}
+	// Phase 7: every d.DB read either transition needs (the receipt's own
+	// line items, its GRNI accrual/reversal lines, the organization's GL
+	// defaults) happens here, before the transaction opens —
+	// db.SetMaxOpenConns(1) means a second connection request while a tx
+	// holds the only one blocks forever rather than erroring, so no d.DB
+	// read may happen between Beginx and Commit below (see
+	// UpdateInvoiceState's identical constraint). `lines`, once fetched, is
+	// reused inside the transaction rather than re-queried via tx.Select —
+	// nothing between this read and the transaction's writes can change a
+	// receipt's own line items (this function is the only writer touching
+	// this receipt's status).
+	var lines []inboundStockLine
+	var convertedUnitCosts map[string]int64
+	var grniLines []CreateJournalLineRequest
+	var grniJournal *Journal
+	var existingGRNIEntry *JournalEntry
 
 	switch {
 	case current.Status == "draft" && status == "received":
-		lines, err := getReceivableStockLines(tx, id)
+		lines, err = getReceivableStockLines(d.DB, id)
 		if err != nil {
 			return nil, err
 		}
@@ -421,7 +437,38 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		if err != nil {
 			return nil, fmt.Errorf("update_inbound_delivery_status rate: %w", err)
 		}
+		convertedUnitCosts = map[string]int64{}
+		for _, line := range lines {
+			if line.UnitCost != nil {
+				convertedUnitCosts[line.LineItemID] = convertCents(*line.UnitCost, rate)
+			}
+		}
+		grniLines, grniJournal, err = buildReceiptGRNILines(d, current, lines, convertedUnitCosts)
+		if err != nil {
+			return nil, err
+		}
 
+	case current.Status == "received" && status == "cancelled":
+		lines, err = getReceivableStockLines(d.DB, id)
+		if err != nil {
+			return nil, err
+		}
+		existingGRNIEntry, err = d.FindPostedEntryForSourceDocument("inbound_delivery", current.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("update_inbound_delivery_status begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	touched := []string{}
+
+	switch {
+	case current.Status == "draft" && status == "received":
 		// Validate every serialized line before writing anything: whole-number
 		// quantity, exactly that many (deduped) serials supplied, no serial
 		// reused across lines of the same product in this one request, and no
@@ -463,10 +510,11 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		}
 
 		for _, line := range lines {
-			unitCost := line.UnitCost
-			if unitCost != nil {
-				converted := convertCents(*unitCost, rate)
-				unitCost = &converted
+			// Already converted to organization-currency terms above
+			// (convertedUnitCosts), before the transaction opened.
+			var unitCost *int64
+			if v, ok := convertedUnitCosts[line.LineItemID]; ok {
+				unitCost = &v
 			}
 
 			if line.Serialized == 1 {
@@ -516,10 +564,39 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 			touched = append(touched, line.ProductID)
 		}
 
+		// Phase 7: accrue GRNI for whatever on this receipt actually has a
+		// cost basis (grniLines built before the transaction opened, above).
+		if grniLines != nil {
+			if _, err := postAutoEntryTx(
+				tx, current.OrganizationID, grniJournal.ID, "inbound_delivery", current.ID,
+				current.DeliveryDate, current.DeliveryNumber, "Goods receipt "+current.DeliveryNumber, grniLines,
+			); err != nil {
+				return nil, err
+			}
+		}
+
 	case current.Status == "received" && status == "cancelled":
-		lines, err := getReceivableStockLines(tx, id)
-		if err != nil {
-			return nil, err
+		// Phase 7 / Finding B: cancelling a received receipt after its GRNI
+		// accrual has already been cleared by an approved/paid bill would
+		// reverse the wrong entry — the receipt's own Dr GRNI / Cr Inventory
+		// reversal, while the bill's AP obligation and cost recognition both
+		// still stand — leaving GRNI permanently unbalanced. Checked here,
+		// before any stock reversal is written, the same fail-fast shape as
+		// the stock-quantity guard below.
+		for _, line := range lines {
+			if line.PurchaseOrderLineItemID == nil {
+				continue
+			}
+			cleared, err := grniClearedQtyForPOLine(tx, *line.PurchaseOrderLineItemID, "")
+			if err != nil {
+				return nil, err
+			}
+			if cleared > 0 {
+				return nil, newValidationError(
+					"cannot cancel: %q has already been billed against this receipt — void or cancel the bill first",
+					line.ProductName,
+				)
+			}
 		}
 
 		// Serialized products dedupe by productId here (not per line) since
@@ -615,6 +692,16 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 				return nil, err
 			}
 			touched = append(touched, productID)
+		}
+
+		// Phase 7: reverse the receipt's GRNI accrual, if it posted one (looked
+		// up before the transaction opened, above) — an all-uncosted receipt
+		// never did (buildReceiptGRNILines returns nil), and that's a no-op
+		// here, not an error.
+		if existingGRNIEntry != nil {
+			if _, err := reverseEntryTx(tx, existingGRNIEntry, "goods receipt cancelled", current.DeliveryDate); err != nil {
+				return nil, err
+			}
 		}
 	}
 

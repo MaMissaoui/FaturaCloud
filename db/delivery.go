@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/jmoiron/sqlx"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -227,10 +226,13 @@ type deliveryStockLine struct {
 
 // getShippableStockLines returns the delivery's line items that are linked to a
 // stock-enabled product (whether picked directly or copied from an order line
-// item) — the only lines that affect inventory.
-func getShippableStockLines(tx *sqlx.Tx, deliveryID string) ([]deliveryStockLine, error) {
+// item) — the only lines that affect inventory. Takes a generic execer (not
+// *sqlx.Tx) so UpdateDeliveryStatus can read it once via d.DB before its
+// transaction opens — see that function's comment on why no d.DB read may
+// happen once Beginx has run.
+func getShippableStockLines(exec sqlSelectExecer, deliveryID string) ([]deliveryStockLine, error) {
 	lines := []deliveryStockLine{}
-	err := tx.Select(&lines, `
+	err := exec.Select(&lines, `
 		SELECT dli.id AS lineItemId,
 		       p.id AS productId,
 		       p.name AS productName,
@@ -278,17 +280,25 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 		return nil, newValidationError("cannot transition delivery from %q to %q", current.Status, status)
 	}
 
-	tx, err := d.DB.Beginx()
-	if err != nil {
-		return nil, fmt.Errorf("update_delivery_status begin: %w", err)
-	}
-	defer tx.Rollback()
-
-	touchedProducts := []string{}
+	// Phase 7: every d.DB read either transition needs (the delivery's own
+	// line items, serial lookups, its COGS posting/reversal lines, the
+	// organization's GL defaults) happens here, before the transaction
+	// opens — db.SetMaxOpenConns(1) means a second connection request
+	// while a tx holds the only one blocks forever rather than erroring,
+	// so no d.DB read may happen between Beginx and Commit below (see
+	// UpdateInvoiceState's identical constraint). This is also why a
+	// shipment with no cost basis never touches stock at all: the 409 from
+	// buildDeliveryCOGSGLLines happens before Beginx, so there's no
+	// transaction to roll back — nothing was ever attempted.
+	var lines []deliveryStockLine
+	var resolvedSerials map[string]map[string]string
+	var cogsLines []CreateJournalLineRequest
+	var cogsJournal *Journal
+	var existingCOGSEntry *JournalEntry
 
 	switch {
 	case current.Status == "draft" && status == "shipped":
-		lines, err := getShippableStockLines(tx, id)
+		lines, err = getShippableStockLines(d.DB, id)
 		if err != nil {
 			return nil, err
 		}
@@ -330,12 +340,12 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 			}
 			perProductSerials[line.ProductID] = append(perProductSerials[line.ProductID], given...)
 		}
-		resolvedSerials := map[string]map[string]string{} // productId -> serial -> serialNumberId
+		resolvedSerials = map[string]map[string]string{} // productId -> serial -> serialNumberId
 		for productID, serials := range perProductSerials {
 			if len(dedupeStrings(serials)) != len(serials) {
 				return nil, newValidationError("duplicate serial number(s) supplied for the same product in this delivery")
 			}
-			lookups, err := lookupSerialNumbersTx(tx, productID, serials)
+			lookups, err := lookupSerialNumbersTx(d.DB, productID, serials)
 			if err != nil {
 				return nil, err
 			}
@@ -350,6 +360,32 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 			resolvedSerials[productID] = ids
 		}
 
+		cogsLines, cogsJournal, err = buildDeliveryCOGSGLLines(d, current, lines, resolvedSerials)
+		if err != nil {
+			return nil, err
+		}
+
+	case current.Status == "shipped" && status == "cancelled":
+		lines, err = getShippableStockLines(d.DB, id)
+		if err != nil {
+			return nil, err
+		}
+		existingCOGSEntry, err = d.FindPostedEntryForSourceDocument("outbound_delivery", current.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("update_delivery_status begin: %w", err)
+	}
+	defer tx.Rollback()
+
+	touchedProducts := []string{}
+
+	switch {
+	case current.Status == "draft" && status == "shipped":
 		for _, line := range lines {
 			if line.Serialized == 1 {
 				serials := dedupeStrings(serialNumbers[line.LineItemID])
@@ -392,12 +428,21 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 			touchedProducts = append(touchedProducts, line.ProductID)
 		}
 
-	case current.Status == "shipped" && status == "cancelled":
-		lines, err := getShippableStockLines(tx, id)
-		if err != nil {
-			return nil, err
+		// Phase 7: post COGS for whatever this shipment actually costs
+		// (built before the transaction opened, above) — the entry balances
+		// by construction, so if buildDeliveryCOGSGLLines had found a line
+		// with no cost basis, it already returned a 409 before any stock
+		// movement here was ever attempted.
+		if cogsLines != nil {
+			if _, err := postAutoEntryTx(
+				tx, current.OrganizationID, cogsJournal.ID, "outbound_delivery", current.ID,
+				current.DeliveryDate, current.DeliveryNumber, "Delivery "+current.DeliveryNumber, cogsLines,
+			); err != nil {
+				return nil, err
+			}
 		}
 
+	case current.Status == "shipped" && status == "cancelled":
 		// Serialized products dedupe by productId here (not per line) since
 		// reversal looks up everything this delivery posted for that product
 		// across all its lines combined, not line-by-line.
@@ -484,6 +529,15 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 				return nil, err
 			}
 			touchedProducts = append(touchedProducts, productID)
+		}
+
+		// Phase 7: reverse the shipment's COGS entry, if it posted one — a
+		// delivery of only free items never did (buildDeliveryCOGSGLLines
+		// returns nil), and that's a no-op here, not an error.
+		if existingCOGSEntry != nil {
+			if _, err := reverseEntryTx(tx, existingCOGSEntry, "delivery cancelled", current.DeliveryDate); err != nil {
+				return nil, err
+			}
 		}
 	}
 

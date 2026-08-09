@@ -217,3 +217,79 @@ func (d *Database) GetBalanceSheet(organizationID string, asOfDate int64) (*Bala
 	bs.TotalEquity += bs.CurrentEarnings
 	return bs, nil
 }
+
+// InventoryValuationLine is one stock-enabled product's computed value —
+// quantity times its current weighted-average (or specific-serial-averaged)
+// cost, the same expression products.unitCost/stockQuantity always drive.
+type InventoryValuationLine struct {
+	ProductID string  `db:"id"            json:"productId"`
+	Name      string  `db:"name"          json:"name"`
+	Quantity  float64 `db:"stockQuantity" json:"quantity"`
+	Value     int64   `db:"value"         json:"value"`
+}
+
+// InventoryValuation compares the GL's Inventory account balance against
+// the computed Σ(stockQuantity × unitCost) across every stock-enabled
+// product — both are independently correct by construction (the GL side
+// from postAutoEntryTx's balanced double-entry postings, the computed side
+// from recomputeAverageCostTx's running average), but nothing enforces they
+// stay equal over time: a receipt/shipment/adjustment predating Phase 7,
+// or an uncosted inflow that never accrued GL value in the first place,
+// would drift the two apart silently. This report makes that drift
+// visible; it does not guarantee there isn't any, and a nonzero Difference
+// is not necessarily a bug — see the callers above for cases where GL value
+// and computed value can legitimately diverge (e.g. a product costed before
+// this organization had a defaultInventoryAccountId configured).
+type InventoryValuation struct {
+	GLBalance     int64                    `json:"glBalance"`
+	ComputedValue int64                    `json:"computedValue"`
+	Difference    int64                    `json:"difference"`
+	Products      []InventoryValuationLine `json:"products"`
+}
+
+func (d *Database) GetInventoryValuation(organizationID string) (*InventoryValuation, error) {
+	org, err := d.GetOrganization(organizationID)
+	if err != nil {
+		return nil, err
+	}
+
+	var glBalance int64
+	if org.DefaultInventoryAccountID != nil {
+		err := d.DB.Get(&glBalance, `
+			SELECT COALESCE(SUM(jl.debit), 0) - COALESCE(SUM(jl.credit), 0)
+			FROM journal_lines jl
+			JOIN journal_entries je ON je.id = jl.journalEntryId
+			WHERE je.organizationId = ? AND je.status IN ('posted', 'reversed')
+			      AND jl.accountId = ?`,
+			organizationID, *org.DefaultInventoryAccountID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("get_inventory_valuation gl balance: %w", err)
+		}
+	}
+
+	products := []InventoryValuationLine{}
+	err = d.DB.Select(&products, `
+		SELECT id, name, stockQuantity,
+		       CAST(ROUND(stockQuantity * COALESCE(unitCost, 0)) AS INTEGER) AS value
+		FROM products
+		WHERE organizationId = ? AND stockEnabled = 1
+		ORDER BY name ASC`,
+		organizationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_inventory_valuation products: %w", err)
+	}
+
+	var computedValue int64
+	for _, p := range products {
+		computedValue += p.Value
+	}
+
+	return &InventoryValuation{
+		GLBalance:     glBalance,
+		ComputedValue: computedValue,
+		Difference:    glBalance - computedValue,
+		Products:      products,
+	}, nil
+}

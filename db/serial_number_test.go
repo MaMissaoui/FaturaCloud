@@ -6,12 +6,24 @@ import (
 )
 
 // seedSerializedProduct creates an organization and a stock-enabled,
-// serialized product with zero stock.
+// serialized product with zero stock. Also creates a fiscal year covering
+// both 2023 (every fixture in this file dates its receipts/shipments
+// 1700000000000) and time.Now() (manual CreateStockMovement calls date
+// their GL entry "now", since stockMovements has no business-date field of
+// its own) — Phase 7's GRNI/COGS/adjustment auto-posting needs an open
+// fiscal year covering whichever date applies, same as invoice/bill
+// auto-posting already does.
 func seedSerializedProduct(t *testing.T, orgID string) (*Database, *Product) {
 	t.Helper()
 	d := newTestDB(t)
-	if _, err := d.CreateOrganization(CreateOrganizationRequest{ID: orgID}); err != nil {
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: orgID})
+	if err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
 	}
 	product, err := d.CreateProduct(CreateProductRequest{
 		ID: orgID + "-prod", OrganizationID: orgID, Name: "Serial Widget",
@@ -69,7 +81,7 @@ func TestUpdateProductSerializedToggleBlockedWhileStockNonZero(t *testing.T) {
 	}
 
 	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
-		OrganizationID: product.OrganizationID, ProductID: product.ID, Type: "in", Quantity: 3,
+		OrganizationID: product.OrganizationID, ProductID: product.ID, Type: "in", Quantity: 3, UnitCost: ptr(int64(500)),
 	}); err != nil {
 		t.Fatalf("CreateStockMovement: %v", err)
 	}
@@ -323,7 +335,7 @@ func TestSerializedInboundCancelRejectedWhenSerialAlreadyShipped(t *testing.T) {
 	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
 		OrganizationID: product.OrganizationID, DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
 		LineItems: []CreateInboundDeliveryLineItemRequest{
-			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1},
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1, UnitCost: ptr(float64(700))},
 		},
 	})
 	if err != nil {
@@ -370,11 +382,11 @@ func TestSerializedOutboundShipAndCancel(t *testing.T) {
 	})
 	mustValidationError(t, err)
 
-	// Receive stock first.
+	// Receive stock first — costed, since shipping now requires a cost basis.
 	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
 		OrganizationID: product.OrganizationID, DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
 		LineItems: []CreateInboundDeliveryLineItemRequest{
-			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 2},
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 2, UnitCost: ptr(float64(700))},
 		},
 	})
 	if err != nil {

@@ -172,6 +172,15 @@ func TestGetStockValuation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
 	}
+	// The costed product below already has a UnitCost, so its uncosted
+	// stock movement still resolves a cost basis (falls back to the
+	// product's average) and posts a GL entry dated time.Now() — needs an
+	// open fiscal year covering today.
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
 
 	costed, err := d.CreateProduct(CreateProductRequest{
 		OrganizationID: org.ID, Name: "Costed Widget", Type: "product", StockEnabled: 1,

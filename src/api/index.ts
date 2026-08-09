@@ -723,6 +723,23 @@ export interface PayableAgingSummary {
 export const GetPayableAging = (organizationId: string) =>
   get<PayableAgingSummary>(`/organizations/${organizationId}/reports/ap-aging`);
 
+export interface InventoryValuationLine {
+  productId: string;
+  name: string;
+  quantity: number;
+  value: number;
+}
+
+export interface InventoryValuation {
+  glBalance: number;
+  computedValue: number;
+  difference: number;
+  products: InventoryValuationLine[];
+}
+
+export const GetInventoryValuation = (organizationId: string) =>
+  get<InventoryValuation>(`/organizations/${organizationId}/reports/inventory-valuation`);
+
 // ---- Accounting: GL Export ----
 
 // Shared by DownloadFEC/DownloadDATEV — fetches a gl-export sub-route as a
