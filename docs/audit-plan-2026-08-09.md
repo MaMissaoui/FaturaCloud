@@ -18,9 +18,9 @@ PR #77) and the Reporting menu (PR #80).
   fixes were made while producing it.
 
 **Status:** F42, F43, F44, F46, F47 fixed the same day (branch
-`fix/audit-2026-08-09-findings`). **F45 is explicitly deferred** — it's
-marked `[DECISION]` below and needs sign-off on which remediation shape to
-take before any implementation starts.
+`fix/audit-2026-08-09-findings`, shipped in v3.6.1). **F45 resolved by
+product decision**: accept English-only server error text, no translation
+system built — see 3.1 and CLAUDE.md's Internationalization section.
 
 ---
 
@@ -31,7 +31,7 @@ take before any implementation starts.
 | F42 | `/reporting/*` endpoints accept no date range at all and run an unbounded aggregate over every document the org has ever had | Security/Perf | Medium | 1.1 | **Fixed** |
 | F43 | GitHub Actions pinned to floating major-version tags, not commit SHAs | Security (supply chain) | Low | 1.2 | **Fixed** |
 | F44 | `alpine:3.21` base image is 3 minor releases behind current stable (3.24.1) | Dependency currency | Low | 2.1 | **Fixed** |
-| F45 | Server-side validation/409 error messages (~140 call sites) reach the UI in raw English with no translation path | i18n | Medium | 3.1 | **[DECISION] — open** |
+| F45 | Server-side validation/409 error messages (~140 call sites) reach the UI in raw English with no translation path | i18n | Medium | 3.1 | **[DECISION] — resolved: accepted, won't fix** |
 | F46 | Reporting chart tooltips show the raw field name (`revenue`/`spend`), untranslated | i18n | Low | 3.2 | **Fixed** |
 | F47 | Revenue Trend's month column/axis renders raw `"YYYY-MM"` instead of a localized month name | i18n | Low | 3.3 | **Fixed** |
 
@@ -160,6 +160,13 @@ value i18n item available; it needs a design decision (a Go-side message-key
 system + frontend translation table, or accept English-only error text as a
 product decision) rather than a mechanical fix — **[DECISION]**, don't
 implement without sign-off.
+
+**Resolved (2026-08-09): accept English-only server error text as a product
+decision.** No Go-side message-key/translation system will be built. `error
+instanceof Error ? error.message : t\`fallback\`` stays as-is: the generic
+fallback is translated, the server's specific message displays in English
+regardless of locale. Recorded in CLAUDE.md's Internationalization section so
+this isn't re-flagged as a bug by a future audit or contributor.
 
 ### 3.2 Reporting chart tooltips show raw field names (F46)
 
