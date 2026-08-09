@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-08-09
+
+Follow-up to a security/dependency/i18n audit of the Reporting menu and
+recent GL work (`docs/audit-plan-2026-08-09.md`).
+
+### Fixed
+- The Reporting menu's endpoints (Revenue Trend, Sales by Client/Product,
+  Purchases by Vendor, Tax Summary) could run an unbounded aggregate over an
+  organization's entire document history if called with no date range.
+  A missing start date now defaults to a 5-year lookback instead of staying
+  unbounded.
+- Reporting and dashboard chart tooltips showed the raw field name
+  ("revenue"/"spend") instead of a translated label.
+- The Revenue Trend report's table view rendered the month column as a raw
+  "YYYY-MM" string instead of a locale-formatted month name.
+
+### Security
+- Pinned all GitHub Actions in CI/release workflows to commit SHAs instead
+  of floating version tags.
+- Bumped the Docker runtime base image from Alpine 3.21 to 3.24.
+
 ## [3.6.0] - 2026-08-09
 
 A new Reporting menu with sales/purchasing analytics, deliberately kept
