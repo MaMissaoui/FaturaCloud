@@ -57,7 +57,7 @@ import toUpper from "lodash/toUpper";
 import { siderAtom, localeAtom, themeAtom } from "src/atoms/generic";
 import { organizationsAtom, organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import { currentUserAtom, isAdminAtom } from "src/atoms/auth";
-import { Logout } from "src/api";
+import { GetVersion, Logout } from "src/api";
 import FeedbackModal from "src/components/feedback-modal";
 import Wordmark from "src/components/wordmark";
 import { dynamicActivate, locales } from "src/utils/lingui";
@@ -76,6 +76,14 @@ export default function BaseLayout() {
 
   // Feedback modal state
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+
+  // App version, shown next to the logo in the sidebar
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    GetVersion()
+      .then(setVersion)
+      .catch(() => setVersion(null));
+  }, []);
 
   // Below this width the sidebar becomes an overlay drawer instead of
   // pushing content — it's shown/hidden via mobileMenuOpen (not persisted,
@@ -211,7 +219,12 @@ export default function BaseLayout() {
       >
         <div
           className="logo"
-          style={{ padding: siderIsCollapsed ? "16px 8px 12px" : "18px 16px 14px" }}
+          style={{
+            padding: siderIsCollapsed ? "16px 8px 12px" : "18px 12px 14px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: siderIsCollapsed ? "center" : "space-between",
+          }}
         >
           <Link
             to="/invoices"
@@ -219,7 +232,8 @@ export default function BaseLayout() {
               display: "flex",
               alignItems: "center",
               justifyContent: siderIsCollapsed ? "center" : "flex-start",
-              gap: 10,
+              gap: 8,
+              minWidth: 0,
             }}
           >
             <img
@@ -227,8 +241,21 @@ export default function BaseLayout() {
               alt="FaturaCloud"
               style={{ width: siderIsCollapsed ? 44 : 34, height: "auto", flexShrink: 0 }}
             />
-            {!siderIsCollapsed && <Wordmark fontSize={19} />}
+            {!siderIsCollapsed && <Wordmark fontSize={17} />}
           </Link>
+          {!siderIsCollapsed && version && (
+            <span
+              style={{
+                fontSize: 10,
+                opacity: 0.45,
+                letterSpacing: "0.02em",
+                flexShrink: 0,
+                marginLeft: 4,
+              }}
+            >
+              v{version}
+            </span>
+          )}
         </div>
         <Menu
           theme={themeMode}
