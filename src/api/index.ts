@@ -782,3 +782,58 @@ export const DownloadDATEV = (organizationId: string, fiscalYearId: string): Pro
     `/api/organizations/${organizationId}/gl-export/datev?fiscalYearId=${encodeURIComponent(fiscalYearId)}`,
     "Buchungsstapel.csv",
   );
+
+// ---- Reporting ----
+//
+// Document-derived sales/purchasing analytics — a distinct tier from
+// Accounting's GL-derived reports above (see db/sales_reports.go). Reuses
+// MonthlyRevenue/ClientRevenue/ProductRevenue from the Dashboard section:
+// these functions and the dashboard widget now share the same underlying
+// db query, just with a real date range and no top-10 cap.
+
+export const GetRevenueTrend = (organizationId: string, startDate: number, endDate: number) =>
+  get<MonthlyRevenue[]>(
+    `/organizations/${organizationId}/reporting/revenue-trend?startDate=${startDate}&endDate=${endDate}`,
+  );
+
+export const GetSalesByClient = (organizationId: string, startDate: number, endDate: number) =>
+  get<ClientRevenue[]>(
+    `/organizations/${organizationId}/reporting/sales-by-client?startDate=${startDate}&endDate=${endDate}`,
+  );
+
+export const GetSalesByProduct = (organizationId: string, startDate: number, endDate: number) =>
+  get<ProductRevenue[]>(
+    `/organizations/${organizationId}/reporting/sales-by-product?startDate=${startDate}&endDate=${endDate}`,
+  );
+
+export interface VendorSpend {
+  vendorId: string;
+  name: string;
+  spend: number;
+}
+
+export const GetPurchasesByVendor = (organizationId: string, startDate: number, endDate: number) =>
+  get<VendorSpend[]>(
+    `/organizations/${organizationId}/reporting/purchases-by-vendor?startDate=${startDate}&endDate=${endDate}`,
+  );
+
+// taxRateId "" (and name/categoryCode "") is the "Unrated" bucket — line
+// items with no tax rate set.
+export interface TaxSummaryLine {
+  taxRateId: string;
+  name: string;
+  categoryCode: string;
+  percentage: number;
+  base: number;
+  tax: number;
+}
+
+export interface TaxSummary {
+  output: TaxSummaryLine[]; // sales / output VAT
+  input: TaxSummaryLine[]; // purchases / input VAT
+}
+
+export const GetTaxSummary = (organizationId: string, startDate: number, endDate: number) =>
+  get<TaxSummary>(
+    `/organizations/${organizationId}/reporting/tax-summary?startDate=${startDate}&endDate=${endDate}`,
+  );

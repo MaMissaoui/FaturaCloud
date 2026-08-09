@@ -82,6 +82,11 @@ const APAging = lazy(() => import("src/routes/accounting/reports/ap-aging"));
 const InventoryValuationReport = lazy(
   () => import("src/routes/accounting/reports/inventory-valuation"),
 );
+const RevenueTrend = lazy(() => import("src/routes/reporting/revenue-trend"));
+const SalesByClient = lazy(() => import("src/routes/reporting/sales-by-client"));
+const SalesByProduct = lazy(() => import("src/routes/reporting/sales-by-product"));
+const PurchasesByVendor = lazy(() => import("src/routes/reporting/purchases-by-vendor"));
+const TaxSummary = lazy(() => import("src/routes/reporting/tax-summary"));
 
 dayjs.extend(localizedFormat);
 
@@ -288,6 +293,13 @@ const AppContent = () => {
                       path="inventory-valuation"
                       element={<InventoryValuationReport />}
                     />
+                  </Route>
+                  <Route path="/reporting" element={<BaseLayout />}>
+                    <Route path="revenue-trend" element={<RevenueTrend />} />
+                    <Route path="sales-by-client" element={<SalesByClient />} />
+                    <Route path="sales-by-product" element={<SalesByProduct />} />
+                    <Route path="purchases-by-vendor" element={<PurchasesByVendor />} />
+                    <Route path="tax-summary" element={<TaxSummary />} />
                   </Route>
                   <Route path="/settings" element={<BaseLayout />}>
                     <Route index element={<Navigate to="/settings/invoice" />} />

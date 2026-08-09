@@ -5,11 +5,9 @@ import (
 	"time"
 )
 
-// "Revenue" is defined consistently across every metric on this page as
-// invoices in state sent or paid — draft isn't issued yet, cancelled is
-// voided. Neither counts.
-const revenueStates = `('sent', 'paid')`
-
+// "Revenue" (revenueStates) is defined in db/sales_reports.go, shared with
+// this file's getRevenueByMonth-turned-GetRevenueByMonth caller below.
+//
 // Every SUM/aggregate below multiplies by COALESCE(exchangeRate, 1) before
 // summing: invoices can each be in a different currency (invoices.currency),
 // but this whole page — every stat tile, every table cell — renders every
@@ -18,11 +16,6 @@ const revenueStates = `('sent', 'paid')`
 // conversion, summing raw cents across currencies would silently produce a
 // number in no currency at all. See db/exchange_rate.go for the
 // exchangeRate direction/storage convention this relies on.
-
-type MonthlyRevenue struct {
-	Month   string `db:"month"   json:"month"`
-	Revenue int64  `db:"revenue" json:"revenue"`
-}
 
 type OutstandingInvoice struct {
 	ID          string `db:"id"         json:"id"`
@@ -55,18 +48,6 @@ type StockValuation struct {
 	Items []StockValuationItem `json:"items"`
 }
 
-type ClientRevenue struct {
-	ClientID string `db:"clientId" json:"clientId"`
-	Name     string `db:"name"     json:"name"`
-	Revenue  int64  `db:"revenue"  json:"revenue"`
-}
-
-type ProductRevenue struct {
-	ProductID string `db:"productId" json:"productId"`
-	Name      string `db:"name"      json:"name"`
-	Revenue   int64  `db:"revenue"   json:"revenue"`
-}
-
 type DashboardData struct {
 	RevenueByMonth []MonthlyRevenue   `json:"revenueByMonth"`
 	Outstanding    OutstandingSummary `json:"outstanding"`
@@ -79,8 +60,15 @@ type DashboardData struct {
 // size, not a general-purpose reporting API.
 const topN = 10
 
+// GetDashboardData composes the Dashboard widget page from the same
+// range-based report functions db/sales_reports.go exposes under the
+// Reporting menu — a rolling "last N months" cutoff as startDate, endDate=0
+// (unbounded), and topN as the ranked-list limit. This keeps the widget and
+// the full reports as one source of truth instead of two copies of "revenue
+// by month" that could drift.
 func (d *Database) GetDashboardData(organizationID string, months int) (DashboardData, error) {
-	revenueByMonth, err := d.getRevenueByMonth(organizationID, months)
+	startDate := dashboardCutoff(months)
+	revenueByMonth, err := d.GetRevenueByMonth(organizationID, startDate, 0)
 	if err != nil {
 		return DashboardData{}, err
 	}
@@ -92,11 +80,11 @@ func (d *Database) GetDashboardData(organizationID string, months int) (Dashboar
 	if err != nil {
 		return DashboardData{}, err
 	}
-	topClients, err := d.getTopClients(organizationID, months, topN)
+	topClients, err := d.GetSalesByClient(organizationID, startDate, 0, topN)
 	if err != nil {
 		return DashboardData{}, err
 	}
-	topProducts, err := d.getTopProducts(organizationID, months, topN)
+	topProducts, err := d.GetSalesByProduct(organizationID, startDate, 0, topN)
 	if err != nil {
 		return DashboardData{}, err
 	}
@@ -108,24 +96,6 @@ func (d *Database) GetDashboardData(organizationID string, months int) (Dashboar
 		TopClients:     topClients,
 		TopProducts:    topProducts,
 	}, nil
-}
-
-func (d *Database) getRevenueByMonth(organizationID string, months int) ([]MonthlyRevenue, error) {
-	cutoff := time.Now().AddDate(0, -months, 0).UnixMilli()
-	rows := []MonthlyRevenue{}
-	err := d.DB.Select(&rows, `
-		SELECT strftime('%Y-%m', date / 1000, 'unixepoch') AS month,
-		       CAST(ROUND(SUM(total * COALESCE(exchangeRate, 1))) AS INTEGER) AS revenue
-		FROM invoices
-		WHERE organizationId = ? AND state IN `+revenueStates+` AND date >= ?
-		GROUP BY month
-		ORDER BY month ASC`,
-		organizationID, cutoff,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get_revenue_by_month: %w", err)
-	}
-	return rows, nil
 }
 
 // getOutstandingInvoices keeps the pre-Phase-3 filter of state == 'sent'
@@ -318,46 +288,4 @@ func (d *Database) getStockValuation(organizationID string) (StockValuation, err
 		items = items[:topN]
 	}
 	return StockValuation{Total: total, Items: items}, nil
-}
-
-func (d *Database) getTopClients(organizationID string, months, limit int) ([]ClientRevenue, error) {
-	cutoff := time.Now().AddDate(0, -months, 0).UnixMilli()
-	rows := []ClientRevenue{}
-	err := d.DB.Select(&rows, `
-		SELECT i.clientId AS clientId, c.name AS name,
-		       CAST(ROUND(SUM(i.total * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS revenue
-		FROM invoices i
-		JOIN clients c ON i.clientId = c.id
-		WHERE i.organizationId = ? AND i.state IN `+revenueStates+` AND i.date >= ?
-		GROUP BY i.clientId
-		ORDER BY revenue DESC
-		LIMIT ?`,
-		organizationID, cutoff, limit,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get_top_clients: %w", err)
-	}
-	return rows, nil
-}
-
-func (d *Database) getTopProducts(organizationID string, months, limit int) ([]ProductRevenue, error) {
-	cutoff := time.Now().AddDate(0, -months, 0).UnixMilli()
-	rows := []ProductRevenue{}
-	err := d.DB.Select(&rows, `
-		SELECT ili.productId AS productId, p.name AS name,
-		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS revenue
-		FROM invoiceLineItems ili
-		JOIN invoices i ON ili.invoiceId = i.id
-		JOIN products p ON ili.productId = p.id
-		WHERE i.organizationId = ? AND i.state IN `+revenueStates+` AND i.date >= ?
-		      AND ili.productId IS NOT NULL
-		GROUP BY ili.productId
-		ORDER BY revenue DESC
-		LIMIT ?`,
-		organizationID, cutoff, limit,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get_top_products: %w", err)
-	}
-	return rows, nil
 }

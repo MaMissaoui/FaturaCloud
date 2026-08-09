@@ -41,6 +41,7 @@ import {
   GoldOutlined,
   FieldTimeOutlined,
   ExportOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -155,6 +156,8 @@ export default function BaseLayout() {
       openKeys = ["group-masterdata"];
     } else if (section === "accounting") {
       openKeys = ["group-accounting"];
+    } else if (section === "reporting") {
+      openKeys = ["group-reporting"];
     }
     selectedKeys = [join(take(compact(pathArray), 2), ".")];
   }
@@ -464,6 +467,58 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "accounting.inventory-valuation",
+                },
+              ],
+            },
+            {
+              icon: <BarChartOutlined />,
+              label: <Trans>Reporting</Trans>,
+              key: "group-reporting",
+              children: [
+                {
+                  icon: <LineChartOutlined />,
+                  label: (
+                    <Link to="/reporting/revenue-trend">
+                      <Trans>Revenue Trend</Trans>
+                    </Link>
+                  ),
+                  key: "reporting.revenue-trend",
+                },
+                {
+                  icon: <TeamOutlined />,
+                  label: (
+                    <Link to="/reporting/sales-by-client">
+                      <Trans>Sales by Client</Trans>
+                    </Link>
+                  ),
+                  key: "reporting.sales-by-client",
+                },
+                {
+                  icon: <AppstoreOutlined />,
+                  label: (
+                    <Link to="/reporting/sales-by-product">
+                      <Trans>Sales by Product</Trans>
+                    </Link>
+                  ),
+                  key: "reporting.sales-by-product",
+                },
+                {
+                  icon: <ShoppingCartOutlined />,
+                  label: (
+                    <Link to="/reporting/purchases-by-vendor">
+                      <Trans>Purchases by Vendor</Trans>
+                    </Link>
+                  ),
+                  key: "reporting.purchases-by-vendor",
+                },
+                {
+                  icon: <CalculatorOutlined />,
+                  label: (
+                    <Link to="/reporting/tax-summary">
+                      <Trans>Tax Summary</Trans>
+                    </Link>
+                  ),
+                  key: "reporting.tax-summary",
                 },
               ],
             },
