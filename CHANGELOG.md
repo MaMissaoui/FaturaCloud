@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-08-09
+
+A new Reporting menu with sales/purchasing analytics, deliberately kept
+separate from Accounting's GL-derived reports since the two are computed
+from different sources and aren't expected to reconcile without that
+context.
+
+### Added
+- **Reporting menu**: Revenue Trend, Sales by Client, Sales by Product,
+  Purchases by Vendor, and Tax Summary — computed directly from source
+  documents (invoices, incoming invoices) with a real date range and no
+  top-10 cap, rather than the Dashboard widget's fixed rolling window.
+- **Tax Summary**: output VAT (sales) vs input VAT (purchases), grouped by
+  tax rate, including zero-rated/exempt turnover that a GL posting would
+  otherwise omit.
+
+### Changed
+- The Dashboard's revenue/top-client/top-product queries now share the same
+  underlying functions as the new Reporting endpoints, so the two never
+  drift apart.
+
 ## [3.5.0] - 2026-08-09
 
 A full double-entry general ledger, closing the gap between FaturaCloud's
