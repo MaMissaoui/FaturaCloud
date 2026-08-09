@@ -11,11 +11,14 @@ import (
 //
 // startDate/endDate come from parseInt64Param, which returns 0 if absent —
 // the db layer treats 0 as "unbounded on that side" (see dateRangeFilter).
-// endDate is the one exception: an absent endDate here defaults to "now"
-// rather than staying unbounded, since a Reporting page with no range
-// picked yet should show data up to today, not into the future. This
-// default lives at the API boundary, not the db layer, so
-// GetDashboardData's existing endDate=0 contract stays untouched.
+// Neither bound is left at that default here, unlike GetDashboardData's own
+// endDate=0 calls: a Reporting page always has a range picked before it
+// fetches, but nothing stops a direct API caller from omitting one or both,
+// and GetTaxSummary/GetRevenueByMonth's per-document subqueries have no
+// LIMIT — an omitted startDate would otherwise aggregate the organization's
+// entire history on every call (audit finding F42). Both defaults live at
+// the API boundary, not the db layer, so GetDashboardData's own unbounded
+// calls stay untouched.
 func reportingEndDate(r *http.Request) int64 {
 	endDate := parseInt64Param(r, "endDate")
 	if endDate == 0 {
@@ -24,10 +27,25 @@ func reportingEndDate(r *http.Request) int64 {
 	return endDate
 }
 
+// reportingDefaultLookback bounds an omitted startDate to 5 years before
+// endDate — generous enough that no real report is ever truncated by it
+// (every reporting page's own RangePicker defaults to 12 months and lets the
+// user pick further back), while still capping the worst case to a fixed
+// window instead of a full table scan.
+const reportingDefaultLookback = 5
+
+func reportingStartDate(r *http.Request, endDate int64) int64 {
+	startDate := parseInt64Param(r, "startDate")
+	if startDate == 0 {
+		startDate = time.UnixMilli(endDate).AddDate(-reportingDefaultLookback, 0, 0).UnixMilli()
+	}
+	return startDate
+}
+
 func (h *handler) getRevenueTrend(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	startDate := parseInt64Param(r, "startDate")
-	rows, err := h.db.GetRevenueByMonth(orgID, startDate, reportingEndDate(r))
+	endDate := reportingEndDate(r)
+	rows, err := h.db.GetRevenueByMonth(orgID, reportingStartDate(r, endDate), endDate)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -37,8 +55,8 @@ func (h *handler) getRevenueTrend(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) getSalesByClient(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	startDate := parseInt64Param(r, "startDate")
-	rows, err := h.db.GetSalesByClient(orgID, startDate, reportingEndDate(r), 0)
+	endDate := reportingEndDate(r)
+	rows, err := h.db.GetSalesByClient(orgID, reportingStartDate(r, endDate), endDate, 0)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -48,8 +66,8 @@ func (h *handler) getSalesByClient(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) getSalesByProduct(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	startDate := parseInt64Param(r, "startDate")
-	rows, err := h.db.GetSalesByProduct(orgID, startDate, reportingEndDate(r), 0)
+	endDate := reportingEndDate(r)
+	rows, err := h.db.GetSalesByProduct(orgID, reportingStartDate(r, endDate), endDate, 0)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -59,8 +77,8 @@ func (h *handler) getSalesByProduct(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) getPurchasesByVendor(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	startDate := parseInt64Param(r, "startDate")
-	rows, err := h.db.GetPurchasesByVendor(orgID, startDate, reportingEndDate(r), 0)
+	endDate := reportingEndDate(r)
+	rows, err := h.db.GetPurchasesByVendor(orgID, reportingStartDate(r, endDate), endDate, 0)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -70,8 +88,8 @@ func (h *handler) getPurchasesByVendor(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) getTaxSummary(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	startDate := parseInt64Param(r, "startDate")
-	report, err := h.db.GetTaxSummary(orgID, startDate, reportingEndDate(r))
+	endDate := reportingEndDate(r)
+	report, err := h.db.GetTaxSummary(orgID, reportingStartDate(r, endDate), endDate)
 	if err != nil {
 		writeInternalError(w, err)
 		return
