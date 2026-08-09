@@ -250,7 +250,7 @@ export default function BaseLayout() {
                 opacity: 0.45,
                 letterSpacing: "0.02em",
                 flexShrink: 0,
-                marginLeft: 12,
+                marginLeft: 20,
               }}
             >
               v{version}
