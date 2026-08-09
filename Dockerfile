@@ -58,7 +58,7 @@ RUN CGO_ENABLED=0 GOARCH=$TARGETARCH GOOS=linux go build -ldflags="-X main.versi
 
 
 # ---- Stage 3: Minimal runtime image ----
-FROM alpine:3.21
+FROM alpine:3.24
 WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata
