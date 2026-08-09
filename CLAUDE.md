@@ -403,6 +403,7 @@ The sidebar is grouped into collapsible submenus (click the group to expand/coll
 - Translation files in .po format under src/locales/
 - Default locale configuration in src/utils/lingui.tsx
 - Supports 3 locales: en, de, fr (the set lives in `lingui.config.ts` `locales`; the language switcher, antd/dayjs locale wiring in `src/app.tsx`, and `dynamicActivate` in `src/utils/lingui.tsx` all derive from or match it). de and fr are fully translated; en is the source locale
+- **Server-side error messages are deliberately English-only.** Every `db/*.go` validation/409 message (`newValidationError(...)`, `errors.New(...)`) is plain English with no translation path — the frontend's `message.error(error instanceof Error ? error.message : t\`fallback\`)` pattern only translates the generic fallback half; the specific server message always displays in English regardless of locale. This was flagged and explicitly accepted as a product decision (2026-08-09 audit, `docs/audit-plan-2026-08-09.md` F45) rather than built out into a Go-side message-key/translation table — don't re-flag it as a bug or attempt the translation system without a fresh product decision to do so.
 
 ## Docker
 ```bash
