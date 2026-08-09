@@ -233,74 +233,225 @@ func (d *Database) DeleteAccount(accountID string) (bool, error) {
 	return n > 0, nil
 }
 
-// defaultChartAccount is one row of the minimal generic starter chart of
-// accounts seedDefaultChartOfAccounts installs for a new organization — not
-// a country-specific SKR03/SKR04/PCG import, same honesty stance as the
-// e-invoice generator's Peppol decision (db/einvoice.go).
+// defaultChartAccount is one row of a starter chart of accounts
+// seedDefaultChartOfAccounts installs for a new organization.
+// datevNumber is only set for a template whose codes ARE real DATEV/SKR
+// account numbers (currently skr04ChartOfAccounts) — see datevAccountNumber
+// on the accounts table. defaultRole, when set, wires this row to one of
+// organizations.default*AccountId at seed time (see roleToID in
+// seedDefaultChartOfAccounts) instead of a template hardcoding a specific
+// code into that UPDATE, since the code for "the AR account" differs per
+// template.
 type defaultChartAccount struct {
-	code, name, accountType string
-	isGroup                 bool
-	parentCode              string // "" for a top-level group
+	code, name, accountType, datevNumber, defaultRole string
+	isGroup                                           bool
+	parentCode                                        string // matches another row's code in the SAME chart — "" for a top-level group
 }
 
+// defaultChartOfAccounts is the minimal generic starter chart — not a
+// country-specific import, same honesty stance as the e-invoice generator's
+// Peppol decision (db/einvoice.go). Installed for every organization whose
+// country isn't one of chartTemplates' curated, citable imports below.
 var defaultChartOfAccounts = []defaultChartAccount{
 	{code: "1000", name: "Assets", accountType: "asset", isGroup: true},
 	{code: "1010", name: "Cash", accountType: "asset", parentCode: "1000"},
-	{code: "1020", name: "Bank", accountType: "asset", parentCode: "1000"},
-	{code: "1100", name: "Accounts Receivable", accountType: "asset", parentCode: "1000"},
+	{code: "1020", name: "Bank", accountType: "asset", parentCode: "1000", defaultRole: "cash"},
+	{code: "1100", name: "Accounts Receivable", accountType: "asset", parentCode: "1000", defaultRole: "ar"},
 	{code: "1200", name: "Input Tax Receivable", accountType: "asset", parentCode: "1000"},
 
 	{code: "2000", name: "Liabilities", accountType: "liability", isGroup: true},
-	{code: "2100", name: "Accounts Payable", accountType: "liability", parentCode: "2000"},
+	{code: "2100", name: "Accounts Payable", accountType: "liability", parentCode: "2000", defaultRole: "ap"},
 	{code: "2200", name: "Output Tax Payable", accountType: "liability", parentCode: "2000"},
 
 	{code: "3000", name: "Equity", accountType: "equity", isGroup: true},
-	{code: "3100", name: "Retained Earnings", accountType: "equity", parentCode: "3000"},
+	{code: "3100", name: "Retained Earnings", accountType: "equity", parentCode: "3000", defaultRole: "retainedEarnings"},
 
 	{code: "4000", name: "Revenue", accountType: "revenue", isGroup: true},
-	{code: "4100", name: "Sales Revenue", accountType: "revenue", parentCode: "4000"},
-	{code: "4200", name: "Foreign Exchange Gain", accountType: "revenue", parentCode: "4000"},
+	{code: "4100", name: "Sales Revenue", accountType: "revenue", parentCode: "4000", defaultRole: "revenue"},
+	{code: "4200", name: "Foreign Exchange Gain", accountType: "revenue", parentCode: "4000", defaultRole: "fxGain"},
 
 	{code: "5000", name: "Expenses", accountType: "expense", isGroup: true},
 	// Renamed from "Purchases / Cost of Goods Sold" once Phase 7 gave COGS
 	// its own dedicated account (5150) — this one now only ever receives an
 	// immediate-expense bill line for a non-stock-tracked product. Go-literal
 	// rename only: an organization created before this change keeps whatever
-	// its own 5100 row is already named (see phase7ChartAdditions below).
-	{code: "5100", name: "General Purchases", accountType: "expense", parentCode: "5000"},
-	{code: "5200", name: "Foreign Exchange Loss", accountType: "expense", parentCode: "5000"},
+	// its own 5100 row is already named (see phase7BaseAdditions below).
+	{code: "5100", name: "General Purchases", accountType: "expense", parentCode: "5000", defaultRole: "expense"},
+	{code: "5200", name: "Foreign Exchange Loss", accountType: "expense", parentCode: "5000", defaultRole: "fxLoss"},
 }
 
-// phase7ChartAdditions are the four accounts inventory/COGS GL integration
-// needs, inserted under the same top-level groups as defaultChartOfAccounts
-// above. Kept as a separate slice (not merged into defaultChartOfAccounts)
-// so seedInventoryAccountsTx can resolve each row's parent by *code lookup*
-// against an organization's already-existing chart, rather than assuming
-// its own insertion order — the two seeding paths (a brand-new org via
-// seedDefaultChartOfAccounts, an existing org via the Phase 7 backfill) are
-// otherwise structurally different (the former builds parent ids from a
-// codeToID map it's populating in the same pass; the latter has to look an
-// existing org's group ids up from the database).
-var phase7ChartAdditions = []defaultChartAccount{
-	{code: "1150", name: "Inventory", accountType: "asset", parentCode: "1000"},
-	{code: "2150", name: "Goods Received Not Invoiced", accountType: "liability", parentCode: "2000"},
-	{code: "5150", name: "Cost of Goods Sold", accountType: "expense", parentCode: "5000"},
-	{code: "5900", name: "Inventory Adjustment", accountType: "expense", parentCode: "5000"},
+// skr04ChartOfAccounts is a curated starter subset of Germany's SKR04
+// (Standardkontenrahmen 04) — every code, name, and hierarchy position here
+// is a real SKR04 account, cross-checked against the German-localization
+// chart of accounts shipped by frappe/erpnext
+// (erpnext/accounts/doctype/account/chart_of_accounts/verified/de_kontenplan_SKR04.json,
+// an actively-maintained open-source ERP's DE dataset) — not the exhaustive
+// official Kontenrahmen (which runs to several hundred accounts across
+// specialized VAT/EU-trade/leasing variants no small organization needs on
+// day one), the same "minimal, not exhaustive" scope defaultChartOfAccounts
+// already has, just with real German numbering instead of invented one.
+// Every leaf's code doubles as its datevNumber, since SKR04 codes ARE DATEV
+// account numbers — uniformly 4 digits, satisfying the DATEV exporter's
+// Sachkontenlänge rule (db/export_datev.go) out of the box for a German
+// organization. Group headers ("1"/"2"/"3"/"4"/"5") are NOT real SKR04
+// numbers — SKR04 has no single numbered header for "all assets" the way
+// this table's isGroup rows work, so these are organizational-only, mirroring
+// defaultChartOfAccounts' own synthetic 1000/2000/... headers; verified not
+// to collide with any real SKR04 leaf (minimum real account number is 100).
+var skr04ChartOfAccounts = []defaultChartAccount{
+	{code: "1", name: "Aktiva", accountType: "asset", isGroup: true},
+	{code: "1600", name: "Kasse", accountType: "asset", parentCode: "1", datevNumber: "1600"},
+	{code: "1800", name: "Bank", accountType: "asset", parentCode: "1", datevNumber: "1800", defaultRole: "cash"},
+	{code: "1200", name: "Forderungen aus Lieferungen und Leistungen", accountType: "asset", parentCode: "1", datevNumber: "1200", defaultRole: "ar"},
+	{code: "1400", name: "Abziehbare Vorsteuer", accountType: "asset", parentCode: "1", datevNumber: "1400"},
+
+	{code: "3", name: "Passiva – Verbindlichkeiten", accountType: "liability", isGroup: true},
+	{code: "3300", name: "Verbindlichkeiten aus Lieferungen und Leistungen", accountType: "liability", parentCode: "3", datevNumber: "3300", defaultRole: "ap"},
+	{code: "3800", name: "Umsatzsteuer", accountType: "liability", parentCode: "3", datevNumber: "3800"},
+
+	{code: "2", name: "Passiva – Eigenkapital", accountType: "equity", isGroup: true},
+	{code: "2970", name: "Gewinnvortrag vor Verwendung", accountType: "equity", parentCode: "2", datevNumber: "2970", defaultRole: "retainedEarnings"},
+
+	{code: "4", name: "Erträge", accountType: "revenue", isGroup: true},
+	{code: "4400", name: "Erlöse 19 % USt", accountType: "revenue", parentCode: "4", datevNumber: "4400", defaultRole: "revenue"},
+	{code: "4840", name: "Erträge aus der Währungsumrechnung", accountType: "revenue", parentCode: "4", datevNumber: "4840", defaultRole: "fxGain"},
+
+	{code: "5", name: "Aufwendungen", accountType: "expense", isGroup: true},
+	{code: "5000", name: "Aufwendungen f. Roh-, Hilfs- und Betriebsstoffe und f. bezogene Waren", accountType: "expense", parentCode: "5", datevNumber: "5000", defaultRole: "expense"},
+	{code: "6880", name: "Aufwendungen aus der Währungsumrechnung", accountType: "expense", parentCode: "5", datevNumber: "6880", defaultRole: "fxLoss"},
 }
 
-// seedDefaultChartOfAccounts inserts the minimal generic starter chart for
-// organizationID and wires organizations.default*AccountId to the created
-// rows, so auto-posting (Phase 2) has somewhere to post to immediately. Runs
-// on the given exec so callers can fold it into their own transaction
-// (CreateOrganization) or run it standalone (the startup backfill in main.go).
-func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string) error {
-	codeToID := make(map[string]string, len(defaultChartOfAccounts)+len(phase7ChartAdditions))
-	for _, a := range append(append([]defaultChartAccount{}, defaultChartOfAccounts...), phase7ChartAdditions...) {
+// pcgChartOfAccounts is a curated starter subset of France's Plan Comptable
+// Général — every code, name, and hierarchy position (including the class
+// headers "1000"/"2000"/.../"5000" below, which stand in for real PCG class
+// numbers 1-7 without literally reusing them, since a PCG class like "4 -
+// Comptes de tiers" mixes both AR and AP under one class and doesn't map
+// 1:1 onto this table's single-type isGroup rows) is cross-checked against
+// the Autorité des Normes Comptables' own PCG text as digitized by
+// github.com/arrhes/PCG (versions/2026/pcg_2026.json, an annually
+// republished, source-cited dataset), restricted to entries tagged
+// "système minimal" in that dataset — the PCG's own smallest reporting
+// tier, not the exhaustive ~860-account plan. France has no DATEV
+// equivalent, so unlike skr04ChartOfAccounts there's no datevNumber here.
+var pcgChartOfAccounts = []defaultChartAccount{
+	{code: "1000", name: "Actif", accountType: "asset", isGroup: true},
+	{code: "53", name: "Caisse", accountType: "asset", parentCode: "1000"},
+	{code: "512", name: "Banques", accountType: "asset", parentCode: "1000", defaultRole: "cash"},
+	{code: "411", name: "Clients", accountType: "asset", parentCode: "1000", defaultRole: "ar"},
+	{code: "4456", name: "Taxes sur le chiffre d'affaires déductibles", accountType: "asset", parentCode: "1000"},
+
+	{code: "2000", name: "Passif – Dettes", accountType: "liability", isGroup: true},
+	{code: "401", name: "Fournisseurs", accountType: "liability", parentCode: "2000", defaultRole: "ap"},
+	{code: "4457", name: "Taxes sur le chiffre d'affaires collectées", accountType: "liability", parentCode: "2000"},
+
+	{code: "3000", name: "Passif – Capitaux propres", accountType: "equity", isGroup: true},
+	{code: "110", name: "Report à nouveau - solde créditeur", accountType: "equity", parentCode: "3000", defaultRole: "retainedEarnings"},
+
+	{code: "4000", name: "Produits", accountType: "revenue", isGroup: true},
+	{code: "70", name: "Ventes de produits fabriqués, prestations de services, marchandises", accountType: "revenue", parentCode: "4000", defaultRole: "revenue"},
+	{code: "766", name: "Gains de change financiers", accountType: "revenue", parentCode: "4000", defaultRole: "fxGain"},
+
+	{code: "5000", name: "Charges", accountType: "expense", isGroup: true},
+	{code: "60", name: "Achats (sauf 603)", accountType: "expense", parentCode: "5000", defaultRole: "expense"},
+	{code: "666", name: "Pertes de change financières", accountType: "expense", parentCode: "5000", defaultRole: "fxLoss"},
+}
+
+// chartTemplates maps an organization's country — as collected by the New
+// Organization form's free-text Select (src/utils/countries.tsx's country
+// *name*; org creation collects no ISO country_code field at all, unlike
+// db/einvoice.go's resolveEInvoiceProfile, which only reads CountryCode and
+// only after it's set later via the Organizations list edit drawer) — to a
+// curated, citable chart of accounts for that country. A country not listed
+// here keeps defaultChartOfAccounts, the same generic starter chart every
+// organization got before this feature existed — the DATEV exporter's
+// "cite the source, state plainly what's unvalidated" stance, not the
+// Peppol decision's "the claim can't be backed at all" one: every code
+// below is real, sourced, and cited on its own chart, just not exhaustive.
+var chartTemplates = map[string][]defaultChartAccount{
+	"Germany": skr04ChartOfAccounts,
+	"France":  pcgChartOfAccounts,
+}
+
+// resolveChartTemplate returns the chart to seed for an organization's
+// country (nil-safe — a new organization can leave Country unset).
+func resolveChartTemplate(country *string) []defaultChartAccount {
+	if country != nil {
+		if chart, ok := chartTemplates[*country]; ok {
+			return chart
+		}
+	}
+	return defaultChartOfAccounts
+}
+
+// phase7BaseAdditions are the four accounts Phase 7's inventory/COGS GL
+// integration needs, common to every chart template regardless of country.
+// Unlike the AR/AP/tax/revenue/expense accounts above, no country's real
+// chart has one universally-agreed number for "the GRNI clearing account"
+// or "the COGS account" — different firms number these differently even
+// within German or French practice — so inventing a real-looking SKR04/PCG
+// number for them would be exactly the false-conformance problem the
+// e-invoice generator's Peppol decision refuses to make. Kept as one
+// shared, honestly-generic set of codes across every template instead.
+// parentCode is resolved dynamically, not hardcoded here, since each
+// template's own group header codes differ — see phase7AdditionsFor (fresh
+// organization, resolves against the chart slice being seeded) and
+// seedInventoryAccountsTx (existing-organization backfill, resolves against
+// whatever that organization's chart actually has in the database).
+var phase7BaseAdditions = []defaultChartAccount{
+	{code: "1150", name: "Inventory", accountType: "asset", defaultRole: "inventory"},
+	{code: "2150", name: "Goods Received Not Invoiced", accountType: "liability", defaultRole: "grni"},
+	{code: "5150", name: "Cost of Goods Sold", accountType: "expense", defaultRole: "cogs"},
+	{code: "5900", name: "Inventory Adjustment", accountType: "expense", defaultRole: "inventoryAdjustment"},
+}
+
+// headerCodeForType returns the code of chart's isGroup row for accountType,
+// or "" if the chart has none — used to parent phase7BaseAdditions under
+// whichever chart template is actually being seeded.
+func headerCodeForType(chart []defaultChartAccount, accountType string) string {
+	for _, a := range chart {
+		if a.isGroup && a.accountType == accountType {
+			return a.code
+		}
+	}
+	return ""
+}
+
+// phase7AdditionsFor returns phase7BaseAdditions with each row's parentCode
+// resolved against chart — the template about to be seeded for a brand-new
+// organization (see seedDefaultChartOfAccounts). Returns a copy; the shared
+// phase7BaseAdditions slice itself is never mutated.
+func phase7AdditionsFor(chart []defaultChartAccount) []defaultChartAccount {
+	out := make([]defaultChartAccount, len(phase7BaseAdditions))
+	for i, a := range phase7BaseAdditions {
+		a.parentCode = headerCodeForType(chart, a.accountType)
+		out[i] = a
+	}
+	return out
+}
+
+// seedDefaultChartOfAccounts inserts the starter chart for organizationID —
+// resolveChartTemplate(country)'s curated import if one exists, otherwise
+// the generic defaultChartOfAccounts — plus phase7BaseAdditions, and wires
+// organizations.default*AccountId to the created rows via each row's
+// defaultRole, so auto-posting (Phase 2) has somewhere to post to
+// immediately regardless of which template was used. Runs on the given exec
+// so callers can fold it into their own transaction (CreateOrganization) or
+// run it standalone (the startup backfill in main.go).
+func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string, country *string) error {
+	chart := resolveChartTemplate(country)
+	full := append(append([]defaultChartAccount{}, chart...), phase7AdditionsFor(chart)...)
+
+	codeToID := make(map[string]string, len(full))
+	roleToID := make(map[string]string, 12)
+	for _, a := range full {
 		id, err := gonanoid.New()
 		if err != nil {
 			return fmt.Errorf("seed_default_chart_of_accounts new_id: %w", err)
 		}
 		codeToID[a.code] = id
+		if a.defaultRole != "" {
+			roleToID[a.defaultRole] = id
+		}
 
 		var parentID any
 		if a.parentCode != "" {
@@ -311,9 +462,9 @@ func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string) error 
 			isGroup = 1
 		}
 		if _, err := exec.Exec(
-			`INSERT INTO accounts (id, organizationId, parentId, code, name, type, isGroup)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			id, organizationID, parentID, a.code, a.name, a.accountType, isGroup,
+			`INSERT INTO accounts (id, organizationId, parentId, code, name, type, isGroup, datevAccountNumber)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			id, organizationID, parentID, a.code, a.name, a.accountType, isGroup, nullableString(a.datevNumber),
 		); err != nil {
 			return fmt.Errorf("seed_default_chart_of_accounts insert %s: %w", a.code, err)
 		}
@@ -327,10 +478,11 @@ func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string) error 
 		     defaultInventoryAccountId = ?, defaultGRNIAccountId = ?,
 		     defaultCOGSAccountId = ?, defaultInventoryAdjustmentAccountId = ?
 		 WHERE id = ?`,
-		codeToID["1100"], codeToID["2100"], codeToID["4100"],
-		codeToID["5100"], codeToID["1020"],
-		codeToID["4200"], codeToID["5200"], codeToID["3100"],
-		codeToID["1150"], codeToID["2150"], codeToID["5150"], codeToID["5900"],
+		nullableString(roleToID["ar"]), nullableString(roleToID["ap"]), nullableString(roleToID["revenue"]),
+		nullableString(roleToID["expense"]), nullableString(roleToID["cash"]),
+		nullableString(roleToID["fxGain"]), nullableString(roleToID["fxLoss"]), nullableString(roleToID["retainedEarnings"]),
+		nullableString(roleToID["inventory"]), nullableString(roleToID["grni"]),
+		nullableString(roleToID["cogs"]), nullableString(roleToID["inventoryAdjustment"]),
 		organizationID,
 	); err != nil {
 		return fmt.Errorf("seed_default_chart_of_accounts wire_defaults: %w", err)
@@ -343,39 +495,39 @@ func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string) error 
 // 1-6 before Phase 7 shipped — see SeedInventoryAccountingDefaultsForAllOrganizations).
 // Unlike seedDefaultChartOfAccounts, which builds parent ids from a
 // codeToID map it populates in the same pass, this resolves each new row's
-// parent group by looking its code up in the organization's existing
-// chart — the group accounts (1000/2000/5000) already exist and their ids
-// aren't known in advance. A code collision (the organization already has
-// its own account at, say, code "1150") skips just that one insert rather
-// than failing the whole backfill; the organization can wire its own
-// account to the new default column manually afterward.
+// parent by *account type* against the organization's existing chart —
+// "the isGroup row of this type, earliest first" — rather than a hardcoded
+// parentCode, since an organization seeded from skr04ChartOfAccounts or
+// pcgChartOfAccounts has different group header codes than the generic
+// chart's 1000/2000/5000 (and a manually-edited chart could have anything).
+// A code collision (the organization already has its own account at, say,
+// code "1150") skips just that one insert rather than failing the whole
+// backfill; the organization can wire its own account to the new default
+// column manually afterward.
 func seedInventoryAccountsTx(exec sqlGetExecer, organizationID string) error {
-	codeToID := map[string]string{}
-	for _, a := range phase7ChartAdditions {
+	roleToID := map[string]string{}
+	for _, a := range phase7BaseAdditions {
 		var parentID *string
-		if a.parentCode != "" {
-			var existing string
-			err := exec.Get(&existing, `SELECT id FROM accounts WHERE organizationId = ? AND code = ?`, organizationID, a.parentCode)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("seed_inventory_accounts parent_lookup %s: %w", a.parentCode, err)
-			}
-			if existing != "" {
-				parentID = &existing
-			}
+		var existing string
+		err := exec.Get(&existing,
+			`SELECT id FROM accounts WHERE organizationId = ? AND type = ? AND isGroup = 1 ORDER BY createdAt ASC LIMIT 1`,
+			organizationID, a.accountType,
+		)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("seed_inventory_accounts parent_lookup %s: %w", a.accountType, err)
+		}
+		if existing != "" {
+			parentID = &existing
 		}
 
 		id, err := gonanoid.New()
 		if err != nil {
 			return fmt.Errorf("seed_inventory_accounts new_id: %w", err)
 		}
-		isGroup := 0
-		if a.isGroup {
-			isGroup = 1
-		}
 		_, err = exec.Exec(
 			`INSERT INTO accounts (id, organizationId, parentId, code, name, type, isGroup)
-			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			id, organizationID, parentID, a.code, a.name, a.accountType, isGroup,
+			 VALUES (?, ?, ?, ?, ?, ?, 0)`,
+			id, organizationID, parentID, a.code, a.name, a.accountType,
 		)
 		if err != nil {
 			if isDuplicateAccountCode(err) {
@@ -383,13 +535,13 @@ func seedInventoryAccountsTx(exec sqlGetExecer, organizationID string) error {
 			}
 			return fmt.Errorf("seed_inventory_accounts insert %s: %w", a.code, err)
 		}
-		codeToID[a.code] = id
+		roleToID[a.defaultRole] = id
 	}
 
 	// COALESCE, not a bare assignment: an organization that already wired
 	// one of these columns manually (or from a partially-applied earlier
 	// backfill attempt) keeps its own choice rather than being overwritten.
-	// A code that collided above and was skipped has no entry in codeToID —
+	// A code that collided above and was skipped has no entry in roleToID —
 	// its column simply stays whatever it already was (likely NULL).
 	if _, err := exec.Exec(
 		`UPDATE organizations
@@ -398,8 +550,8 @@ func seedInventoryAccountsTx(exec sqlGetExecer, organizationID string) error {
 		     defaultCOGSAccountId = COALESCE(defaultCOGSAccountId, ?),
 		     defaultInventoryAdjustmentAccountId = COALESCE(defaultInventoryAdjustmentAccountId, ?)
 		 WHERE id = ?`,
-		nullableString(codeToID["1150"]), nullableString(codeToID["2150"]),
-		nullableString(codeToID["5150"]), nullableString(codeToID["5900"]),
+		nullableString(roleToID["inventory"]), nullableString(roleToID["grni"]),
+		nullableString(roleToID["cogs"]), nullableString(roleToID["inventoryAdjustment"]),
 		organizationID,
 	); err != nil {
 		return fmt.Errorf("seed_inventory_accounts wire_defaults: %w", err)
@@ -445,18 +597,22 @@ func (d *Database) SeedInventoryAccountingDefaultsForAllOrganizations() error {
 // count-then-seed shape (api/users.go), so upgrading an existing database
 // backfills the new GL tables the same way a fresh install gets them.
 func (d *Database) SeedAccountingDefaultsForAllOrganizations() error {
-	var orgIDs []string
-	if err := d.DB.Select(&orgIDs, `SELECT id FROM organizations`); err != nil {
+	var orgs []struct {
+		ID      string  `db:"id"`
+		Country *string `db:"country"`
+	}
+	if err := d.DB.Select(&orgs, `SELECT id, country FROM organizations`); err != nil {
 		return fmt.Errorf("seed_accounting_defaults list_organizations: %w", err)
 	}
 
-	for _, orgID := range orgIDs {
+	for _, org := range orgs {
+		orgID := org.ID
 		var accountCount int
 		if err := d.DB.Get(&accountCount, `SELECT COUNT(*) FROM accounts WHERE organizationId = ?`, orgID); err != nil {
 			return fmt.Errorf("seed_accounting_defaults count_accounts: %w", err)
 		}
 		if accountCount == 0 {
-			if err := seedDefaultChartOfAccounts(d.DB, orgID); err != nil {
+			if err := seedDefaultChartOfAccounts(d.DB, orgID, org.Country); err != nil {
 				return fmt.Errorf("seed_accounting_defaults chart %s: %w", orgID, err)
 			}
 		}

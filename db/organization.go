@@ -260,9 +260,11 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	// Every organization gets a starter chart of accounts + default journals
 	// immediately, so the GL module (manual journal entries at minimum) is
 	// usable right away rather than requiring a separate setup step. See
-	// seedDefaultChartOfAccounts (db/account.go) for what "minimal generic
-	// starter chart" means and why it's not country-specific.
-	if err := seedDefaultChartOfAccounts(tx, req.ID); err != nil {
+	// seedDefaultChartOfAccounts (db/account.go): req.Country (the New
+	// Organization form's free-text country name — org creation collects no
+	// ISO country_code) selects a curated SKR04/PCG import when it matches
+	// chartTemplates, otherwise the generic starter chart.
+	if err := seedDefaultChartOfAccounts(tx, req.ID, req.Country); err != nil {
 		return nil, fmt.Errorf("create_organization seed_accounts: %w", err)
 	}
 	if err := seedDefaultJournals(tx, req.ID); err != nil {
