@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-08-09
+
+### Added
+- The sidebar now shows the running app version next to the FaturaCloud
+  wordmark, fetched from the existing `GET /api/version` endpoint.
+- A new organization created with Country "Germany" or "France" now seeds a
+  curated starter chart of accounts drawn from that country's real,
+  citable statutory numbering — SKR04 (Standardkontenrahmen 04) for
+  Germany, Plan Comptable Général for France — instead of the generic
+  placeholder chart every organization got before. SKR04 codes double as
+  DATEV account numbers, so the existing DATEV exporter works out of the
+  box for a German organization. Every other country is unaffected.
+
 ## [3.6.1] - 2026-08-09
 
 Follow-up to a security/dependency/i18n audit of the Reporting menu and
