@@ -298,6 +298,14 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/organizations/{orgId}/reports/ap-aging", h.getPayableAging)
 	protected("GET", "/api/organizations/{orgId}/reports/inventory-valuation", h.getInventoryValuation)
 
+	// Reporting — document-derived sales/purchasing analytics, a distinct
+	// tier from the GL-derived Reports above (see db/sales_reports.go).
+	protected("GET", "/api/organizations/{orgId}/reporting/revenue-trend", h.getRevenueTrend)
+	protected("GET", "/api/organizations/{orgId}/reporting/sales-by-client", h.getSalesByClient)
+	protected("GET", "/api/organizations/{orgId}/reporting/sales-by-product", h.getSalesByProduct)
+	protected("GET", "/api/organizations/{orgId}/reporting/purchases-by-vendor", h.getPurchasesByVendor)
+	protected("GET", "/api/organizations/{orgId}/reporting/tax-summary", h.getTaxSummary)
+
 	// GL export — France FEC only; DATEV is deliberately not implemented
 	// yet (see db/export_fec.go and the GL Export settings page). Admin-only,
 	// same sensitivity class as the database backup download: a full ledger
