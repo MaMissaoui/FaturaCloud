@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-08-09
+
+A full double-entry general ledger, closing the gap between FaturaCloud's
+sales/purchasing documents and real bookkeeping — chart of accounts through
+statutory export, plus inventory/COGS integration.
+
+### Added
+- **General ledger core**: chart of accounts, journals, fiscal years/periods,
+  and journal entries with post/reverse. A single balance-enforcing choke
+  point guarantees every posted entry balances and blocks posting into a
+  closed fiscal year.
+- **Auto-posting**: invoices and vendor bills post and reverse GL entries
+  automatically on state change. A payments ledger supports partial
+  payments, one payment settling multiple documents, and realized FX
+  gain/loss computed against each document's own frozen exchange rate.
+- **Reports**: trial balance, profit & loss, balance sheet, AR/AP aging, and
+  inventory valuation — all computed live from journal lines, never cached.
+- **Fiscal year closing**: rolls revenue/expense accounts into retained
+  earnings (irreversible, admin only).
+- **Statutory export**: France FEC and Germany DATEV Buchungsstapel (EXTF),
+  both admin-only downloads gated by fiscal year; DATEV's format was
+  cross-verified against two independent open-source implementations plus a
+  real example file.
+- **Inventory / COGS integration**: goods receipts accrue GRNI (Goods
+  Received Not Invoiced); vendor bills clear it and capitalize stock-tracked
+  purchases to Inventory instead of expensing them immediately; shipments
+  recognize COGS (weighted-average cost, or specific-identification for
+  serialized units); manual stock adjustments post a GL trace. The new
+  Inventory Valuation report compares the GL's Inventory balance against
+  independently computed stock value.
+
 ## [3.4.1] - 2026-08-03
 
 ### Fixed
