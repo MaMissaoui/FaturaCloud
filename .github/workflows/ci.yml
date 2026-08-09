@@ -29,7 +29,12 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: go test -race ./...
+        # The default go test timeout is 10m; -race's overhead already put
+        # the suite close to that on CI's shared runners before Phase 7's
+        # inventory/COGS GL tests (more DB fixtures, each running its own
+        # migration) added enough to tip it over — bump the budget rather
+        # than the suite's actual runtime being the problem.
+        run: go test -race -timeout=20m ./...
 
       - name: Vulnerability scan
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
