@@ -17,18 +17,23 @@ PR #77) and the Reporting menu (PR #80).
 - This document is an audit, not a remediation — no dependency bumps or
   fixes were made while producing it.
 
+**Status:** F42, F43, F44, F46, F47 fixed the same day (branch
+`fix/audit-2026-08-09-findings`). **F45 is explicitly deferred** — it's
+marked `[DECISION]` below and needs sign-off on which remediation shape to
+take before any implementation starts.
+
 ---
 
 ## Severity overview
 
-| # | Finding | Area | Severity | Phase |
-|---|---------|------|----------|-------|
-| F42 | `/reporting/*` endpoints accept no date range at all and run an unbounded aggregate over every document the org has ever had | Security/Perf | Medium | 1.1 |
-| F43 | GitHub Actions pinned to floating major-version tags, not commit SHAs | Security (supply chain) | Low | 1.2 |
-| F44 | `alpine:3.21` base image is 3 minor releases behind current stable (3.24.1) | Dependency currency | Low | 2.1 |
-| F45 | Server-side validation/409 error messages (~140 call sites) reach the UI in raw English with no translation path | i18n | Medium | 3.1 |
-| F46 | Reporting chart tooltips show the raw field name (`revenue`/`spend`), untranslated | i18n | Low | 3.2 |
-| F47 | Revenue Trend's month column/axis renders raw `"YYYY-MM"` instead of a localized month name | i18n | Low | 3.3 |
+| # | Finding | Area | Severity | Phase | Status |
+|---|---------|------|----------|-------|--------|
+| F42 | `/reporting/*` endpoints accept no date range at all and run an unbounded aggregate over every document the org has ever had | Security/Perf | Medium | 1.1 | **Fixed** |
+| F43 | GitHub Actions pinned to floating major-version tags, not commit SHAs | Security (supply chain) | Low | 1.2 | **Fixed** |
+| F44 | `alpine:3.21` base image is 3 minor releases behind current stable (3.24.1) | Dependency currency | Low | 2.1 | **Fixed** |
+| F45 | Server-side validation/409 error messages (~140 call sites) reach the UI in raw English with no translation path | i18n | Medium | 3.1 | **[DECISION] — open** |
+| F46 | Reporting chart tooltips show the raw field name (`revenue`/`spend`), untranslated | i18n | Low | 3.2 | **Fixed** |
+| F47 | Revenue Trend's month column/axis renders raw `"YYYY-MM"` instead of a localized month name | i18n | Low | 3.3 | **Fixed** |
 
 ---
 
@@ -63,6 +68,11 @@ already established two lines away in the same file. Do **not** change
 `dateRangeFilter`'s "0 = unbounded" contract — that would silently change
 `GetDashboardData`'s behavior.
 
+**Fixed:** `reportingStartDate` added to `api/reporting.go`, defaulting an
+absent `startDate` to 5 years before `endDate` rather than staying `0`;
+`dateRangeFilter`'s contract and `GetDashboardData`'s own unbounded calls are
+untouched. Covered by `api/reporting_test.go`.
+
 ### 1.2 SHA-pin third-party GitHub Actions (F43)
 
 `.github/workflows/ci.yml` and `docker.yml` reference `actions/checkout@v7`,
@@ -76,6 +86,10 @@ pinning `docker/build-push-action`, `docker/login-action`,
 `docker/metadata-action`, `docker/setup-buildx-action` if this is acted on.
 Not urgent — no known compromise, this is a hardening item, not an active
 exposure.
+
+**Fixed:** all 8 action references in `ci.yml`/`docker.yml` pinned to the
+commit SHA their tag currently resolves to, with the version kept as a
+trailing comment.
 
 ---
 
@@ -91,6 +105,11 @@ branches are typically supported ~2 years from release, and 3.21 shipped
 This is currency drift, not a known exposure: no CVE surfaced against the
 pinned image via this audit's tooling. Bump when convenient; re-verify the
 Go binary's runtime deps (musl libc version skew) still link cleanly after.
+
+**Fixed:** bumped to `alpine:3.24` in `Dockerfile` and `CLAUDE.md`. The Go
+binary is `CGO_ENABLED=0` (statically linked), so there was no musl skew to
+re-verify. Not exercised by CI (no PR-time Docker build step exists) — worth
+a real `docker build` before or during the next release tag.
 
 ### Explicitly checked, not findings
 
@@ -155,6 +174,12 @@ pages. Fix: add `name: <translated label>` to each tooltip item — small,
 mechanical, low risk; worth batching across all 5 pages including the
 dashboard widget in one pass rather than fixing only the new ones.
 
+**Fixed:** `name: t\`Revenue\`` / `t\`Spend\`` (using the existing
+`@lingui/core/macro` `t` pattern already established in the codebase, e.g.
+`payment-panel.tsx`) added to all 5 tooltip configs, including the dashboard
+widget. Both strings already existed as translated msgids elsewhere in the
+catalog, so `pnpm extract` produced no new missing entries.
+
 ### 3.3 Revenue Trend table shows raw `"YYYY-MM"` (F47)
 
 `GetRevenueByMonth` returns `month` as SQLite's `strftime('%Y-%m', ...)`
@@ -166,6 +191,12 @@ least unambiguous and sorts correctly — but worth a small fix (format via
 `dayjs(month + "-01").format(...)` locale-aware in the render function,
 matching `src/utils/date.ts`'s existing conventions) since the table view is
 new surface area that didn't exist before this audit's scope.
+
+**Fixed:** the table column now renders via
+`dayjs(\`${month}-01\`).format("MMMM YYYY")`, which follows the app's global
+`dayjs.locale(...)` switch (`src/utils/lingui.tsx`). The chart's x-axis is
+unaffected by design — it's an AntV category axis, not a text render, so the
+raw string there was never a user-visible localization gap.
 
 ### Explicitly checked, not findings
 

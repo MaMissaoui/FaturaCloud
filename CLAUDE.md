@@ -420,7 +420,7 @@ docker run -p 8080:8080 -v ./data:/data fatura-cloud
 The `Dockerfile` is a three-stage build:
 1. **frontend** (node:22-alpine) — runs `pnpm build`, outputs `dist/`
 2. **backend** (golang:1.26-alpine) — copies `dist/` and embeds it via `//go:embed all:dist`, compiles binary
-3. **runtime** (alpine:3.21) — copies only the binary, minimal footprint
+3. **runtime** (alpine:3.24) — copies only the binary, minimal footprint
 
 Pass `--build-arg VERSION=<tag>` to inject a version string (accessible via `GET /api/version`); the frontend build stage also uses it as the Sentry release name (see below).
 

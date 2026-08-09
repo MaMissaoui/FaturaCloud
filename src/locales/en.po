@@ -28,7 +28,7 @@ msgstr "1 {currency} = this many {orgCurrency}"
 
 #: src/routes/accounting/reports/ap-aging.tsx:59
 #: src/routes/accounting/reports/ar-aging.tsx:59
-#: src/routes/dashboard.tsx:134
+#: src/routes/dashboard.tsx:135
 msgid "1-30 days"
 msgstr "1-30 days"
 
@@ -48,7 +48,7 @@ msgstr "3-way match"
 
 #: src/routes/accounting/reports/ap-aging.tsx:64
 #: src/routes/accounting/reports/ar-aging.tsx:64
-#: src/routes/dashboard.tsx:140
+#: src/routes/dashboard.tsx:141
 msgid "31-60 days"
 msgstr "31-60 days"
 
@@ -59,13 +59,13 @@ msgstr "4-digit year ({0})"
 
 #: src/routes/accounting/reports/ap-aging.tsx:69
 #: src/routes/accounting/reports/ar-aging.tsx:69
-#: src/routes/dashboard.tsx:146
+#: src/routes/dashboard.tsx:147
 msgid "61-90 days"
 msgstr "61-90 days"
 
 #: src/routes/accounting/reports/ap-aging.tsx:75
 #: src/routes/accounting/reports/ar-aging.tsx:75
-#: src/routes/dashboard.tsx:152
+#: src/routes/dashboard.tsx:153
 msgid "90+ days"
 msgstr "90+ days"
 
@@ -476,7 +476,7 @@ msgstr "Cash"
 msgid "Change logo"
 msgstr "Change logo"
 
-#: src/routes/reporting/revenue-trend.tsx:73
+#: src/routes/reporting/revenue-trend.tsx:81
 msgid "Chart"
 msgstr "Chart"
 
@@ -502,13 +502,13 @@ msgid "City"
 msgstr "City"
 
 #: src/routes/accounting/reports/ar-aging.tsx:97
-#: src/routes/dashboard.tsx:170
-#: src/routes/dashboard.tsx:226
+#: src/routes/dashboard.tsx:171
+#: src/routes/dashboard.tsx:227
 #: src/routes/deliveries.tsx:89
 #: src/routes/invoices/index.tsx:165
 #: src/routes/orders.tsx:80
 #: src/routes/orders/details.tsx:231
-#: src/routes/reporting/sales-by-client.tsx:87
+#: src/routes/reporting/sales-by-client.tsx:88
 msgid "Client"
 msgstr "Client"
 
@@ -688,7 +688,7 @@ msgstr "Currency"
 
 #: src/routes/accounting/reports/ap-aging.tsx:54
 #: src/routes/accounting/reports/ar-aging.tsx:54
-#: src/routes/dashboard.tsx:128
+#: src/routes/dashboard.tsx:129
 msgid "Current"
 msgstr "Current"
 
@@ -709,7 +709,7 @@ msgid "Danger zone"
 msgstr "Danger zone"
 
 #: src/layouts/base.tsx:244
-#: src/routes/dashboard.tsx:60
+#: src/routes/dashboard.tsx:61
 msgid "Dashboard"
 msgstr "Dashboard"
 
@@ -785,7 +785,7 @@ msgstr "Day of month ({0})"
 
 #: src/routes/accounting/reports/ap-aging.tsx:99
 #: src/routes/accounting/reports/ar-aging.tsx:99
-#: src/routes/dashboard.tsx:172
+#: src/routes/dashboard.tsx:173
 msgid "Days overdue"
 msgstr "Days overdue"
 
@@ -1728,7 +1728,7 @@ msgstr "Inventory Valuation"
 #: src/components/invoices/pdf.tsx:213
 #: src/layouts/base.tsx:534
 #: src/routes/accounting/reports/ar-aging.tsx:96
-#: src/routes/dashboard.tsx:169
+#: src/routes/dashboard.tsx:170
 msgid "Invoice"
 msgstr "Invoice"
 
@@ -1879,7 +1879,7 @@ msgstr "Journal updated"
 msgid "Journals"
 msgstr "Journals"
 
-#: src/routes/dashboard.tsx:68
+#: src/routes/dashboard.tsx:69
 msgid "Last {m} months"
 msgstr "Last {m} months"
 
@@ -1999,7 +1999,7 @@ msgstr "Miscellaneous"
 msgid "month"
 msgstr "month"
 
-#: src/routes/reporting/revenue-trend.tsx:85
+#: src/routes/reporting/revenue-trend.tsx:94
 msgid "Month"
 msgstr "Month"
 
@@ -2201,7 +2201,7 @@ msgid "No outstanding bills"
 msgstr "No outstanding bills"
 
 #: src/routes/accounting/reports/ar-aging.tsx:94
-#: src/routes/dashboard.tsx:167
+#: src/routes/dashboard.tsx:168
 msgid "No outstanding invoices"
 msgstr "No outstanding invoices"
 
@@ -2209,15 +2209,15 @@ msgstr "No outstanding invoices"
 msgid "No payments recorded yet"
 msgstr "No payments recorded yet"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:89
+#: src/routes/reporting/purchases-by-vendor.tsx:90
 msgid "No purchases in this period"
 msgstr "No purchases in this period"
 
-#: src/routes/dashboard.tsx:224
-#: src/routes/dashboard.tsx:244
-#: src/routes/reporting/revenue-trend.tsx:83
-#: src/routes/reporting/sales-by-client.tsx:85
-#: src/routes/reporting/sales-by-product.tsx:85
+#: src/routes/dashboard.tsx:225
+#: src/routes/dashboard.tsx:245
+#: src/routes/reporting/revenue-trend.tsx:91
+#: src/routes/reporting/sales-by-client.tsx:86
+#: src/routes/reporting/sales-by-product.tsx:86
 msgid "No revenue in this period"
 msgstr "No revenue in this period"
 
@@ -2225,7 +2225,7 @@ msgstr "No revenue in this period"
 msgid "No stock-enabled products"
 msgstr "No stock-enabled products"
 
-#: src/routes/dashboard.tsx:195
+#: src/routes/dashboard.tsx:196
 msgid "No stock-tracked products"
 msgstr "No stock-tracked products"
 
@@ -2491,11 +2491,11 @@ msgstr "Output VAT (Sales)"
 msgid "Outside scope of tax"
 msgstr "Outside scope of tax"
 
-#: src/routes/dashboard.tsx:86
+#: src/routes/dashboard.tsx:87
 msgid "Outstanding"
 msgstr "Outstanding"
 
-#: src/routes/dashboard.tsx:124
+#: src/routes/dashboard.tsx:125
 msgid "Outstanding invoices"
 msgstr "Outstanding invoices"
 
@@ -2744,12 +2744,12 @@ msgstr "Pricing"
 #: src/components/products/form.tsx:217
 #: src/components/stock/movement-form.tsx:134
 #: src/routes/accounting/reports/inventory-valuation.tsx:84
-#: src/routes/dashboard.tsx:197
-#: src/routes/dashboard.tsx:246
+#: src/routes/dashboard.tsx:198
+#: src/routes/dashboard.tsx:247
 #: src/routes/inventory.tsx:233
 #: src/routes/invoices/details.tsx:667
 #: src/routes/products.tsx:180
-#: src/routes/reporting/sales-by-product.tsx:87
+#: src/routes/reporting/sales-by-product.tsx:88
 msgid "Product"
 msgstr "Product"
 
@@ -2865,7 +2865,7 @@ msgid "Purchases"
 msgstr "Purchases"
 
 #: src/layouts/base.tsx:509
-#: src/routes/reporting/purchases-by-vendor.tsx:54
+#: src/routes/reporting/purchases-by-vendor.tsx:55
 msgid "Purchases by Vendor"
 msgstr "Purchases by Vendor"
 
@@ -2891,7 +2891,7 @@ msgid "Qty."
 msgstr "Qty."
 
 #: src/routes/accounting/reports/inventory-valuation.tsx:86
-#: src/routes/dashboard.tsx:199
+#: src/routes/dashboard.tsx:200
 #: src/routes/inventory.tsx:256
 msgid "Quantity"
 msgstr "Quantity"
@@ -3078,15 +3078,19 @@ msgstr "Retention (days)"
 #: src/components/accounting/account-form.tsx:23
 #: src/routes/accounting/chart-of-accounts.tsx:38
 #: src/routes/accounting/reports/profit-and-loss.tsx:93
-#: src/routes/dashboard.tsx:228
-#: src/routes/dashboard.tsx:248
-#: src/routes/reporting/revenue-trend.tsx:87
-#: src/routes/reporting/sales-by-client.tsx:89
-#: src/routes/reporting/sales-by-product.tsx:89
+#: src/routes/dashboard.tsx:117
+#: src/routes/dashboard.tsx:229
+#: src/routes/dashboard.tsx:249
+#: src/routes/reporting/revenue-trend.tsx:99
+#: src/routes/reporting/revenue-trend.tsx:113
+#: src/routes/reporting/sales-by-client.tsx:76
+#: src/routes/reporting/sales-by-client.tsx:90
+#: src/routes/reporting/sales-by-product.tsx:76
+#: src/routes/reporting/sales-by-product.tsx:90
 msgid "Revenue"
 msgstr "Revenue"
 
-#: src/routes/dashboard.tsx:78
+#: src/routes/dashboard.tsx:79
 msgid "Revenue (selected period)"
 msgstr "Revenue (selected period)"
 
@@ -3094,16 +3098,16 @@ msgstr "Revenue (selected period)"
 msgid "Revenue account"
 msgstr "Revenue account"
 
-#: src/routes/reporting/revenue-trend.tsx:67
+#: src/routes/reporting/revenue-trend.tsx:75
 msgid "Revenue by month"
 msgstr "Revenue by month"
 
-#: src/routes/dashboard.tsx:108
+#: src/routes/dashboard.tsx:109
 msgid "Revenue over time"
 msgstr "Revenue over time"
 
 #: src/layouts/base.tsx:482
-#: src/routes/reporting/revenue-trend.tsx:51
+#: src/routes/reporting/revenue-trend.tsx:59
 msgid "Revenue Trend"
 msgstr "Revenue Trend"
 
@@ -3144,12 +3148,12 @@ msgid "Sales"
 msgstr "Sales"
 
 #: src/layouts/base.tsx:491
-#: src/routes/reporting/sales-by-client.tsx:50
+#: src/routes/reporting/sales-by-client.tsx:51
 msgid "Sales by Client"
 msgstr "Sales by Client"
 
 #: src/layouts/base.tsx:500
-#: src/routes/reporting/sales-by-product.tsx:50
+#: src/routes/reporting/sales-by-product.tsx:51
 msgid "Sales by Product"
 msgstr "Sales by Product"
 
@@ -3361,7 +3365,8 @@ msgstr "SKU"
 msgid "SKU / Product code"
 msgstr "SKU / Product code"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:93
+#: src/routes/reporting/purchases-by-vendor.tsx:80
+#: src/routes/reporting/purchases-by-vendor.tsx:94
 msgid "Spend"
 msgstr "Spend"
 
@@ -3436,8 +3441,8 @@ msgstr "stock movement(s)"
 msgid "Stock out — consume / sell"
 msgstr "Stock out — consume / sell"
 
-#: src/routes/dashboard.tsx:99
-#: src/routes/dashboard.tsx:189
+#: src/routes/dashboard.tsx:100
+#: src/routes/dashboard.tsx:190
 msgid "Stock valuation"
 msgstr "Stock valuation"
 
@@ -3473,7 +3478,7 @@ msgstr "Switch to light mode"
 msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 msgstr "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 
-#: src/routes/reporting/revenue-trend.tsx:72
+#: src/routes/reporting/revenue-trend.tsx:80
 msgid "Table"
 msgstr "Table"
 
@@ -3625,20 +3630,20 @@ msgstr "This will permanently delete:"
 msgid "This will reverse the stock this receipt added. Continue?"
 msgstr "This will reverse the stock this receipt added. Continue?"
 
-#: src/routes/reporting/sales-by-client.tsx:66
-#: src/routes/reporting/sales-by-product.tsx:66
+#: src/routes/reporting/sales-by-client.tsx:67
+#: src/routes/reporting/sales-by-product.tsx:67
 msgid "Top 20 by revenue"
 msgstr "Top 20 by revenue"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:70
+#: src/routes/reporting/purchases-by-vendor.tsx:71
 msgid "Top 20 by spend"
 msgstr "Top 20 by spend"
 
-#: src/routes/dashboard.tsx:218
+#: src/routes/dashboard.tsx:219
 msgid "Top clients"
 msgstr "Top clients"
 
-#: src/routes/dashboard.tsx:238
+#: src/routes/dashboard.tsx:239
 msgid "Top products"
 msgstr "Top products"
 
@@ -3652,7 +3657,7 @@ msgstr "Top products"
 #: src/routes/accounting/reports/ap-aging.tsx:49
 #: src/routes/accounting/reports/ar-aging.tsx:49
 #: src/routes/accounting/trial-balance.tsx:106
-#: src/routes/dashboard.tsx:179
+#: src/routes/dashboard.tsx:180
 #: src/routes/incoming-invoices.tsx:147
 #: src/routes/incoming-invoices/details.tsx:419
 #: src/routes/invoices/details.tsx:816
@@ -3813,7 +3818,7 @@ msgid "Users"
 msgstr "Users"
 
 #: src/routes/accounting/reports/inventory-valuation.tsx:92
-#: src/routes/dashboard.tsx:206
+#: src/routes/dashboard.tsx:207
 msgid "Value"
 msgstr "Value"
 
@@ -3853,7 +3858,7 @@ msgstr "VATIN"
 #: src/routes/incoming-invoices/details.tsx:287
 #: src/routes/purchase-orders.tsx:89
 #: src/routes/purchase-orders/details.tsx:271
-#: src/routes/reporting/purchases-by-vendor.tsx:91
+#: src/routes/reporting/purchases-by-vendor.tsx:92
 msgid "Vendor"
 msgstr "Vendor"
 

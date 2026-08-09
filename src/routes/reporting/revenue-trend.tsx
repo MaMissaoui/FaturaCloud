@@ -3,6 +3,7 @@ import { Card, DatePicker, Switch, Table } from "antd";
 import { Column } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
+import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { LineChartOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -44,6 +45,13 @@ const RevenueTrend = () => {
       minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
     }).format(cents / 100);
 
+  // month is "YYYY-MM" (db/sales_reports.go's strftime output) — parsed as
+  // the 1st of that month and rendered via dayjs' active locale rather than
+  // shown raw, so a German/French user sees "März 2026"/"mars 2026" instead
+  // of "2026-03". The chart's own x-axis keeps the raw string (an AntV
+  // category axis, not a text render) — only this table cell needed it.
+  const formatMonth = (month: string) => dayjs(`${month}-01`).format("MMMM YYYY");
+
   return (
     <>
       <PageHeader
@@ -82,7 +90,11 @@ const RevenueTrend = () => {
             pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
             locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
           >
-            <Table.Column title={<Trans>Month</Trans>} dataIndex="month" key="month" />
+            <Table.Column
+              title={<Trans>Month</Trans>}
+              key="month"
+              render={(row: MonthlyRevenue) => formatMonth(row.month)}
+            />
             <Table.Column
               title={<Trans>Revenue</Trans>}
               key="revenue"
@@ -98,7 +110,7 @@ const RevenueTrend = () => {
             theme={themeMode === "dark" ? "classicDark" : "classic"}
             height={320}
             axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-            tooltip={{ items: [{ field: "revenue", valueFormatter: (v: number) => money(v) }] }}
+            tooltip={{ items: [{ field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) }] }}
           />
         )}
       </Card>

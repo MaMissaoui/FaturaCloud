@@ -3,6 +3,7 @@ import { Card, DatePicker, Table } from "antd";
 import { Bar } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
+import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { AppstoreOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -72,7 +73,7 @@ const SalesByProduct = () => {
           theme={themeMode === "dark" ? "classicDark" : "classic"}
           height={280}
           axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-          tooltip={{ items: [{ field: "revenue", valueFormatter: (v: number) => money(v) }] }}
+          tooltip={{ items: [{ field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) }] }}
         />
       </Card>
 

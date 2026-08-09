@@ -3,6 +3,7 @@ import { Card, Col, Row, Select, Statistic, Table, theme } from "antd";
 import { Column } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
+import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { DashboardOutlined } from "@ant-design/icons";
 
@@ -113,7 +114,7 @@ const Dashboard = () => {
               theme={themeMode === "dark" ? "classicDark" : "classic"}
               height={280}
               axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-              tooltip={{ items: [{ field: "revenue", valueFormatter: (v: number) => money(v) }] }}
+              tooltip={{ items: [{ field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) }] }}
             />
           </Card>
         </Col>
