@@ -2,13 +2,15 @@
 
 ## Status
 
-**Tier 0, Tier 1, Tier 2 (including 2.3), and Tier 3 are all done**, verified
-in-browser, and committed — all six document detail pages share the
-`src/components/line-items/table.tsx` shell with the borderless
+**All tiers (0-4) are done.** Tier 0, Tier 1, Tier 2 (including 2.3), and
+Tier 3 are verified in-browser and committed — all six document detail pages
+share the `src/components/line-items/table.tsx` shell with the borderless
 cell/drag-handle polish, and now use responsive header-field layouts. Tier
 3's original scope (Card-wrapping, totals unification) turned out to be based
 on stale premises and was corrected down to just the responsive-span
-conversion — see the Tier 3 section for the full write-up.
+conversion — see the Tier 3 section for the full write-up. Tier 4 (product
+search-at-scale, Dashboard, Reporting) shipped later as separate
+initiatives — see the Tier 4 section for what shipped and where.
 
 Tier 2 progress:
 
@@ -680,39 +682,30 @@ unrequested extra churn.
 
 ---
 
-## Tier 4 — Scale & reporting (separate initiative, not scoped in detail yet)
+## Tier 4 — Scale & reporting (done, shipped as separate initiatives)
 
-Two items raised after Tier 0 shipped. Recorded here for planning; neither has
-an implementation plan yet, and **both break this doc's own non-goal of
-"frontend-only, no Go/API/DB changes"** — they're a distinct initiative from
-the Tier 0-3 UI-consistency pass, not a continuation of it.
+Two items raised after Tier 0 shipped, deliberately scoped out of Tier 0-3
+since both break this doc's own non-goal of "frontend-only, no Go/API/DB
+changes." Both have since shipped, each as its own initiative rather than a
+continuation of this plan — recorded here for the historical record only;
+nothing below is still open.
 
-### 4.1 Inventory / product-list UI at scale
+### 4.1 Inventory / product-list UI at scale — done
 
-Confirmed today: `GetProducts`/`GetStockMovements` (`src/atoms/product.ts`,
-`src/atoms/stock.ts`) fetch the _entire_ table in one request with no
-`limit`/`offset`/`search` params anywhere in `api/products.go`; `/inventory`
-and `/products` paginate client-side only (`pagination={{ pageSize: 50 }}` at
-`src/routes/inventory.tsx:114`, `defaultPageSize: 25` in `products.tsx`). Fine
-at tens/hundreds of rows; at thousands this means a multi-MB payload on every
-load, full in-memory filter/sort, and no server-side search. Needs: paginated
+`api/products.go`'s `GetProducts` now takes `search`/`limit`/`offset`, and
+`src/routes/products.tsx` debounces a search box against it with server-side
+`Table` pagination/sorting, replacing the old fetch-the-whole-table approach
+this section originally flagged.
 
-- filtered Go endpoints, matching server-side `Table` pagination/sorting and
-  debounced search on the frontend, and likely a DB index on
-  `products(organizationId, name/sku)`. Also worth checking whether the
-  line-item product `Select`s (which assume the full product list fits in an
-  in-browser `showSearch` dropdown) need to move to a search-as-you-type API
-  call once this is in the thousands.
+### 4.2 Dashboard(s) and reports — done
 
-### 4.2 Dashboard(s) and reports
-
-Confirmed today: no dashboard or reporting route/component exists anywhere in
-`src/routes/` or `src/layouts/`. This is a new feature area, not a refactor —
-needs a decision on what to report (revenue over time, outstanding invoices,
-stock valuation, top clients/products, sales vs. purchasing) before any
-implementation, new aggregate Go endpoints (`GROUP BY`/`SUM` queries, not just
-returning raw entity lists for the frontend to crunch), and a new sidebar
-entry/section.
+Shipped as **Tier 4.2 — Dashboard** (`db/dashboard.go`, PR #62, 2026-07-27):
+revenue trend, outstanding invoices, stock valuation, top clients/products.
+The separate **Reporting** menu (`db/sales_reports.go`, PR #80, 2026-08-09) —
+Revenue Trend, Sales by Client, Sales by Product, Purchases by Vendor, Tax
+Summary — later reused `GetDashboardData`'s underlying queries rather than
+duplicating them. See CLAUDE.md's "Sidebar Navigation" and `db/sales_reports.go`
+entries for both.
 
 ---
 
