@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 // Organization mirrors the organizations table.
@@ -229,6 +231,9 @@ func (d *Database) SetOrganizationLogo(organizationID string, data []byte) (bool
 }
 
 func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organization, error) {
+	if req.ID == "" {
+		req.ID, _ = gonanoid.New()
+	}
 	if req.Code == nil {
 		empty := ""
 		req.Code = &empty

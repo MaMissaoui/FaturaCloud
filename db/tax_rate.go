@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 // ErrTaxRateInUse is returned by DeleteTaxRate when the rate is still
@@ -109,6 +111,9 @@ func (d *Database) GetTaxRate(taxRateID string) (*TaxRate, error) {
 }
 
 func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
+	if req.ID == "" {
+		req.ID, _ = gonanoid.New()
+	}
 	if req.CategoryCode == "" {
 		req.CategoryCode = "S"
 	}
