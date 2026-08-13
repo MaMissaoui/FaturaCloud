@@ -92,8 +92,17 @@ func (d *Database) GetIncomingInvoiceAmountPaid(billID string) (int64, error) {
 }
 
 func (d *Database) getDocumentAmountPaid(documentType, documentID string) (int64, error) {
+	return getDocumentAmountPaidTx(d.DB, documentType, documentID)
+}
+
+// getDocumentAmountPaidTx is the tx-capable twin of getDocumentAmountPaid,
+// used by CreatePayment (F48) to re-verify the overpay check inside its own
+// transaction — the initial check runs against pre-tx reads, so a second
+// concurrent payment against the same document needs its own fresh sum
+// against a connection serialized behind the first payment's commit.
+func getDocumentAmountPaidTx(exec sqlGetExecer, documentType, documentID string) (int64, error) {
 	var amount int64
-	err := d.DB.Get(&amount, `
+	err := exec.Get(&amount, `
 		SELECT COALESCE(SUM(pa.amount), 0)
 		FROM payment_applications pa
 		JOIN payments p ON p.id = pa.paymentId
@@ -253,6 +262,18 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 
 	var settlements []settlementLine
 
+	// F48: overpay check re-verified inside the transaction below, against a
+	// fresh SUM rather than the index-based approach used for double-posting
+	// — an application's "remaining balance" isn't a single document, it's
+	// an aggregate over every other payment's applications, so a unique
+	// index can't encode it. Collected here (alongside each document's own
+	// total, which a concurrent payment cannot change) for that re-check.
+	type overpayCheck struct {
+		documentType, documentID string
+		total, amount            int64
+	}
+	var overpayChecks []overpayCheck
+
 	for i, app := range req.Applications {
 		if app.Amount <= 0 {
 			return nil, newValidationError("application %d: amount must be positive", i+1)
@@ -286,6 +307,7 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 			if remaining := invoice.Total - paid; app.Amount > remaining {
 				return nil, newValidationError("application %d: amount %d exceeds remaining balance %d", i+1, app.Amount, remaining)
 			}
+			overpayChecks = append(overpayChecks, overpayCheck{"invoice", invoice.ID, invoice.Total, app.Amount})
 			if org.DefaultArAccountID == nil {
 				return nil, newValidationError("cannot post payment: organization has no default AR account configured")
 			}
@@ -331,6 +353,7 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 			if remaining := bill.Total - paid; app.Amount > remaining {
 				return nil, newValidationError("application %d: amount %d exceeds remaining balance %d", i+1, app.Amount, remaining)
 			}
+			overpayChecks = append(overpayChecks, overpayCheck{"incoming_invoice", bill.ID, bill.Total, app.Amount})
 			if org.DefaultApAccountID == nil {
 				return nil, newValidationError("cannot post payment: organization has no default AP account configured")
 			}
@@ -413,6 +436,24 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 		return nil, fmt.Errorf("create_payment begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// F48: re-verify every application's remaining balance against a fresh
+	// in-tx sum — see the overpayCheck comment above. A concurrent payment
+	// that already committed against the same document between the pre-tx
+	// check and this transaction acquiring the connection would otherwise
+	// let both payments' applications through and over-settle the document.
+	for _, c := range overpayChecks {
+		paid, err := getDocumentAmountPaidTx(tx, c.documentType, c.documentID)
+		if err != nil {
+			return nil, err
+		}
+		if remaining := c.total - paid; c.amount > remaining {
+			return nil, newValidationError(
+				"amount %d exceeds remaining balance %d — another payment was recorded concurrently, reload and try again",
+				c.amount, remaining,
+			)
+		}
+	}
 
 	_, err = tx.Exec(`
 		INSERT INTO payments (
