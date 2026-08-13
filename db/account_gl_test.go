@@ -133,6 +133,71 @@ func TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsExistingOrgs
 	}
 }
 
+// TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsPartialOrgs
+// is F62's regression test: the gate used to be
+// `WHERE defaultInventoryAccountId IS NULL` alone, so an organization that
+// had that one column set manually (e.g. via the Accounting card) while the
+// other three stayed NULL was never selected for backfill at all — those
+// three columns would stay NULL forever, even though
+// seedInventoryAccountsTx itself is perfectly capable of filling them in
+// (its COALESCE leaves the manually-set column alone).
+func TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsPartialOrgs(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-inv-partial", Name: ptr("Partial Backfill Test Org")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	accounts, err := d.GetAccounts(org.ID)
+	if err != nil {
+		t.Fatalf("GetAccounts: %v", err)
+	}
+	var arbitraryAccountID string
+	for _, a := range accounts {
+		if a.Code == "1100" { // Accounts Receivable — an unrelated pre-existing account
+			arbitraryAccountID = a.ID
+		}
+	}
+	if arbitraryAccountID == "" {
+		t.Fatal("expected a seeded 1100 Accounts Receivable account to exist")
+	}
+
+	// Simulate a pre-Phase-7 organization (as in the "BackfillsExistingOrgs"
+	// test above: clear the default wiring, then delete the four new
+	// accounts) whose admin has since manually pointed
+	// defaultInventoryAccountId at some unrelated existing account, leaving
+	// the other three columns NULL — the exact partially-wired shape the
+	// old `WHERE defaultInventoryAccountId IS NULL` gate would skip
+	// forever, even though nothing else about this org differs from the
+	// fully-backfillable case above.
+	if _, err := d.DB.Exec(`
+		UPDATE organizations SET defaultInventoryAccountId = ?, defaultGRNIAccountId = NULL,
+		    defaultCOGSAccountId = NULL, defaultInventoryAdjustmentAccountId = NULL
+		WHERE id = ?`, arbitraryAccountID, org.ID,
+	); err != nil {
+		t.Fatalf("simulate partially-wired org: %v", err)
+	}
+	if _, err := d.DB.Exec(`DELETE FROM accounts WHERE organizationId = ? AND code IN ('1150','2150','5150','5900')`, org.ID); err != nil {
+		t.Fatalf("simulate pre-phase-7 delete: %v", err)
+	}
+
+	if err := d.SeedInventoryAccountingDefaultsForAllOrganizations(); err != nil {
+		t.Fatalf("SeedInventoryAccountingDefaultsForAllOrganizations: %v", err)
+	}
+
+	backfilled, err := d.GetOrganization(org.ID)
+	if err != nil {
+		t.Fatalf("GetOrganization: %v", err)
+	}
+	if backfilled.DefaultInventoryAccountID == nil || *backfilled.DefaultInventoryAccountID != arbitraryAccountID {
+		t.Fatalf("expected the manually-set defaultInventoryAccountId to survive unchanged, got %+v", backfilled.DefaultInventoryAccountID)
+	}
+	if backfilled.DefaultGRNIAccountID == nil || backfilled.DefaultCOGSAccountID == nil ||
+		backfilled.DefaultInventoryAdjustmentAccountID == nil {
+		t.Fatalf("expected the other three defaults to be backfilled, got %+v", backfilled)
+	}
+}
+
 // TestSeedInventoryAccountsSkipsCodeCollision confirms a backfill doesn't
 // fail an organization's whole seeding pass just because it already has its
 // own account at one of the four new codes — it skips that one insert and

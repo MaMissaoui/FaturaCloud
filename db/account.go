@@ -579,8 +579,21 @@ func nullableString(s string) any {
 // defaultInventoryAccountId IS NULL instead, and idempotent — safe to run
 // on every startup.
 func (d *Database) SeedInventoryAccountingDefaultsForAllOrganizations() error {
+	// F62 (2026-08-13 audit): gated on *any* of the four columns being
+	// NULL, not just defaultInventoryAccountId — seedInventoryAccountsTx
+	// itself is already safe to call on a partially-wired organization
+	// (its COALESCE keeps whatever's already set), but an organization
+	// that had only defaultInventoryAccountId set manually (e.g. via the
+	// Accounting card) while the other three stayed NULL would never be
+	// selected here, and so never get the chance to have them backfilled.
 	var orgIDs []string
-	if err := d.DB.Select(&orgIDs, `SELECT id FROM organizations WHERE defaultInventoryAccountId IS NULL`); err != nil {
+	if err := d.DB.Select(&orgIDs, `
+		SELECT id FROM organizations
+		WHERE defaultInventoryAccountId IS NULL
+		   OR defaultGRNIAccountId IS NULL
+		   OR defaultCOGSAccountId IS NULL
+		   OR defaultInventoryAdjustmentAccountId IS NULL`,
+	); err != nil {
 		return fmt.Errorf("seed_inventory_accounting_defaults list_organizations: %w", err)
 	}
 	for _, orgID := range orgIDs {
