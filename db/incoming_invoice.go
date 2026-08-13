@@ -469,9 +469,13 @@ func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoic
 		}
 	}
 
+	// Built whenever the target state needs GL presence at all — see the
+	// matching comment in UpdateInvoiceState (db/invoice.go): the
+	// authoritative post/reverse decision is made from a fresh in-tx read
+	// below, not this pre-tx one.
 	var glLines []CreateJournalLineRequest
 	var journal *Journal
-	if needsGL && existingEntry == nil {
+	if needsGL {
 		lineItems, err := d.GetIncomingInvoiceLineItems(id)
 		if err != nil {
 			return nil, fmt.Errorf("update_incoming_invoice_state line_items: %w", err)
@@ -487,6 +491,12 @@ func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoic
 		return nil, fmt.Errorf("update_incoming_invoice_state begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// F48: re-check inside the transaction — see UpdateInvoiceState.
+	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, "incoming_invoice", id)
+	if err != nil {
+		return nil, err
+	}
 
 	if _, err := tx.Exec(`UPDATE incoming_invoices SET state = ? WHERE id = ?`, state, id); err != nil {
 		return nil, fmt.Errorf("update_incoming_invoice_state exec: %w", err)

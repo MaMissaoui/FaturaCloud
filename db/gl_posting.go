@@ -108,8 +108,20 @@ func reverseEntryTx(tx *sqlx.Tx, original *JournalEntry, reason string, reversal
 		return "", err
 	}
 
-	if _, err := tx.Exec(`UPDATE journal_entries SET status = 'reversed' WHERE id = ?`, original.ID); err != nil {
+	// F48: guard against a concurrent double-reversal (e.g. two overlapping
+	// VoidPayment calls against the same payment) the same way
+	// allocateAndFinalizeEntryTx's entryNumber allocation guards posting —
+	// callers typically read `original` before this transaction began, so
+	// by the time this statement runs another request may already have
+	// reversed it. If so, this UPDATE affects zero rows and the whole
+	// transaction (including the reversal entry just inserted above) rolls
+	// back via the caller's deferred tx.Rollback().
+	res, err := tx.Exec(`UPDATE journal_entries SET status = 'reversed' WHERE id = ? AND status = 'posted'`, original.ID)
+	if err != nil {
 		return "", fmt.Errorf("reverse_entry mark_original: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return "", newValidationError("cannot reverse: entry is no longer posted — it may already have been reversed")
 	}
 
 	return reversalID, nil

@@ -78,8 +78,20 @@ func (d *Database) CloseFiscalYear(fiscalYearID string) (*FiscalYear, error) {
 		return nil, fmt.Errorf("close_fiscal_year get_organization: %w", err)
 	}
 
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("close_fiscal_year begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	// F49: the activity snapshot runs inside the transaction, against tx —
+	// not d.DB — so a posting committed after the pre-tx `year` read above
+	// but before this transaction acquires the connection is still included.
+	// Read outside a transaction, this SELECT could miss activity that a
+	// concurrent request commits in the gap, silently excluding it from the
+	// closing entry and unbalancing the year with no error raised anywhere.
 	rows := []glAccountActivityRow{}
-	if err := d.DB.Select(&rows, `
+	if err := tx.Select(&rows, `
 		SELECT a.id AS accountId, a.code AS code, a.name AS name, a.type AS type,
 		       COALESCE(SUM(jl.debit), 0) AS debit, COALESCE(SUM(jl.credit), 0) AS credit
 		FROM journal_lines jl
@@ -120,12 +132,6 @@ func (d *Database) CloseFiscalYear(fiscalYearID string) (*FiscalYear, error) {
 		lines = append(lines, closingLine(*org.RetainedEarningsAccountID, netIncome, false))
 	}
 
-	tx, err := d.DB.Beginx()
-	if err != nil {
-		return nil, fmt.Errorf("close_fiscal_year begin: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
 	if len(lines) > 0 {
 		journal, err := getJournalByTypeTx(tx, year.OrganizationID, "miscellaneous")
 		if err != nil {
@@ -139,12 +145,24 @@ func (d *Database) CloseFiscalYear(fiscalYearID string) (*FiscalYear, error) {
 		}
 	}
 
+	// F49: the WHERE status = 'open' re-check (not just the pre-tx read
+	// above) is what makes two concurrent closes idempotent instead of both
+	// posting their own closing entry — SetMaxOpenConns(1) serializes the
+	// transactions themselves, so the second call's Beginx() blocks until
+	// the first commits; without this guard the second call's stale `year`
+	// (still read as status='open' before either transaction began) would
+	// sail through and post a second closing entry against an already-closed
+	// year.
 	now := time.Now().UnixMilli()
-	if _, err := tx.Exec(
-		`UPDATE fiscal_years SET status = 'closed', closedAt = ? WHERE id = ?`,
+	res, err := tx.Exec(
+		`UPDATE fiscal_years SET status = 'closed', closedAt = ? WHERE id = ? AND status = 'open'`,
 		now, year.ID,
-	); err != nil {
+	)
+	if err != nil {
 		return nil, fmt.Errorf("close_fiscal_year update: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, newValidationError("only an open fiscal year can be closed")
 	}
 	// Every still-open period closes with the year — resolveFiscalPeriodForDate
 	// already blocks new postings once the year itself is closed, so this is
