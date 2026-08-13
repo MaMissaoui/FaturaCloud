@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.4] - 2026-08-13
+
+Concurrency/ledger, accounting-validation, frontend-reliability, and
+performance/ops audit (`docs/audit-plan-2026-08-13.md`), plus a same-day
+follow-up review of that round's own fixes for coverage gaps
+(`docs/audit-plan-2026-08-13-fix-review.md`).
+
+### Fixed
+- Several GL-posting and status-transition paths could double-post or
+  double-reverse a journal entry, or double-move stock, under concurrent
+  requests against the same document: invoice/bill state changes, payment
+  voids, fiscal year closing, draft journal entry deletion, and goods
+  receipt/delivery/order/purchase-order status transitions now all
+  re-verify their target row's state inside the same transaction that
+  writes it, instead of trusting a read taken before the transaction
+  opened.
+- `UpdateAccount` could retype an account or toggle it between
+  group/leaf while it already had posted journal history, retroactively
+  reclassifying past P&L/balance sheet figures; it now refuses when the
+  account has any usage.
+- Overlapping open fiscal years/periods were allowed, and the period
+  resolver's `LIMIT 1` with no ordering made which one applied
+  non-deterministic; both are now rejected/ordered deterministically.
+- The 3-way match report's "already invoiced" count included draft bills,
+  disagreeing with GRNI clearing's own approved/paid-only definition and
+  occasionally flagging a spurious variance.
+- Line-item unit price/cost conversion from the frontend's float64 cents
+  truncated toward zero instead of rounding, occasionally landing a cent
+  off from the validated total.
+- The invoice PDF preview leaked a resize listener and an object URL on
+  every regeneration, and shipped a debug `console.log` in production
+  builds.
+- A failed save in the Products, Tax Rates, Clients, or Vendors drawer
+  form (duplicate code, FK violation, server error) silently closed the
+  drawer and discarded the user's input instead of keeping it open.
+- The Users settings page used a module-level Jotai atom for drawer
+  state, the one remaining page violating this app's drawer/modal
+  local-state rule (risk of an orphaned mask freezing the UI).
+- `CreateInvoice`/`CreateDelivery`/`CreateOrder`/`CreateOrganization`/
+  `CreateTaxRate` now guard a client-supplied empty `id`, which would
+  otherwise insert an empty-string primary key.
+- The inventory-accounting-defaults backfill could permanently skip an
+  organization that had exactly one of its four GL default accounts set
+  manually, leaving the other three unset forever.
+- The backup scheduler could mistake a partial file left by a failed
+  `VACUUM INTO` for a completed backup and silently stop retrying;
+  retention cleanup now only ever touches files this app itself created.
+
+### Security
+- `X-Forwarded-Proto` was trusted unconditionally, which could mark a
+  session cookie `Secure`/send HSTS on a misconfigured plain-HTTP
+  deployment; it's now only honored from a configured trusted proxy, the
+  same trust boundary already applied to `X-Forwarded-For`.
+- OIDC login now rejects sign-in when the provider's `email_verified`
+  claim is present and `false`, instead of provisioning the account
+  regardless.
+
+### Performance
+- Added a missing index on `journal_entries.fiscalYearId`, used by
+  fiscal year closing, both GL exports, and every GL report.
+- OIDC first-login password hashing no longer runs while holding the
+  global write lock, which previously stalled all other API traffic for
+  the duration of a bcrypt hash on every first sign-in.
+
 ## [3.7.3] - 2026-08-13
 
 Routine dependency-currency maintenance from a security audit; no
