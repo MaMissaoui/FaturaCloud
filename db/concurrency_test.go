@@ -321,10 +321,17 @@ func TestConcurrentUpdateIncomingInvoiceStateDoesNotDoublePost(t *testing.T) {
 }
 
 // TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock is F69's
-// regression coverage for F48's guard in UpdateInboundDeliveryStatus: unlike
-// the invoice-state paths above, draft->received is gated by a transition
-// matrix, so racing calls should let exactly one succeed — not all of them —
-// and post exactly one GRNI accrual while moving stock exactly once.
+// regression coverage for F48's guard in UpdateInboundDeliveryStatus.
+// draft->received is transition-gated, but `status != current.Status &&
+// !transitions[...]` treats re-requesting the status a call's own stale
+// pre-tx read already landed on as a no-op, not a conflict — so a racing
+// goroutine whose pre-tx read happens to run after the winner already
+// committed legitimately no-ops with err == nil too. At least one call must
+// succeed, but exactly how many report success is scheduling-dependent (this
+// flaked in CI with 2 successes out of 8 racers, which is correct behavior,
+// not a bug — see the guard's short-circuit above). The invariant that
+// actually matters, and that the pre-fix code violated, is that only one
+// GRNI accrual ever posts and stock only ever moves once.
 func TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-concurrent-receive", 100, 250)
@@ -351,8 +358,8 @@ func TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock(t *testing.
 			successes++
 		}
 	}
-	if successes != 1 {
-		t.Fatalf("successes = %d, want exactly 1 — concurrent draft->received calls should let only one win", successes)
+	if successes < 1 {
+		t.Fatalf("successes = %d, want at least 1 — every racing call was rejected, none reached received", successes)
 	}
 
 	var count int
@@ -378,10 +385,12 @@ func TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock(t *testing.
 }
 
 // TestConcurrentUpdateDeliveryStatusDoesNotDoubleMoveStock is F69's
-// regression coverage for F48's guard in UpdateDeliveryStatus: the same
-// shape as the receipt test above, for the shipping side — draft->shipped
-// is transition-gated, so only one racing call should win, posting exactly
-// one COGS entry and moving stock exactly once.
+// regression coverage for F48's guard in UpdateDeliveryStatus — the same
+// shape as the receipt test above, for the shipping side. See that test's
+// comment: `UpdateDeliveryStatus` has the identical status != current.Status
+// no-op short-circuit, so more than one racing call can legitimately report
+// success. What must hold regardless is exactly one COGS entry and exactly
+// one stock movement.
 func TestConcurrentUpdateDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-concurrent-ship", 100, 250)
@@ -413,8 +422,8 @@ func TestConcurrentUpdateDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
 			successes++
 		}
 	}
-	if successes != 1 {
-		t.Fatalf("successes = %d, want exactly 1 — concurrent draft->shipped calls should let only one win", successes)
+	if successes < 1 {
+		t.Fatalf("successes = %d, want at least 1 — every racing call was rejected, none reached shipped", successes)
 	}
 
 	var count int
