@@ -143,6 +143,10 @@ func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLi
 }
 
 func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery, error) {
+	if req.ID == "" {
+		req.ID, _ = gonanoid.New()
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("create_delivery begin: %w", err)

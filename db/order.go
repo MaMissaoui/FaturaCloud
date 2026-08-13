@@ -166,6 +166,9 @@ func (d *Database) GetOrderDeliveredQuantities(orderID string) (map[string]float
 }
 
 func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
+	if req.ID == "" {
+		req.ID, _ = gonanoid.New()
+	}
 	if req.Status == "" {
 		req.Status = "draft"
 	}
@@ -306,9 +309,32 @@ func (d *Database) UpdateOrderStatus(orderID string, status string) (*Order, err
 		return nil, newValidationError("cannot transition order from %q to %q", current.Status, status)
 	}
 
-	_, err = d.DB.Exec(`UPDATE orders SET status = ? WHERE id = ?`, status, orderID)
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("update_order_status begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	// F66 (2026-08-13 fix-review): re-check the status the transition above
+	// was validated against, now that this transaction actually holds the
+	// connection — the same guard F48 added to every GL/stock-affecting
+	// status path (UpdateInvoiceState, UpdateDeliveryStatus, ...).
+	res, err := tx.Exec(
+		`UPDATE orders SET status = ? WHERE id = ? AND status = ?`, status, orderID, current.Status,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("update_order_status: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("update_order_status rows_affected: %w", err)
+	}
+	if n == 0 {
+		return nil, newValidationError("order status changed by another request — reload and try again")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("update_order_status commit: %w", err)
 	}
 	return d.GetOrder(orderID)
 }

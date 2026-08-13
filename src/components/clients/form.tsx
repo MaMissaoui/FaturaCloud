@@ -83,11 +83,15 @@ const ClientForm = () => {
 
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
-    await setClient(values);
-    setClientId(null);
-    navigate(location.pathname, { state: { clientModal: false } });
-    form.resetFields();
-    setSubmitting(false);
+    try {
+      await setClient(values);
+      handleClose();
+    } catch {
+      // setClient already toasted the error — keep the drawer open with
+      // the user's input intact rather than closing on a failed save.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {

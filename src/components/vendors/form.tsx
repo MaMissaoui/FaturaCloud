@@ -65,11 +65,15 @@ const VendorForm = () => {
 
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
-    await setVendor(values);
-    setVendorId(null);
-    navigate(location.pathname, { state: { vendorModal: false } });
-    form.resetFields();
-    setSubmitting(false);
+    try {
+      await setVendor(values);
+      handleClose();
+    } catch {
+      // setVendor already toasted the error — keep the drawer open with
+      // the user's input intact rather than closing on a failed save.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {

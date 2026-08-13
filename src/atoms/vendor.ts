@@ -97,6 +97,7 @@ export const vendorAtom = atom(
       } else {
         message.error(t`Vendor update failed`);
       }
+      throw error;
     }
   },
 );

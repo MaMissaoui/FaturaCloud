@@ -284,3 +284,160 @@ func TestConcurrentDeleteJournalEntryDoesNotDeleteAPostedEntry(t *testing.T) {
 		}
 	}
 }
+
+// TestConcurrentUpdateIncomingInvoiceStateDoesNotDoublePost is F69's
+// regression coverage for F48's guard in UpdateIncomingInvoiceState — the
+// same pattern TestConcurrentUpdateInvoiceStateDoesNotDoublePost proves for
+// sales invoices, applied to vendor bills, which F48 fixed but had never
+// been exercised concurrently.
+func TestConcurrentUpdateIncomingInvoiceStateDoesNotDoublePost(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-concurrent-bill-post")
+	bill := fx.createIncomingInvoice(t, d, "concurrent-bill-1", 1, 1000)
+
+	const n = 8
+	errs := concurrentlyRun(n, func(i int) error {
+		_, err := d.UpdateIncomingInvoiceState(bill.ID, "approved")
+		return err
+	})
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("goroutine %d: UpdateIncomingInvoiceState(approved): %v", i, err)
+		}
+	}
+
+	var count int
+	if err := d.DB.Get(&count, `
+		SELECT COUNT(*) FROM journal_entries
+		WHERE sourceDocumentType = 'incoming_invoice' AND sourceDocumentId = ?
+		      AND status = 'posted' AND reversalOfEntryId IS NULL`,
+		bill.ID,
+	); err != nil {
+		t.Fatalf("count posted entries: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("posted entry count = %d, want exactly 1 — concurrent draft->approved calls double-posted", count)
+	}
+}
+
+// TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock is F69's
+// regression coverage for F48's guard in UpdateInboundDeliveryStatus: unlike
+// the invoice-state paths above, draft->received is gated by a transition
+// matrix, so racing calls should let exactly one succeed — not all of them —
+// and post exactly one GRNI accrual while moving stock exactly once.
+func TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-concurrent-receive", 100, 250)
+
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: fx.orgID, PurchaseOrderID: &fx.poID, VendorID: &fx.vendorID,
+		DeliveryNumber: "GR-CONCURRENT", DeliveryDate: fx.date,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{PurchaseOrderLineItemID: &fx.poLineID, Description: "Widget", Quantity: 10},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+
+	const n = 8
+	errs := concurrentlyRun(n, func(i int) error {
+		_, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil)
+		return err
+	})
+	successes := 0
+	for _, err := range errs {
+		if err == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("successes = %d, want exactly 1 — concurrent draft->received calls should let only one win", successes)
+	}
+
+	var count int
+	if err := d.DB.Get(&count, `
+		SELECT COUNT(*) FROM journal_entries
+		WHERE sourceDocumentType = 'inbound_delivery' AND sourceDocumentId = ?
+		      AND status = 'posted' AND reversalOfEntryId IS NULL`,
+		receipt.ID,
+	); err != nil {
+		t.Fatalf("count posted entries: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("posted GRNI entry count = %d, want exactly 1", count)
+	}
+
+	product, err := d.GetProduct(fx.productID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	if product.StockQuantity != 10 {
+		t.Fatalf("stockQuantity = %v, want 10 — receipt's stock should only move once", product.StockQuantity)
+	}
+}
+
+// TestConcurrentUpdateDeliveryStatusDoesNotDoubleMoveStock is F69's
+// regression coverage for F48's guard in UpdateDeliveryStatus: the same
+// shape as the receipt test above, for the shipping side — draft->shipped
+// is transition-gated, so only one racing call should win, posting exactly
+// one COGS entry and moving stock exactly once.
+func TestConcurrentUpdateDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-concurrent-ship", 100, 250)
+	fx.receive(t, d, "GR-STOCK", 100) // stock the product up first
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		OrganizationID: fx.orgID, DeliveryNumber: "DN-CONCURRENT", DeliveryDate: fx.date,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &fx.productID, Description: "Widget", Quantity: 5},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+
+	before, err := d.GetProduct(fx.productID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+
+	const n = 8
+	errs := concurrentlyRun(n, func(i int) error {
+		_, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil)
+		return err
+	})
+	successes := 0
+	for _, err := range errs {
+		if err == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("successes = %d, want exactly 1 — concurrent draft->shipped calls should let only one win", successes)
+	}
+
+	var count int
+	if err := d.DB.Get(&count, `
+		SELECT COUNT(*) FROM journal_entries
+		WHERE sourceDocumentType = 'outbound_delivery' AND sourceDocumentId = ?
+		      AND status = 'posted' AND reversalOfEntryId IS NULL`,
+		delivery.ID,
+	); err != nil {
+		t.Fatalf("count posted entries: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("posted COGS entry count = %d, want exactly 1", count)
+	}
+
+	after, err := d.GetProduct(fx.productID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	if before.StockQuantity-after.StockQuantity != 5 {
+		t.Fatalf(
+			"stock dropped by %v, want exactly 5 — shipment's stock should only move once",
+			before.StockQuantity-after.StockQuantity,
+		)
+	}
+}
