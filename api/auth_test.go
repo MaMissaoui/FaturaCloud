@@ -2,14 +2,64 @@ package api
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+// TestIsHTTPS_OnlyTrustsForwardedProtoFromTrustedProxy is F64's regression
+// test: X-Forwarded-Proto must only be honored when the request's direct
+// peer is a configured trusted proxy — the same trust boundary
+// TRUSTED_PROXIES already draws for X-Forwarded-For. Before this fix, any
+// peer could set the header directly and force a Secure cookie/HSTS on a
+// plain-HTTP deployment.
+func TestIsHTTPS_OnlyTrustsForwardedProtoFromTrustedProxy(t *testing.T) {
+	trusted := []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
+
+	tests := []struct {
+		name           string
+		remoteAddr     string
+		trustedProxies []netip.Prefix
+		forwardedProto string
+		want           bool
+	}{
+		{"no proxies configured, header ignored", "203.0.113.5:12345", nil, "https", false},
+		{"untrusted peer sets header, ignored", "203.0.113.5:12345", trusted, "https", false},
+		{"trusted peer sets header, honored", "10.1.2.3:54321", trusted, "https", true},
+		{"trusted peer, no header", "10.1.2.3:54321", trusted, "", false},
+		{"trusted peer, header says http", "10.1.2.3:54321", trusted, "http", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = tc.remoteAddr
+			if tc.forwardedProto != "" {
+				req.Header.Set("X-Forwarded-Proto", tc.forwardedProto)
+			}
+			if got := IsHTTPS(req, tc.trustedProxies); got != tc.want {
+				t.Errorf("IsHTTPS() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestIsHTTPS_DirectTLSAlwaysTrusted confirms r.TLS != nil (a direct HTTPS
+// connection to the Go process itself, no proxy involved) is trusted
+// regardless of trustedProxies or headers.
+func TestIsHTTPS_DirectTLSAlwaysTrusted(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "203.0.113.5:12345"
+	req.TLS = &tls.ConnectionState{}
+	if !IsHTTPS(req, nil) {
+		t.Error("expected a direct TLS connection to report HTTPS regardless of trustedProxies")
+	}
+}
 
 // TestLogin seeds a user with a real bcrypt hash (seedUser's placeholder
 // "unused-hash" isn't a valid bcrypt hash and would make every login fail,

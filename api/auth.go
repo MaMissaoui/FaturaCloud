@@ -65,6 +65,50 @@ func sweepLoginBuckets() {
 	}
 }
 
+// IsTrustedProxyPeer reports whether the request's direct TCP peer matches
+// one of the configured trusted-proxy prefixes. Shared by clientIP (decides
+// whether to honor X-Forwarded-For) and IsHTTPS below (decides whether to
+// honor X-Forwarded-Proto) — both headers are only as trustworthy as the
+// peer that's allowed to set them, and an empty trustedProxies list means
+// nobody is trusted, matching the "only the direct peer" default.
+func IsTrustedProxyPeer(r *http.Request, trustedProxies []netip.Prefix) bool {
+	if len(trustedProxies) == 0 {
+		return false
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	peer, err := netip.ParseAddr(host)
+	if err != nil {
+		return false
+	}
+	for _, p := range trustedProxies {
+		if p.Contains(peer) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsHTTPS reports whether the original client request was HTTPS, accounting
+// for TLS termination upstream. F64 (2026-08-13 audit): X-Forwarded-Proto is
+// only honored from a trusted proxy peer — the same trust boundary
+// TRUSTED_PROXIES already draws for X-Forwarded-For (clientIP above).
+// Before this fix, any peer able to reach the app directly (misconfigured
+// proxy, or the app exposed without one) could set Secure cookies/HSTS on a
+// plain-HTTP deployment just by sending the header, locking clients out of
+// their session.
+func IsHTTPS(r *http.Request, trustedProxies []netip.Prefix) bool {
+	if r.TLS != nil {
+		return true
+	}
+	if !IsTrustedProxyPeer(r, trustedProxies) {
+		return false
+	}
+	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+}
+
 // clientIP returns the address to key login rate-limiting on. By default
 // (h.trustedProxies empty) it's always the direct TCP peer — safe with no
 // reverse proxy in front, but every client sharing that proxy then shares one
@@ -78,21 +122,7 @@ func (h *handler) clientIP(r *http.Request) string {
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	if len(h.trustedProxies) == 0 {
-		return host
-	}
-	peer, err := netip.ParseAddr(host)
-	if err != nil {
-		return host
-	}
-	trusted := false
-	for _, p := range h.trustedProxies {
-		if p.Contains(peer) {
-			trusted = true
-			break
-		}
-	}
-	if !trusted {
+	if !IsTrustedProxyPeer(r, h.trustedProxies) {
 		return host
 	}
 	xff := r.Header.Get("X-Forwarded-For")
@@ -175,7 +205,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 
 	// The token rides in an httpOnly cookie, never the response body — page
 	// JavaScript never sees it, so XSS can't steal the session.
-	setAuthCookie(w, r, token)
+	h.setAuthCookie(w, r, token)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"user": map[string]any{
 			"id":           user.ID,
@@ -191,38 +221,38 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 func (h *handler) logout(w http.ResponseWriter, r *http.Request) {
 	// The cookie is httpOnly, so the client can't clear it itself — the server
 	// must expire it here.
-	clearAuthCookie(w, r)
+	h.clearAuthCookie(w, r)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 }
 
 const authCookieMaxAge = int(24 * 60 * 60) // seconds; matches the JWT's 24h exp
 
 // setAuthCookie writes the session JWT as an httpOnly, SameSite=Lax cookie.
-// Secure is set only when the original request arrived over HTTPS (isHTTPS),
+// Secure is set only when the original request arrived over HTTPS (IsHTTPS),
 // so it still works for a plain-HTTP LAN deployment. SameSite=Lax lets the
 // cookie ride top-level GET navigations (deep links, the OIDC return) while
 // withholding it from cross-site subrequests and non-GET requests — the CSRF
 // primary defense.
-func setAuthCookie(w http.ResponseWriter, r *http.Request, token string) {
+func (h *handler) setAuthCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     authCookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   isHTTPS(r),
+		Secure:   IsHTTPS(r, h.trustedProxies),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   authCookieMaxAge,
 	})
 }
 
 // clearAuthCookie expires the session cookie (same attributes, MaxAge<0).
-func clearAuthCookie(w http.ResponseWriter, r *http.Request) {
+func (h *handler) clearAuthCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     authCookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   isHTTPS(r),
+		Secure:   IsHTTPS(r, h.trustedProxies),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
