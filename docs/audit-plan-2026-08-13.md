@@ -19,9 +19,9 @@ bumps through v3.7.3.
   producing it.
 
 **Status:** Phase 1 (F48–F50) fixed, PR open. Phase 2 (F51–F54, F53
-excepted) fixed, PR open. Phase 3 (F55–F57) fixed, PR open — surfaced one
-new unnumbered finding during manual verification (see 3.4, a pre-existing
-`pdfjs-dist` version mismatch, out of scope). Phase 4 not started.
+excepted) fixed, PR open. Phase 3 (F55–F57) fixed, PR open — surfaced and
+later fixed one new unnumbered finding during manual verification (see 3.4,
+a pre-existing `pdfjs-dist` version mismatch). Phase 4 not started.
 Triage notes from the executing session: F53 is a product decision
 (changing `PreviouslyInvoiced` to `approved`/`paid`-only), left open for the
 user rather than changed unilaterally — see 2.3. F54's fix is scoped to the
@@ -375,11 +375,34 @@ Reproduced after a full `node_modules/.vite` cache clear and dev-server
 restart, so it isn't stale build-cache; `pnpm-lock.yaml`/`package.json` are
 untouched by every phase of this audit, so it's pre-existing, likely
 introduced by the "bump npm dependencies to latest" commit (`cb79908`,
-before this audit's baseline commit). Not fixed here — out of scope for
-F55, and the fix (pin/dedupe `pdfjs-dist`, or check whether `react-pdf`'s
-`package.json` allows the workspace's `pdfjs-dist` to satisfy its peer
-range) deserves its own investigation rather than a rushed pin. Worth a
-follow-up.
+before this audit's baseline commit).
+
+**Fixed, as a follow-up.** `react-pdf@10.4.1` depends on `pdfjs-dist` as a
+regular (not peer) dependency, hard-pinned to an exact version (`5.4.296`)
+— pdfjs-dist doesn't keep a stable API/worker contract across releases, so
+react-pdf pins deliberately. This app also needs `pdfjs-dist` as its own
+direct dependency purely to resolve the worker file path under pnpm's
+strict node_modules resolution (`src/routes/invoices/details.tsx`), and
+that direct entry drifts independently every time an automated
+dependency-bump pass moves it forward — exactly what happened between
+`cb79908` and this audit's baseline. Fixed with a pnpm `catalog:` +
+`overrides` combination in `pnpm-workspace.yaml`: `pdfjs-dist` is now
+declared once in a `catalog`, `package.json`'s own dependency references
+`"catalog:"`, and an `overrides: { pdfjs-dist: "catalog:" }` entry forces
+every `pdfjs-dist` in the tree — including `react-pdf`'s nested one — to
+resolve to that single catalog version. `pnpm install` now installs exactly
+one copy (confirmed via `find node_modules/.pnpm -maxdepth 1 -iname
+"pdfjs-dist*"`); react-pdf's own `package.json` still declares `5.4.296` as
+its stated range (unaffected by the override, which only changes
+resolution), but what's actually linked into its dependency graph is the
+single overridden version. `pnpm lint && pnpm build` pass, and manual
+verification (Playwright, `admin@fatura.cloud`) confirmed the invoice PDF
+preview renders correctly with no `UnknownErrorException` in the console —
+compare against the same browser session's console history, which still
+shows the original error from before this fix. This closes the drift class
+permanently rather than just today's instance: a future bump to the
+catalog entry now moves react-pdf's resolved `pdfjs-dist` in lockstep
+instead of only the app's own declared range.
 
 ---
 
