@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -285,7 +286,21 @@ func (h *handler) recoverFromSafety(safetyPath string) bool {
 
 // ── Scheduler ─────────────────────────────────────────────────────────────────
 
+// runScheduler runs in a single dedicated goroutine (see NewRouter's
+// `go h.runScheduler()`), so lastSuccessDate is safe as plain local state —
+// no other goroutine ever touches it.
+//
+// F60 (2026-08-13 audit): the "already backed up today" gate used to be the
+// backup file's own existence on disk. That's fragile in a way the retry
+// count alone doesn't capture: if db.Backup's VACUUM INTO fails partway
+// through and still leaves a file behind at the target path, the next
+// minute's check would find that partial file and treat today as already
+// backed up — silently accepting a corrupt backup instead of retrying.
+// An in-memory marker, set only after Backup actually returns success,
+// can't be fooled by a partial file and naturally resets at the next date
+// change (the loop simply stops matching lastSuccessDate against `today`).
 func (h *handler) runScheduler() {
+	lastSuccessDate := ""
 	for {
 		time.Sleep(1 * time.Minute)
 
@@ -299,8 +314,8 @@ func (h *handler) runScheduler() {
 			continue
 		}
 
-		todayName := fmt.Sprintf("fatura-auto-%s.db", now.Format("2006-01-02"))
-		if _, err := os.Stat(filepath.Join(h.backupDir, todayName)); err == nil {
+		today := now.Format("2006-01-02")
+		if lastSuccessDate == today {
 			continue
 		}
 
@@ -309,15 +324,23 @@ func (h *handler) runScheduler() {
 			h.dbMu.RUnlock()
 			continue
 		}
-		err := h.db.Backup(filepath.Join(h.backupDir, todayName))
+		err := h.db.Backup(filepath.Join(h.backupDir, fmt.Sprintf("fatura-auto-%s.db", today)))
 		h.dbMu.RUnlock()
 		if err != nil {
 			continue
 		}
+		lastSuccessDate = today
 
 		h.applyRetention(cfg.RetentionDays)
 	}
 }
+
+// backupFilePrefix is the naming convention every backup this app creates —
+// scheduled (fatura-auto-*) or manual (see the POST /api/backups handler) —
+// shares. F60 (2026-08-13 audit): applyRetention used to delete *any* file
+// in backupDir past the cutoff by modtime alone, so a stray log or editor
+// artifact left in the directory would be silently destroyed too.
+const backupFilePrefix = "fatura-"
 
 func (h *handler) applyRetention(days int) {
 	if days <= 0 {
@@ -329,7 +352,7 @@ func (h *handler) applyRetention(days int) {
 		return
 	}
 	for _, e := range entries {
-		if e.IsDir() || e.Name() == "config.json" {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), backupFilePrefix) {
 			continue
 		}
 		info, err := e.Info()
