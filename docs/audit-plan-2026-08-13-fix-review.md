@@ -25,8 +25,16 @@ skips and why.
   and `pnpm lint && pnpm build` must pass. Update CLAUDE.md sections whose
   documented behavior a task changes.
 
-**Status:** Open — 4 findings, none fixed yet. Awaiting go-ahead to open a
-remediation branch/PR.
+**Status:** All 4 findings fixed. F66/F68 (`db/order.go`, `db/purchase_order.go`,
+`db/delivery.go`, `db/organization.go`, `db/tax_rate.go`) and F67
+(`src/atoms/client.ts`/`vendor.ts` + their Drawer forms) got the same fix
+shape as the F48/F56/F61 precedent they were missing. F69 added the three
+missing concurrent regression tests to `db/concurrency_test.go`, each
+verified to actually fail against the un-guarded code before confirming it
+passes against the fix (F66's `UpdateDeliveryStatus` test specifically —
+temporarily disabled its `tx`-status re-check and confirmed the test caught
+it, then restored it). `go vet ./... && go test -race -timeout=20m ./...`
+and `pnpm lint && pnpm build` all pass.
 
 ---
 
@@ -34,10 +42,10 @@ remediation branch/PR.
 
 | # | Finding | Area | Severity | Status |
 |---|---------|------|----------|--------|
-| F66 | `UpdateOrderStatus`/`UpdatePurchaseOrderStatus` never got F48's re-check pattern — bare pre-check-then-`UPDATE`, no transaction, no `RowsAffected` guard | Concurrency | Medium | Open |
-| F67 | `client.ts`/`vendor.ts` (+ their Drawer forms) never got F56's rethrow-after-toast — a failed create/update still closes the drawer and discards the user's input | Frontend | Medium | Open |
-| F68 | Four more `Create*` DB functions never got F61's empty-`req.ID` guard: `CreateDelivery`, `CreateOrder`, `CreateOrganization`, `CreateTaxRate` | Data integrity | Low | Open |
-| F69 | Three of F48's four re-read-under-`tx` guards (`UpdateIncomingInvoiceState`, `UpdateInboundDeliveryStatus`, `UpdateDeliveryStatus`) have zero concurrent-test coverage — `go test -race` passing proves nothing about them | Test coverage | Low | Open |
+| F66 | `UpdateOrderStatus`/`UpdatePurchaseOrderStatus` never got F48's re-check pattern — bare pre-check-then-`UPDATE`, no transaction, no `RowsAffected` guard | Concurrency | Medium | Fixed |
+| F67 | `client.ts`/`vendor.ts` (+ their Drawer forms) never got F56's rethrow-after-toast — a failed create/update still closes the drawer and discards the user's input | Frontend | Medium | Fixed |
+| F68 | Four more `Create*` DB functions never got F61's empty-`req.ID` guard: `CreateDelivery`, `CreateOrder`, `CreateOrganization`, `CreateTaxRate` | Data integrity | Low | Fixed |
+| F69 | Three of F48's four re-read-under-`tx` guards (`UpdateIncomingInvoiceState`, `UpdateInboundDeliveryStatus`, `UpdateDeliveryStatus`) have zero concurrent-test coverage — `go test -race` passing proves nothing about them | Test coverage | Low | Fixed |
 
 ---
 
