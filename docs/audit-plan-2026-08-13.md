@@ -20,8 +20,10 @@ bumps through v3.7.3.
 
 **Status:** Phase 1 (F48–F50) fixed, PR open. Phase 2 (F51–F54) fixed, PR
 open (#97 — F53 decided and pushed as a follow-up commit after the PR was
-first opened; see the PR #97 comment for what changed and why). Phases 3–4
-not started.
+first opened; see the PR #97 comment for what changed and why). Phase 3
+(F55–F57) fixed, PR open — surfaced and later fixed one new unnumbered
+finding during manual verification (see 3.4, a pre-existing `pdfjs-dist`
+version mismatch). Phase 4 not started.
 Triage notes from the executing session: F53 was initially left open as a
 product decision (changing `PreviouslyInvoiced` to `approved`/`paid`-only),
 then decided and fixed after the fact — see 2.3. F54's fix is scoped to the
@@ -45,9 +47,9 @@ itself already flags as "a footgun rather than a threat."
 | F52 | Overlapping fiscal years/periods allowed; `resolveFiscalPeriodForDate` resolves with `LIMIT 1` and no `ORDER BY` | Accounting integrity | Low | 2.2 | Fixed |
 | F53 | Match report counts **draft** bills in `PreviouslyInvoiced` while GRNI clearing counts only `approved`/`paid` — the two disagree about what has "billed" | Accounting integrity | Low | 2.3 | Fixed |
 | F54 | `int64(float64)` truncation of `unitPrice`/`unitCost` toward zero vs. decimal-rounded totals | Accounting integrity | Low | 2.4 | Fixed |
-| F55 | Invoice PDF preview leaks a resize listener and an object URL per generation; leftover `console.log` debug output ships in prod | Frontend | Medium | 3.1 | Open |
-| F56 | Product/tax-rate save failures close the form silently — setter swallows the error, `handleClose()`/`navigate()` still runs | Frontend | Medium | 3.2 | Open |
-| F57 | Users page uses module-level Jotai atoms for drawer state — violates the documented rule that risks an orphaned-mask freeze | Frontend | Low | 3.3 | Open |
+| F55 | Invoice PDF preview leaks a resize listener and an object URL per generation; leftover `console.log` debug output ships in prod | Frontend | Medium | 3.1 | Fixed |
+| F56 | Product/tax-rate save failures close the form silently — setter swallows the error, `handleClose()`/`navigate()` still runs | Frontend | Medium | 3.2 | Fixed |
+| F57 | Users page uses module-level Jotai atoms for drawer state — violates the documented rule that risks an orphaned-mask freeze | Frontend | Low | 3.3 | Fixed |
 | F58 | No index on `journal_entries.fiscalYearId` — `CloseFiscalYear`, both GL exports, and report group-bys scan by it | Performance | Low | 4.1 | Open |
 | F59 | `provisionOrSyncUser` holds `dbMu` write lock during bcrypt — every OIDC callback stalls all API traffic ~50–100 ms | Performance | Low | 4.2 | Open |
 | F60 | Scheduler retries a failing backup every minute for the whole scheduled hour; `applyRetention` deletes stray files by modtime | Ops | Low | 4.3 | Open |
@@ -310,6 +312,21 @@ the inputs with cleanup that revokes the *current* `pdfUrl` (track it in a ref o
 revoke the previous URL before each new `setPdfUrl`); delete the two `console.log`
 blocks and the dead state.
 
+**Fixed** (branch `audit/phase3-frontend-reliability`): the callback ref is
+replaced with a `useRef` + a stable `useEffect` that attaches/detaches the
+resize listener; the generated object URL is tracked in a ref, revoked
+before each new generation and on unmount; both `console.log` blocks and the
+dead `setSubmitting` state are deleted. Manually verified in a browser
+(logged into the local dev instance, opened an invoice, triggered the
+preview): the PDF-generation effect runs to completion (blob created, object
+URL created, `pdfUrl` set) with no console errors from the changed code —
+`react-pdf`'s actual on-screen render then failed with an unrelated
+pre-existing `pdfjs-dist` version mismatch (two versions resolved in
+`node_modules`, `5.4.296` vs `6.2.108`; confirmed pre-existing since
+`pnpm-lock.yaml`/`package.json` are untouched by this phase) which blocked a
+full visual confirmation but does not affect this finding's fix — flagged
+separately below, not fixed here (out of scope for F55).
+
 ### 3.2 Failed product/tax-rate saves close the form silently (F56)
 
 `src/components/products/form.tsx:129-141` and `src/components/tax-rates/form.tsx:83-90`
@@ -326,6 +343,12 @@ pairs rethrow with try/catch in the form), or check a returned success boolean
 before closing. Whichever is chosen, verify the two forms actually stay open on
 failure and keep the toast.
 
+**Fixed**: both atoms rethrow after toasting; both forms wrap the save call
+in try/catch and only close on success. Manually verified in a browser:
+opened the New Product drawer, submitted a duplicate SKU, confirmed the 409
+("product code already in use") surfaced as a toast and the drawer stayed
+open with the entered SKU still in the field, rather than closing.
+
 ### 3.3 Users page module-level Jotai drawer atoms (F57)
 
 `src/routes/settings/users.tsx:35-37` declares `searchAtom`, `drawerOpenAtom`,
@@ -341,6 +364,58 @@ filter state across navigation, which is a smell but not the freeze risk; the
 **Fix direction:** convert the three users-page atoms to `useState`/`useRef`.
 The list-page search atoms can stay if intentional, but consider scoping them to
 the route component for consistency.
+
+**Fixed**: `drawerOpenAtom`/`editingIdAtom` converted to `useState`.
+`searchAtom` left as a module-level atom, matching the other list pages'
+intentional filter-persistence pattern (not the freeze risk). Manually
+verified in a browser: opened the New User drawer, cancelled, opened an
+existing user for edit, closed via the X button, confirmed the page stayed
+interactive (search box still clickable, no orphaned mask) across the
+cycle.
+
+### 3.4 New finding surfaced during Phase 3 verification: duplicate `pdfjs-dist` resolution (unnumbered — not in original scope)
+
+While manually verifying F55's fix, the invoice PDF preview failed to render
+in the browser with `UnknownErrorException: The API version "5.4.296" does
+not match the Worker version "6.2.108"`. `node_modules/.pnpm` resolves
+**two** copies of `pdfjs-dist`: `6.2.108` (the direct top-level dependency
+`src/routes/invoices/details.tsx` imports for `pdfjs.GlobalWorkerOptions.
+workerSrc`) and `5.4.296` (a transitive dependency, presumably pulled in by
+`react-pdf` itself). `react-pdf`'s `<Document>`/`<Page>` components use
+whichever `pdfjs-dist` API version they were bundled against — mismatched
+against the worker file the app points them at — and the parse fails.
+Reproduced after a full `node_modules/.vite` cache clear and dev-server
+restart, so it isn't stale build-cache; `pnpm-lock.yaml`/`package.json` are
+untouched by every phase of this audit, so it's pre-existing, likely
+introduced by the "bump npm dependencies to latest" commit (`cb79908`,
+before this audit's baseline commit).
+
+**Fixed, as a follow-up.** `react-pdf@10.4.1` depends on `pdfjs-dist` as a
+regular (not peer) dependency, hard-pinned to an exact version (`5.4.296`)
+— pdfjs-dist doesn't keep a stable API/worker contract across releases, so
+react-pdf pins deliberately. This app also needs `pdfjs-dist` as its own
+direct dependency purely to resolve the worker file path under pnpm's
+strict node_modules resolution (`src/routes/invoices/details.tsx`), and
+that direct entry drifts independently every time an automated
+dependency-bump pass moves it forward — exactly what happened between
+`cb79908` and this audit's baseline. Fixed with a pnpm `catalog:` +
+`overrides` combination in `pnpm-workspace.yaml`: `pdfjs-dist` is now
+declared once in a `catalog`, `package.json`'s own dependency references
+`"catalog:"`, and an `overrides: { pdfjs-dist: "catalog:" }` entry forces
+every `pdfjs-dist` in the tree — including `react-pdf`'s nested one — to
+resolve to that single catalog version. `pnpm install` now installs exactly
+one copy (confirmed via `find node_modules/.pnpm -maxdepth 1 -iname
+"pdfjs-dist*"`); react-pdf's own `package.json` still declares `5.4.296` as
+its stated range (unaffected by the override, which only changes
+resolution), but what's actually linked into its dependency graph is the
+single overridden version. `pnpm lint && pnpm build` pass, and manual
+verification (Playwright, `admin@fatura.cloud`) confirmed the invoice PDF
+preview renders correctly with no `UnknownErrorException` in the console —
+compare against the same browser session's console history, which still
+shows the original error from before this fix. This closes the drift class
+permanently rather than just today's instance: a future bump to the
+catalog entry now moves react-pdf's resolved `pdfjs-dist` in lockstep
+instead of only the app's own declared range.
 
 ---
 
