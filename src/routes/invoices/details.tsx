@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
@@ -115,67 +115,35 @@ const PDFPreview: React.FC<{ createPDFDocument: () => React.ReactElement<any> | 
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const siderCollapsed = useAtomValue(siderAtom);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
 
-  // Callback ref that measures width when div is actually rendered
-  const containerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const measureWidth = () => {
-        const width = node.offsetWidth;
-        setContainerWidth(width - 40); // subtract some padding
-      };
+  // Measures the container once it's mounted and on every window resize —
+  // a stable effect bound to the ref, replacing a callback-ref pattern that
+  // stored its cleanup on the callback function itself (which never
+  // receives node-unmount calls), leaking the resize listener on every
+  // mount/unmount.
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
 
-      // Initial measurement
-      measureWidth();
-
-      // Re-measure on resize
-      const handleResize = () => measureWidth();
-      window.addEventListener("resize", handleResize);
-
-      // Store cleanup function for later use instead of returning it
-      const cleanup = () => {
-        window.removeEventListener("resize", handleResize);
-      };
-
-      // Store cleanup function on the node for later access
-      (node as any)._cleanup = cleanup;
-    } else {
-      // Node is being unmounted, run cleanup if it exists
-      const prevNode = containerRef as any;
-      if (prevNode._cleanup) {
-        prevNode._cleanup();
-      }
-    }
-    // Don't return anything to avoid the warning
+    const measureWidth = () => setContainerWidth(node.offsetWidth - 40); // subtract some padding
+    measureWidth();
+    window.addEventListener("resize", measureWidth);
+    return () => window.removeEventListener("resize", measureWidth);
   }, []);
 
-  // Effect to re-measure when sidebar changes
+  // Re-measure when the sidebar collapses/expands — its own resize event
+  // fires before the layout has actually settled, so this waits a beat and
+  // re-measures off the container's parent width directly.
   useEffect(() => {
-    // Trigger re-measurement when sidebar state changes
-    console.log("Sidebar state changed:", siderCollapsed);
     const timer = setTimeout(() => {
-      // Force a complete layout recalculation by triggering resize event
       window.dispatchEvent(new Event("resize"));
 
-      // Wait a bit more for the resize event to be processed
       setTimeout(() => {
-        const container = document.querySelector("[data-pdf-container]") as HTMLDivElement;
+        const container = containerRef.current;
         if (container && container.parentElement) {
-          // Use the parent element's width instead of the container's width
-          const parentWidth = container.parentElement.offsetWidth;
-          const containerWidth = container.offsetWidth;
-          const windowWidth = window.innerWidth;
-
-          console.log("Sidebar change measurements:", {
-            containerWidth,
-            parentWidth,
-            windowWidth,
-            siderCollapsed,
-            usingParentWidth: true,
-            finalWidth: parentWidth - 40,
-          });
-
-          // Use parent width instead of container width
-          setContainerWidth(parentWidth - 40);
+          setContainerWidth(container.parentElement.offsetWidth - 40);
         }
       }, 100);
     }, 500);
@@ -184,6 +152,8 @@ const PDFPreview: React.FC<{ createPDFDocument: () => React.ReactElement<any> | 
   }, [siderCollapsed]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const generatePDF = async () => {
       setLoading(true);
       setError(null);
@@ -191,28 +161,44 @@ const PDFPreview: React.FC<{ createPDFDocument: () => React.ReactElement<any> | 
       try {
         const document = createPDFDocument();
         if (!document) {
-          setError(t`Please select a client to view PDF preview.`);
-          setLoading(false);
+          if (!cancelled) {
+            setError(t`Please select a client to view PDF preview.`);
+            setLoading(false);
+          }
           return;
         }
 
-        const blob = await pdf(document!).toBlob();
+        const blob = await pdf(document).toBlob();
+        if (cancelled) return;
+
+        // Revoke the previous URL (if any) before replacing it — the old
+        // effect's cleanup closed over the initial pdfUrl === null, so its
+        // `if (pdfUrl)` check was always false and no URL was ever revoked.
+        if (pdfUrlRef.current) {
+          URL.revokeObjectURL(pdfUrlRef.current);
+        }
         const url = URL.createObjectURL(blob);
+        pdfUrlRef.current = url;
         setPdfUrl(url);
       } catch (err) {
-        console.error("PDF generation error:", err);
-        setError(t`Error generating PDF preview. Please try again.`);
+        if (!cancelled) {
+          console.error("PDF generation error:", err);
+          setError(t`Error generating PDF preview. Please try again.`);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     generatePDF();
 
-    // Cleanup URL when component unmounts
     return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
+      cancelled = true;
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Intentionally omitting createPDFDocument to prevent re-generation on width changes
@@ -267,7 +253,6 @@ const InvoiceDetails: React.FC = () => {
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const updateInvoiceState = useSetAtom(updateInvoiceStateAtom);
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
-  const [, setSubmitting] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
   const dateFormat = useDatePickerFormat();
@@ -340,7 +325,6 @@ const InvoiceDetails: React.FC = () => {
   }, [invoice, isNew, form]);
 
   const handleSubmit = async (values: any) => {
-    setSubmitting(true);
     await setInvoice({
       ...values,
       subTotal,
@@ -348,7 +332,6 @@ const InvoiceDetails: React.FC = () => {
       total,
       overdueCharge: values.overdueCharge,
     });
-    setSubmitting(false);
   };
 
   const handleDelete = (id: string) => async () => {

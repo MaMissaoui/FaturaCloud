@@ -305,6 +305,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/atoms/auth.ts` — `currentUserAtom`, `isAuthenticatedAtom`, `isAdminAtom`
 - `src/atoms/delivery.ts` — delivery list, detail, status, and delete atoms
 - `src/atoms/vendor.ts` — vendor list, detail, and delete atoms (mirrors `client.ts`, including the `emails` JSON-string ↔ array conversion)
+- `src/atoms/product.ts` / `src/atoms/tax-rate.ts` — F56 (2026-08-13 audit): both writable atoms now rethrow after toasting a failed save, matching the `account.ts`/journal-entry precedent — `src/components/products/form.tsx` and `src/components/tax-rates/form.tsx`'s `handleSubmit` wrap the atom call in try/catch and only call `handleClose()` on success, so a failed save (duplicate SKU, FK violation, server 500) keeps the drawer open with the user's input intact instead of closing silently after a transient toast
 - `src/routes/vendors.tsx` + `src/components/vendors/form.tsx` — vendors list with a `Drawer` form on the same page (the clients pattern — no detail route)
 - `src/types/purchase-order.ts` — the frontend single source of truth for purchase order status (`PURCHASE_ORDER_STATUSES`, `purchaseOrderStatusColor`, `purchaseOrderStatusLabel`, `purchaseOrderTransitions`). Unlike orders/deliveries, the transition matrix lives next to the statuses so the "must stay in sync with the Go map" pairing is visible in one place
 - `src/routes/purchase-orders.tsx` + `src/routes/purchase-orders/details.tsx` — purchase order list and detail/edit pages
@@ -316,6 +317,7 @@ All handlers return JSON. Errors use `{"error": "message"}`.
 - `src/routes/deliveries.tsx` — outbound deliveries list
 - `src/routes/deliveries/details.tsx` — delivery detail/edit page
 - `src/routes/orders/details.tsx` — order detail/edit page
+- `src/routes/invoices/details.tsx` — invoice detail/edit page; its `PDFPreview` component (F55, 2026-08-13 audit) measures its container via a `useRef` + a `useEffect` bound to that ref, not a callback ref storing cleanup on itself (which never received unmount calls, leaking the resize listener every mount); the generated object URL is tracked in a ref so each new generation revokes the previous one and unmount always revokes the current one, instead of a `[]`-deps effect closing over the initial `pdfUrl === null`
 - `src/routes/organizations/index.tsx` — organizations list page (standalone, not under Settings); the edit drawer's Logo card (shown only for an existing org, not while creating one) is the STBvirement-style pattern: a plain `<img>` against the `/logo` URL with a local cache-busting key, not the data-URI atom the settings page and PDFs use, since this drawer can be editing an org other than the currently-selected one. The Accounting card's four Phase 7 fields (`defaultInventoryAccountId`/`defaultGRNIAccountId`/`defaultCOGSAccountId`/`defaultInventoryAdjustmentAccountId`) follow the same `Select allowClear showSearch` pattern as the existing `defaultExpenseAccountId` field, with a tooltip naming the receive/bill/ship/adjustment moment each is used at
 - `src/components/` — reusable React components
 - `src/components/deliveries/delivery-note-pdf.tsx` — delivery note PDF (no prices). Takes an `i18n` prop and translates, following `invoices/pdf.tsx`
@@ -386,7 +388,7 @@ Uses Jotai atoms pattern with:
 - Setter atoms for database operations (setClientsAtom, etc.)
 - Each domain has its own file under `src/atoms/`
 
-**Important**: never use Jotai module-level atoms for local UI state inside Modal or Drawer forms — the mask gets orphaned and freezes the UI. Use `useState` for all local drawer/modal state.
+**Important**: never use Jotai module-level atoms for local UI state inside Modal or Drawer forms — the mask gets orphaned and freezes the UI. Use `useState` for all local drawer/modal state. F57 (2026-08-13 audit): `src/routes/settings/users.tsx` was the one page still violating this — its drawer's `open`/`editingId` state are now `useState`, matching every other Modal/Drawer form. The page's `searchAtom` stays module-level (list-page filter state persisting across navigation, the same pattern the other list pages use — a smell, not the freeze risk)
 
 ## Sidebar Navigation
 The sidebar is grouped into collapsible submenus (click the group to expand/collapse, same behavior for all groups — the active group auto-expands based on the current route via `defaultOpenKeys` in `src/layouts/base.tsx`):
