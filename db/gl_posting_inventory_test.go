@@ -779,10 +779,14 @@ func TestCancelShippedDeliveryReversesCOGS(t *testing.T) {
 // time.Now() — CreateStockMovement dates its GL entry "now" (stockMovements
 // has no business-date field of its own), unlike every other posting path
 // in this codebase, which dates its entry off the source document itself.
+// Starts the day after newGRNITestFixture's own "2025" year ends (F52,
+// 2026-08-13 audit: CreateFiscalYear now rejects a range overlapping an
+// existing open year) — callers using a bare CreateOrganization with no
+// prior year still get full 2026-2099 coverage either way.
 func requireFiscalYearCoveringNow(t *testing.T, d *Database, orgID string) {
 	t.Helper()
 	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
-		OrganizationID: orgID, Name: "current", StartDate: 1735689600000, EndDate: 4102444799000, // 2025-2099
+		OrganizationID: orgID, Name: "current", StartDate: 1767225600000, EndDate: 4102444799000, // 2026-2099
 	}); err != nil {
 		t.Fatalf("CreateFiscalYear: %v", err)
 	}

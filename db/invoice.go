@@ -211,7 +211,7 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 		_, err = tx.Exec(`
 			INSERT INTO invoiceLineItems (id, invoiceId, description, quantity, unitPrice, taxRate, productId, position)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			itemID, req.ID, item.Description, item.Quantity, item.UnitPrice, item.TaxRate, item.ProductID, i,
+			itemID, req.ID, item.Description, item.Quantity, roundCents(item.UnitPrice), item.TaxRate, item.ProductID, i,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("create_invoice line_item: %w", err)
@@ -379,7 +379,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 			_, err = tx.Exec(`
 				INSERT INTO invoiceLineItems (id, invoiceId, description, quantity, unitPrice, taxRate, productId, position)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-				itemID, invoiceID, item.Description, item.Quantity, item.UnitPrice, item.TaxRate, item.ProductID, i,
+				itemID, invoiceID, item.Description, item.Quantity, roundCents(item.UnitPrice), item.TaxRate, item.ProductID, i,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("update_invoice line_item: %w", err)

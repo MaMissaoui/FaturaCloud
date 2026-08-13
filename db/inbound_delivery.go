@@ -760,7 +760,7 @@ func replaceInboundDeliveryLineItemsTx(
 		productID := item.ProductID
 		var unitCost *int64
 		if item.UnitCost != nil {
-			cost := int64(*item.UnitCost)
+			cost := roundCents(*item.UnitCost)
 			unitCost = &cost
 		}
 

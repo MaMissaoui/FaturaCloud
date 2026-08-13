@@ -572,7 +572,7 @@ func replaceIncomingInvoiceLineItemsTx(
 			   quantity, unitPrice, taxRate, position)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			itemID, invoiceID, item.PurchaseOrderLineItemID, productID, description,
-			item.Quantity, int64(item.UnitPrice), item.TaxRate, i,
+			item.Quantity, roundCents(item.UnitPrice), item.TaxRate, i,
 		); err != nil {
 			return fmt.Errorf("insert_incoming_invoice_line_item: %w", err)
 		}

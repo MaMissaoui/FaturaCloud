@@ -206,7 +206,7 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 		_, err = tx.Exec(`
 			INSERT INTO orderLineItems (id, orderId, productId, description, quantity, unitPrice, position)
 			VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			itemID, req.ID, item.ProductID, item.Description, item.Quantity, int64(item.UnitPrice), i,
+			itemID, req.ID, item.ProductID, item.Description, item.Quantity, roundCents(item.UnitPrice), i,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("create_order line_item: %w", err)
@@ -279,7 +279,7 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 			_, err = tx.Exec(`
 				INSERT INTO orderLineItems (id, orderId, productId, description, quantity, unitPrice, position)
 				VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				itemID, orderID, item.ProductID, item.Description, item.Quantity, int64(item.UnitPrice), i,
+				itemID, orderID, item.ProductID, item.Description, item.Quantity, roundCents(item.UnitPrice), i,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("update_order line_item: %w", err)
