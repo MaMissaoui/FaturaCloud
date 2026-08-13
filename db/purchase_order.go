@@ -296,7 +296,7 @@ func replacePurchaseOrderLineItemsTx(exec sqlExecer, orderID string, items []Cre
 			  (id, purchaseOrderId, productId, description, quantity, unitPrice, unit, taxRate, position)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			itemID, orderID, item.ProductID, item.Description, item.Quantity,
-			int64(item.UnitPrice), item.Unit, item.TaxRate, i,
+			roundCents(item.UnitPrice), item.Unit, item.TaxRate, i,
 		)
 		if err != nil {
 			return fmt.Errorf("insert_purchase_order_line_item: %w", err)

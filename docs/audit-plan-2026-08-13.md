@@ -18,10 +18,13 @@ bumps through v3.7.3.
 - This document is an audit, not a remediation — no code was changed while
   producing it.
 
-**Status:** Phase 1 (F48–F50) fixed, PR open. Phases 2–4 not started.
-Triage notes from the executing session: F53 is a product decision
-(changing `PreviouslyInvoiced` to `approved`/`paid`-only), left open for the
-user rather than changed unilaterally — see 2.3. F54's fix is scoped to the
+**Status:** Phase 1 (F48–F50) fixed, PR open. Phase 2 (F51–F54) fixed, PR
+open (#97 — F53 decided and pushed as a follow-up commit after the PR was
+first opened; see the PR #97 comment for what changed and why). Phases 3–4
+not started.
+Triage notes from the executing session: F53 was initially left open as a
+product decision (changing `PreviouslyInvoiced` to `approved`/`paid`-only),
+then decided and fixed after the fact — see 2.3. F54's fix is scoped to the
 rounding change only; the plan's suggested "sanity check that stored value
 is within one cent" is skipped as speculative validation for a case the
 rounding itself eliminates. F63 will be reduced to a documentation note
@@ -38,10 +41,10 @@ itself already flags as "a footgun rather than a threat."
 | F48 | Double-posting class: `journal_entries(sourceDocumentType, sourceDocumentId)` has no unique index and the posted-entry lookup runs **outside** the transaction in every state-change path | Concurrency / Ledger | High | 1.1 | Fixed |
 | F49 | `CloseFiscalYear` snapshots activity before the tx; the status flip lacks `WHERE status='open'` → two concurrent closes post two closing entries | Concurrency / Ledger | Medium | 1.2 | Fixed |
 | F50 | `DeleteJournalEntry` deletes in a non-transactional statement without `AND status='draft'` → a concurrent post between read and delete removes a posted entry | Concurrency | Low | 1.3 | Fixed |
-| F51 | `UpdateAccount` freely retypes accounts / toggles `isGroup` with posted history (retroactive reclassification); `parentId` not validated | Accounting integrity | Medium | 2.1 | Open |
-| F52 | Overlapping fiscal years/periods allowed; `resolveFiscalPeriodForDate` resolves with `LIMIT 1` and no `ORDER BY` | Accounting integrity | Low | 2.2 | Open |
-| F53 | Match report counts **draft** bills in `PreviouslyInvoiced` while GRNI clearing counts only `approved`/`paid` — the two disagree about what has "billed" | Accounting integrity | Low | 2.3 | Open |
-| F54 | `int64(float64)` truncation of `unitPrice`/`unitCost` toward zero vs. decimal-rounded totals | Accounting integrity | Low | 2.4 | Open |
+| F51 | `UpdateAccount` freely retypes accounts / toggles `isGroup` with posted history (retroactive reclassification); `parentId` not validated | Accounting integrity | Medium | 2.1 | Fixed |
+| F52 | Overlapping fiscal years/periods allowed; `resolveFiscalPeriodForDate` resolves with `LIMIT 1` and no `ORDER BY` | Accounting integrity | Low | 2.2 | Fixed |
+| F53 | Match report counts **draft** bills in `PreviouslyInvoiced` while GRNI clearing counts only `approved`/`paid` — the two disagree about what has "billed" | Accounting integrity | Low | 2.3 | Fixed |
+| F54 | `int64(float64)` truncation of `unitPrice`/`unitCost` toward zero vs. decimal-rounded totals | Accounting integrity | Low | 2.4 | Fixed |
 | F55 | Invoice PDF preview leaks a resize listener and an object URL per generation; leftover `console.log` debug output ships in prod | Frontend | Medium | 3.1 | Open |
 | F56 | Product/tax-rate save failures close the form silently — setter swallows the error, `handleClose()`/`navigate()` still runs | Frontend | Medium | 3.2 | Open |
 | F57 | Users page uses module-level Jotai atoms for drawer state — violates the documented rule that risks an orphaned-mask freeze | Frontend | Low | 3.3 | Open |
@@ -173,6 +176,15 @@ FK 500, not a clean validation.
 schema-tested); validate `parentId` exists when non-null; consider refusing
 `isGroup=1` while child accounts reference it.
 
+**Fixed** (branch `audit/phase2-accounting-validation`): `UpdateAccount` now
+refuses `type`/`isGroup` changes when `GetAccountUsageCount > 0`; refuses
+`isGroup=0` while the account still has child accounts; validates a non-null
+`parentId` exists and isn't the account's own id. Regression tests in
+`db/account_test.go` (`TestUpdateAccountRejectsRetypeWithPostedHistory`,
+`TestUpdateAccountAllowsRetypeWithoutHistory`,
+`TestUpdateAccountRejectsMakingAnAccountWithChildrenALeaf`,
+`TestUpdateAccountValidatesParentID`).
+
 ### 2.2 Overlapping fiscal years / periods (F52)
 
 `CreateFiscalYear`/`CreateFiscalPeriod` (`db/fiscal_period.go:85-141`) validate
@@ -187,6 +199,19 @@ open one for the same org (a closed prior year legitimately overlaps the new
 year's start — allow overlap only against closed years); add
 `ORDER BY startDate DESC` (or an explicit "most recent open" preference) to the
 resolution query so even a data anomaly resolves deterministically.
+
+**Fixed**: `CreateFiscalYear` rejects overlap against another open year for
+the org (closed years exempt); `CreateFiscalPeriod` requires its range inside
+its year and rejects overlap against sibling periods; both
+`resolveFiscalPeriodForDate` lookups gained `ORDER BY startDate DESC`.
+Regression tests in `db/fiscal_period_test.go`
+(`TestCreateFiscalYearRejectsOverlapWithOpenYear`,
+`TestCreateFiscalYearAllowsOverlapWithClosedYear`,
+`TestCreateFiscalPeriodRejectsRangeOutsideItsYear`,
+`TestCreateFiscalPeriodRejectsOverlapWithSiblingPeriod`,
+`TestResolveFiscalPeriodForDateIsDeterministicUnderOverlap` — the last one
+seeds two overlapping open years directly, bypassing the new guard, to prove
+the `ORDER BY` still resolves a pre-existing anomaly deterministically).
 
 ### 2.3 Match report vs. GRNI clearing disagree on "already billed" (F53)
 
@@ -205,6 +230,24 @@ in `db/incoming_invoice_match.go`'s top comment alongside the existing "computed
 on read" note. Check `incoming_invoice_match_test.go` for coverage of the
 draft-bill case before changing it.
 
+**Fixed, after a deliberate product decision.** Initially left open in this
+session because it changes a number visible in the match panel. Decided
+2026-08-13: aligned `PreviouslyInvoiced` to `approved`/`paid` only, matching
+`grniClearedQtyForPOLine`'s existing definition. The double-billing guard
+this exists for still holds where it actually matters — matching is
+computed on read, so the draft→approved transition re-evaluates it, and a
+second bill still can't reach `approved` while a first one already has for
+the same goods (`TestIncomingInvoiceDoubleBillingDetected` covers this and
+was unaffected by the change, since its first invoice is approved before
+the second is checked). What changes is that a still-draft bill — which has
+no AP obligation and might be edited or deleted before ever being approved
+— no longer produces a spurious variance against a sibling bill. New
+regression test:
+`TestIncomingInvoiceMatchIgnoresDraftBillsInPreviouslyInvoiced`
+(`db/db_test.go`), confirmed to fail pre-fix (reported
+`PreviouslyInvoiced=10` from a draft) and pass post-fix. See
+`db/incoming_invoice_match.go` and CLAUDE.md's 3-way matching bullet.
+
 ### 2.4 Float64→int64 truncation on line-item prices (F54)
 
 `db/incoming_invoice.go:575`, `db/inbound_delivery.go:763`, `db/order.go:209,282`,
@@ -220,6 +263,23 @@ float64 field for the sales path — verify whether its insert rounds or truncat
 (e.g. `int64(math.Round(x))`, or better, `decimal` → int64 at the API boundary
 in one place per domain), and add a tiny sanity check that stored `unitPrice`
 is within one cent of the requested float.
+
+**Fixed**, scoped to the rounding change only. `db/invoice.go:74`'s sales path
+was checked: it passed the raw `float64` straight into the `INSERT` with no
+Go-level conversion at all, relying on SQLite's own INTEGER-affinity
+coercion — which, per SQLite's documented behavior, only converts a REAL to
+INTEGER when the conversion is lossless, and stores it as REAL otherwise.
+That's a *different* bug from truncation (it doesn't round or truncate at
+all, it just stores the fractional value in principle), so it got the same
+fix as the other four sites: a new `roundCents` helper (`db/invoice_totals.go`)
+used everywhere a `float64` cents value reaches an `INSERT`. The plan's
+suggested "sanity check that stored value is within one cent of the
+requested float" was **not** added — that would be validating a scenario the
+rounding itself eliminates by construction, against CLAUDE.md's rule against
+speculative validation for something that can't happen. Regression tests:
+`TestRoundCents` (unit-level, `db/invoice_totals_test.go`) and
+`TestIncomingInvoiceLineItemRoundsFractionalUnitPrice` (integration-level,
+confirms the stored value rounds rather than truncates end-to-end).
 
 ---
 

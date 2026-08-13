@@ -635,12 +635,13 @@ func buildReceiptGRNILines(d *Database, receipt *InboundDelivery, lines []inboun
 
 // grniClearedQtyForPOLine sums quantity already cleared by bills OTHER than
 // excludeBillID against purchase order line poLineID — filtered to
-// state IN ('approved','paid'), not != 'cancelled' like
-// MatchLine.PreviouslyInvoiced, because only a bill that actually reached
-// GL posting has actually cleared anything against GRNI; a draft bill
-// sitting in variance hasn't touched the ledger yet. excludeBillID may be
-// "" (no exclusion — used by the cancel-guard call site in
-// UpdateInboundDeliveryStatus, which isn't itself a bill).
+// state IN ('approved','paid'), the same definition
+// MatchLine.PreviouslyInvoiced now uses (db/incoming_invoice_match.go, F53,
+// 2026-08-13 audit) since only a bill that actually reached GL posting has
+// actually cleared anything against GRNI; a draft bill sitting in variance
+// hasn't touched the ledger yet. excludeBillID may be "" (no exclusion —
+// used by the cancel-guard call site in UpdateInboundDeliveryStatus, which
+// isn't itself a bill).
 func grniClearedQtyForPOLine(exec sqlSelectExecer, poLineID, excludeBillID string) (float64, error) {
 	var rows []struct {
 		Quantity float64 `db:"quantity"`

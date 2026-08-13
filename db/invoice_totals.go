@@ -2,9 +2,26 @@ package db
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 )
+
+// roundCents rounds a float64 cents value to the nearest integer cent, half
+// away from zero — matching roundHalfUp's ROUND_HALF_UP semantics below.
+//
+// F54 (2026-08-13 audit): every unitPrice/unitCost column stores whole
+// cents, but several insert paths (purchase orders, incoming invoices,
+// orders, inbound deliveries) used a plain int64(x) conversion, which
+// truncates toward zero rather than rounds. The frontend normally sends
+// whole cents already (via unitsToCents), so this was latent — but a
+// fractional-cent value arriving through JSON (e.g. a unit price derived
+// from a division that lands at x.9999 after a float round-trip) would
+// silently store a value up to a cent off from what validateInvoiceTotals'
+// decimal-rounded totals expect.
+func roundCents(x float64) int64 {
+	return int64(math.Round(x))
+}
 
 // validateInvoiceTotals independently recomputes subtotal/tax/total from the
 // line items and their tax rates, and rejects the request if they don't
