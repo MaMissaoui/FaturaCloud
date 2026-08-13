@@ -382,6 +382,22 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 	}
 	defer tx.Rollback()
 
+	// F48: re-check the status this whole function's decisions were made
+	// against (which lines to move, whether cogsLines/existingCOGSEntry
+	// apply) now that this transaction actually holds the connection — a
+	// concurrent request against the same delivery could have already
+	// shipped or cancelled it in the time between the pre-tx read above and
+	// Beginx() acquiring the connection.
+	var liveStatus string
+	if err := tx.Get(&liveStatus, `SELECT status FROM outbound_deliveries WHERE id = ?`, id); err != nil {
+		return nil, fmt.Errorf("update_delivery_status status_check: %w", err)
+	}
+	if liveStatus != current.Status {
+		return nil, newValidationError(
+			"delivery status changed to %q by another request — reload and try again", liveStatus,
+		)
+	}
+
 	touchedProducts := []string{}
 
 	switch {

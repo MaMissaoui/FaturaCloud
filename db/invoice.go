@@ -211,7 +211,7 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 		_, err = tx.Exec(`
 			INSERT INTO invoiceLineItems (id, invoiceId, description, quantity, unitPrice, taxRate, productId, position)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			itemID, req.ID, item.Description, item.Quantity, item.UnitPrice, item.TaxRate, item.ProductID, i,
+			itemID, req.ID, item.Description, item.Quantity, roundCents(item.UnitPrice), item.TaxRate, item.ProductID, i,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("create_invoice line_item: %w", err)
@@ -379,7 +379,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 			_, err = tx.Exec(`
 				INSERT INTO invoiceLineItems (id, invoiceId, description, quantity, unitPrice, taxRate, productId, position)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-				itemID, invoiceID, item.Description, item.Quantity, item.UnitPrice, item.TaxRate, item.ProductID, i,
+				itemID, invoiceID, item.Description, item.Quantity, roundCents(item.UnitPrice), item.TaxRate, item.ProductID, i,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("update_invoice line_item: %w", err)
@@ -448,9 +448,17 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 		}
 	}
 
+	// Built whenever the target state needs GL presence at all, not just when
+	// the pre-tx read found no existing entry: the authoritative decision is
+	// made from a fresh in-tx read below, and a concurrent request could
+	// reverse this document's entry between this read and that one, making
+	// posting necessary even though this pre-tx check found one already
+	// posted. buildInvoiceGLLines does no writes, so building it speculatively
+	// costs a little work on the common path but keeps the post/reverse
+	// decision entirely inside the transaction.
 	var glLines []CreateJournalLineRequest
 	var journal *Journal
-	if needsGL && existingEntry == nil {
+	if needsGL {
 		lineItems, err := d.GetInvoiceLineItems(invoiceID)
 		if err != nil {
 			return nil, fmt.Errorf("update_invoice_state line_items: %w", err)
@@ -466,6 +474,17 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 		return nil, fmt.Errorf("update_invoice_state begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// F48: re-check for a posted entry inside the transaction. The pre-tx
+	// read above only gates the paid>0 guard and whether to bother building
+	// glLines — the post/reverse decision below is made from this fresh
+	// read, which shares the connection with the writes that follow and so
+	// closes the race two concurrent identical state changes would otherwise
+	// hit (both seeing "no entry", both posting).
+	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, "invoice", invoiceID)
+	if err != nil {
+		return nil, err
+	}
 
 	if _, err := tx.Exec(`UPDATE invoices SET state = ? WHERE id = ?`, state, invoiceID); err != nil {
 		return nil, fmt.Errorf("update_invoice_state exec: %w", err)

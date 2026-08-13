@@ -114,8 +114,17 @@ func (d *Database) GetIncomingInvoiceMatch(invoiceID string) ([]MatchLine, error
 		}
 		line.ReceivedQuantity = &received
 
-		// What other non-cancelled invoices already billed against this same
-		// order line — without this, the same goods can be billed twice.
+		// What other invoices already billed against this same order line —
+		// without this, the same goods can be billed twice. Scoped to
+		// state IN ('approved', 'paid'), matching grniClearedQtyForPOLine
+		// (db/gl_posting.go) rather than != 'cancelled': a draft bill has no
+		// AP obligation and hasn't touched GRNI yet, so counting it here
+		// only produced a spurious variance against a draft that might be
+		// edited or deleted before ever being approved. The actual
+		// double-billing guard still holds at the point it matters — the
+		// draft→approved transition itself re-evaluates this match, so a
+		// second bill can't reach "approved" while a first one is already
+		// there for the same goods (F53, 2026-08-13 audit).
 		var previouslyInvoiced float64
 		if err := d.DB.Get(&previouslyInvoiced, `
 			SELECT COALESCE(SUM(li.quantity), 0)
@@ -123,7 +132,7 @@ func (d *Database) GetIncomingInvoiceMatch(invoiceID string) ([]MatchLine, error
 			JOIN incoming_invoices inv ON li.incomingInvoiceId = inv.id
 			WHERE li.purchaseOrderLineItemId = ?
 			  AND inv.id != ?
-			  AND inv.state != 'cancelled'`,
+			  AND inv.state IN ('approved', 'paid')`,
 			poLineID, invoiceID,
 		); err != nil {
 			return nil, fmt.Errorf("get_incoming_invoice_match previously_invoiced: %w", err)

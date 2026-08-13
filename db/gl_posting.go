@@ -108,8 +108,20 @@ func reverseEntryTx(tx *sqlx.Tx, original *JournalEntry, reason string, reversal
 		return "", err
 	}
 
-	if _, err := tx.Exec(`UPDATE journal_entries SET status = 'reversed' WHERE id = ?`, original.ID); err != nil {
+	// F48: guard against a concurrent double-reversal (e.g. two overlapping
+	// VoidPayment calls against the same payment) the same way
+	// allocateAndFinalizeEntryTx's entryNumber allocation guards posting —
+	// callers typically read `original` before this transaction began, so
+	// by the time this statement runs another request may already have
+	// reversed it. If so, this UPDATE affects zero rows and the whole
+	// transaction (including the reversal entry just inserted above) rolls
+	// back via the caller's deferred tx.Rollback().
+	res, err := tx.Exec(`UPDATE journal_entries SET status = 'reversed' WHERE id = ? AND status = 'posted'`, original.ID)
+	if err != nil {
 		return "", fmt.Errorf("reverse_entry mark_original: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return "", newValidationError("cannot reverse: entry is no longer posted — it may already have been reversed")
 	}
 
 	return reversalID, nil
@@ -623,12 +635,13 @@ func buildReceiptGRNILines(d *Database, receipt *InboundDelivery, lines []inboun
 
 // grniClearedQtyForPOLine sums quantity already cleared by bills OTHER than
 // excludeBillID against purchase order line poLineID — filtered to
-// state IN ('approved','paid'), not != 'cancelled' like
-// MatchLine.PreviouslyInvoiced, because only a bill that actually reached
-// GL posting has actually cleared anything against GRNI; a draft bill
-// sitting in variance hasn't touched the ledger yet. excludeBillID may be
-// "" (no exclusion — used by the cancel-guard call site in
-// UpdateInboundDeliveryStatus, which isn't itself a bill).
+// state IN ('approved','paid'), the same definition
+// MatchLine.PreviouslyInvoiced now uses (db/incoming_invoice_match.go, F53,
+// 2026-08-13 audit) since only a bill that actually reached GL posting has
+// actually cleared anything against GRNI; a draft bill sitting in variance
+// hasn't touched the ledger yet. excludeBillID may be "" (no exclusion —
+// used by the cancel-guard call site in UpdateInboundDeliveryStatus, which
+// isn't itself a bill).
 func grniClearedQtyForPOLine(exec sqlSelectExecer, poLineID, excludeBillID string) (float64, error) {
 	var rows []struct {
 		Quantity float64 `db:"quantity"`
