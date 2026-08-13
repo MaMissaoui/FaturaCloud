@@ -2851,6 +2851,37 @@ func TestIncomingInvoiceDoubleBillingDetected(t *testing.T) {
 	}
 }
 
+// F53's regression test: a draft bill against a PO line must not count
+// toward another bill's PreviouslyInvoiced — only approved/paid bills have
+// an AP obligation and have actually cleared anything against GRNI, the
+// same definition grniClearedQtyForPOLine already used. Before the fix, the
+// draft below would have made the second bill's line report
+// over_received/PreviouslyInvoiced=10 despite nothing yet approved.
+func TestIncomingInvoiceMatchIgnoresDraftBillsInPreviouslyInvoiced(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-4", 10, 250, 10)
+
+	draft := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+	if draft.State != "draft" {
+		t.Fatalf("expected a fresh incoming invoice to start as draft, got %q", draft.State)
+	}
+
+	second := createIncomingInvoice(t, d, f, "V-002", 10, 250)
+	lines, err := d.GetIncomingInvoiceMatch(second.ID)
+	if err != nil {
+		t.Fatalf("GetIncomingInvoiceMatch: %v", err)
+	}
+	if lines[0].PreviouslyInvoiced != 0 {
+		t.Fatalf("previouslyInvoiced: got %v, want 0 (draft bill should not count)", lines[0].PreviouslyInvoiced)
+	}
+	if lines[0].Status != MatchMatched {
+		t.Fatalf("second invoice status: got %q, want matched", lines[0].Status)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(second.ID, "approved"); err != nil {
+		t.Fatalf("expected approval to succeed while the other bill is still a draft: %v", err)
+	}
+}
+
 // A unit price above what was ordered is a price variance.
 func TestIncomingInvoicePriceVariance(t *testing.T) {
 	d := newTestDB(t)

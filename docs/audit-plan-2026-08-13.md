@@ -18,11 +18,13 @@ bumps through v3.7.3.
 - This document is an audit, not a remediation — no code was changed while
   producing it.
 
-**Status:** Phase 1 (F48–F50) fixed, PR open. Phase 2 (F51–F54, F53
-excepted) fixed, PR open. Phases 3–4 not started.
-Triage notes from the executing session: F53 is a product decision
-(changing `PreviouslyInvoiced` to `approved`/`paid`-only), left open for the
-user rather than changed unilaterally — see 2.3. F54's fix is scoped to the
+**Status:** Phase 1 (F48–F50) fixed, PR open. Phase 2 (F51–F54) fixed, PR
+open (#97 — F53 decided and pushed as a follow-up commit after the PR was
+first opened; see the PR #97 comment for what changed and why). Phases 3–4
+not started.
+Triage notes from the executing session: F53 was initially left open as a
+product decision (changing `PreviouslyInvoiced` to `approved`/`paid`-only),
+then decided and fixed after the fact — see 2.3. F54's fix is scoped to the
 rounding change only; the plan's suggested "sanity check that stored value
 is within one cent" is skipped as speculative validation for a case the
 rounding itself eliminates. F63 will be reduced to a documentation note
@@ -41,7 +43,7 @@ itself already flags as "a footgun rather than a threat."
 | F50 | `DeleteJournalEntry` deletes in a non-transactional statement without `AND status='draft'` → a concurrent post between read and delete removes a posted entry | Concurrency | Low | 1.3 | Fixed |
 | F51 | `UpdateAccount` freely retypes accounts / toggles `isGroup` with posted history (retroactive reclassification); `parentId` not validated | Accounting integrity | Medium | 2.1 | Fixed |
 | F52 | Overlapping fiscal years/periods allowed; `resolveFiscalPeriodForDate` resolves with `LIMIT 1` and no `ORDER BY` | Accounting integrity | Low | 2.2 | Fixed |
-| F53 | Match report counts **draft** bills in `PreviouslyInvoiced` while GRNI clearing counts only `approved`/`paid` — the two disagree about what has "billed" | Accounting integrity | Low | 2.3 | Open — product decision, not changed (see 2.3) |
+| F53 | Match report counts **draft** bills in `PreviouslyInvoiced` while GRNI clearing counts only `approved`/`paid` — the two disagree about what has "billed" | Accounting integrity | Low | 2.3 | Fixed |
 | F54 | `int64(float64)` truncation of `unitPrice`/`unitCost` toward zero vs. decimal-rounded totals | Accounting integrity | Low | 2.4 | Fixed |
 | F55 | Invoice PDF preview leaks a resize listener and an object URL per generation; leftover `console.log` debug output ships in prod | Frontend | Medium | 3.1 | Open |
 | F56 | Product/tax-rate save failures close the form silently — setter swallows the error, `handleClose()`/`navigate()` still runs | Frontend | Medium | 3.2 | Open |
@@ -228,12 +230,23 @@ in `db/incoming_invoice_match.go`'s top comment alongside the existing "computed
 on read" note. Check `incoming_invoice_match_test.go` for coverage of the
 draft-bill case before changing it.
 
-**Not changed.** This is a product decision, not a bug fix — CLAUDE.md
-documents the current draft-inclusive `PreviouslyInvoiced` behavior as
-intentional ("that `PreviouslyInvoiced` term is what stops the same goods
-being billed twice"), and changing it alters a number visible in the match
-panel. Left open for a deliberate product call rather than changed
-unilaterally by the executing session.
+**Fixed, after a deliberate product decision.** Initially left open in this
+session because it changes a number visible in the match panel. Decided
+2026-08-13: aligned `PreviouslyInvoiced` to `approved`/`paid` only, matching
+`grniClearedQtyForPOLine`'s existing definition. The double-billing guard
+this exists for still holds where it actually matters — matching is
+computed on read, so the draft→approved transition re-evaluates it, and a
+second bill still can't reach `approved` while a first one already has for
+the same goods (`TestIncomingInvoiceDoubleBillingDetected` covers this and
+was unaffected by the change, since its first invoice is approved before
+the second is checked). What changes is that a still-draft bill — which has
+no AP obligation and might be edited or deleted before ever being approved
+— no longer produces a spurious variance against a sibling bill. New
+regression test:
+`TestIncomingInvoiceMatchIgnoresDraftBillsInPreviouslyInvoiced`
+(`db/db_test.go`), confirmed to fail pre-fix (reported
+`PreviouslyInvoiced=10` from a draft) and pass post-fix. See
+`db/incoming_invoice_match.go` and CLAUDE.md's 3-way matching bullet.
 
 ### 2.4 Float64→int64 truncation on line-item prices (F54)
 
