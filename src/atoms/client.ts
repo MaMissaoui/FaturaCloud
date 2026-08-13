@@ -97,6 +97,7 @@ export const clientAtom = atom(
       } else {
         message.error(t`Client update failed`);
       }
+      throw error;
     }
   },
 );
