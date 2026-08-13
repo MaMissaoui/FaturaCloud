@@ -166,6 +166,13 @@ func (d *Database) GetInvoiceLineItems(invoiceID string) ([]InvoiceLineItem, err
 }
 
 func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
+	// F61 (2026-08-13 audit): every other create path guards against a
+	// client-supplied empty ID; this one didn't, so {"id": ""} would insert
+	// an invoice with an empty-string primary key and a second such request
+	// would 500 on the PK collision instead of getting a clean nanoid.
+	if req.ID == "" {
+		req.ID, _ = gonanoid.New()
+	}
 	if req.State == "" {
 		req.State = "draft"
 	}
