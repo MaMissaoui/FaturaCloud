@@ -134,8 +134,19 @@ func (d *Database) GetJournalEntryLines(entryID string) ([]JournalLine, error) {
 // idempotent posting (design decision #8) would wrongly skip re-posting the
 // next time the document's state changes.
 func (d *Database) FindPostedEntryForSourceDocument(sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
+	return findPostedEntryForSourceDocumentTx(d.DB, sourceDocumentType, sourceDocumentID)
+}
+
+// findPostedEntryForSourceDocumentTx is the tx-capable twin of
+// FindPostedEntryForSourceDocument. F48: every state-change path used to run
+// this lookup before Beginx(), leaving a window where two concurrent
+// requests both saw "no posted entry" and each posted one. Callers that need
+// the check to be race-free under SetMaxOpenConns(1) must open their
+// transaction first and pass tx here, re-checking after acquiring the
+// connection that will do the write — not before.
+func findPostedEntryForSourceDocumentTx(exec sqlGetExecer, sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
 	var entry JournalEntry
-	err := d.DB.Get(&entry,
+	err := exec.Get(&entry,
 		`SELECT * FROM journal_entries
 		 WHERE sourceDocumentType = ? AND sourceDocumentId = ? AND status = 'posted' AND reversalOfEntryId IS NULL
 		 LIMIT 1`,
@@ -333,6 +344,12 @@ func allocateAndFinalizeEntryTx(tx *sqlx.Tx, entryID, organizationID, fiscalYear
 
 // DeleteJournalEntry only allows deleting a draft — mirrors "cannot delete a
 // paid invoice, cancel it instead". A posted entry must be reversed.
+//
+// F50: the status filter is part of the DELETE statement itself, not just a
+// pre-check — a concurrent PostJournalEntry between the read above and the
+// delete would otherwise still remove a posted entry, violating "posted
+// entries are never deleted" and freeing its entryNumber for reuse (breaking
+// FEC's gapless requirement).
 func (d *Database) DeleteJournalEntry(entryID string) (bool, error) {
 	entry, err := d.GetJournalEntry(entryID)
 	if err != nil {
@@ -342,12 +359,15 @@ func (d *Database) DeleteJournalEntry(entryID string) (bool, error) {
 		return false, newValidationError("only a draft journal entry can be deleted — reverse a posted one instead")
 	}
 
-	res, err := d.DB.Exec(`DELETE FROM journal_entries WHERE id = ?`, entryID)
+	res, err := d.DB.Exec(`DELETE FROM journal_entries WHERE id = ? AND status = 'draft'`, entryID)
 	if err != nil {
 		return false, fmt.Errorf("delete_journal_entry: %w", err)
 	}
 	n, _ := res.RowsAffected()
-	return n > 0, nil
+	if n == 0 {
+		return false, newValidationError("only a draft journal entry can be deleted — reverse a posted one instead")
+	}
+	return true, nil
 }
 
 // ReverseJournalEntry posts a new entry with every line's debit/credit
