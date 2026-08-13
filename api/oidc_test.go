@@ -281,6 +281,64 @@ func TestOIDCCallback_NonAdminGroupGetsUserRole(t *testing.T) {
 	}
 }
 
+// TestOIDCCallback_UnverifiedEmailRejected is F65's regression test: a
+// present-and-false email_verified claim must block the login rather than
+// JIT-provisioning a user against an address the IdP itself says isn't
+// confirmed.
+func TestOIDCCallback_UnverifiedEmailRejected(t *testing.T) {
+	idp := newFakeIdP(t)
+	h := newTestHandler(t, OIDCConfig{
+		IssuerURL: idp.server.URL, ClientID: testClientID, ClientSecret: "secret",
+		RedirectURL: testRedirectURL, Scopes: []string{"openid", "email", "groups"},
+		EmailClaim: "email", NameClaim: "name", GroupsClaim: "groups", AdminGroup: "admins",
+	})
+
+	idp.idTokenFor = func(code string) (string, string) {
+		claims := idp.baseClaims("n1")
+		claims["email_verified"] = false
+		return idp.sign(t, claims), ""
+	}
+
+	req := callbackRequest(h, "st1", "n1", "verifier1", "st1", "good-code")
+	rec := httptest.NewRecorder()
+	h.oidcCallback(rec, req)
+
+	if rec.Code != http.StatusFound || !strings.Contains(rec.Header().Get("Location"), "error=sso_failed") {
+		t.Fatalf("expected a redirect to the login error page, got %d location=%q", rec.Code, rec.Header().Get("Location"))
+	}
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == authCookieName {
+			t.Fatal("expected no auth cookie to be set for an unverified email")
+		}
+	}
+}
+
+// TestOIDCCallback_VerifiedEmailAccepted confirms a present-and-true
+// email_verified claim doesn't regress the normal success path.
+func TestOIDCCallback_VerifiedEmailAccepted(t *testing.T) {
+	idp := newFakeIdP(t)
+	h := newTestHandler(t, OIDCConfig{
+		IssuerURL: idp.server.URL, ClientID: testClientID, ClientSecret: "secret",
+		RedirectURL: testRedirectURL, Scopes: []string{"openid", "email", "groups"},
+		EmailClaim: "email", NameClaim: "name", GroupsClaim: "groups", AdminGroup: "admins",
+	})
+
+	idp.idTokenFor = func(code string) (string, string) {
+		claims := idp.baseClaims("n1")
+		claims["email_verified"] = true
+		return idp.sign(t, claims), ""
+	}
+
+	req := callbackRequest(h, "st1", "n1", "verifier1", "st1", "good-code")
+	rec := httptest.NewRecorder()
+	h.oidcCallback(rec, req)
+
+	claims := parseIssuedJWT(t, h, rec)
+	if claims.Email != "alice@example.com" {
+		t.Errorf("expected email alice@example.com, got %s", claims.Email)
+	}
+}
+
 func TestOIDCCallback_StateMismatchRejected(t *testing.T) {
 	idp := newFakeIdP(t)
 	h := newTestHandler(t, OIDCConfig{
