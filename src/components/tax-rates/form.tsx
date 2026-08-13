@@ -82,11 +82,15 @@ const TaxRateForm = () => {
 
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
-    await setTaxRate(values);
-    form.resetFields();
-    setTaxRateId(null);
-    navigate("/settings/tax-rates");
-    setSubmitting(false);
+    try {
+      await setTaxRate(values);
+      handleClose();
+    } catch {
+      // setTaxRate already toasted the error — keep the drawer open with
+      // the user's input intact rather than closing on a failed save.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {

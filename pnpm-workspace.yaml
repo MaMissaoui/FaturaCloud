@@ -3,3 +3,20 @@ allowBuilds:
   '@sentry/cli': true
   canvas: true
   esbuild: true
+
+# react-pdf hard-pins its own internal pdfjs-dist to an exact version
+# (pdfjs-dist doesn't keep a stable API/worker contract across releases), but
+# this app also needs pdfjs-dist as its own direct dependency to resolve
+# the worker file path (src/routes/invoices/details.tsx) under pnpm's strict
+# resolution. Left alone, the two drift apart every time an automated
+# "bump npm dependencies" pass moves the root pdfjs-dist forward without
+# react-pdf's own pin following — the PDF preview then throws
+# "API version does not match Worker version" at runtime. This override
+# forces every pdfjs-dist in the tree (including react-pdf's) to the single
+# version declared in package.json, so there is only ever one copy
+# installed and the two can't diverge again.
+overrides:
+  pdfjs-dist: "catalog:"
+
+catalog:
+  pdfjs-dist: 6.2.108

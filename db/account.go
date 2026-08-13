@@ -130,12 +130,59 @@ func (d *Database) CreateAccount(req CreateAccountRequest) (*Account, error) {
 	return d.GetAccount(req.ID)
 }
 
+// UpdateAccount refuses two changes DeleteAccount already guards against in
+// its own way: retyping/regrouping an account that has any posted history
+// (F51, 2026-08-13 audit) — allocateAndFinalizeEntryTx only enforces
+// isGroup=1 accounts being non-postable at *post* time, not at *edit* time,
+// so without this an account could be silently reclassified out from under
+// every journal_lines row that already posted against it, retroactively
+// changing past P&L/balance sheet numbers — and turning a group header with
+// existing child accounts back into a leaf, which would leave those
+// children pointing at a parent that's no longer structurally a group.
 func (d *Database) UpdateAccount(accountID string, updates UpdateAccountRequest) (*Account, error) {
 	if !accountTypes[updates.Type] {
 		return nil, newValidationError("invalid account type %q", updates.Type)
 	}
 
-	_, err := d.DB.Exec(
+	current, err := d.GetAccount(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	if updates.Type != current.Type || updates.IsGroup != current.IsGroup {
+		usage, err := d.GetAccountUsageCount(accountID)
+		if err != nil {
+			return nil, err
+		}
+		if usage > 0 {
+			return nil, newValidationError(
+				"cannot change type or group status of an account that has posted journal entries or other references — it would retroactively reclassify existing history",
+			)
+		}
+	}
+	if updates.IsGroup == 0 {
+		children, err := d.getAccountChildCount(accountID)
+		if err != nil {
+			return nil, err
+		}
+		if children > 0 {
+			return nil, newValidationError("cannot make this account a leaf — it still has child accounts under it")
+		}
+	}
+	if updates.ParentID != nil {
+		if *updates.ParentID == accountID {
+			return nil, newValidationError("an account cannot be its own parent")
+		}
+		var exists int64
+		if err := d.DB.Get(&exists, `SELECT COUNT(*) FROM accounts WHERE id = ?`, *updates.ParentID); err != nil {
+			return nil, fmt.Errorf("update_account parent_check: %w", err)
+		}
+		if exists == 0 {
+			return nil, newValidationError("parent account %q does not exist", *updates.ParentID)
+		}
+	}
+
+	_, err = d.DB.Exec(
 		`UPDATE accounts
 		 SET parentId = ?, code = ?, name = ?, type = ?, isGroup = ?, isActive = ?,
 		     datevAccountNumber = ?, description = ?

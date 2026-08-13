@@ -101,10 +101,11 @@ export const taxRateAtom = atom(
     } catch (error) {
       console.error("Tax rate operation failed:", error);
       if (!taxRateId) {
-        message.error(t`Tax rate creation failed`);
+        message.error(error instanceof Error ? error.message : t`Tax rate creation failed`);
       } else {
-        message.error(t`Tax rate update failed`);
+        message.error(error instanceof Error ? error.message : t`Tax rate update failed`);
       }
+      throw error;
     }
   },
 );

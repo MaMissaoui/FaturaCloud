@@ -82,12 +82,33 @@ func (d *Database) GetFiscalYear(fiscalYearID string) (*FiscalYear, error) {
 	return &year, nil
 }
 
+// F52 (2026-08-13 audit): a second fiscal year spanning the same dates as an
+// already-open one would make resolveFiscalPeriodForDate's choice of which
+// year a posting lands in ambiguous. A closed prior year legitimately
+// overlaps the new year's opening days in some workflows (e.g. closing
+// happens after the new year has already started posting), so overlap is
+// only rejected against other *open* years — a closed one doesn't compete
+// for postings anymore.
 func (d *Database) CreateFiscalYear(req CreateFiscalYearRequest) (*FiscalYear, error) {
 	if req.EndDate <= req.StartDate {
 		return nil, newValidationError("fiscal year end date must be after its start date")
 	}
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
+	}
+
+	var overlapping bool
+	if err := d.DB.Get(&overlapping, `
+		SELECT EXISTS(
+			SELECT 1 FROM fiscal_years
+			WHERE organizationId = ? AND status = 'open' AND startDate <= ? AND endDate >= ?
+		)`,
+		req.OrganizationID, req.EndDate, req.StartDate,
+	); err != nil {
+		return nil, fmt.Errorf("create_fiscal_year overlap_check: %w", err)
+	}
+	if overlapping {
+		return nil, newValidationError("this date range overlaps an existing open fiscal year")
 	}
 
 	_, err := d.DB.Exec(
@@ -121,6 +142,11 @@ func (d *Database) GetFiscalPeriod(fiscalPeriodID string) (*FiscalPeriod, error)
 	return &period, nil
 }
 
+// F52 (2026-08-13 audit): a period is only meaningful as a subdivision of
+// its year, so it must fall entirely inside the year's own range, and two
+// periods in the same year must not overlap — resolveFiscalPeriodForDate's
+// period lookup has the identical ambiguity problem CreateFiscalYear's does
+// otherwise.
 func (d *Database) CreateFiscalPeriod(req CreateFiscalPeriodRequest) (*FiscalPeriod, error) {
 	if req.EndDate <= req.StartDate {
 		return nil, newValidationError("fiscal period end date must be after its start date")
@@ -129,7 +155,29 @@ func (d *Database) CreateFiscalPeriod(req CreateFiscalPeriodRequest) (*FiscalPer
 		req.ID, _ = gonanoid.New()
 	}
 
-	_, err := d.DB.Exec(
+	year, err := d.GetFiscalYear(req.FiscalYearID)
+	if err != nil {
+		return nil, err
+	}
+	if req.StartDate < year.StartDate || req.EndDate > year.EndDate {
+		return nil, newValidationError("fiscal period must fall entirely within its fiscal year's date range")
+	}
+
+	var overlapping bool
+	if err := d.DB.Get(&overlapping, `
+		SELECT EXISTS(
+			SELECT 1 FROM fiscal_periods
+			WHERE fiscalYearId = ? AND startDate <= ? AND endDate >= ?
+		)`,
+		req.FiscalYearID, req.EndDate, req.StartDate,
+	); err != nil {
+		return nil, fmt.Errorf("create_fiscal_period overlap_check: %w", err)
+	}
+	if overlapping {
+		return nil, newValidationError("this date range overlaps an existing fiscal period in the same year")
+	}
+
+	_, err = d.DB.Exec(
 		`INSERT INTO fiscal_periods (id, organizationId, fiscalYearId, name, startDate, endDate)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.FiscalYearID, req.Name, req.StartDate, req.EndDate,
@@ -169,10 +217,17 @@ func (d *Database) UpdateFiscalPeriodStatus(fiscalPeriodID, status string) (*Fis
 // what turns "no fiscal year set up yet" into a clean 409 instead of a
 // journal entry with a dangling fiscalYearId.
 func resolveFiscalPeriodForDate(exec sqlGetExecer, organizationID string, date int64) (fiscalYearID string, fiscalPeriodID *string, err error) {
+	// F52: ORDER BY startDate DESC makes the choice deterministic (the most
+	// recently started open year wins) even in a data anomaly where
+	// overlapping open years exist despite CreateFiscalYear's guard — e.g.
+	// rows seeded directly, or created before this check existed. Under the
+	// normal case (no overlap), there's at most one match and the ordering
+	// is a no-op.
 	var year FiscalYear
 	err = exec.Get(&year,
 		`SELECT * FROM fiscal_years
 		 WHERE organizationId = ? AND status = 'open' AND startDate <= ? AND endDate >= ?
+		 ORDER BY startDate DESC
 		 LIMIT 1`,
 		organizationID, date, date,
 	)
@@ -203,6 +258,7 @@ func resolveFiscalPeriodForDate(exec sqlGetExecer, organizationID string, date i
 	err = exec.Get(&period,
 		`SELECT * FROM fiscal_periods
 		 WHERE fiscalYearId = ? AND status = 'open' AND startDate <= ? AND endDate >= ?
+		 ORDER BY startDate DESC
 		 LIMIT 1`,
 		year.ID, date, date,
 	)

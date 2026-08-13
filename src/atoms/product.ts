@@ -68,6 +68,7 @@ export const productAtom = atom(
             ? t`Product update failed`
             : t`Product creation failed`,
       );
+      throw error;
     }
   },
 );

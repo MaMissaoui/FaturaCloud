@@ -33,8 +33,6 @@ import { currentUserAtom } from "src/atoms/auth";
 import PageHeader from "src/components/page-header";
 
 const searchAtom = atom("");
-const drawerOpenAtom = atom(false);
-const editingIdAtom = atom<string | null>(null);
 
 export default function SettingsUsers() {
   useLingui();
@@ -47,8 +45,11 @@ export default function SettingsUsers() {
   const [submitting, setSubmitting] = useState(false);
 
   const [search, setSearch] = useAtom(searchAtom);
-  const [drawerOpen, setDrawerOpen] = useAtom(drawerOpenAtom);
-  const [editingId, setEditingId] = useAtom(editingIdAtom);
+  // Drawer open state and which user it's editing were module-level Jotai
+  // atoms — the pattern CLAUDE.md forbids for Modal/Drawer local state (the
+  // mask can get orphaned and freeze the UI). Local component state instead.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchUsers = async (q?: string) => {
     setLoading(true);

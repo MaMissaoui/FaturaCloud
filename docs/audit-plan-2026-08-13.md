@@ -18,20 +18,19 @@ bumps through v3.7.3.
 - This document is an audit, not a remediation — no code was changed while
   producing it.
 
-**Status:** All four phases fixed, PRs open (#96, #97, #98, and Phase 4's).
-F53 left open as a product decision (see 2.3); F63 reduced to a
-documentation note (see 4.6). Phase 3 surfaced one new unnumbered finding
-during manual verification (see 3.4, a pre-existing `pdfjs-dist` version
-mismatch, out of scope, not fixed).
-Triage notes from the executing session: F53 is a product decision
-(changing `PreviouslyInvoiced` to `approved`/`paid`-only), left open for the
-user rather than changed unilaterally — see 2.3. F54's fix is scoped to the
+**Status:** All 17 findings resolved (16 fixed, 1 reduced to a doc note),
+all four phases' PRs merged into main (#96, #97, #98, #99). F53 was
+initially left open as a product decision, then decided and fixed after the
+fact (see 2.3). F63 reduced to a documentation note (see 4.6). Phase 3
+surfaced one new unnumbered finding during manual verification (see 3.4, a
+pre-existing `pdfjs-dist` version mismatch), fixed as a follow-up.
+Triage notes from the executing session: F54's fix is scoped to the
 rounding change only; the plan's suggested "sanity check that stored value
 is within one cent" is skipped as speculative validation for a case the
-rounding itself eliminates. F63 will be reduced to a documentation note
-rather than a behavior change — refusing to auto-migrate a schema-mismatched
-upload would break restoring a legitimate older backup, which the plan
-itself already flags as "a footgun rather than a threat."
+rounding itself eliminates. F63 is a documentation note rather than a
+behavior change — refusing to auto-migrate a schema-mismatched upload would
+break restoring a legitimate older backup, which the plan itself already
+flags as "a footgun rather than a threat."
 
 ---
 
@@ -44,7 +43,7 @@ itself already flags as "a footgun rather than a threat."
 | F50 | `DeleteJournalEntry` deletes in a non-transactional statement without `AND status='draft'` → a concurrent post between read and delete removes a posted entry | Concurrency | Low | 1.3 | Fixed |
 | F51 | `UpdateAccount` freely retypes accounts / toggles `isGroup` with posted history (retroactive reclassification); `parentId` not validated | Accounting integrity | Medium | 2.1 | Fixed |
 | F52 | Overlapping fiscal years/periods allowed; `resolveFiscalPeriodForDate` resolves with `LIMIT 1` and no `ORDER BY` | Accounting integrity | Low | 2.2 | Fixed |
-| F53 | Match report counts **draft** bills in `PreviouslyInvoiced` while GRNI clearing counts only `approved`/`paid` — the two disagree about what has "billed" | Accounting integrity | Low | 2.3 | Open — product decision, not changed (see 2.3) |
+| F53 | Match report counts **draft** bills in `PreviouslyInvoiced` while GRNI clearing counts only `approved`/`paid` — the two disagree about what has "billed" | Accounting integrity | Low | 2.3 | Fixed |
 | F54 | `int64(float64)` truncation of `unitPrice`/`unitCost` toward zero vs. decimal-rounded totals | Accounting integrity | Low | 2.4 | Fixed |
 | F55 | Invoice PDF preview leaks a resize listener and an object URL per generation; leftover `console.log` debug output ships in prod | Frontend | Medium | 3.1 | Fixed |
 | F56 | Product/tax-rate save failures close the form silently — setter swallows the error, `handleClose()`/`navigate()` still runs | Frontend | Medium | 3.2 | Fixed |
@@ -231,12 +230,23 @@ in `db/incoming_invoice_match.go`'s top comment alongside the existing "computed
 on read" note. Check `incoming_invoice_match_test.go` for coverage of the
 draft-bill case before changing it.
 
-**Not changed.** This is a product decision, not a bug fix — CLAUDE.md
-documents the current draft-inclusive `PreviouslyInvoiced` behavior as
-intentional ("that `PreviouslyInvoiced` term is what stops the same goods
-being billed twice"), and changing it alters a number visible in the match
-panel. Left open for a deliberate product call rather than changed
-unilaterally by the executing session.
+**Fixed, after a deliberate product decision.** Initially left open in this
+session because it changes a number visible in the match panel. Decided
+2026-08-13: aligned `PreviouslyInvoiced` to `approved`/`paid` only, matching
+`grniClearedQtyForPOLine`'s existing definition. The double-billing guard
+this exists for still holds where it actually matters — matching is
+computed on read, so the draft→approved transition re-evaluates it, and a
+second bill still can't reach `approved` while a first one already has for
+the same goods (`TestIncomingInvoiceDoubleBillingDetected` covers this and
+was unaffected by the change, since its first invoice is approved before
+the second is checked). What changes is that a still-draft bill — which has
+no AP obligation and might be edited or deleted before ever being approved
+— no longer produces a spurious variance against a sibling bill. New
+regression test:
+`TestIncomingInvoiceMatchIgnoresDraftBillsInPreviouslyInvoiced`
+(`db/db_test.go`), confirmed to fail pre-fix (reported
+`PreviouslyInvoiced=10` from a draft) and pass post-fix. See
+`db/incoming_invoice_match.go` and CLAUDE.md's 3-way matching bullet.
 
 ### 2.4 Float64→int64 truncation on line-item prices (F54)
 
@@ -376,11 +386,34 @@ Reproduced after a full `node_modules/.vite` cache clear and dev-server
 restart, so it isn't stale build-cache; `pnpm-lock.yaml`/`package.json` are
 untouched by every phase of this audit, so it's pre-existing, likely
 introduced by the "bump npm dependencies to latest" commit (`cb79908`,
-before this audit's baseline commit). Not fixed here — out of scope for
-F55, and the fix (pin/dedupe `pdfjs-dist`, or check whether `react-pdf`'s
-`package.json` allows the workspace's `pdfjs-dist` to satisfy its peer
-range) deserves its own investigation rather than a rushed pin. Worth a
-follow-up.
+before this audit's baseline commit).
+
+**Fixed, as a follow-up.** `react-pdf@10.4.1` depends on `pdfjs-dist` as a
+regular (not peer) dependency, hard-pinned to an exact version (`5.4.296`)
+— pdfjs-dist doesn't keep a stable API/worker contract across releases, so
+react-pdf pins deliberately. This app also needs `pdfjs-dist` as its own
+direct dependency purely to resolve the worker file path under pnpm's
+strict node_modules resolution (`src/routes/invoices/details.tsx`), and
+that direct entry drifts independently every time an automated
+dependency-bump pass moves it forward — exactly what happened between
+`cb79908` and this audit's baseline. Fixed with a pnpm `catalog:` +
+`overrides` combination in `pnpm-workspace.yaml`: `pdfjs-dist` is now
+declared once in a `catalog`, `package.json`'s own dependency references
+`"catalog:"`, and an `overrides: { pdfjs-dist: "catalog:" }` entry forces
+every `pdfjs-dist` in the tree — including `react-pdf`'s nested one — to
+resolve to that single catalog version. `pnpm install` now installs exactly
+one copy (confirmed via `find node_modules/.pnpm -maxdepth 1 -iname
+"pdfjs-dist*"`); react-pdf's own `package.json` still declares `5.4.296` as
+its stated range (unaffected by the override, which only changes
+resolution), but what's actually linked into its dependency graph is the
+single overridden version. `pnpm lint && pnpm build` pass, and manual
+verification (Playwright, `admin@fatura.cloud`) confirmed the invoice PDF
+preview renders correctly with no `UnknownErrorException` in the console —
+compare against the same browser session's console history, which still
+shows the original error from before this fix. This closes the drift class
+permanently rather than just today's instance: a future bump to the
+catalog entry now moves react-pdf's resolved `pdfjs-dist` in lockstep
+instead of only the app's own declared range.
 
 ---
 

@@ -129,15 +129,21 @@ const ProductForm = () => {
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
     const stockEnabled = values.type === "product" && values.stockEnabled ? 1 : 0;
-    await setProduct({
-      ...values,
-      price: Math.round((values.price ?? 0) * 100),
-      unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
-      stockEnabled,
-      serialized: stockEnabled && values.serialized ? 1 : 0,
-    });
-    handleClose();
-    setSubmitting(false);
+    try {
+      await setProduct({
+        ...values,
+        price: Math.round((values.price ?? 0) * 100),
+        unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
+        stockEnabled,
+        serialized: stockEnabled && values.serialized ? 1 : 0,
+      });
+      handleClose();
+    } catch {
+      // setProduct already toasted the error — keep the drawer open with
+      // the user's input intact rather than closing on a failed save.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {

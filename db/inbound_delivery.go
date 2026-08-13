@@ -465,6 +465,20 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// F48: re-check the status this whole function's decisions were made
+	// against (which lines to move, whether grniLines/existingGRNIEntry
+	// apply) now that this transaction actually holds the connection — see
+	// the identical guard in UpdateDeliveryStatus (db/delivery.go).
+	var liveStatus string
+	if err := tx.Get(&liveStatus, `SELECT status FROM inbound_deliveries WHERE id = ?`, id); err != nil {
+		return nil, fmt.Errorf("update_inbound_delivery_status status_check: %w", err)
+	}
+	if liveStatus != current.Status {
+		return nil, newValidationError(
+			"goods receipt status changed to %q by another request — reload and try again", liveStatus,
+		)
+	}
+
 	touched := []string{}
 
 	switch {
@@ -760,7 +774,7 @@ func replaceInboundDeliveryLineItemsTx(
 		productID := item.ProductID
 		var unitCost *int64
 		if item.UnitCost != nil {
-			cost := int64(*item.UnitCost)
+			cost := roundCents(*item.UnitCost)
 			unitCost = &cost
 		}
 
