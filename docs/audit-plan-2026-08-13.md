@@ -18,21 +18,19 @@ bumps through v3.7.3.
 - This document is an audit, not a remediation — no code was changed while
   producing it.
 
-**Status:** Phase 1 (F48–F50) fixed, PR open. Phase 2 (F51–F54) fixed, PR
-open (#97 — F53 decided and pushed as a follow-up commit after the PR was
-first opened; see the PR #97 comment for what changed and why). Phase 3
-(F55–F57) fixed, PR open — surfaced and later fixed one new unnumbered
-finding during manual verification (see 3.4, a pre-existing `pdfjs-dist`
-version mismatch). Phase 4 not started.
-Triage notes from the executing session: F53 was initially left open as a
-product decision (changing `PreviouslyInvoiced` to `approved`/`paid`-only),
-then decided and fixed after the fact — see 2.3. F54's fix is scoped to the
+**Status:** All 17 findings resolved (16 fixed, 1 reduced to a doc note),
+all four phases' PRs merged into main (#96, #97, #98, #99). F53 was
+initially left open as a product decision, then decided and fixed after the
+fact (see 2.3). F63 reduced to a documentation note (see 4.6). Phase 3
+surfaced one new unnumbered finding during manual verification (see 3.4, a
+pre-existing `pdfjs-dist` version mismatch), fixed as a follow-up.
+Triage notes from the executing session: F54's fix is scoped to the
 rounding change only; the plan's suggested "sanity check that stored value
 is within one cent" is skipped as speculative validation for a case the
-rounding itself eliminates. F63 will be reduced to a documentation note
-rather than a behavior change — refusing to auto-migrate a schema-mismatched
-upload would break restoring a legitimate older backup, which the plan
-itself already flags as "a footgun rather than a threat."
+rounding itself eliminates. F63 is a documentation note rather than a
+behavior change — refusing to auto-migrate a schema-mismatched upload would
+break restoring a legitimate older backup, which the plan itself already
+flags as "a footgun rather than a threat."
 
 ---
 
@@ -50,14 +48,14 @@ itself already flags as "a footgun rather than a threat."
 | F55 | Invoice PDF preview leaks a resize listener and an object URL per generation; leftover `console.log` debug output ships in prod | Frontend | Medium | 3.1 | Fixed |
 | F56 | Product/tax-rate save failures close the form silently — setter swallows the error, `handleClose()`/`navigate()` still runs | Frontend | Medium | 3.2 | Fixed |
 | F57 | Users page uses module-level Jotai atoms for drawer state — violates the documented rule that risks an orphaned-mask freeze | Frontend | Low | 3.3 | Fixed |
-| F58 | No index on `journal_entries.fiscalYearId` — `CloseFiscalYear`, both GL exports, and report group-bys scan by it | Performance | Low | 4.1 | Open |
-| F59 | `provisionOrSyncUser` holds `dbMu` write lock during bcrypt — every OIDC callback stalls all API traffic ~50–100 ms | Performance | Low | 4.2 | Open |
-| F60 | Scheduler retries a failing backup every minute for the whole scheduled hour; `applyRetention` deletes stray files by modtime | Ops | Low | 4.3 | Open |
-| F61 | `CreateInvoice` inserts client-supplied `req.ID` as-is — empty string becomes an empty-string PK | Ops | Low | 4.4 | Open |
-| F62 | `SeedInventoryAccountingDefaultsForAllOrganizations` gate skips an org whose `defaultInventoryAccountId` is set manually but the other three are NULL | Ops | Low | 4.5 | Open |
-| F63 | Restore path applies pending migrations to an arbitrary uploaded SQLite file that passes `integrity_check` + a `users` table | Security (admin-only) | Low | 4.6 | Open |
-| F64 | `isHTTPS`/`requestIsHTTPS` trust `X-Forwarded-Proto` unconditionally — Secure cookies/HSTS on a misconfigured plain-HTTP deployment | Ops | Low | 4.7 | Open |
-| F65 | OIDC never checks the `email_verified` claim before JIT-provisioning a user | Security | Low | 4.8 | Open |
+| F58 | No index on `journal_entries.fiscalYearId` — `CloseFiscalYear`, both GL exports, and report group-bys scan by it | Performance | Low | 4.1 | Fixed |
+| F59 | `provisionOrSyncUser` holds `dbMu` write lock during bcrypt — every OIDC callback stalls all API traffic ~50–100 ms | Performance | Low | 4.2 | Fixed |
+| F60 | Scheduler retries a failing backup every minute for the whole scheduled hour; `applyRetention` deletes stray files by modtime | Ops | Low | 4.3 | Fixed |
+| F61 | `CreateInvoice` inserts client-supplied `req.ID` as-is — empty string becomes an empty-string PK | Ops | Low | 4.4 | Fixed |
+| F62 | `SeedInventoryAccountingDefaultsForAllOrganizations` gate skips an org whose `defaultInventoryAccountId` is set manually but the other three are NULL | Ops | Low | 4.5 | Fixed |
+| F63 | Restore path applies pending migrations to an arbitrary uploaded SQLite file that passes `integrity_check` + a `users` table | Security (admin-only) | Low | 4.6 | Reduced to doc note — not changed |
+| F64 | `isHTTPS`/`requestIsHTTPS` trust `X-Forwarded-Proto` unconditionally — Secure cookies/HSTS on a misconfigured plain-HTTP deployment | Ops | Low | 4.7 | Fixed |
+| F65 | OIDC never checks the `email_verified` claim before JIT-provisioning a user | Security | Low | 4.8 | Fixed |
 
 ---
 
@@ -429,6 +427,11 @@ report group-bys all filter by it — on a large ledger each is a full scan of a
 table that is append-mostly and never compacted. One
 `CREATE INDEX ... ON journal_entries(fiscalYearId)` in a new migration.
 
+**Fixed** (branch `audit/phase4-performance-ops`): migration `0060` adds
+`idx_journal_entries_fiscal_year_id`. Numbered 0060, not 0059, on the
+assumption PR #96 (F48's unique index) merges first — renumber if these
+land out of order. Regression test `TestJournalEntriesFiscalYearIDIndexExists`.
+
 ### 4.2 OIDC JIT-provision holds the DB write lock during bcrypt (F59)
 
 `api/users.go:284-301` (`provisionOrSyncUser`): `h.dbMu.Lock()` is held across a
@@ -439,6 +442,14 @@ Non-OIDC deployments are unaffected (feature disabled).
 
 **Fix direction:** hash the password *before* taking the lock (it doesn't touch
 the DB), or scope the lock to the minimal read/upsert window around it.
+
+**Fixed**: a new `hashRandomPassword` helper is called under a brief
+`RLock`'d pre-check (deciding whether hashing is even needed) with no lock
+held during the hash itself; the write section re-checks under the write
+lock regardless (same as before), with a fallback hash for the rare race
+where the pre-check and the write-locked read disagree. Verified via the
+existing OIDC callback tests (first-login create and role-resync paths both
+still pass).
 
 ### 4.3 Scheduler retry / retention behavior (F60)
 
@@ -455,6 +466,20 @@ the DB), or scope the lock to the minimal read/upsert window around it.
 next midnight/hour boundary) rather than file existence, and have retention
 match only the `fatura-*` prefix it owns.
 
+**Fixed**: `runScheduler` now tracks `lastSuccessDate` as single-goroutine
+local state, set only after `Backup` actually returns success — closes a
+sharper latent bug than just retry count: a partial file left behind by a
+failed `VACUUM INTO` could previously fool the file-existence check into
+treating a corrupt backup as done. `applyRetention` now only deletes files
+with the `fatura-` prefix every backup this app creates (scheduled or
+manual) shares. Regression tests in `api/scheduler_test.go`
+(`TestApplyRetentionOnlyDeletesFaturaPrefixedFiles`,
+`TestApplyRetentionKeepsRecentFiles`) confirmed to fail pre-fix (deleted
+`notes.txt`/`.DS_Store`) and pass post-fix. `runScheduler`'s own retry
+timing isn't independently tested (an infinite `time.Sleep` loop, hard to
+unit test cleanly without refactoring for testability the plan didn't ask
+for) — reviewed by inspection instead.
+
 ### 4.4 `CreateInvoice` accepts client-supplied empty ID (F61)
 
 `db/invoice.go` inserts `req.ID` without the `if req.ID == "" { req.ID, _ =
@@ -463,6 +488,10 @@ gonanoid.New() }` guard every other create path has. A client sending
 request 500s on PK collision. Low impact (frontend always sends a nanoid) but a
 one-line divergence from the established convention.
 
+**Fixed**: the standard guard added. Regression test
+`TestCreateInvoiceGeneratesIDWhenEmpty` confirmed to fail pre-fix (empty-string
+id) and pass post-fix.
+
 ### 4.5 Inventory-defaults backfill gate gap (F62)
 
 `db/account.go:581-592`: `SeedInventoryAccountingDefaultsForAllOrganizations` is
@@ -470,6 +499,14 @@ gated only on `defaultInventoryAccountId IS NULL`. An org that set that one
 column manually (e.g. via the accounting card) while leaving the other three NULL
 is skipped forever. Given the seeding populates all four together, gate on *any*
 of the four being NULL, or on all four.
+
+**Fixed**: gated on *any* of the four being NULL — `seedInventoryAccountsTx`
+itself was already safe to call on a partially-wired organization (its
+`COALESCE` leaves whatever's already set alone), only the gate was too
+narrow. Regression test
+`TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsPartialOrgs`
+confirmed to fail pre-fix (the other three columns stayed NULL) and pass
+post-fix.
 
 ### 4.6 Restore applies migrations to uploaded DBs (F63)
 
@@ -484,6 +521,16 @@ without consent. Consider recording the schema version (e.g. in
 `schema_migrations`) and refusing to auto-migrate an uploaded file whose version
 differs from the running one.
 
+**Not changed** — reduced to this documentation note. The suggested fix
+(refuse to auto-migrate an uploaded file whose schema version differs from
+the running one) would break restoring a legitimate older backup, which is
+the entire point of having backups. The plan itself already calls this "a
+footgun rather than a threat," admin-only — not worth the restore-path
+complexity a version-refusal check would add. Operators: know that
+restoring an uploaded database file that merely *passes* `integrity_check` +
+has a `users` table will silently migrate it to the running schema version;
+verify the source before restoring.
+
 ### 4.7 `X-Forwarded-Proto` trust for Secure/HSTS (F64)
 
 `api/oidc.go:315-319` (`isHTTPS`) and `main.go:168-173` (`requestIsHTTPS`) treat
@@ -495,6 +542,15 @@ header unprompted) but worth the same treatment as `X-Forwarded-For`: only honor
 it from a `TRUSTED_PROXIES` peer. At minimum, document the constraint in the
 env-var section.
 
+**Fixed**: `isHTTPS`/`requestIsHTTPS` unified into one exported
+`api.IsHTTPS(r, trustedProxies)`, backed by a new `api.IsTrustedProxyPeer`
+shared with `clientIP`'s existing `X-Forwarded-For` trust check — the same
+boundary now governs both headers. `setAuthCookie`/`clearAuthCookie` became
+`*handler` methods to reach `h.trustedProxies`; `securityHeaders` (main.go)
+now takes `trustedProxies` as a parameter. Regression tests in
+`api/auth_test.go` (`TestIsHTTPS_OnlyTrustsForwardedProtoFromTrustedProxy`,
+`TestIsHTTPS_DirectTLSAlwaysTrusted`).
+
 ### 4.8 OIDC `email_verified` not checked (F65)
 
 `api/oidc.go` verifies signature/issuer/audience/nonce but never inspects the
@@ -504,6 +560,12 @@ misconfigured IdP) could hand this app an unverified address. A claim to check
 when present (`verified == true`, skipping only when the claim is absent, since
 Authelia doesn't always emit it). Low severity — the provider is operator-chosen
 and trusted.
+
+**Fixed**: checked in `oidcCallback` right after resolving the email claim —
+rejects only when `email_verified` is present and `false`; absent means
+skip the check, matching Authelia's behavior of not always emitting it.
+Regression tests `TestOIDCCallback_UnverifiedEmailRejected` and
+`TestOIDCCallback_VerifiedEmailAccepted`.
 
 ---
 

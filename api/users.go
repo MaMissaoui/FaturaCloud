@@ -270,15 +270,56 @@ func (h *handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// hashRandomPassword generates a bcrypt hash of a random, never-reused
+// password — satisfies passwordHash's NOT NULL constraint for a
+// JIT-provisioned SSO user without producing a usable local-login
+// credential. Touches no database state, only crypto/rand and CPU — safe to
+// call without holding dbMu.
+func hashRandomPassword() ([]byte, error) {
+	randomPassword := make([]byte, 32)
+	if _, err := rand.Read(randomPassword); err != nil {
+		return nil, err
+	}
+	return bcrypt.GenerateFromPassword(randomPassword, bcrypt.DefaultCost)
+}
+
 // provisionOrSyncUser looks up a user by email — the identity anchor for SSO
 // logins — JIT-provisioning one on first login and re-syncing its role (never
 // displayName) on every subsequent login so group changes at the identity
 // provider take effect without waiting for an admin to edit the account here.
 func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow, error) {
 	email = strings.TrimSpace(email)
+	if name == "" {
+		name = email
+	}
 	role := "user"
 	if isAdmin {
 		role = "admin"
+	}
+
+	// F59 (2026-08-13 audit): bcrypt.GenerateFromPassword (~50-100ms at
+	// DefaultCost) doesn't touch the database, but used to run inside
+	// dbMu's write lock below whenever this was a first login — and
+	// because dbMu is the global RWMutex every withDB-wrapped handler
+	// RLocks for its whole request, that stalled all other API traffic for
+	// the duration. Decide whether hashing is even needed with a quick
+	// RLock'd pre-check, then hash with no lock held at all. The write
+	// section below re-checks under the write lock regardless (same as
+	// before this fix), so a user created concurrently between the
+	// pre-check and the write lock is still handled correctly — just via
+	// the fallback hash below, the same rare-race cost this function
+	// always had.
+	var hash []byte
+	h.dbMu.RLock()
+	var precheck userRow
+	existsErr := h.db.DB.Get(&precheck, `SELECT * FROM users WHERE email = ?`, email)
+	h.dbMu.RUnlock()
+	if existsErr != nil {
+		var herr error
+		hash, herr = hashRandomPassword()
+		if herr != nil {
+			return userRow{}, herr
+		}
 	}
 
 	h.dbMu.Lock()
@@ -287,18 +328,12 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 	var u userRow
 	err := h.db.DB.Get(&u, `SELECT * FROM users WHERE email = ?`, email)
 	if err != nil {
-		if name == "" {
-			name = email
-		}
-		// A random, never-reused password satisfies passwordHash's NOT NULL
-		// constraint without producing a usable local-login credential.
-		randomPassword := make([]byte, 32)
-		if _, rerr := rand.Read(randomPassword); rerr != nil {
-			return userRow{}, rerr
-		}
-		hash, herr := bcrypt.GenerateFromPassword(randomPassword, bcrypt.DefaultCost)
-		if herr != nil {
-			return userRow{}, herr
+		if hash == nil {
+			var herr error
+			hash, herr = hashRandomPassword()
+			if herr != nil {
+				return userRow{}, herr
+			}
 		}
 		id, _ := nanoid.New()
 		// ON CONFLICT DO NOTHING handles two near-simultaneous first logins

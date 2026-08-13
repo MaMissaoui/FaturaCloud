@@ -187,6 +187,18 @@ func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 		fail("id token had no usable email claim")
 		return
 	}
+	// F65 (2026-08-13 audit): the standard "email_verified" claim, checked
+	// only when the provider actually emits it — Authelia doesn't always
+	// send it, and treating its absence as a failure would break every
+	// deployment that never set it up rather than catch a genuinely
+	// unverified address. A present-and-false value means the provider
+	// itself is telling us not to trust this email; JIT-provisioning a
+	// FaturaCloud user against it anyway would be handing out an account
+	// keyed on an address the IdP hasn't confirmed the person controls.
+	if verified, ok := claims["email_verified"].(bool); ok && !verified {
+		fail("id token's email is not verified")
+		return
+	}
 	name, _ := claims[h.oidcCfg.NameClaim].(string)
 	isAdmin := oidcClaimHasGroup(claims, h.oidcCfg.GroupsClaim, h.oidcCfg.AdminGroup)
 
@@ -207,7 +219,7 @@ func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	// (no fragment, no query), so it can't leak via history, and page JS never
 	// sees it. Set-Cookie on this cross-site redirect response works fine; it's
 	// the browser sending an existing cookie cross-site that SameSite governs.
-	setAuthCookie(w, r, jwtToken)
+	h.setAuthCookie(w, r, jwtToken)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
@@ -245,7 +257,7 @@ func (h *handler) setOIDCStateCookie(w http.ResponseWriter, r *http.Request, pay
 		Path:     "/api/auth/oidc",
 		MaxAge:   oidcStateCookieTTL,
 		HttpOnly: true,
-		Secure:   isHTTPS(r),
+		Secure:   IsHTTPS(r, h.trustedProxies),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -259,7 +271,7 @@ func (h *handler) readAndClearOIDCStateCookie(w http.ResponseWriter, r *http.Req
 		Path:     "/api/auth/oidc",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   isHTTPS(r),
+		Secure:   IsHTTPS(r, h.trustedProxies),
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -307,14 +319,4 @@ func verifyOIDCCookie(secret, cookieVal string) (oidcStateCookiePayload, error) 
 		return oidcStateCookiePayload{}, err
 	}
 	return v, nil
-}
-
-// isHTTPS reports whether the original client request was HTTPS, accounting
-// for TLS termination happening upstream (Traefik/NPM) — the Go server
-// itself is plain HTTP behind that boundary in every real deployment.
-func isHTTPS(r *http.Request) bool {
-	if r.TLS != nil {
-		return true
-	}
-	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }

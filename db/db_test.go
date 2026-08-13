@@ -33,6 +33,24 @@ func TestMigrations(t *testing.T) {
 	}
 }
 
+// TestJournalEntriesFiscalYearIDIndexExists is F58's regression test:
+// CloseFiscalYear's activity snapshot, both GL exports, and the report
+// group-bys all filter journal_entries by fiscalYearId with no supporting
+// index before this migration.
+func TestJournalEntriesFiscalYearIDIndexExists(t *testing.T) {
+	d := newTestDB(t)
+	var count int
+	if err := d.DB.Get(&count,
+		`SELECT COUNT(*) FROM sqlite_master
+		 WHERE type = 'index' AND tbl_name = 'journal_entries' AND sql LIKE '%fiscalYearId%'`,
+	); err != nil {
+		t.Fatalf("query sqlite_master: %v", err)
+	}
+	if count == 0 {
+		t.Fatal("expected an index on journal_entries.fiscalYearId")
+	}
+}
+
 func TestForeignKeysEnabled(t *testing.T) {
 	d := newTestDB(t)
 	var fk int
@@ -110,6 +128,49 @@ func TestClientCRUD(t *testing.T) {
 	ok, err := d.DeleteClient(client.ID)
 	if err != nil || !ok {
 		t.Fatalf("DeleteClient: err=%v, ok=%v", err, ok)
+	}
+}
+
+// TestCreateInvoiceGeneratesIDWhenEmpty is F61's regression test:
+// CreateInvoice used to insert a client-supplied empty req.ID as-is, unlike
+// every other create path's `if req.ID == "" { req.ID, _ = gonanoid.New() }`
+// guard — a {"id": ""} request created an invoice with an empty-string
+// primary key, and a second such request 500ed on the PK collision instead
+// of getting a clean nanoid.
+func TestCreateInvoiceGeneratesIDWhenEmpty(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: org.ID, Number: "INV-001", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR", Total: 1000, SubTotal: 1000,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 1000}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if inv.ID == "" {
+		t.Fatal("expected a generated id, got empty string")
+	}
+
+	// A second invoice with an empty id must not collide with the first.
+	inv2, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: org.ID, Number: "INV-002", ClientID: client.ID,
+		Date: 1700000000000, Currency: "EUR", Total: 1000, SubTotal: 1000,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 1000}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice (second): %v", err)
+	}
+	if inv2.ID == "" || inv2.ID == inv.ID {
+		t.Fatalf("expected a distinct generated id, got %q (first was %q)", inv2.ID, inv.ID)
 	}
 }
 

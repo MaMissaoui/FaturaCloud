@@ -91,7 +91,7 @@ func TestSpaHandler_DirectoryPathFallsBackToIndex(t *testing.T) {
 }
 
 func TestSecurityHeaders_IncludesCSP(t *testing.T) {
-	h := securityHeaders(spaHandler(newTestDistFS()))
+	h := securityHeaders(spaHandler(newTestDistFS()), nil)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	h.ServeHTTP(rr, req)

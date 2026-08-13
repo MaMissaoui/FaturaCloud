@@ -116,7 +116,7 @@ func main() {
 	// WriteTimeout is generous because backup/restore stream large database files.
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           securityHeaders(mux),
+		Handler:           securityHeaders(mux, trustedProxies),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      300 * time.Second,
@@ -142,7 +142,7 @@ const contentSecurityPolicy = "default-src 'self'; script-src 'self' 'wasm-unsaf
 
 // securityHeaders sets baseline defensive headers on every response, API and
 // embedded frontend alike.
-func securityHeaders(next http.Handler) http.Handler {
+func securityHeaders(next http.Handler, trustedProxies []netip.Prefix) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -151,25 +151,19 @@ func securityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 		// HSTS only on requests that actually arrived over HTTPS. TLS is
 		// terminated upstream (reverse proxy) in every real deployment, so
-		// we key off X-Forwarded-Proto; sending it unconditionally would be
-		// wrong for plain-HTTP LAN deployments. 2 years + includeSubDomains,
-		// no preload (that's a standing commitment the operator should opt
-		// into deliberately, not a default).
-		if requestIsHTTPS(r) {
+		// we key off X-Forwarded-Proto — but F64 (2026-08-13 audit): only
+		// when it's set by a TRUSTED_PROXIES peer (api.IsHTTPS), the same
+		// trust boundary already drawn for X-Forwarded-For. Before this
+		// fix, any peer reaching the app directly could set the header
+		// itself and force HSTS on a plain-HTTP deployment, locking
+		// clients out. 2 years + includeSubDomains, no preload (that's a
+		// standing commitment the operator should opt into deliberately,
+		// not a default).
+		if api.IsHTTPS(r, trustedProxies) {
 			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// requestIsHTTPS reports whether the original client request was HTTPS,
-// accounting for TLS termination upstream (mirrors api.isHTTPS, which is
-// unexported).
-func requestIsHTTPS(r *http.Request) bool {
-	if r.TLS != nil {
-		return true
-	}
-	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 // spaHandler serves static files from the embedded FS and falls back to

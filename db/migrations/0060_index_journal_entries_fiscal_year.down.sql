@@ -1,0 +1,1 @@
+DROP INDEX idx_journal_entries_fiscal_year_id;
