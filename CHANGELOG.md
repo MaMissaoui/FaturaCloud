@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.7.5] - 2026-09-07
+
+Routine dependency-currency maintenance plus GitHub Actions resource
+optimization; no user-facing behavior change.
+
+### Changed
+- Refreshed npm dependencies to latest: `antd` 6.6.0→6.6.3,
+  `@react-pdf/renderer` 4.6.0→4.9.0, `@sentry/react`, `dayjs`, `jotai`,
+  `react-pdf`, `react-router`, `pdfjs-dist` (6.2→6.3, catalog kept in
+  sync with react-pdf so the PDF worker version can't drift), plus
+  build-tooling bumps (`vite`, `@vitejs/plugin-react`, `oxfmt`,
+  `oxlint`, `sass`, `tsx`, `@types/react-dom`).
+
+### Performance
+- CI's Go job was ~10 min of every ~10.5 min run — almost entirely a
+  race-enabled test compile rebuilt from scratch. `setup-go` now caches
+  the Go build/module caches across runs; CI also cancels superseded
+  runs on a fresh push instead of duplicating the full test compile, and
+  the Docker release build's layer cache is scoped and capped so a
+  multi-arch build can't evict CI's Go cache from the shared actions
+  cache budget.
+
 ## [3.7.4] - 2026-08-13
 
 Concurrency/ledger, accounting-validation, frontend-reliability, and
