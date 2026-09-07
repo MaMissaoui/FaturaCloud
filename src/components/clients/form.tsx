@@ -227,6 +227,21 @@ const ClientForm = () => {
                   <Input placeholder={t`Website`} />
                 </Form.Item>
               </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="defaultCurrency"
+                  label={<Trans>Default currency</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select placeholder={t`Default currency`} allowClear showSearch>
+                    {map(currencies, (currency) => (
+                      <Select.Option value={currency} key={currency}>
+                        {currency}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
             </Row>
           </Card>
 
@@ -267,26 +282,6 @@ const ClientForm = () => {
               <Col xs={24} md={16}>
                 <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
                   <Input placeholder={t`City`} />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-
-          <Card size="small" title={<Trans>Sales</Trans>} style={{ marginBottom: 12 }}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="defaultCurrency"
-                  label={<Trans>Default currency</Trans>}
-                  style={{ marginBottom: 0 }}
-                >
-                  <Select placeholder={t`Default currency`} allowClear showSearch>
-                    {map(currencies, (currency) => (
-                      <Select.Option value={currency} key={currency}>
-                        {currency}
-                      </Select.Option>
-                    ))}
-                  </Select>
                 </Form.Item>
               </Col>
             </Row>

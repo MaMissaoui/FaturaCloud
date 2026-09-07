@@ -179,10 +179,10 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
 
   return (
     <>
-      <Divider>
+      <Divider style={{ margin: "16px 0" }}>
         <Trans>Payments</Trans>
       </Divider>
-      <Descriptions column={3} size="small" style={{ marginBottom: 16 }}>
+      <Descriptions column={3} size="small" style={{ marginBottom: 8 }}>
         <Descriptions.Item label={<Trans>Total</Trans>}>
           {formatCents(total, currency, i18n.locale)}
         </Descriptions.Item>
@@ -200,7 +200,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         pagination={false}
         size="small"
         loading={loading}
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: 8 }}
         locale={{ emptyText: <Trans>No payments recorded yet</Trans> }}
       >
         <Table.Column

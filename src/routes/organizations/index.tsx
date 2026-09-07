@@ -6,6 +6,7 @@ import {
   Card,
   Checkbox,
   Col,
+  Collapse,
   Drawer,
   Form,
   Input,
@@ -87,6 +88,10 @@ export default function Organizations() {
   const [resetMasterData, setResetMasterData] = useState(false);
   const [resetTransactionalData, setResetTransactionalData] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // Every secondary section starts collapsed — only Details needs to be
+  // visible without scrolling; Logo/Banking/Address/E-invoicing/Formatting/
+  // Accounting are edited far less often than the fields above them.
+  const [activeSections, setActiveSections] = useState<string[]>([]);
   // Fetched per-editingId (not the shared accountsAtom, which is scoped to
   // the globally-selected organization) — this drawer can edit an org other
   // than the currently-selected one, same reasoning as the Logo card above.
@@ -124,6 +129,7 @@ export default function Organizations() {
     setEditingId(null);
     form.resetFields();
     form.setFieldsValue({ minimum_fraction_digits: 2, currency: "EUR" });
+    setActiveSections([]);
     setDrawerOpen(true);
   };
 
@@ -135,6 +141,7 @@ export default function Organizations() {
     setResetMasterData(false);
     setResetTransactionalData(false);
     setEditingAccounts([]);
+    setActiveSections([]);
     setDrawerOpen(true);
     try {
       const org = await GetOrganization(id);
@@ -523,362 +530,416 @@ export default function Organizations() {
             </Row>
           </Card>
 
-          {isEdit && editingId && (
-            <Card size="small" title={<Trans>Logo</Trans>} style={{ marginBottom: 12 }}>
-              <Space direction="vertical" size={12}>
-                {hasLogo && (
-                  <img
-                    key={logoKey}
-                    src={`/api/organizations/${editingId}/logo?t=${logoKey}`}
-                    alt="logo"
-                    onError={() => setHasLogo(false)}
-                    style={{
-                      maxWidth: 240,
-                      maxHeight: 80,
-                      objectFit: "contain",
-                      border: `1px solid ${token.colorBorderSecondary}`,
-                      borderRadius: 6,
-                      padding: 8,
-                      display: "block",
-                    }}
-                  />
-                )}
-                <Space>
-                  <Upload
-                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                    showUploadList={false}
-                    name="file"
-                    action={`/api/organizations/${editingId}/logo`}
-                    headers={{ [CSRF_HEADER]: "1" }}
-                    onChange={({ file }) => {
-                      if (file.status === "done") refreshLogo();
-                      else if (file.status === "error") message.error(t`Logo upload failed`);
-                    }}
-                  >
-                    <Button icon={<UploadOutlined />} loading={logoBusy}>
-                      {hasLogo ? t`Change logo` : t`Upload logo`}
-                    </Button>
-                  </Upload>
-                  {hasLogo && (
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      loading={logoBusy}
-                      onClick={handleLogoRemove}
-                    >
-                      <Trans>Remove logo</Trans>
-                    </Button>
-                  )}
-                </Space>
-              </Space>
-            </Card>
-          )}
-
-          <Card size="small" title={<Trans>Banking</Trans>} style={{ marginBottom: 12 }}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="bank_name" label={<Trans>Bank name</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="iban" label="IBAN">
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="bic" label="BIC">
-                  <Input
-                    maxLength={11}
-                    onChange={(e) => form.setFieldValue("bic", e.target.value.toUpperCase())}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="vatin" label="VATIN">
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-
-          <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="country_code" label={<Trans>Country</Trans>}>
-                  <Select
-                    showSearch
-                    allowClear
-                    placeholder={t`Select a country`}
-                    options={countryOptions}
-                    filterOption={(input, option) =>
-                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                    }
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={16}>
-                <Form.Item name="street" label={<Trans>Street</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="house_number" label={<Trans>House number</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={16}>
-                <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-
-          <Card size="small" title={<Trans>E-invoicing</Trans>} style={{ marginBottom: 12 }}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24}>
-                <Form.Item
-                  name="tax_number"
-                  label={<Trans>Tax number</Trans>}
-                  style={{ marginBottom: 0 }}
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-
-          <Card size="small" title={<Trans>Formatting</Trans>}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="date_format" label={<Trans>Date format</Trans>}>
-                  <Select placeholder={t`Select date format`}>
-                    {Object.keys(DATE_FORMATS).map((key) => (
-                      <Select.Option key={key} value={DATE_FORMATS[key as DateFormatKey] ?? "AUTO"}>
-                        {getDateFormatLabel(key as DateFormatKey)}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="minimum_fraction_digits" label={<Trans>Decimal places</Trans>}>
-                  <InputNumber min={0} max={10} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-
-          {isEdit && editingId && (
-            <Card size="small" title={<Trans>Accounting</Trans>} style={{ marginBottom: 12 }}>
-              <Row gutter={[16, 0]}>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultArAccountId"
-                    label={<Trans>Accounts receivable</Trans>}
-                    tooltip={<Trans>Used for the AR line when a sales invoice posts.</Trans>}
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultApAccountId"
-                    label={<Trans>Accounts payable</Trans>}
-                    tooltip={<Trans>Used for the AP line when a vendor bill posts.</Trans>}
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultRevenueAccountId"
-                    label={<Trans>Default revenue account</Trans>}
-                    tooltip={
-                      <Trans>Used for a sales invoice line whose product has no override.</Trans>
-                    }
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultExpenseAccountId"
-                    label={<Trans>Default expense account</Trans>}
-                    tooltip={
-                      <Trans>Used for a vendor bill line whose product has no override.</Trans>
-                    }
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultCashAccountId"
-                    label={<Trans>Default cash account</Trans>}
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultInventoryAccountId"
-                    label={<Trans>Default inventory account</Trans>}
-                    tooltip={
-                      <Trans>
-                        Used to capitalize a stock-enabled product's value when it's received or
-                        adjusted.
-                      </Trans>
-                    }
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultGRNIAccountId"
-                    label={<Trans>Default GRNI account</Trans>}
-                    tooltip={
-                      <Trans>
-                        Goods Received Not Invoiced — accrues a liability when a receipt is
-                        received, cleared when the matching vendor bill is approved.
-                      </Trans>
-                    }
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultCOGSAccountId"
-                    label={<Trans>Default COGS account</Trans>}
-                    tooltip={
-                      <Trans>
-                        Cost of goods sold, recognized against inventory when a shipment ships.
-                      </Trans>
-                    }
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="defaultInventoryAdjustmentAccountId"
-                    label={<Trans>Default inventory adjustment account</Trans>}
-                    tooltip={
-                      <Trans>
-                        Counter-account for a manual stock adjustment's signed inventory value
-                        change.
-                      </Trans>
-                    }
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="datevClearingAccountId"
-                    label={<Trans>DATEV clearing account</Trans>}
-                    tooltip={
-                      <Trans>
-                        Synthetic counter-account for a manual journal entry with more than one line
-                        on both sides (no natural anchor line) when exporting to DATEV. Leave blank
-                        if you don't use DATEV.
-                      </Trans>
-                    }
-                    style={{ marginBottom: 0 }}
-                  >
-                    <Select
-                      allowClear
-                      showSearch
-                      placeholder={t`None`}
-                      options={leafAccountOptions}
-                      optionFilterProp="label"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="datev_consultant_number"
-                    label={<Trans>DATEV consultant number</Trans>}
-                    tooltip={<Trans>Required to generate a DATEV export (1001–9999999).</Trans>}
-                  >
-                    <Input placeholder={t`e.g. 1001`} />
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="datev_client_number"
-                    label={<Trans>DATEV client number</Trans>}
-                    tooltip={<Trans>Required to generate a DATEV export (1–99999).</Trans>}
-                    style={{ marginBottom: 0 }}
-                  >
-                    <Input placeholder={t`e.g. 456`} />
-                  </Form.Item>
-                </Col>
-              </Row>
-            </Card>
-          )}
+          <Collapse
+            size="small"
+            activeKey={activeSections}
+            onChange={(keys) => setActiveSections(keys as string[])}
+            style={{ marginBottom: 12 }}
+            items={compact([
+              isEdit && editingId
+                ? {
+                    key: "logo",
+                    label: <Trans>Logo</Trans>,
+                    forceRender: true,
+                    children: (
+                      <Space direction="vertical" size={12}>
+                        {hasLogo && (
+                          <img
+                            key={logoKey}
+                            src={`/api/organizations/${editingId}/logo?t=${logoKey}`}
+                            alt="logo"
+                            onError={() => setHasLogo(false)}
+                            style={{
+                              maxWidth: 240,
+                              maxHeight: 80,
+                              objectFit: "contain",
+                              border: `1px solid ${token.colorBorderSecondary}`,
+                              borderRadius: 6,
+                              padding: 8,
+                              display: "block",
+                            }}
+                          />
+                        )}
+                        <Space>
+                          <Upload
+                            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                            showUploadList={false}
+                            name="file"
+                            action={`/api/organizations/${editingId}/logo`}
+                            headers={{ [CSRF_HEADER]: "1" }}
+                            onChange={({ file }) => {
+                              if (file.status === "done") refreshLogo();
+                              else if (file.status === "error")
+                                message.error(t`Logo upload failed`);
+                            }}
+                          >
+                            <Button icon={<UploadOutlined />} loading={logoBusy}>
+                              {hasLogo ? t`Change logo` : t`Upload logo`}
+                            </Button>
+                          </Upload>
+                          {hasLogo && (
+                            <Button
+                              danger
+                              icon={<DeleteOutlined />}
+                              loading={logoBusy}
+                              onClick={handleLogoRemove}
+                            >
+                              <Trans>Remove logo</Trans>
+                            </Button>
+                          )}
+                        </Space>
+                      </Space>
+                    ),
+                  }
+                : null,
+              {
+                key: "banking",
+                label: <Trans>Banking</Trans>,
+                forceRender: true,
+                children: (
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="bank_name" label={<Trans>Bank name</Trans>}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="iban" label="IBAN">
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="bic" label="BIC">
+                        <Input
+                          maxLength={11}
+                          onChange={(e) => form.setFieldValue("bic", e.target.value.toUpperCase())}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="vatin" label="VATIN" style={{ marginBottom: 0 }}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                ),
+              },
+              {
+                key: "address",
+                label: <Trans>Address</Trans>,
+                forceRender: true,
+                children: (
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="country_code" label={<Trans>Country</Trans>}>
+                        <Select
+                          showSearch
+                          allowClear
+                          placeholder={t`Select a country`}
+                          options={countryOptions}
+                          filterOption={(input, option) =>
+                            (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={16}>
+                      <Form.Item name="street" label={<Trans>Street</Trans>}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="house_number" label={<Trans>House number</Trans>}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={16}>
+                      <Form.Item
+                        name="city"
+                        label={<Trans>City</Trans>}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                ),
+              },
+              {
+                key: "einvoicing",
+                label: <Trans>E-invoicing</Trans>,
+                forceRender: true,
+                children: (
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24}>
+                      <Form.Item
+                        name="tax_number"
+                        label={<Trans>Tax number</Trans>}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                ),
+              },
+              {
+                key: "formatting",
+                label: <Trans>Formatting</Trans>,
+                forceRender: true,
+                children: (
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="date_format" label={<Trans>Date format</Trans>}>
+                        <Select placeholder={t`Select date format`}>
+                          {Object.keys(DATE_FORMATS).map((key) => (
+                            <Select.Option
+                              key={key}
+                              value={DATE_FORMATS[key as DateFormatKey] ?? "AUTO"}
+                            >
+                              {getDateFormatLabel(key as DateFormatKey)}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="minimum_fraction_digits"
+                        label={<Trans>Decimal places</Trans>}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <InputNumber min={0} max={10} style={{ width: "100%" }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                ),
+              },
+              isEdit && editingId
+                ? {
+                    key: "accounting",
+                    label: <Trans>Accounting</Trans>,
+                    forceRender: true,
+                    children: (
+                      <Row gutter={[16, 0]}>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultArAccountId"
+                            label={<Trans>Accounts receivable</Trans>}
+                            tooltip={
+                              <Trans>Used for the AR line when a sales invoice posts.</Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultApAccountId"
+                            label={<Trans>Accounts payable</Trans>}
+                            tooltip={<Trans>Used for the AP line when a vendor bill posts.</Trans>}
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultRevenueAccountId"
+                            label={<Trans>Default revenue account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Used for a sales invoice line whose product has no override.
+                              </Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultExpenseAccountId"
+                            label={<Trans>Default expense account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Used for a vendor bill line whose product has no override.
+                              </Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultCashAccountId"
+                            label={<Trans>Default cash account</Trans>}
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultInventoryAccountId"
+                            label={<Trans>Default inventory account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Used to capitalize a stock-enabled product's value when it's
+                                received or adjusted.
+                              </Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultGRNIAccountId"
+                            label={<Trans>Default GRNI account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Goods Received Not Invoiced — accrues a liability when a receipt is
+                                received, cleared when the matching vendor bill is approved.
+                              </Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultCOGSAccountId"
+                            label={<Trans>Default COGS account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Cost of goods sold, recognized against inventory when a shipment
+                                ships.
+                              </Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="defaultInventoryAdjustmentAccountId"
+                            label={<Trans>Default inventory adjustment account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Counter-account for a manual stock adjustment's signed inventory
+                                value change.
+                              </Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="datevClearingAccountId"
+                            label={<Trans>DATEV clearing account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Synthetic counter-account for a manual journal entry with more than
+                                one line on both sides (no natural anchor line) when exporting to
+                                DATEV. Leave blank if you don't use DATEV.
+                              </Trans>
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="datev_consultant_number"
+                            label={<Trans>DATEV consultant number</Trans>}
+                            tooltip={
+                              <Trans>Required to generate a DATEV export (1001–9999999).</Trans>
+                            }
+                          >
+                            <Input placeholder={t`e.g. 1001`} />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="datev_client_number"
+                            label={<Trans>DATEV client number</Trans>}
+                            tooltip={<Trans>Required to generate a DATEV export (1–99999).</Trans>}
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Input placeholder={t`e.g. 456`} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    ),
+                  }
+                : null,
+            ])}
+          />
 
           {isEdit && editingId && isAdmin && (
             <Card
