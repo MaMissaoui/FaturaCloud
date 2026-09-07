@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Button, Checkbox, Drawer, Form, Input, Popconfirm, Select, Space, Tooltip } from "antd";
+import {
+  Button,
+  Checkbox,
+  Col,
+  Drawer,
+  Form,
+  Input,
+  Popconfirm,
+  Row,
+  Select,
+  Space,
+  Tooltip,
+} from "antd";
 import { useSetAtom, useAtomValue } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
@@ -177,20 +189,26 @@ const TaxRateForm = () => {
               <Input placeholder={t`Name`} />
             </Form.Item>
             <Form.Item name="description" label={<Trans>Description</Trans>}>
-              <Input.TextArea rows={4} placeholder={t`Description`} />
+              <Input.TextArea rows={2} placeholder={t`Description`} />
             </Form.Item>
-            <Form.Item
-              name="percentage"
-              label={<Trans>Percentage</Trans>}
-              rules={[{ required: true, message: t`Please input a percentage!` }]}
-            >
-              <Input placeholder={t`Percentage`} />
-            </Form.Item>
-            <Form.Item name="isDefault" valuePropName="checked">
-              <Checkbox>
-                <Trans>Default</Trans>
-              </Checkbox>
-            </Form.Item>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="percentage"
+                  label={<Trans>Percentage</Trans>}
+                  rules={[{ required: true, message: t`Please input a percentage!` }]}
+                >
+                  <Input placeholder={t`Percentage`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="isDefault" valuePropName="checked" label=" ">
+                  <Checkbox>
+                    <Trans>Default</Trans>
+                  </Checkbox>
+                </Form.Item>
+              </Col>
+            </Row>
 
             <Section>
               <Trans>E-invoicing</Trans>
@@ -227,38 +245,46 @@ const TaxRateForm = () => {
             <Section>
               <Trans>Accounting</Trans>
             </Section>
-            <Form.Item
-              name="outputTaxAccountId"
-              label={<Trans>Output tax account</Trans>}
-              tooltip={
-                <Trans>Used when this rate applies to a sales invoice — a liability account.</Trans>
-              }
-            >
-              <Select
-                allowClear
-                showSearch
-                placeholder={t`None`}
-                options={outputTaxAccountOptions}
-                optionFilterProp="label"
-              />
-            </Form.Item>
-            <Form.Item
-              name="inputTaxAccountId"
-              label={<Trans>Input tax account</Trans>}
-              tooltip={
-                <Trans>
-                  Used when this rate applies to a vendor bill — a reclaimable asset account.
-                </Trans>
-              }
-            >
-              <Select
-                allowClear
-                showSearch
-                placeholder={t`None`}
-                options={inputTaxAccountOptions}
-                optionFilterProp="label"
-              />
-            </Form.Item>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="outputTaxAccountId"
+                  label={<Trans>Output tax account</Trans>}
+                  tooltip={
+                    <Trans>
+                      Used when this rate applies to a sales invoice — a liability account.
+                    </Trans>
+                  }
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder={t`None`}
+                    options={outputTaxAccountOptions}
+                    optionFilterProp="label"
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="inputTaxAccountId"
+                  label={<Trans>Input tax account</Trans>}
+                  tooltip={
+                    <Trans>
+                      Used when this rate applies to a vendor bill — a reclaimable asset account.
+                    </Trans>
+                  }
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder={t`None`}
+                    options={inputTaxAccountOptions}
+                    optionFilterProp="label"
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
             <Form.Item
               name="datev_bu_key"
               label={<Trans>DATEV tax key (BU-Schlüssel)</Trans>}
