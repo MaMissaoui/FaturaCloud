@@ -196,12 +196,33 @@ const VendorForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
+                <Form.Item name="website" label={<Trans>Website</Trans>}>
+                  <Input placeholder={t`Website`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="defaultCurrency" label={<Trans>Default currency</Trans>}>
+                  <Select placeholder={t`Default currency`} allowClear showSearch>
+                    {map(currencies, (currency) => (
+                      <Select.Option value={currency} key={currency}>
+                        {currency}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
                 <Form.Item
-                  name="website"
-                  label={<Trans>Website</Trans>}
+                  name="paymentTermsDays"
+                  label={<Trans>Payment terms (days)</Trans>}
                   style={{ marginBottom: 0 }}
                 >
-                  <Input placeholder={t`Website`} />
+                  <InputNumber
+                    placeholder={t`Payment terms (days)`}
+                    min={0}
+                    precision={0}
+                    style={{ width: "100%" }}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -240,32 +261,6 @@ const VendorForm = () => {
               <Col xs={24} md={16}>
                 <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
                   <Input placeholder={t`City`} />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-
-          <Card size="small" title={<Trans>Purchasing</Trans>} style={{ marginBottom: 12 }}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="defaultCurrency" label={<Trans>Default currency</Trans>}>
-                  <Select placeholder={t`Default currency`} allowClear showSearch>
-                    {map(currencies, (currency) => (
-                      <Select.Option value={currency} key={currency}>
-                        {currency}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="paymentTermsDays" label={<Trans>Payment terms (days)</Trans>}>
-                  <InputNumber
-                    placeholder={t`Payment terms (days)`}
-                    min={0}
-                    precision={0}
-                    style={{ width: "100%" }}
-                  />
                 </Form.Item>
               </Col>
             </Row>

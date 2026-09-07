@@ -72,9 +72,9 @@ const Dashboard = () => {
         }
       />
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} md={8}>
-          <Card loading={loading}>
+          <Card size="small" loading={loading}>
             <Statistic
               title={<Trans>Revenue (selected period)</Trans>}
               value={money(revenueTotal)}
@@ -82,7 +82,7 @@ const Dashboard = () => {
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card loading={loading}>
+          <Card size="small" loading={loading}>
             <Statistic
               title={<Trans>Outstanding</Trans>}
               value={money(data?.outstanding.total ?? 0)}
@@ -95,7 +95,7 @@ const Dashboard = () => {
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card loading={loading}>
+          <Card size="small" loading={loading}>
             <Statistic
               title={<Trans>Stock valuation</Trans>}
               value={money(data?.stockValuation.total ?? 0)}
@@ -104,15 +104,15 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col span={24}>
-          <Card title={<Trans>Revenue over time</Trans>} loading={loading}>
+          <Card size="small" title={<Trans>Revenue over time</Trans>} loading={loading}>
             <Column
               data={data?.revenueByMonth ?? []}
               xField="month"
               yField="revenue"
               theme={themeMode === "dark" ? "classicDark" : "classic"}
-              height={280}
+              height={220}
               axis={{ y: { labelFormatter: (v: number) => money(v) } }}
               tooltip={{
                 items: [
@@ -124,10 +124,10 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} xl={12}>
-          <Card title={<Trans>Outstanding invoices</Trans>} loading={loading}>
-            <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
+          <Card size="small" title={<Trans>Outstanding invoices</Trans>} loading={loading}>
+            <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
               <Col span={8}>
                 <Statistic
                   title={<Trans>Current</Trans>}
@@ -191,7 +191,7 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} xl={12}>
-          <Card title={<Trans>Stock valuation</Trans>} loading={loading}>
+          <Card size="small" title={<Trans>Stock valuation</Trans>} loading={loading}>
             <Table
               dataSource={data?.stockValuation.items ?? []}
               rowKey="productId"
@@ -218,9 +218,9 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} xl={12}>
-          <Card title={<Trans>Top clients</Trans>} loading={loading}>
+          <Card size="small" title={<Trans>Top clients</Trans>} loading={loading}>
             <Table
               dataSource={data?.topClients ?? []}
               rowKey="clientId"
@@ -240,7 +240,7 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} xl={12}>
-          <Card title={<Trans>Top products</Trans>} loading={loading}>
+          <Card size="small" title={<Trans>Top products</Trans>} loading={loading}>
             <Table
               dataSource={data?.topProducts ?? []}
               rowKey="productId"
