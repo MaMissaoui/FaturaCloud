@@ -5,6 +5,14 @@ on:
     tags:
       - "v*"
 
+# Releases are single-shot, append-only tag pushes — only one can be in
+# flight at a time. Group by workflow so an overlapping tag push cancels
+# nothing legitimate (each tag is its own manual action), but tags pushed
+# back-to-back don't build two images against a half-written cache.
+concurrency:
+  group: docker-${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -48,8 +56,12 @@ jobs:
             VERSION=${{ github.ref_name }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # The GHA cache shares the repo's 10 GB actions-cache budget with
+          # CI's Go build cache. Multi-arch layer caches grow fast; scope this
+          # cache to the docker workflow and cap it so an oversized release
+          # build can't evict the Go cache that CI depends on for its speed.
+          cache-from: type=gha,scope=docker-release
+          cache-to: type=gha,scope=docker-release,mode=max,size-limit=8g
 
   release:
     needs: build
