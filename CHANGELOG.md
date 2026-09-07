@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-09-07
+
+Per-organization brand color theming, plus a second pass of drawer/dashboard
+scroll reduction.
+
+### Added
+- Organizations can now pick an accent color from a curated, contrast-checked
+  swatch set (Organizations → Appearance); it seeds the app's theme
+  (`colorPrimary`) while that organization is selected, composing with the
+  existing light/dark mode switch.
+
+### Changed
+- Reduced vertical scrolling across several drawers and the dashboard: the
+  Organizations edit drawer's secondary sections (Logo, Banking, Address,
+  E-invoicing, Formatting, Accounting) are now collapsed by default instead
+  of always expanded, cutting a regressed ~1382px of overflow down to
+  ~120px; the client/vendor drawers' single-field "Sales"/"Purchasing" cards
+  were merged into Contact; the tax rate drawer moved to a two-column
+  layout; and the dashboard/payment panel got tighter card/table spacing.
+
 ## [3.7.5] - 2026-09-07
 
 Routine dependency-currency maintenance plus GitHub Actions resource
