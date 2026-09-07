@@ -206,9 +206,8 @@ const AccountForm = () => {
           label={<Trans>DATEV account number</Trans>}
           tooltip={
             <Trans>
-              SKR03/SKR04-style numeric account code for the DATEV export's "Konto" column.
-              Required on every account referenced by a posted entry before a DATEV export can be
-              generated.
+              SKR03/SKR04-style numeric account code for the DATEV export's "Konto" column. Required
+              on every account referenced by a posted entry before a DATEV export can be generated.
             </Trans>
           }
         >

@@ -37,9 +37,11 @@ const Orders = () => {
   }, [location, setOrders]);
 
   const filtered = search
-    ? filter(orders, (o: Order) =>
-        includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-        includes((o.clientName ?? "").toLowerCase(), search.toLowerCase()),
+    ? filter(
+        orders,
+        (o: Order) =>
+          includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) ||
+          includes((o.clientName ?? "").toLowerCase(), search.toLowerCase()),
       )
     : orders;
 
@@ -71,16 +73,22 @@ const Orders = () => {
             <Table.Column
               title={<Trans>Order #</Trans>}
               key="orderNumber"
-              sorter={(a: Order, b: Order) => (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")}
+              sorter={(a: Order, b: Order) =>
+                (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")
+              }
               render={(o: Order) => (
-                <Link to={`/orders/${o.id}`} onClick={(e) => e.stopPropagation()}>{o.orderNumber}</Link>
+                <Link to={`/orders/${o.id}`} onClick={(e) => e.stopPropagation()}>
+                  {o.orderNumber}
+                </Link>
               )}
             />
             <Table.Column
               title={<Trans>Client</Trans>}
               dataIndex="clientName"
               key="clientName"
-              sorter={(a: Order, b: Order) => (a.clientName ?? "").localeCompare(b.clientName ?? "")}
+              sorter={(a: Order, b: Order) =>
+                (a.clientName ?? "").localeCompare(b.clientName ?? "")
+              }
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
@@ -95,20 +103,22 @@ const Orders = () => {
               dataIndex="orderDate"
               key="orderDate"
               sorter={(a: Order, b: Order) => (a.orderDate ?? 0) - (b.orderDate ?? 0)}
-              render={(v: number) => v ? new Date(v).toLocaleDateString() : "—"}
+              render={(v: number) => (v ? new Date(v).toLocaleDateString() : "—")}
             />
             <Table.Column
               title={<Trans>Delivery date</Trans>}
               dataIndex="deliveryDate"
               key="deliveryDate"
               sorter={(a: Order, b: Order) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
-              render={(v: number | null) => v ? new Date(v).toLocaleDateString() : "—"}
+              render={(v: number | null) => (v ? new Date(v).toLocaleDateString() : "—")}
             />
             <Table.Column
               title={<Trans>Tracking</Trans>}
               dataIndex="trackingNumber"
               key="trackingNumber"
-              sorter={(a: Order, b: Order) => (a.trackingNumber ?? "").localeCompare(b.trackingNumber ?? "")}
+              sorter={(a: Order, b: Order) =>
+                (a.trackingNumber ?? "").localeCompare(b.trackingNumber ?? "")
+              }
               render={(v: string | null) => v ?? "—"}
             />
           </Table>

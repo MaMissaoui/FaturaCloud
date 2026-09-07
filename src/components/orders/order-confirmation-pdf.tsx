@@ -282,7 +282,9 @@ const OrderConfirmationPDF = ({ order, lineItems, client, organization, i18n }: 
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              <Trans>Thank you for your order. This document confirms your order as listed above.</Trans>
+              <Trans>
+                Thank you for your order. This document confirms your order as listed above.
+              </Trans>
             </Text>
           </View>
 

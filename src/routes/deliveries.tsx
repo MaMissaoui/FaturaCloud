@@ -38,10 +38,12 @@ const Deliveries = () => {
   }, [location, setDeliveries]);
 
   const filtered = search
-    ? filter(deliveries, (d: Delivery) =>
-        includes((d.deliveryNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-        includes((d.clientName ?? "").toLowerCase(), search.toLowerCase()) ||
-        includes((d.orderNumber ?? "").toLowerCase(), search.toLowerCase()),
+    ? filter(
+        deliveries,
+        (d: Delivery) =>
+          includes((d.deliveryNumber ?? "").toLowerCase(), search.toLowerCase()) ||
+          includes((d.clientName ?? "").toLowerCase(), search.toLowerCase()) ||
+          includes((d.orderNumber ?? "").toLowerCase(), search.toLowerCase()),
       )
     : deliveries;
 
@@ -83,13 +85,17 @@ const Deliveries = () => {
           title={<Trans>Order</Trans>}
           dataIndex="orderNumber"
           key="orderNumber"
-          sorter={(a: Delivery, b: Delivery) => (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")}
+          sorter={(a: Delivery, b: Delivery) =>
+            (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")
+          }
         />
         <Table.Column
           title={<Trans>Client</Trans>}
           dataIndex="clientName"
           key="clientName"
-          sorter={(a: Delivery, b: Delivery) => (a.clientName ?? "").localeCompare(b.clientName ?? "")}
+          sorter={(a: Delivery, b: Delivery) =>
+            (a.clientName ?? "").localeCompare(b.clientName ?? "")
+          }
         />
         <Table.Column
           title={<Trans>Delivery date</Trans>}

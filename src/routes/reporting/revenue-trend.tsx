@@ -32,7 +32,11 @@ const RevenueTrend = () => {
   useEffect(() => {
     if (!organizationId) return;
     setLoading(true);
-    GetRevenueTrend(organizationId, range[0].startOf("day").valueOf(), range[1].endOf("day").valueOf())
+    GetRevenueTrend(
+      organizationId,
+      range[0].startOf("day").valueOf(),
+      range[1].endOf("day").valueOf(),
+    )
       .then(setRows)
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
@@ -110,7 +114,11 @@ const RevenueTrend = () => {
             theme={themeMode === "dark" ? "classicDark" : "classic"}
             height={320}
             axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-            tooltip={{ items: [{ field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) }] }}
+            tooltip={{
+              items: [
+                { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
+              ],
+            }}
           />
         )}
       </Card>

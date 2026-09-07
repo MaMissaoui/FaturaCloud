@@ -102,8 +102,8 @@ const SettingsGLExport = () => {
               <Trans>
                 Exports every posted journal line for the selected fiscal year as a DATEV
                 Buchungsstapel EXTF file. Requires a DATEV consultant number, client number, and a
-                DATEV account number on every account referenced by a posted entry — configure
-                these under Accounting → Chart of Accounts and Organization settings.
+                DATEV account number on every account referenced by a posted entry — configure these
+                under Accounting → Chart of Accounts and Organization settings.
               </Trans>
             </Text>
             <Space>

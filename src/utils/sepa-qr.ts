@@ -35,17 +35,7 @@ export function buildSepaCreditTransferPayload({
   const amountStr = `EUR${amount.toFixed(2)}`;
   const remittance = reference.slice(0, 140);
 
-  return [
-    "BCD",
-    "002",
-    "1",
-    "SCT",
-    cleanBic,
-    name,
-    cleanIban,
-    amountStr,
-    "",
-    "",
-    remittance,
-  ].join("\n");
+  return ["BCD", "002", "1", "SCT", cleanBic, name, cleanIban, amountStr, "", "", remittance].join(
+    "\n",
+  );
 }

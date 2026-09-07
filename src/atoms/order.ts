@@ -55,10 +55,7 @@ export const orderAtom = atom(
     const orderId = get(orderIdAtom);
     if (!orderId) return null;
     try {
-      const [order, lineItems] = await Promise.all([
-        GetOrder(orderId),
-        GetOrderLineItems(orderId),
-      ]);
+      const [order, lineItems] = await Promise.all([GetOrder(orderId), GetOrderLineItems(orderId)]);
       if (!order) return null;
       return {
         ...order,

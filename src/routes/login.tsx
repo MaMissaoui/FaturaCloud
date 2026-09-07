@@ -62,7 +62,11 @@ export default function LoginPage() {
       <Card style={{ width: 380, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
         <Space direction="vertical" size="large" style={{ width: "100%", textAlign: "center" }}>
           <div>
-            <img src="/logo-minimal.png" alt="FaturaCloud" style={{ height: 72, marginBottom: 14 }} />
+            <img
+              src="/logo-minimal.png"
+              alt="FaturaCloud"
+              style={{ height: 72, marginBottom: 14 }}
+            />
             <div style={{ marginBottom: 6 }}>
               <Wordmark fontSize={26} />
             </div>
@@ -94,7 +98,12 @@ export default function LoginPage() {
             </>
           )}
 
-          <Form layout="vertical" onFinish={onFinish} requiredMark={false} style={{ textAlign: "left" }}>
+          <Form
+            layout="vertical"
+            onFinish={onFinish}
+            requiredMark={false}
+            style={{ textAlign: "left" }}
+          >
             <Form.Item
               name="email"
               rules={[{ required: true, type: "email", message: t`Please enter a valid email` }]}

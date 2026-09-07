@@ -196,7 +196,8 @@ const InvoicePDF = ({
     }
   })();
 
-  const fmt = (value: number) => getFormattedNumber(value, invoice.currency, i18n.locale, organization);
+  const fmt = (value: number) =>
+    getFormattedNumber(value, invoice.currency, i18n.locale, organization);
 
   return (
     <I18nProvider i18n={i18n}>
@@ -253,7 +254,9 @@ const InvoicePDF = ({
                 <Text style={styles.partyDetail}>{formatAddress(organization)}</Text>
               )}
               {organization.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
-              {organization.website && <Text style={styles.partyDetail}>{organization.website}</Text>}
+              {organization.website && (
+                <Text style={styles.partyDetail}>{organization.website}</Text>
+              )}
             </View>
             <View style={styles.card}>
               <Text style={styles.partyLabel}>
@@ -296,9 +299,13 @@ const InvoicePDF = ({
                   style={[styles.tableRow, ...(index % 2 === 1 ? [styles.tableRowAlt] : [])]}
                 >
                   <Text style={[styles.tableCol, styles.colNumber]}>{index + 1}</Text>
-                  <Text style={[styles.tableCol, styles.colDescription]}>{lineItem.description}</Text>
+                  <Text style={[styles.tableCol, styles.colDescription]}>
+                    {lineItem.description}
+                  </Text>
                   <Text style={[styles.tableCol, styles.colQuantity]}>{lineItem.quantity}</Text>
-                  <Text style={[styles.tableCol, styles.colUnitPrice]}>{fmt(lineItem.unitPrice)}</Text>
+                  <Text style={[styles.tableCol, styles.colUnitPrice]}>
+                    {fmt(lineItem.unitPrice)}
+                  </Text>
                   <Text style={[styles.tableCol, styles.colTax]}>
                     {taxRate ? `${taxRate.percentage}%` : ""}
                   </Text>
@@ -374,7 +381,9 @@ const InvoicePDF = ({
                 {organization.bank_name && (
                   <Text style={styles.partyDetail}>{organization.bank_name}</Text>
                 )}
-                {organization.iban && <Text style={styles.partyDetail}>IBAN {organization.iban}</Text>}
+                {organization.iban && (
+                  <Text style={styles.partyDetail}>IBAN {organization.iban}</Text>
+                )}
                 {organization.bic && <Text style={styles.partyDetail}>BIC {organization.bic}</Text>}
               </View>
             </View>
@@ -382,7 +391,9 @@ const InvoicePDF = ({
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              {organization.registration_number ? `Reg. nr ${organization.registration_number}` : ""}
+              {organization.registration_number
+                ? `Reg. nr ${organization.registration_number}`
+                : ""}
             </Text>
             <Text style={styles.footerText}>
               {organization.vatin ? `VATIN ${organization.vatin}` : ""}

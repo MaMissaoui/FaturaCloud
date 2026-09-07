@@ -10,7 +10,11 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { localeAtom } from "src/atoms/generic";
-import { activeCountriesAtom, setActiveCountriesAtom, toggleCountryActiveAtom } from "src/atoms/country";
+import {
+  activeCountriesAtom,
+  setActiveCountriesAtom,
+  toggleCountryActiveAtom,
+} from "src/atoms/country";
 import { COUNTRY_CODES, getCountryName } from "src/utils/country-codes";
 
 const { Title, Text } = Typography;
@@ -43,7 +47,9 @@ function SettingsCountries() {
   const filtered = search
     ? filter(
         rows,
-        (row) => includes(row.name.toLowerCase(), search.toLowerCase()) || includes(row.code.toLowerCase(), search.toLowerCase()),
+        (row) =>
+          includes(row.name.toLowerCase(), search.toLowerCase()) ||
+          includes(row.code.toLowerCase(), search.toLowerCase()),
       )
     : rows;
 
@@ -58,10 +64,7 @@ function SettingsCountries() {
         </Col>
         <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
           <Space style={{ alignItems: "start" }}>
-            <Input.Search
-              placeholder={t`Search`}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <Input.Search placeholder={t`Search`} onChange={(e) => setSearch(e.target.value)} />
           </Space>
         </Col>
       </Row>
@@ -70,8 +73,8 @@ function SettingsCountries() {
           <Text type="secondary">
             <Trans>
               Only active countries appear in the country picklist on organizations, vendors and
-              clients. Existing records keep whatever country they already have, even if it's
-              later deactivated here.
+              clients. Existing records keep whatever country they already have, even if it's later
+              deactivated here.
             </Trans>
           </Text>
         </Col>

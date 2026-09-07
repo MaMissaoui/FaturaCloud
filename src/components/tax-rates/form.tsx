@@ -264,8 +264,8 @@ const TaxRateForm = () => {
               label={<Trans>DATEV tax key (BU-Schlüssel)</Trans>}
               tooltip={
                 <Trans>
-                  DATEV's own tax key, independent of the percentage above. Leave blank if this
-                  rate isn't used with the DATEV export.
+                  DATEV's own tax key, independent of the percentage above. Leave blank if this rate
+                  isn't used with the DATEV export.
                 </Trans>
               }
             >

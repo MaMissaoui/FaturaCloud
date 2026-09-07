@@ -289,10 +289,7 @@ const AppContent = () => {
                     <Route path="balance-sheet" element={<BalanceSheet />} />
                     <Route path="ar-aging" element={<ARAging />} />
                     <Route path="ap-aging" element={<APAging />} />
-                    <Route
-                      path="inventory-valuation"
-                      element={<InventoryValuationReport />}
-                    />
+                    <Route path="inventory-valuation" element={<InventoryValuationReport />} />
                   </Route>
                   <Route path="/reporting" element={<BaseLayout />}>
                     <Route path="revenue-trend" element={<RevenueTrend />} />

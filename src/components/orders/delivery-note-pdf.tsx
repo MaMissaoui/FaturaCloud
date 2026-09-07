@@ -10,19 +10,38 @@ const FONT_BOLD = "Helvetica-Bold";
 
 const styles = StyleSheet.create({
   page: { fontFamily: FONT, fontSize: 10, color: "#222", padding: 50, flexDirection: "column" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 32,
+  },
   logo: { width: 100, height: 40, objectFit: "contain" },
   docTitle: { fontFamily: FONT_BOLD, fontSize: 22, textAlign: "right", color: "#1a1a1a" },
   docNumber: { fontSize: 11, textAlign: "right", color: "#555", marginTop: 4 },
   orgName: { fontFamily: FONT_BOLD, fontSize: 16 },
   parties: { flexDirection: "row", marginBottom: 28 },
   partyBlock: { flex: 1 },
-  partyLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", marginBottom: 6, letterSpacing: 1 },
+  partyLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#888",
+    textTransform: "uppercase",
+    marginBottom: 6,
+    letterSpacing: 1,
+  },
   partyName: { fontFamily: FONT_BOLD, fontSize: 11, marginBottom: 3 },
   partyDetail: { color: "#555", marginBottom: 2, lineHeight: 1.5 },
   meta: { flexDirection: "row", marginBottom: 24, gap: 40 },
   metaItem: { flexDirection: "column" },
-  metaLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 },
+  metaLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 3,
+  },
   metaValue: { fontSize: 10 },
   divider: { borderBottomWidth: 1, borderBottomColor: "#e0e0e0", marginBottom: 16 },
   tableHeader: {
@@ -43,10 +62,23 @@ const styles = StyleSheet.create({
   colDesc: { flex: 1 },
   colQty: { width: 60, textAlign: "right" },
   colPrice: { width: 80, textAlign: "right" },
-  headerText: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 },
+  headerText: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   colTotalBold: { width: 80, textAlign: "right", fontFamily: FONT_BOLD },
   notes: { marginTop: 24 },
-  notesLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+  notesLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
   notesText: { color: "#444", lineHeight: 1.6 },
   signatureArea: {
     flexDirection: "row",
@@ -58,7 +90,13 @@ const styles = StyleSheet.create({
   },
   signatureBlock: { width: "40%" },
   signatureLine: { borderBottomWidth: 1, borderBottomColor: "#999", marginBottom: 6, height: 24 },
-  signatureLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 },
+  signatureLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
 });
 
 interface Props {
@@ -105,7 +143,9 @@ const DeliveryNotePDF = ({ order, lineItems, client, organization, locale }: Pro
               )}
               {organization?.email && <Text style={styles.partyDetail}>{organization.email}</Text>}
               {organization?.phone && <Text style={styles.partyDetail}>{organization.phone}</Text>}
-              {organization?.vatin && <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>}
+              {organization?.vatin && (
+                <Text style={styles.partyDetail}>VAT: {organization.vatin}</Text>
+              )}
             </View>
             <View style={[styles.partyBlock, { paddingLeft: 24 }]}>
               <Text style={styles.partyLabel}>Deliver To</Text>
@@ -142,7 +182,9 @@ const DeliveryNotePDF = ({ order, lineItems, client, organization, locale }: Pro
             )}
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>Status</Text>
-              <Text style={[styles.metaValue, { textTransform: "capitalize" }]}>{order.status}</Text>
+              <Text style={[styles.metaValue, { textTransform: "capitalize" }]}>
+                {order.status}
+              </Text>
             </View>
           </View>
 

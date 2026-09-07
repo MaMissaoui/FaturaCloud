@@ -7,13 +7,7 @@ import keyBy from "lodash/keyBy";
 import map from "lodash/map";
 import reject from "lodash/reject";
 import isEqual from "lodash/isEqual";
-import {
-  GetTaxRates,
-  GetTaxRate,
-  CreateTaxRate,
-  UpdateTaxRate,
-  DeleteTaxRate,
-} from "src/api";
+import { GetTaxRates, GetTaxRate, CreateTaxRate, UpdateTaxRate, DeleteTaxRate } from "src/api";
 
 import { organizationIdAtom } from "./organization";
 

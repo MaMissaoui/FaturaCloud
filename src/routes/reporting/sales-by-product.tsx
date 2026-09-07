@@ -31,7 +31,11 @@ const SalesByProduct = () => {
   useEffect(() => {
     if (!organizationId) return;
     setLoading(true);
-    GetSalesByProduct(organizationId, range[0].startOf("day").valueOf(), range[1].endOf("day").valueOf())
+    GetSalesByProduct(
+      organizationId,
+      range[0].startOf("day").valueOf(),
+      range[1].endOf("day").valueOf(),
+    )
       .then(setRows)
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
@@ -73,7 +77,11 @@ const SalesByProduct = () => {
           theme={themeMode === "dark" ? "classicDark" : "classic"}
           height={280}
           axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-          tooltip={{ items: [{ field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) }] }}
+          tooltip={{
+            items: [
+              { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
+            ],
+          }}
         />
       </Card>
 
