@@ -63,6 +63,7 @@ import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import PageHeader from "src/components/page-header";
+import BrandColorPicker from "src/components/organizations/brand-color-picker";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 const { Text } = Typography;
@@ -190,6 +191,13 @@ export default function Organizations() {
     try {
       if (editingId) {
         await UpdateOrganization(editingId, values);
+        // Logo upload/removal and delete already reload the active
+        // organization when they touch the currently-selected org (see
+        // below) — a plain field save through this form was the one path
+        // that didn't, so header/theme-driving reads of organizationAtom
+        // (e.g. app.tsx's brand-color ConfigProvider token) kept serving
+        // stale data until something else happened to refetch it.
+        if (editingId === organizationId) reloadActiveOrganization();
       } else {
         const newOrg = await CreateOrganization({
           ...values,
@@ -521,6 +529,19 @@ export default function Organizations() {
                 </Form.Item>
               </Col>
             </Row>
+          </Card>
+
+          <Card size="small" title={<Trans>Appearance</Trans>} style={{ marginBottom: 12 }}>
+            <Form.Item
+              name="brandColor"
+              label={<Trans>Brand color</Trans>}
+              tooltip={
+                <Trans>Accent color used across the app while this organization is selected.</Trans>
+              }
+              style={{ marginBottom: 0 }}
+            >
+              <BrandColorPicker />
+            </Form.Item>
           </Card>
 
           {isEdit && editingId && (

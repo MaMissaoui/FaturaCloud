@@ -90,6 +90,12 @@ export interface Organization {
   invoiceNumberFormat: string | null;
   invoiceNumberCounter: number | null;
   date_format: string | null;
+  // Theme support Phase 1: an accent color chosen from the curated swatch
+  // set in src/components/organizations/brand-color-picker.tsx (which must
+  // stay in sync with brandColorPalette in db/organization.go, the
+  // server-side source of truth). Null or "" both mean "use antd's default
+  // blue" — see app.tsx's ConfigProvider wiring.
+  brandColor: string | null;
   // 3-way matching tolerance policy (percent) for incoming vendor invoices.
   match_price_tolerance_percent: number | null;
   match_quantity_tolerance_percent: number | null;
