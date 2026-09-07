@@ -63,6 +63,23 @@ jobs:
           cache-from: type=gha,scope=docker-release
           cache-to: type=gha,scope=docker-release,mode=max,size-limit=8g
 
+      # Every multi-arch push adds 3 package versions (manifest list + one
+      # per platform) that are never superseded, since each git tag gets its
+      # own immutable image tag — left alone this grows GHCR storage forever
+      # (confirmed on stbvirement's sibling package: 285 versions after ~3
+      # months with no pruning). Keep only the most recent releases; older
+      # per-platform children are pruned automatically once their manifest
+      # list is gone.
+      - name: Prune old GHCR image versions
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          # Defaults to the repo name (FaturaCloud) — the actual package is
+          # registered lowercase, so the default 404s against the registry API.
+          package: fatura-cloud
+          keep-n-tagged: 15
+          delete-untagged: true
+          delete-partial-images: true
+
   release:
     needs: build
     runs-on: ubuntu-latest
