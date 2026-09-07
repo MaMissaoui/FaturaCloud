@@ -34,7 +34,7 @@ func (h *handler) createOrganization(w http.ResponseWriter, r *http.Request) {
 	}
 	org, err := h.db.CreateOrganization(req)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, org)
@@ -48,7 +48,7 @@ func (h *handler) updateOrganization(w http.ResponseWriter, r *http.Request) {
 	}
 	org, err := h.db.UpdateOrganization(id, req)
 	if err != nil {
-		writeInternalError(w, err)
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, org)

@@ -4,9 +4,46 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
+
+// brandColorPalette is the curated, contrast-checked set of accent colors an
+// organization can pick for theme support Phase 1 — deliberately not a
+// free-form color picker. An arbitrary hex could land on a color the antd
+// theme algorithm can't derive a readable button/text ramp from (too light,
+// too low-saturation); every value here was chosen mid-tone enough to stay
+// legible in both the light and dark algorithms. This is the server-side
+// source of truth: the frontend's swatch list (src/components/organizations/
+// brand-color-picker.tsx) must stay in sync with it, since normalizeBrandColor
+// below rejects anything not on this list rather than trusting the client.
+var brandColorPalette = []string{
+	"#2E4CAE", // Indigo
+	"#0F7C74", // Teal
+	"#1D8A5D", // Emerald
+	"#16325C", // Navy
+	"#6D3FBF", // Violet
+	"#B5502E", // Terracotta
+	"#475569", // Slate
+}
+
+// normalizeBrandColor validates *p against brandColorPalette and rewrites it
+// to the palette's canonical casing. A nil pointer (field omitted from the
+// request) passes through unchanged — COALESCE in UpdateOrganization treats
+// nil as "leave this field alone". An explicit empty string is a valid,
+// deliberate "reset to the default theme color" value, not an error.
+func normalizeBrandColor(p *string) (*string, error) {
+	if p == nil || *p == "" {
+		return p, nil
+	}
+	for _, c := range brandColorPalette {
+		if strings.EqualFold(*p, c) {
+			return &c, nil
+		}
+	}
+	return nil, newValidationError("brand color %q is not one of the supported presets", *p)
+}
 
 // Organization mirrors the organizations table.
 type Organization struct {
@@ -30,6 +67,11 @@ type Organization struct {
 	InvoiceNumberFormat   *string  `db:"invoice_number_format"   json:"invoiceNumberFormat"`
 	InvoiceNumberCounter  *int64   `db:"invoice_number_counter"  json:"invoiceNumberCounter"`
 	DateFormat            *string  `db:"date_format"             json:"date_format"`
+
+	// Theme support Phase 1: an accent color from brandColorPalette above.
+	// Nullable/empty both mean "use antd's default blue" — see that var's
+	// comment for why they're kept distinct rather than collapsed to one.
+	BrandColor *string `db:"brandColor" json:"brandColor"`
 
 	// 3-way matching tolerance policy (percent). Zero means any variance is flagged.
 	MatchPriceTolerancePercent    *float64 `db:"match_price_tolerance_percent"    json:"match_price_tolerance_percent"`
@@ -96,6 +138,8 @@ type CreateOrganizationRequest struct {
 	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
 	DateFormat            *string  `json:"date_format"`
 
+	BrandColor *string `json:"brandColor"`
+
 	MatchPriceTolerancePercent    *float64 `json:"match_price_tolerance_percent"`
 	MatchQuantityTolerancePercent *float64 `json:"match_quantity_tolerance_percent"`
 
@@ -128,6 +172,8 @@ type UpdateOrganizationRequest struct {
 	InvoiceNumberFormat   *string  `json:"invoiceNumberFormat"`
 	InvoiceNumberCounter  *int64   `json:"invoiceNumberCounter"`
 	DateFormat            *string  `json:"date_format"`
+
+	BrandColor *string `json:"brandColor"`
 
 	MatchPriceTolerancePercent    *float64 `json:"match_price_tolerance_percent"`
 	MatchQuantityTolerancePercent *float64 `json:"match_quantity_tolerance_percent"`
@@ -166,6 +212,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       registration_number, vatin, bank_name, iban, currency,
 	       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
 	       createdAt, invoice_number_format, invoice_number_counter, date_format,
+	       brandColor,
 	       match_price_tolerance_percent, match_quantity_tolerance_percent,
 	       bic, tax_number, street, house_number, postal_code, city, country_code,
 	       defaultArAccountId, defaultApAccountId, defaultRevenueAccountId,
@@ -238,6 +285,11 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		empty := ""
 		req.Code = &empty
 	}
+	normalizedBrandColor, err := normalizeBrandColor(req.BrandColor)
+	if err != nil {
+		return nil, err
+	}
+	req.BrandColor = normalizedBrandColor
 
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -250,13 +302,13 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			id, code, name, country, email, phone, website,
 			registration_number, vatin, bank_name, iban, currency,
 			minimum_fraction_digits, due_days, overdueCharge,
-			customerNotes, invoice_number_format, date_format,
+			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
-		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat,
+		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat, req.BrandColor,
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
@@ -283,7 +335,13 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 }
 
 func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrganizationRequest) (*Organization, error) {
-	_, err := d.DB.Exec(
+	normalizedBrandColor, err := normalizeBrandColor(updates.BrandColor)
+	if err != nil {
+		return nil, err
+	}
+	updates.BrandColor = normalizedBrandColor
+
+	_, err = d.DB.Exec(
 		`UPDATE organizations
 		 SET code                   = COALESCE(?, code),
 		     name                   = COALESCE(?, name),
@@ -303,6 +361,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     invoice_number_format  = COALESCE(?, invoice_number_format),
 		     invoice_number_counter = COALESCE(?, invoice_number_counter),
 		     date_format            = COALESCE(?, date_format),
+		     brandColor             = COALESCE(?, brandColor),
 		     match_price_tolerance_percent    = COALESCE(?, match_price_tolerance_percent),
 		     match_quantity_tolerance_percent = COALESCE(?, match_quantity_tolerance_percent),
 		     bic                    = COALESCE(?, bic),
@@ -333,6 +392,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.IBAN, updates.Currency, updates.MinimumFractionDigits, updates.DueDays,
 		updates.OverdueCharge, updates.CustomerNotes,
 		updates.InvoiceNumberFormat, updates.InvoiceNumberCounter, updates.DateFormat,
+		updates.BrandColor,
 		updates.MatchPriceTolerancePercent, updates.MatchQuantityTolerancePercent,
 		updates.BIC, updates.TaxNumber, updates.Street, updates.HouseNumber,
 		updates.PostalCode, updates.City, updates.CountryCode,

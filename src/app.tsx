@@ -20,6 +20,7 @@ import enUS from "antd/locale/en_US";
 import deDE from "antd/locale/de_DE";
 import frFR from "antd/locale/fr_FR";
 import { useAtomValue, useSetAtom } from "jotai";
+import { loadable } from "jotai/utils";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import dayjs from "dayjs";
@@ -29,7 +30,7 @@ import { localeAtom, themeAtom } from "src/atoms/generic";
 import { dynamicActivate } from "src/utils/lingui";
 import { setThemedMessage } from "src/utils/message";
 
-import { organizationIdAtom, setOrganizationsAtom } from "src/atoms/organization";
+import { organizationIdAtom, organizationAtom, setOrganizationsAtom } from "src/atoms/organization";
 import { setActiveCountriesAtom } from "src/atoms/country";
 import { currentUserAtom } from "src/atoms/auth";
 import { GetMe } from "src/api";
@@ -109,6 +110,13 @@ const MessageBridge = () => {
   return null;
 };
 
+// loadable() resolves synchronously instead of suspending — AppContent
+// renders ConfigProvider itself, above the <Suspense> boundary around
+// <Routes>, so a raw useAtomValue(organizationAtom) here would suspend with
+// nothing to catch it. Same pattern as the loadable(xAtom) atoms in the
+// detail pages (see CLAUDE.md's "loadable() Suspense pattern" note).
+const loadableOrganizationAtom = loadable(organizationAtom);
+
 const AppContent = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -117,6 +125,11 @@ const AppContent = () => {
   // Load locale
   const locale = useAtomValue(localeAtom);
   const themeMode = useAtomValue(themeAtom);
+  const loadedOrganization = useAtomValue(loadableOrganizationAtom);
+  const brandColor =
+    loadedOrganization.state === "hasData"
+      ? loadedOrganization.data?.brandColor || undefined
+      : undefined;
 
   // Auth
   const currentUser = useAtomValue(currentUserAtom);
@@ -194,6 +207,12 @@ const AppContent = () => {
         algorithm: themeMode === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           borderRadius: 2,
+          // Theme support Phase 1: seed antd's palette generation with the
+          // active organization's brand color when it has one. One seed
+          // color is enough — the algorithm above derives the whole tonal
+          // ramp (including a readable dark-mode variant) from it, so this
+          // composes with the light/dark switch rather than fighting it.
+          ...(brandColor ? { colorPrimary: brandColor } : {}),
         },
         components: {
           // antd's default 24px Form.Item spacing is generous enough to turn
