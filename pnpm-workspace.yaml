@@ -19,4 +19,7 @@ overrides:
   pdfjs-dist: "catalog:"
 
 catalog:
-  pdfjs-dist: 6.2.108
+  pdfjs-dist: 6.3.289
+
+minimumReleaseAgeExclude:
+  - antd@6.6.3
