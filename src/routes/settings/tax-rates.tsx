@@ -72,14 +72,18 @@ function SettingsTaxRates() {
               key="name"
               sorter={(a: TaxRate, b: TaxRate) => a.name.localeCompare(b.name)}
               render={(tr) => (
-                <Link to={`/settings/tax-rates/${tr.id}`} onClick={(e) => e.stopPropagation()}>{tr.name}</Link>
+                <Link to={`/settings/tax-rates/${tr.id}`} onClick={(e) => e.stopPropagation()}>
+                  {tr.name}
+                </Link>
               )}
             />
             <Table.Column
               title={<Trans>Description</Trans>}
               dataIndex="description"
               key="description"
-              sorter={(a: TaxRate, b: TaxRate) => (a.description ?? "").localeCompare(b.description ?? "")}
+              sorter={(a: TaxRate, b: TaxRate) =>
+                (a.description ?? "").localeCompare(b.description ?? "")
+              }
             />
             <Table.Column
               title={<Trans>Percentage</Trans>}

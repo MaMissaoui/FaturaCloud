@@ -7,13 +7,7 @@ import orderBy from "lodash/orderBy";
 import keyBy from "lodash/keyBy";
 import map from "lodash/map";
 import reject from "lodash/reject";
-import {
-  GetClients,
-  GetClient,
-  CreateClient,
-  UpdateClient,
-  DeleteClient,
-} from "src/api";
+import { GetClients, GetClient, CreateClient, UpdateClient, DeleteClient } from "src/api";
 
 import { organizationIdAtom } from "./organization";
 

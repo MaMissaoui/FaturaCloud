@@ -4,12 +4,7 @@ import { t } from "@lingui/core/macro";
 // outbound_deliveries.status (db/migrations/0025_add_outbound_deliveries.up.sql).
 export type DeliveryStatus = "draft" | "shipped" | "delivered" | "cancelled";
 
-export const DELIVERY_STATUSES: DeliveryStatus[] = [
-  "draft",
-  "shipped",
-  "delivered",
-  "cancelled",
-];
+export const DELIVERY_STATUSES: DeliveryStatus[] = ["draft", "shipped", "delivered", "cancelled"];
 
 // Ant Design Tag colors per status; draft is intentionally uncolored (default).
 export const deliveryStatusColor: Record<DeliveryStatus, string | undefined> = {

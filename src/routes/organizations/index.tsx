@@ -841,9 +841,9 @@ export default function Organizations() {
                     label={<Trans>DATEV clearing account</Trans>}
                     tooltip={
                       <Trans>
-                        Synthetic counter-account for a manual journal entry with more than one
-                        line on both sides (no natural anchor line) when exporting to DATEV. Leave
-                        blank if you don't use DATEV.
+                        Synthetic counter-account for a manual journal entry with more than one line
+                        on both sides (no natural anchor line) when exporting to DATEV. Leave blank
+                        if you don't use DATEV.
                       </Trans>
                     }
                     style={{ marginBottom: 0 }}

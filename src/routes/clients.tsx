@@ -47,8 +47,7 @@ const Clients = () => {
         },
       );
       return (
-        fieldsMatch ||
-        includes(formatAddressOneLine(client).toLowerCase(), search.toLowerCase())
+        fieldsMatch || includes(formatAddressOneLine(client).toLowerCase(), search.toLowerCase())
       );
     });
   };
@@ -75,7 +74,8 @@ const Clients = () => {
             rowKey="id"
             loading={loading}
             onRow={(record: Client) => ({
-              onClick: () => navigate("/clients", { state: { clientModal: true, clientId: record.id } }),
+              onClick: () =>
+                navigate("/clients", { state: { clientModal: true, clientId: record.id } }),
               style: { cursor: "pointer" },
             })}
           >
@@ -149,7 +149,12 @@ const Clients = () => {
               render={(website) =>
                 website ? (
                   <Tooltip title={website}>
-                    <a href={website} target="_blank" rel="noreferrer noopener" onClick={(e) => e.stopPropagation()}>
+                    <a
+                      href={website}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <GlobalOutlined style={{ fontSize: 16 }} />
                     </a>
                   </Tooltip>

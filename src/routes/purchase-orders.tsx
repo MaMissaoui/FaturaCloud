@@ -118,7 +118,9 @@ const PurchaseOrders = () => {
               title={<Trans>Order date</Trans>}
               dataIndex="orderDate"
               key="orderDate"
-              sorter={(a: PurchaseOrder, b: PurchaseOrder) => (a.orderDate ?? 0) - (b.orderDate ?? 0)}
+              sorter={(a: PurchaseOrder, b: PurchaseOrder) =>
+                (a.orderDate ?? 0) - (b.orderDate ?? 0)
+              }
               render={(v: number) => (v ? formatDate(v) : "—")}
             />
             <Table.Column

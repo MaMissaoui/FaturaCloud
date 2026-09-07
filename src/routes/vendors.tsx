@@ -47,8 +47,7 @@ const Vendors = () => {
         },
       );
       return (
-        fieldsMatch ||
-        includes(formatAddressOneLine(vendor).toLowerCase(), search.toLowerCase())
+        fieldsMatch || includes(formatAddressOneLine(vendor).toLowerCase(), search.toLowerCase())
       );
     });
   };
@@ -75,7 +74,8 @@ const Vendors = () => {
             rowKey="id"
             loading={loading}
             onRow={(record: Vendor) => ({
-              onClick: () => navigate("/vendors", { state: { vendorModal: true, vendorId: record.id } }),
+              onClick: () =>
+                navigate("/vendors", { state: { vendorModal: true, vendorId: record.id } }),
               style: { cursor: "pointer" },
             })}
           >
@@ -149,7 +149,12 @@ const Vendors = () => {
               render={(website) =>
                 website ? (
                   <Tooltip title={website}>
-                    <a href={website} target="_blank" rel="noreferrer noopener" onClick={(e) => e.stopPropagation()}>
+                    <a
+                      href={website}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <GlobalOutlined style={{ fontSize: 16 }} />
                     </a>
                   </Tooltip>

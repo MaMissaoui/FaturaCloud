@@ -181,7 +181,6 @@ function SettingsBackup() {
       </Title>
 
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-
         {/* ── Schedule ── */}
         <Card title={<Trans>Automatic schedule</Trans>}>
           <Space direction="vertical" size={8}>
@@ -191,10 +190,14 @@ function SettingsBackup() {
                   checked={config.enabled}
                   onChange={(v) => setConfig((c) => ({ ...c, enabled: v }))}
                 />
-                <Text><Trans>Enable automatic backups</Trans></Text>
+                <Text>
+                  <Trans>Enable automatic backups</Trans>
+                </Text>
               </Space>
               <Space size={6}>
-                <Text type="secondary"><Trans>Hour (UTC)</Trans>:</Text>
+                <Text type="secondary">
+                  <Trans>Hour (UTC)</Trans>:
+                </Text>
                 <Select
                   value={config.scheduleHour}
                   onChange={(v) => setConfig((c) => ({ ...c, scheduleHour: v }))}
@@ -207,7 +210,9 @@ function SettingsBackup() {
                 />
               </Space>
               <Space size={6}>
-                <Text type="secondary"><Trans>Retention (days)</Trans>:</Text>
+                <Text type="secondary">
+                  <Trans>Retention (days)</Trans>:
+                </Text>
                 <InputNumber
                   min={1}
                   max={365}
@@ -342,7 +347,11 @@ function SettingsBackup() {
               title={<Trans>File</Trans>}
               dataIndex="name"
               key="name"
-              render={(name) => <Text code style={{ fontSize: 12 }}>{name}</Text>}
+              render={(name) => (
+                <Text code style={{ fontSize: 12 }}>
+                  {name}
+                </Text>
+              )}
             />
             <Table.Column<BackupEntry>
               title={<Trans>Size</Trans>}
@@ -377,7 +386,6 @@ function SettingsBackup() {
             />
           </Table>
         </Card>
-
       </Space>
     </div>
   );

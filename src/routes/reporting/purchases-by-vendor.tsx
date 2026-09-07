@@ -77,7 +77,9 @@ const PurchasesByVendor = () => {
           theme={themeMode === "dark" ? "classicDark" : "classic"}
           height={280}
           axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-          tooltip={{ items: [{ field: "spend", name: t`Spend`, valueFormatter: (v: number) => money(v) }] }}
+          tooltip={{
+            items: [{ field: "spend", name: t`Spend`, valueFormatter: (v: number) => money(v) }],
+          }}
         />
       </Card>
 

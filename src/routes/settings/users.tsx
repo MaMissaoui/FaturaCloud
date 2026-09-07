@@ -21,14 +21,7 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import dayjs from "dayjs";
 
-import {
-  type UserRecord,
-  CreateUser,
-  DeleteUser,
-  GetUser,
-  ListUsers,
-  UpdateUser,
-} from "src/api";
+import { type UserRecord, CreateUser, DeleteUser, GetUser, ListUsers, UpdateUser } from "src/api";
 import { currentUserAtom } from "src/atoms/auth";
 import PageHeader from "src/components/page-header";
 
@@ -90,11 +83,20 @@ export default function SettingsUsers() {
     setSubmitting(true);
     try {
       if (editingId) {
-        const update: any = { displayName: values.displayName, role: values.role, isActive: values.isActive ? 1 : 0 };
+        const update: any = {
+          displayName: values.displayName,
+          role: values.role,
+          isActive: values.isActive ? 1 : 0,
+        };
         if (values.password) update.password = values.password;
         await UpdateUser(editingId, update);
       } else {
-        await CreateUser({ email: values.email, password: values.password, displayName: values.displayName, role: values.role });
+        await CreateUser({
+          email: values.email,
+          password: values.password,
+          displayName: values.displayName,
+          role: values.role,
+        });
       }
       handleClose();
       fetchUsers(search);
@@ -151,7 +153,10 @@ export default function SettingsUsers() {
           onChange: setSearch,
           onSearch: (v) => fetchUsers(v),
           allowClear: true,
-          onClear: () => { setSearch(""); fetchUsers(); },
+          onClear: () => {
+            setSearch("");
+            fetchUsers();
+          },
         }}
         actions={
           <Button type="primary" onClick={openNew}>
@@ -186,9 +191,15 @@ export default function SettingsUsers() {
           key="role"
           sorter={(a, b) => a.role.localeCompare(b.role)}
           render={(role) =>
-            role === "admin"
-              ? <Tag color="red"><Trans>Admin</Trans></Tag>
-              : <Tag color="blue"><Trans>User</Trans></Tag>
+            role === "admin" ? (
+              <Tag color="red">
+                <Trans>Admin</Trans>
+              </Tag>
+            ) : (
+              <Tag color="blue">
+                <Trans>User</Trans>
+              </Tag>
+            )
           }
         />
         <Table.Column<UserRecord>
@@ -220,7 +231,10 @@ export default function SettingsUsers() {
           render={(_, record) => (
             <Popconfirm
               title={t`Delete this user?`}
-              onConfirm={(e) => { e?.stopPropagation(); handleDelete(record.id); }}
+              onConfirm={(e) => {
+                e?.stopPropagation();
+                handleDelete(record.id);
+              }}
               onCancel={(e) => e?.stopPropagation()}
               disabled={record.id === me?.id}
             >
@@ -261,7 +275,9 @@ export default function SettingsUsers() {
               )}
             </div>
             <Space>
-              <Button onClick={handleClose}><Trans>Cancel</Trans></Button>
+              <Button onClick={handleClose}>
+                <Trans>Cancel</Trans>
+              </Button>
               <Button type="primary" loading={submitting} onClick={() => form.submit()}>
                 <Trans>Save</Trans>
               </Button>
@@ -272,7 +288,11 @@ export default function SettingsUsers() {
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Row gutter={[16, 0]}>
             <Col xs={24} md={isEdit ? 16 : 24}>
-              <Form.Item name="displayName" label={<Trans>Name</Trans>} rules={[{ required: true }]}>
+              <Form.Item
+                name="displayName"
+                label={<Trans>Name</Trans>}
+                rules={[{ required: true }]}
+              >
                 <Input />
               </Form.Item>
             </Col>
@@ -316,10 +336,17 @@ export default function SettingsUsers() {
 
           <Form.Item
             name="password"
-            label={isEdit ? <Trans>New password (leave blank to keep current)</Trans> : <Trans>Password</Trans>}
-            rules={isEdit
-              ? [{ min: 6, message: t`Minimum 6 characters` }]
-              : [{ required: true, min: 6, message: t`Minimum 6 characters` }]
+            label={
+              isEdit ? (
+                <Trans>New password (leave blank to keep current)</Trans>
+              ) : (
+                <Trans>Password</Trans>
+              )
+            }
+            rules={
+              isEdit
+                ? [{ min: 6, message: t`Minimum 6 characters` }]
+                : [{ required: true, min: 6, message: t`Minimum 6 characters` }]
             }
           >
             <Input.Password />

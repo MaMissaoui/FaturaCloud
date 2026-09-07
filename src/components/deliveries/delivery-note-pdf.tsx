@@ -97,10 +97,23 @@ const styles = StyleSheet.create({
   noteCardTitle: { fontFamily: FONT_BOLD, fontSize: 10, marginBottom: 6 },
   noteCardText: { fontSize: 9, color: "#555", lineHeight: 1.5 },
 
-  signatureArea: { flexDirection: "row", justifyContent: "space-between", marginTop: 48, paddingTop: 24, borderTopWidth: 1, borderTopColor: "#e0e0e0" },
+  signatureArea: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 48,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
   signatureBlock: { width: "40%" },
   signatureLine: { borderBottomWidth: 1, borderBottomColor: "#999", marginBottom: 6, height: 24 },
-  signatureLabel: { fontFamily: FONT_BOLD, fontSize: 8, color: "#888", textTransform: "uppercase", letterSpacing: 0.5 },
+  signatureLabel: {
+    fontFamily: FONT_BOLD,
+    fontSize: 8,
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   pageNumber: { position: "absolute", bottom: 24, right: 50, fontSize: 8, color: "#aaa" },
 });
 
@@ -146,7 +159,9 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, i18n }: Pr
                   <Text style={styles.headerMetaLabel}>
                     <Trans>Delivery date</Trans>:
                   </Text>
-                  <Text style={styles.headerMetaValue}>{dayjs(delivery.deliveryDate).format("L")}</Text>
+                  <Text style={styles.headerMetaValue}>
+                    {dayjs(delivery.deliveryDate).format("L")}
+                  </Text>
                 </View>
                 {delivery.trackingNumber && (
                   <View style={styles.headerMetaRow}>
@@ -192,11 +207,12 @@ const DeliveryNotePDF = ({ delivery, lineItems, client, organization, i18n }: Pr
               {client && formatAddress(client) && (
                 <Text style={styles.partyDetail}>{formatAddress(client)}</Text>
               )}
-              {delivery.shippingAddress && delivery.shippingAddress !== formatAddress(client ?? {}) && (
-                <Text style={[styles.partyDetail, { marginTop: 6 }]}>
-                  <Trans>Ship To</Trans>: {delivery.shippingAddress}
-                </Text>
-              )}
+              {delivery.shippingAddress &&
+                delivery.shippingAddress !== formatAddress(client ?? {}) && (
+                  <Text style={[styles.partyDetail, { marginTop: 6 }]}>
+                    <Trans>Ship To</Trans>: {delivery.shippingAddress}
+                  </Text>
+                )}
               {client?.email && <Text style={styles.partyDetail}>{client.email}</Text>}
             </View>
           </View>

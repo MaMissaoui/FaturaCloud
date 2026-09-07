@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import {
-  Button,
-  Table,
-  Typography,
-  Dropdown,
-  MenuProps,
-  Popconfirm,
-  Tooltip,
-} from "antd";
+import { Button, Table, Typography, Dropdown, MenuProps, Popconfirm, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   FileTextOutlined,
@@ -156,15 +148,21 @@ const Invoices = () => {
         <Table.Column
           title="#"
           dataIndex="number"
-          sorter={(a: Invoice, b: Invoice) => (a.number < b.number ? -1 : a.number === b.number ? 0 : 1)}
+          sorter={(a: Invoice, b: Invoice) =>
+            a.number < b.number ? -1 : a.number === b.number ? 0 : 1
+          }
           render={(number, invoice: Invoice) => (
-            <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>{number}</Link>
+            <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>
+              {number}
+            </Link>
           )}
         />
         <Table.Column
           title={<Trans>Client</Trans>}
           dataIndex="clientName"
-          sorter={(a: Invoice, b: Invoice) => (a.clientName ?? "").localeCompare(b.clientName ?? "")}
+          sorter={(a: Invoice, b: Invoice) =>
+            (a.clientName ?? "").localeCompare(b.clientName ?? "")
+          }
           render={(clientName) => (clientName ? clientName : "-")}
         />
         <Table.Column
@@ -178,7 +176,9 @@ const Invoices = () => {
           title={<Trans>Due date</Trans>}
           dataIndex="dueDate"
           key="dueDate"
-          sorter={(a: Invoice, b: Invoice) => dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()}
+          sorter={(a: Invoice, b: Invoice) =>
+            dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()
+          }
           render={(date, invoice: Invoice) => {
             if (!date) return "-";
             // A sent (unpaid) invoice past its due date is overdue — flag it.

@@ -27,7 +27,11 @@ const TaxSummary = () => {
   useEffect(() => {
     if (!organizationId) return;
     setLoading(true);
-    GetTaxSummary(organizationId, range[0].startOf("day").valueOf(), range[1].endOf("day").valueOf())
+    GetTaxSummary(
+      organizationId,
+      range[0].startOf("day").valueOf(),
+      range[1].endOf("day").valueOf(),
+    )
       .then(setSummary)
       .catch(() => setSummary(null))
       .finally(() => setLoading(false));
@@ -40,7 +44,8 @@ const TaxSummary = () => {
       minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
     }).format(cents / 100);
 
-  const renderName = (line: TaxSummaryLine) => (line.taxRateId ? line.name : <Trans>Unrated</Trans>);
+  const renderName = (line: TaxSummaryLine) =>
+    line.taxRateId ? line.name : <Trans>Unrated</Trans>;
 
   const columns = [
     { title: <Trans>Rate</Trans>, key: "name", render: renderName },
@@ -105,7 +110,9 @@ const TaxSummary = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="right">
-                  <Typography.Text strong>{money(totalTax(data as TaxSummaryLine[]))}</Typography.Text>
+                  <Typography.Text strong>
+                    {money(totalTax(data as TaxSummaryLine[]))}
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}
@@ -129,7 +136,9 @@ const TaxSummary = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="right">
-                  <Typography.Text strong>{money(totalTax(data as TaxSummaryLine[]))}</Typography.Text>
+                  <Typography.Text strong>
+                    {money(totalTax(data as TaxSummaryLine[]))}
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}

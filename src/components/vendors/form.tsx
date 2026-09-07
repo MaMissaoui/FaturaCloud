@@ -147,7 +147,9 @@ const VendorForm = () => {
             )}
           </div>
           <Space>
-            <Button onClick={handleClose}><Trans>Cancel</Trans></Button>
+            <Button onClick={handleClose}>
+              <Trans>Cancel</Trans>
+            </Button>
             <Button type="primary" loading={submitting} onClick={() => form.submit()}>
               <Trans>Save</Trans>
             </Button>
@@ -194,7 +196,11 @@ const VendorForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="website" label={<Trans>Website</Trans>} style={{ marginBottom: 0 }}>
+                <Form.Item
+                  name="website"
+                  label={<Trans>Website</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
                   <Input placeholder={t`Website`} />
                 </Form.Item>
               </Col>
