@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+# When a new commit lands on a branch/PR, cancel the in-flight run for the
+# same ref instead of letting it run to completion on a wasted runner — most
+# of the cost (a full race-enabled test compile) is duplicated on every push.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   go:
     runs-on: ubuntu-latest
@@ -16,6 +23,7 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: "1.26"
+          cache: true
 
       # main.go embeds dist/ via //go:embed all:dist, so vet/test can't
       # compile the root package without the directory existing — a real
