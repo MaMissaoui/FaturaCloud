@@ -24,7 +24,19 @@ export const getInvoicePDFLayout = (layoutId?: string | null) =>
 // Labels are a function (not a module-scope const) so they re-evaluate
 // against the active locale — same reasoning as invoiceStateLabel in
 // src/types/invoice.ts.
-export const invoicePDFLayoutOptions = (): { value: InvoicePDFLayoutKey; label: string }[] => [
+export const invoicePDFLayoutOptions = (): {
+  value: InvoicePDFLayoutKey | "custom";
+  label: string;
+}[] => [
   { value: "default", label: t`Default` },
   { value: "tunisia", label: t`Tunisia` },
+  { value: "custom", label: t`Custom (uploaded template)` },
 ];
+
+// "custom" (issue #115) means "export through the org's uploaded Excel
+// template via the server", not a React component — it's deliberately never
+// added to invoicePDFLayouts above. Callers must check this BEFORE calling
+// getInvoicePDFLayout, which would otherwise silently fall back to the
+// "default" component for an unrecognized key and render the wrong document
+// next to a print button that downloads something else entirely.
+export const isCustomTemplateLayout = (layoutId?: string | null) => layoutId === "custom";

@@ -267,6 +267,72 @@ export const UploadOrganizationLogo = async (id: string, file: File): Promise<vo
 
 export const DeleteOrganizationLogo = (id: string) => del<void>(`/organizations/${id}/logo`);
 
+// ---- Document Templates (issue #115) ----
+// Per-org, per-document-type Excel export template overrides. GET returns
+// the org's uploaded override, or the embedded default if none was
+// uploaded — either way a real, downloadable .xlsx.
+
+export interface DocumentTemplateMeta {
+  id: string;
+  organizationId: string;
+  documentType: string;
+  filename: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Lists which document types currently have a custom override (content
+// excluded) — what the Settings page uses to show "Custom" vs "Default" per
+// card without downloading a template just to check.
+export const ListDocumentTemplates = (orgId: string) =>
+  get<DocumentTemplateMeta[]>(`/organizations/${orgId}/document-templates`);
+
+export const GetDocumentTemplate = async (orgId: string, documentType: string): Promise<Blob> => {
+  const res = await fetch(`/api/organizations/${orgId}/document-templates/${documentType}`, {
+    credentials: "same-origin",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+  return res.blob();
+};
+
+export const DownloadDocumentTemplate = async (
+  orgId: string,
+  documentType: string,
+  defaultFilename: string,
+): Promise<void> => {
+  const blob = await GetDocumentTemplate(orgId, documentType);
+  await SaveFile(defaultFilename, blob);
+};
+
+// Mirrors UploadOrganizationLogo's shape (raw fetch, manual CSRF header) —
+// content is validated server-side by actually opening it via excelize
+// before it's accepted, a stronger bar than the logo's content-type sniff
+// since this file is later opened and filled, not just displayed.
+export const UploadDocumentTemplate = async (
+  orgId: string,
+  documentType: string,
+  file: File,
+): Promise<void> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`/api/organizations/${orgId}/document-templates/${documentType}`, {
+    method: "POST",
+    headers: { [CSRF_HEADER]: "1" },
+    credentials: "same-origin",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+};
+
+export const DeleteDocumentTemplate = (orgId: string, documentType: string) =>
+  del<void>(`/organizations/${orgId}/document-templates/${documentType}`);
+
 // ---- Clients ----
 
 export const GetClients = (organizationId: string) =>
@@ -306,6 +372,34 @@ export const DownloadInvoiceEInvoice = async (id: string): Promise<void> => {
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
   const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${id}-e-invoice.xml`;
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(href);
+    a.remove();
+  }, 1000);
+};
+
+// Exports an invoice through the org's custom Excel template (an uploaded
+// override, or the embedded default) filled with this invoice's persisted
+// data — as opposed to the default/tunisia PDF button, which renders live
+// unsaved form values client-side via @react-pdf/renderer.
+export const ExportInvoiceDocument = async (id: string, format: "xlsx" | "pdf"): Promise<void> => {
+  const res = await fetch(`/api/invoices/${id}/export?format=${format}`, {
+    credentials: "same-origin",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `invoice-${id}.${format}`;
   const href = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = href;
