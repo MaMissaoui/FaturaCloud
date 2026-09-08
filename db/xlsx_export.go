@@ -46,7 +46,7 @@ func FillInvoiceTemplate(
 		return nil, nil, fmt.Errorf("fill_invoice_template: template has no sheets")
 	}
 
-	markerRow, err := findMarkerRow(f, sheet)
+	markerRow, markerCol, err := findMarkerRow(f, sheet)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,7 +67,7 @@ func FillInvoiceTemplate(
 	// Clear the marker cell in every row of the (now expanded) repeat block
 	// so it never appears literally in the output.
 	for i := 0; i < repeatRowCount; i++ {
-		cell, err := excelize.CoordinatesToCellName(1, markerRow+i)
+		cell, err := excelize.CoordinatesToCellName(markerCol, markerRow+i)
 		if err != nil {
 			return nil, nil, fmt.Errorf("fill_invoice_template: %w", err)
 		}
@@ -207,20 +207,26 @@ func (d *Database) FetchInvoiceExportData(invoiceID string) (*Invoice, []Invoice
 	return invoice, lineItems, org, client, templateBytes, taxRates, nil
 }
 
-// findMarkerRow scans column A for the lineItemMarker cell, returning its
-// 1-indexed row number. This is the one structural requirement of a valid
-// template — without it there's nothing to expand line items into.
-func findMarkerRow(f *excelize.File, sheet string) (int, error) {
+// findMarkerRow scans every cell for the lineItemMarker, returning its
+// 1-indexed row and column. This is the one structural requirement of a
+// valid template — without it there's nothing to expand line items into.
+// The marker isn't pinned to column A: a template author can place it in
+// whichever column is otherwise unused (e.g. off to the right of the visible
+// columns), freeing the leftmost columns of the repeat row for real content
+// like a merged multi-column description cell.
+func findMarkerRow(f *excelize.File, sheet string) (row int, col int, err error) {
 	rows, err := f.GetRows(sheet)
 	if err != nil {
-		return 0, fmt.Errorf("find_marker_row: %w", err)
+		return 0, 0, fmt.Errorf("find_marker_row: %w", err)
 	}
-	for i, row := range rows {
-		if len(row) > 0 && strings.TrimSpace(row[0]) == lineItemMarker {
-			return i + 1, nil
+	for i, r := range rows {
+		for j, cell := range r {
+			if strings.TrimSpace(cell) == lineItemMarker {
+				return i + 1, j + 1, nil
+			}
 		}
 	}
-	return 0, newValidationError("template has no %s marker row in column A", lineItemMarker)
+	return 0, 0, newValidationError("template has no %s marker cell", lineItemMarker)
 }
 
 // buildScalarPlaceholders is the fixed namespace->field allowlist for
@@ -233,6 +239,15 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 		currency = *org.Currency
 	}
 
+	withholdingTaxRate := ""
+	if invoice.WithholdingTaxRate != nil {
+		withholdingTaxRate = strconv.FormatFloat(*invoice.WithholdingTaxRate, 'f', -1, 64) + "%"
+	}
+	withholdingTaxAmount := ""
+	if invoice.WithholdingTaxAmount != nil {
+		withholdingTaxAmount = formatMoneyCents(*invoice.WithholdingTaxAmount, currency, org.MinimumFractionDigits)
+	}
+
 	return map[string]string{
 		"invoice.number":         invoice.Number,
 		"invoice.date":           formatOrgDate(invoice.Date, org.DateFormat),
@@ -243,6 +258,13 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 		"invoice.total":          formatMoneyCents(invoice.Total, currency, org.MinimumFractionDigits),
 		"invoice.buyerReference": derefString(invoice.BuyerReference),
 		"invoice.paymentTerms":   derefString(invoice.PaymentTerms),
+		// Tunisia invoice support (see db/invoice.go's own comment on these
+		// three fields) — fiscalStampAmount is NOT NULL DEFAULT 0, so this is
+		// always a real amount, "0.00 EUR" for an organization that doesn't
+		// use it, same as every other always-present label on this template.
+		"invoice.fiscalStampAmount":    formatMoneyCents(invoice.FiscalStampAmount, currency, org.MinimumFractionDigits),
+		"invoice.withholdingTaxRate":   withholdingTaxRate,
+		"invoice.withholdingTaxAmount": withholdingTaxAmount,
 
 		"organization.name":        derefString(org.Name),
 		"organization.vatin":       derefString(org.Vatin),

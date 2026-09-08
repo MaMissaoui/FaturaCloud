@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -188,6 +189,55 @@ func TestFillInvoiceTemplateRequiresMarkerRow(t *testing.T) {
 	}
 }
 
+// TestFillInvoiceTemplateMarkerCanBeInAnyColumn confirms an org that
+// downloads the template, rearranges it in Excel, and uploads it back isn't
+// stuck with the marker in column A — db.findMarkerRow scans every cell, so
+// a custom layout can put {{#lineItems}} anywhere (here, column D, with the
+// real content in A-C) and still expand correctly.
+func TestFillInvoiceTemplateMarkerCanBeInAnyColumn(t *testing.T) {
+	f := excelize.NewFile()
+	sheet := f.GetSheetName(0)
+	_ = f.SetCellStr(sheet, "A1", "{{invoice.number}}")
+	_ = f.SetCellStr(sheet, "A3", "{{lineItems.description}}")
+	_ = f.SetCellStr(sheet, "B3", "{{lineItems.quantity}}")
+	_ = f.SetCellStr(sheet, "C3", "{{lineItems.lineTotal}}")
+	_ = f.SetCellStr(sheet, "D3", "{{#lineItems}}")
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		t.Fatalf("build fixture: %v", err)
+	}
+
+	lineItems := []InvoiceLineItem{
+		{Description: ptr("Widget"), Quantity: 2, UnitPrice: 500},
+		{Description: ptr("Gadget"), Quantity: 1, UnitPrice: 1000},
+	}
+	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil)
+	if err != nil {
+		t.Fatalf("FillInvoiceTemplate: %v", err)
+	}
+	if len(unresolved) != 0 {
+		t.Fatalf("expected no unresolved placeholders, got %v", unresolved)
+	}
+
+	out2, err := excelize.OpenReader(bytes.NewReader(out))
+	if err != nil {
+		t.Fatalf("open filled output: %v", err)
+	}
+	defer out2.Close()
+	a3, _ := out2.GetCellValue(sheet, "A3")
+	if a3 != "Widget" {
+		t.Fatalf("A3 = %q, want %q", a3, "Widget")
+	}
+	a4, _ := out2.GetCellValue(sheet, "A4")
+	if a4 != "Gadget" {
+		t.Fatalf("A4 = %q, want %q", a4, "Gadget")
+	}
+	d3, _ := out2.GetCellValue(sheet, "D3")
+	if d3 != "" {
+		t.Fatalf("D3 (marker cell) should be blanked, got %q", d3)
+	}
+}
+
 // TestFillInvoiceTemplateStripsExtraSheets guards the embedded default
 // template's "Available fields" reference tab (and any template author's own
 // notes/reference sheet) from ever reaching an actual invoice export — it's
@@ -274,11 +324,11 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 
 // TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData guards
 // against the header row (e.g. "Description", "Quantity", ...) drifting out
-// of alignment with the data row again: column A of the marker row is always
-// reserved for {{#lineItems}} itself (cleared before output, so it's always
-// blank in the result) and every real per-item value starts at column B —
-// the header labels above them must start at B too, not A, or they end up
-// one column to the left of the values they're labelling.
+// of alignment with the data row again. The {{#lineItems}} marker lives off
+// in its own column (not one of the visible A-F content columns — see
+// db.findMarkerRow), so "Description" gets the full merged A:B cell in both
+// the header and data rows, with C-F carrying Quantity/Unit Price/Tax
+// Rate/Line Total in both — column-for-column, not shifted by one.
 func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T) {
 	f, err := excelize.OpenReader(bytes.NewReader(invoiceDefaultTemplate))
 	if err != nil {
@@ -287,26 +337,44 @@ func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T
 	defer f.Close()
 	sheet := f.GetSheetName(0)
 
-	markerRow, err := findMarkerRow(f, sheet)
+	markerRow, _, err := findMarkerRow(f, sheet)
 	if err != nil {
 		t.Fatalf("find marker row: %v", err)
 	}
+	headerRowNum := markerRow - 1 // markerRow is 1-indexed; the header sits directly above it
 
 	rows, err := f.GetRows(sheet)
 	if err != nil {
 		t.Fatalf("read rows: %v", err)
 	}
-	headerRow := rows[markerRow-2] // markerRow is 1-indexed; the header sits directly above it
+	headerRow := rows[headerRowNum-1]
 	dataRow := rows[markerRow-1]
 
-	if got := strings.TrimSpace(headerRow[0]); got != "" {
-		t.Fatalf("header row column A should be blank (reserved for the marker column), got %q", got)
+	if len(headerRow) < 1 || strings.TrimSpace(headerRow[0]) != "Description" {
+		t.Fatalf("header row column A should be \"Description\", got %v", headerRow)
 	}
-	if len(headerRow) < 2 || strings.TrimSpace(headerRow[1]) == "" {
-		t.Fatal("header row column B should carry the first line item column's label")
+	if len(dataRow) < 1 || !strings.Contains(dataRow[0], "{{lineItems.description}}") {
+		t.Fatalf("data row column A should carry {{lineItems.description}}, got %v", dataRow)
 	}
-	if len(dataRow) < 2 || !strings.Contains(dataRow[1], "{{lineItems.description}}") {
-		t.Fatalf("data row column B should carry {{lineItems.description}}, got %q", dataRow[1])
+
+	merges, err := f.GetMergeCells(sheet)
+	if err != nil {
+		t.Fatalf("get merge cells: %v", err)
+	}
+	wantMerged := map[string]bool{
+		fmt.Sprintf("A%d:B%d", headerRowNum, headerRowNum): false,
+		fmt.Sprintf("A%d:B%d", markerRow, markerRow):        false,
+	}
+	for _, m := range merges {
+		key := m.GetStartAxis() + ":" + m.GetEndAxis()
+		if _, ok := wantMerged[key]; ok {
+			wantMerged[key] = true
+		}
+	}
+	for want, found := range wantMerged {
+		if !found {
+			t.Errorf("expected merged range %s (description spanning A:B), got merges %v", want, merges)
+		}
 	}
 }
 

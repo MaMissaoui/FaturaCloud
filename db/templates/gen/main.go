@@ -69,33 +69,38 @@ func main() {
 	set("A10", "{{client.postalCode}} {{client.city}}")
 	set("A11", "VAT: {{client.vatin}}")
 
-	// Line item table header. Columns start at B, not A: the repeat row
-	// below carries the {{#lineItems}} marker in column A (cleared before
-	// output, so that column is always blank in the result), which pushes
-	// every real per-item value to B onward — the header must line up with
-	// that or "Description" ends up a column left of the descriptions.
-	// Column A of this row is deliberately left unstyled (not part of the
-	// dark header band) so it reads as a blank margin next to the table,
-	// not a filled-but-empty header cell.
+	// Line item table header. Description spans A:B (merged) for extra room —
+	// a description is the one field on this row long enough to need it.
+	// The {{#lineItems}} marker on the repeat row below lives in column G,
+	// off to the right of the visible table: db.findMarkerRow scans every
+	// cell for it, not just column A, specifically so the marker never has
+	// to consume a real content column the way it used to.
 	headerRow := 13
-	cols := []string{"B", "C", "D", "E", "F"}
+	if err := f.MergeCell(sheet, "A"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow)); err != nil {
+		log.Fatal(err)
+	}
+	cols := []string{"A", "C", "D", "E", "F"}
 	labels := []string{"Description", "Quantity", "Unit Price", "Tax Rate", "Line Total"}
 	for i, col := range cols {
 		cell := col + strconv.Itoa(headerRow)
 		set(cell, labels[i])
 		f.SetCellStyle(sheet, cell, cell, header)
 	}
+	f.SetCellStyle(sheet, "B"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow), header)
 
-	// Repeat row: column A carries the {{#lineItems}} marker (cleared by the
-	// fill engine before output), the remaining columns carry per-item
-	// placeholders.
+	// Repeat row: A:B merged carries the description, C-F the rest of the
+	// per-item placeholders, G the marker (DuplicateRowTo preserves both the
+	// merge and the marker across every expanded line item row).
 	repeatRow := headerRow + 1
-	set("A"+strconv.Itoa(repeatRow), "{{#lineItems}}")
-	set("B"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
+	if err := f.MergeCell(sheet, "A"+strconv.Itoa(repeatRow), "B"+strconv.Itoa(repeatRow)); err != nil {
+		log.Fatal(err)
+	}
+	set("A"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
 	set("C"+strconv.Itoa(repeatRow), "{{lineItems.quantity}}")
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.unitPrice}}")
 	set("E"+strconv.Itoa(repeatRow), "{{lineItems.taxRate}}")
 	set("F"+strconv.Itoa(repeatRow), "{{lineItems.lineTotal}}")
+	set("G"+strconv.Itoa(repeatRow), "{{#lineItems}}")
 
 	// Totals block, a few rows below the repeat row — located by the fill
 	// engine via placeholder scan after row expansion, never a cached index.
@@ -214,7 +219,7 @@ func addAvailableFieldsSheet(f *excelize.File) {
 		{"Header", "{{client.city}}", "Customer city"},
 
 		// Item lines — only meaningful inside the repeated {{#lineItems}} row.
-		{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in column A of the row to repeat once per line item"},
+		{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in any one cell of the row to repeat once per line item; that whole cell is blanked in the output"},
 		{"Item lines", "{{lineItems.description}}", "Line item description"},
 		{"Item lines", "{{lineItems.quantity}}", "Quantity"},
 		{"Item lines", "{{lineItems.unitPrice}}", "Unit price, formatted with currency"},
@@ -226,6 +231,9 @@ func addAvailableFieldsSheet(f *excelize.File) {
 		{"Footer", "{{invoice.taxTotal}}", "Total tax"},
 		{"Footer", "{{invoice.total}}", "Grand total"},
 		{"Footer", "{{invoice.paymentTerms}}", "Payment terms text"},
+		{"Footer", "{{invoice.fiscalStampAmount}}", "Tunisia timbre fiscal — flat duty, formatted with currency (0 if unused)"},
+		{"Footer", "{{invoice.withholdingTaxRate}}", "Withholding tax rate percentage, blank if unset"},
+		{"Footer", "{{invoice.withholdingTaxAmount}}", "Withholding tax amount, formatted with currency, blank if unset"},
 		{"Footer", "{{organization.iban}}", "Seller IBAN"},
 		{"Footer", "{{organization.bankName}}", "Seller bank name"},
 	}
