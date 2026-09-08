@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
@@ -18,7 +18,6 @@ import {
   Layout,
   Popconfirm,
   theme,
-  Spin,
   Tooltip,
   Typography,
 } from "antd";
@@ -40,22 +39,8 @@ import {
   UserAddOutlined,
 } from "@ant-design/icons";
 import LineItemsTable from "src/components/line-items/table";
-import { SaveFile, DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
-import QRCode from "qrcode";
-import { pdf } from "@react-pdf/renderer";
-import { Document, Page } from "react-pdf";
+import { DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
 import dayjs from "dayjs";
-
-// Import CSS for react-pdf (v10 dropped the esm/ path segment)
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
-
-// Configure PDF.js worker
-import { pdfjs } from "react-pdf";
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
 
 import get from "lodash/get";
 import includes from "lodash/includes";
@@ -80,14 +65,11 @@ import {
 import { organizationAtom, nextInvoiceNumberAtom } from "src/atoms/organization";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { paymentTermsAtom, setPaymentTermsAtom } from "src/atoms/payment-term";
-import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
 import { formatAddressOneLine } from "src/utils/address";
-import { getInvoicePDFLayout, isCustomTemplateLayout } from "src/components/invoices/layouts";
 import InvoiceStateSelect from "src/components/invoices/state-select";
 import { CurrencySelect, showExchangeRateFields } from "src/components/currency/currency-fields";
 import PaymentPanel from "src/components/payments/payment-panel";
-import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
 import { generateInvoiceNumber } from "src/utils/invoice";
 import { requiredForNewLineItem } from "src/utils/line-items";
 import {
@@ -113,129 +95,6 @@ const { Footer } = Layout;
 // resolves synchronously instead of suspending, same fix as
 // src/components/tax-rates/form.tsx.
 const loadableInvoiceAtom = loadable(invoiceAtom);
-
-// PDF Preview component that generates blob manually (like PDF download)
-const PDFPreview: React.FC<{ createPDFDocument: () => React.ReactElement<any> | null }> = ({
-  createPDFDocument,
-}) => {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const siderCollapsed = useAtomValue(siderAtom);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const pdfUrlRef = useRef<string | null>(null);
-
-  // Measures the container once it's mounted and on every window resize —
-  // a stable effect bound to the ref, replacing a callback-ref pattern that
-  // stored its cleanup on the callback function itself (which never
-  // receives node-unmount calls), leaking the resize listener on every
-  // mount/unmount.
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-
-    const measureWidth = () => setContainerWidth(node.offsetWidth - 40); // subtract some padding
-    measureWidth();
-    window.addEventListener("resize", measureWidth);
-    return () => window.removeEventListener("resize", measureWidth);
-  }, []);
-
-  // Re-measure when the sidebar collapses/expands — its own resize event
-  // fires before the layout has actually settled, so this waits a beat and
-  // re-measures off the container's parent width directly.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new Event("resize"));
-
-      setTimeout(() => {
-        const container = containerRef.current;
-        if (container && container.parentElement) {
-          setContainerWidth(container.parentElement.offsetWidth - 40);
-        }
-      }, 100);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [siderCollapsed]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const generatePDF = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const document = createPDFDocument();
-        if (!document) {
-          if (!cancelled) {
-            setError(t`Please select a client to view PDF preview.`);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const blob = await pdf(document).toBlob();
-        if (cancelled) return;
-
-        // Revoke the previous URL (if any) before replacing it — the old
-        // effect's cleanup closed over the initial pdfUrl === null, so its
-        // `if (pdfUrl)` check was always false and no URL was ever revoked.
-        if (pdfUrlRef.current) {
-          URL.revokeObjectURL(pdfUrlRef.current);
-        }
-        const url = URL.createObjectURL(blob);
-        pdfUrlRef.current = url;
-        setPdfUrl(url);
-      } catch (err) {
-        if (!cancelled) {
-          console.error("PDF generation error:", err);
-          setError(t`Error generating PDF preview. Please try again.`);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    generatePDF();
-
-    return () => {
-      cancelled = true;
-      if (pdfUrlRef.current) {
-        URL.revokeObjectURL(pdfUrlRef.current);
-        pdfUrlRef.current = null;
-      }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Intentionally omitting createPDFDocument to prevent re-generation on width changes
-
-  if (loading) {
-    return (
-      <div style={{ textAlign: "center", padding: "50px" }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return <div style={{ textAlign: "center", padding: "50px", color: "red" }}>{error}</div>;
-  }
-
-  return (
-    <div ref={containerRef} data-pdf-container style={{ width: "100%" }}>
-      <Document file={pdfUrl}>
-        <Page
-          pageNumber={1}
-          renderTextLayer={false}
-          renderAnnotationLayer={false}
-          width={containerWidth > 0 ? containerWidth : undefined}
-        />
-      </Document>
-    </div>
-  );
-};
 
 const InvoiceDetails: React.FC = () => {
   const location = useLocation();
@@ -435,98 +294,18 @@ const InvoiceDetails: React.FC = () => {
     : 0;
   const netAmountDue = subtractDecimal(total, withholdingTaxAmount);
 
-  // SEPA credit transfer QR ("GiroCode") for the PDF's payment box. Only
-  // renders for EUR invoices on an organization with an IBAN — SEPA credit
-  // transfers don't exist for other currencies. Regenerated whenever the
-  // total, currency, invoice number, or organization's bank details change.
   const watchedCurrency = Form.useWatch("currency", form);
   const watchedClientId = Form.useWatch("clientId", form);
   const selectedClient = find(clients, { id: watchedClientId });
   const selectedClientAddress = selectedClient ? formatAddressOneLine(selectedClient) : "";
   const orgCurrency = organization?.currency ?? "EUR";
-  const watchedNumber = Form.useWatch("number", form);
-  const [qrCodeDataUri, setQrCodeDataUri] = useState<string | null>(null);
-  useEffect(() => {
-    const payload = buildSepaCreditTransferPayload({
-      beneficiaryName: organization?.name,
-      iban: organization?.iban,
-      bic: organization?.bic,
-      currency: watchedCurrency ?? organization?.currency ?? "EUR",
-      amount: total,
-      reference: watchedNumber ?? "",
-    });
-    if (!payload) {
-      setQrCodeDataUri(null);
-      return;
-    }
-    let cancelled = false;
-    QRCode.toDataURL(payload, { margin: 1, width: 200 })
-      .then((uri) => {
-        if (!cancelled) setQrCodeDataUri(uri);
-      })
-      .catch(() => {
-        if (!cancelled) setQrCodeDataUri(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    organization?.name,
-    organization?.iban,
-    organization?.bic,
-    organization?.currency,
-    watchedCurrency,
-    total,
-    watchedNumber,
-  ]);
-
-  // Helper function to create PDF document with current form data
-  const createPDFDocument = () => {
-    // Get current form values to include unsaved changes
-    const formValues = form.getFieldsValue();
-    const clientId = formValues.clientId;
-    const clientData = find(clients, { id: clientId });
-
-    // Return null if no client data found
-    if (!clientData) {
-      return null;
-    }
-
-    // Create merged invoice data with form values and computed totals
-    const invoiceForPDF = {
-      ...invoice, // Start with database data
-      ...formValues, // Override with current form values
-      // Use computed totals from the current component state
-      subTotal,
-      taxTotal,
-      total,
-      fiscalStampAmount,
-      withholdingTaxAmount: withholdingTaxRate ? withholdingTaxAmount : null,
-      // Ensure line items have the correct totals
-      lineItems: formValues.lineItems || [],
-    };
-
-    const Layout = getInvoicePDFLayout(organization?.invoiceLayout);
-
-    return (
-      <Layout
-        invoice={invoiceForPDF}
-        client={clientData}
-        organization={organization}
-        taxRates={taxRates}
-        i18n={i18n}
-        qrCodeDataUri={qrCodeDataUri}
-      />
-    );
-  };
-
-  const isCustomTemplate = isCustomTemplateLayout(organization?.invoiceLayout);
 
   // The server fill-and-convert path (db/xlsx_export.go / db/pdf_convert.go)
-  // — used for every Excel export regardless of layout, and for PDF only
-  // when there's no client-side React component for "custom" (see
-  // getInvoicePDFLayout). Reads persisted rows by invoice id, so it's gated
-  // on isDirty below the same way custom-template export always was.
+  // — the one and only export mechanism for both formats now, so a PDF and
+  // an Excel export of the same invoice are always the same document (the
+  // PDF is literally a LibreOffice conversion of the filled xlsx — see
+  // db/pdf_convert.go). Reads persisted rows by invoice id, so both are
+  // gated on isDirty below.
   const handleServerExport = (format: "pdf" | "xlsx") => async () => {
     if (!id) return;
     const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
@@ -537,27 +316,6 @@ const InvoiceDetails: React.FC = () => {
       message.error(error instanceof Error ? error.message : t`Export failed`);
     } finally {
       setDownloading(false);
-    }
-  };
-
-  // The PDF button always does the same thing regardless of layout from the
-  // user's point of view; only the mechanism differs — client-side
-  // react-pdf (reads live unsaved form values, no isDirty gating needed) for
-  // every layout with a real component, or the server path above for
-  // "custom", which has none.
-  const handlePdfDownload = async () => {
-    if (isCustomTemplate) {
-      await handleServerExport("pdf")();
-      return;
-    }
-    setDownloadingPdf(true);
-    try {
-      const document = createPDFDocument();
-      if (!document) return;
-      const blob = await pdf(document).toBlob();
-      await SaveFile(`invoice-${id}.pdf`, blob);
-    } finally {
-      setDownloadingPdf(false);
     }
   };
 
@@ -588,21 +346,14 @@ const InvoiceDetails: React.FC = () => {
 
   const exportActions = !isNew
     ? [
-        <Tooltip
-          key="pdf"
-          title={isCustomTemplate && isDirty ? t`Save your changes before exporting` : undefined}
-        >
-          <Button
-            disabled={isCustomTemplate && isDirty}
-            loading={downloadingPdf}
-            onClick={handlePdfDownload}
-          >
+        <Tooltip key="pdf" title={isDirty ? t`Save your changes before exporting` : undefined}>
+          <Button disabled={isDirty} loading={downloadingPdf} onClick={handleServerExport("pdf")}>
             <FilePdfOutlined /> PDF
           </Button>
         </Tooltip>,
-        // Always the server fill-and-convert path (db/xlsx_export.go) regardless
-        // of layout — even a "default"/"tunisia" invoice has an embedded
-        // fallback template (resolveTemplateBytes) to fill.
+        // Always the server fill-and-convert path (db/xlsx_export.go) — every
+        // invoice has an embedded fallback template (resolveTemplateBytes) to
+        // fill even with no org override, so both buttons always work.
         <Tooltip key="excel" title={isDirty ? t`Save your changes before exporting` : undefined}>
           <Button
             disabled={isDirty}
@@ -1328,20 +1079,14 @@ const InvoiceDetails: React.FC = () => {
                 document.getElementById("footer"),
               )}
           </Form>
-          {previewMode &&
-            (isCustomTemplate ? (
-              // getInvoicePDFLayout would silently fall back to the "default"
-              // React component for "custom", rendering a different document
-              // than the Excel button actually exports — so no live preview
-              // for a custom template in v1, only a note.
-              <div style={{ padding: 24, textAlign: "center" }}>
-                <Trans>
-                  Preview isn't available for a custom template — use Excel to see the result.
-                </Trans>
-              </div>
-            ) : (
-              <PDFPreview createPDFDocument={createPDFDocument} />
-            ))}
+          {previewMode && (
+            // Both PDF and Excel are generated server-side from the same
+            // filled template (db/xlsx_export.go) — there's no client-side
+            // rendering left to preview in-page, only a real export.
+            <div style={{ padding: 24, textAlign: "center" }}>
+              <Trans>Preview isn't available — export to PDF or Excel to see the result.</Trans>
+            </div>
+          )}
         </Col>
       </Row>
 
