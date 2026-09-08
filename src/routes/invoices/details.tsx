@@ -769,7 +769,7 @@ const InvoiceDetails: React.FC = () => {
                     </Typography.Text>
                   )}
                   <Form.Item label={t`Customer note`} name="customerNotes">
-                    <TextArea rows={4} />
+                    <TextArea rows={3} />
                   </Form.Item>
                   {/* Filling the space this column otherwise leaves empty next
                       to the right column's denser field grid, rather than
