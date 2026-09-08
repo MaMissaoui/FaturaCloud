@@ -57,19 +57,47 @@ ARG TARGETARCH
 RUN CGO_ENABLED=0 GOARCH=$TARGETARCH GOOS=linux go build -ldflags="-X main.version=${VERSION}" -o fatura-cloud .
 
 
-# ---- Stage 3: Minimal runtime image ----
-FROM alpine:3.24
+# ---- Stage 3: Runtime image ----
+# Debian, not Alpine: libreoffice-calc (needed for the PDF export path —
+# db/pdf_convert.go, GET /api/invoices/{id}/export?format=pdf) crashes on
+# startup on Alpine/musl (`terminate called after throwing an instance of
+# 'com::sun::star::uno::RuntimeException'`, unfixed by every standard
+# workaround — see git history for the abandoned attempt) but runs cleanly
+# on Debian, headless and as a non-root user, verified directly against this
+# exact soffice invocation on both amd64 and arm64 (the latter matching a
+# Raspberry Pi deployment target). The trade is image size: ~700MB here vs.
+# ~80MB on Alpine, almost entirely libreoffice-calc and its own
+# dependencies — accepted deliberately so PDF export actually works in the
+# shipped image instead of always 503ing.
+FROM debian:bookworm-slim
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata
+# --no-install-recommends keeps this to libreoffice-calc's own dependency
+# tree, not the full LibreOffice suite's optional extras (Writer/Impress
+# filters, spell-check dictionaries, etc. this app never touches).
+# fonts-liberation is metric-compatible with Arial/Times New Roman/Courier —
+# an org's uploaded .xlsx template (issue #115) can specify any font, and
+# without a reasonable substitute installed LibreOffice's fallback can shift
+# column widths enough to visibly misalign a template that looked fine in
+# Excel. fonts-dejavu-core covers the rest as a general-purpose fallback.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        tzdata \
+        libreoffice-calc \
+        fonts-liberation \
+        fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 
 # Run as a non-root user with a fixed UID/GID (1000:1000) rather than a
 # system-assigned one — /data is meant to be bind-mounted from a host
 # directory in production, and the host side needs a stable UID to chown to
 # that won't shift across image rebuilds. 1000 also matches the default
 # first user on most Linux distros (including Raspberry Pi OS), so the host
-# directory needs no chown at all in the common case.
-RUN addgroup -g 1000 fatura && adduser -S -u 1000 -G fatura fatura \
+# directory needs no chown at all in the common case. `-M` skips creating a
+# home directory (soffice's per-request profile lives under a temp dir
+# instead, see db/pdf_convert.go's `-env:UserInstallation`, not `~`).
+RUN groupadd -g 1000 fatura && useradd -M -u 1000 -g fatura fatura \
     && mkdir -p /data \
     && chown -R fatura:fatura /app /data
 
