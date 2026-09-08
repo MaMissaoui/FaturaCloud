@@ -68,6 +68,18 @@ export interface TaxRate {
   datev_bu_key: string | null;
 }
 
+// A maintained, per-organization list of selectable labels (e.g. "Net 30")
+// for the invoice form's Payment terms field. No FK from invoices —
+// invoices.paymentTerms stays a plain string, so deleting a term here never
+// touches an invoice that already stored its name.
+export interface PaymentTerm {
+  id: string;
+  organizationId: string;
+  name: string;
+  isDefault: number | null;
+  createdAt: string;
+}
+
 export interface Organization {
   id: string;
   code: string | null;

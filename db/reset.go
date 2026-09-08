@@ -77,6 +77,9 @@ var masterDataTables = []string{
 	// export-template overrides the same way it clears every other
 	// configuration/reference table in this list.
 	"document_templates",
+	// payment_terms (the maintained Payment terms list) is reference data
+	// with no FK from invoices, same category as taxRates above.
+	"payment_terms",
 }
 
 // ResetOrganizationData deletes the selected record collections for an

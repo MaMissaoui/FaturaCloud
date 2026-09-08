@@ -11,6 +11,7 @@ import type {
   InvoiceLineItem,
   Product,
   TaxRate,
+  PaymentTerm,
   Organization,
   PurchaseOrder,
   PurchaseOrderLineItem,
@@ -471,6 +472,17 @@ export const DeleteTaxRate = (id: string) =>
   del<{ deleted: boolean }>(`/tax-rates/${id}`).then((r) => r.deleted);
 export const GetTaxRateUsageCount = (id: string) =>
   get<{ count: number }>(`/tax-rates/${id}/usage-count`).then((r) => r.count);
+
+// ---- Payment Terms ----
+
+export const GetPaymentTerms = (organizationId: string) =>
+  get<PaymentTerm[]>(`/organizations/${organizationId}/payment-terms`);
+export const CreatePaymentTerm = (req: Partial<PaymentTerm>) =>
+  post<PaymentTerm>("/payment-terms", req);
+export const UpdatePaymentTerm = (id: string, req: Partial<PaymentTerm>) =>
+  put<PaymentTerm>(`/payment-terms/${id}`, req);
+export const DeletePaymentTerm = (id: string) =>
+  del<{ deleted: boolean }>(`/payment-terms/${id}`).then((r) => r.deleted);
 
 // ---- Countries ----
 

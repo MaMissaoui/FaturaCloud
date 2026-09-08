@@ -15,6 +15,7 @@ import {
   SettingOutlined,
   FileOutlined,
   CalculatorOutlined,
+  ScheduleOutlined,
   PlusOutlined,
   DatabaseOutlined,
   AppstoreOutlined,
@@ -593,6 +594,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "settings.tax-rates",
+                },
+                {
+                  icon: <ScheduleOutlined />,
+                  label: (
+                    <Link to="/settings/payment-terms">
+                      <Trans>Payment terms</Trans>
+                    </Link>
+                  ),
+                  key: "settings.payment-terms",
                 },
                 {
                   icon: <FileExcelOutlined />,

@@ -257,6 +257,11 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/tax-rates/{id}", h.deleteTaxRate)
 	protected("GET", "/api/tax-rates/{id}/usage-count", h.getTaxRateUsageCount)
 
+	protected("GET", "/api/organizations/{orgId}/payment-terms", h.listPaymentTerms)
+	protected("POST", "/api/payment-terms", h.createPaymentTerm)
+	protected("PUT", "/api/payment-terms/{id}", h.updatePaymentTerm)
+	protected("DELETE", "/api/payment-terms/{id}", h.deletePaymentTerm)
+
 	// Countries — global picklist activation, not per-organization (the
 	// new-organization form has no organization yet). Read is available to
 	// any authenticated user since every org/vendor/client form needs it;

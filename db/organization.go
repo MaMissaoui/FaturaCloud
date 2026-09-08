@@ -363,6 +363,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	if err := seedDefaultJournals(tx, req.ID); err != nil {
 		return nil, fmt.Errorf("create_organization seed_journals: %w", err)
 	}
+	if err := seedDefaultPaymentTerms(tx, req.ID); err != nil {
+		return nil, fmt.Errorf("create_organization seed_payment_terms: %w", err)
+	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("create_organization commit: %w", err)
