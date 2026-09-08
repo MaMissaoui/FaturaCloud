@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.0] - 2026-09-08
+
+Standalone delivery clients, product categories, multi-currency aging,
+China import landed-cost allocation, and per-organization Excel
+document templates.
+
+### Added
+- Standalone deliveries (no linked order) can now record a client
+  directly, instead of showing up anonymous on the list, detail page,
+  and delivery-note PDF.
+- Products can be marked "Component / intermediate" or "Finished good"
+  (Category), so purchase-side pickers can exclude finished goods and
+  sales-side pickers can exclude components. Defaults to unclassified
+  and stays eligible everywhere, fully backward compatible.
+- AR/AP Aging now shows the remaining balance in a document's own
+  currency alongside the functional-currency total, for any invoice or
+  bill in a foreign currency. Aging buckets stay functional-currency.
+- New Imports feature (Purchasing) models a consolidated China shipment
+  — one exchange rate, one freight cost, one customs cost per shipment
+  — and allocates that landed cost into Inventory, proportional to each
+  purchase order line's own vendor value, when goods are received. GRNI
+  stays valued at vendor-only cost so a matching vendor bill still
+  clears it exactly; the landed-cost markup posts to a new Import Costs
+  Payable account instead.
+- Organizations can now upload a custom Excel (.xlsx) template for the
+  Invoice document (Settings → Document Templates), with placeholders
+  for invoice/organization/client fields and the line-item table, and
+  export any invoice through it. Falls back to a bundled default
+  template when no override is set. Export is Excel-only for now — PDF
+  conversion is implemented but not yet wired into the shipped image
+  (see the Document Templates settings page for details).
+
 ## [3.9.0] - 2026-09-08
 
 Tunisia invoice support: fiscal stamp duty, withholding tax, and a
