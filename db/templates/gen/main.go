@@ -74,10 +74,12 @@ func main() {
 	// output, so that column is always blank in the result), which pushes
 	// every real per-item value to B onward — the header must line up with
 	// that or "Description" ends up a column left of the descriptions.
+	// Column A of this row is deliberately left unstyled (not part of the
+	// dark header band) so it reads as a blank margin next to the table,
+	// not a filled-but-empty header cell.
 	headerRow := 13
 	cols := []string{"B", "C", "D", "E", "F"}
 	labels := []string{"Description", "Quantity", "Unit Price", "Tax Rate", "Line Total"}
-	f.SetCellStyle(sheet, "A"+strconv.Itoa(headerRow), "A"+strconv.Itoa(headerRow), header)
 	for i, col := range cols {
 		cell := col + strconv.Itoa(headerRow)
 		set(cell, labels[i])
