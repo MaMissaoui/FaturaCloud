@@ -20,6 +20,7 @@ import {
   theme,
   Spin,
   Tooltip,
+  Typography,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
@@ -82,6 +83,7 @@ import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { paymentTermsAtom, setPaymentTermsAtom } from "src/atoms/payment-term";
 import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
+import { formatAddressOneLine } from "src/utils/address";
 import { getInvoicePDFLayout, isCustomTemplateLayout } from "src/components/invoices/layouts";
 import { CurrencySelect, showExchangeRateFields } from "src/components/currency/currency-fields";
 import PaymentPanel from "src/components/payments/payment-panel";
@@ -439,6 +441,9 @@ const InvoiceDetails: React.FC = () => {
   // transfers don't exist for other currencies. Regenerated whenever the
   // total, currency, invoice number, or organization's bank details change.
   const watchedCurrency = Form.useWatch("currency", form);
+  const watchedClientId = Form.useWatch("clientId", form);
+  const selectedClient = find(clients, { id: watchedClientId });
+  const selectedClientAddress = selectedClient ? formatAddressOneLine(selectedClient) : "";
   const orgCurrency = organization?.currency ?? "EUR";
   const watchedNumber = Form.useWatch("number", form);
   const [qrCodeDataUri, setQrCodeDataUri] = useState<string | null>(null);
@@ -755,12 +760,20 @@ const InvoiceDetails: React.FC = () => {
                       ))}
                     </Select>
                   </Form.Item>
+                  {selectedClientAddress && (
+                    <Typography.Text
+                      type="secondary"
+                      style={{ display: "block", marginBottom: 16 }}
+                    >
+                      {selectedClientAddress}
+                    </Typography.Text>
+                  )}
                   <Form.Item
                     label={t`Customer note`}
                     name="customerNotes"
                     style={{ marginBottom: 0 }}
                   >
-                    <TextArea rows={8} />
+                    <TextArea rows={4} />
                   </Form.Item>
                 </Col>
 
