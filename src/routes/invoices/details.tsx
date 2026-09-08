@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from "react-router";
 import {
   App,
   Button,
+  Card,
   DatePicker,
   Divider,
   Form,
@@ -33,6 +34,7 @@ import {
   FileExcelOutlined,
   FilePdfOutlined,
   FileTextOutlined,
+  ScheduleOutlined,
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
@@ -77,10 +79,11 @@ import {
 } from "src/atoms/invoice";
 import { organizationAtom, nextInvoiceNumberAtom } from "src/atoms/organization";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
+import { paymentTermsAtom, setPaymentTermsAtom } from "src/atoms/payment-term";
 import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
 import { getInvoicePDFLayout, isCustomTemplateLayout } from "src/components/invoices/layouts";
-import ExchangeRateFields, { CurrencySelect } from "src/components/currency/currency-fields";
+import { CurrencySelect, showExchangeRateFields } from "src/components/currency/currency-fields";
 import PaymentPanel from "src/components/payments/payment-panel";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
 import { generateInvoiceNumber } from "src/utils/invoice";
@@ -255,19 +258,23 @@ const InvoiceDetails: React.FC = () => {
   const sellableProducts = products.filter((p: any) => p.category !== "component");
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
+  const paymentTerms = useAtomValue(paymentTermsAtom);
+  const setPaymentTerms = useSetAtom(setPaymentTermsAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const updateInvoiceState = useSetAtom(updateInvoiceStateAtom);
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
   const [previewMode, setPreviewMode] = useState(false);
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
-  const [downloadingCustomExport, setDownloadingCustomExport] = useState(false);
-  // Custom-template export (issue #115) reads persisted rows by invoice id,
-  // unlike the default/tunisia PDF button which reads live unsaved
-  // form.getFieldsValue() — so a stale export must be prevented instead of
-  // silently exporting the last-saved version. Reset per mount (this whole
-  // route remounts on invoice id change, see loadableInvoiceAtom's comment),
-  // set on any edit, cleared on a successful save.
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+  // The server-side export (Excel always, PDF only for a custom template)
+  // reads persisted rows by invoice id, unlike the default/tunisia PDF
+  // button which reads live unsaved form.getFieldsValue() — so a stale
+  // export must be prevented instead of silently exporting the last-saved
+  // version. Reset per mount (this whole route remounts on invoice id
+  // change, see loadableInvoiceAtom's comment), set on any edit, cleared on
+  // a successful save.
   const [isDirty, setIsDirty] = useState(false);
   const dateFormat = useDatePickerFormat();
 
@@ -277,6 +284,7 @@ const InvoiceDetails: React.FC = () => {
     setClients();
     setProducts();
     setTaxRates();
+    setPaymentTerms();
     if (!isNew) {
       setInvoiceId(id || null);
     }
@@ -285,7 +293,7 @@ const InvoiceDetails: React.FC = () => {
     return () => {
       setInvoiceId(null);
     };
-  }, [id, isNew, setClients, setProducts, setInvoiceId, setTaxRates]);
+  }, [id, isNew, setClients, setProducts, setInvoiceId, setTaxRates, setPaymentTerms]);
 
   // Navigate to the new invoice after successful creation
   useEffect(() => {
@@ -304,6 +312,7 @@ const InvoiceDetails: React.FC = () => {
       dueDate: organization?.due_days ? dayjs().add(organization.due_days, "day") : null,
       lineItems: [{ quantity: 1, taxRate: get(find(taxRates, { isDefault: 1 }), "id") }],
       customerNotes: organization?.customerNotes,
+      paymentTerms: get(find(paymentTerms, { isDefault: 1 }), "name"),
       overdueCharge: organization?.overdueCharge || 0,
       number: isNew ? nextInvoiceNumber || "" : undefined,
       fiscalStampAmount: organization?.defaultFiscalStampAmount
@@ -509,15 +518,42 @@ const InvoiceDetails: React.FC = () => {
 
   const isCustomTemplate = isCustomTemplateLayout(organization?.invoiceLayout);
 
-  const handleCustomTemplateExport = (format: "pdf" | "xlsx") => async () => {
+  // The server fill-and-convert path (db/xlsx_export.go / db/pdf_convert.go)
+  // — used for every Excel export regardless of layout, and for PDF only
+  // when there's no client-side React component for "custom" (see
+  // getInvoicePDFLayout). Reads persisted rows by invoice id, so it's gated
+  // on isDirty below the same way custom-template export always was.
+  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
     if (!id) return;
-    setDownloadingCustomExport(true);
+    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
+    setDownloading(true);
     try {
       await ExportInvoiceDocument(id, format);
     } catch (error) {
       message.error(error instanceof Error ? error.message : t`Export failed`);
     } finally {
-      setDownloadingCustomExport(false);
+      setDownloading(false);
+    }
+  };
+
+  // The PDF button always does the same thing regardless of layout from the
+  // user's point of view; only the mechanism differs — client-side
+  // react-pdf (reads live unsaved form values, no isDirty gating needed) for
+  // every layout with a real component, or the server path above for
+  // "custom", which has none.
+  const handlePdfDownload = async () => {
+    if (isCustomTemplate) {
+      await handleServerExport("pdf")();
+      return;
+    }
+    setDownloadingPdf(true);
+    try {
+      const document = createPDFDocument();
+      if (!document) return;
+      const blob = await pdf(document).toBlob();
+      await SaveFile(`invoice-${id}.pdf`, blob);
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -525,6 +561,107 @@ const InvoiceDetails: React.FC = () => {
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
       ? ((invoice as any).state ?? "draft")
       : "draft";
+
+  // Footer action groups — built as arrays and filtered before being handed
+  // to <Space split>, so a group that's conditionally empty (e.g. every
+  // button here needs !isNew) never becomes a stray leading/doubled
+  // separator the way a raw conditional child of <Space split> would.
+  const viewActions = !isNew
+    ? [
+        <Button key="view" type="dashed" onClick={() => setPreviewMode(!previewMode)}>
+          {previewMode ? (
+            <>
+              <EditOutlined /> <Trans>Edit</Trans>
+            </>
+          ) : (
+            <>
+              <EyeOutlined /> <Trans>View</Trans>
+            </>
+          )}
+        </Button>,
+      ]
+    : [];
+
+  const exportActions = !isNew
+    ? [
+        <Tooltip
+          key="pdf"
+          title={isCustomTemplate && isDirty ? t`Save your changes before exporting` : undefined}
+        >
+          <Button
+            disabled={isCustomTemplate && isDirty}
+            loading={downloadingPdf}
+            onClick={handlePdfDownload}
+          >
+            <FilePdfOutlined /> PDF
+          </Button>
+        </Tooltip>,
+        // Always the server fill-and-convert path (db/xlsx_export.go) regardless
+        // of layout — even a "default"/"tunisia" invoice has an embedded
+        // fallback template (resolveTemplateBytes) to fill.
+        <Tooltip key="excel" title={isDirty ? t`Save your changes before exporting` : undefined}>
+          <Button
+            disabled={isDirty}
+            loading={downloadingExcel}
+            onClick={handleServerExport("xlsx")}
+          >
+            <FileExcelOutlined /> <Trans>Excel</Trans>
+          </Button>
+        </Tooltip>,
+        // Deliberately NOT isDirty-gated like PDF/Excel above: db/einvoice.go
+        // 409s with a list of every missing mandatory field at once, and
+        // that's the retry workflow this button exists for — a user fixing
+        // a field the 409 just named needs to be able to retry immediately,
+        // not be forced to Save first. It reads persisted data too, but that
+        // hazard (a stale-looking export) doesn't apply the same way to a
+        // validation-error response.
+        <Button
+          key="einvoice"
+          loading={downloadingEInvoice}
+          onClick={async () => {
+            setDownloadingEInvoice(true);
+            try {
+              await DownloadInvoiceEInvoice(id!);
+            } catch (error) {
+              message.error(error instanceof Error ? error.message : t`E-invoice export failed`);
+            } finally {
+              setDownloadingEInvoice(false);
+            }
+          }}
+        >
+          <FileTextOutlined /> <Trans>E-Invoice (XML)</Trans>
+        </Button>,
+      ]
+    : [];
+
+  const stateActions = [
+    ...(!isNew && currentInvoiceState !== "cancelled"
+      ? [
+          <Popconfirm
+            key="cancel"
+            title={t`Cancel this invoice?`}
+            onConfirm={async () => {
+              await updateInvoiceState({ invoiceId: id!, state: "cancelled" });
+              setInvoiceId(null);
+              setTimeout(() => setInvoiceId(id ?? null), 0);
+            }}
+            okText={t`Yes`}
+            cancelText={t`No`}
+          >
+            <Button type="dashed" danger>
+              <Trans>Cancel invoice</Trans>
+            </Button>
+          </Popconfirm>,
+        ]
+      : []),
+    <Button key="save" type="primary" onClick={() => form.submit()}>
+      <SaveOutlined /> <Trans>Save</Trans>
+    </Button>,
+  ];
+
+  const footerActionGroups = [viewActions, exportActions, stateActions].filter(
+    (group) => group.length > 0,
+  );
 
   if (!organization) return null;
   if (!isNew && !invoice) return null;
@@ -541,497 +678,590 @@ const InvoiceDetails: React.FC = () => {
             initialValues={initialValues}
             style={{ display: previewMode ? "none" : "block" }}
           >
-            <Row gutter={24}>
-              <Col xs={24} md={24} xl={12}>
-                <Form.Item
-                  label={t`Select or create a client`}
-                  name="clientId"
-                  rules={[{ required: true, message: t`This field is required!` }]}
-                >
-                  <Select
-                    showSearch
-                    optionFilterProp="children"
-                    filterOption={(input, option) => {
-                      const clientName = get(option, ["props", "children"]);
-                      if (isString(clientName)) {
-                        return includes(lowerCase(clientName), lowerCase(input));
-                      }
-                      return true;
-                    }}
-                    onChange={(clientId) => {
-                      if (isNew) {
-                        const selectedClient = clients.find((c: any) => c.id === clientId);
-
-                        if (organization?.invoiceNumberFormat?.includes("{clientCode}")) {
-                          const clientCode = selectedClient?.code || "";
-
-                          // Regenerate invoice number with client code
-                          const counter = addDecimal(organization.invoiceNumberCounter || 0, 1);
-                          const newNumber = organization.invoiceNumberFormat
-                            ? generateInvoiceNumber(
-                                organization.invoiceNumberFormat,
-                                counter,
-                                new Date(),
-                                clientCode,
-                              )
-                            : "";
-                          form.setFieldsValue({ number: newNumber });
-                        }
-
-                        // Prefill the buyer reference (e.g. a Leitweg-ID) from the
-                        // client's default, but don't clobber a manual edit.
-                        if (!form.getFieldValue("buyerReference")) {
-                          form.setFieldsValue({
-                            buyerReference: selectedClient?.default_buyer_reference || undefined,
-                          });
-                        }
-                      }
-                    }}
-                    popupRender={(menu) => (
-                      <>
-                        {menu}
-                        <Divider style={{ margin: "8px 0" }} />
-                        <Button
-                          type="text"
-                          block
-                          icon={<UserAddOutlined />}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(location.pathname, { state: { clientModal: true } });
-                          }}
-                          style={{ textAlign: "left", paddingLeft: 11, paddingRight: 11 }}
-                        >
-                          <Trans>New client</Trans>
-                        </Button>
-                      </>
-                    )}
+            <Card title={<Trans>Invoice details</Trans>} style={{ marginBottom: 24 }}>
+              <Row gutter={24}>
+                {/* Left: the two fields that need real room — a searchable
+                    dropdown and free text — stacked so the note fills the
+                    height the right column's many short fields don't need,
+                    instead of getting its own near-empty full-width row. */}
+                <Col xs={24} xl={12}>
+                  <Form.Item
+                    label={t`Select or create a client`}
+                    name="clientId"
+                    rules={[{ required: true, message: t`This field is required!` }]}
                   >
-                    {map(clients, (client: any) => (
-                      <Select.Option value={client.id} key={client.id}>
-                        {get(client, "name", "-")}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12} xl={6}>
-                <Form.Item
-                  label={t`Invoice number`}
-                  name="number"
-                  rules={[{ required: true, message: t`This field is required!` }]}
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <CurrencySelect
-                form={form}
-                organizationId={organization?.id}
-                orgCurrency={orgCurrency}
-              />
-              <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
-            </Row>
-            <Row gutter={24}>
-              <Col xs={24} md={12} xl={{ span: 4, offset: 12 }}>
-                <Form.Item
-                  label={t`Date`}
-                  name="date"
-                  rules={[{ required: true, message: t`This field is required!` }]}
-                >
-                  <DatePicker style={{ width: "100%" }} format={dateFormat} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12} xl={4}>
-                <Form.Item
-                  label={t`Due date`}
-                  name="dueDate"
-                  rules={[{ required: true, message: t`This field is required!` }]}
-                >
-                  <DatePicker style={{ width: "100%" }} format={dateFormat} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12} xl={4}>
-                <Form.Item
-                  label={t`Overdue charge`}
-                  name="overdueCharge"
-                  help={
-                    <span
-                      style={{ fontSize: "12px", display: "block", textAlign: "right" }}
-                    >{t`Daily %`}</span>
-                  }
-                >
-                  <InputNumber
-                    style={{ width: "100%" }}
-                    min={0}
-                    max={100}
-                    step={0.01}
-                    formatter={(value) => `${value} %`}
-                    parser={(value) => value?.replace("%", "") as any}
-                    placeholder="0%"
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
+                    <Select
+                      showSearch
+                      optionFilterProp="children"
+                      filterOption={(input, option) => {
+                        const clientName = get(option, ["props", "children"]);
+                        if (isString(clientName)) {
+                          return includes(lowerCase(clientName), lowerCase(input));
+                        }
+                        return true;
+                      }}
+                      onChange={(clientId) => {
+                        if (isNew) {
+                          const selectedClient = clients.find((c: any) => c.id === clientId);
 
-            <Row gutter={24}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  label={t`Buyer reference`}
-                  name="buyerReference"
-                  tooltip={t`Mandatory for German B2G XRechnung, e.g. a Leitweg-ID.`}
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item label={t`Payment terms`} name="paymentTerms">
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
+                          if (organization?.invoiceNumberFormat?.includes("{clientCode}")) {
+                            const clientCode = selectedClient?.code || "";
 
-            <Row gutter={16} style={{ marginTop: "20px" }}>
-              <Col span={24}>
-                <LineItemsTable
-                  reorderable
-                  defaultNewRow={{
-                    quantity: 1,
-                    taxRate: get(find(taxRates, { isDefault: 1 }), "id"),
-                  }}
-                  columns={[
-                    { kind: "index" },
-                    {
-                      kind: "custom",
-                      key: "productId",
-                      title: t`Product`,
-                      width: 180,
-                      render: (field) => (
-                        <Form.Item
-                          name={[field.name, "productId"]}
-                          rules={[
-                            requiredForNewLineItem(form, field.name, t`This field is required!`),
-                          ]}
-                          noStyle
-                        >
-                          <Select
-                            showSearch
-                            style={{ width: "100%" }}
-                            placeholder={t`Select product`}
-                            optionFilterProp="children"
-                            onChange={(productId) => {
-                              const product = find(products, { id: productId });
-                              if (product) {
-                                const lineItems = form.getFieldValue("lineItems");
-                                const quantity = get(lineItems[field.name], "quantity") || 1;
-                                const unitPrice = centsToUnits((product as any).price ?? 0);
-                                lineItems[field.name] = {
-                                  ...lineItems[field.name],
-                                  description: (product as any).name,
-                                  unitPrice,
-                                  total: multiplyDecimal(quantity, unitPrice),
-                                  ...((product as any).taxRateId
-                                    ? { taxRate: (product as any).taxRateId }
-                                    : {}),
-                                };
-                                form.setFieldValue("lineItems", [...lineItems]);
-                              }
-                            }}
-                          >
-                            {map(sellableProducts, (p: any) => (
-                              <Option key={p.id} value={p.id}>
-                                {p.name}
-                                {p.sku ? ` (${p.sku})` : ""}
-                              </Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-                      ),
-                    },
-                    { kind: "description", required: true, rows: 4 },
-                    {
-                      kind: "custom",
-                      key: "quantity",
-                      title: t`Qty.`,
-                      width: 80,
-                      render: (field) => (
-                        <Form.Item
-                          name={[field.name, "quantity"]}
-                          rules={[{ required: true, message: t`This field is required!` }]}
-                          noStyle
-                        >
-                          <InputNumber
-                            style={{ width: "100%" }}
-                            onChange={(value) => {
-                              const total = form.getFieldValue(["lineItems", field.key, "total"]);
-                              const unitPrice = form.getFieldValue([
-                                "lineItems",
-                                field.key,
-                                "unitPrice",
-                              ]);
-
-                              value = toNumber(value);
-                              if (value) {
-                                if (!unitPrice && total) {
-                                  form.setFieldValue(
-                                    ["lineItems", field.key, "unitPrice"],
-                                    divideDecimal(total, value),
-                                  );
-                                } else if (unitPrice) {
-                                  form.setFieldValue(
-                                    ["lineItems", field.key, "total"],
-                                    multiplyDecimal(value, unitPrice),
-                                  );
-                                }
-                              }
-                            }}
-                          />
-                        </Form.Item>
-                      ),
-                    },
-                    {
-                      kind: "custom",
-                      key: "unitPrice",
-                      title: t`Price`,
-                      width: 120,
-                      render: (field) => (
-                        <Form.Item
-                          name={[field.name, "unitPrice"]}
-                          rules={[{ required: true, message: t`This field is required!` }]}
-                          noStyle
-                        >
-                          <InputNumber
-                            style={{ width: "100%" }}
-                            onChange={(value) => {
-                              const total = form.getFieldValue(["lineItems", field.key, "total"]);
-                              const quantity = form.getFieldValue([
-                                "lineItems",
-                                field.key,
-                                "quantity",
-                              ]);
-
-                              value = toNumber(value);
-                              if (value) {
-                                if (!quantity && total) {
-                                  form.setFieldValue(
-                                    ["lineItems", field.key, "quantity"],
-                                    divideDecimal(total, value),
-                                  );
-                                } else if (quantity) {
-                                  form.setFieldValue(
-                                    ["lineItems", field.key, "total"],
-                                    multiplyDecimal(quantity, value),
-                                  );
-                                }
-                              }
-                            }}
-                          />
-                        </Form.Item>
-                      ),
-                    },
-                    {
-                      kind: "custom",
-                      key: "taxRate",
-                      title: t`Tax %`,
-                      width: 120,
-                      render: (field) => (
-                        <Form.Item name={[field.name, "taxRate"]} noStyle>
-                          <Select
-                            style={{ width: "100%" }}
-                            allowClear
-                            placeholder={t`Select tax rate`}
-                          >
-                            {map(taxRates, (rate: any) => (
-                              <Option value={rate.id} key={rate.id}>
-                                {rate.name} {rate.percentage}%
-                              </Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-                      ),
-                    },
-                    {
-                      kind: "custom",
-                      key: "total",
-                      title: t`Total`,
-                      width: 120,
-                      render: (field) => (
-                        <Form.Item
-                          name={[field.name, "total"]}
-                          rules={[{ required: true, message: t`This field is required!` }]}
-                          noStyle
-                        >
-                          <InputNumber
-                            style={{ width: "100%" }}
-                            onChange={(value) => {
-                              const unitPrice = form.getFieldValue([
-                                "lineItems",
-                                field.key,
-                                "unitPrice",
-                              ]);
-                              const quantity = form.getFieldValue([
-                                "lineItems",
-                                field.key,
-                                "quantity",
-                              ]);
-
-                              value = toNumber(value);
-                              if (value) {
-                                if (!quantity && unitPrice) {
-                                  form.setFieldValue(
-                                    ["lineItems", field.key, "quantity"],
-                                    divideDecimal(value, unitPrice),
-                                  );
-                                } else if (quantity) {
-                                  form.setFieldValue(
-                                    ["lineItems", field.key, "unitPrice"],
-                                    divideDecimal(value, quantity),
-                                  );
-                                }
-                              }
-                            }}
-                          />
-                        </Form.Item>
-                      ),
-                    },
-                  ]}
-                />
-              </Col>
-            </Row>
-
-            {/* Both fields are independent, organization-level opt-ins (see
-                Organizations → Accounting) — deliberately not gated on
-                invoiceLayout, which is only a PDF template choice; any
-                layout can carry either field, and either field can be used
-                without switching layout. */}
-            {(!!organization.fiscalStampEnabled || !!organization.withholdingTaxEnabled) && (
-              <Row gutter={16}>
-                {organization.fiscalStampEnabled ? (
-                  <Col xs={24} md={8}>
-                    <Form.Item
-                      label={<Trans>Fiscal stamp</Trans>}
-                      name="fiscalStampAmount"
-                      tooltip={
-                        <Trans>
-                          A flat statutory duty added to the invoice total, not subject to VAT.
-                        </Trans>
-                      }
-                    >
-                      <InputNumber style={{ width: "100%" }} min={0} precision={3} />
-                    </Form.Item>
-                  </Col>
-                ) : null}
-                {organization.withholdingTaxEnabled ? (
-                  <Col xs={24} md={8}>
-                    <Form.Item
-                      label={<Trans>Withholding tax rate</Trans>}
-                      name="withholdingTaxRate"
-                      tooltip={
-                        <Trans>
-                          Percentage the client withholds and remits to the tax authority on your
-                          behalf. Reduces the net amount you'll actually receive, not the invoice
-                          total.
-                        </Trans>
-                      }
-                    >
-                      <InputNumber style={{ width: "100%" }} min={0} max={100} addonAfter="%" />
-                    </Form.Item>
-                  </Col>
-                ) : null}
-              </Row>
-            )}
-
-            <Row gutter={16}>
-              <Col xs={24} xl={8}>
-                <Form.Item label={t`Customer note`} name="customerNotes">
-                  <TextArea rows={4} />
-                </Form.Item>
-              </Col>
-
-              {/* Totals */}
-              <Col xs={24} xl={{ span: 12, offset: 4 }}>
-                <Descriptions
-                  column={1}
-                  styles={{
-                    content: {
-                      textAlign: "right",
-                      display: "inline-block",
-                      minWidth: 120,
-                      color: "rgba(0, 0, 0, 0.88)",
-                      fontSize: 15,
-                      lineHeight: 1.4,
-                    },
-                    label: {
-                      textAlign: "right",
-                      display: "inline-block",
-                      width: "100%",
-                      color: "rgba(0, 0, 0, 0.88)",
-                      fontWeight: 500,
-                      fontSize: 15,
-                      lineHeight: 1.4,
-                    },
-                  }}
-                >
-                  {(() => {
-                    const fmt = (value: number) =>
-                      Intl.NumberFormat(i18n.locale, {
-                        style: "currency",
-                        currency: watchedCurrency ?? organization.currency ?? "EUR",
-                        minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                      }).format(value);
-                    return (
-                      <>
-                        <Descriptions.Item label={<Trans>Subtotal</Trans>}>
-                          {fmt(subTotal)}
-                        </Descriptions.Item>
-                        {taxGroups.length > 0 ? (
-                          taxGroups.map((group) => (
-                            <Descriptions.Item
-                              key={group.taxRate?.id}
-                              label={`${group.taxRate?.name || t`Tax`} ${group.taxRate?.percentage || 0}%`}
-                            >
-                              {fmt(group.tax)}
-                            </Descriptions.Item>
-                          ))
-                        ) : (
-                          <Descriptions.Item label={<Trans>Tax</Trans>}>{fmt(0)}</Descriptions.Item>
-                        )}
-                        {fiscalStampAmount > 0 && (
-                          <Descriptions.Item label={<Trans>Fiscal stamp</Trans>}>
-                            {fmt(fiscalStampAmount)}
-                          </Descriptions.Item>
-                        )}
-                        <Descriptions.Item
-                          label={
-                            <strong>
-                              <Trans>Total</Trans>
-                            </strong>
+                            // Regenerate invoice number with client code
+                            const counter = addDecimal(organization.invoiceNumberCounter || 0, 1);
+                            const newNumber = organization.invoiceNumberFormat
+                              ? generateInvoiceNumber(
+                                  organization.invoiceNumberFormat,
+                                  counter,
+                                  new Date(),
+                                  clientCode,
+                                )
+                              : "";
+                            form.setFieldsValue({ number: newNumber });
                           }
+
+                          // Prefill the buyer reference (e.g. a Leitweg-ID) from the
+                          // client's default, but don't clobber a manual edit.
+                          if (!form.getFieldValue("buyerReference")) {
+                            form.setFieldsValue({
+                              buyerReference: selectedClient?.default_buyer_reference || undefined,
+                            });
+                          }
+                        }
+                      }}
+                      popupRender={(menu) => (
+                        <>
+                          {menu}
+                          <Divider style={{ margin: "8px 0" }} />
+                          <Button
+                            type="text"
+                            block
+                            icon={<UserAddOutlined />}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(location.pathname, { state: { clientModal: true } });
+                            }}
+                            style={{ textAlign: "left", paddingLeft: 11, paddingRight: 11 }}
+                          >
+                            <Trans>New client</Trans>
+                          </Button>
+                        </>
+                      )}
+                    >
+                      {map(clients, (client: any) => (
+                        <Select.Option value={client.id} key={client.id}>
+                          {get(client, "name", "-")}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item
+                    label={t`Customer note`}
+                    name="customerNotes"
+                    style={{ marginBottom: 0 }}
+                  >
+                    <TextArea rows={8} />
+                  </Form.Item>
+                </Col>
+
+                {/* Right: everything else, packed two-per-row so this column's
+                    total height roughly matches the left column's instead of
+                    each field getting its own mostly-empty full-width row. */}
+                <Col xs={24} xl={12}>
+                  <Row gutter={16}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={t`Invoice number`}
+                        name="number"
+                        rules={[{ required: true, message: t`This field is required!` }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <CurrencySelect
+                      form={form}
+                      organizationId={organization?.id}
+                      orgCurrency={orgCurrency}
+                      xl={12}
+                    />
+                  </Row>
+                  {/* Inlined rather than <ExchangeRateFields>: that component's
+                      Cols are xl={4}, sized for a full-width Row — nested one
+                      level down here they'd shrink to a quarter of this
+                      already-half-width column at real desktop widths. */}
+                  {showExchangeRateFields(watchedCurrency, orgCurrency) && (
+                    <Row gutter={16}>
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label={<Trans>Exchange rate</Trans>}
+                          name="exchangeRate"
+                          // Same message as <ExchangeRateFields>'s own tooltip
+                          // (src/components/currency/currency-fields.tsx) — the
+                          // interpolated var is named `currency` there too, so
+                          // this reuses that catalog entry instead of adding a
+                          // near-duplicate one under a different placeholder name.
+                          tooltip={((currency: string) =>
+                            t`1 ${currency} = this many ${orgCurrency}`)(watchedCurrency)}
+                          rules={[{ required: true, message: t`This field is required!` }]}
                         >
-                          <strong>{fmt(total)}</strong>
-                        </Descriptions.Item>
-                        {withholdingTaxRate ? (
-                          <>
-                            <Descriptions.Item
-                              label={<Trans>Withholding tax ({withholdingTaxRate}%)</Trans>}
+                          <InputNumber
+                            min={0}
+                            step={0.0001}
+                            precision={6}
+                            style={{ width: "100%" }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          label={<Trans>Rate date</Trans>}
+                          name="exchangeRateDate"
+                          rules={[{ required: true, message: t`This field is required!` }]}
+                        >
+                          <DatePicker style={{ width: "100%" }} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  )}
+                  <Row gutter={16}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={t`Date`}
+                        name="date"
+                        rules={[{ required: true, message: t`This field is required!` }]}
+                      >
+                        <DatePicker style={{ width: "100%" }} format={dateFormat} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={t`Due date`}
+                        name="dueDate"
+                        rules={[{ required: true, message: t`This field is required!` }]}
+                      >
+                        <DatePicker style={{ width: "100%" }} format={dateFormat} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={t`Overdue charge`}
+                        name="overdueCharge"
+                        help={
+                          <span
+                            style={{ fontSize: "12px", display: "block", textAlign: "right" }}
+                          >{t`Daily %`}</span>
+                        }
+                      >
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          max={100}
+                          step={0.01}
+                          formatter={(value) => `${value} %`}
+                          parser={(value) => value?.replace("%", "") as any}
+                          placeholder="0%"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={t`Buyer reference`}
+                        name="buyerReference"
+                        tooltip={t`Mandatory for German B2G XRechnung, e.g. a Leitweg-ID.`}
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24}>
+                      <Form.Item label={t`Payment terms`} name="paymentTerms">
+                        <Select
+                          showSearch
+                          allowClear
+                          optionFilterProp="children"
+                          placeholder={t`Select payment terms`}
+                          popupRender={(menu) => (
+                            <>
+                              {menu}
+                              <Divider style={{ margin: "8px 0" }} />
+                              <Button
+                                type="text"
+                                block
+                                icon={<ScheduleOutlined />}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  navigate("/settings/payment-terms");
+                                }}
+                                style={{ textAlign: "left", paddingLeft: 11, paddingRight: 11 }}
+                              >
+                                <Trans>Manage payment terms</Trans>
+                              </Button>
+                            </>
+                          )}
+                        >
+                          {map(paymentTerms, (pt: any) => (
+                            <Option key={pt.id} value={pt.name}>
+                              {pt.name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  {/* Both fields are independent, organization-level opt-ins
+                      (see Organizations → Accounting) — deliberately not
+                      gated on invoiceLayout, which is only a PDF template
+                      choice; any layout can carry either field, and either
+                      field can be used without switching layout. */}
+                  {(!!organization.fiscalStampEnabled || !!organization.withholdingTaxEnabled) && (
+                    <Row gutter={16}>
+                      {organization.fiscalStampEnabled ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            label={<Trans>Fiscal stamp</Trans>}
+                            name="fiscalStampAmount"
+                            tooltip={
+                              <Trans>
+                                A flat statutory duty added to the invoice total, not subject to
+                                VAT.
+                              </Trans>
+                            }
+                          >
+                            <InputNumber style={{ width: "100%" }} min={0} precision={3} />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                      {organization.withholdingTaxEnabled ? (
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            label={<Trans>Withholding tax rate</Trans>}
+                            name="withholdingTaxRate"
+                            tooltip={
+                              <Trans>
+                                Percentage the client withholds and remits to the tax authority on
+                                your behalf. Reduces the net amount you'll actually receive, not the
+                                invoice total.
+                              </Trans>
+                            }
+                          >
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              min={0}
+                              max={100}
+                              addonAfter="%"
+                            />
+                          </Form.Item>
+                        </Col>
+                      ) : null}
+                    </Row>
+                  )}
+                </Col>
+              </Row>
+            </Card>
+
+            <Card title={<Trans>Line items</Trans>} style={{ marginBottom: 24 }}>
+              <Row gutter={16}>
+                <Col span={24}>
+                  <LineItemsTable
+                    reorderable
+                    defaultNewRow={{
+                      quantity: 1,
+                      taxRate: get(find(taxRates, { isDefault: 1 }), "id"),
+                    }}
+                    columns={[
+                      { kind: "index" },
+                      {
+                        kind: "custom",
+                        key: "productId",
+                        title: t`Product`,
+                        width: 180,
+                        render: (field) => (
+                          <Form.Item
+                            name={[field.name, "productId"]}
+                            rules={[
+                              requiredForNewLineItem(form, field.name, t`This field is required!`),
+                            ]}
+                            noStyle
+                          >
+                            <Select
+                              showSearch
+                              style={{ width: "100%" }}
+                              placeholder={t`Select product`}
+                              optionFilterProp="children"
+                              onChange={(productId) => {
+                                const product = find(products, { id: productId });
+                                if (product) {
+                                  const lineItems = form.getFieldValue("lineItems");
+                                  const quantity = get(lineItems[field.name], "quantity") || 1;
+                                  const unitPrice = centsToUnits((product as any).price ?? 0);
+                                  lineItems[field.name] = {
+                                    ...lineItems[field.name],
+                                    description: (product as any).name,
+                                    unitPrice,
+                                    total: multiplyDecimal(quantity, unitPrice),
+                                    ...((product as any).taxRateId
+                                      ? { taxRate: (product as any).taxRateId }
+                                      : {}),
+                                  };
+                                  form.setFieldValue("lineItems", [...lineItems]);
+                                }
+                              }}
                             >
-                              -{fmt(withholdingTaxAmount)}
-                            </Descriptions.Item>
-                            <Descriptions.Item
-                              label={
-                                <strong>
-                                  <Trans>Net amount due</Trans>
-                                </strong>
-                              }
+                              {map(sellableProducts, (p: any) => (
+                                <Option key={p.id} value={p.id}>
+                                  {p.name}
+                                  {p.sku ? ` (${p.sku})` : ""}
+                                </Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        ),
+                      },
+                      { kind: "description", required: true, rows: 4 },
+                      {
+                        kind: "custom",
+                        key: "quantity",
+                        title: t`Qty.`,
+                        width: 80,
+                        render: (field) => (
+                          <Form.Item
+                            name={[field.name, "quantity"]}
+                            rules={[{ required: true, message: t`This field is required!` }]}
+                            noStyle
+                          >
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              onChange={(value) => {
+                                const total = form.getFieldValue(["lineItems", field.key, "total"]);
+                                const unitPrice = form.getFieldValue([
+                                  "lineItems",
+                                  field.key,
+                                  "unitPrice",
+                                ]);
+
+                                value = toNumber(value);
+                                if (value) {
+                                  if (!unitPrice && total) {
+                                    form.setFieldValue(
+                                      ["lineItems", field.key, "unitPrice"],
+                                      divideDecimal(total, value),
+                                    );
+                                  } else if (unitPrice) {
+                                    form.setFieldValue(
+                                      ["lineItems", field.key, "total"],
+                                      multiplyDecimal(value, unitPrice),
+                                    );
+                                  }
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                        ),
+                      },
+                      {
+                        kind: "custom",
+                        key: "unitPrice",
+                        title: t`Price`,
+                        width: 120,
+                        render: (field) => (
+                          <Form.Item
+                            name={[field.name, "unitPrice"]}
+                            rules={[{ required: true, message: t`This field is required!` }]}
+                            noStyle
+                          >
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              onChange={(value) => {
+                                const total = form.getFieldValue(["lineItems", field.key, "total"]);
+                                const quantity = form.getFieldValue([
+                                  "lineItems",
+                                  field.key,
+                                  "quantity",
+                                ]);
+
+                                value = toNumber(value);
+                                if (value) {
+                                  if (!quantity && total) {
+                                    form.setFieldValue(
+                                      ["lineItems", field.key, "quantity"],
+                                      divideDecimal(total, value),
+                                    );
+                                  } else if (quantity) {
+                                    form.setFieldValue(
+                                      ["lineItems", field.key, "total"],
+                                      multiplyDecimal(quantity, value),
+                                    );
+                                  }
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                        ),
+                      },
+                      {
+                        kind: "custom",
+                        key: "taxRate",
+                        title: t`Tax %`,
+                        width: 120,
+                        render: (field) => (
+                          <Form.Item name={[field.name, "taxRate"]} noStyle>
+                            <Select
+                              style={{ width: "100%" }}
+                              allowClear
+                              placeholder={t`Select tax rate`}
                             >
-                              <strong>{fmt(netAmountDue)}</strong>
+                              {map(taxRates, (rate: any) => (
+                                <Option value={rate.id} key={rate.id}>
+                                  {rate.name} {rate.percentage}%
+                                </Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        ),
+                      },
+                      {
+                        kind: "custom",
+                        key: "total",
+                        title: t`Total`,
+                        width: 120,
+                        render: (field) => (
+                          <Form.Item
+                            name={[field.name, "total"]}
+                            rules={[{ required: true, message: t`This field is required!` }]}
+                            noStyle
+                          >
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              onChange={(value) => {
+                                const unitPrice = form.getFieldValue([
+                                  "lineItems",
+                                  field.key,
+                                  "unitPrice",
+                                ]);
+                                const quantity = form.getFieldValue([
+                                  "lineItems",
+                                  field.key,
+                                  "quantity",
+                                ]);
+
+                                value = toNumber(value);
+                                if (value) {
+                                  if (!quantity && unitPrice) {
+                                    form.setFieldValue(
+                                      ["lineItems", field.key, "quantity"],
+                                      divideDecimal(value, unitPrice),
+                                    );
+                                  } else if (quantity) {
+                                    form.setFieldValue(
+                                      ["lineItems", field.key, "unitPrice"],
+                                      divideDecimal(value, quantity),
+                                    );
+                                  }
+                                }
+                              }}
+                            />
+                          </Form.Item>
+                        ),
+                      },
+                    ]}
+                  />
+                </Col>
+              </Row>
+
+              <Row gutter={16} style={{ marginTop: 16 }}>
+                {/* Totals, right-aligned within the card */}
+                <Col xs={24} xl={{ span: 12, offset: 12 }}>
+                  <Descriptions
+                    column={1}
+                    styles={{
+                      content: {
+                        textAlign: "right",
+                        display: "inline-block",
+                        minWidth: 120,
+                        color: "rgba(0, 0, 0, 0.88)",
+                        fontSize: 15,
+                        lineHeight: 1.4,
+                      },
+                      label: {
+                        textAlign: "right",
+                        display: "inline-block",
+                        width: "100%",
+                        color: "rgba(0, 0, 0, 0.88)",
+                        fontWeight: 500,
+                        fontSize: 15,
+                        lineHeight: 1.4,
+                      },
+                    }}
+                  >
+                    {(() => {
+                      const fmt = (value: number) =>
+                        Intl.NumberFormat(i18n.locale, {
+                          style: "currency",
+                          currency: watchedCurrency ?? organization.currency ?? "EUR",
+                          minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
+                        }).format(value);
+                      return (
+                        <>
+                          <Descriptions.Item label={<Trans>Subtotal</Trans>}>
+                            {fmt(subTotal)}
+                          </Descriptions.Item>
+                          {taxGroups.length > 0 ? (
+                            taxGroups.map((group) => (
+                              <Descriptions.Item
+                                key={group.taxRate?.id}
+                                label={`${group.taxRate?.name || t`Tax`} ${group.taxRate?.percentage || 0}%`}
+                              >
+                                {fmt(group.tax)}
+                              </Descriptions.Item>
+                            ))
+                          ) : (
+                            <Descriptions.Item label={<Trans>Tax</Trans>}>
+                              {fmt(0)}
                             </Descriptions.Item>
-                          </>
-                        ) : null}
-                      </>
-                    );
-                  })()}
-                </Descriptions>
-              </Col>
-            </Row>
+                          )}
+                          {fiscalStampAmount > 0 && (
+                            <Descriptions.Item label={<Trans>Fiscal stamp</Trans>}>
+                              {fmt(fiscalStampAmount)}
+                            </Descriptions.Item>
+                          )}
+                          <Descriptions.Item
+                            label={
+                              <strong>
+                                <Trans>Total</Trans>
+                              </strong>
+                            }
+                          >
+                            <strong>{fmt(total)}</strong>
+                          </Descriptions.Item>
+                          {withholdingTaxRate ? (
+                            <>
+                              <Descriptions.Item
+                                label={<Trans>Withholding tax ({withholdingTaxRate}%)</Trans>}
+                              >
+                                -{fmt(withholdingTaxAmount)}
+                              </Descriptions.Item>
+                              <Descriptions.Item
+                                label={
+                                  <strong>
+                                    <Trans>Net amount due</Trans>
+                                  </strong>
+                                }
+                              >
+                                <strong>{fmt(netAmountDue)}</strong>
+                              </Descriptions.Item>
+                            </>
+                          ) : null}
+                        </>
+                      );
+                    })()}
+                  </Descriptions>
+                </Col>
+              </Row>
+            </Card>
 
             {/* Footer menu */}
             {document.getElementById("footer") &&
@@ -1071,110 +1301,10 @@ const InvoiceDetails: React.FC = () => {
                       </Space>
                     </Col>
                     <Col>
-                      <Space>
-                        {/*!isNew && invoice && (
-                          <Dropdown overlay={stateMenu(invoice._id, invoice._rev)} trigger={["click"]}>
-                            <StateTag state={invoice.state} style={{ marginTop: 10, marginRight: 20 }} />
-                          </Dropdown>
-                        )*/}
-                        {!isNew && (
-                          <Button type="dashed" onClick={() => setPreviewMode(!previewMode)}>
-                            {previewMode ? (
-                              <>
-                                <EditOutlined /> <Trans>Edit</Trans>
-                              </>
-                            ) : (
-                              <>
-                                <EyeOutlined /> <Trans>View</Trans>
-                              </>
-                            )}
-                          </Button>
-                        )}
-                        {!isNew && !isCustomTemplate && (
-                          <Button
-                            onClick={async () => {
-                              const document = createPDFDocument();
-                              if (!document) return;
-                              const blob = await pdf(document).toBlob();
-                              await SaveFile(`invoice-${id}.pdf`, blob);
-                            }}
-                          >
-                            <FilePdfOutlined /> PDF
-                          </Button>
-                        )}
-                        {/* Custom templates export via the server (db/xlsx_export.go
-                            fills the org's Excel template, db/pdf_convert.go optionally
-                            converts it with headless LibreOffice — see the Dockerfile's
-                            runtime-stage comment for why that now runs in the shipped
-                            image) rather than the client-side react-pdf path above, since
-                            the server reads persisted rows by invoice id. */}
-                        {!isNew && isCustomTemplate && (
-                          <Tooltip
-                            title={isDirty ? t`Save your changes before exporting` : undefined}
-                          >
-                            <Space.Compact>
-                              <Button
-                                disabled={isDirty}
-                                loading={downloadingCustomExport}
-                                onClick={handleCustomTemplateExport("xlsx")}
-                              >
-                                <FileExcelOutlined /> <Trans>Excel</Trans>
-                              </Button>
-                              <Button
-                                disabled={isDirty}
-                                loading={downloadingCustomExport}
-                                onClick={handleCustomTemplateExport("pdf")}
-                              >
-                                <FilePdfOutlined /> PDF
-                              </Button>
-                            </Space.Compact>
-                          </Tooltip>
-                        )}
-                        {!isNew && (
-                          <Button
-                            loading={downloadingEInvoice}
-                            onClick={async () => {
-                              setDownloadingEInvoice(true);
-                              try {
-                                await DownloadInvoiceEInvoice(id!);
-                              } catch (error) {
-                                message.error(
-                                  error instanceof Error
-                                    ? error.message
-                                    : t`E-invoice export failed`,
-                                );
-                              } finally {
-                                setDownloadingEInvoice(false);
-                              }
-                            }}
-                          >
-                            <FileTextOutlined /> <Trans>E-Invoice (XML)</Trans>
-                          </Button>
-                        )}
-                        {!isNew && currentInvoiceState !== "cancelled" && (
-                          <Popconfirm
-                            title={t`Cancel this invoice?`}
-                            onConfirm={async () => {
-                              await updateInvoiceState({ invoiceId: id!, state: "cancelled" });
-                              setInvoiceId(null);
-                              setTimeout(() => setInvoiceId(id ?? null), 0);
-                            }}
-                            okText={t`Yes`}
-                            cancelText={t`No`}
-                          >
-                            <Button type="dashed" danger>
-                              <Trans>Cancel invoice</Trans>
-                            </Button>
-                          </Popconfirm>
-                        )}
-                        <Button
-                          type="primary"
-                          disabled={false}
-                          loading={false}
-                          onClick={() => form.submit()}
-                        >
-                          <SaveOutlined /> <Trans>Save</Trans>
-                        </Button>
+                      <Space size="middle" split={<Divider type="vertical" />}>
+                        {footerActionGroups.map((group, i) => (
+                          <Space key={i}>{group}</Space>
+                        ))}
                       </Space>
                     </Col>
                   </Row>

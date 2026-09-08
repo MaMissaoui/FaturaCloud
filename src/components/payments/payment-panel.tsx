@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import {
   App,
   Button,
+  Card,
   DatePicker,
   Descriptions,
-  Divider,
   Form,
   Input,
   InputNumber,
@@ -178,10 +178,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   if (!hasPostedEntry && rows.length === 0) return null;
 
   return (
-    <>
-      <Divider style={{ margin: "16px 0" }}>
-        <Trans>Payments</Trans>
-      </Divider>
+    <Card title={<Trans>Payments</Trans>} style={{ marginTop: 24 }}>
       <Descriptions column={3} size="small" style={{ marginBottom: 8 }}>
         <Descriptions.Item label={<Trans>Total</Trans>}>
           {formatCents(total, currency, i18n.locale)}
@@ -326,7 +323,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </Card>
   );
 };
 
