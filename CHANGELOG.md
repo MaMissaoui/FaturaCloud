@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-09-08
+
+Per-organization roles, working PDF export for custom invoice templates,
+and a currency-display crash fix.
+
+### Added
+- Organizations now have real per-organization membership instead of a
+  single global admin/user flag: each user can be an admin or a regular
+  member of a specific organization, and org-scoped admin actions
+  (deleting/resetting an organization, closing a fiscal year, exporting
+  France FEC / Germany DATEV) now require admin membership in *that*
+  organization rather than a global admin flag. A separate,
+  narrower platform-admin flag still covers the handful of genuinely
+  global actions (user management, backups, database restore,
+  countries). New Members management UI in the Organizations edit
+  drawer lets an org admin invite existing users by email, change
+  roles, and remove members.
+- Custom Excel invoice templates (Settings → Document Templates) can
+  now export to PDF as well as Excel — previously Excel-only.
+
+### Changed
+- The runtime Docker image is now based on Debian instead of Alpine
+  (~630MB larger) so the LibreOffice conversion behind the PDF export
+  above actually runs in the shipped image, rather than 503ing.
+
+### Fixed
+- A blank or unrecognized currency code on a record could crash the
+  whole page instead of falling back to a plain number.
+
+### Security
+- Closed a gap where any authenticated user could delete/reset an
+  organization, close its fiscal years, or export its GL data
+  regardless of whether they administered that organization — these
+  actions now require admin membership in the specific organization,
+  not just being logged in. (General read/write access to other
+  organizations' day-to-day data is unchanged in this release —
+  membership-based visibility across the rest of the app is a
+  follow-up.)
+
 ## [3.10.0] - 2026-09-08
 
 Standalone delivery clients, product categories, multi-currency aging,
