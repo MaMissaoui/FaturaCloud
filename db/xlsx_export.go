@@ -132,6 +132,20 @@ func FillInvoiceTemplate(
 		}
 	}
 
+	// Strip every sheet but the content sheet before returning. A template
+	// author may keep a reference/notes sheet alongside the content sheet
+	// (the embedded default's "Available fields" tab documents every
+	// placeholder this way) — useful while editing the template, but never
+	// meant to ride along into a document actually sent to a customer.
+	for _, name := range f.GetSheetList() {
+		if name == sheet {
+			continue
+		}
+		if err := f.DeleteSheet(name); err != nil {
+			return nil, nil, fmt.Errorf("fill_invoice_template: delete extra sheet %q: %w", name, err)
+		}
+	}
+
 	var buf bytes.Buffer
 	if err := f.Write(&buf); err != nil {
 		return nil, nil, fmt.Errorf("fill_invoice_template: write: %w", err)

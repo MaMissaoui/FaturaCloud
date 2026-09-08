@@ -188,6 +188,42 @@ func TestFillInvoiceTemplateRequiresMarkerRow(t *testing.T) {
 	}
 }
 
+// TestFillInvoiceTemplateStripsExtraSheets guards the embedded default
+// template's "Available fields" reference tab (and any template author's own
+// notes/reference sheet) from ever reaching an actual invoice export — it's
+// documentation for editing the template, not part of the document a
+// customer receives.
+func TestFillInvoiceTemplateStripsExtraSheets(t *testing.T) {
+	f := excelize.NewFile()
+	sheet := f.GetSheetName(0)
+	_ = f.SetCellStr(sheet, "A1", "{{invoice.number}}")
+	_ = f.SetCellStr(sheet, "A3", "{{#lineItems}}")
+	_ = f.SetCellStr(sheet, "B3", "{{lineItems.description}}")
+	if _, err := f.NewSheet("Notes"); err != nil {
+		t.Fatalf("add extra sheet: %v", err)
+	}
+	_ = f.SetCellStr("Notes", "A1", "just a reference sheet for the template author")
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		t.Fatalf("build fixture: %v", err)
+	}
+
+	lineItems := []InvoiceLineItem{{Description: ptr("Widget"), Quantity: 1, UnitPrice: 1000}}
+	out, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil)
+	if err != nil {
+		t.Fatalf("FillInvoiceTemplate: %v", err)
+	}
+
+	out2, err := excelize.OpenReader(bytes.NewReader(out))
+	if err != nil {
+		t.Fatalf("open filled output: %v", err)
+	}
+	defer out2.Close()
+	if sheets := out2.GetSheetList(); len(sheets) != 1 || sheets[0] != sheet {
+		t.Fatalf("expected output to have only the content sheet %q, got %v", sheet, sheets)
+	}
+}
+
 // TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve opens the real
 // shipped default template and confirms every {{...}} in it is a placeholder
 // the fill engine actually recognizes. Load-bearing: this committed .xlsx
@@ -233,6 +269,44 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 	}
 	if !sawMarker {
 		t.Error("embedded default template has no {{#lineItems}} marker row")
+	}
+}
+
+// TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData guards
+// against the header row (e.g. "Description", "Quantity", ...) drifting out
+// of alignment with the data row again: column A of the marker row is always
+// reserved for {{#lineItems}} itself (cleared before output, so it's always
+// blank in the result) and every real per-item value starts at column B —
+// the header labels above them must start at B too, not A, or they end up
+// one column to the left of the values they're labelling.
+func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T) {
+	f, err := excelize.OpenReader(bytes.NewReader(invoiceDefaultTemplate))
+	if err != nil {
+		t.Fatalf("open embedded default template: %v", err)
+	}
+	defer f.Close()
+	sheet := f.GetSheetName(0)
+
+	markerRow, err := findMarkerRow(f, sheet)
+	if err != nil {
+		t.Fatalf("find marker row: %v", err)
+	}
+
+	rows, err := f.GetRows(sheet)
+	if err != nil {
+		t.Fatalf("read rows: %v", err)
+	}
+	headerRow := rows[markerRow-2] // markerRow is 1-indexed; the header sits directly above it
+	dataRow := rows[markerRow-1]
+
+	if got := strings.TrimSpace(headerRow[0]); got != "" {
+		t.Fatalf("header row column A should be blank (reserved for the marker column), got %q", got)
+	}
+	if len(headerRow) < 2 || strings.TrimSpace(headerRow[1]) == "" {
+		t.Fatal("header row column B should carry the first line item column's label")
+	}
+	if len(dataRow) < 2 || !strings.Contains(dataRow[1], "{{lineItems.description}}") {
+		t.Fatalf("data row column B should carry {{lineItems.description}}, got %q", dataRow[1])
 	}
 }
 

@@ -8,6 +8,14 @@
 // (db/xlsx_export_test.go) is what actually guards its placeholders against
 // a typo, since the committed binary itself isn't diff-reviewable.
 //
+// The output has two sheets: "Invoice" (the content sheet — sheet index 0,
+// what db.FillInvoiceTemplate fills and returns) and "Available fields", a
+// reference table of every placeholder db.buildScalarPlaceholders /
+// db.buildLineItemPlaceholders resolve. The reference sheet is for whoever
+// is editing the template — FillInvoiceTemplate deletes every sheet but the
+// content one before an actual invoice export goes out, so it never reaches
+// a document sent to a customer.
+//
 // Run from the repo root and copy the output over the committed default if
 // the layout ever needs a deliberate change:
 //
@@ -61,10 +69,15 @@ func main() {
 	set("A10", "{{client.postalCode}} {{client.city}}")
 	set("A11", "VAT: {{client.vatin}}")
 
-	// Line item table header.
+	// Line item table header. Columns start at B, not A: the repeat row
+	// below carries the {{#lineItems}} marker in column A (cleared before
+	// output, so that column is always blank in the result), which pushes
+	// every real per-item value to B onward — the header must line up with
+	// that or "Description" ends up a column left of the descriptions.
 	headerRow := 13
-	cols := []string{"A", "B", "C", "D", "E"}
+	cols := []string{"B", "C", "D", "E", "F"}
 	labels := []string{"Description", "Quantity", "Unit Price", "Tax Rate", "Line Total"}
+	f.SetCellStyle(sheet, "A"+strconv.Itoa(headerRow), "A"+strconv.Itoa(headerRow), header)
 	for i, col := range cols {
 		cell := col + strconv.Itoa(headerRow)
 		set(cell, labels[i])
@@ -107,7 +120,133 @@ func main() {
 	f.SetColWidth(sheet, "C", "E", 14)
 	f.SetColWidth(sheet, "F", "F", 16)
 
+	addAvailableFieldsSheet(f)
+
+	// Keep the invoice content sheet the one that opens by default — the
+	// reference sheet is documentation for whoever edits the template, not
+	// part of the document itself (db.FillInvoiceTemplate strips every sheet
+	// but this one before an actual invoice export goes out).
+	invoiceIdx, err := f.GetSheetIndex(sheet)
+	if err != nil {
+		log.Fatal(err)
+	}
+	f.SetActiveSheet(invoiceIdx)
+
 	if err := f.SaveAs("db/templates/gen/invoice_default.xlsx"); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// fieldRef documents one placeholder the fill engine
+// (db.buildScalarPlaceholders / db.buildLineItemPlaceholders in
+// db/xlsx_export.go) resolves. Kept in sync with that allowlist by hand —
+// there's no reflection-based way to derive this from the Go source, and an
+// entry going stale here is a documentation gap, not a broken export.
+type fieldRef struct {
+	group       string
+	placeholder string
+	description string
+}
+
+// addAvailableFieldsSheet adds a second, documentation-only sheet listing
+// every placeholder the fill engine understands, grouped the way a template
+// author encounters them on the invoice: Header (seller/invoice/customer
+// info at the top), Item lines (only valid inside the repeated
+// {{#lineItems}} row), and Footer (totals and payment/banking details).
+func addAvailableFieldsSheet(f *excelize.File) {
+	const refSheet = "Available fields"
+	if _, err := f.NewSheet(refSheet); err != nil {
+		log.Fatal(err)
+	}
+
+	title, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Bold: true, Size: 14}})
+	header, _ := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true, Color: "FFFFFF"},
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"1E293B"}, Pattern: 1},
+	})
+	group, _ := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true},
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"E2E8F0"}, Pattern: 1},
+	})
+	note, _ := f.NewStyle(&excelize.Style{Font: &excelize.Font{Italic: true, Color: "666666"}})
+
+	set := func(cell, value string) { _ = f.SetCellStr(refSheet, cell, value) }
+
+	set("A1", "Available template placeholders")
+	f.SetCellStyle(refSheet, "A1", "A1", title)
+	set("A2", "Use {{placeholder}} in any cell. An unresolved one is left blank in the export, never an error.")
+	f.SetCellStyle(refSheet, "A2", "A2", note)
+	if err := f.MergeCell(refSheet, "A2", "C2"); err != nil {
+		log.Fatal(err)
+	}
+
+	headerRow := 4
+	set("A"+strconv.Itoa(headerRow), "Group")
+	set("B"+strconv.Itoa(headerRow), "Placeholder")
+	set("C"+strconv.Itoa(headerRow), "Description")
+	f.SetCellStyle(refSheet, "A"+strconv.Itoa(headerRow), "C"+strconv.Itoa(headerRow), header)
+
+	fields := []fieldRef{
+		// Header — seller, invoice metadata, and customer info.
+		{"Header", "{{invoice.number}}", "Invoice number"},
+		{"Header", "{{invoice.date}}", "Invoice date"},
+		{"Header", "{{invoice.dueDate}}", "Payment due date"},
+		{"Header", "{{invoice.currency}}", "Currency code (e.g. EUR)"},
+		{"Header", "{{invoice.buyerReference}}", "Buyer reference (e.g. a Leitweg-ID)"},
+		{"Header", "{{organization.name}}", "Seller company name"},
+		{"Header", "{{organization.vatin}}", "Seller VAT number"},
+		{"Header", "{{organization.email}}", "Seller email"},
+		{"Header", "{{organization.phone}}", "Seller phone"},
+		{"Header", "{{organization.website}}", "Seller website"},
+		{"Header", "{{organization.street}}", "Seller street"},
+		{"Header", "{{organization.houseNumber}}", "Seller house number"},
+		{"Header", "{{organization.postalCode}}", "Seller postal code"},
+		{"Header", "{{organization.city}}", "Seller city"},
+		{"Header", "{{client.name}}", "Customer name"},
+		{"Header", "{{client.vatin}}", "Customer VAT number"},
+		{"Header", "{{client.email}}", "Customer email"},
+		{"Header", "{{client.phone}}", "Customer phone"},
+		{"Header", "{{client.street}}", "Customer street"},
+		{"Header", "{{client.houseNumber}}", "Customer house number"},
+		{"Header", "{{client.postalCode}}", "Customer postal code"},
+		{"Header", "{{client.city}}", "Customer city"},
+
+		// Item lines — only meaningful inside the repeated {{#lineItems}} row.
+		{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in column A of the row to repeat once per line item"},
+		{"Item lines", "{{lineItems.description}}", "Line item description"},
+		{"Item lines", "{{lineItems.quantity}}", "Quantity"},
+		{"Item lines", "{{lineItems.unitPrice}}", "Unit price, formatted with currency"},
+		{"Item lines", "{{lineItems.taxRate}}", "Tax rate percentage (e.g. 19.5%)"},
+		{"Item lines", "{{lineItems.lineTotal}}", "Quantity x unit price, formatted with currency"},
+
+		// Footer — totals and payment/banking details.
+		{"Footer", "{{invoice.subTotal}}", "Subtotal before tax"},
+		{"Footer", "{{invoice.taxTotal}}", "Total tax"},
+		{"Footer", "{{invoice.total}}", "Grand total"},
+		{"Footer", "{{invoice.paymentTerms}}", "Payment terms text"},
+		{"Footer", "{{organization.iban}}", "Seller IBAN"},
+		{"Footer", "{{organization.bankName}}", "Seller bank name"},
+	}
+
+	row := headerRow + 1
+	lastGroup := ""
+	for _, fr := range fields {
+		if fr.group != lastGroup {
+			cell := "A" + strconv.Itoa(row)
+			set(cell, fr.group)
+			if err := f.MergeCell(refSheet, cell, "C"+strconv.Itoa(row)); err != nil {
+				log.Fatal(err)
+			}
+			f.SetCellStyle(refSheet, cell, cell, group)
+			lastGroup = fr.group
+			row++
+		}
+		set("B"+strconv.Itoa(row), fr.placeholder)
+		set("C"+strconv.Itoa(row), fr.description)
+		row++
+	}
+
+	f.SetColWidth(refSheet, "A", "A", 14)
+	f.SetColWidth(refSheet, "B", "B", 32)
+	f.SetColWidth(refSheet, "C", "C", 60)
 }
