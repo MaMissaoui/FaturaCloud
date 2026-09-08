@@ -57,6 +57,7 @@ import {
 import { organizationAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
+import { importsAtom, setImportsAtom } from "src/atoms/import";
 import {
   purchaseOrderIdAtom,
   purchaseOrderAtom,
@@ -93,6 +94,8 @@ const PurchaseOrderDetails = () => {
   const organization = useAtomValue(organizationAtom);
   const vendors = useAtomValue(vendorsAtom);
   const setVendors = useSetAtom(setVendorsAtom);
+  const imports = useAtomValue(importsAtom);
+  const setImports = useSetAtom(setImportsAtom);
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
   // Read the async atom directly so the component suspends until the real
@@ -116,6 +119,7 @@ const PurchaseOrderDetails = () => {
   useEffect(() => {
     setVendors();
     setProducts();
+    setImports();
     setStatusOverride(null);
     if (!isNew) {
       setOrderId(id ?? null);
@@ -123,7 +127,7 @@ const PurchaseOrderDetails = () => {
     return () => {
       setOrderId(null);
     };
-  }, [id, isNew, setVendors, setProducts, setOrderId]);
+  }, [id, isNew, setVendors, setProducts, setImports, setOrderId]);
 
   // Per-line fulfilment, so partial receipts are visible without opening every
   // goods receipt for this order.
@@ -312,6 +316,43 @@ const PurchaseOrderDetails = () => {
               {map(vendors, (v: any) => (
                 <Option key={v.id} value={v.id}>
                   {v.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Form.Item
+            label={<Trans>Import</Trans>}
+            name="importId"
+            tooltip={t`The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received.`}
+          >
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="children"
+              placeholder={t`None`}
+              onChange={(newImportId) => {
+                // Only cascade on a new order — same guard as the vendor
+                // cascade above. currency/exchangeRate are a *prefill*
+                // (db/migrations/0066's comment): the order still stores and
+                // freezes its own values once saved.
+                if (!isNew || !newImportId) return;
+                const imp = find(imports, { id: newImportId }) as any;
+                if (imp?.currency) {
+                  form.setFieldsValue({
+                    currency: imp.currency,
+                    exchangeRate: imp.exchangeRate ?? undefined,
+                    exchangeRateDate: imp.exchangeRateDate
+                      ? dayjs(imp.exchangeRateDate)
+                      : undefined,
+                  });
+                }
+              }}
+            >
+              {map(imports, (imp: any) => (
+                <Option key={imp.id} value={imp.id}>
+                  {imp.importNumber}
                 </Option>
               ))}
             </Select>

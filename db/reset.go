@@ -33,6 +33,10 @@ var transactionalDataTables = []string{
 	"incoming_invoices",
 	"inbound_deliveries",
 	"purchase_orders",
+	// imports after purchase_orders: purchase_orders.importId has no
+	// ON DELETE clause (same precedent as vendorId — see db/import.go's
+	// DeleteImport), so a referencing row must be gone before its import is.
+	"imports",
 	"outbound_deliveries",
 	"orders",
 	"invoices",
@@ -137,12 +141,13 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 
 	if req.ResetMasterData {
 		// organizations itself is never deleted by a reset, but carries
-		// thirteen FK columns pointing into accounts (set by
-		// seedDefaultChartOfAccounts/seedInventoryAccountsTx or manual
-		// configuration). Null them before accounts rows are deleted below,
-		// or those columns would dangle — a foreign key violation with
-		// enforcement on, silent corruption without it. Same placement/style
-		// as the invoice_number_counter reset above.
+		// fourteen FK columns pointing into accounts (set by
+		// seedDefaultChartOfAccounts/seedInventoryAccountsTx/
+		// seedImportCostAccountTx or manual configuration). Null them before
+		// accounts rows are deleted below, or those columns would dangle — a
+		// foreign key violation with enforcement on, silent corruption
+		// without it. Same placement/style as the invoice_number_counter
+		// reset above.
 		if _, err := tx.Exec(`
 			UPDATE organizations
 			SET defaultArAccountId = NULL, defaultApAccountId = NULL, defaultRevenueAccountId = NULL,
@@ -151,7 +156,7 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 			    datevClearingAccountId = NULL,
 			    defaultInventoryAccountId = NULL, defaultGRNIAccountId = NULL,
 			    defaultCOGSAccountId = NULL, defaultInventoryAdjustmentAccountId = NULL,
-			    defaultStampDutyAccountId = NULL
+			    defaultStampDutyAccountId = NULL, defaultImportCostsPayableAccountId = NULL
 			WHERE id = ?`, organizationID,
 		); err != nil {
 			return nil, fmt.Errorf("reset_organization_data clear_gl_defaults: %w", err)

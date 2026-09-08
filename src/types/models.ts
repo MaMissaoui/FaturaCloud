@@ -127,6 +127,10 @@ export interface Organization {
   defaultGRNIAccountId: string | null;
   defaultCOGSAccountId: string | null;
   defaultInventoryAdjustmentAccountId: string | null;
+  // F114 (China imports landed cost) — credited for the freight/customs
+  // allocated to a receipt whose PO belongs to an import; separate from
+  // defaultGRNIAccountId, which stays valued at vendor goods price only.
+  defaultImportCostsPayableAccountId: string | null;
   // DATEV export. datevClearingAccountId is the synthetic Gegenkonto for a
   // manual entry with more than one line on both sides (no natural anchor).
   datevClearingAccountId: string | null;
@@ -243,8 +247,38 @@ export interface PurchaseOrder {
   exchangeRateDate: number | null;
   deliveryAddress: string | null;
   notes: string | null;
+  // The shipment this order's goods travel in, if any — drives landed cost
+  // (freight/customs) allocation at receiving time.
+  importId: string | null;
   vendorName: string | null;
+  importNumber: string | null;
   createdAt: number;
+}
+
+export interface Import {
+  id: string;
+  organizationId: string;
+  importNumber: string;
+  date: number;
+  // Prefill default for purchase orders linked to this import — never
+  // converted or posted itself. Each linked PO still stores/freezes its own
+  // currency/exchangeRate (see PurchaseOrder above).
+  currency: string | null;
+  exchangeRate: number | null;
+  exchangeRateDate: number | null;
+  // Both cents, in the organization's own functional currency.
+  freightCost: number;
+  customsCost: number;
+  notes: string | null;
+  createdAt: number;
+}
+
+export interface ImportSummary {
+  totalCommittedValue: number; // Σ non-cancelled linked POs, org-currency cents
+  freightCost: number;
+  customsCost: number;
+  landedCostRate: number; // (freight+customs) / totalCommittedValue, 0 if undistributable
+  purchaseOrderCount: number;
 }
 
 export interface PurchaseOrderLineItem {

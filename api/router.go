@@ -155,6 +155,15 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/vendors/{id}", h.deleteVendor)
 	protected("GET", "/api/vendors/{id}/document-count", h.getVendorDocumentCount)
 
+	// Imports (F114 — consolidated China shipments purchase orders link to)
+	protected("GET", "/api/organizations/{orgId}/imports", h.listImports)
+	protected("GET", "/api/organizations/{orgId}/imports/next-number", h.nextImportNumber)
+	protected("POST", "/api/imports", h.createImport)
+	protected("GET", "/api/imports/{id}", h.getImport)
+	protected("GET", "/api/imports/{id}/summary", h.getImportSummary)
+	protected("PUT", "/api/imports/{id}", h.updateImport)
+	protected("DELETE", "/api/imports/{id}", h.deleteImport)
+
 	// Purchase orders
 	protected("GET", "/api/organizations/{orgId}/purchase-orders", h.listPurchaseOrders)
 	protected("GET", "/api/organizations/{orgId}/purchase-orders/next-number", h.nextPurchaseOrderNumber)
