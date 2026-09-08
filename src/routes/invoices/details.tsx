@@ -85,6 +85,7 @@ import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
 import { formatAddressOneLine } from "src/utils/address";
 import { getInvoicePDFLayout, isCustomTemplateLayout } from "src/components/invoices/layouts";
+import InvoiceStateSelect from "src/components/invoices/state-select";
 import { CurrencySelect, showExchangeRateFields } from "src/components/currency/currency-fields";
 import PaymentPanel from "src/components/payments/payment-panel";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
@@ -683,7 +684,27 @@ const InvoiceDetails: React.FC = () => {
             initialValues={initialValues}
             style={{ display: previewMode ? "none" : "block" }}
           >
-            <Card size="small" title={<Trans>Invoice details</Trans>} style={{ marginBottom: 24 }}>
+            <Card
+              size="small"
+              title={<Trans>Invoice details</Trans>}
+              extra={
+                !isNew &&
+                id && (
+                  <InvoiceStateSelect
+                    invoice={{ id, state: currentInvoiceState }}
+                    onChanged={() => {
+                      // invoiceAtom is a separate fetch keyed off invoiceIdAtom
+                      // (not derived from invoicesAtom, which
+                      // updateInvoiceStateAtom already updated) — same
+                      // refetch nudge the "Cancel invoice" action below uses.
+                      setInvoiceId(null);
+                      setTimeout(() => setInvoiceId(id), 0);
+                    }}
+                  />
+                )
+              }
+              style={{ marginBottom: 24 }}
+            >
               <Row gutter={24}>
                 {/* Left: the two fields that need real room — a searchable
                     dropdown and free text — stacked so the note fills the

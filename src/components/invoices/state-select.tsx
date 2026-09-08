@@ -7,11 +7,22 @@ import type { MenuProps } from "antd";
 import { updateInvoiceStateAtom } from "src/atoms/invoice";
 import { INVOICE_STATES, invoiceStateColor, invoiceStateLabel } from "src/types/invoice";
 
-const InvoiceStateSelect = ({ invoice }: { invoice: { id: string; state: string } }) => {
+const InvoiceStateSelect = ({
+  invoice,
+  onChanged,
+}: {
+  invoice: { id: string; state: string };
+  // Called after a successful state change. The list page (which owns
+  // invoicesAtom, already updated by updateInvoiceStateAtom itself) has no
+  // need for this; the details page's invoiceAtom is a separate fetch keyed
+  // off invoiceIdAtom and needs its own nudge to refetch — see its usage.
+  onChanged?: () => void;
+}) => {
   const updateInvoiceState = useSetAtom(updateInvoiceStateAtom);
 
   const changeState = async (toState: string) => {
     await updateInvoiceState({ invoiceId: invoice.id, state: toState });
+    onChanged?.();
   };
 
   const items: MenuProps["items"] = INVOICE_STATES.map((state) => ({
