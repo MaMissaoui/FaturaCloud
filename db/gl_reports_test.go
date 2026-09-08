@@ -209,6 +209,91 @@ func TestGetPayableAging(t *testing.T) {
 	}
 }
 
+// TestReceivableAgingSurfacesForeignCurrency checks the F116 addition:
+// Currency/ForeignTotal carry the remaining balance in the invoice's own
+// currency, unconverted, alongside Total (the existing functional-currency
+// figure every bucket sum is still expressed in).
+func TestReceivableAgingSurfacesForeignCurrency(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-ar-fx")
+
+	rate := 0.9 // 1 USD = 0.9 EUR (fixture org's functional currency)
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-usd", OrganizationID: fx.orgID, Number: "inv-usd", ClientID: fx.clientID,
+		Date: fx.date, Currency: "USD", ExchangeRate: &rate,
+		SubTotal: 1000, TaxTotal: 200, Total: 1200,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+
+	summary, err := d.GetReceivableAging(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetReceivableAging: %v", err)
+	}
+	if len(summary.Invoices) != 1 {
+		t.Fatalf("expected exactly one outstanding invoice, got %+v", summary.Invoices)
+	}
+	row := summary.Invoices[0]
+	if row.Currency != "USD" {
+		t.Fatalf("currency = %q, want USD", row.Currency)
+	}
+	if row.ForeignTotal != 1200 {
+		t.Fatalf("foreignTotal = %d, want 1200 (the unconverted USD balance)", row.ForeignTotal)
+	}
+	if row.Total != 1080 { // 1200 * 0.9
+		t.Fatalf("total = %d, want 1080 (1200 * exchangeRate 0.9)", row.Total)
+	}
+}
+
+// TestPayableAgingSurfacesForeignCurrency is the AP-side counterpart, using
+// the same USD-purchasing-org scenario F116 was actually filed from
+// (motorcycle-parts demo org buying from China in USD, selling in TND).
+func TestPayableAgingSurfacesForeignCurrency(t *testing.T) {
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-ap-fx")
+
+	rate := 0.9 // 1 USD = 0.9 EUR
+	bill, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		ID: "bill-usd", OrganizationID: fx.orgID, VendorID: fx.vendorID, VendorInvoiceNumber: "bill-usd",
+		Date: fx.date, Currency: "USD", ExchangeRate: &rate,
+		SubTotal: 1000, TaxTotal: 200, Total: 1200,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateIncomingInvoice: %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(bill.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+
+	summary, err := d.GetPayableAging(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetPayableAging: %v", err)
+	}
+	if len(summary.Bills) != 1 {
+		t.Fatalf("expected exactly one outstanding bill, got %+v", summary.Bills)
+	}
+	row := summary.Bills[0]
+	if row.Currency != "USD" {
+		t.Fatalf("currency = %q, want USD", row.Currency)
+	}
+	if row.ForeignTotal != 1200 {
+		t.Fatalf("foreignTotal = %d, want 1200 (the unconverted USD balance)", row.ForeignTotal)
+	}
+	if row.Total != 1080 { // 1200 * 0.9
+		t.Fatalf("total = %d, want 1080 (1200 * exchangeRate 0.9)", row.Total)
+	}
+}
+
 // TestGetInventoryValuationMatchesGLAfterReceiptAndShipment exercises the
 // report across a real GRNI accrual (receipt) followed by a real COGS
 // posting (partial shipment) and checks that the GL side and the computed
