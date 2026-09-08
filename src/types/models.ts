@@ -132,6 +132,21 @@ export interface Organization {
   datevClearingAccountId: string | null;
   datev_consultant_number: string | null;
   datev_client_number: string | null;
+  // Invoice feature toggles (fiscal stamp / withholding tax, first added for
+  // Tunisia invoice support) and the invoice PDF layout — three independent
+  // settings. fiscalStampEnabled/withholdingTaxEnabled gate whether the
+  // invoice form shows those fields at all (any organization, any layout);
+  // defaultFiscalStampAmount prefills a new invoice's fiscalStampAmount
+  // (cents); defaultStampDutyAccountId is the liability account the stamp
+  // posts to (see db/gl_posting.go's resolveStampDutyAccount).
+  // invoiceLayout selects which PDF template this organization's invoices
+  // render with — null/"" is the original single-layout template; see
+  // src/components/invoices/layouts.ts for the registry of other values.
+  fiscalStampEnabled: number | null;
+  withholdingTaxEnabled: number | null;
+  defaultFiscalStampAmount: number | null;
+  defaultStampDutyAccountId: string | null;
+  invoiceLayout: string | null;
 }
 
 export interface Order {

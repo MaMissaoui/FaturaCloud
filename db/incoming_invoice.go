@@ -172,7 +172,7 @@ func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*Inc
 	}
 	// Reuses the sales-invoice check verbatim: exact rational arithmetic,
 	// tax rounded once per tax-rate group.
-	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total); err != nil {
+	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, 0); err != nil {
 		return nil, err
 	}
 	org, err := d.GetOrganization(req.OrganizationID)
@@ -282,7 +282,7 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 			}
 		}
 
-		if err := d.validateInvoiceTotals(*lineItems, *subTotal, *taxTotal, *total); err != nil {
+		if err := d.validateInvoiceTotals(*lineItems, *subTotal, *taxTotal, *total, 0); err != nil {
 			return nil, err
 		}
 	}

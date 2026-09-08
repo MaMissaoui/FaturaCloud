@@ -27,6 +27,16 @@ export interface Invoice {
   // XRechnung/B2G. BT-20 payment terms free text; BT-9 due date is dueDate.
   buyerReference: string | null;
   paymentTerms: string | null;
+  // Tunisia invoice support. fiscalStampAmount (timbre fiscal) is additive
+  // into total (see db/invoice_totals.go) and always a number (defaults to
+  // 0), unlike withholdingTaxRate/withholdingTaxAmount (retenue à la
+  // source), which are informational only — they don't change total/
+  // subTotal/taxTotal or the posted GL entry, only the PDF's "Net à
+  // recevoir" display, so they're nullable together rather than defaulting
+  // to 0.
+  fiscalStampAmount: number;
+  withholdingTaxRate: number | null;
+  withholdingTaxAmount: number | null;
 }
 
 export interface InvoiceLineItem {

@@ -60,3 +60,24 @@ func TestIncomingInvoiceLineItemRoundsFractionalUnitPrice(t *testing.T) {
 		t.Fatalf("unitPrice = %d, want 1001 (rounded, not truncated)", items[0].UnitPrice)
 	}
 }
+
+// TestValidateInvoiceTotalsFiscalStampAmount is a regression test for a bug
+// caught in manual verification: fiscalStampAmount arrives in cents (like
+// every other Invoice total column) but was added directly into a
+// currency-units accumulator, overstating its contribution to the expected
+// total 100x. 100 cents of stamp must add exactly 100 cents to the expected
+// total, not 10000.
+func TestValidateInvoiceTotalsFiscalStampAmount(t *testing.T) {
+	d := newTestDB(t)
+	items := []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 1000000}}
+
+	if err := d.validateInvoiceTotals(items, 1000000, 0, 1000100, 100); err != nil {
+		t.Fatalf("validateInvoiceTotals with a 100-cent stamp: %v", err)
+	}
+	if err := d.validateInvoiceTotals(items, 1000000, 0, 1010000, 100); err == nil {
+		t.Fatalf("validateInvoiceTotals should reject a total computed as if the stamp were 100x larger")
+	}
+	if err := d.validateInvoiceTotals(items, 1000000, 0, 1000000, 0); err != nil {
+		t.Fatalf("validateInvoiceTotals with no stamp (0) must behave exactly as before: %v", err)
+	}
+}

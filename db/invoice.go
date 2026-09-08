@@ -45,6 +45,19 @@ type Invoice struct {
 	// XRechnung/B2G. BT-20 payment terms free text; BT-9 due date is dueDate.
 	BuyerReference *string `db:"buyerReference" json:"buyerReference"`
 	PaymentTerms   *string `db:"paymentTerms"   json:"paymentTerms"`
+
+	// Tunisia invoice support. FiscalStampAmount (timbre fiscal) is additive
+	// into Total — see validateInvoiceTotals — and defaults to 0 for every
+	// invoice that doesn't set it. WithholdingTaxRate/WithholdingTaxAmount
+	// (retenue à la source) are informational only: they change how Total is
+	// discharged (part cash, part tax certificate), not what's legally
+	// invoiced, so they're never checked against Total/SubTotal/TaxTotal and
+	// never posted to the GL. WithholdingTaxAmount is stored (not
+	// recomputed on read) so a later tax-rate-adjustment on the invoice's
+	// tax rate can't silently change a figure already shown to the client.
+	FiscalStampAmount    int64    `db:"fiscalStampAmount"    json:"fiscalStampAmount"`
+	WithholdingTaxRate   *float64 `db:"withholdingTaxRate"   json:"withholdingTaxRate"`
+	WithholdingTaxAmount *int64   `db:"withholdingTaxAmount" json:"withholdingTaxAmount"`
 }
 
 // InvoiceLineItem mirrors the invoiceLineItems table.
@@ -97,6 +110,10 @@ type CreateInvoiceRequest struct {
 	LineItems        []CreateInvoiceLineItemRequest `json:"lineItems"`
 	BuyerReference   *string                        `json:"buyerReference"`
 	PaymentTerms     *string                        `json:"paymentTerms"`
+
+	FiscalStampAmount    int64    `json:"fiscalStampAmount"`
+	WithholdingTaxRate   *float64 `json:"withholdingTaxRate"`
+	WithholdingTaxAmount *int64   `json:"withholdingTaxAmount"`
 }
 
 // UpdateInvoiceRequest is the payload for updating an invoice. State is
@@ -119,6 +136,10 @@ type UpdateInvoiceRequest struct {
 	LineItems        *[]CreateInvoiceLineItemRequest `json:"lineItems"`
 	BuyerReference   *string                         `json:"buyerReference"`
 	PaymentTerms     *string                         `json:"paymentTerms"`
+
+	FiscalStampAmount    *int64   `json:"fiscalStampAmount"`
+	WithholdingTaxRate   *float64 `json:"withholdingTaxRate"`
+	WithholdingTaxAmount *int64   `json:"withholdingTaxAmount"`
 }
 
 func (d *Database) GetInvoices(organizationID string) ([]Invoice, error) {
@@ -179,7 +200,7 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 	if !invoiceStates[req.State] {
 		return nil, newValidationError("invalid invoice state %q", req.State)
 	}
-	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total); err != nil {
+	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, req.FiscalStampAmount); err != nil {
 		return nil, err
 	}
 	org, err := d.GetOrganization(req.OrganizationID)
@@ -203,11 +224,12 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
 			currency, exchangeRate, exchangeRateDate, customerNotes, overdueCharge, total, taxTotal, subTotal,
-			buyerReference, paymentTerms
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			buyerReference, paymentTerms, fiscalStampAmount, withholdingTaxRate, withholdingTaxAmount
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Number, req.State, req.ClientID,
 		req.Date, req.DueDate, req.Currency, exchangeRate, req.ExchangeRateDate, req.CustomerNotes, req.OverdueCharge,
 		req.Total, req.TaxTotal, req.SubTotal, req.BuyerReference, req.PaymentTerms,
+		req.FiscalStampAmount, req.WithholdingTaxRate, req.WithholdingTaxAmount,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_invoice insert: %w", err)
@@ -247,7 +269,7 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 func invoiceUpdateTouchesGLFields(updates UpdateInvoiceRequest) bool {
 	return updates.LineItems != nil || updates.SubTotal != nil || updates.TaxTotal != nil ||
 		updates.Total != nil || updates.Currency != nil || updates.ExchangeRate != nil ||
-		updates.ClientID != nil
+		updates.ClientID != nil || updates.FiscalStampAmount != nil
 }
 
 func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest) (*Invoice, error) {
@@ -269,10 +291,12 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 
 	// If any financial field is being touched, validate the *effective*
 	// resulting state — falling back to what's already stored for whichever
-	// of lineItems/total/taxTotal/subTotal isn't part of this request. A
-	// partial update (e.g. totals only, or line items only) must not be able
-	// to bypass validation by omitting the field that would catch it.
-	if updates.LineItems != nil || updates.SubTotal != nil || updates.TaxTotal != nil || updates.Total != nil {
+	// of lineItems/total/taxTotal/subTotal/fiscalStampAmount isn't part of
+	// this request. A partial update (e.g. totals only, or line items only)
+	// must not be able to bypass validation by omitting the field that would
+	// catch it.
+	if updates.LineItems != nil || updates.SubTotal != nil || updates.TaxTotal != nil ||
+		updates.Total != nil || updates.FiscalStampAmount != nil {
 		lineItems := updates.LineItems
 		if lineItems == nil {
 			stored, err := d.GetInvoiceLineItems(invoiceID)
@@ -291,8 +315,8 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 			lineItems = &converted
 		}
 
-		subTotal, taxTotal, total := updates.SubTotal, updates.TaxTotal, updates.Total
-		if subTotal == nil || taxTotal == nil || total == nil {
+		subTotal, taxTotal, total, fiscalStampAmount := updates.SubTotal, updates.TaxTotal, updates.Total, updates.FiscalStampAmount
+		if subTotal == nil || taxTotal == nil || total == nil || fiscalStampAmount == nil {
 			current, err := d.GetInvoice(invoiceID)
 			if err != nil {
 				return nil, fmt.Errorf("update_invoice fetch current: %w", err)
@@ -306,9 +330,12 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 			if total == nil {
 				total = &current.Total
 			}
+			if fiscalStampAmount == nil {
+				fiscalStampAmount = &current.FiscalStampAmount
+			}
 		}
 
-		if err := d.validateInvoiceTotals(*lineItems, *subTotal, *taxTotal, *total); err != nil {
+		if err := d.validateInvoiceTotals(*lineItems, *subTotal, *taxTotal, *total, *fiscalStampAmount); err != nil {
 			return nil, err
 		}
 	}
@@ -362,7 +389,10 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		    taxTotal      = COALESCE(?, taxTotal),
 		    subTotal      = COALESCE(?, subTotal),
 		    buyerReference = ?,
-		    paymentTerms   = ?
+		    paymentTerms   = ?,
+		    fiscalStampAmount    = COALESCE(?, fiscalStampAmount),
+		    withholdingTaxRate   = ?,
+		    withholdingTaxAmount = ?
 		WHERE id = ?`,
 		updates.Number, updates.ClientID,
 		updates.Date, updates.DueDate, updates.Currency,
@@ -371,6 +401,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		updates.CustomerNotes, updates.OverdueCharge,
 		updates.Total, updates.TaxTotal, updates.SubTotal,
 		updates.BuyerReference, updates.PaymentTerms,
+		updates.FiscalStampAmount, updates.WithholdingTaxRate, updates.WithholdingTaxAmount,
 		invoiceID,
 	)
 	if err != nil {

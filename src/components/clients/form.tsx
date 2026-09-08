@@ -59,6 +59,7 @@ const ClientForm = () => {
     return { ...c, emails };
   }, [clients, clientId]);
 
+  const watchedCountryCode = Form.useWatch("country_code", form);
   const countryOptions = useCountryOptions(client?.country_code);
 
   const handleClose = () => {
@@ -208,9 +209,24 @@ const ClientForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
-                  <Input placeholder={t`VAT Number`} />
-                </Form.Item>
+                {/* Tunisia's Matricule Fiscal (MF) is the same "this party's
+                    tax ID" concept the vatin column already stores for
+                    every other country — relabeled, not a new field, since
+                    Tunisia has no VAT-number-shaped identifier to store
+                    alongside it. */}
+                {watchedCountryCode === "TN" ? (
+                  <Form.Item
+                    name="vatin"
+                    label={<Trans>Matricule Fiscal (MF)</Trans>}
+                    tooltip={<Trans>e.g. 1234567A/B/C/000</Trans>}
+                  >
+                    <Input placeholder={t`e.g. 1234567A/B/C/000`} />
+                  </Form.Item>
+                ) : (
+                  <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
+                    <Input placeholder={t`VAT Number`} />
+                  </Form.Item>
+                )}
               </Col>
               <Col xs={24}>
                 <Form.Item name="emails" label={<Trans>E-mails</Trans>}>

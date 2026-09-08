@@ -36,7 +36,14 @@ func roundCents(x float64) int64 {
 // tax lands exactly on a rounding boundary (0.64935 -> 0.65), and float64's
 // binary rounding error can flip which way that goes, which would reject
 // perfectly legitimate invoices created through the normal UI.
-func (d *Database) validateInvoiceTotals(lineItems []CreateInvoiceLineItemRequest, subTotal, taxTotal, total int64) error {
+//
+// fiscalStampAmount (Tunisia's timbre fiscal) is a flat, non-taxable charge
+// that changes what the client owes, so — unlike withholdingTaxRate/
+// withholdingTaxAmount, which change how that amount is discharged and are
+// never checked here — it's added straight into the expected total. It
+// defaults to 0 for every invoice that doesn't set it, so this stays a
+// no-op for every existing caller.
+func (d *Database) validateInvoiceTotals(lineItems []CreateInvoiceLineItemRequest, subTotal, taxTotal, total, fiscalStampAmount int64) error {
 	subtotalUnits := new(big.Rat)
 	groupSubtotals := map[string]*big.Rat{}
 	var groupOrder []string
@@ -79,7 +86,13 @@ func (d *Database) validateInvoiceTotals(lineItems []CreateInvoiceLineItemReques
 		taxTotalUnits.Add(taxTotalUnits, tax)
 	}
 
+	// fiscalStampAmount arrives in cents (like every other Invoice total
+	// column) but subtotalUnits/taxTotalUnits accumulate in currency units
+	// (ratToCents below is what converts back to cents at the end) — divide
+	// by hundred first, the same conversion unitPrice goes through above,
+	// or this silently overstates the stamp's contribution 100x.
 	totalUnits := new(big.Rat).Add(subtotalUnits, taxTotalUnits)
+	totalUnits.Add(totalUnits, new(big.Rat).Quo(new(big.Rat).SetInt64(fiscalStampAmount), hundred))
 
 	wantSubTotal := ratToCents(subtotalUnits)
 	wantTaxTotal := ratToCents(taxTotalUnits)
