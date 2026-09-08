@@ -5,6 +5,8 @@ import { get, post, put, patch, del, CSRF_HEADER } from "./client";
 import type {
   Client,
   Vendor,
+  Import,
+  ImportSummary,
   Invoice,
   InvoiceLineItem,
   Product,
@@ -638,6 +640,22 @@ export const DeleteVendor = (id: string) =>
   del<{ deleted: boolean }>(`/vendors/${id}`).then((r) => r.deleted);
 export const GetVendorDocumentCount = (id: string) =>
   get<{ count: number }>(`/vendors/${id}/document-count`).then((r) => r.count);
+
+// ---- Imports (F114 — consolidated China shipments purchase orders link to) ----
+
+export const GetImports = (organizationId: string) =>
+  get<Import[]>(`/organizations/${organizationId}/imports`);
+export const GetNextImportNumber = (organizationId: string) =>
+  get<{ number: string }>(`/organizations/${organizationId}/imports/next-number`).then(
+    (r) => r.number,
+  );
+export const GetImport = (id: string) => get<Import>(`/imports/${id}`);
+export const GetImportSummary = (id: string) => get<ImportSummary>(`/imports/${id}/summary`);
+export const CreateImport = (req: Partial<Import>) => post<Import>("/imports", req);
+export const UpdateImport = (id: string, req: Partial<Import>) =>
+  put<Import>(`/imports/${id}`, req);
+export const DeleteImport = (id: string) =>
+  del<{ deleted: boolean }>(`/imports/${id}`).then((r) => r.deleted);
 
 // ---- Purchase Orders ----
 

@@ -1,0 +1,12 @@
+-- F114: the credit side of a receipt's allocated landed cost (freight +
+-- customs, see db/gl_posting.go's applyLandedCost) when the receipt's
+-- purchase order belongs to an import — a liability distinct from GRNI
+-- (2150), since GRNI represents only the vendor-invoiceable goods value and
+-- this represents what's still owed to the carrier/customs authority.
+-- Nullable, same convention as every other default*AccountId column: an
+-- organization can use imports without landed cost GL wired up yet, and
+-- posting refuses with a 409 (not a 500) until it is. Seeded for new
+-- organizations by seedDefaultChartOfAccounts and backfilled for existing
+-- ones by SeedImportCostAccountForAllOrganizations (db/account.go),
+-- mirroring the Phase 7 account columns' own backfill shape.
+ALTER TABLE organizations ADD COLUMN defaultImportCostsPayableAccountId TEXT REFERENCES accounts(id);

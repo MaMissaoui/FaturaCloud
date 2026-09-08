@@ -22,8 +22,14 @@ type PurchaseOrder struct {
 	ExchangeRateDate *int64  `db:"exchangeRateDate" json:"exchangeRateDate"`
 	DeliveryAddress  *string `db:"deliveryAddress" json:"deliveryAddress"`
 	Notes            *string `db:"notes"           json:"notes"`
-	VendorName       *string `db:"vendorName"      json:"vendorName"`
-	CreatedAt        int64   `db:"createdAt"       json:"createdAt"`
+	// F114: the shipment this order's goods travel in, if any — drives
+	// landed cost allocation at receiving time (db/gl_posting.go's
+	// applyLandedCost). No ON DELETE clause, same precedent as vendorId
+	// below; guarded app-side by DeleteImport.
+	ImportID     *string `db:"importId"        json:"importId"`
+	VendorName   *string `db:"vendorName"      json:"vendorName"`
+	ImportNumber *string `db:"importNumber"    json:"importNumber"`
+	CreatedAt    int64   `db:"createdAt"       json:"createdAt"`
 }
 
 type PurchaseOrderLineItem struct {
@@ -60,6 +66,7 @@ type CreatePurchaseOrderRequest struct {
 	ExchangeRateDate *int64                               `json:"exchangeRateDate"`
 	DeliveryAddress  *string                              `json:"deliveryAddress"`
 	Notes            *string                              `json:"notes"`
+	ImportID         *string                              `json:"importId"`
 	LineItems        []CreatePurchaseOrderLineItemRequest `json:"lineItems"`
 }
 
@@ -76,6 +83,7 @@ type UpdatePurchaseOrderRequest struct {
 	ExchangeRateDate *int64                                `json:"exchangeRateDate"`
 	DeliveryAddress  *string                               `json:"deliveryAddress"`
 	Notes            *string                               `json:"notes"`
+	ImportID         *string                               `json:"importId"`
 	LineItems        *[]CreatePurchaseOrderLineItemRequest `json:"lineItems"`
 }
 
@@ -101,9 +109,10 @@ var purchaseOrderStatusTransitions = map[string]map[string]bool{
 func (d *Database) GetPurchaseOrders(organizationID string) ([]PurchaseOrder, error) {
 	orders := []PurchaseOrder{}
 	err := d.DB.Select(&orders, `
-		SELECT purchase_orders.*, vendors.name AS vendorName
+		SELECT purchase_orders.*, vendors.name AS vendorName, imports.importNumber AS importNumber
 		FROM purchase_orders
 		LEFT JOIN vendors ON purchase_orders.vendorId = vendors.id
+		LEFT JOIN imports ON purchase_orders.importId = imports.id
 		WHERE purchase_orders.organizationId = ?
 		ORDER BY purchase_orders.orderDate DESC, purchase_orders.createdAt DESC`,
 		organizationID,
@@ -117,9 +126,10 @@ func (d *Database) GetPurchaseOrders(organizationID string) ([]PurchaseOrder, er
 func (d *Database) GetPurchaseOrder(orderID string) (*PurchaseOrder, error) {
 	var order PurchaseOrder
 	err := d.DB.Get(&order, `
-		SELECT purchase_orders.*, vendors.name AS vendorName
+		SELECT purchase_orders.*, vendors.name AS vendorName, imports.importNumber AS importNumber
 		FROM purchase_orders
 		LEFT JOIN vendors ON purchase_orders.vendorId = vendors.id
+		LEFT JOIN imports ON purchase_orders.importId = imports.id
 		WHERE purchase_orders.id = ?
 		LIMIT 1`,
 		orderID,
@@ -190,11 +200,11 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 
 	_, err = tx.Exec(`
 		INSERT INTO purchase_orders (id, organizationId, vendorId, orderNumber, status, orderDate,
-		                             expectedDate, currency, exchangeRate, exchangeRateDate, deliveryAddress, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                             expectedDate, currency, exchangeRate, exchangeRateDate, deliveryAddress, notes, importId)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.VendorID, req.OrderNumber, req.Status,
 		req.OrderDate, req.ExpectedDate, req.Currency, exchangeRate, req.ExchangeRateDate,
-		req.DeliveryAddress, req.Notes,
+		req.DeliveryAddress, req.Notes, req.ImportID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_purchase_order insert: %w", err)
@@ -255,12 +265,13 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 		    exchangeRate     = ?,
 		    exchangeRateDate = ?,
 		    deliveryAddress  = ?,
-		    notes            = ?
+		    notes            = ?,
+		    importId         = ?
 		WHERE id = ?`,
 		updates.VendorID,
 		updates.OrderNumber, updates.OrderDate,
 		updates.ExpectedDate, updates.Currency, exchangeRate, updates.ExchangeRateDate,
-		updates.DeliveryAddress, updates.Notes,
+		updates.DeliveryAddress, updates.Notes, updates.ImportID,
 		orderID,
 	)
 	if err != nil {

@@ -43,6 +43,7 @@ import {
   ExportOutlined,
   BarChartOutlined,
   FileExcelOutlined,
+  ContainerOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -151,7 +152,12 @@ export default function BaseLayout() {
     const pathArray = pathString.split("/");
     const section = pathArray[0];
     const salesSections = ["invoices", "deliveries", "orders"];
-    const purchasingSections = ["purchase-orders", "inbound-deliveries", "incoming-invoices"];
+    const purchasingSections = [
+      "imports",
+      "purchase-orders",
+      "inbound-deliveries",
+      "incoming-invoices",
+    ];
     const masterDataSections = ["clients", "vendors", "products", "organizations"];
     if (section === "settings") {
       openKeys = ["settings"];
@@ -313,6 +319,15 @@ export default function BaseLayout() {
               label: <Trans>Purchasing</Trans>,
               key: "group-purchasing",
               children: [
+                {
+                  icon: <ContainerOutlined />,
+                  label: (
+                    <Link to="/imports">
+                      <Trans>Imports</Trans>
+                    </Link>
+                  ),
+                  key: "imports",
+                },
                 {
                   icon: <ShoppingCartOutlined />,
                   label: (

@@ -98,6 +98,9 @@ func main() {
 	if err := database.SeedInventoryAccountingDefaultsForAllOrganizations(); err != nil {
 		log.Printf("SeedInventoryAccountingDefaultsForAllOrganizations: %v", err)
 	}
+	if err := database.SeedImportCostAccountForAllOrganizations(); err != nil {
+		log.Printf("SeedImportCostAccountForAllOrganizations: %v", err)
+	}
 
 	// Serve embedded frontend from dist/ with SPA fallback to index.html.
 	distFS, err := fs.Sub(assets, "dist")

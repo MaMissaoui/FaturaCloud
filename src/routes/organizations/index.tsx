@@ -972,6 +972,27 @@ export default function Organizations() {
                         </Col>
                         <Col xs={24} md={12}>
                           <Form.Item
+                            name="defaultImportCostsPayableAccountId"
+                            label={<Trans>Default import costs payable account</Trans>}
+                            tooltip={
+                              <Trans>
+                                Credited for the freight/customs allocated to a receipt whose
+                                purchase order belongs to an import — separate from GRNI, which
+                                stays valued at the vendor's goods price only.
+                              </Trans>
+                            }
+                          >
+                            <Select
+                              allowClear
+                              showSearch
+                              placeholder={t`None`}
+                              options={leafAccountOptions}
+                              optionFilterProp="label"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
                             name="datevClearingAccountId"
                             label={<Trans>DATEV clearing account</Trans>}
                             tooltip={

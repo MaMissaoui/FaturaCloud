@@ -116,6 +116,13 @@ type Organization struct {
 	DefaultCOGSAccountID                *string `db:"defaultCOGSAccountId"                json:"defaultCOGSAccountId"`
 	DefaultInventoryAdjustmentAccountID *string `db:"defaultInventoryAdjustmentAccountId" json:"defaultInventoryAdjustmentAccountId"`
 
+	// F114 (China imports): the credit side of a receipt's allocated landed
+	// cost (freight+customs) when its purchase order belongs to an import —
+	// see db/gl_posting.go's buildReceiptGRNILines/applyLandedCost. Separate
+	// from DefaultGRNIAccountID above since GRNI represents only the
+	// vendor-invoiceable goods value.
+	DefaultImportCostsPayableAccountID *string `db:"defaultImportCostsPayableAccountId" json:"defaultImportCostsPayableAccountId"`
+
 	// Invoice feature toggles (fiscal stamp / withholding tax, first added
 	// for Tunisia invoice support) and the invoice PDF layout this
 	// organization's invoices render with — three independent settings, not
@@ -221,6 +228,7 @@ type UpdateOrganizationRequest struct {
 	DefaultGRNIAccountID                *string `json:"defaultGRNIAccountId"`
 	DefaultCOGSAccountID                *string `json:"defaultCOGSAccountId"`
 	DefaultInventoryAdjustmentAccountID *string `json:"defaultInventoryAdjustmentAccountId"`
+	DefaultImportCostsPayableAccountID  *string `json:"defaultImportCostsPayableAccountId"`
 
 	FiscalStampEnabled        *int64  `json:"fiscalStampEnabled"`
 	WithholdingTaxEnabled     *int64  `json:"withholdingTaxEnabled"`
@@ -246,6 +254,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       datev_consultant_number, datev_client_number,
 	       defaultInventoryAccountId, defaultGRNIAccountId,
 	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId,
+	       defaultImportCostsPayableAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, invoiceLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled`
 
@@ -413,6 +422,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     defaultGRNIAccountId                = COALESCE(?, defaultGRNIAccountId),
 		     defaultCOGSAccountId                = COALESCE(?, defaultCOGSAccountId),
 		     defaultInventoryAdjustmentAccountId = COALESCE(?, defaultInventoryAdjustmentAccountId),
+		     defaultImportCostsPayableAccountId  = COALESCE(?, defaultImportCostsPayableAccountId),
 		     defaultFiscalStampAmount  = COALESCE(?, defaultFiscalStampAmount),
 		     defaultStampDutyAccountId = COALESCE(?, defaultStampDutyAccountId),
 		     invoiceLayout             = COALESCE(?, invoiceLayout),
@@ -434,6 +444,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DatevClearingAccountID, updates.DatevConsultantNumber, updates.DatevClientNumber,
 		updates.DefaultInventoryAccountID, updates.DefaultGRNIAccountID,
 		updates.DefaultCOGSAccountID, updates.DefaultInventoryAdjustmentAccountID,
+		updates.DefaultImportCostsPayableAccountID,
 		updates.DefaultFiscalStampAmount, updates.DefaultStampDutyAccountID, updates.InvoiceLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
 		organizationID,
