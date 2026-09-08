@@ -121,6 +121,12 @@ func main() {
 	footerRow := totalsRow + 5
 	set("A"+strconv.Itoa(footerRow), "Payment terms: {{invoice.paymentTerms}}")
 	set("A"+strconv.Itoa(footerRow+1), "IBAN: {{organization.iban}} | Bank: {{organization.bankName}}")
+	// Tunisia invoice support: shown unconditionally, blank/zero value and all,
+	// the same convention as VAT/buyer reference above — this is now the ONLY
+	// place a fiscal-stamp org's stamp duty and withholding tax reach the PDF
+	// (pdf-tunisia.tsx no longer renders once PDF always follows this template).
+	set("A"+strconv.Itoa(footerRow+2), "Fiscal stamp: {{invoice.fiscalStampAmount}}")
+	set("A"+strconv.Itoa(footerRow+3), "Withholding tax ({{invoice.withholdingTaxRate}}): {{invoice.withholdingTaxAmount}}")
 
 	f.SetColWidth(sheet, "A", "A", 28)
 	f.SetColWidth(sheet, "B", "B", 28)
