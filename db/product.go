@@ -36,6 +36,16 @@ type Product struct {
 	Serialized int     `db:"serialized"    json:"serialized"`
 	CreatedAt  *string `db:"createdAt"     json:"createdAt"`
 
+	// Category distinguishes a purchasable component/intermediate from a
+	// sellable finished good — orthogonal to Type, since it only ever
+	// applies to a physical product, never a service (see CreateProduct/
+	// UpdateProduct, which force it to nil whenever Type != "product", the
+	// same defensive-clear shape Serialized already gets when StockEnabled
+	// is off). nil means "unclassified" — every product picker treats that
+	// as eligible on both the purchasing and sales side, so this stays
+	// fully backward compatible and opt-in.
+	Category *string `db:"category" json:"category"`
+
 	// Per-product override of organizations.defaultRevenueAccountId /
 	// defaultExpenseAccountId — same override shape as TaxRateID overriding
 	// taxRates.isDefault. Nil means "use the organization's default".
@@ -53,6 +63,7 @@ type CreateProductRequest struct {
 	UnitCost         *int64  `json:"unitCost"`
 	Unit             *string `json:"unit"`
 	Type             string  `json:"type"`
+	Category         *string `json:"category"`
 	TaxRateID        *string `json:"taxRateId"`
 	StockEnabled     int     `json:"stockEnabled"`
 	Serialized       int     `json:"serialized"`
@@ -68,11 +79,20 @@ type UpdateProductRequest struct {
 	UnitCost         *int64  `json:"unitCost"`
 	Unit             *string `json:"unit"`
 	Type             string  `json:"type"`
+	Category         *string `json:"category"`
 	TaxRateID        *string `json:"taxRateId"`
 	StockEnabled     int     `json:"stockEnabled"`
 	Serialized       int     `json:"serialized"`
 	RevenueAccountID *string `json:"revenueAccountId"`
 	ExpenseAccountID *string `json:"expenseAccountId"`
+}
+
+// productCategories are the only values Product.Category may take besides
+// nil ("unclassified") — the CHECK constraint in migration 0065 enforces the
+// same set at the database level.
+var productCategories = map[string]bool{
+	"finished":  true,
+	"component": true,
 }
 
 // ProductListOptions filters/pages/sorts GetProducts. Limit == 0 means "no
@@ -163,13 +183,21 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if req.StockEnabled == 0 {
 		req.Serialized = 0
 	}
+	// Category only ever means something for a physical product — a service
+	// can't be "the component" or "the finished good" of anything.
+	if req.Type != "product" {
+		req.Category = nil
+	}
+	if req.Category != nil && !productCategories[*req.Category] {
+		return nil, newValidationError("invalid product category %q", *req.Category)
+	}
 	// A brand-new product always has zero stock, so the toggle guard
 	// UpdateProduct enforces has nothing to check here.
 	_, err := d.DB.Exec(
-		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, type, taxRateId, stockEnabled, serialized, revenueAccountId, expenseAccountId)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, type, category, taxRateId, stockEnabled, serialized, revenueAccountId, expenseAccountId)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Description, req.SKU,
-		req.Price, req.UnitCost, req.Unit, req.Type, req.TaxRateID, req.StockEnabled, req.Serialized,
+		req.Price, req.UnitCost, req.Unit, req.Type, req.Category, req.TaxRateID, req.StockEnabled, req.Serialized,
 		req.RevenueAccountID, req.ExpenseAccountID,
 	)
 	if err != nil {
@@ -187,6 +215,12 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 	}
 	if updates.StockEnabled == 0 {
 		updates.Serialized = 0
+	}
+	if updates.Type != "product" {
+		updates.Category = nil
+	}
+	if updates.Category != nil && !productCategories[*updates.Category] {
+		return nil, newValidationError("invalid product category %q", *updates.Category)
 	}
 
 	current, err := d.GetProduct(productID)
@@ -209,11 +243,11 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 
 	_, err = d.DB.Exec(
 		`UPDATE products
-		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, type = ?, taxRateId = ?,
+		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, type = ?, category = ?, taxRateId = ?,
 		     stockEnabled = ?, serialized = ?, revenueAccountId = ?, expenseAccountId = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Description, updates.SKU, updates.Price,
-		updates.UnitCost, updates.Unit, updates.Type, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
+		updates.UnitCost, updates.Unit, updates.Type, updates.Category, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
 		updates.RevenueAccountID, updates.ExpenseAccountID,
 		productID,
 	)

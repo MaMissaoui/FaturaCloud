@@ -296,6 +296,35 @@ const ProductForm = () => {
                 </Form.Item>
               </Col>
 
+              <Col xs={24} md={8}>
+                <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
+                  {({ getFieldValue }) =>
+                    getFieldValue("type") === "product" ? (
+                      <Form.Item
+                        name="category"
+                        label={<Trans>Category</Trans>}
+                        tooltip={
+                          <Trans>
+                            Optional — filters this product out of purchasing pickers (if "Finished
+                            good") or sales pickers (if "Component / intermediate"). Leave unset if
+                            it's neither.
+                          </Trans>
+                        }
+                      >
+                        <Select allowClear placeholder={t`Unclassified`}>
+                          <Select.Option value="finished">
+                            <Trans>Finished good</Trans>
+                          </Select.Option>
+                          <Select.Option value="component">
+                            <Trans>Component / intermediate</Trans>
+                          </Select.Option>
+                        </Select>
+                      </Form.Item>
+                    ) : null
+                  }
+                </Form.Item>
+              </Col>
+
               <Col xs={24}>
                 <Form.Item
                   name="description"

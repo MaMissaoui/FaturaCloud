@@ -31,10 +31,17 @@ type OutboundDelivery struct {
 	Notes           *string `db:"notes"           json:"notes"`
 	Status          string  `db:"status"          json:"status"`
 	CreatedAt       int64   `db:"createdAt"       json:"createdAt"`
+	// OwnClientID is this delivery's own directly-recorded client (migration
+	// 0064) — only ever meaningful (and only ever settable) when OrderID is
+	// nil, since an order-backed delivery's client comes from the order
+	// instead. Exposed as "ownClientId" so API consumers keep reading the
+	// *effective* client — order's client if there is one, else this — via
+	// ClientID below, unchanged from before this field existed.
+	OwnClientID *string `db:"clientId" json:"ownClientId"`
 	// Joined
-	OrderNumber *string `db:"orderNumber" json:"orderNumber"`
-	ClientID    *string `db:"clientId"    json:"clientId"`
-	ClientName  *string `db:"clientName"  json:"clientName"`
+	OrderNumber *string `db:"orderNumber"       json:"orderNumber"`
+	ClientID    *string `db:"effectiveClientId" json:"clientId"`
+	ClientName  *string `db:"clientName"        json:"clientName"`
 }
 
 type OutboundDeliveryLineItem struct {
@@ -62,9 +69,15 @@ type CreateDeliveryLineItemRequest struct {
 }
 
 type CreateDeliveryRequest struct {
-	ID              string                          `json:"id"`
-	OrganizationID  string                          `json:"organizationId"`
-	OrderID         *string                         `json:"orderId"`
+	ID             string  `json:"id"`
+	OrganizationID string  `json:"organizationId"`
+	OrderID        *string `json:"orderId"`
+	// ClientID is only meaningful for a standalone delivery (OrderID nil) —
+	// an order-backed delivery's effective client always comes from the
+	// order instead (see outboundDeliverySelect). Stored regardless of
+	// OrderID for simplicity; it just goes unused/hidden by the COALESCE
+	// whenever an order is also linked.
+	ClientID        *string                         `json:"clientId"`
 	DeliveryNumber  string                          `json:"deliveryNumber"`
 	DeliveryDate    int64                           `json:"deliveryDate"`
 	ShippingAddress *string                         `json:"shippingAddress"`
@@ -75,6 +88,7 @@ type CreateDeliveryRequest struct {
 
 type UpdateDeliveryRequest struct {
 	OrderID         *string                          `json:"orderId"`
+	ClientID        *string                          `json:"clientId"`
 	DeliveryNumber  *string                          `json:"deliveryNumber"`
 	DeliveryDate    *int64                           `json:"deliveryDate"`
 	ShippingAddress *string                          `json:"shippingAddress"`
@@ -83,16 +97,24 @@ type UpdateDeliveryRequest struct {
 	LineItems       *[]CreateDeliveryLineItemRequest `json:"lineItems"`
 }
 
+// outboundDeliverySelect resolves the *effective* client — the linked
+// order's client when there is one, else the delivery's own directly-set
+// clientId (migration 0064) — as effectiveClientId, joining clients once
+// against whichever of those two ids applies rather than twice (order-client
+// vs own-client) and coalescing names, since exactly one of them is ever
+// non-null for a given row.
+const outboundDeliverySelect = `
+	SELECT od.*,
+	       o.orderNumber AS orderNumber,
+	       COALESCE(o.clientId, od.clientId) AS effectiveClientId,
+	       c.name AS clientName
+	FROM outbound_deliveries od
+	LEFT JOIN orders o ON od.orderId = o.id
+	LEFT JOIN clients c ON c.id = COALESCE(o.clientId, od.clientId)`
+
 func (d *Database) GetDeliveries(organizationID string) ([]OutboundDelivery, error) {
 	rows := []OutboundDelivery{}
-	err := d.DB.Select(&rows, `
-		SELECT od.*,
-		       o.orderNumber,
-		       o.clientId,
-		       c.name AS clientName
-		FROM outbound_deliveries od
-		LEFT JOIN orders o ON od.orderId = o.id
-		LEFT JOIN clients c ON o.clientId = c.id
+	err := d.DB.Select(&rows, outboundDeliverySelect+`
 		WHERE od.organizationId = ?
 		ORDER BY od.deliveryDate DESC, od.createdAt DESC`,
 		organizationID,
@@ -105,14 +127,7 @@ func (d *Database) GetDeliveries(organizationID string) ([]OutboundDelivery, err
 
 func (d *Database) GetDelivery(id string) (*OutboundDelivery, error) {
 	var row OutboundDelivery
-	err := d.DB.Get(&row, `
-		SELECT od.*,
-		       o.orderNumber,
-		       o.clientId,
-		       c.name AS clientName
-		FROM outbound_deliveries od
-		LEFT JOIN orders o ON od.orderId = o.id
-		LEFT JOIN clients c ON o.clientId = c.id
+	err := d.DB.Get(&row, outboundDeliverySelect+`
 		WHERE od.id = ?
 		LIMIT 1`,
 		id,
@@ -155,9 +170,9 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 
 	_, err = tx.Exec(`
 		INSERT INTO outbound_deliveries
-		  (id, organizationId, orderId, deliveryNumber, deliveryDate, shippingAddress, trackingNumber, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.ID, req.OrganizationID, req.OrderID, req.DeliveryNumber,
+		  (id, organizationId, orderId, clientId, deliveryNumber, deliveryDate, shippingAddress, trackingNumber, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.ID, req.OrganizationID, req.OrderID, req.ClientID, req.DeliveryNumber,
 		req.DeliveryDate, req.ShippingAddress, req.TrackingNumber, req.Notes,
 	)
 	if err != nil {
@@ -193,13 +208,14 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 	_, err = tx.Exec(`
 		UPDATE outbound_deliveries SET
 		  orderId         = COALESCE(?, orderId),
+		  clientId        = COALESCE(?, clientId),
 		  deliveryNumber  = COALESCE(?, deliveryNumber),
 		  deliveryDate    = COALESCE(?, deliveryDate),
 		  shippingAddress = COALESCE(?, shippingAddress),
 		  trackingNumber  = COALESCE(?, trackingNumber),
 		  notes           = COALESCE(?, notes)
 		WHERE id = ?`,
-		req.OrderID, req.DeliveryNumber, req.DeliveryDate,
+		req.OrderID, req.ClientID, req.DeliveryNumber, req.DeliveryDate,
 		req.ShippingAddress, req.TrackingNumber, req.Notes,
 		id,
 	)

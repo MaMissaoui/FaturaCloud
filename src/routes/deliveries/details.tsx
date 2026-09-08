@@ -79,6 +79,9 @@ const DeliveryDetails = () => {
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
   const products = useAtomValue(productsAtom);
+  // A component/intermediate isn't sellable — exclude it from the picker.
+  // Unclassified products (category null) stay eligible everywhere.
+  const sellableProducts = products.filter((p: any) => p.category !== "component");
   const setProducts = useSetAtom(setProductsAtom);
   const nextNumber = useAtomValue(nextDeliveryNumberAtom);
 
@@ -159,11 +162,14 @@ const DeliveryDetails = () => {
     }
   }, [isNew, deliveryId, navigate]);
 
-  // Populate form when delivery loads
+  // Populate form when delivery loads. The "clientId" form field always
+  // represents this delivery's *own* directly-recorded client (ownClientId)
+  // — never delivery.clientId, which is the order-derived effective value
+  // and would otherwise leak into the field once an order is cleared.
   useEffect(() => {
     if (!isNew && delivery && typeof delivery === "object" && !("then" in delivery)) {
       form.resetFields();
-      form.setFieldsValue(delivery);
+      form.setFieldsValue({ ...delivery, clientId: (delivery as any).ownClientId });
     }
   }, [delivery, isNew, form]);
 
@@ -232,7 +238,7 @@ const DeliveryDetails = () => {
       deliveryData.orderNumber = (orderData as any).orderNumber;
     }
 
-    const clientId = orderData ? (orderData as any).clientId : null;
+    const clientId = orderData ? (orderData as any).clientId : values.clientId;
     const clientData = clientId ? find(clients, { id: clientId }) : null;
 
     const lineItemsForPdf = (values.lineItems ?? []).map((item: any) => ({
@@ -274,6 +280,7 @@ const DeliveryDetails = () => {
   const isEditable = isNew || !["shipped", "delivered"].includes(currentStatus);
 
   const transitions = deliveryTransitions(currentStatus);
+  const watchedOrderId = Form.useWatch("orderId", form);
 
   if (!organization) return null;
   if (!isNew && !delivery) return null;
@@ -292,6 +299,24 @@ const DeliveryDetails = () => {
             </Select>
           </Form.Item>
         </Col>
+        {!watchedOrderId && (
+          <Col xs={24} md={12} xl={6}>
+            <Form.Item label={<Trans>Client</Trans>} name="clientId">
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="children"
+                placeholder={t`Walk-in / no client`}
+              >
+                {(clients as any[]).map((c: any) => (
+                  <Option key={c.id} value={c.id}>
+                    {c.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        )}
         <Col xs={24} md={12} xl={4}>
           <Form.Item
             label={<Trans>Delivery number</Trans>}
@@ -349,7 +374,7 @@ const DeliveryDetails = () => {
           { kind: "index" },
           {
             kind: "product",
-            products,
+            products: sellableProducts,
             required: true,
             onSelect: (productId, fieldName, formInstance) => {
               const lineItems = formInstance.getFieldValue("lineItems");

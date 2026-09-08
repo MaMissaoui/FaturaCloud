@@ -86,6 +86,9 @@ const OrderDetails = () => {
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
   const products = useAtomValue(productsAtom);
+  // A component/intermediate isn't sellable — exclude it from the picker.
+  // Unclassified products (category null) stay eligible everywhere.
+  const sellableProducts = products.filter((p: any) => p.category !== "component");
   const setProducts = useSetAtom(setProductsAtom);
   const nextNumber = useAtomValue(nextOrderNumberAtom);
 
@@ -329,7 +332,7 @@ const OrderDetails = () => {
           { kind: "index" },
           {
             kind: "product",
-            products,
+            products: sellableProducts,
             required: true,
             onSelect: (productId, fieldName, formInstance) => {
               const product = find(products, { id: productId });
