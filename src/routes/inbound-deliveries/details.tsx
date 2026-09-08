@@ -86,6 +86,9 @@ const InboundDeliveryDetails = () => {
   const vendors = useAtomValue(vendorsAtom);
   const setVendors = useSetAtom(setVendorsAtom);
   const products = useAtomValue(productsAtom);
+  // A finished good isn't purchasable from a vendor — exclude it from the
+  // picker. Unclassified products (category null) stay eligible everywhere.
+  const purchasableProducts = products.filter((p: any) => p.category !== "finished");
   const setProducts = useSetAtom(setProductsAtom);
   const purchaseOrders = useAtomValue(purchaseOrdersAtom);
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
@@ -393,7 +396,7 @@ const InboundDeliveryDetails = () => {
           { kind: "index" },
           {
             kind: "product",
-            products,
+            products: purchasableProducts,
             required: true,
             onSelect: (productId, fieldName, formInstance) => {
               const product = find(products, { id: productId });

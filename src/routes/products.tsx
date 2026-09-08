@@ -186,6 +186,22 @@ const Products = () => {
                 )
               }
             />
+            <Table.Column
+              title={<Trans>Category</Trans>}
+              dataIndex="category"
+              key="category"
+              render={(category: string | null) =>
+                category === "finished" ? (
+                  <Tag color="purple">
+                    <Trans>Finished good</Trans>
+                  </Tag>
+                ) : category === "component" ? (
+                  <Tag color="gold">
+                    <Trans>Component</Trans>
+                  </Tag>
+                ) : null
+              }
+            />
             <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" sorter />
             <Table.Column
               title={<Trans>Price</Trans>}

@@ -250,6 +250,9 @@ const InvoiceDetails: React.FC = () => {
   const setClients = useSetAtom(setClientsAtom);
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
+  // A component/intermediate isn't sellable — exclude it from the picker.
+  // Unclassified products (category null) stay eligible everywhere.
+  const sellableProducts = products.filter((p: any) => p.category !== "component");
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
@@ -733,7 +736,7 @@ const InvoiceDetails: React.FC = () => {
                               }
                             }}
                           >
-                            {map(products, (p: any) => (
+                            {map(sellableProducts, (p: any) => (
                               <Option key={p.id} value={p.id}>
                                 {p.name}
                                 {p.sku ? ` (${p.sku})` : ""}

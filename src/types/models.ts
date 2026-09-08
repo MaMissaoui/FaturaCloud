@@ -21,6 +21,11 @@ export interface Product {
   unitCost: number | null;
   unit: string | null;
   type: "product" | "service";
+  // Distinguishes a purchasable component/intermediate from a sellable
+  // finished good — orthogonal to type (the server clears it whenever type
+  // isn't "product"). null means "unclassified" — product pickers treat
+  // that as eligible on both the purchasing and sales side.
+  category: "finished" | "component" | null;
   taxRateId: string | null;
   stockEnabled: number;
   stockQuantity: number;
@@ -191,8 +196,13 @@ export interface Delivery {
   status: string;
   createdAt: number;
   orderNumber: string | null;
+  // clientId is the *effective* client — the linked order's client when
+  // orderId is set, else ownClientId below. ownClientId is only ever
+  // settable (and only ever meaningful) when there's no order — see the
+  // client picker in deliveries/details.tsx.
   clientId: string | null;
   clientName: string | null;
+  ownClientId: string | null;
 }
 
 export interface DeliveryLineItem {

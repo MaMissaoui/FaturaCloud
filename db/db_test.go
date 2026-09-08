@@ -1765,6 +1765,10 @@ func TestClientDocumentCountCoversEveryReference(t *testing.T) {
 		"orders":      true,
 		"projects":    true,
 		"timeEntries": true,
+		// ON DELETE SET NULL, same precedent as orders above (migration
+		// 0064) — an unguarded delete just detaches a standalone delivery
+		// from the client, it doesn't fail or cascade.
+		"outbound_deliveries": true,
 	}
 	for _, name := range clientReferencingTables {
 		covered[name] = true
@@ -3317,5 +3321,171 @@ func TestIncomingInvoiceOverrideClearedWhenFinancialsChange(t *testing.T) {
 	current, _ = d.GetIncomingInvoice(inv.ID)
 	if current.MatchOverride != 1 {
 		t.Fatal("re-stated override was cleared")
+	}
+}
+
+// TestOutboundDeliveryClientPrecedence covers #117: a standalone delivery
+// (no order) can now record its own client, and the effective ClientID a
+// caller reads always prefers the linked order's client over the delivery's
+// own column — even if both happen to be set, which should never happen
+// through the UI (the client field is only shown when there's no order) but
+// must still resolve deterministically if it ever does.
+func TestOutboundDeliveryClientPrecedence(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	clientA, err := d.CreateClient(CreateClientRequest{OrganizationID: org.ID, Name: ptr("Client A")})
+	if err != nil {
+		t.Fatalf("CreateClient A: %v", err)
+	}
+	clientB, err := d.CreateClient(CreateClientRequest{OrganizationID: org.ID, Name: ptr("Client B")})
+	if err != nil {
+		t.Fatalf("CreateClient B: %v", err)
+	}
+	order, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-1", OrganizationID: org.ID, ClientID: &clientA.ID,
+		OrderNumber: "ORD-0001", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder: %v", err)
+	}
+
+	// Standalone delivery: effective client is its own directly-set clientId.
+	standalone, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-standalone", OrganizationID: org.ID, ClientID: &clientB.ID,
+		DeliveryNumber: "DEL-0001", DeliveryDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery standalone: %v", err)
+	}
+	if standalone.ClientID == nil || *standalone.ClientID != clientB.ID {
+		t.Fatalf("standalone delivery: effective ClientID = %v, want %s", standalone.ClientID, clientB.ID)
+	}
+	if standalone.OwnClientID == nil || *standalone.OwnClientID != clientB.ID {
+		t.Fatalf("standalone delivery: OwnClientID = %v, want %s", standalone.OwnClientID, clientB.ID)
+	}
+
+	// Order-backed delivery with no own clientId: effective client is the order's.
+	orderBacked, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-order-backed", OrganizationID: org.ID, OrderID: &order.ID,
+		DeliveryNumber: "DEL-0002", DeliveryDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery order-backed: %v", err)
+	}
+	if orderBacked.ClientID == nil || *orderBacked.ClientID != clientA.ID {
+		t.Fatalf("order-backed delivery: effective ClientID = %v, want %s (order's client)", orderBacked.ClientID, clientA.ID)
+	}
+
+	// Order-backed delivery that also happens to carry its own clientId: the
+	// order's client still wins — the COALESCE order is order-first.
+	both, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-both", OrganizationID: org.ID, OrderID: &order.ID, ClientID: &clientB.ID,
+		DeliveryNumber: "DEL-0003", DeliveryDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery both: %v", err)
+	}
+	if both.ClientID == nil || *both.ClientID != clientA.ID {
+		t.Fatalf("delivery with both order and own client: effective ClientID = %v, want %s (order wins)", both.ClientID, clientA.ID)
+	}
+	if both.OwnClientID == nil || *both.OwnClientID != clientB.ID {
+		t.Fatalf("delivery with both order and own client: OwnClientID = %v, want %s (still stored)", both.OwnClientID, clientB.ID)
+	}
+
+	// GetDeliveries (the list query) must resolve the same way as GetDelivery.
+	list, err := d.GetDeliveries(org.ID)
+	if err != nil {
+		t.Fatalf("GetDeliveries: %v", err)
+	}
+	byID := map[string]OutboundDelivery{}
+	for _, row := range list {
+		byID[row.ID] = row
+	}
+	if got := byID["del-standalone"].ClientID; got == nil || *got != clientB.ID {
+		t.Fatalf("GetDeliveries standalone: ClientID = %v, want %s", got, clientB.ID)
+	}
+	if got := byID["del-order-backed"].ClientID; got == nil || *got != clientA.ID {
+		t.Fatalf("GetDeliveries order-backed: ClientID = %v, want %s", got, clientA.ID)
+	}
+
+	// UpdateDelivery can set/clear the standalone delivery's own client.
+	updated, err := d.UpdateDelivery(standalone.ID, UpdateDeliveryRequest{ClientID: &clientA.ID})
+	if err != nil {
+		t.Fatalf("UpdateDelivery: %v", err)
+	}
+	if updated.ClientID == nil || *updated.ClientID != clientA.ID {
+		t.Fatalf("UpdateDelivery: ClientID = %v, want %s", updated.ClientID, clientA.ID)
+	}
+}
+
+// TestProductCategory covers #113: Category distinguishes a purchasable
+// component from a sellable finished good, is validated against the same
+// set the CHECK constraint (migration 0065) enforces, and is force-cleared
+// whenever Type isn't "product" — a service can't be "the component" or
+// "the finished good" of anything.
+func TestProductCategory(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	component, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Engine", Type: "product", Category: ptr("component"),
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct component: %v", err)
+	}
+	if component.Category == nil || *component.Category != "component" {
+		t.Fatalf("component.Category = %v, want \"component\"", component.Category)
+	}
+
+	finished, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Motorcycle", Type: "product", Category: ptr("finished"),
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct finished: %v", err)
+	}
+	if finished.Category == nil || *finished.Category != "finished" {
+		t.Fatalf("finished.Category = %v, want \"finished\"", finished.Category)
+	}
+
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Bogus", Type: "product", Category: ptr("raw-material"),
+	}); err == nil {
+		t.Fatal("expected CreateProduct to reject an unrecognized category")
+	}
+
+	// A service can't carry a category — it's silently cleared, not rejected,
+	// mirroring how Serialized is force-cleared when StockEnabled is off.
+	service, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Installation", Type: "service", Category: ptr("finished"),
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct service: %v", err)
+	}
+	if service.Category != nil {
+		t.Fatalf("service.Category = %v, want nil (cleared)", service.Category)
+	}
+
+	// UpdateProduct: switching an existing product to "service" clears an
+	// existing category rather than leaving a stale, meaningless value.
+	updated, err := d.UpdateProduct(component.ID, UpdateProductRequest{
+		Name: "Engine (now a service)", Type: "service", Category: ptr("component"),
+	})
+	if err != nil {
+		t.Fatalf("UpdateProduct: %v", err)
+	}
+	if updated.Category != nil {
+		t.Fatalf("updated.Category = %v, want nil (cleared on switch to service)", updated.Category)
+	}
+
+	if _, err := d.UpdateProduct(finished.ID, UpdateProductRequest{
+		Name: "Motorcycle", Type: "product", Category: ptr("not-a-real-category"),
+	}); err == nil {
+		t.Fatal("expected UpdateProduct to reject an unrecognized category")
 	}
 }
