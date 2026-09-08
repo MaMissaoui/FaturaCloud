@@ -1102,24 +1102,32 @@ const InvoiceDetails: React.FC = () => {
                             <FilePdfOutlined /> PDF
                           </Button>
                         )}
-                        {/* Custom templates export to Excel only for now — PDF conversion
-                            (db/pdf_convert.go, LibreOffice headless) is implemented and
-                            tested but deliberately not wired into the Docker image: it
-                            crashes on startup on Alpine (a known LibreOffice/musl issue,
-                            not fixed by any of the standard workarounds), and the fix is
-                            deferred rather than rushed. format=pdf still 503s cleanly from
-                            the server if called directly. */}
+                        {/* Custom templates export via the server (db/xlsx_export.go
+                            fills the org's Excel template, db/pdf_convert.go optionally
+                            converts it with headless LibreOffice — see the Dockerfile's
+                            runtime-stage comment for why that now runs in the shipped
+                            image) rather than the client-side react-pdf path above, since
+                            the server reads persisted rows by invoice id. */}
                         {!isNew && isCustomTemplate && (
                           <Tooltip
                             title={isDirty ? t`Save your changes before exporting` : undefined}
                           >
-                            <Button
-                              disabled={isDirty}
-                              loading={downloadingCustomExport}
-                              onClick={handleCustomTemplateExport("xlsx")}
-                            >
-                              <FileExcelOutlined /> <Trans>Excel</Trans>
-                            </Button>
+                            <Space.Compact>
+                              <Button
+                                disabled={isDirty}
+                                loading={downloadingCustomExport}
+                                onClick={handleCustomTemplateExport("xlsx")}
+                              >
+                                <FileExcelOutlined /> <Trans>Excel</Trans>
+                              </Button>
+                              <Button
+                                disabled={isDirty}
+                                loading={downloadingCustomExport}
+                                onClick={handleCustomTemplateExport("pdf")}
+                              >
+                                <FilePdfOutlined /> PDF
+                              </Button>
+                            </Space.Compact>
                           </Tooltip>
                         )}
                         {!isNew && (

@@ -11,21 +11,14 @@ import (
 )
 
 // ErrPDFConversionUnavailable means the soffice binary isn't on PATH — the
-// expected state in a bare `go run` dev environment or any CI without
-// libreoffice-calc installed, and — as of this writing — also the expected
-// state in the *shipped* Docker image: libreoffice-calc crashes on startup
-// on Alpine (`terminate called after throwing an instance of
-// 'com::sun::star::uno::RuntimeException'`, reproduced with every standard
-// workaround — SAL_USE_VCLPLUGIN=svp, SAL_DISABLE_SKIA=1, a JRE installed,
-// gcompat installed — none fixed it; this matches long-standing, unresolved
-// Alpine/musl LibreOffice packaging issues, not something specific to this
-// app), so the Dockerfile does NOT install libreoffice-calc. This function
-// is complete and tested (db/pdf_convert_test.go) and works wherever soffice
-// actually runs (e.g. local dev with LibreOffice installed) — getting it
-// running in the shipped image (most likely a Debian-based runtime stage,
-// since LibreOffice runs reliably there) is deliberately deferred rather
-// than rushed. The API layer maps this error to 503, not a bare 500: XLSX
-// export works regardless.
+// expected state in a bare `go run` dev environment or any CI job that
+// hasn't installed libreoffice-calc (this repo's CI doesn't, deliberately —
+// see db/pdf_convert_test.go). The *shipped* Docker image does carry
+// libreoffice-calc as of the Debian-based runtime stage (see the
+// Dockerfile's stage-3 comment for why Alpine couldn't run it and Debian
+// can) — this error path exists for those non-image environments, and as a
+// clean 503 rather than a 500 if a future change ever ships without it
+// again. XLSX export works regardless either way.
 var ErrPDFConversionUnavailable = errors.New("PDF conversion is not available on this server (LibreOffice not installed)")
 
 // pdfConvertTimeout bounds a single soffice invocation — a malformed or
