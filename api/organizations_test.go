@@ -49,6 +49,13 @@ func TestDeleteOrganization_AdminSucceeds(t *testing.T) {
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-1", Name: strPtr("ACME")}); err != nil {
 		t.Fatalf("seed CreateOrganization: %v", err)
 	}
+	// Deleting an organization is an org-scoped admin action now (see
+	// api/middleware.go's orgAdmin) — a platform admin isn't automatically
+	// an admin of every organization, so membership must be granted
+	// explicitly, same as any other org-scoped action would require.
+	if _, err := database.AddOrganizationUser("org-1", "test-admin", "admin"); err != nil {
+		t.Fatalf("seed org membership: %v", err)
+	}
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/organizations/org-1", nil)
 	authRequest(req, token)

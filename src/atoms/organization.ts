@@ -9,6 +9,7 @@ import {
   CreateOrganization,
   UpdateOrganization,
   GetOrganizationLogoDataUri,
+  GetMyOrganizationRole,
 } from "src/api";
 
 import { generateInvoiceNumber } from "src/utils/invoice";
@@ -117,6 +118,28 @@ export const organizationAtom = atom(
   },
 );
 organizationAtom.debugLabel = "organizationAtom";
+
+// isOrgAdminAtom reports whether the current user is an admin member of the
+// currently selected organization — the per-org counterpart to
+// isPlatformAdminAtom, gating org-scoped admin actions (delete/reset
+// organization, close fiscal year, GL exports) that a platform admin isn't
+// automatically entitled to on every organization. Reuses
+// organizationRefreshTokenAtom's bump so it refetches whenever the
+// organization itself does (e.g. after a membership change elsewhere).
+export const isOrgAdminAtom = atom(async (get) => {
+  const organizationId = get(organizationIdAtom);
+  get(organizationRefreshTokenAtom);
+  if (!organizationId) return false;
+
+  try {
+    const { role } = await GetMyOrganizationRole(organizationId);
+    return role === "admin";
+  } catch (error) {
+    console.error("Failed to fetch organization role:", error);
+    return false;
+  }
+});
+isOrgAdminAtom.debugLabel = "isOrgAdminAtom";
 
 // Forces organizationAtom to refetch the currently selected organization
 // (including its logo) without going through a create/update. Used after a

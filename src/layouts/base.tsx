@@ -57,8 +57,13 @@ import take from "lodash/take";
 import toUpper from "lodash/toUpper";
 
 import { siderAtom, localeAtom, themeAtom } from "src/atoms/generic";
-import { organizationsAtom, organizationIdAtom, organizationAtom } from "src/atoms/organization";
-import { currentUserAtom, isAdminAtom } from "src/atoms/auth";
+import {
+  organizationsAtom,
+  organizationIdAtom,
+  organizationAtom,
+  isOrgAdminAtom,
+} from "src/atoms/organization";
+import { currentUserAtom, isPlatformAdminAtom } from "src/atoms/auth";
 import { GetVersion, Logout } from "src/api";
 import FeedbackModal from "src/components/feedback-modal";
 import Wordmark from "src/components/wordmark";
@@ -121,7 +126,8 @@ export default function BaseLayout() {
 
   // Auth
   const currentUser = useAtomValue(currentUserAtom);
-  const isAdmin = useAtomValue(isAdminAtom);
+  const isPlatformAdmin = useAtomValue(isPlatformAdminAtom);
+  const isOrgAdmin = useAtomValue(isOrgAdminAtom);
   const handleLogout = () => {
     Logout();
     navigate("/login");
@@ -597,7 +603,7 @@ export default function BaseLayout() {
                   ),
                   key: "settings.document-templates",
                 },
-                ...(isAdmin
+                ...(isPlatformAdmin
                   ? [
                       {
                         icon: <DatabaseOutlined />,
@@ -626,6 +632,14 @@ export default function BaseLayout() {
                         ),
                         key: "settings.countries",
                       },
+                    ]
+                  : []),
+                // GL Export is an org-scoped admin action, not a platform-wide
+                // one — an org admin sees it here even without being a
+                // platform admin, and a platform admin who isn't an admin of
+                // the currently selected organization doesn't.
+                ...(isOrgAdmin
+                  ? [
                       {
                         icon: <ExportOutlined />,
                         label: (

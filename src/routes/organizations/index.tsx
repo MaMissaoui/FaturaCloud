@@ -16,11 +16,12 @@ import {
   Select,
   Space,
   Table,
+  Tag,
   Typography,
   Upload,
   theme,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import {
   ApartmentOutlined,
   DeleteOutlined,
@@ -50,7 +51,13 @@ import {
   GetOrganizationUsageCount,
   ResetOrganizationData,
   GetAccounts,
+  GetMyOrganizationRole,
+  GetOrganizationMembers,
+  AddOrganizationMember,
+  UpdateOrganizationMemberRole,
+  RemoveOrganizationMember,
   type OrganizationUsageCount,
+  type OrganizationMember,
 } from "src/api";
 import { CSRF_HEADER } from "src/api/client";
 import {
@@ -58,7 +65,6 @@ import {
   reloadOrganizationAtom,
   setOrganizationsAtom,
 } from "src/atoms/organization";
-import { isAdminAtom } from "src/atoms/auth";
 import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
 import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
@@ -75,7 +81,6 @@ export default function Organizations() {
   useLingui();
   const { token } = theme.useToken();
   const { message } = App.useApp();
-  const isAdmin = useAtomValue(isAdminAtom);
   const [form] = Form.useForm();
 
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -85,6 +90,11 @@ export default function Organizations() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, OrganizationUsageCount>>({});
+  // Delete/reset are now org-scoped admin actions (see api/middleware.go's
+  // orgAdmin) — a platform admin isn't automatically an admin of every
+  // organization, so each row's own admin status is fetched per organization
+  // rather than a single global isAdmin flag applying to every row.
+  const [myOrgAdminIds, setMyOrgAdminIds] = useState<Set<string>>(new Set());
   const [logoKey, setLogoKey] = useState(0);
   const [hasLogo, setHasLogo] = useState(true);
   const [logoBusy, setLogoBusy] = useState(false);
@@ -99,6 +109,12 @@ export default function Organizations() {
   // the globally-selected organization) — this drawer can edit an org other
   // than the currently-selected one, same reasoning as the Logo card above.
   const [editingAccounts, setEditingAccounts] = useState<Account[]>([]);
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState<"admin" | "user">("user");
+  const [addingMember, setAddingMember] = useState(false);
+  const [memberActionId, setMemberActionId] = useState<string | null>(null);
 
   const [organizationId, setOrganizationId] = useAtom(organizationIdAtom);
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
@@ -111,7 +127,16 @@ export default function Organizations() {
   const fetchOrgs = async () => {
     setLoading(true);
     try {
-      setOrgs(await GetOrganizations());
+      const list = await GetOrganizations();
+      setOrgs(list);
+      const roles = await Promise.all(
+        list.map((org) =>
+          GetMyOrganizationRole(org.id)
+            .then(({ role }) => (role === "admin" ? org.id : null))
+            .catch(() => null),
+        ),
+      );
+      setMyOrgAdminIds(new Set(roles.filter((id): id is string => id !== null)));
     } finally {
       setLoading(false);
     }
@@ -137,6 +162,17 @@ export default function Organizations() {
     setDrawerOpen(true);
   };
 
+  const fetchMembers = async (id: string) => {
+    setMembersLoading(true);
+    try {
+      setMembers(await GetOrganizationMembers(id));
+    } catch (error) {
+      console.error("Failed to fetch organization members:", error);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
   const openEdit = async (id: string) => {
     setEditingId(id);
     form.resetFields();
@@ -146,7 +182,16 @@ export default function Organizations() {
     setResetTransactionalData(false);
     setEditingAccounts([]);
     setActiveSections([]);
+    setMembers([]);
+    setNewMemberEmail("");
+    setNewMemberRole("user");
     setDrawerOpen(true);
+    // Listing members is org-admin gated — only fetch if this actor is known
+    // to administer this organization, to avoid a noisy 403 for everyone
+    // else opening the drawer to view/edit other fields.
+    if (myOrgAdminIds.has(id)) {
+      fetchMembers(id);
+    }
     try {
       const org = await GetOrganization(id);
       // Convert null date_format to undefined so the Select shows placeholder
@@ -177,6 +222,48 @@ export default function Organizations() {
     setResetMasterData(false);
     setResetTransactionalData(false);
     setEditingAccounts([]);
+    setMembers([]);
+  };
+
+  const handleAddMember = async (id: string) => {
+    if (!newMemberEmail.trim()) return;
+    setAddingMember(true);
+    try {
+      await AddOrganizationMember(id, { email: newMemberEmail.trim(), role: newMemberRole });
+      message.success(t`Member added`);
+      setNewMemberEmail("");
+      setNewMemberRole("user");
+      await fetchMembers(id);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Failed to add member`);
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleMemberRoleChange = async (id: string, userId: string, role: "admin" | "user") => {
+    setMemberActionId(userId);
+    try {
+      await UpdateOrganizationMemberRole(id, userId, role);
+      await fetchMembers(id);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Failed to update member role`);
+    } finally {
+      setMemberActionId(null);
+    }
+  };
+
+  const handleRemoveMember = async (id: string, userId: string) => {
+    setMemberActionId(userId);
+    try {
+      await RemoveOrganizationMember(id, userId);
+      message.success(t`Member removed`);
+      await fetchMembers(id);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Failed to remove member`);
+    } finally {
+      setMemberActionId(null);
+    }
   };
 
   const leafAccountOptions = useMemo(
@@ -428,7 +515,7 @@ export default function Organizations() {
           key="actions"
           width={80}
           render={(_: unknown, record: Organization) => {
-            if (!isAdmin) return null;
+            if (!myOrgAdminIds.has(record.id)) return null;
             const counts = usageCounts[record.id];
             const breakdown = counts
               ? [
@@ -1114,7 +1201,98 @@ export default function Organizations() {
             ])}
           />
 
-          {isEdit && editingId && isAdmin && (
+          {isEdit && editingId && myOrgAdminIds.has(editingId) && (
+            <Card size="small" title={<Trans>Members</Trans>} style={{ marginTop: 12 }}>
+              <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                <Table
+                  size="small"
+                  loading={membersLoading}
+                  dataSource={members}
+                  rowKey="userId"
+                  pagination={false}
+                >
+                  <Table.Column
+                    title={<Trans>User</Trans>}
+                    key="user"
+                    render={(_: unknown, record: OrganizationMember) => (
+                      <>
+                        {record.displayName || record.email}
+                        {!record.isActive && (
+                          <Tag color="default" style={{ marginLeft: 8 }}>
+                            <Trans>Inactive</Trans>
+                          </Tag>
+                        )}
+                      </>
+                    )}
+                  />
+                  <Table.Column
+                    title={<Trans>Role</Trans>}
+                    key="role"
+                    width={140}
+                    render={(_: unknown, record: OrganizationMember) => (
+                      <Select
+                        size="small"
+                        value={record.role}
+                        style={{ width: 110 }}
+                        disabled={memberActionId === record.userId}
+                        onChange={(role) => handleMemberRoleChange(editingId, record.userId, role)}
+                        options={[
+                          { value: "admin", label: t`Admin` },
+                          { value: "user", label: t`User` },
+                        ]}
+                      />
+                    )}
+                  />
+                  <Table.Column
+                    title=""
+                    key="actions"
+                    width={60}
+                    render={(_: unknown, record: OrganizationMember) => (
+                      <Popconfirm
+                        title={t`Remove this member?`}
+                        onConfirm={() => handleRemoveMember(editingId, record.userId)}
+                      >
+                        <Button
+                          size="small"
+                          danger
+                          type="text"
+                          icon={<DeleteOutlined />}
+                          loading={memberActionId === record.userId}
+                        />
+                      </Popconfirm>
+                    )}
+                  />
+                </Table>
+                <Space.Compact style={{ width: "100%" }}>
+                  <Input
+                    placeholder={t`Email of an existing user`}
+                    value={newMemberEmail}
+                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                    onPressEnter={() => handleAddMember(editingId)}
+                  />
+                  <Select
+                    value={newMemberRole}
+                    style={{ width: 110 }}
+                    onChange={setNewMemberRole}
+                    options={[
+                      { value: "admin", label: t`Admin` },
+                      { value: "user", label: t`User` },
+                    ]}
+                  />
+                  <Button
+                    type="primary"
+                    loading={addingMember}
+                    disabled={!newMemberEmail.trim()}
+                    onClick={() => handleAddMember(editingId)}
+                  >
+                    <Trans>Add</Trans>
+                  </Button>
+                </Space.Compact>
+              </Space>
+            </Card>
+          )}
+
+          {isEdit && editingId && myOrgAdminIds.has(editingId) && (
             <Card
               size="small"
               title={<Trans>Danger zone</Trans>}

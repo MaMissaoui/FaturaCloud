@@ -10,7 +10,13 @@ export const isAuthenticatedAtom = atom((get) => {
   return get(currentUserAtom) !== null;
 });
 
-export const isAdminAtom = atom((get) => {
+// isPlatformAdminAtom gates the handful of genuinely global actions (user
+// management, backups, DB restore, countries) that have no natural per-org
+// owner. It replaces isAdminAtom, which read the legacy global users.role
+// flag — organization-scoped admin actions (org delete/reset, fiscal-year
+// close, GL exports) now go through isOrgAdminAtom instead, since a platform
+// admin isn't automatically an admin of every organization.
+export const isPlatformAdminAtom = atom((get) => {
   const user = get(currentUserAtom);
-  return user?.role === "admin";
+  return !!user?.isPlatformAdmin;
 });

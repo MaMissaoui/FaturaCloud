@@ -46,6 +46,7 @@ export interface CurrentUser {
   email: string;
   displayName: string;
   role: "admin" | "user";
+  isPlatformAdmin: number;
   isActive: number;
   authProvider: "local" | "oidc";
 }
@@ -268,6 +269,49 @@ export const UploadOrganizationLogo = async (id: string, file: File): Promise<vo
 };
 
 export const DeleteOrganizationLogo = (id: string) => del<void>(`/organizations/${id}/logo`);
+
+// ---- Organization Members ----
+// Per-organization membership/roles — who can access this organization and
+// at what role. Managing membership is itself an org-admin action.
+
+export interface OrganizationMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: "admin" | "user";
+  createdAt: string;
+  email: string;
+  displayName: string;
+  isActive: number;
+}
+
+export const GetOrganizationMembers = (organizationId: string) =>
+  get<OrganizationMember[]>(`/organizations/${organizationId}/members`);
+
+// Not org-admin gated — any authenticated user may ask their own role in an
+// organization, which is how the frontend decides whether to show
+// org-admin-only actions for the currently selected organization.
+export const GetMyOrganizationRole = (organizationId: string) =>
+  get<{ role: "admin" | "user" | ""; isMember: boolean }>(
+    `/organizations/${organizationId}/my-role`,
+  );
+
+// Grants an existing user account access by email — an org admin has no
+// route to list every platform user account to find an id by, so email is
+// what they'd actually have on hand to invite someone with.
+export const AddOrganizationMember = (
+  organizationId: string,
+  req: { email: string; role: "admin" | "user" },
+) => post<OrganizationMember>(`/organizations/${organizationId}/members`, req);
+
+export const UpdateOrganizationMemberRole = (
+  organizationId: string,
+  userId: string,
+  role: "admin" | "user",
+) => put<{ updated: boolean }>(`/organizations/${organizationId}/members/${userId}`, { role });
+
+export const RemoveOrganizationMember = (organizationId: string, userId: string) =>
+  del<void>(`/organizations/${organizationId}/members/${userId}`);
 
 // ---- Document Templates (issue #115) ----
 // Per-org, per-document-type Excel export template overrides. GET returns

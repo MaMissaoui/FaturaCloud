@@ -289,7 +289,6 @@ func (h *handler) issueTokenWithProvider(user userRow, provider string) (string,
 	claims := Claims{
 		UserID:   user.ID,
 		Email:    user.Email,
-		Role:     user.Role,
 		Provider: provider,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
