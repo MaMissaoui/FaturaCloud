@@ -18,12 +18,23 @@ import (
 // exchangeRate direction/storage convention this relies on.
 
 type OutstandingInvoice struct {
-	ID          string `db:"id"         json:"id"`
-	Number      string `db:"number"     json:"number"`
-	ClientName  string `db:"clientName" json:"clientName"`
-	DueDate     *int64 `db:"dueDate"    json:"dueDate"`
-	Total       int64  `db:"total"      json:"total"`
-	DaysOverdue int    `json:"daysOverdue"`
+	ID         string `db:"id"         json:"id"`
+	Number     string `db:"number"     json:"number"`
+	ClientName string `db:"clientName" json:"clientName"`
+	DueDate    *int64 `db:"dueDate"    json:"dueDate"`
+	// Total is the remaining balance converted to the organization's
+	// functional currency (× exchangeRate) — what every bucket/summary sum
+	// below is expressed in. Currency/ForeignTotal (F116, multi-currency
+	// reporting) carry the same balance in the document's own currency,
+	// unconverted, so a foreign-currency AR/AP line stays visible in the
+	// currency it's actually owed in instead of only its functional-currency
+	// equivalent — a display addition, not a new bucketing dimension: the
+	// buckets themselves stay functional-currency, since summing balances
+	// across different currencies into one bucket wouldn't mean anything.
+	Currency     string `db:"currency"     json:"currency"`
+	ForeignTotal int64  `db:"foreignTotal" json:"foreignTotal"`
+	Total        int64  `db:"total"        json:"total"`
+	DaysOverdue  int    `json:"daysOverdue"`
 }
 
 type OutstandingSummary struct {
@@ -109,7 +120,8 @@ func (d *Database) GetDashboardData(organizationID string, months int) (Dashboar
 func (d *Database) getOutstandingInvoices(organizationID string) (OutstandingSummary, error) {
 	invoices := []OutstandingInvoice{}
 	err := d.DB.Select(&invoices, `
-		SELECT i.id, i.number, c.name AS clientName, i.dueDate,
+		SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
+		       CAST(ROUND(i.total - COALESCE(paid.amount, 0)) AS INTEGER) AS foreignTotal,
 		       CAST(ROUND((i.total - COALESCE(paid.amount, 0)) * COALESCE(i.exchangeRate, 1)) AS INTEGER) AS total
 		FROM invoices i
 		JOIN clients c ON i.clientId = c.id
@@ -138,14 +150,17 @@ func (d *Database) GetReceivableAging(organizationID string) (OutstandingSummary
 	return d.getOutstandingInvoices(organizationID)
 }
 
-// OutstandingBill is getOutstandingInvoices' purchases counterpart.
+// OutstandingBill is getOutstandingInvoices' purchases counterpart. See
+// OutstandingInvoice above for what Currency/ForeignTotal carry.
 type OutstandingBill struct {
-	ID          string `db:"id"         json:"id"`
-	Number      string `db:"number"     json:"number"`
-	VendorName  string `db:"vendorName" json:"vendorName"`
-	DueDate     *int64 `db:"dueDate"    json:"dueDate"`
-	Total       int64  `db:"total"      json:"total"`
-	DaysOverdue int    `json:"daysOverdue"`
+	ID           string `db:"id"           json:"id"`
+	Number       string `db:"number"       json:"number"`
+	VendorName   string `db:"vendorName"   json:"vendorName"`
+	DueDate      *int64 `db:"dueDate"      json:"dueDate"`
+	Currency     string `db:"currency"     json:"currency"`
+	ForeignTotal int64  `db:"foreignTotal" json:"foreignTotal"`
+	Total        int64  `db:"total"        json:"total"`
+	DaysOverdue  int    `json:"daysOverdue"`
 }
 
 // OutstandingBillSummary mirrors OutstandingSummary for bills.
@@ -170,7 +185,8 @@ type OutstandingBillSummary struct {
 func (d *Database) GetPayableAging(organizationID string) (OutstandingBillSummary, error) {
 	bills := []OutstandingBill{}
 	err := d.DB.Select(&bills, `
-		SELECT ii.id, ii.vendorInvoiceNumber AS number, v.name AS vendorName, ii.dueDate,
+		SELECT ii.id, ii.vendorInvoiceNumber AS number, v.name AS vendorName, ii.dueDate, ii.currency,
+		       CAST(ROUND(ii.total - COALESCE(paid.amount, 0)) AS INTEGER) AS foreignTotal,
 		       CAST(ROUND((ii.total - COALESCE(paid.amount, 0)) * COALESCE(ii.exchangeRate, 1)) AS INTEGER) AS total
 		FROM incoming_invoices ii
 		JOIN vendors v ON ii.vendorId = v.id

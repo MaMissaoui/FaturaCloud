@@ -9,6 +9,7 @@ import { GetPayableAging } from "src/api";
 import type { OutstandingBillSummary, PayableAgingSummary } from "src/api";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
+import { formatCents } from "src/utils/currency";
 
 const PayableAging = () => {
   const { i18n } = useLingui();
@@ -106,7 +107,16 @@ const PayableAging = () => {
               title={<Trans>Balance due</Trans>}
               key="total"
               align="right"
-              render={(bill: OutstandingBillSummary) => money(bill.total)}
+              render={(bill: OutstandingBillSummary) => (
+                <>
+                  {money(bill.total)}
+                  {organization?.currency && bill.currency !== organization.currency && (
+                    <div style={{ color: token.colorTextSecondary, fontSize: 12 }}>
+                      {formatCents(bill.foreignTotal, bill.currency, i18n.locale)}
+                    </div>
+                  )}
+                </>
+              )}
             />
           </Table>
         </Col>

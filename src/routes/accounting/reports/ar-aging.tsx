@@ -9,6 +9,7 @@ import { GetReceivableAging } from "src/api";
 import type { OutstandingInvoiceSummary, OutstandingSummary } from "src/api";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
+import { formatCents } from "src/utils/currency";
 
 const ReceivableAging = () => {
   const { i18n } = useLingui();
@@ -106,7 +107,16 @@ const ReceivableAging = () => {
               title={<Trans>Balance due</Trans>}
               key="total"
               align="right"
-              render={(inv: OutstandingInvoiceSummary) => money(inv.total)}
+              render={(inv: OutstandingInvoiceSummary) => (
+                <>
+                  {money(inv.total)}
+                  {organization?.currency && inv.currency !== organization.currency && (
+                    <div style={{ color: token.colorTextSecondary, fontSize: 12 }}>
+                      {formatCents(inv.foreignTotal, inv.currency, i18n.locale)}
+                    </div>
+                  )}
+                </>
+              )}
             />
           </Table>
         </Col>

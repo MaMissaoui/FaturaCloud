@@ -518,6 +518,11 @@ export interface OutstandingInvoiceSummary {
   number: string;
   clientName: string;
   dueDate: number | null;
+  // currency/foreignTotal (F116, multi-currency reporting) carry the same
+  // remaining balance in the invoice's own currency, unconverted — total is
+  // always the functional-currency (organization.currency) equivalent.
+  currency: string;
+  foreignTotal: number;
   total: number;
   daysOverdue: number;
 }
@@ -800,6 +805,9 @@ export interface OutstandingBillSummary {
   number: string;
   vendorName: string;
   dueDate: number | null;
+  // See OutstandingInvoiceSummary above for what currency/foreignTotal carry.
+  currency: string;
+  foreignTotal: number;
   total: number;
   daysOverdue: number;
 }
