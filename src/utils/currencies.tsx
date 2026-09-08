@@ -35,9 +35,23 @@ export const getFormattedNumber = (
 ) => {
   if (!isNumber(number)) return "-";
 
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: organization.minimum_fraction_digits,
-  }).format(number);
+  // A record's own currency should always be set, but a blank/invalid code
+  // (bad data, an incomplete import) must never crash the whole page —
+  // Intl.NumberFormat throws a RangeError on anything it doesn't recognize,
+  // and an uncaught throw inside a table cell's render aborts the entire
+  // React tree with no fallback UI. Fall back to the organization's own
+  // currency first (the documented "blank means the org's own" convention),
+  // then to a plain unstyled number as a last resort so this can never throw.
+  const effectiveCurrency = currency || organization?.currency;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: effectiveCurrency,
+      minimumFractionDigits: organization.minimum_fraction_digits,
+    }).format(number);
+  } catch {
+    return new Intl.NumberFormat(locale, {
+      minimumFractionDigits: organization.minimum_fraction_digits,
+    }).format(number);
+  }
 };

@@ -35,10 +35,17 @@ export function unitsToCents(units: number, precision: number = 2): number {
  */
 export function formatCents(cents: number, currency: string, locale: string): string {
   const units = centsToUnits(cents);
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currency,
-  }).format(units);
+  // A blank/invalid currency code must never crash the caller — see
+  // getFormattedNumber in src/utils/currencies.tsx for the same guard and
+  // why (Intl.NumberFormat throws a RangeError otherwise).
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency,
+    }).format(units);
+  } catch {
+    return new Intl.NumberFormat(locale).format(units);
+  }
 }
 
 /**
