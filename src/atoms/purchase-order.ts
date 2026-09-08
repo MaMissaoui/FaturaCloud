@@ -156,6 +156,51 @@ export const updatePurchaseOrderStatusAtom = atom(
   },
 );
 
+// Links (or unlinks, passing importId: null) an existing purchase order to
+// an import from the Imports drawer, without going through the full PO edit
+// form. UpdatePurchaseOrder's SQL sets currency/exchangeRateDate/
+// deliveryAddress/notes/importId unconditionally (not COALESCE'd) — sending
+// only {importId} would silently null out the order's other fields, so this
+// resends its current values from the already-loaded list record.
+//
+// exchangeRate is deliberately the one field NOT resent: db/purchase_order.go
+// reads it back as a TEXT column (`*string`, exact decimal), but the PUT
+// endpoint's UpdatePurchaseOrderRequest expects `*float64` — forwarding the
+// string as-is fails strict JSON decoding with a 400 on every foreign-currency
+// order. Omitting it (currency unchanged, no new rate) makes
+// resolveExchangeRateForSave fall through to "keep the currently stored rate"
+// and preserves the exact stored decimal instead of round-tripping it through
+// float64.
+export const setPurchaseOrderImportAtom = atom(
+  null,
+  async (get, set, { orderId, importId }: { orderId: string; importId: string | null }) => {
+    const orders: any[] = get(purchaseOrdersAtom);
+    const po = orders.find((o) => o.id === orderId);
+    if (!po) return false;
+    try {
+      const updated = await UpdatePurchaseOrder(orderId, {
+        vendorId: po.vendorId,
+        orderNumber: po.orderNumber,
+        orderDate: po.orderDate,
+        expectedDate: po.expectedDate,
+        currency: po.currency,
+        exchangeRateDate: po.exchangeRateDate,
+        deliveryAddress: po.deliveryAddress,
+        notes: po.notes,
+        importId,
+      });
+      const merged: any = keyBy([...get(purchaseOrdersAtom), updated], "id");
+      set(purchaseOrdersAtom, orderBy(map(merged), "orderDate", "desc"));
+      message.success(importId ? t`Purchase order linked` : t`Purchase order unlinked`);
+      return true;
+    } catch (error) {
+      console.error("Failed to update purchase order's import link:", error);
+      message.error(error instanceof Error ? error.message : t`Failed to update purchase order`);
+      return false;
+    }
+  },
+);
+
 export const deletePurchaseOrderAtom = atom(null, async (get, set, orderId: string) => {
   try {
     const success = await DeletePurchaseOrder(orderId);

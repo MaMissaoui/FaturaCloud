@@ -95,6 +95,26 @@ const PurchaseOrders = () => {
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
+              title={<Trans>Import</Trans>}
+              key="importNumber"
+              sorter={(a: PurchaseOrder, b: PurchaseOrder) =>
+                (a.importNumber ?? "").localeCompare(b.importNumber ?? "")
+              }
+              render={(o: PurchaseOrder) =>
+                o.importNumber ? (
+                  <Link
+                    to="/imports"
+                    state={{ importModal: true, importId: o.importId }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {o.importNumber}
+                  </Link>
+                ) : (
+                  "—"
+                )
+              }
+            />
+            <Table.Column
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"

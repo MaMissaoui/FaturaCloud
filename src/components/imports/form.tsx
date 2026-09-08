@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import {
   Button,
   Card,
@@ -11,20 +11,30 @@ import {
   InputNumber,
   Popconfirm,
   Row,
+  Select,
   Space,
   Statistic,
+  Table,
+  Tag,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, DisconnectOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import get from "lodash/get";
+import map from "lodash/map";
 
 import { GetNextImportNumber, GetImportSummary } from "src/api";
 import type { ImportSummary } from "src/types/models";
 import { importIdAtom, importAtom, importsAtom, deleteImportAtom } from "src/atoms/import";
+import { purchaseOrdersAtom, setPurchaseOrderImportAtom } from "src/atoms/purchase-order";
+import {
+  purchaseOrderStatusColor,
+  purchaseOrderStatusLabel,
+  type PurchaseOrderStatus,
+} from "src/types/purchase-order";
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import { centsToUnits, unitsToCents, formatCents } from "src/utils/currency";
 import { useDatePickerFormat } from "src/utils/date";
@@ -35,6 +45,7 @@ import ExchangeRateFields, {
 import ScrollShadow from "src/components/scroll-shadow";
 
 const { TextArea } = Input;
+const { Option } = Select;
 
 const ImportForm = () => {
   const { i18n } = useLingui();
@@ -47,14 +58,38 @@ const ImportForm = () => {
   const imports = useAtomValue(importsAtom);
   const setImportRecord = useSetAtom(importAtom);
   const deleteImport = useSetAtom(deleteImportAtom);
+  const orders = useAtomValue(purchaseOrdersAtom);
+  const setPurchaseOrderImport = useSetAtom(setPurchaseOrderImportAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
   const orgCurrency = organization?.currency ?? "EUR";
 
   const [submitting, setSubmitting] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
+  // Bumped after a link/unlink so the Allocation card's committed-value/rate
+  // re-fetches — GetImportSummary is otherwise only keyed on importId.
+  const [summaryTick, setSummaryTick] = useState(0);
+  // Tracks edits to the import's own fields (not the linked-PO actions
+  // below), so "New purchase order" can warn before navigating away with
+  // unsaved changes — same isDirty idiom as src/routes/invoices/details.tsx.
+  const [isDirty, setIsDirty] = useState(false);
+  const [linkOrderId, setLinkOrderId] = useState<string | null>(null);
+  const [linking, setLinking] = useState(false);
 
   const isVisible = get(location.state, "importModal", false);
+
+  const linkedOrders = useMemo(
+    () => orders.filter((o: any) => o.importId === importId),
+    [orders, importId],
+  );
+  // Only a PO that isn't already someone else's shipment and hasn't moved
+  // past "confirmed" is a sensible attach target — matches the statuses
+  // purchaseOrderTransitions still allows moving out of.
+  const candidateOrders = useMemo(
+    () =>
+      orders.filter((o: any) => !o.importId && (o.status === "draft" || o.status === "confirmed")),
+    [orders],
+  );
 
   const importRecord = useMemo(() => {
     if (!importId) return null;
@@ -66,6 +101,7 @@ const ImportForm = () => {
   const handleClose = () => {
     setImportId(null);
     form.resetFields();
+    setIsDirty(false);
     navigate(location.pathname, { state: { importModal: false } });
   };
 
@@ -122,9 +158,11 @@ const ImportForm = () => {
         freightCost: centsToUnits(importRecord.freightCost),
         customsCost: centsToUnits(importRecord.customsCost),
       });
+      setIsDirty(false);
     } else if (!importId && isVisible) {
       form.resetFields();
       form.setFieldsValue({ date: dayjs() });
+      setIsDirty(false);
       if (organizationId) {
         GetNextImportNumber(organizationId).then((number) =>
           form.setFieldValue("importNumber", number),
@@ -141,16 +179,44 @@ const ImportForm = () => {
     } else {
       setSummary(null);
     }
-  }, [importId]);
+    // summaryTick: re-fetch after a linked purchase order is attached/detached
+    // from the "Purchase orders" card below, since that never touches the
+    // import record itself.
+  }, [importId, summaryTick]);
 
-  const canDelete = summary === null || summary.purchaseOrderCount === 0;
+  // Server guard (GetImportPurchaseOrderCount) counts every linked purchase
+  // order regardless of status or line items — matching that exactly here
+  // avoids offering a Delete button that then 409s.
+  const canDelete = linkedOrders.length === 0;
+
+  const handleLinkOrder = async () => {
+    if (!importId || !linkOrderId) return;
+    setLinking(true);
+    const ok = await setPurchaseOrderImport({ orderId: linkOrderId, importId });
+    if (ok) {
+      setLinkOrderId(null);
+      setSummaryTick((tick) => tick + 1);
+    }
+    setLinking(false);
+  };
+
+  const handleUnlinkOrder = async (orderId: string) => {
+    if (!importId) return;
+    const ok = await setPurchaseOrderImport({ orderId, importId: null });
+    if (ok) setSummaryTick((tick) => tick + 1);
+  };
+
+  const handleNewPurchaseOrder = () => {
+    if (!importId) return;
+    navigate("/purchase-orders/new", { state: { importId } });
+  };
 
   return (
     <Drawer
       title={importId ? <Trans>Edit import</Trans> : <Trans>New import</Trans>}
       open={isVisible}
       placement="right"
-      size={560}
+      size={640}
       onClose={handleClose}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -181,7 +247,12 @@ const ImportForm = () => {
       }
     >
       <ScrollShadow>
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          onValuesChange={() => setIsDirty(true)}
+        >
           <Card size="small" title={<Trans>Shipment</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
@@ -250,27 +321,119 @@ const ImportForm = () => {
             </Row>
           </Card>
 
+          {importId && (
+            <Card
+              size="small"
+              title={<Trans>Purchase orders</Trans>}
+              style={{ marginBottom: 12 }}
+              extra={
+                isDirty ? (
+                  <Popconfirm
+                    title={<Trans>Discard unsaved changes to this import?</Trans>}
+                    onConfirm={handleNewPurchaseOrder}
+                    okText={<Trans>Yes</Trans>}
+                    cancelText={<Trans>No</Trans>}
+                  >
+                    <Button type="link" size="small">
+                      <Trans>New purchase order</Trans>
+                    </Button>
+                  </Popconfirm>
+                ) : (
+                  <Button type="link" size="small" onClick={handleNewPurchaseOrder}>
+                    <Trans>New purchase order</Trans>
+                  </Button>
+                )
+              }
+            >
+              <Space.Compact style={{ width: "100%", marginBottom: 12 }}>
+                <Select
+                  showSearch
+                  optionFilterProp="children"
+                  placeholder={t`Link an existing purchase order`}
+                  style={{ flex: 1 }}
+                  value={linkOrderId ?? undefined}
+                  onChange={setLinkOrderId}
+                  notFoundContent={<Trans>No unlinked draft or confirmed purchase orders</Trans>}
+                >
+                  {map(candidateOrders, (o: any) => (
+                    <Option key={o.id} value={o.id}>
+                      {o.orderNumber} — {o.vendorName ?? t`No vendor`}
+                    </Option>
+                  ))}
+                </Select>
+                <Button
+                  type="primary"
+                  disabled={!linkOrderId}
+                  loading={linking}
+                  onClick={handleLinkOrder}
+                >
+                  <Trans>Link</Trans>
+                </Button>
+              </Space.Compact>
+
+              <Table
+                size="small"
+                pagination={false}
+                dataSource={linkedOrders}
+                rowKey="id"
+                locale={{
+                  emptyText: <Trans>No purchase orders linked to this shipment yet.</Trans>,
+                }}
+              >
+                <Table.Column
+                  title={<Trans>Order #</Trans>}
+                  key="orderNumber"
+                  render={(o: any) => <Link to={`/purchase-orders/${o.id}`}>{o.orderNumber}</Link>}
+                />
+                <Table.Column
+                  title={<Trans>Vendor</Trans>}
+                  key="vendorName"
+                  render={(o: any) => o.vendorName ?? "—"}
+                />
+                <Table.Column
+                  title={<Trans>Status</Trans>}
+                  key="status"
+                  render={(o: any) => (
+                    <Tag color={purchaseOrderStatusColor[o.status as PurchaseOrderStatus]}>
+                      {purchaseOrderStatusLabel(o.status)}
+                    </Tag>
+                  )}
+                />
+                <Table.Column
+                  key="actions"
+                  width={40}
+                  align="right"
+                  render={(o: any) => (
+                    <Popconfirm
+                      title={<Trans>Unlink this purchase order from the shipment?</Trans>}
+                      onConfirm={() => handleUnlinkOrder(o.id)}
+                      okText={<Trans>Yes</Trans>}
+                      cancelText={<Trans>No</Trans>}
+                    >
+                      <Button type="text" danger size="small" icon={<DisconnectOutlined />} />
+                    </Popconfirm>
+                  )}
+                />
+              </Table>
+            </Card>
+          )}
+
           {importId && summary && (
             <Card size="small" title={<Trans>Allocation</Trans>}>
               <Row gutter={[16, 16]}>
-                <Col xs={12}>
-                  <Statistic
-                    title={<Trans>Linked purchase orders</Trans>}
-                    value={summary.purchaseOrderCount}
-                  />
-                </Col>
                 <Col xs={12}>
                   <Statistic
                     title={<Trans>Committed value</Trans>}
                     value={formatCents(summary.totalCommittedValue, orgCurrency, i18n.locale)}
                   />
                 </Col>
-                <Col xs={24}>
+                <Col xs={12}>
                   <Statistic
                     title={<Trans>Landed cost rate</Trans>}
                     value={`${(summary.landedCostRate * 100).toFixed(1)}%`}
-                    valueStyle={{ fontSize: 20 }}
                   />
+                </Col>
+                <Col xs={24}>
                   <Trans>
                     Applied to each received line's own value once its purchase order's goods are
                     received — not force-balanced against freight+customs across partial or uncosted

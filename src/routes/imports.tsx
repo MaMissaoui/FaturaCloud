@@ -14,6 +14,7 @@ import some from "lodash/some";
 import toString from "lodash/toString";
 
 import { importsAtom, setImportsAtom } from "src/atoms/import";
+import { setPurchaseOrdersAtom } from "src/atoms/purchase-order";
 import { organizationAtom } from "src/atoms/organization";
 import ImportForm from "src/components/imports/form";
 import PageHeader from "src/components/page-header";
@@ -28,6 +29,7 @@ const Imports = () => {
   const navigate = useNavigate();
   const imports = useAtomValue(importsAtom);
   const setImports = useSetAtom(setImportsAtom);
+  const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
   const organization = useAtomValue(organizationAtom);
   const [search, setSearch] = useAtom(searchAtom);
   const [loading, setLoading] = useState(false);
@@ -37,8 +39,12 @@ const Imports = () => {
     if (location.pathname === "/imports") {
       setLoading(true);
       setImports().finally(() => setLoading(false));
+      // Needed for the drawer's linked-purchase-orders card, not this page's
+      // own table — fetched here (once, on list mount) rather than inside
+      // the drawer so it's already warm by the time a row is clicked.
+      setPurchaseOrders();
     }
-  }, [location, setImports]);
+  }, [location, setImports, setPurchaseOrders]);
 
   const searchImports = () => {
     return filter(imports, (imp: Import) => {

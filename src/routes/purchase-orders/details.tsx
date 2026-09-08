@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import {
   Button,
   Col,
@@ -82,6 +82,7 @@ const loadableOrderAtom = loadable(purchaseOrderAtom);
 
 const PurchaseOrderDetails = () => {
   const { id } = useParams<string>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { i18n } = useLingui();
   const {
@@ -90,6 +91,10 @@ const PurchaseOrderDetails = () => {
   const dateFormat = useDatePickerFormat();
 
   const isNew = id === "new";
+  // Set when navigating here from the Imports drawer's "New purchase order"
+  // action (src/components/imports/form.tsx) — pre-links the order the same
+  // way picking it from the Import Select below would.
+  const prefillImportId = isNew ? ((location.state as any)?.importId ?? null) : null;
 
   const organization = useAtomValue(organizationAtom);
   const vendors = useAtomValue(vendorsAtom);
@@ -159,6 +164,21 @@ const PurchaseOrderDetails = () => {
       form.setFieldsValue(order);
     }
   }, [order, isNew, form]);
+
+  // Same cascade as the Import Select's onChange below, run once for a
+  // pre-linked new order — `imports` may still be loading on first render
+  // (fetched by the effect above), so this can't rely on initialValues alone.
+  useEffect(() => {
+    if (!isNew || !prefillImportId) return;
+    const imp = find(imports, { id: prefillImportId }) as any;
+    if (imp?.currency) {
+      form.setFieldsValue({
+        currency: imp.currency,
+        exchangeRate: imp.exchangeRate ?? undefined,
+        exchangeRateDate: imp.exchangeRateDate ? dayjs(imp.exchangeRateDate) : undefined,
+      });
+    }
+  }, [isNew, prefillImportId, imports, form]);
 
   const lineItems = Form.useWatch("lineItems", form) ?? [];
   const subTotal = sum(
@@ -259,6 +279,7 @@ const PurchaseOrderDetails = () => {
         orderDate: dayjs(),
         status: "draft",
         currency: organization?.currency ?? "EUR",
+        importId: prefillImportId ?? undefined,
         lineItems: [{ quantity: 1 }],
       }
     : undefined;
