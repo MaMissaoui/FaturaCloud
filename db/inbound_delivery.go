@@ -418,7 +418,7 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 	// receipt's own line items (this function is the only writer touching
 	// this receipt's status).
 	var lines []inboundStockLine
-	var convertedUnitCosts map[string]int64
+	var landedUnitCosts map[string]int64
 	var grniLines []CreateJournalLineRequest
 	var grniJournal *Journal
 	var existingGRNIEntry *JournalEntry
@@ -437,13 +437,23 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		if err != nil {
 			return nil, fmt.Errorf("update_inbound_delivery_status rate: %w", err)
 		}
-		convertedUnitCosts = map[string]int64{}
+		vendorUnitCosts := map[string]int64{}
 		for _, line := range lines {
 			if line.UnitCost != nil {
-				convertedUnitCosts[line.LineItemID] = convertCents(*line.UnitCost, rate)
+				vendorUnitCosts[line.LineItemID] = convertCents(*line.UnitCost, rate)
 			}
 		}
-		grniLines, grniJournal, err = buildReceiptGRNILines(d, current, lines, convertedUnitCosts)
+		// F114: a line tied to a PO under an import gets that import's
+		// freight+customs allocated on top of its vendor cost — the result
+		// (landedUnitCosts) is what reaches stockMovements/average cost
+		// below; vendorUnitCosts itself stays untouched and is what GRNI is
+		// still valued at (buildReceiptGRNILines).
+		var importCostMarkupTotal int64
+		landedUnitCosts, importCostMarkupTotal, err = d.applyLandedCost(lines, vendorUnitCosts)
+		if err != nil {
+			return nil, err
+		}
+		grniLines, grniJournal, err = buildReceiptGRNILines(d, current, lines, vendorUnitCosts, importCostMarkupTotal)
 		if err != nil {
 			return nil, err
 		}
@@ -524,10 +534,11 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		}
 
 		for _, line := range lines {
-			// Already converted to organization-currency terms above
-			// (convertedUnitCosts), before the transaction opened.
+			// Already converted to organization-currency terms, and (F114)
+			// landed-cost-allocated where applicable, above (landedUnitCosts)
+			// before the transaction opened.
 			var unitCost *int64
-			if v, ok := convertedUnitCosts[line.LineItemID]; ok {
+			if v, ok := landedUnitCosts[line.LineItemID]; ok {
 				unitCost = &v
 			}
 

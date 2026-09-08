@@ -217,7 +217,7 @@ var accountReferencingOrganizationColumns = []string{
 	"fxLossAccountId", "retainedEarningsAccountId", "datevClearingAccountId",
 	"defaultInventoryAccountId", "defaultGRNIAccountId",
 	"defaultCOGSAccountId", "defaultInventoryAdjustmentAccountId",
-	"defaultStampDutyAccountId",
+	"defaultStampDutyAccountId", "defaultImportCostsPayableAccountId",
 }
 
 // GetAccountUsageCount returns how many rows reference this account, so
@@ -477,6 +477,28 @@ func phase7AdditionsFor(chart []defaultChartAccount) []defaultChartAccount {
 	return out
 }
 
+// importCostAdditions is F114's one account (China-import landed cost),
+// seeded the same way phase7BaseAdditions is — a shared, honestly generic
+// code across every chart template rather than an invented SKR04/PCG-
+// looking number, since no real chart agrees on one "import costs payable"
+// account either. Kept as its own list, not folded into phase7BaseAdditions,
+// since it's a separate feature with its own org-level default column
+// (defaultImportCostsPayableAccountId) and its own backfill function below.
+var importCostAdditions = []defaultChartAccount{
+	{code: "2160", name: "Import Costs Payable", accountType: "liability", defaultRole: "importCostsPayable"},
+}
+
+// importCostAdditionsFor is importCostAdditions with its parentCode resolved
+// against chart — the phase7AdditionsFor twin for a brand-new organization.
+func importCostAdditionsFor(chart []defaultChartAccount) []defaultChartAccount {
+	out := make([]defaultChartAccount, len(importCostAdditions))
+	for i, a := range importCostAdditions {
+		a.parentCode = headerCodeForType(chart, a.accountType)
+		out[i] = a
+	}
+	return out
+}
+
 // seedDefaultChartOfAccounts inserts the starter chart for organizationID —
 // resolveChartTemplate(country)'s curated import if one exists, otherwise
 // the generic defaultChartOfAccounts — plus phase7BaseAdditions, and wires
@@ -488,6 +510,7 @@ func phase7AdditionsFor(chart []defaultChartAccount) []defaultChartAccount {
 func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string, country *string) error {
 	chart := resolveChartTemplate(country)
 	full := append(append([]defaultChartAccount{}, chart...), phase7AdditionsFor(chart)...)
+	full = append(full, importCostAdditionsFor(chart)...)
 
 	codeToID := make(map[string]string, len(full))
 	roleToID := make(map[string]string, 12)
@@ -524,13 +547,15 @@ func seedDefaultChartOfAccounts(exec sqlGetExecer, organizationID string, countr
 		     defaultExpenseAccountId = ?, defaultCashAccountId = ?,
 		     fxGainAccountId = ?, fxLossAccountId = ?, retainedEarningsAccountId = ?,
 		     defaultInventoryAccountId = ?, defaultGRNIAccountId = ?,
-		     defaultCOGSAccountId = ?, defaultInventoryAdjustmentAccountId = ?
+		     defaultCOGSAccountId = ?, defaultInventoryAdjustmentAccountId = ?,
+		     defaultImportCostsPayableAccountId = ?
 		 WHERE id = ?`,
 		nullableString(roleToID["ar"]), nullableString(roleToID["ap"]), nullableString(roleToID["revenue"]),
 		nullableString(roleToID["expense"]), nullableString(roleToID["cash"]),
 		nullableString(roleToID["fxGain"]), nullableString(roleToID["fxLoss"]), nullableString(roleToID["retainedEarnings"]),
 		nullableString(roleToID["inventory"]), nullableString(roleToID["grni"]),
 		nullableString(roleToID["cogs"]), nullableString(roleToID["inventoryAdjustment"]),
+		nullableString(roleToID["importCostsPayable"]),
 		organizationID,
 	); err != nil {
 		return fmt.Errorf("seed_default_chart_of_accounts wire_defaults: %w", err)
@@ -603,6 +628,75 @@ func seedInventoryAccountsTx(exec sqlGetExecer, organizationID string) error {
 		organizationID,
 	); err != nil {
 		return fmt.Errorf("seed_inventory_accounts wire_defaults: %w", err)
+	}
+	return nil
+}
+
+// seedImportCostAccountTx installs importCostAdditions for an organization
+// that already has a chart of accounts — the F114 twin of
+// seedInventoryAccountsTx, same parent-resolution-by-type and
+// duplicate-code-skip shape.
+func seedImportCostAccountTx(exec sqlGetExecer, organizationID string) error {
+	roleToID := map[string]string{}
+	for _, a := range importCostAdditions {
+		var parentID *string
+		var existing string
+		err := exec.Get(&existing,
+			`SELECT id FROM accounts WHERE organizationId = ? AND type = ? AND isGroup = 1 ORDER BY createdAt ASC LIMIT 1`,
+			organizationID, a.accountType,
+		)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("seed_import_cost_account parent_lookup %s: %w", a.accountType, err)
+		}
+		if existing != "" {
+			parentID = &existing
+		}
+
+		id, err := gonanoid.New()
+		if err != nil {
+			return fmt.Errorf("seed_import_cost_account new_id: %w", err)
+		}
+		_, err = exec.Exec(
+			`INSERT INTO accounts (id, organizationId, parentId, code, name, type, isGroup)
+			 VALUES (?, ?, ?, ?, ?, ?, 0)`,
+			id, organizationID, parentID, a.code, a.name, a.accountType,
+		)
+		if err != nil {
+			if isDuplicateAccountCode(err) {
+				continue
+			}
+			return fmt.Errorf("seed_import_cost_account insert %s: %w", a.code, err)
+		}
+		roleToID[a.defaultRole] = id
+	}
+
+	if _, err := exec.Exec(
+		`UPDATE organizations
+		 SET defaultImportCostsPayableAccountId = COALESCE(defaultImportCostsPayableAccountId, ?)
+		 WHERE id = ?`,
+		nullableString(roleToID["importCostsPayable"]), organizationID,
+	); err != nil {
+		return fmt.Errorf("seed_import_cost_account wire_defaults: %w", err)
+	}
+	return nil
+}
+
+// SeedImportCostAccountForAllOrganizations installs F114's Import Costs
+// Payable account for every organization that doesn't have it yet — called
+// once at startup (main.go), alongside
+// SeedInventoryAccountingDefaultsForAllOrganizations. Gated on
+// defaultImportCostsPayableAccountId IS NULL, idempotent.
+func (d *Database) SeedImportCostAccountForAllOrganizations() error {
+	var orgIDs []string
+	if err := d.DB.Select(&orgIDs, `
+		SELECT id FROM organizations WHERE defaultImportCostsPayableAccountId IS NULL`,
+	); err != nil {
+		return fmt.Errorf("seed_import_cost_account_for_all_organizations list_organizations: %w", err)
+	}
+	for _, orgID := range orgIDs {
+		if err := seedImportCostAccountTx(d.DB, orgID); err != nil {
+			return fmt.Errorf("seed_import_cost_account_for_all_organizations %s: %w", orgID, err)
+		}
 	}
 	return nil
 }

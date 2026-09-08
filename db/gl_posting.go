@@ -625,13 +625,25 @@ func glLine(
 // Returns (nil, nil, nil) if every line was uncosted — the caller must
 // then simply not post an entry, and treat "no entry exists" as a no-op
 // on cancellation rather than an error.
-func buildReceiptGRNILines(d *Database, receipt *InboundDelivery, lines []inboundStockLine, convertedUnitCosts map[string]int64) ([]CreateJournalLineRequest, *Journal, error) {
+// importCostMarkupTotal is an additional parameter (F114): the landed-cost
+// markup already allocated per line into convertedUnitCosts' caller-side
+// twin (see applyLandedCost) but deliberately NOT part of convertedUnitCosts
+// here — GRNI must stay valued at vendor-only cost, since it represents only
+// what the vendor will invoice, not the freight/customs a different party
+// (carrier, customs authority) will bill separately. The Dr Inventory leg
+// still carries the full landed value (vendor + markup) so Inventory's
+// economic value matches what actually went into stockMovements.unitCost;
+// the extra is credited to Import Costs Payable, not GRNI.
+func buildReceiptGRNILines(
+	d *Database, receipt *InboundDelivery, lines []inboundStockLine,
+	convertedUnitCosts map[string]int64, importCostMarkupTotal int64,
+) ([]CreateJournalLineRequest, *Journal, error) {
 	org, err := d.GetOrganization(receipt.OrganizationID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build_receipt_grni_lines organization: %w", err)
 	}
 
-	var total int64
+	var vendorTotal int64
 	for _, line := range lines {
 		unitCost, ok := convertedUnitCosts[line.LineItemID]
 		if !ok {
@@ -642,9 +654,9 @@ func buildReceiptGRNILines(d *Database, receipt *InboundDelivery, lines []inboun
 			return nil, nil, newValidationError("line for %q: invalid quantity", line.ProductName)
 		}
 		cents := new(big.Rat).Mul(qty, new(big.Rat).SetInt64(unitCost))
-		total += roundHalfUp(cents, 0).Num().Int64()
+		vendorTotal += roundHalfUp(cents, 0).Num().Int64()
 	}
-	if total == 0 {
+	if vendorTotal == 0 {
 		return nil, nil, nil
 	}
 
@@ -654,6 +666,9 @@ func buildReceiptGRNILines(d *Database, receipt *InboundDelivery, lines []inboun
 	if org.DefaultGRNIAccountID == nil {
 		return nil, nil, newValidationError("cannot post goods receipt: organization has no default GRNI account configured")
 	}
+	if importCostMarkupTotal > 0 && org.DefaultImportCostsPayableAccountID == nil {
+		return nil, nil, newValidationError("cannot post goods receipt: organization has no default Import Costs Payable account configured")
+	}
 
 	journal, err := getJournalByTypeTx(d.DB, receipt.OrganizationID, "purchases")
 	if err != nil {
@@ -661,10 +676,93 @@ func buildReceiptGRNILines(d *Database, receipt *InboundDelivery, lines []inboun
 	}
 
 	lines2 := []CreateJournalLineRequest{
-		{AccountID: *org.DefaultInventoryAccountID, Debit: total},
-		{AccountID: *org.DefaultGRNIAccountID, Credit: total},
+		{AccountID: *org.DefaultInventoryAccountID, Debit: vendorTotal + importCostMarkupTotal},
+		{AccountID: *org.DefaultGRNIAccountID, Credit: vendorTotal},
+	}
+	if importCostMarkupTotal > 0 {
+		lines2 = append(lines2, CreateJournalLineRequest{
+			AccountID: *org.DefaultImportCostsPayableAccountID, Credit: importCostMarkupTotal,
+		})
 	}
 	return lines2, journal, nil
+}
+
+// applyLandedCost is F114's allocation step: for every receivable line tied
+// to a purchase order line that belongs to an import, spread that import's
+// freight+customs across every line received under any of its POs,
+// proportional to each line's own vendor value (landedCostRate). Lines with
+// no PO link, or whose PO has no import, or whose import has nothing
+// committed against it yet, pass through unchanged.
+//
+// Returns a new map (vendorUnitCosts is never mutated) suitable for
+// stockMovements.unitCost — vendor cost plus this line's allocated
+// per-unit markup — and the total markup across all lines, which
+// buildReceiptGRNILines credits to Import Costs Payable rather than GRNI.
+// Must run before Beginx() opens (db.SetMaxOpenConns(1) — see
+// UpdateInboundDeliveryStatus's own comment on this), since it reads via
+// d.DB.
+func (d *Database) applyLandedCost(
+	lines []inboundStockLine, vendorUnitCosts map[string]int64,
+) (map[string]int64, int64, error) {
+	landedUnitCosts := make(map[string]int64, len(vendorUnitCosts))
+	for k, v := range vendorUnitCosts {
+		landedUnitCosts[k] = v
+	}
+
+	var markupTotal int64
+	rateCache := map[string]*big.Rat{}
+
+	for _, line := range lines {
+		vendorCost, ok := vendorUnitCosts[line.LineItemID]
+		if !ok || line.PurchaseOrderLineItemID == nil {
+			continue
+		}
+		importID, err := importIDForPOLine(d.DB, *line.PurchaseOrderLineItemID)
+		if err != nil {
+			return nil, 0, err
+		}
+		if importID == nil {
+			continue
+		}
+
+		rate, ok := rateCache[*importID]
+		if !ok {
+			imp, err := d.GetImport(*importID)
+			if err != nil {
+				return nil, 0, fmt.Errorf("apply_landed_cost import: %w", err)
+			}
+			totalValue, _, err := totalCommittedPOValueForImport(d.DB, *importID)
+			if err != nil {
+				return nil, 0, err
+			}
+			rate = landedCostRate(imp.FreightCost+imp.CustomsCost, totalValue)
+			rateCache[*importID] = rate
+		}
+		if rate.Sign() == 0 {
+			continue
+		}
+
+		// Rounded once per unit — this exact per-unit value is what lands on
+		// stockMovements.unitCost, so the line total below (qty × this
+		// rounded per-unit markup) is what Import Costs Payable is credited
+		// for, rather than an independently re-derived total. Like GRNI's
+		// own per-line rounding, a residual against the import's raw
+		// freight+customs total is expected across partial/uncosted
+		// receiving — a visibility property, not force-balanced away (see
+		// ImportSummary).
+		markupPerUnit := new(big.Rat).Mul(new(big.Rat).SetInt64(vendorCost), rate)
+		markupPerUnitCents := roundHalfUp(markupPerUnit, 0).Num().Int64()
+		landedUnitCosts[line.LineItemID] = vendorCost + markupPerUnitCents
+
+		qty, err := floatToRat(line.Quantity)
+		if err != nil {
+			return nil, 0, newValidationError("line for %q: invalid quantity", line.ProductName)
+		}
+		lineMarkup := new(big.Rat).Mul(qty, new(big.Rat).SetInt64(markupPerUnitCents))
+		markupTotal += roundHalfUp(lineMarkup, 0).Num().Int64()
+	}
+
+	return landedUnitCosts, markupTotal, nil
 }
 
 // grniClearedQtyForPOLine sums quantity already cleared by bills OTHER than

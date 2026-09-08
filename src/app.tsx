@@ -47,6 +47,7 @@ import Loading from "src/components/loading";
 const Dashboard = lazy(() => import("src/routes/dashboard"));
 const Clients = lazy(() => import("src/routes/clients"));
 const Vendors = lazy(() => import("src/routes/vendors"));
+const Imports = lazy(() => import("src/routes/imports"));
 const PurchaseOrders = lazy(() => import("src/routes/purchase-orders"));
 const PurchaseOrderDetails = lazy(() => import("src/routes/purchase-orders/details"));
 const InboundDeliveries = lazy(() => import("src/routes/inbound-deliveries"));
@@ -268,6 +269,9 @@ const AppContent = () => {
                   </Route>
                   <Route path="/vendors" element={<BaseLayout />}>
                     <Route index element={<Vendors />} />
+                  </Route>
+                  <Route path="/imports" element={<BaseLayout />}>
+                    <Route index element={<Imports />} />
                   </Route>
                   <Route path="/purchase-orders" element={<BaseLayout />}>
                     <Route index element={<PurchaseOrders />} />
