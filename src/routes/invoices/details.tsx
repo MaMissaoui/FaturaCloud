@@ -18,6 +18,7 @@ import {
   Popconfirm,
   theme,
   Spin,
+  Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
@@ -29,13 +30,14 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  FileExcelOutlined,
   FilePdfOutlined,
   FileTextOutlined,
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
 import LineItemsTable from "src/components/line-items/table";
-import { SaveFile, DownloadInvoiceEInvoice } from "src/api";
+import { SaveFile, DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
 import QRCode from "qrcode";
 import { pdf } from "@react-pdf/renderer";
 import { Document, Page } from "react-pdf";
@@ -77,7 +79,7 @@ import { organizationAtom, nextInvoiceNumberAtom } from "src/atoms/organization"
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
-import { getInvoicePDFLayout } from "src/components/invoices/layouts";
+import { getInvoicePDFLayout, isCustomTemplateLayout } from "src/components/invoices/layouts";
 import ExchangeRateFields, { CurrencySelect } from "src/components/currency/currency-fields";
 import PaymentPanel from "src/components/payments/payment-panel";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
@@ -256,6 +258,14 @@ const InvoiceDetails: React.FC = () => {
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
   const [previewMode, setPreviewMode] = useState(false);
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
+  const [downloadingCustomExport, setDownloadingCustomExport] = useState(false);
+  // Custom-template export (issue #115) reads persisted rows by invoice id,
+  // unlike the default/tunisia PDF button which reads live unsaved
+  // form.getFieldsValue() — so a stale export must be prevented instead of
+  // silently exporting the last-saved version. Reset per mount (this whole
+  // route remounts on invoice id change, see loadableInvoiceAtom's comment),
+  // set on any edit, cleared on a successful save.
+  const [isDirty, setIsDirty] = useState(false);
   const dateFormat = useDatePickerFormat();
 
   const isNew = id === "new";
@@ -338,6 +348,7 @@ const InvoiceDetails: React.FC = () => {
       withholdingTaxAmount: withholdingTaxRate ? withholdingTaxAmount : null,
       overdueCharge: values.overdueCharge,
     });
+    setIsDirty(false);
   };
 
   const handleDelete = (id: string) => async () => {
@@ -493,6 +504,20 @@ const InvoiceDetails: React.FC = () => {
     );
   };
 
+  const isCustomTemplate = isCustomTemplateLayout(organization?.invoiceLayout);
+
+  const handleCustomTemplateExport = (format: "pdf" | "xlsx") => async () => {
+    if (!id) return;
+    setDownloadingCustomExport(true);
+    try {
+      await ExportInvoiceDocument(id, format);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloadingCustomExport(false);
+    }
+  };
+
   const currentInvoiceState =
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
       ? ((invoice as any).state ?? "draft")
@@ -508,6 +533,7 @@ const InvoiceDetails: React.FC = () => {
           <Form
             form={form}
             onFinish={handleSubmit}
+            onValuesChange={() => setIsDirty(true)}
             layout="vertical"
             initialValues={initialValues}
             style={{ display: previewMode ? "none" : "block" }}
@@ -1061,7 +1087,7 @@ const InvoiceDetails: React.FC = () => {
                             )}
                           </Button>
                         )}
-                        {!isNew && (
+                        {!isNew && !isCustomTemplate && (
                           <Button
                             onClick={async () => {
                               const document = createPDFDocument();
@@ -1072,6 +1098,26 @@ const InvoiceDetails: React.FC = () => {
                           >
                             <FilePdfOutlined /> PDF
                           </Button>
+                        )}
+                        {/* Custom templates export to Excel only for now — PDF conversion
+                            (db/pdf_convert.go, LibreOffice headless) is implemented and
+                            tested but deliberately not wired into the Docker image: it
+                            crashes on startup on Alpine (a known LibreOffice/musl issue,
+                            not fixed by any of the standard workarounds), and the fix is
+                            deferred rather than rushed. format=pdf still 503s cleanly from
+                            the server if called directly. */}
+                        {!isNew && isCustomTemplate && (
+                          <Tooltip
+                            title={isDirty ? t`Save your changes before exporting` : undefined}
+                          >
+                            <Button
+                              disabled={isDirty}
+                              loading={downloadingCustomExport}
+                              onClick={handleCustomTemplateExport("xlsx")}
+                            >
+                              <FileExcelOutlined /> <Trans>Excel</Trans>
+                            </Button>
+                          </Tooltip>
                         )}
                         {!isNew && (
                           <Button
@@ -1126,10 +1172,20 @@ const InvoiceDetails: React.FC = () => {
                 document.getElementById("footer"),
               )}
           </Form>
-          {previewMode && (
-            // PDF Preview Mode
-            <PDFPreview createPDFDocument={createPDFDocument} />
-          )}
+          {previewMode &&
+            (isCustomTemplate ? (
+              // getInvoicePDFLayout would silently fall back to the "default"
+              // React component for "custom", rendering a different document
+              // than the Excel button actually exports — so no live preview
+              // for a custom template in v1, only a note.
+              <div style={{ padding: 24, textAlign: "center" }}>
+                <Trans>
+                  Preview isn't available for a custom template — use Excel to see the result.
+                </Trans>
+              </div>
+            ) : (
+              <PDFPreview createPDFDocument={createPDFDocument} />
+            ))}
         </Col>
       </Row>
 

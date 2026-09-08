@@ -39,3 +39,7 @@ pnpm-debug.log*
 
 # Playwright screenshots/snapshots
 .playwright-mcp/
+
+# db/templates/gen's own output — the canonical file is db/templates/*.xlsx,
+# committed separately after running `go run ./db/templates/gen`
+db/templates/gen/*.xlsx

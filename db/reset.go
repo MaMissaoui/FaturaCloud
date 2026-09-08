@@ -68,6 +68,11 @@ var transactionalDataTables = []string{
 var masterDataTables = []string{
 	"clients", "vendors", "products", "taxRates",
 	"journals", "fiscal_periods", "fiscal_years", "accounts",
+	// document_templates (issue #115) is org configuration, not a
+	// transactional document — a reset should clear an org's uploaded
+	// export-template overrides the same way it clears every other
+	// configuration/reference table in this list.
+	"document_templates",
 }
 
 // ResetOrganizationData deletes the selected record collections for an

@@ -139,6 +139,14 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("POST", "/api/organizations/{id}/logo", h.uploadOrganizationLogo)
 	protected("DELETE", "/api/organizations/{id}/logo", h.deleteOrganizationLogo)
 
+	// Document templates (issue #115) — per-org, per-document-type Excel
+	// export template overrides. Same protection tier as the logo endpoints
+	// (not admin-only): org configuration any user with org access manages.
+	protected("GET", "/api/organizations/{orgId}/document-templates", h.listDocumentTemplates)
+	protected("GET", "/api/organizations/{orgId}/document-templates/{documentType}", h.getDocumentTemplate)
+	protected("POST", "/api/organizations/{orgId}/document-templates/{documentType}", h.uploadDocumentTemplate)
+	protected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}", h.deleteDocumentTemplate)
+
 	// Clients
 	protected("GET", "/api/organizations/{orgId}/clients", h.listClients)
 	protected("POST", "/api/clients", h.createClient)
@@ -195,6 +203,13 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PATCH", "/api/invoices/{id}/state", h.updateInvoiceState)
 	protected("DELETE", "/api/invoices/{id}", h.deleteInvoice)
 	protected("GET", "/api/invoices/{id}/e-invoice", h.getInvoiceEInvoice)
+	// Registered directly on mux, not through protected() — a LibreOffice
+	// PDF conversion can take seconds, and protected()'s withDB would hold
+	// dbMu's read lock for that whole duration, blocking a pending
+	// /api/restore write-lock acquisition and everything behind it (see
+	// exportInvoiceDocument's comment). The handler takes its own short RLock
+	// around just the DB reads instead.
+	mux.Handle("GET /api/invoices/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportInvoiceDocument))))
 
 	// Dashboard
 	protected("GET", "/api/organizations/{orgId}/dashboard", h.getDashboard)

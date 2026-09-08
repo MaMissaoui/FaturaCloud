@@ -42,6 +42,7 @@ import {
   FieldTimeOutlined,
   ExportOutlined,
   BarChartOutlined,
+  FileExcelOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -571,6 +572,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "settings.tax-rates",
+                },
+                {
+                  icon: <FileExcelOutlined />,
+                  label: (
+                    <Link to="/settings/document-templates">
+                      <Trans>Document Templates</Trans>
+                    </Link>
+                  ),
+                  key: "settings.document-templates",
                 },
                 ...(isAdmin
                   ? [
