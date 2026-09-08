@@ -76,7 +76,6 @@ import {
   invoiceAtom,
   deleteInvoiceAtom,
   duplicateInvoiceAtom,
-  updateInvoiceStateAtom,
 } from "src/atoms/invoice";
 import { organizationAtom, nextInvoiceNumberAtom } from "src/atoms/organization";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
@@ -265,7 +264,6 @@ const InvoiceDetails: React.FC = () => {
   const setPaymentTerms = useSetAtom(setPaymentTermsAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
-  const updateInvoiceState = useSetAtom(updateInvoiceStateAtom);
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
   const [previewMode, setPreviewMode] = useState(false);
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
@@ -640,26 +638,10 @@ const InvoiceDetails: React.FC = () => {
       ]
     : [];
 
+  // Cancelling is just another state transition now, available from the
+  // state dropdown in the "Invoice details" card header (like every other
+  // transition) rather than a special-cased footer button.
   const stateActions = [
-    ...(!isNew && currentInvoiceState !== "cancelled"
-      ? [
-          <Popconfirm
-            key="cancel"
-            title={t`Cancel this invoice?`}
-            onConfirm={async () => {
-              await updateInvoiceState({ invoiceId: id!, state: "cancelled" });
-              setInvoiceId(null);
-              setTimeout(() => setInvoiceId(id ?? null), 0);
-            }}
-            okText={t`Yes`}
-            cancelText={t`No`}
-          >
-            <Button type="dashed" danger>
-              <Trans>Cancel invoice</Trans>
-            </Button>
-          </Popconfirm>,
-        ]
-      : []),
     <Button key="save" type="primary" onClick={() => form.submit()}>
       <SaveOutlined /> <Trans>Save</Trans>
     </Button>,
