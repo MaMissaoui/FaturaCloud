@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.0] - 2026-09-08
+
+Tunisia invoice support: fiscal stamp duty, withholding tax, and a
+pluggable PDF layout system.
+
+### Added
+- Fiscal stamp duty (timbre fiscal) and withholding tax (retenue à la
+  source) can now be enabled per organization (Organizations →
+  Accounting), independently of each other. The stamp is a flat charge
+  added to the invoice total and posted to a configurable GL liability
+  account; withholding tax is informational only, shown as a "Net amount
+  due" figure and never affecting totals or GL postings.
+- Invoices can now use a Tunisia-style PDF layout (Organizations →
+  Formatting → Invoice layout), matching a local reference invoice
+  format, alongside the existing default template. The layout choice is
+  independent of the two settings above — either can be turned on
+  regardless of which layout is active.
+- Client/vendor VAT number field now labels itself "Matricule Fiscal
+  (MF)" for Tunisia-based parties.
+
 ## [3.8.0] - 2026-09-07
 
 Per-organization brand color theming, plus a second pass of drawer/dashboard
