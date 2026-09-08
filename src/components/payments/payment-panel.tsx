@@ -178,7 +178,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   if (!hasPostedEntry && rows.length === 0) return null;
 
   return (
-    <Card title={<Trans>Payments</Trans>} style={{ marginTop: 24 }}>
+    <Card size="small" title={<Trans>Payments</Trans>} style={{ marginTop: 24 }}>
       <Descriptions column={3} size="small" style={{ marginBottom: 8 }}>
         <Descriptions.Item label={<Trans>Total</Trans>}>
           {formatCents(total, currency, i18n.locale)}

@@ -683,7 +683,7 @@ const InvoiceDetails: React.FC = () => {
             initialValues={initialValues}
             style={{ display: previewMode ? "none" : "block" }}
           >
-            <Card title={<Trans>Invoice details</Trans>} style={{ marginBottom: 24 }}>
+            <Card size="small" title={<Trans>Invoice details</Trans>} style={{ marginBottom: 24 }}>
               <Row gutter={24}>
                 {/* Left: the two fields that need real room — a searchable
                     dropdown and free text — stacked so the note fills the
@@ -768,12 +768,47 @@ const InvoiceDetails: React.FC = () => {
                       {selectedClientAddress}
                     </Typography.Text>
                   )}
+                  <Form.Item label={t`Customer note`} name="customerNotes">
+                    <TextArea rows={4} />
+                  </Form.Item>
+                  {/* Filling the space this column otherwise leaves empty next
+                      to the right column's denser field grid, rather than
+                      giving it a full-width row of its own over there. */}
                   <Form.Item
-                    label={t`Customer note`}
-                    name="customerNotes"
+                    label={t`Payment terms`}
+                    name="paymentTerms"
                     style={{ marginBottom: 0 }}
                   >
-                    <TextArea rows={4} />
+                    <Select
+                      showSearch
+                      allowClear
+                      optionFilterProp="children"
+                      placeholder={t`Select payment terms`}
+                      popupRender={(menu) => (
+                        <>
+                          {menu}
+                          <Divider style={{ margin: "8px 0" }} />
+                          <Button
+                            type="text"
+                            block
+                            icon={<ScheduleOutlined />}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate("/settings/payment-terms");
+                            }}
+                            style={{ textAlign: "left", paddingLeft: 11, paddingRight: 11 }}
+                          >
+                            <Trans>Manage payment terms</Trans>
+                          </Button>
+                        </>
+                      )}
+                    >
+                      {map(paymentTerms, (pt: any) => (
+                        <Option key={pt.id} value={pt.name}>
+                          {pt.name}
+                        </Option>
+                      ))}
+                    </Select>
                   </Form.Item>
                 </Col>
 
@@ -888,42 +923,6 @@ const InvoiceDetails: React.FC = () => {
                       </Form.Item>
                     </Col>
                   </Row>
-                  <Row gutter={16}>
-                    <Col xs={24}>
-                      <Form.Item label={t`Payment terms`} name="paymentTerms">
-                        <Select
-                          showSearch
-                          allowClear
-                          optionFilterProp="children"
-                          placeholder={t`Select payment terms`}
-                          popupRender={(menu) => (
-                            <>
-                              {menu}
-                              <Divider style={{ margin: "8px 0" }} />
-                              <Button
-                                type="text"
-                                block
-                                icon={<ScheduleOutlined />}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  navigate("/settings/payment-terms");
-                                }}
-                                style={{ textAlign: "left", paddingLeft: 11, paddingRight: 11 }}
-                              >
-                                <Trans>Manage payment terms</Trans>
-                              </Button>
-                            </>
-                          )}
-                        >
-                          {map(paymentTerms, (pt: any) => (
-                            <Option key={pt.id} value={pt.name}>
-                              {pt.name}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                  </Row>
 
                   {/* Both fields are independent, organization-level opt-ins
                       (see Organizations → Accounting) — deliberately not
@@ -976,7 +975,7 @@ const InvoiceDetails: React.FC = () => {
               </Row>
             </Card>
 
-            <Card title={<Trans>Line items</Trans>} style={{ marginBottom: 24 }}>
+            <Card size="small" title={<Trans>Line items</Trans>} style={{ marginBottom: 24 }}>
               <Row gutter={16}>
                 <Col span={24}>
                   <LineItemsTable
