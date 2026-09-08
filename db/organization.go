@@ -115,6 +115,25 @@ type Organization struct {
 	DefaultGRNIAccountID                *string `db:"defaultGRNIAccountId"                json:"defaultGRNIAccountId"`
 	DefaultCOGSAccountID                *string `db:"defaultCOGSAccountId"                json:"defaultCOGSAccountId"`
 	DefaultInventoryAdjustmentAccountID *string `db:"defaultInventoryAdjustmentAccountId" json:"defaultInventoryAdjustmentAccountId"`
+
+	// Invoice feature toggles (fiscal stamp / withholding tax, first added
+	// for Tunisia invoice support) and the invoice PDF layout this
+	// organization's invoices render with — three independent settings, not
+	// one bundled "Tunisia mode": an organization can enable either feature
+	// with any layout, and can switch layouts without it implying anything
+	// about which fields its invoices carry. See db/gl_posting.go's
+	// resolveStampDutyAccount for the stamp's GL treatment; the toggles
+	// themselves are a frontend-only gate (validateInvoiceTotals and
+	// buildInvoiceGLLines react to the invoice's own stored values
+	// regardless of these flags, the same way they'd react to a value set
+	// through the API directly). invoiceLayout NULL/"" means the original
+	// single-layout template — see src/components/invoices/layouts.ts for
+	// the registry of other valid values.
+	FiscalStampEnabled        *int64  `db:"fiscalStampEnabled"        json:"fiscalStampEnabled"`
+	WithholdingTaxEnabled     *int64  `db:"withholdingTaxEnabled"     json:"withholdingTaxEnabled"`
+	DefaultFiscalStampAmount  *int64  `db:"defaultFiscalStampAmount"  json:"defaultFiscalStampAmount"`
+	DefaultStampDutyAccountID *string `db:"defaultStampDutyAccountId" json:"defaultStampDutyAccountId"`
+	InvoiceLayout             *string `db:"invoiceLayout"             json:"invoiceLayout"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -202,6 +221,12 @@ type UpdateOrganizationRequest struct {
 	DefaultGRNIAccountID                *string `json:"defaultGRNIAccountId"`
 	DefaultCOGSAccountID                *string `json:"defaultCOGSAccountId"`
 	DefaultInventoryAdjustmentAccountID *string `json:"defaultInventoryAdjustmentAccountId"`
+
+	FiscalStampEnabled        *int64  `json:"fiscalStampEnabled"`
+	WithholdingTaxEnabled     *int64  `json:"withholdingTaxEnabled"`
+	DefaultFiscalStampAmount  *int64  `json:"defaultFiscalStampAmount"`
+	DefaultStampDutyAccountID *string `json:"defaultStampDutyAccountId"`
+	InvoiceLayout             *string `json:"invoiceLayout"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -220,7 +245,9 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       retainedEarningsAccountId, datevClearingAccountId,
 	       datev_consultant_number, datev_client_number,
 	       defaultInventoryAccountId, defaultGRNIAccountId,
-	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId`
+	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId,
+	       defaultFiscalStampAmount, defaultStampDutyAccountId, invoiceLayout,
+	       fiscalStampEnabled, withholdingTaxEnabled`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
@@ -385,7 +412,12 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     defaultInventoryAccountId           = COALESCE(?, defaultInventoryAccountId),
 		     defaultGRNIAccountId                = COALESCE(?, defaultGRNIAccountId),
 		     defaultCOGSAccountId                = COALESCE(?, defaultCOGSAccountId),
-		     defaultInventoryAdjustmentAccountId = COALESCE(?, defaultInventoryAdjustmentAccountId)
+		     defaultInventoryAdjustmentAccountId = COALESCE(?, defaultInventoryAdjustmentAccountId),
+		     defaultFiscalStampAmount  = COALESCE(?, defaultFiscalStampAmount),
+		     defaultStampDutyAccountId = COALESCE(?, defaultStampDutyAccountId),
+		     invoiceLayout             = COALESCE(?, invoiceLayout),
+		     fiscalStampEnabled        = COALESCE(?, fiscalStampEnabled),
+		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled)
 		 WHERE id = ?`,
 		updates.Code, updates.Name, updates.Country, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
@@ -402,6 +434,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DatevClearingAccountID, updates.DatevConsultantNumber, updates.DatevClientNumber,
 		updates.DefaultInventoryAccountID, updates.DefaultGRNIAccountID,
 		updates.DefaultCOGSAccountID, updates.DefaultInventoryAdjustmentAccountID,
+		updates.DefaultFiscalStampAmount, updates.DefaultStampDutyAccountID, updates.InvoiceLayout,
+		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
 		organizationID,
 	)
 	if err != nil {

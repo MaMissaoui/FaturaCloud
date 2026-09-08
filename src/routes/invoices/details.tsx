@@ -77,7 +77,7 @@ import { organizationAtom, nextInvoiceNumberAtom } from "src/atoms/organization"
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { siderAtom } from "src/atoms/generic";
 import ClientForm from "src/components/clients/form.tsx";
-import InvoicePDF from "src/components/invoices/pdf";
+import { getInvoicePDFLayout } from "src/components/invoices/layouts";
 import ExchangeRateFields, { CurrencySelect } from "src/components/currency/currency-fields";
 import PaymentPanel from "src/components/payments/payment-panel";
 import { buildSepaCreditTransferPayload } from "src/utils/sepa-qr";
@@ -88,6 +88,7 @@ import {
   divideDecimal,
   calculateTax,
   addDecimal,
+  subtractDecimal,
   centsToUnits,
   unitsToCents,
 } from "src/utils/currency";
@@ -292,6 +293,9 @@ const InvoiceDetails: React.FC = () => {
       customerNotes: organization?.customerNotes,
       overdueCharge: organization?.overdueCharge || 0,
       number: isNew ? nextInvoiceNumber || "" : undefined,
+      fiscalStampAmount: organization?.defaultFiscalStampAmount
+        ? centsToUnits(organization.defaultFiscalStampAmount)
+        : 0,
     };
 
     if (!isNew && invoice) {
@@ -330,6 +334,8 @@ const InvoiceDetails: React.FC = () => {
       subTotal,
       taxTotal,
       total,
+      fiscalStampAmount,
+      withholdingTaxAmount: withholdingTaxRate ? withholdingTaxAmount : null,
       overdueCharge: values.overdueCharge,
     });
   };
@@ -387,7 +393,23 @@ const InvoiceDetails: React.FC = () => {
   }, [lineItems, taxRates]);
 
   const taxTotal = sum(map(taxGroups, "tax"));
-  const total = addDecimal(subTotal, taxTotal);
+  // Tunisia invoice support. fiscalStampAmount (timbre fiscal) is a flat,
+  // non-taxable charge that changes what's owed, so it's additive into
+  // total here exactly as db/invoice_totals.go's validateInvoiceTotals
+  // expects server-side — the two must always agree, or every save 409s.
+  // withholdingTaxAmount (retenue à la source) is the opposite: it never
+  // touches total, only how much of it the client actually wires versus
+  // settles with a tax certificate (see the "Net amount due" row below).
+  const fiscalStampAmount = toNumber(Form.useWatch("fiscalStampAmount", form)) || 0;
+  const withholdingTaxRate = Form.useWatch("withholdingTaxRate", form);
+  const total = addDecimal(addDecimal(subTotal, taxTotal), fiscalStampAmount);
+  // Derived from TTC (subTotal + taxTotal) excluding the stamp — a
+  // withholding percentage is a tax-code rate on the taxable transaction
+  // value, not on the state's own stamp duty.
+  const withholdingTaxAmount = withholdingTaxRate
+    ? calculateTax(addDecimal(subTotal, taxTotal), withholdingTaxRate)
+    : 0;
+  const netAmountDue = subtractDecimal(total, withholdingTaxAmount);
 
   // SEPA credit transfer QR ("GiroCode") for the PDF's payment box. Only
   // renders for EUR invoices on an organization with an IBAN — SEPA credit
@@ -451,12 +473,16 @@ const InvoiceDetails: React.FC = () => {
       subTotal,
       taxTotal,
       total,
+      fiscalStampAmount,
+      withholdingTaxAmount: withholdingTaxRate ? withholdingTaxAmount : null,
       // Ensure line items have the correct totals
       lineItems: formValues.lineItems || [],
     };
 
+    const Layout = getInvoicePDFLayout(organization?.invoiceLayout);
+
     return (
-      <InvoicePDF
+      <Layout
         invoice={invoiceForPDF}
         client={clientData}
         organization={organization}
@@ -842,6 +868,48 @@ const InvoiceDetails: React.FC = () => {
               </Col>
             </Row>
 
+            {/* Both fields are independent, organization-level opt-ins (see
+                Organizations → Accounting) — deliberately not gated on
+                invoiceLayout, which is only a PDF template choice; any
+                layout can carry either field, and either field can be used
+                without switching layout. */}
+            {(!!organization.fiscalStampEnabled || !!organization.withholdingTaxEnabled) && (
+              <Row gutter={16}>
+                {organization.fiscalStampEnabled ? (
+                  <Col xs={24} md={8}>
+                    <Form.Item
+                      label={<Trans>Fiscal stamp</Trans>}
+                      name="fiscalStampAmount"
+                      tooltip={
+                        <Trans>
+                          A flat statutory duty added to the invoice total, not subject to VAT.
+                        </Trans>
+                      }
+                    >
+                      <InputNumber style={{ width: "100%" }} min={0} precision={3} />
+                    </Form.Item>
+                  </Col>
+                ) : null}
+                {organization.withholdingTaxEnabled ? (
+                  <Col xs={24} md={8}>
+                    <Form.Item
+                      label={<Trans>Withholding tax rate</Trans>}
+                      name="withholdingTaxRate"
+                      tooltip={
+                        <Trans>
+                          Percentage the client withholds and remits to the tax authority on your
+                          behalf. Reduces the net amount you'll actually receive, not the invoice
+                          total.
+                        </Trans>
+                      }
+                    >
+                      <InputNumber style={{ width: "100%" }} min={0} max={100} addonAfter="%" />
+                    </Form.Item>
+                  </Col>
+                ) : null}
+              </Row>
+            )}
+
             <Row gutter={16}>
               <Col xs={24} xl={8}>
                 <Form.Item label={t`Customer note`} name="customerNotes">
@@ -873,50 +941,65 @@ const InvoiceDetails: React.FC = () => {
                     },
                   }}
                 >
-                  <Descriptions.Item label={<Trans>Subtotal</Trans>}>
-                    {Intl.NumberFormat(i18n.locale, {
-                      style: "currency",
-                      currency: watchedCurrency ?? organization.currency ?? "EUR",
-                      minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                    }).format(subTotal)}
-                  </Descriptions.Item>
-                  {taxGroups.length > 0 ? (
-                    taxGroups.map((group) => (
-                      <Descriptions.Item
-                        key={group.taxRate?.id}
-                        label={`${group.taxRate?.name || t`Tax`} ${group.taxRate?.percentage || 0}%`}
-                      >
-                        {Intl.NumberFormat(i18n.locale, {
-                          style: "currency",
-                          currency: watchedCurrency ?? organization.currency ?? "EUR",
-                          minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                        }).format(group.tax)}
-                      </Descriptions.Item>
-                    ))
-                  ) : (
-                    <Descriptions.Item label={<Trans>Tax</Trans>}>
-                      {Intl.NumberFormat(i18n.locale, {
+                  {(() => {
+                    const fmt = (value: number) =>
+                      Intl.NumberFormat(i18n.locale, {
                         style: "currency",
                         currency: watchedCurrency ?? organization.currency ?? "EUR",
                         minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                      }).format(0)}
-                    </Descriptions.Item>
-                  )}
-                  <Descriptions.Item
-                    label={
-                      <strong>
-                        <Trans>Total</Trans>
-                      </strong>
-                    }
-                  >
-                    <strong>
-                      {Intl.NumberFormat(i18n.locale, {
-                        style: "currency",
-                        currency: watchedCurrency ?? organization.currency ?? "EUR",
-                        minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                      }).format(total)}
-                    </strong>
-                  </Descriptions.Item>
+                      }).format(value);
+                    return (
+                      <>
+                        <Descriptions.Item label={<Trans>Subtotal</Trans>}>
+                          {fmt(subTotal)}
+                        </Descriptions.Item>
+                        {taxGroups.length > 0 ? (
+                          taxGroups.map((group) => (
+                            <Descriptions.Item
+                              key={group.taxRate?.id}
+                              label={`${group.taxRate?.name || t`Tax`} ${group.taxRate?.percentage || 0}%`}
+                            >
+                              {fmt(group.tax)}
+                            </Descriptions.Item>
+                          ))
+                        ) : (
+                          <Descriptions.Item label={<Trans>Tax</Trans>}>{fmt(0)}</Descriptions.Item>
+                        )}
+                        {fiscalStampAmount > 0 && (
+                          <Descriptions.Item label={<Trans>Fiscal stamp</Trans>}>
+                            {fmt(fiscalStampAmount)}
+                          </Descriptions.Item>
+                        )}
+                        <Descriptions.Item
+                          label={
+                            <strong>
+                              <Trans>Total</Trans>
+                            </strong>
+                          }
+                        >
+                          <strong>{fmt(total)}</strong>
+                        </Descriptions.Item>
+                        {withholdingTaxRate ? (
+                          <>
+                            <Descriptions.Item
+                              label={<Trans>Withholding tax ({withholdingTaxRate}%)</Trans>}
+                            >
+                              -{fmt(withholdingTaxAmount)}
+                            </Descriptions.Item>
+                            <Descriptions.Item
+                              label={
+                                <strong>
+                                  <Trans>Net amount due</Trans>
+                                </strong>
+                              }
+                            >
+                              <strong>{fmt(netAmountDue)}</strong>
+                            </Descriptions.Item>
+                          </>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </Descriptions>
               </Col>
             </Row>

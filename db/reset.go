@@ -150,7 +150,8 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 			    fxGainAccountId = NULL, fxLossAccountId = NULL, retainedEarningsAccountId = NULL,
 			    datevClearingAccountId = NULL,
 			    defaultInventoryAccountId = NULL, defaultGRNIAccountId = NULL,
-			    defaultCOGSAccountId = NULL, defaultInventoryAdjustmentAccountId = NULL
+			    defaultCOGSAccountId = NULL, defaultInventoryAdjustmentAccountId = NULL,
+			    defaultStampDutyAccountId = NULL
 			WHERE id = ?`, organizationID,
 		); err != nil {
 			return nil, fmt.Errorf("reset_organization_data clear_gl_defaults: %w", err)

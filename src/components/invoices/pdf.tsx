@@ -362,12 +362,38 @@ const InvoicePDF = ({
                   <Text style={styles.totalValue}>{fmt(group.tax)}</Text>
                 </View>
               ))}
+              {invoice.fiscalStampAmount > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>
+                    <Trans>Fiscal stamp</Trans>
+                  </Text>
+                  <Text style={styles.totalValue}>{fmt(invoice.fiscalStampAmount)}</Text>
+                </View>
+              )}
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>
                   <Trans>Total</Trans>
                 </Text>
                 <Text style={styles.grandTotalValue}>{fmt(invoice.total)}</Text>
               </View>
+              {invoice.withholdingTaxRate ? (
+                <>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>
+                      <Trans>Withholding tax</Trans> ({invoice.withholdingTaxRate}%)
+                    </Text>
+                    <Text style={styles.totalValue}>-{fmt(invoice.withholdingTaxAmount || 0)}</Text>
+                  </View>
+                  <View style={styles.grandTotalRow}>
+                    <Text style={styles.grandTotalLabel}>
+                      <Trans>Net amount due</Trans>
+                    </Text>
+                    <Text style={styles.grandTotalValue}>
+                      {fmt(invoice.total - (invoice.withholdingTaxAmount || 0))}
+                    </Text>
+                  </View>
+                </>
+              ) : null}
             </View>
           </View>
 

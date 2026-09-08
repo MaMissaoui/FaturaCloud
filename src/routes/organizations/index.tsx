@@ -65,6 +65,8 @@ import { getDefaultFractionDigits } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import PageHeader from "src/components/page-header";
 import BrandColorPicker from "src/components/organizations/brand-color-picker";
+import { invoicePDFLayoutOptions } from "src/components/invoices/layouts";
+import { centsToUnits, unitsToCents } from "src/utils/currency";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 const { Text } = Typography;
@@ -103,6 +105,7 @@ export default function Organizations() {
   const reloadActiveOrganization = useSetAtom(reloadOrganizationAtom);
 
   const watchedCountryCode = Form.useWatch("country_code", form);
+  const watchedFiscalStampEnabled = Form.useWatch("fiscalStampEnabled", form);
   const countryOptions = useCountryOptions(watchedCountryCode);
 
   const fetchOrgs = async () => {
@@ -147,7 +150,18 @@ export default function Organizations() {
     try {
       const org = await GetOrganization(id);
       // Convert null date_format to undefined so the Select shows placeholder
-      form.setFieldsValue({ ...org, date_format: org.date_format ?? undefined });
+      form.setFieldsValue({
+        ...org,
+        date_format: org.date_format ?? undefined,
+        // defaultFiscalStampAmount is stored in cents like every other
+        // money column; this form (unlike the invoice form's atom) has no
+        // existing cents<->units conversion layer, so it's done here and
+        // reversed in handleSubmit below.
+        defaultFiscalStampAmount:
+          org.defaultFiscalStampAmount != null
+            ? centsToUnits(org.defaultFiscalStampAmount)
+            : undefined,
+      });
     } catch {}
     try {
       setEditingAccounts(await GetAccounts(id));
@@ -197,7 +211,28 @@ export default function Organizations() {
     setSubmitting(true);
     try {
       if (editingId) {
-        await UpdateOrganization(editingId, values);
+        await UpdateOrganization(editingId, {
+          ...values,
+          defaultFiscalStampAmount:
+            values.defaultFiscalStampAmount != null
+              ? unitsToCents(values.defaultFiscalStampAmount)
+              : undefined,
+          // Checkbox valuePropName="checked" emits a boolean; the API
+          // stores these as 0/1 like every other boolean column (isDefault,
+          // isGroup, ...) — same conversion src/atoms/tax-rate.ts uses.
+          fiscalStampEnabled:
+            typeof values.fiscalStampEnabled === "boolean"
+              ? values.fiscalStampEnabled
+                ? 1
+                : 0
+              : values.fiscalStampEnabled,
+          withholdingTaxEnabled:
+            typeof values.withholdingTaxEnabled === "boolean"
+              ? values.withholdingTaxEnabled
+                ? 1
+                : 0
+              : values.withholdingTaxEnabled,
+        });
         // Logo upload/removal and delete already reload the active
         // organization when they touch the currently-selected org (see
         // below) — a plain field save through this form was the one path
@@ -721,7 +756,7 @@ export default function Organizations() {
                 forceRender: true,
                 children: (
                   <Row gutter={[16, 0]}>
-                    <Col xs={24} md={12}>
+                    <Col xs={24} md={8}>
                       <Form.Item name="date_format" label={<Trans>Date format</Trans>}>
                         <Select placeholder={t`Select date format`}>
                           {Object.keys(DATE_FORMATS).map((key) => (
@@ -735,13 +770,30 @@ export default function Organizations() {
                         </Select>
                       </Form.Item>
                     </Col>
-                    <Col xs={24} md={12}>
+                    <Col xs={24} md={8}>
                       <Form.Item
                         name="minimum_fraction_digits"
                         label={<Trans>Decimal places</Trans>}
-                        style={{ marginBottom: 0 }}
                       >
                         <InputNumber min={0} max={10} style={{ width: "100%" }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="invoiceLayout"
+                        label={<Trans>Invoice PDF layout</Trans>}
+                        style={{ marginBottom: 0 }}
+                        tooltip={
+                          <Trans>Which template invoices for this organization render with.</Trans>
+                        }
+                      >
+                        <Select placeholder={t`Default`} allowClear>
+                          {invoicePDFLayoutOptions().map((option) => (
+                            <Select.Option key={option.value} value={option.value}>
+                              {option.label}
+                            </Select.Option>
+                          ))}
+                        </Select>
                       </Form.Item>
                     </Col>
                   </Row>
@@ -956,11 +1008,84 @@ export default function Organizations() {
                             name="datev_client_number"
                             label={<Trans>DATEV client number</Trans>}
                             tooltip={<Trans>Required to generate a DATEV export (1–99999).</Trans>}
-                            style={{ marginBottom: 0 }}
                           >
                             <Input placeholder={t`e.g. 456`} />
                           </Form.Item>
                         </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="fiscalStampEnabled"
+                            valuePropName="checked"
+                            label=" "
+                            tooltip={
+                              <Trans>
+                                Shows a fiscal stamp (flat, non-taxable duty) field on this
+                                organization's invoices, independent of the PDF layout.
+                              </Trans>
+                            }
+                          >
+                            <Checkbox>
+                              <Trans>Enable fiscal stamp</Trans>
+                            </Checkbox>
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="withholdingTaxEnabled"
+                            valuePropName="checked"
+                            label=" "
+                            tooltip={
+                              <Trans>
+                                Shows a withholding tax rate field on this organization's invoices,
+                                independent of the PDF layout.
+                              </Trans>
+                            }
+                          >
+                            <Checkbox>
+                              <Trans>Enable withholding tax</Trans>
+                            </Checkbox>
+                          </Form.Item>
+                        </Col>
+                        {!!watchedFiscalStampEnabled && (
+                          <>
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                name="defaultFiscalStampAmount"
+                                label={<Trans>Default fiscal stamp amount</Trans>}
+                                tooltip={
+                                  <Trans>
+                                    Prefills a new invoice's stamp amount. The statutory amount
+                                    changes by law from time to time, so this is a plain editable
+                                    default, not enforced.
+                                  </Trans>
+                                }
+                              >
+                                <InputNumber min={0} precision={3} style={{ width: "100%" }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item
+                                name="defaultStampDutyAccountId"
+                                label={<Trans>Stamp duty account</Trans>}
+                                tooltip={
+                                  <Trans>
+                                    Liability account credited when an invoice's fiscal stamp posts
+                                    — the seller collects it on behalf of the state, so it's never
+                                    revenue.
+                                  </Trans>
+                                }
+                              >
+                                <Select
+                                  allowClear
+                                  showSearch
+                                  placeholder={t`None`}
+                                  options={leafAccountOptions}
+                                  optionFilterProp="label"
+                                />
+                              </Form.Item>
+                            </Col>
+                          </>
+                        )}
                       </Row>
                     ),
                   }

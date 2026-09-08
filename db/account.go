@@ -217,6 +217,7 @@ var accountReferencingOrganizationColumns = []string{
 	"fxLossAccountId", "retainedEarningsAccountId", "datevClearingAccountId",
 	"defaultInventoryAccountId", "defaultGRNIAccountId",
 	"defaultCOGSAccountId", "defaultInventoryAdjustmentAccountId",
+	"defaultStampDutyAccountId",
 }
 
 // GetAccountUsageCount returns how many rows reference this account, so

@@ -28,6 +28,9 @@ function invoiceToDisplay(invoice: any) {
     total: centsToUnits(invoice.total),
     taxTotal: centsToUnits(invoice.taxTotal),
     subTotal: centsToUnits(invoice.subTotal),
+    fiscalStampAmount: centsToUnits(invoice.fiscalStampAmount || 0),
+    withholdingTaxAmount:
+      invoice.withholdingTaxAmount != null ? centsToUnits(invoice.withholdingTaxAmount) : null,
   };
 }
 
@@ -70,6 +73,9 @@ export const invoiceAtom = atom(
         total: centsToUnits(invoice.total),
         taxTotal: centsToUnits(invoice.taxTotal),
         subTotal: centsToUnits(invoice.subTotal),
+        fiscalStampAmount: centsToUnits(invoice.fiscalStampAmount || 0),
+        withholdingTaxAmount:
+          invoice.withholdingTaxAmount != null ? centsToUnits(invoice.withholdingTaxAmount) : null,
         lineItems: (lineItems || []).map((item: any) => ({
           ...item,
           unitPrice: centsToUnits(item.unitPrice),
@@ -106,6 +112,12 @@ export const invoiceAtom = atom(
           total: unitsToCents(invoice.total),
           taxTotal: unitsToCents(invoice.taxTotal),
           subTotal: unitsToCents(invoice.subTotal),
+          fiscalStampAmount: unitsToCents(invoice.fiscalStampAmount || 0),
+          withholdingTaxRate: invoice.withholdingTaxRate ?? null,
+          withholdingTaxAmount:
+            invoice.withholdingTaxAmount != null
+              ? unitsToCents(invoice.withholdingTaxAmount)
+              : null,
           overdueCharge: invoice.overdueCharge,
           lineItems: lineItems.map((item: any) => ({
             ...omit(item, ["id", "total"]),
@@ -144,6 +156,13 @@ export const invoiceAtom = atom(
           total: invoice.total != null ? unitsToCents(invoice.total) : undefined,
           taxTotal: invoice.taxTotal != null ? unitsToCents(invoice.taxTotal) : undefined,
           subTotal: invoice.subTotal != null ? unitsToCents(invoice.subTotal) : undefined,
+          fiscalStampAmount:
+            invoice.fiscalStampAmount != null ? unitsToCents(invoice.fiscalStampAmount) : undefined,
+          withholdingTaxRate: invoice.withholdingTaxRate ?? null,
+          withholdingTaxAmount:
+            invoice.withholdingTaxAmount != null
+              ? unitsToCents(invoice.withholdingTaxAmount)
+              : null,
           overdueCharge: invoice.overdueCharge,
           lineItems: lineItems
             ? lineItems.map((item: any) => ({

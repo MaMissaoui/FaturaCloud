@@ -157,6 +157,23 @@ func resolveRevenueAccount(product *Product, defaultAccountID *string) (string, 
 	return "", newValidationError("cannot post invoice: no revenue account configured (set a default on the organization or the product)")
 }
 
+// resolveStampDutyAccount picks the liability account an invoice's fiscal
+// stamp duty (Tunisia's timbre fiscal) credits — the seller collects it on
+// behalf of the state, so it's a liability, never revenue. Unlike
+// resolveRevenueAccount/resolveExpenseAccount there's no product-level
+// override (a stamp is a document-level charge, not a line item); a zero
+// stamp needs no account at all, so only a nonzero amount can 409 for a
+// missing configuration.
+func resolveStampDutyAccount(stampAmount int64, defaultAccountID *string) (string, error) {
+	if stampAmount == 0 {
+		return "", nil
+	}
+	if defaultAccountID != nil {
+		return *defaultAccountID, nil
+	}
+	return "", newValidationError("cannot post invoice: no stamp duty account configured (set a default on the organization)")
+}
+
 // resolveExpenseAccount is buildIncomingInvoiceGLLines' counterpart to
 // resolveRevenueAccount.
 func resolveExpenseAccount(product *Product, defaultAccountID *string) (string, error) {
@@ -223,13 +240,17 @@ func absorbResidual(functional map[string]int64, order []string, target int64) {
 // buildInvoiceGLLines computes the balanced GL lines for a sales invoice's
 // auto-posted entry: one AR line taken directly from invoice.Total (so it
 // matches exactly what Phase 3 payments will settle against, independent of
-// any per-line rounding below), one revenue line per resolved account, and
-// one output-tax line per distinct tax rate actually used. Revenue and tax
-// are computed in the invoice's own currency using the same exact-rational
-// approach as validateInvoiceTotals, then converted to the organization's
-// functional currency via the invoice's frozen exchangeRate; any residual
-// from independent per-group rounding/conversion is absorbed onto the
-// largest revenue line so the entry balances by construction.
+// any per-line rounding below), one revenue line per resolved account, one
+// output-tax line per distinct tax rate actually used, and — for Tunisia
+// invoice support — one stamp-duty liability line when FiscalStampAmount is
+// nonzero (see resolveStampDutyAccount). Revenue and tax are computed in the
+// invoice's own currency using the same exact-rational approach as
+// validateInvoiceTotals, then converted to the organization's functional
+// currency via the invoice's frozen exchangeRate; any residual from
+// independent per-group rounding/conversion is absorbed onto the largest
+// revenue line so the entry balances by construction. WithholdingTaxRate/
+// WithholdingTaxAmount are deliberately never read here — they don't change
+// what's posted, only how the resulting AR balance is later discharged.
 func (d *Database) buildInvoiceGLLines(invoice *Invoice, lineItems []InvoiceLineItem) ([]CreateJournalLineRequest, *Journal, error) {
 	org, err := d.GetOrganization(invoice.OrganizationID)
 	if err != nil {
@@ -237,6 +258,10 @@ func (d *Database) buildInvoiceGLLines(invoice *Invoice, lineItems []InvoiceLine
 	}
 	if org.DefaultArAccountID == nil {
 		return nil, nil, newValidationError("cannot post invoice: organization has no default AR account configured")
+	}
+	stampDutyAccountID, err := resolveStampDutyAccount(invoice.FiscalStampAmount, org.DefaultStampDutyAccountID)
+	if err != nil {
+		return nil, nil, err
 	}
 	journal, err := getJournalByTypeTx(d.DB, invoice.OrganizationID, "sales")
 	if err != nil {
@@ -339,7 +364,13 @@ func (d *Database) buildInvoiceGLLines(invoice *Invoice, lineItems []InvoiceLine
 	arFunctional := convert(invoice.Total)
 	revenueFunctional, _ := convertGroup(revenueAmountsDoc, revenueOrder, convert)
 	taxFunctional, taxSum := convertGroup(taxAmountsDoc, taxOrder, convert)
-	absorbResidual(revenueFunctional, revenueOrder, arFunctional-taxSum)
+	// Fiscal stamp duty (Tunisia's timbre fiscal) is a flat, non-taxable
+	// charge already folded into invoice.Total by validateInvoiceTotals —
+	// it credits its own liability account rather than revenue, so it must
+	// come out of what absorbResidual leaves for the revenue lines to
+	// soak up, the same way taxSum already does.
+	stampFunctional := convert(invoice.FiscalStampAmount)
+	absorbResidual(revenueFunctional, revenueOrder, arFunctional-taxSum-stampFunctional)
 
 	// journal_lines has CHECK((debit=0) <> (credit=0)) — a group that nets to
 	// exactly zero (e.g. a 0% tax rate, or a free line item) must not emit a
@@ -356,6 +387,9 @@ func (d *Database) buildInvoiceGLLines(invoice *Invoice, lineItems []InvoiceLine
 			continue
 		}
 		lines = append(lines, glLine(taxAccounts[taxRateID], 0, taxFunctional[taxRateID], invoice.Currency, taxAmountsDoc[taxRateID], invoice.ExchangeRate, foreign, nil, nil, &taxRateID))
+	}
+	if stampFunctional != 0 {
+		lines = append(lines, glLine(stampDutyAccountID, 0, stampFunctional, invoice.Currency, invoice.FiscalStampAmount, invoice.ExchangeRate, foreign, nil, nil, nil))
 	}
 	lines = append(lines, glLine(*org.DefaultArAccountID, arFunctional, 0, invoice.Currency, invoice.Total, invoice.ExchangeRate, foreign, &invoice.ClientID, nil, nil))
 
