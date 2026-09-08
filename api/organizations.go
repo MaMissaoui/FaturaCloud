@@ -2,6 +2,7 @@ package api
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -36,6 +37,17 @@ func (h *handler) createOrganization(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeMutationError(w, err)
 		return
+	}
+	// The person who creates an organization must be able to access what
+	// they just created — nothing would otherwise be a member of a brand
+	// new organization at all. Best-effort: a failure here would otherwise
+	// turn a successful org creation into a 500 the caller has no way to
+	// recover from (the org already exists); log and continue rather than
+	// discard the creation.
+	if claims := getClaims(r); claims != nil {
+		if _, err := h.db.AddOrganizationUser(org.ID, claims.UserID, "admin"); err != nil {
+			log.Printf("create_organization: failed to grant creator %s membership on %s: %v", claims.UserID, org.ID, err)
+		}
 	}
 	writeJSON(w, http.StatusCreated, org)
 }

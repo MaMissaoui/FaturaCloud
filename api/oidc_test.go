@@ -248,11 +248,18 @@ func TestOIDCCallback_SuccessGrantsAdminForGroupMember(t *testing.T) {
 	if claims.Email != "alice@example.com" {
 		t.Errorf("expected email alice@example.com, got %s", claims.Email)
 	}
-	if claims.Role != "admin" {
-		t.Errorf("expected role admin (member of admins group), got %s", claims.Role)
-	}
 	if claims.Provider != "oidc" {
 		t.Errorf("expected provider oidc, got %q", claims.Provider)
+	}
+	// Role/platform-admin status is never carried in the token itself (see
+	// api/middleware.go's Claims doc comment) — assert it against the DB row
+	// the callback provisioned instead.
+	var isPlatformAdmin int
+	if err := h.db.DB.Get(&isPlatformAdmin, `SELECT isPlatformAdmin FROM users WHERE email = ?`, "alice@example.com"); err != nil {
+		t.Fatalf("query provisioned user: %v", err)
+	}
+	if isPlatformAdmin != 1 {
+		t.Errorf("expected isPlatformAdmin=1 (member of admins group), got %d", isPlatformAdmin)
 	}
 }
 
@@ -275,9 +282,13 @@ func TestOIDCCallback_NonAdminGroupGetsUserRole(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.oidcCallback(rec, req)
 
-	claims := parseIssuedJWT(t, h, rec)
-	if claims.Role != "user" {
-		t.Errorf("expected role user (not in admins group), got %s", claims.Role)
+	parseIssuedJWT(t, h, rec)
+	var isPlatformAdmin int
+	if err := h.db.DB.Get(&isPlatformAdmin, `SELECT isPlatformAdmin FROM users WHERE email = ?`, "bob@example.com"); err != nil {
+		t.Fatalf("query provisioned user: %v", err)
+	}
+	if isPlatformAdmin != 0 {
+		t.Errorf("expected isPlatformAdmin=0 (not in admins group), got %d", isPlatformAdmin)
 	}
 }
 
@@ -467,10 +478,8 @@ func TestOIDCCallback_RoleResyncsWithoutTouchingDisplayName(t *testing.T) {
 	req := callbackRequest(h, "st1", "n1", "verifier1", "st1", "good-code")
 	rec := httptest.NewRecorder()
 	h.oidcCallback(rec, req)
-	first := parseIssuedJWT(t, h, rec)
-	if first.Role != "admin" {
-		t.Fatalf("expected first login role admin, got %s", first.Role)
-	}
+	parseIssuedJWT(t, h, rec)
+	assertPlatformAdmin(t, h, "alice@example.com", 1, "expected first login")
 
 	// Admin curates the display name locally between logins.
 	h.db.DB.Exec(`UPDATE users SET displayName = ? WHERE email = ?`, "Alice (Finance)", "alice@example.com")
@@ -489,15 +498,28 @@ func TestOIDCCallback_RoleResyncsWithoutTouchingDisplayName(t *testing.T) {
 	req2 := callbackRequest(h, "st2", "n2", "verifier2", "st2", "good-code-2")
 	rec2 := httptest.NewRecorder()
 	h.oidcCallback(rec2, req2)
-	second := parseIssuedJWT(t, h, rec2)
-	if second.Role != "user" {
-		t.Errorf("expected role to resync to user after group removal, got %s", second.Role)
-	}
+	parseIssuedJWT(t, h, rec2)
+	assertPlatformAdmin(t, h, "alice@example.com", 0, "expected resync after group removal")
 
 	var displayName string
 	h.db.DB.Get(&displayName, `SELECT displayName FROM users WHERE email = ?`, "alice@example.com")
 	if displayName != "Alice (Finance)" {
 		t.Errorf("expected displayName to remain locally-curated value, got %q", displayName)
+	}
+}
+
+// assertPlatformAdmin checks a provisioned user's isPlatformAdmin column
+// directly — role/platform-admin status is never carried in the JWT itself
+// (see api/middleware.go's Claims doc comment), so OIDC role-sync tests
+// assert against the DB row provisionOrSyncUser wrote, not the issued token.
+func assertPlatformAdmin(t *testing.T, h *handler, email string, want int, context string) {
+	t.Helper()
+	var got int
+	if err := h.db.DB.Get(&got, `SELECT isPlatformAdmin FROM users WHERE email = ?`, email); err != nil {
+		t.Fatalf("query provisioned user %s: %v", email, err)
+	}
+	if got != want {
+		t.Errorf("%s: expected isPlatformAdmin=%d, got %d", context, want, got)
 	}
 }
 

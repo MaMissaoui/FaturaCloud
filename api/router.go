@@ -87,43 +87,54 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 
 	// Protected — all routes below require a valid JWT
 	auth := h.authMiddleware
-	adminOnly := h.adminOnly
+	platformAdmin := h.platformAdmin
 	// csrf gates state-changing methods on a custom header (see csrfRequired);
 	// GET routes pass through it untouched, so it's safe to apply uniformly.
 	csrf := h.csrfRequired
 	protected := func(method, pattern string, handlerFn http.HandlerFunc) {
 		mux.Handle(method+" "+pattern, auth(csrf(limitBody(defaultMaxBody, withDB(handlerFn)))))
 	}
-	adminProtected := func(method, pattern string, handlerFn http.HandlerFunc) {
-		mux.Handle(method+" "+pattern, auth(adminOnly(csrf(limitBody(defaultMaxBody, withDB(handlerFn))))))
+	// platformAdminProtected gates the handful of genuinely global routes
+	// (user account management, backups, DB restore, countries) that have
+	// no natural per-org owner — see api/middleware.go's platformAdmin.
+	platformAdminProtected := func(method, pattern string, handlerFn http.HandlerFunc) {
+		mux.Handle(method+" "+pattern, auth(platformAdmin(csrf(limitBody(defaultMaxBody, withDB(handlerFn))))))
+	}
+	// orgAdminProtected gates an org-scoped admin action — the caller must
+	// be an admin *of that organization*, not a platform admin. resolve
+	// says how to find the org id a given route's request targets (see
+	// pathOrgID for the common "it's a path value" case).
+	orgAdminProtected := func(method, pattern string, resolve orgIDResolver, handlerFn http.HandlerFunc) {
+		mux.Handle(method+" "+pattern, auth(h.orgAdmin(resolve)(csrf(limitBody(defaultMaxBody, withDB(handlerFn))))))
 	}
 
 	// Auth
 	protected("GET", "/api/auth/me", h.me)
 
-	// Backup — the whole surface is admin-only; the sidebar already hides it
-	// from non-admins, so the API matches that boundary instead of only
-	// gating the state-changing operations.
-	adminProtected("GET", "/api/backups", h.listBackups)
-	adminProtected("POST", "/api/backups", h.triggerBackup)
-	adminProtected("GET", "/api/backup/config", h.getBackupConfig)
-	adminProtected("PUT", "/api/backup/config", h.setBackupConfig)
+	// Backup — the whole surface is platform-admin-only (a global,
+	// non-org-scoped concern); the sidebar already hides it from non-admins,
+	// so the API matches that boundary instead of only gating the
+	// state-changing operations.
+	platformAdminProtected("GET", "/api/backups", h.listBackups)
+	platformAdminProtected("POST", "/api/backups", h.triggerBackup)
+	platformAdminProtected("GET", "/api/backup/config", h.getBackupConfig)
+	platformAdminProtected("PUT", "/api/backup/config", h.setBackupConfig)
 	// Restore routes swap out h.db under dbMu's *write* lock (see
 	// swapDatabase) — they must never be wrapped in withDB's read lock, which
 	// would deadlock against it. Registered directly instead of through
-	// adminProtected, which folds withDB into every route.
-	mux.Handle("POST /api/backups/{name}/restore", auth(adminOnly(csrf(limitBody(defaultMaxBody, h.restoreNamedBackup)))))
+	// platformAdminProtected, which folds withDB into every route.
+	mux.Handle("POST /api/backups/{name}/restore", auth(platformAdmin(csrf(limitBody(defaultMaxBody, h.restoreNamedBackup)))))
 	// Restore uploads stream a full SQLite database file, so this route needs a
 	// much larger body limit than the default — matching restoreDatabase's own
 	// ParseMultipartForm cap.
-	mux.Handle("POST /api/restore", auth(adminOnly(csrf(limitBody(256<<20, h.restoreDatabase)))))
+	mux.Handle("POST /api/restore", auth(platformAdmin(csrf(limitBody(256<<20, h.restoreDatabase)))))
 
-	// Users (admin only)
-	adminProtected("GET", "/api/users", h.listUsers)
-	adminProtected("POST", "/api/users", h.createUser)
-	adminProtected("GET", "/api/users/{id}", h.getUser)
-	adminProtected("PUT", "/api/users/{id}", h.updateUser)
-	adminProtected("DELETE", "/api/users/{id}", h.deleteUser)
+	// Users (platform admin only — a global, non-org-scoped concern)
+	platformAdminProtected("GET", "/api/users", h.listUsers)
+	platformAdminProtected("POST", "/api/users", h.createUser)
+	platformAdminProtected("GET", "/api/users/{id}", h.getUser)
+	platformAdminProtected("PUT", "/api/users/{id}", h.updateUser)
+	platformAdminProtected("DELETE", "/api/users/{id}", h.deleteUser)
 
 	// Organizations
 	protected("GET", "/api/organizations", h.listOrganizations)
@@ -131,13 +142,25 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/organizations/{id}", h.getOrganization)
 	protected("PUT", "/api/organizations/{id}", h.updateOrganization)
 	// Deleting an organization cascade-deletes all of its clients, invoices,
-	// orders, and deliveries — admin only.
-	adminProtected("DELETE", "/api/organizations/{id}", h.deleteOrganization)
-	adminProtected("POST", "/api/organizations/{id}/reset", h.resetOrganizationData)
+	// orders, and deliveries — the caller must be an admin of *this*
+	// organization (not necessarily a platform admin).
+	orgAdminProtected("DELETE", "/api/organizations/{id}", pathOrgID("id"), h.deleteOrganization)
+	orgAdminProtected("POST", "/api/organizations/{id}/reset", pathOrgID("id"), h.resetOrganizationData)
 	protected("GET", "/api/organizations/{id}/usage-count", h.getOrganizationUsageCount)
 	protected("GET", "/api/organizations/{id}/logo", h.getOrganizationLogo)
 	protected("POST", "/api/organizations/{id}/logo", h.uploadOrganizationLogo)
 	protected("DELETE", "/api/organizations/{id}/logo", h.deleteOrganizationLogo)
+
+	// Organization membership — who can access this organization and at what
+	// role. Managing membership is itself an org-admin action, same tier as
+	// deleting/resetting the organization above. my-role is the one
+	// exception — any authenticated user may ask their own role, which is
+	// how the frontend decides whether to show org-admin-only UI at all.
+	protected("GET", "/api/organizations/{orgId}/my-role", h.getMyOrganizationRole)
+	orgAdminProtected("GET", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.listOrganizationMembers)
+	orgAdminProtected("POST", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.addOrganizationMember)
+	orgAdminProtected("PUT", "/api/organizations/{orgId}/members/{userId}", pathOrgID("orgId"), h.updateOrganizationMemberRole)
+	orgAdminProtected("DELETE", "/api/organizations/{orgId}/members/{userId}", pathOrgID("orgId"), h.removeOrganizationMember)
 
 	// Document templates (issue #115) — per-org, per-document-type Excel
 	// export template overrides. Same protection tier as the logo endpoints
@@ -239,7 +262,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// any authenticated user since every org/vendor/client form needs it;
 	// only toggling activation is admin-only.
 	protected("GET", "/api/countries/active", h.listActiveCountries)
-	adminProtected("PATCH", "/api/countries/{code}", h.setCountryActive)
+	platformAdminProtected("PATCH", "/api/countries/{code}", h.setCountryActive)
 
 	// Products
 	protected("GET", "/api/organizations/{orgId}/products", h.listProducts)
@@ -294,7 +317,16 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/fiscal-years/{id}/periods", h.listFiscalPeriods)
 	protected("POST", "/api/fiscal-periods", h.createFiscalPeriod)
 	protected("PATCH", "/api/fiscal-periods/{id}/status", h.updateFiscalPeriodStatus)
-	adminProtected("POST", "/api/fiscal-years/{id}/close", h.closeFiscalYear)
+	// The fiscal year's own row names its organization — {id} here is the
+	// fiscal year, not the org, so this needs a lookup instead of pathOrgID.
+	fiscalYearOrgID := func(r *http.Request) (string, error) {
+		fy, err := h.db.GetFiscalYear(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return fy.OrganizationID, nil
+	}
+	orgAdminProtected("POST", "/api/fiscal-years/{id}/close", fiscalYearOrgID, h.closeFiscalYear)
 
 	// Journal entries
 	protected("GET", "/api/organizations/{orgId}/journal-entries", h.listJournalEntries)
@@ -334,8 +366,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// yet (see db/export_fec.go and the GL Export settings page). Admin-only,
 	// same sensitivity class as the database backup download: a full ledger
 	// dump for the fiscal year, not a single document.
-	adminProtected("GET", "/api/organizations/{orgId}/gl-export/fec", h.getFECExport)
-	adminProtected("GET", "/api/organizations/{orgId}/gl-export/datev", h.getDATEVExport)
+	orgAdminProtected("GET", "/api/organizations/{orgId}/gl-export/fec", pathOrgID("orgId"), h.getFECExport)
+	orgAdminProtected("GET", "/api/organizations/{orgId}/gl-export/datev", pathOrgID("orgId"), h.getDATEVExport)
 
 	return mux
 }

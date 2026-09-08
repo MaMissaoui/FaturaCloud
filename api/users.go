@@ -29,35 +29,72 @@ var validUserRoles = map[string]bool{"user": true, "admin": true}
 // complexity requirements beyond length.
 const minPasswordLength = 8
 
-// countActiveAdmins reports how many users currently hold the admin role and
-// are active — used to block an update/delete that would leave the app with
-// no admin able to log in.
+// countActiveAdmins reports how many users are currently active platform
+// admins — used to block an update/delete that would leave the app with no
+// platform admin able to manage users/backups/restore. isPlatformAdmin is
+// the authoritative signal (not the legacy role column — see migration
+// 0069), since that's what api/middleware.go's platformAdmin check actually
+// gates on.
+// checkNotSoleOrgAdmin refuses (409) a delete/deactivate that would strip an
+// organization of its only admin — organization_users cascades on user
+// delete, so deleting the sole admin doesn't just lock the org out, it erases
+// the membership row too, and there is no platform-admin bypass to recover
+// it (orgAdmin is per-organization by design — see api/middleware.go).
+// Deactivating has the same effect in practice: authMiddleware rejects a
+// deactivated user's requests, so an "admin" who can't log in isn't one.
+func (h *handler) checkNotSoleOrgAdmin(w http.ResponseWriter, userID string) bool {
+	orgs, err := h.db.GetOrganizationsWhereSoleAdmin(userID)
+	if err != nil {
+		writeInternalError(w, err)
+		return false
+	}
+	if len(orgs) == 0 {
+		return true
+	}
+	names := make([]string, len(orgs))
+	for i, o := range orgs {
+		name := o.Name
+		if name == nil || *name == "" {
+			names[i] = o.ID
+		} else {
+			names[i] = *name
+		}
+	}
+	writeError(w, http.StatusConflict, fmt.Sprintf(
+		"cannot proceed: this user is the sole admin of %s — assign another admin there first",
+		strings.Join(names, ", "),
+	))
+	return false
+}
+
 func (h *handler) countActiveAdmins() (int, error) {
 	var count int
-	err := h.db.DB.Get(&count, `SELECT COUNT(*) FROM users WHERE role = 'admin' AND isActive = 1`)
+	err := h.db.DB.Get(&count, `SELECT COUNT(*) FROM users WHERE isPlatformAdmin = 1 AND isActive = 1`)
 	return count, err
 }
 
 type userRow struct {
-	ID           string `db:"id"           json:"id"`
-	Email        string `db:"email"        json:"email"`
-	PasswordHash string `db:"passwordHash" json:"-"`
-	DisplayName  string `db:"displayName"  json:"displayName"`
-	Role         string `db:"role"         json:"role"`
-	IsActive     int    `db:"isActive"     json:"isActive"`
-	CreatedAt    string `db:"createdAt"    json:"createdAt"`
-	LastLoginAt  *int64 `db:"lastLoginAt"  json:"lastLoginAt"`
+	ID              string `db:"id"              json:"id"`
+	Email           string `db:"email"           json:"email"`
+	PasswordHash    string `db:"passwordHash"    json:"-"`
+	DisplayName     string `db:"displayName"     json:"displayName"`
+	Role            string `db:"role"            json:"role"`
+	IsPlatformAdmin int    `db:"isPlatformAdmin" json:"isPlatformAdmin"`
+	IsActive        int    `db:"isActive"        json:"isActive"`
+	CreatedAt       string `db:"createdAt"       json:"createdAt"`
+	LastLoginAt     *int64 `db:"lastLoginAt"     json:"lastLoginAt"`
 }
 
 func userToJSON(u userRow) map[string]any {
 	return map[string]any{
-		"id":          u.ID,
-		"email":       u.Email,
-		"displayName": u.DisplayName,
-		"role":        u.Role,
-		"isActive":    u.IsActive,
-		"createdAt":   u.CreatedAt,
-		"lastLoginAt": u.LastLoginAt,
+		"id":              u.ID,
+		"email":           u.Email,
+		"displayName":     u.DisplayName,
+		"role":            u.Role,
+		"isPlatformAdmin": u.IsPlatformAdmin,
+		"isActive":        u.IsActive,
+		"createdAt":       u.CreatedAt,
+		"lastLoginAt":     u.LastLoginAt,
 	}
 }
 
@@ -123,9 +160,17 @@ func (h *handler) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := nanoid.New()
+	// role and isPlatformAdmin are kept in lockstep here — the "Users" admin
+	// page's role toggle is still exactly "can this person do the global
+	// admin things"; per-organization roles are a separate, additive
+	// concept managed through the organization membership UI instead.
+	isPlatformAdmin := 0
+	if body.Role == "admin" {
+		isPlatformAdmin = 1
+	}
 	_, err = h.db.DB.Exec(
-		`INSERT INTO users (id, email, passwordHash, displayName, role) VALUES (?, ?, ?, ?, ?)`,
-		id, body.Email, string(hash), body.DisplayName, body.Role,
+		`INSERT INTO users (id, email, passwordHash, displayName, role, isPlatformAdmin) VALUES (?, ?, ?, ?, ?, ?)`,
+		id, body.Email, string(hash), body.DisplayName, body.Role, isPlatformAdmin,
 	)
 	if err != nil {
 		if isDuplicateEmail(err) {
@@ -175,7 +220,7 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	demoting := body.Role != "" && current.Role == "admin" && body.Role != "admin"
+	demoting := body.Role != "" && current.IsPlatformAdmin == 1 && body.Role != "admin"
 	deactivating := body.IsActive != nil && *body.IsActive == 0 && current.IsActive == 1
 
 	if claims := getClaims(r); claims != nil && claims.UserID == id {
@@ -188,7 +233,7 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if (demoting || deactivating) && current.Role == "admin" && current.IsActive == 1 {
+	if (demoting || deactivating) && current.IsPlatformAdmin == 1 && current.IsActive == 1 {
 		activeAdmins, err := h.countActiveAdmins()
 		if err != nil {
 			writeInternalError(w, err)
@@ -198,6 +243,9 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "cannot remove the last active admin")
 			return
 		}
+	}
+	if deactivating && !h.checkNotSoleOrgAdmin(w, id) {
+		return
 	}
 
 	if body.IsActive != nil {
@@ -213,7 +261,11 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if body.Role != "" {
-		if _, err := h.db.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, body.Role, id); err != nil {
+		isPlatformAdmin := 0
+		if body.Role == "admin" {
+			isPlatformAdmin = 1
+		}
+		if _, err := h.db.DB.Exec(`UPDATE users SET role = ?, isPlatformAdmin = ? WHERE id = ?`, body.Role, isPlatformAdmin, id); err != nil {
 			writeInternalError(w, err)
 			return
 		}
@@ -251,7 +303,7 @@ func (h *handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
 	}
-	if target.Role == "admin" && target.IsActive == 1 {
+	if target.IsPlatformAdmin == 1 && target.IsActive == 1 {
 		activeAdmins, err := h.countActiveAdmins()
 		if err != nil {
 			writeInternalError(w, err)
@@ -261,6 +313,9 @@ func (h *handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "cannot delete the last active admin")
 			return
 		}
+	}
+	if !h.checkNotSoleOrgAdmin(w, id) {
+		return
 	}
 
 	if _, err := h.db.DB.Exec(`DELETE FROM users WHERE id = ?`, id); err != nil {
@@ -293,8 +348,10 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 		name = email
 	}
 	role := "user"
+	wantPlatformAdmin := 0
 	if isAdmin {
 		role = "admin"
+		wantPlatformAdmin = 1
 	}
 
 	// F59 (2026-08-13 audit): bcrypt.GenerateFromPassword (~50-100ms at
@@ -340,9 +397,9 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 		// for the same new SSO email; the SELECT below picks up whichever
 		// row won.
 		if _, err = h.db.DB.Exec(
-			`INSERT INTO users (id, email, passwordHash, displayName, role, createdAt)
-			 VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING`,
-			id, email, string(hash), name, role, time.Now().Format("2006-01-02 15:04:05"),
+			`INSERT INTO users (id, email, passwordHash, displayName, role, isPlatformAdmin, createdAt)
+			 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING`,
+			id, email, string(hash), name, role, wantPlatformAdmin, time.Now().Format("2006-01-02 15:04:05"),
 		); err != nil {
 			return userRow{}, err
 		}
@@ -355,8 +412,8 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 		return userRow{}, errUserDeactivated
 	}
 
-	if u.Role != role {
-		demoting := u.Role == "admin" && role != "admin"
+	if u.Role != role || u.IsPlatformAdmin != wantPlatformAdmin {
+		demoting := u.IsPlatformAdmin == 1 && wantPlatformAdmin == 0
 		blocked := false
 		if demoting {
 			activeAdmins, err := h.countActiveAdmins()
@@ -366,12 +423,13 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 			blocked = activeAdmins <= 1
 		}
 		if blocked {
-			log.Printf("provisionOrSyncUser: refusing to demote last active admin %s via SSO role sync", email)
+			log.Printf("provisionOrSyncUser: refusing to demote last active platform admin %s via SSO role sync", email)
 		} else {
-			if _, err := h.db.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, role, u.ID); err != nil {
+			if _, err := h.db.DB.Exec(`UPDATE users SET role = ?, isPlatformAdmin = ? WHERE id = ?`, role, wantPlatformAdmin, u.ID); err != nil {
 				return userRow{}, err
 			}
 			u.Role = role
+			u.IsPlatformAdmin = wantPlatformAdmin
 		}
 	}
 

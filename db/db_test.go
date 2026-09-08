@@ -1818,6 +1818,12 @@ func TestClientDocumentCountCoversEveryReference(t *testing.T) {
 // feature set (see CLAUDE.md's Project Origin note) with no Go or frontend
 // code referencing them at all — nothing ever populates them, so there's
 // nothing for a reset to cover.
+//
+// deliberatelyUnresetTables are, unlike legacyUnusedTables, actively used —
+// they're just not what "reset an organization's data" means. organization_users
+// is access control (who can act on the organization), not the organization's
+// own master/transactional data; wiping it on a data reset would silently
+// revoke every member's access, which nothing about a data reset should do.
 func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 	d := newTestDB(t)
 
@@ -1825,6 +1831,9 @@ func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 		"tags":        true,
 		"timeEntries": true,
 		"projects":    true,
+	}
+	deliberatelyUnresetTables := map[string]bool{
+		"organization_users": true,
 	}
 
 	tables := []string{}
@@ -1859,12 +1868,12 @@ func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 		if !hasOrgColumn {
 			continue
 		}
-		if !covered[table] && !legacyUnusedTables[table] {
+		if !covered[table] && !legacyUnusedTables[table] && !deliberatelyUnresetTables[table] {
 			t.Errorf(
 				"table %q has an organizationId column but is not in transactionalDataTables or "+
 					"masterDataTables — ResetOrganizationData would leave its rows behind; add it to "+
-					"one of those lists in db/reset.go (or to legacyUnusedTables in this test, if it's "+
-					"genuinely dead)",
+					"one of those lists in db/reset.go (or to legacyUnusedTables/deliberatelyUnresetTables "+
+					"in this test, if it's genuinely dead or intentionally out of scope for a reset)",
 				table,
 			)
 		}

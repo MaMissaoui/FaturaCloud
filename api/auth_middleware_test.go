@@ -70,7 +70,6 @@ func TestAuthMiddleware_RejectsTokenWithoutIssuerAudience(t *testing.T) {
 	// Mint a correctly-signed token that omits Issuer/Audience.
 	claims := Claims{
 		UserID:   "test-user",
-		Role:     "user",
 		Provider: "local",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),

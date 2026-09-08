@@ -42,12 +42,20 @@ func newTestRouter(t *testing.T) (mux http.Handler, database *db.Database, dbPat
 
 // seedUser inserts a user row directly (bypassing the API) so tests can mint
 // a JWT for a real, known user ID — required now that authMiddleware
-// re-checks isActive against the database on every request (F5).
+// re-checks isActive against the database on every request (F5). role
+// "admin" also sets isPlatformAdmin=1, matching the migration 0069 backfill
+// semantics (today's global admin == platform admin) — existing tests that
+// pass "admin" keep getting platform-admin treatment without every call
+// site needing to know isPlatformAdmin exists separately.
 func seedUser(t *testing.T, database *db.Database, id, role string, isActive int) {
 	t.Helper()
+	isPlatformAdmin := 0
+	if role == "admin" {
+		isPlatformAdmin = 1
+	}
 	_, err := database.DB.Exec(
-		`INSERT INTO users (id, email, passwordHash, displayName, role, isActive) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, id+"@test.local", "unused-hash", id, role, isActive,
+		`INSERT INTO users (id, email, passwordHash, displayName, role, isActive, isPlatformAdmin) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		id, id+"@test.local", "unused-hash", id, role, isActive, isPlatformAdmin,
 	)
 	if err != nil {
 		t.Fatalf("seed user %q: %v", id, err)
@@ -62,11 +70,14 @@ func authRequest(req *http.Request, token string) {
 	req.Header.Set(csrfHeaderName, "1")
 }
 
+// mintTestJWT's role param is unused for authorization now — see seedUser's
+// comment. Kept so every existing call site doesn't need updating; role
+// only ever flowed into the DB row, never the token itself.
 func mintTestJWT(t *testing.T, userID, role string) string {
 	t.Helper()
+	_ = role
 	claims := Claims{
 		UserID:   userID,
-		Role:     role,
 		Provider: "local",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
