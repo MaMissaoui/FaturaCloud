@@ -10,12 +10,14 @@ import {
   Form,
   Input,
   Layout,
+  message,
   Popconfirm,
   Row,
   Select,
   Space,
   Tag,
   theme,
+  Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
@@ -24,12 +26,12 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import {
   DeleteOutlined,
+  FileExcelOutlined,
   FilePdfOutlined,
   PlusOutlined,
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
-import { pdf } from "@react-pdf/renderer";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import get from "lodash/get";
@@ -39,7 +41,7 @@ import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import sum from "lodash/sum";
 
-import { SaveFile, GetPurchaseOrderReceivedQuantities } from "src/api";
+import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import ExchangeRateFields, {
@@ -65,7 +67,6 @@ import {
   updatePurchaseOrderStatusAtom,
   deletePurchaseOrderAtom,
 } from "src/atoms/purchase-order";
-import PurchaseOrderPDF from "src/components/purchase-orders/purchase-order-pdf";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -123,6 +124,9 @@ const PurchaseOrderDetails = () => {
   const [form] = Form.useForm();
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
   const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
+  const [isDirty, setIsDirty] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useEffect(() => {
     setVendors();
@@ -210,6 +214,7 @@ const PurchaseOrderDetails = () => {
   // only reaches this on success.
   const handleSubmit = async () => {
     await setOrder(form.getFieldsValue(true));
+    setIsDirty(false);
   };
 
   const handleDelete = async () => {
@@ -233,44 +238,21 @@ const PurchaseOrderDetails = () => {
     if (ok) setStatusOverride(next);
   };
 
-  const handlePrintPurchaseOrder = async () => {
-    // getFieldsValue(true) reads the whole store, for the same StrictMode
-    // reason handleSubmit does — the no-argument form returns {} in dev, which
-    // makes the PDF button silently do nothing.
-    const values = form.getFieldsValue(true);
-    const vendorData = find(vendors, { id: values.vendorId });
-    if (!vendorData) return;
-
-    const orderData = {
-      ...(!isNew && order && !(order as any).then ? order : {}),
-      ...values,
-      orderDate: values.orderDate?.valueOf ? values.orderDate.valueOf() : values.orderDate,
-      expectedDate: values.expectedDate?.valueOf
-        ? values.expectedDate.valueOf()
-        : values.expectedDate,
-      currency,
-    };
-
-    // The PDF's currency formatter takes cents, so pre-multiply here.
-    const lineItemsForPdf = (values.lineItems ?? []).map((item: any) => ({
-      ...item,
-      unitPrice: Math.round((item.unitPrice ?? 0) * 100),
-      sku: item.productId ? (find(products, { id: item.productId }) as any)?.sku : undefined,
-    }));
-
-    const doc = (
-      <PurchaseOrderPDF
-        order={orderData}
-        lineItems={lineItemsForPdf}
-        vendor={vendorData}
-        organization={organization}
-        i18n={i18n}
-      />
-    );
-
-    const blob = await pdf(doc).toBlob();
-    const orderNum = values.orderNumber ?? id ?? "purchase-order";
-    await SaveFile(`purchase-order-${orderNum}.pdf`, blob);
+  // Server fill-and-convert path (db/xlsx_export_purchase_order.go /
+  // db/pdf_convert.go) — the same mechanism invoices use, so a PDF and an
+  // Excel export of the same purchase order are always the same document.
+  // Reads persisted line items by order id, so both are gated on isDirty.
+  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
+    if (!id) return;
+    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
+    setDownloading(true);
+    try {
+      await ExportPurchaseOrderDocument(id, format);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const initialValues = isNew
@@ -292,7 +274,13 @@ const PurchaseOrderDetails = () => {
   if (!isNew && !order) return null;
 
   return (
-    <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
+    <Form
+      form={form}
+      onFinish={handleSubmit}
+      layout="vertical"
+      initialValues={initialValues}
+      onValuesChange={() => setIsDirty(true)}
+    >
       <Row gutter={24}>
         <Col xs={24} md={12} xl={7}>
           <Form.Item
@@ -572,9 +560,31 @@ const PurchaseOrderDetails = () => {
                     </Popconfirm>
                   )}
                   {!isNew && (
-                    <Button onClick={handlePrintPurchaseOrder}>
-                      <FilePdfOutlined /> <Trans>Purchase order PDF</Trans>
-                    </Button>
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingPdf}
+                        onClick={handleServerExport("pdf")}
+                      >
+                        <FilePdfOutlined /> PDF
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {!isNew && (
+                    // Always the server fill-and-convert path
+                    // (db/xlsx_export_purchase_order.go) — every purchase
+                    // order has an embedded fallback template
+                    // (resolveTemplateBytes) to fill even with no org
+                    // override, so both buttons always work.
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingExcel}
+                        onClick={handleServerExport("xlsx")}
+                      >
+                        <FileExcelOutlined /> <Trans>Excel</Trans>
+                      </Button>
+                    </Tooltip>
                   )}
                   {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
                     <Button

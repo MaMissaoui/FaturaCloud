@@ -132,6 +132,12 @@ export const purchaseOrderAtom = atom(
         ? t`Purchase order update failed`
         : t`Purchase order creation failed`;
       message.error(error instanceof Error ? error.message : fallback);
+      // Rethrow (F56/F67 convention — see CLAUDE.md's src/atoms/product.ts
+      // entry) so the details page's handleSubmit can tell a failed save
+      // apart from a successful one and skip clearing its isDirty flag —
+      // otherwise a failed save would silently re-enable the Excel/PDF
+      // export buttons over stale server-persisted data.
+      throw error;
     }
   },
 );

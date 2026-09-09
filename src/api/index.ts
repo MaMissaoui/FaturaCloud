@@ -432,21 +432,20 @@ export const DownloadInvoiceEInvoice = async (id: string): Promise<void> => {
   }, 1000);
 };
 
-// Exports an invoice through the org's custom Excel template (an uploaded
-// override, or the embedded default) filled with this invoice's persisted
-// data — as opposed to the default/tunisia PDF button, which renders live
-// unsaved form values client-side via @react-pdf/renderer.
-export const ExportInvoiceDocument = async (id: string, format: "xlsx" | "pdf"): Promise<void> => {
-  const res = await fetch(`/api/invoices/${id}/export?format=${format}`, {
-    credentials: "same-origin",
-  });
+// downloadDocumentExport is the shared engine behind every ExportXDocument
+// function below (invoice, purchase order, …) — fetches a filled Excel/PDF
+// export and triggers a browser download. fallbackFilename only applies if
+// the server didn't set a Content-Disposition filename (it always does
+// today; this is just a defensive default).
+const downloadDocumentExport = async (url: string, fallbackFilename: string): Promise<void> => {
+  const res = await fetch(url, { credentials: "same-origin" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error ?? res.statusText);
   }
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
-  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `invoice-${id}.${format}`;
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? fallbackFilename;
   const href = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = href;
@@ -459,6 +458,20 @@ export const ExportInvoiceDocument = async (id: string, format: "xlsx" | "pdf"):
     a.remove();
   }, 1000);
 };
+
+// Exports an invoice through the org's custom Excel template (an uploaded
+// override, or the embedded default) filled with this invoice's persisted
+// data — as opposed to the default/tunisia PDF button, which renders live
+// unsaved form values client-side via @react-pdf/renderer.
+export const ExportInvoiceDocument = (id: string, format: "xlsx" | "pdf") =>
+  downloadDocumentExport(`/api/invoices/${id}/export?format=${format}`, `invoice-${id}.${format}`);
+
+// Exports a purchase order the same way — see db/xlsx_export_purchase_order.go.
+export const ExportPurchaseOrderDocument = (id: string, format: "xlsx" | "pdf") =>
+  downloadDocumentExport(
+    `/api/purchase-orders/${id}/export?format=${format}`,
+    `purchase-order-${id}.${format}`,
+  );
 
 // ---- Tax Rates ----
 
