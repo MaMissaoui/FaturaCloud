@@ -461,7 +461,7 @@ docker run -p 8080:8080 -v ./data:/data fatura-cloud
 ```
 
 The `Dockerfile` is a three-stage build:
-1. **frontend** (node:22-alpine) — runs `pnpm build`, outputs `dist/`
+1. **frontend** (node:22-alpine) — `RUN corepack enable` then `pnpm install --frozen-lockfile`/`pnpm build`. Corepack (bundled with Node 22) reads `package.json`'s `packageManager` pin and fetches that exact pnpm release; the earlier `npm install -g pnpm` instead grabbed pnpm's single-executable-application build, whose per-platform `@pnpm/exe.*` native binary is an `optionalDependency` npm doesn't reliably install — it failed outright on at least one arm64 host with `no @pnpm/exe.linux-arm64 native binary was found for this host`. Corepack's shim has no such gap
 2. **backend** (golang:1.26-alpine) — copies `dist/` and embeds it via `//go:embed all:dist`, compiles binary
 3. **runtime** (debian:bookworm-slim) — copies only the binary plus `libreoffice-calc` and its own dependencies
 

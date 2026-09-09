@@ -8,7 +8,13 @@
 FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend
 WORKDIR /app
 
-RUN npm install -g pnpm
+# corepack (bundled with Node 22) reads package.json's own "packageManager"
+# pin and fetches that exact pnpm release — `npm install -g pnpm` instead
+# grabs pnpm's single-executable-application build, whose per-platform
+# @pnpm/exe.* native binary is an optionalDependency npm doesn't reliably
+# install (fails with "no @pnpm/exe.<platform> native binary was found for
+# this host" on some npm/arch combinations); corepack's shim has no such gap.
+RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
