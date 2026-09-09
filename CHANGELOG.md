@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-09-09
+
+Multi-page Excel/PDF exports repeat their header on every page, every
+document screen now identifies what kind of document it is, and a new tool
+seeds a realistic demo organization for testing workflows end to end.
+
+### Added
+- A `seed-demo` tool (`cmd/seed-demo`) populates a demo organization with
+  months of realistic, daily business activity — sales invoices, purchase
+  orders, goods receipts, vendor bills, sales orders, deliveries, payments —
+  by driving the real API, so there's something that looks like a real,
+  aged business to validate a workflow or a new feature against.
+- Excel/PDF exports for every document type now repeat the seller/buyer
+  header and column labels on every page of a multi-page document, and show
+  a "Page X of N" footer. Templates also support
+  `{{export.generatedDate}}`/`{{export.generatedTime}}` placeholders for
+  when the file was exported.
+- Every document creation/edit screen (invoice, purchase order, order,
+  incoming invoice, delivery, goods receipt) now shows its document type in
+  the header, matching the icon and name already used on the corresponding
+  list page.
+
+### Fixed
+- The invoice detail page's Delete button now matches the red "danger"
+  styling already used by every other document type.
+- An organization with a corrupted empty id — possible only from data
+  created before an older bug fix — is no longer shown anywhere in the app;
+  such a row made the organization switcher, its edit form, and its delete
+  button silently unusable.
+
 ## [3.12.0] - 2026-09-09
 
 Excel/PDF export now covers every document type in the app, and the
