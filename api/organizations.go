@@ -10,7 +10,17 @@ import (
 )
 
 func (h *handler) listOrganizations(w http.ResponseWriter, r *http.Request) {
-	orgs, err := h.db.GetOrganizations()
+	claims := getClaims(r)
+	if claims == nil {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+	// Issue #141 Phase C: only the caller's own memberships, not every
+	// organization in the database — including for a platform admin, who
+	// manages users/backups globally but still only sees the organizations
+	// they're a member of, same as any other user (no separate "all orgs"
+	// admin view).
+	orgs, err := h.db.GetUserOrganizations(claims.UserID)
 	if err != nil {
 		writeInternalError(w, err)
 		return

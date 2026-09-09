@@ -144,19 +144,23 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	platformAdminProtected("DELETE", "/api/users/{id}", h.deleteUser)
 
 	// Organizations
+	// listOrganizations itself filters to the caller's own memberships
+	// (issue #141 Phase C) — no route-level org resolver applies here, since
+	// there's no single target org to resolve; the scoping happens inside
+	// the handler via GetUserOrganizations.
 	protected("GET", "/api/organizations", h.listOrganizations)
 	protected("POST", "/api/organizations", h.createOrganization)
-	protected("GET", "/api/organizations/{id}", h.getOrganization)
-	protected("PUT", "/api/organizations/{id}", h.updateOrganization)
+	orgMemberProtected("GET", "/api/organizations/{id}", pathOrgID("id"), h.getOrganization)
+	orgMemberProtected("PUT", "/api/organizations/{id}", pathOrgID("id"), h.updateOrganization)
 	// Deleting an organization cascade-deletes all of its clients, invoices,
 	// orders, and deliveries — the caller must be an admin of *this*
 	// organization (not necessarily a platform admin).
 	orgAdminProtected("DELETE", "/api/organizations/{id}", pathOrgID("id"), h.deleteOrganization)
 	orgAdminProtected("POST", "/api/organizations/{id}/reset", pathOrgID("id"), h.resetOrganizationData)
-	protected("GET", "/api/organizations/{id}/usage-count", h.getOrganizationUsageCount)
-	protected("GET", "/api/organizations/{id}/logo", h.getOrganizationLogo)
-	protected("POST", "/api/organizations/{id}/logo", h.uploadOrganizationLogo)
-	protected("DELETE", "/api/organizations/{id}/logo", h.deleteOrganizationLogo)
+	orgMemberProtected("GET", "/api/organizations/{id}/usage-count", pathOrgID("id"), h.getOrganizationUsageCount)
+	orgMemberProtected("GET", "/api/organizations/{id}/logo", pathOrgID("id"), h.getOrganizationLogo)
+	orgMemberProtected("POST", "/api/organizations/{id}/logo", pathOrgID("id"), h.uploadOrganizationLogo)
+	orgMemberProtected("DELETE", "/api/organizations/{id}/logo", pathOrgID("id"), h.deleteOrganizationLogo)
 
 	// Organization membership — who can access this organization and at what
 	// role. Managing membership is itself an org-admin action, same tier as
@@ -172,10 +176,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Document templates (issue #115) — per-org, per-document-type Excel
 	// export template overrides. Same protection tier as the logo endpoints
 	// (not admin-only): org configuration any user with org access manages.
-	protected("GET", "/api/organizations/{orgId}/document-templates", h.listDocumentTemplates)
-	protected("GET", "/api/organizations/{orgId}/document-templates/{documentType}", h.getDocumentTemplate)
-	protected("POST", "/api/organizations/{orgId}/document-templates/{documentType}", h.uploadDocumentTemplate)
-	protected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}", h.deleteDocumentTemplate)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/document-templates", pathOrgID("orgId"), h.listDocumentTemplates)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.getDocumentTemplate)
+	orgMemberProtected("POST", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.uploadDocumentTemplate)
+	orgMemberProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.deleteDocumentTemplate)
 
 	// Clients
 	// clientOrgID resolves a client route's {id} to its owning organization
@@ -198,7 +202,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/clients/{id}/invoice-count", clientOrgID, h.getClientInvoiceCount)
 
 	// Vendors
-	protected("GET", "/api/organizations/{orgId}/vendors", h.listVendors)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/vendors", pathOrgID("orgId"), h.listVendors)
 	protected("POST", "/api/vendors", h.createVendor)
 	protected("GET", "/api/vendors/{id}", h.getVendor)
 	protected("PUT", "/api/vendors/{id}", h.updateVendor)
@@ -206,8 +210,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/vendors/{id}/document-count", h.getVendorDocumentCount)
 
 	// Imports (F114 — consolidated China shipments purchase orders link to)
-	protected("GET", "/api/organizations/{orgId}/imports", h.listImports)
-	protected("GET", "/api/organizations/{orgId}/imports/next-number", h.nextImportNumber)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/imports", pathOrgID("orgId"), h.listImports)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/imports/next-number", pathOrgID("orgId"), h.nextImportNumber)
 	protected("POST", "/api/imports", h.createImport)
 	protected("GET", "/api/imports/{id}", h.getImport)
 	protected("GET", "/api/imports/{id}/summary", h.getImportSummary)
@@ -215,8 +219,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/imports/{id}", h.deleteImport)
 
 	// Purchase orders
-	protected("GET", "/api/organizations/{orgId}/purchase-orders", h.listPurchaseOrders)
-	protected("GET", "/api/organizations/{orgId}/purchase-orders/next-number", h.nextPurchaseOrderNumber)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/purchase-orders", pathOrgID("orgId"), h.listPurchaseOrders)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/purchase-orders/next-number", pathOrgID("orgId"), h.nextPurchaseOrderNumber)
 	protected("POST", "/api/purchase-orders", h.createPurchaseOrder)
 	protected("GET", "/api/purchase-orders/{id}", h.getPurchaseOrder)
 	protected("GET", "/api/purchase-orders/{id}/line-items", h.getPurchaseOrderLineItems)
@@ -230,8 +234,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/purchase-orders/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportPurchaseOrderDocument))))
 
 	// Inbound deliveries (goods receipts)
-	protected("GET", "/api/organizations/{orgId}/inbound-deliveries", h.listInboundDeliveries)
-	protected("GET", "/api/organizations/{orgId}/inbound-deliveries/next-number", h.nextInboundDeliveryNumber)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/inbound-deliveries", pathOrgID("orgId"), h.listInboundDeliveries)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/inbound-deliveries/next-number", pathOrgID("orgId"), h.nextInboundDeliveryNumber)
 	protected("POST", "/api/inbound-deliveries", h.createInboundDelivery)
 	protected("GET", "/api/inbound-deliveries/{id}", h.getInboundDelivery)
 	protected("GET", "/api/inbound-deliveries/{id}/line-items", h.getInboundDeliveryLineItems)
@@ -244,7 +248,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/inbound-deliveries/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportInboundDeliveryDocument))))
 
 	// Incoming invoices (vendor bills)
-	protected("GET", "/api/organizations/{orgId}/incoming-invoices", h.listIncomingInvoices)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/incoming-invoices", pathOrgID("orgId"), h.listIncomingInvoices)
 	protected("POST", "/api/incoming-invoices", h.createIncomingInvoice)
 	protected("GET", "/api/incoming-invoices/{id}", h.getIncomingInvoice)
 	protected("GET", "/api/incoming-invoices/{id}/line-items", h.getIncomingInvoiceLineItems)
@@ -258,7 +262,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/incoming-invoices/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportIncomingInvoiceDocument))))
 
 	// Invoices
-	protected("GET", "/api/organizations/{orgId}/invoices", h.listInvoices)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/invoices", pathOrgID("orgId"), h.listInvoices)
 	protected("POST", "/api/invoices", h.createInvoice)
 	protected("GET", "/api/invoices/{id}", h.getInvoice)
 	protected("GET", "/api/invoices/{id}/line-items", h.getInvoiceLineItems)
@@ -275,20 +279,20 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/invoices/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportInvoiceDocument))))
 
 	// Dashboard
-	protected("GET", "/api/organizations/{orgId}/dashboard", h.getDashboard)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/dashboard", pathOrgID("orgId"), h.getDashboard)
 
 	// Exchange rate prefill (manual entry only — see db/exchange_rate.go)
-	protected("GET", "/api/organizations/{orgId}/exchange-rate", h.getLastExchangeRate)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/exchange-rate", pathOrgID("orgId"), h.getLastExchangeRate)
 
 	// Tax rates
-	protected("GET", "/api/organizations/{orgId}/tax-rates", h.listTaxRates)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/tax-rates", pathOrgID("orgId"), h.listTaxRates)
 	protected("POST", "/api/tax-rates", h.createTaxRate)
 	protected("GET", "/api/tax-rates/{id}", h.getTaxRate)
 	protected("PUT", "/api/tax-rates/{id}", h.updateTaxRate)
 	protected("DELETE", "/api/tax-rates/{id}", h.deleteTaxRate)
 	protected("GET", "/api/tax-rates/{id}/usage-count", h.getTaxRateUsageCount)
 
-	protected("GET", "/api/organizations/{orgId}/payment-terms", h.listPaymentTerms)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/payment-terms", pathOrgID("orgId"), h.listPaymentTerms)
 	protected("POST", "/api/payment-terms", h.createPaymentTerm)
 	protected("PUT", "/api/payment-terms/{id}", h.updatePaymentTerm)
 	protected("DELETE", "/api/payment-terms/{id}", h.deletePaymentTerm)
@@ -301,7 +305,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	platformAdminProtected("PATCH", "/api/countries/{code}", h.setCountryActive)
 
 	// Products
-	protected("GET", "/api/organizations/{orgId}/products", h.listProducts)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/products", pathOrgID("orgId"), h.listProducts)
 	protected("POST", "/api/products", h.createProduct)
 	protected("GET", "/api/products/{id}", h.getProduct)
 	protected("PUT", "/api/products/{id}", h.updateProduct)
@@ -310,12 +314,12 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/products/{id}/serial-numbers", h.listProductSerialNumbers)
 
 	// Stock movements
-	protected("GET", "/api/organizations/{orgId}/stock-movements", h.listStockMovements)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/stock-movements", pathOrgID("orgId"), h.listStockMovements)
 	protected("POST", "/api/stock-movements", h.createStockMovement)
 	protected("DELETE", "/api/stock-movements/{id}", h.deleteStockMovement)
 
 	// Orders
-	protected("GET", "/api/organizations/{orgId}/orders", h.listOrders)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/orders", pathOrgID("orgId"), h.listOrders)
 	protected("POST", "/api/orders", h.createOrder)
 	protected("GET", "/api/orders/{id}", h.getOrder)
 	protected("GET", "/api/orders/{id}/line-items", h.getOrderLineItems)
@@ -329,8 +333,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/orders/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportOrderDocument))))
 
 	// Outbound deliveries
-	protected("GET", "/api/organizations/{orgId}/deliveries", h.listDeliveries)
-	protected("GET", "/api/organizations/{orgId}/deliveries/next-number", h.nextDeliveryNumber)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/deliveries", pathOrgID("orgId"), h.listDeliveries)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/deliveries/next-number", pathOrgID("orgId"), h.nextDeliveryNumber)
 	protected("POST", "/api/deliveries", h.createDelivery)
 	protected("GET", "/api/deliveries/{id}", h.getDelivery)
 	protected("GET", "/api/deliveries/{id}/line-items", h.getDeliveryLineItems)
@@ -343,26 +347,22 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/deliveries/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportDeliveryDocument))))
 
 	// Chart of accounts
-	protected("GET", "/api/organizations/{orgId}/accounts", h.listAccounts)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/accounts", pathOrgID("orgId"), h.listAccounts)
 	protected("POST", "/api/accounts", h.createAccount)
 	protected("GET", "/api/accounts/{id}", h.getAccount)
 	protected("PUT", "/api/accounts/{id}", h.updateAccount)
 	protected("DELETE", "/api/accounts/{id}", h.deleteAccount)
 
 	// Journals
-	protected("GET", "/api/organizations/{orgId}/journals", h.listJournals)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/journals", pathOrgID("orgId"), h.listJournals)
 	protected("POST", "/api/journals", h.createJournal)
 	protected("PUT", "/api/journals/{id}", h.updateJournal)
 	protected("DELETE", "/api/journals/{id}", h.deleteJournal)
 
-	// Fiscal years / periods
-	protected("GET", "/api/organizations/{orgId}/fiscal-years", h.listFiscalYears)
-	protected("POST", "/api/fiscal-years", h.createFiscalYear)
-	protected("GET", "/api/fiscal-years/{id}/periods", h.listFiscalPeriods)
-	protected("POST", "/api/fiscal-periods", h.createFiscalPeriod)
-	protected("PATCH", "/api/fiscal-periods/{id}/status", h.updateFiscalPeriodStatus)
-	// The fiscal year's own row names its organization — {id} here is the
-	// fiscal year, not the org, so this needs a lookup instead of pathOrgID.
+	// The fiscal year's own row names its organization — {id} is the fiscal
+	// year, not the org, so this needs a lookup instead of pathOrgID. Hoisted
+	// above its first use (listFiscalPeriods, via GET .../periods) rather
+	// than only closeFiscalYear further down, which used to be its sole use.
 	fiscalYearOrgID := func(r *http.Request) (string, error) {
 		fy, err := h.db.GetFiscalYear(r.PathValue("id"))
 		if err != nil {
@@ -370,10 +370,17 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		}
 		return fy.OrganizationID, nil
 	}
+
+	// Fiscal years / periods
+	orgMemberProtected("GET", "/api/organizations/{orgId}/fiscal-years", pathOrgID("orgId"), h.listFiscalYears)
+	protected("POST", "/api/fiscal-years", h.createFiscalYear)
+	orgMemberProtected("GET", "/api/fiscal-years/{id}/periods", fiscalYearOrgID, h.listFiscalPeriods)
+	protected("POST", "/api/fiscal-periods", h.createFiscalPeriod)
+	protected("PATCH", "/api/fiscal-periods/{id}/status", h.updateFiscalPeriodStatus)
 	orgAdminProtected("POST", "/api/fiscal-years/{id}/close", fiscalYearOrgID, h.closeFiscalYear)
 
 	// Journal entries
-	protected("GET", "/api/organizations/{orgId}/journal-entries", h.listJournalEntries)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/journal-entries", pathOrgID("orgId"), h.listJournalEntries)
 	protected("POST", "/api/journal-entries", h.createJournalEntry)
 	protected("GET", "/api/journal-entries/{id}", h.getJournalEntry)
 	protected("GET", "/api/journal-entries/{id}/lines", h.getJournalEntryLines)
@@ -382,7 +389,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/journal-entries/{id}", h.deleteJournalEntry)
 
 	// Payments
-	protected("GET", "/api/organizations/{orgId}/payments", h.listPayments)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/payments", pathOrgID("orgId"), h.listPayments)
 	protected("POST", "/api/payments", h.createPayment)
 	protected("GET", "/api/payments/{id}", h.getPayment)
 	protected("GET", "/api/payments/{id}/applications", h.getPaymentApplications)
@@ -391,20 +398,20 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/incoming-invoices/{id}/payments", h.getIncomingInvoicePayments)
 
 	// Reports
-	protected("GET", "/api/organizations/{orgId}/reports/trial-balance", h.getTrialBalance)
-	protected("GET", "/api/organizations/{orgId}/reports/profit-and-loss", h.getProfitAndLoss)
-	protected("GET", "/api/organizations/{orgId}/reports/balance-sheet", h.getBalanceSheet)
-	protected("GET", "/api/organizations/{orgId}/reports/ar-aging", h.getReceivableAging)
-	protected("GET", "/api/organizations/{orgId}/reports/ap-aging", h.getPayableAging)
-	protected("GET", "/api/organizations/{orgId}/reports/inventory-valuation", h.getInventoryValuation)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/trial-balance", pathOrgID("orgId"), h.getTrialBalance)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/profit-and-loss", pathOrgID("orgId"), h.getProfitAndLoss)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/balance-sheet", pathOrgID("orgId"), h.getBalanceSheet)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/ar-aging", pathOrgID("orgId"), h.getReceivableAging)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/ap-aging", pathOrgID("orgId"), h.getPayableAging)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/inventory-valuation", pathOrgID("orgId"), h.getInventoryValuation)
 
 	// Reporting — document-derived sales/purchasing analytics, a distinct
 	// tier from the GL-derived Reports above (see db/sales_reports.go).
-	protected("GET", "/api/organizations/{orgId}/reporting/revenue-trend", h.getRevenueTrend)
-	protected("GET", "/api/organizations/{orgId}/reporting/sales-by-client", h.getSalesByClient)
-	protected("GET", "/api/organizations/{orgId}/reporting/sales-by-product", h.getSalesByProduct)
-	protected("GET", "/api/organizations/{orgId}/reporting/purchases-by-vendor", h.getPurchasesByVendor)
-	protected("GET", "/api/organizations/{orgId}/reporting/tax-summary", h.getTaxSummary)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reporting/revenue-trend", pathOrgID("orgId"), h.getRevenueTrend)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reporting/sales-by-client", pathOrgID("orgId"), h.getSalesByClient)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reporting/sales-by-product", pathOrgID("orgId"), h.getSalesByProduct)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reporting/purchases-by-vendor", pathOrgID("orgId"), h.getPurchasesByVendor)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reporting/tax-summary", pathOrgID("orgId"), h.getTaxSummary)
 
 	// GL export — France FEC only; DATEV is deliberately not implemented
 	// yet (see db/export_fec.go and the GL Export settings page). Admin-only,
