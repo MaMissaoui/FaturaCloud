@@ -10,12 +10,14 @@ import {
   Form,
   Input,
   Layout,
+  message,
   Popconfirm,
   Row,
   Select,
   Space,
   Tag,
   theme,
+  Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
@@ -24,12 +26,12 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import {
   DeleteOutlined,
+  FileExcelOutlined,
   FilePdfOutlined,
   PlusOutlined,
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
-import { pdf } from "@react-pdf/renderer";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import get from "lodash/get";
@@ -38,7 +40,7 @@ import isString from "lodash/isString";
 import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import sum from "lodash/sum";
-import { SaveFile, GetOrderDeliveredQuantities } from "src/api";
+import { ExportOrderDocument, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import ExchangeRateFields, {
@@ -55,7 +57,6 @@ import {
   updateOrderStatusAtom,
   deleteOrderAtom,
 } from "src/atoms/order";
-import OrderConfirmationPDF from "src/components/orders/order-confirmation-pdf";
 import LineItemsTable from "src/components/line-items/table";
 import StatusFlow from "src/components/status-flow";
 import {
@@ -109,6 +110,9 @@ const OrderDetails = () => {
 
   const [form] = Form.useForm();
   const [deliveredQuantities, setDeliveredQuantities] = useState<Record<string, number>>({});
+  const [isDirty, setIsDirty] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useEffect(() => {
     setClients();
@@ -159,6 +163,7 @@ const OrderDetails = () => {
 
   const handleSubmit = async (values: any) => {
     await setOrder(values);
+    setIsDirty(false);
   };
 
   const handleDelete = async () => {
@@ -175,39 +180,22 @@ const OrderDetails = () => {
     setTimeout(() => setOrderId(id), 0);
   };
 
-  const handlePrintOrderConfirmation = async () => {
-    const values = form.getFieldsValue();
-    const clientData = find(clients, { id: values.clientId });
-    if (!clientData) return;
-
-    const orderData = {
-      ...(!isNew && order && !(order as any).then ? order : {}),
-      ...values,
-      orderDate: values.orderDate?.valueOf ? values.orderDate.valueOf() : values.orderDate,
-      deliveryDate: values.deliveryDate?.valueOf
-        ? values.deliveryDate.valueOf()
-        : values.deliveryDate,
-    };
-
-    const lineItemsForPdf = (values.lineItems ?? []).map((item: any) => ({
-      ...item,
-      unitPrice: Math.round((item.unitPrice ?? 0) * 100),
-      sku: item.productId ? (find(products, { id: item.productId }) as any)?.sku : undefined,
-    }));
-
-    const doc = (
-      <OrderConfirmationPDF
-        order={orderData}
-        lineItems={lineItemsForPdf}
-        client={clientData}
-        organization={organization}
-        i18n={i18n}
-      />
-    );
-
-    const blob = await pdf(doc).toBlob();
-    const orderNum = values.orderNumber ?? id ?? "order";
-    await SaveFile(`order-confirmation-${orderNum}.pdf`, blob);
+  // Server fill-and-convert path (db/xlsx_export_order.go /
+  // db/pdf_convert.go) — the same mechanism invoices/purchase orders use, so
+  // a PDF and an Excel export of the same order are always the same
+  // document. Reads persisted line items by order id, so both are gated on
+  // isDirty.
+  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
+    if (!id) return;
+    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
+    setDownloading(true);
+    try {
+      await ExportOrderDocument(id, format);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const initialValues = isNew
@@ -235,9 +223,15 @@ const OrderDetails = () => {
   if (!isNew && !order) return null;
 
   return (
-    <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
+    <Form
+      form={form}
+      onFinish={handleSubmit}
+      layout="vertical"
+      initialValues={initialValues}
+      onValuesChange={() => setIsDirty(true)}
+    >
       <Row gutter={24}>
-        <Col xs={24} md={12} xl={8}>
+        <Col xs={24} md={12} xl={7}>
           <Form.Item
             label={<Trans>Client</Trans>}
             name="clientId"
@@ -289,13 +283,32 @@ const OrderDetails = () => {
             </Select>
           </Form.Item>
         </Col>
-        <Col xs={24} md={12} xl={4}>
+        <Col xs={24} md={12} xl={3}>
           <Form.Item
             label={<Trans>Order number</Trans>}
             name="orderNumber"
             rules={[{ required: true, message: t`Order number is required` }]}
           >
             <Input />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12} xl={3}>
+          <Form.Item
+            label={<Trans>Order date</Trans>}
+            name="orderDate"
+            rules={[{ required: true, message: t`Order date is required` }]}
+          >
+            <DatePicker style={{ width: "100%" }} format={dateFormat} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12} xl={3}>
+          <Form.Item label={<Trans>Delivery date</Trans>} name="deliveryDate">
+            <DatePicker style={{ width: "100%" }} format={dateFormat} />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12} xl={3}>
+          <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
+            <Input placeholder="e.g. FX1234567890" />
           </Form.Item>
         </Col>
         <Col xs={24} md={12} xl={4}>
@@ -310,25 +323,6 @@ const OrderDetails = () => {
               getLabel={orderStatusLabel}
               getColor={(s) => orderStatusColor[s]}
             />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Order date</Trans>}
-            name="orderDate"
-            rules={[{ required: true, message: t`Order date is required` }]}
-          >
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Expected delivery</Trans>} name="deliveryDate">
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
-            <Input placeholder="e.g. FX1234567890" />
           </Form.Item>
         </Col>
         <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
@@ -487,9 +481,31 @@ const OrderDetails = () => {
                       </Popconfirm>
                     )}
                   {!isNew && (
-                    <Button onClick={handlePrintOrderConfirmation}>
-                      <FilePdfOutlined /> <Trans>Order confirmation</Trans>
-                    </Button>
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingPdf}
+                        onClick={handleServerExport("pdf")}
+                      >
+                        <FilePdfOutlined /> PDF
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {!isNew && (
+                    // Always the server fill-and-convert path
+                    // (db/xlsx_export_order.go) — every order has an
+                    // embedded fallback template (resolveTemplateBytes) to
+                    // fill even with no org override, so both buttons
+                    // always work.
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingExcel}
+                        onClick={handleServerExport("xlsx")}
+                      >
+                        <FileExcelOutlined /> <Trans>Excel</Trans>
+                      </Button>
+                    </Tooltip>
                   )}
                   {!isNew && (
                     <Button onClick={() => navigate(`/deliveries/new?orderId=${id}`)}>

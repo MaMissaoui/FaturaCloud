@@ -473,6 +473,10 @@ export const ExportPurchaseOrderDocument = (id: string, format: "xlsx" | "pdf") 
     `purchase-order-${id}.${format}`,
   );
 
+// Exports a sales order the same way — see db/xlsx_export_order.go.
+export const ExportOrderDocument = (id: string, format: "xlsx" | "pdf") =>
+  downloadDocumentExport(`/api/orders/${id}/export?format=${format}`, `order-${id}.${format}`);
+
 // ---- Tax Rates ----
 
 export const GetTaxRates = (organizationId: string) =>

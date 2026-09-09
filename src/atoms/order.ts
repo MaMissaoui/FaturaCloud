@@ -121,6 +121,10 @@ export const orderAtom = atom(
       console.error("Order operation failed:", error);
       const fallback = orderId ? t`Order update failed` : t`Order creation failed`;
       message.error(error instanceof Error ? error.message : fallback);
+      // Rethrow (F56/F67 convention, also applied to purchase-order.ts —
+      // see CLAUDE.md) so details.tsx's handleSubmit can tell a failed save
+      // apart from a successful one and skip clearing its isDirty flag.
+      throw error;
     }
   },
 );
