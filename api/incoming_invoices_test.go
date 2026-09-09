@@ -27,6 +27,9 @@ func TestUpdateIncomingInvoice_CannotChangeStateViaPUT(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed CreateVendor: %v", err)
 	}
+	if _, err := database.AddOrganizationUser(org.ID, "test-user", "user"); err != nil {
+		t.Fatalf("seed org membership: %v", err)
+	}
 
 	inv, err := database.CreateIncomingInvoice(db.CreateIncomingInvoiceRequest{
 		ID: "bill-1", OrganizationID: org.ID, VendorID: vendor.ID, VendorInvoiceNumber: "V-001",

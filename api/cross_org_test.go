@@ -208,35 +208,6 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	// call yet) and single-resource/sub-resource/export buckets, grouped by
 	// the domain-family PRs that will migrate them per the rollout plan.
 
-	{"GET", "/api/imports/{id}"}:         true,
-	{"GET", "/api/imports/{id}/summary"}: true,
-	{"PUT", "/api/imports/{id}"}:         true,
-	{"DELETE", "/api/imports/{id}"}:      true,
-
-	{"GET", "/api/purchase-orders/{id}"}:                     true,
-	{"GET", "/api/purchase-orders/{id}/line-items"}:          true,
-	{"GET", "/api/purchase-orders/{id}/received-quantities"}: true,
-	{"PUT", "/api/purchase-orders/{id}"}:                     true,
-	{"PATCH", "/api/purchase-orders/{id}/status"}:            true,
-	{"DELETE", "/api/purchase-orders/{id}"}:                  true,
-	{"GET", "/api/purchase-orders/{id}/export"}:              true,
-
-	{"GET", "/api/inbound-deliveries/{id}"}:            true,
-	{"GET", "/api/inbound-deliveries/{id}/line-items"}: true,
-	{"PUT", "/api/inbound-deliveries/{id}"}:            true,
-	{"PATCH", "/api/inbound-deliveries/{id}/status"}:   true,
-	{"DELETE", "/api/inbound-deliveries/{id}"}:         true,
-	{"GET", "/api/inbound-deliveries/{id}/export"}:     true,
-
-	{"GET", "/api/incoming-invoices/{id}"}:            true,
-	{"GET", "/api/incoming-invoices/{id}/line-items"}: true,
-	{"GET", "/api/incoming-invoices/{id}/match"}:      true,
-	{"PUT", "/api/incoming-invoices/{id}"}:            true,
-	{"PATCH", "/api/incoming-invoices/{id}/state"}:    true,
-	{"DELETE", "/api/incoming-invoices/{id}"}:         true,
-	{"GET", "/api/incoming-invoices/{id}/export"}:     true,
-	{"GET", "/api/incoming-invoices/{id}/payments"}:   true,
-
 	{"GET", "/api/tax-rates/{id}"}:             true,
 	{"PUT", "/api/tax-rates/{id}"}:             true,
 	{"DELETE", "/api/tax-rates/{id}"}:          true,
@@ -424,6 +395,29 @@ var crossOrgProof = []struct {
 	{name: "list deliveries by org path", method: http.MethodGet, path: "/api/organizations/org-a/deliveries"},
 	{name: "get delivery by id", method: http.MethodGet, path: "/api/deliveries/org-a-delivery"},
 	{name: "delete delivery by id", method: http.MethodDelete, path: "/api/deliveries/org-a-delivery"},
+
+	{name: "list imports by org path", method: http.MethodGet, path: "/api/organizations/org-a/imports"},
+	{name: "get import by id", method: http.MethodGet, path: "/api/imports/org-a-import"},
+	{name: "import summary", method: http.MethodGet, path: "/api/imports/org-a-import/summary"},
+	{name: "delete import by id", method: http.MethodDelete, path: "/api/imports/org-a-import"},
+
+	{name: "list purchase orders by org path", method: http.MethodGet, path: "/api/organizations/org-a/purchase-orders"},
+	{name: "get purchase order by id", method: http.MethodGet, path: "/api/purchase-orders/org-a-po"},
+	{name: "purchase order line items", method: http.MethodGet, path: "/api/purchase-orders/org-a-po/line-items"},
+	{name: "purchase order export", method: http.MethodGet, path: "/api/purchase-orders/org-a-po/export"},
+	{name: "delete purchase order by id", method: http.MethodDelete, path: "/api/purchase-orders/org-a-po"},
+
+	{name: "list inbound deliveries by org path", method: http.MethodGet, path: "/api/organizations/org-a/inbound-deliveries"},
+	{name: "get inbound delivery by id", method: http.MethodGet, path: "/api/inbound-deliveries/org-a-inbound-delivery"},
+	{name: "inbound delivery export", method: http.MethodGet, path: "/api/inbound-deliveries/org-a-inbound-delivery/export"},
+	{name: "delete inbound delivery by id", method: http.MethodDelete, path: "/api/inbound-deliveries/org-a-inbound-delivery"},
+
+	{name: "list incoming invoices by org path", method: http.MethodGet, path: "/api/organizations/org-a/incoming-invoices"},
+	{name: "get incoming invoice by id", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice"},
+	{name: "incoming invoice match", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice/match"},
+	{name: "incoming invoice payments", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice/payments"},
+	{name: "incoming invoice export", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice/export"},
+	{name: "delete incoming invoice by id", method: http.MethodDelete, path: "/api/incoming-invoices/org-a-incoming-invoice"},
 }
 
 // TestCrossOrgAccessDenied is the fail-closed regression test the original
@@ -482,6 +476,28 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 		ID: "org-a-delivery", OrganizationID: "org-a", DeliveryNumber: "DEL-001", DeliveryDate: 1700000000000,
 	}); err != nil {
 		t.Fatalf("seed CreateDelivery: %v", err)
+	}
+	if _, err := database.CreateImport(db.CreateImportRequest{
+		ID: "org-a-import", OrganizationID: "org-a", ImportNumber: "IMP-001", Date: 1700000000000,
+	}); err != nil {
+		t.Fatalf("seed CreateImport: %v", err)
+	}
+	vendorID := "org-a-vendor"
+	if _, err := database.CreatePurchaseOrder(db.CreatePurchaseOrderRequest{
+		ID: "org-a-po", OrganizationID: "org-a", VendorID: &vendorID, OrderNumber: "PO-001", Status: "draft", OrderDate: 1700000000000,
+	}); err != nil {
+		t.Fatalf("seed CreatePurchaseOrder: %v", err)
+	}
+	if _, err := database.CreateInboundDelivery(db.CreateInboundDeliveryRequest{
+		ID: "org-a-inbound-delivery", OrganizationID: "org-a", VendorID: &vendorID, DeliveryNumber: "GR-001", DeliveryDate: 1700000000000,
+	}); err != nil {
+		t.Fatalf("seed CreateInboundDelivery: %v", err)
+	}
+	if _, err := database.CreateIncomingInvoice(db.CreateIncomingInvoiceRequest{
+		ID: "org-a-incoming-invoice", OrganizationID: "org-a", VendorID: vendorID, VendorInvoiceNumber: "BILL-001",
+		State: "draft", Date: 1700000000000, Currency: "EUR",
+	}); err != nil {
+		t.Fatalf("seed CreateIncomingInvoice: %v", err)
 	}
 
 	for _, tc := range crossOrgProof {
