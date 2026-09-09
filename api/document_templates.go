@@ -283,6 +283,112 @@ func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.R
 	_, _ = w.Write(pdfBytes)
 }
 
+// exportDeliveryDocument mirrors exportOrderDocument above — same
+// document_templates/xlsx_export machinery, same not-through-protected()
+// registration for the same reason. outbound_delivery_line_items has no
+// price columns, so FillDeliveryTemplate takes no tax rate map.
+func (h *handler) exportDeliveryDocument(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	format := r.URL.Query().Get("format")
+	if format != "xlsx" && format != "pdf" {
+		writeError(w, http.StatusBadRequest, "format must be xlsx or pdf")
+		return
+	}
+
+	h.dbMu.RLock()
+	delivery, lineItems, org, client, templateBytes, err := h.db.FetchDeliveryExportData(id)
+	h.dbMu.RUnlock()
+	if err != nil {
+		writeDBError(w, err, "delivery not found")
+		return
+	}
+
+	filled, unresolved, err := db.FillDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *client)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	if len(unresolved) > 0 {
+		log.Printf("export delivery %s: template has unresolved placeholders: %v", id, unresolved)
+	}
+
+	filenameBase := "delivery-" + delivery.DeliveryNumber
+	if format == "xlsx" {
+		w.Header().Set("Content-Type", documentTemplateContentType)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(filled)
+		return
+	}
+
+	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
+	if err != nil {
+		if errors.Is(err, db.ErrPDFConversionUnavailable) {
+			writeError(w, http.StatusServiceUnavailable, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(pdfBytes)
+}
+
+// exportInboundDeliveryDocument mirrors exportPurchaseOrderDocument above —
+// same document_templates/xlsx_export machinery, same not-through-protected()
+// registration for the same reason. inbound_delivery_line_items has no tax
+// rate, so FillInboundDeliveryTemplate takes no tax rate map either.
+func (h *handler) exportInboundDeliveryDocument(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	format := r.URL.Query().Get("format")
+	if format != "xlsx" && format != "pdf" {
+		writeError(w, http.StatusBadRequest, "format must be xlsx or pdf")
+		return
+	}
+
+	h.dbMu.RLock()
+	delivery, lineItems, org, vendor, templateBytes, err := h.db.FetchInboundDeliveryExportData(id)
+	h.dbMu.RUnlock()
+	if err != nil {
+		writeDBError(w, err, "goods receipt not found")
+		return
+	}
+
+	filled, unresolved, err := db.FillInboundDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *vendor)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	if len(unresolved) > 0 {
+		log.Printf("export inbound delivery %s: template has unresolved placeholders: %v", id, unresolved)
+	}
+
+	filenameBase := "goods-receipt-" + delivery.DeliveryNumber
+	if format == "xlsx" {
+		w.Header().Set("Content-Type", documentTemplateContentType)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(filled)
+		return
+	}
+
+	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
+	if err != nil {
+		if errors.Is(err, db.ErrPDFConversionUnavailable) {
+			writeError(w, http.StatusServiceUnavailable, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(pdfBytes)
+}
+
 // exportOrderDocument mirrors exportInvoiceDocument/exportPurchaseOrderDocument
 // above — same document_templates/xlsx_export machinery, same
 // not-through-protected() registration for the same reason.

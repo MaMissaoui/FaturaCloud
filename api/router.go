@@ -219,6 +219,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PUT", "/api/inbound-deliveries/{id}", h.updateInboundDelivery)
 	protected("PATCH", "/api/inbound-deliveries/{id}/status", h.updateInboundDeliveryStatus)
 	protected("DELETE", "/api/inbound-deliveries/{id}", h.deleteInboundDelivery)
+	// Same reasoning as GET /api/invoices/{id}/export above — registered
+	// directly on mux, not through protected(), so a LibreOffice PDF
+	// conversion never holds dbMu's read lock for its whole duration.
+	mux.Handle("GET /api/inbound-deliveries/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportInboundDeliveryDocument))))
 
 	// Incoming invoices (vendor bills)
 	protected("GET", "/api/organizations/{orgId}/incoming-invoices", h.listIncomingInvoices)
@@ -314,6 +318,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PUT", "/api/deliveries/{id}", h.updateDelivery)
 	protected("PATCH", "/api/deliveries/{id}/status", h.updateDeliveryStatus)
 	protected("DELETE", "/api/deliveries/{id}", h.deleteDelivery)
+	// Same reasoning as GET /api/invoices/{id}/export above — registered
+	// directly on mux, not through protected(), so a LibreOffice PDF
+	// conversion never holds dbMu's read lock for its whole duration.
+	mux.Handle("GET /api/deliveries/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportDeliveryDocument))))
 
 	// Chart of accounts
 	protected("GET", "/api/organizations/{orgId}/accounts", h.listAccounts)
