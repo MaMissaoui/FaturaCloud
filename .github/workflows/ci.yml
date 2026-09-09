@@ -37,28 +37,41 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        # The default go test timeout is 10m; -race's overhead already put
-        # the suite close to that on CI's shared runners before Phase 7's
-        # inventory/COGS GL tests (more DB fixtures, each running its own
-        # migration) added enough to tip it over — bump the budget rather
-        # than the suite's actual runtime being the problem. Raised again
-        # 2026-09-09: the most recent successful run on main (v3.14.0's
-        # merge) already spent 16m04s of the 20m budget before 3 small,
-        # fast (0.05s locally) tests from PR #170 were enough to tip a
-        # later run into a 20m timeout — every `newTestDB` call runs the
-        # full migration set against a fresh on-disk SQLite file with real
-        # fsyncs, so per-test overhead scales with the growing migration
-        # count, not with what any individual test actually asserts. Same
-        # "bump the budget" call as before, with more headroom this time
-        # since the suite is only going to keep growing test-by-test.
-        # Partially addressed the same day: every db-package test now calls
-        # t.Parallel() (each gets its own on-disk SQLite file via
-        # newTestDB/t.TempDir(), so they're fully isolated) — ~40% faster
-        # locally (392s -> ~230-270s for the db package alone). Left the 28m
-        # budget as-is rather than tightening it back down: this was only
-        # measured on one local machine, and CI's shared runners may see
-        # less benefit from parallelism (fewer cores, or -race's per-goroutine
-        # memory overhead capping effective concurrency) than this did.
+        # History of this timeout, oldest to newest: raised from the 10m
+        # default once -race pushed the suite close to it; raised again to
+        # 28m on 2026-09-09 when a run on main spent 16m04s of a 20m budget
+        # before 3 small new tests tipped a later run over — every
+        # `newTestDB` call ran the full migration set against a fresh
+        # on-disk SQLite file, so per-test overhead scaled with the growing
+        # migration count, not with what any test actually asserted.
+        # Two fixes landed the same day, in order:
+        # 1. Every db-package test gained t.Parallel() (each already got its
+        #    own on-disk file via newTestDB/t.TempDir(), so isolation was
+        #    free) — ~40% faster locally (392s -> ~230-270s for the db
+        #    package alone). Left the 28m budget as-is rather than
+        #    tightening it: this was measured on one local machine, and
+        #    CI's shared runners might see less benefit from parallelism.
+        #    It didn't — CI's own `go` job ran in 8m49s afterward, confirming
+        #    the speedup held there too.
+        # 2. newTestDB itself was rebuilt around a cached golden migrated
+        #    database (db_test.go's goldenMigratedDB, built once per test
+        #    binary run via Backup/VACUUM INTO — the same primitive db.go
+        #    already uses for production backups) instead of running
+        #    golang-migrate's Up() fresh every time. Measured under -race:
+        #    NewDatabase (open + migrate) cost ~1.44s/call — every migration
+        #    statement is race-instrumented — versus ~20ms/call to copy
+        #    pre-migrated bytes into a new file and let Up() no-op against
+        #    an already-current schema. That took the db package alone from
+        #    ~230-270s to ~9s locally — the actual bottleneck was never
+        #    fsync/disk I/O (a synchronous=OFF experiment on the test DSN
+        #    made no measurable difference); it was -race instrumenting 70
+        #    migrations' worth of statements on every single test.
+        # The 28m budget is left unchanged again: it was never the actual
+        # constraint (even before this, no observed run got close to it),
+        # and there's no cost to carrying slack now that the api package
+        # (no equivalent optimization — api/restore_test.go's newTestRouter
+        # calls db.NewDatabase directly, a decent follow-up) is the slower
+        # of the two Go packages.
         # -coverprofile writes per-line coverage alongside -race/-timeout
         # rather than as a separate run, since a second full `go test`
         # invocation would double the job's runtime for no reason.
