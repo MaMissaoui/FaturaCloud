@@ -50,9 +50,12 @@ import ExchangeRateFields, {
   showExchangeRateFields,
 } from "src/components/currency/currency-fields";
 import LineItemsTable from "src/components/line-items/table";
+import StatusFlow from "src/components/status-flow";
 import {
+  PURCHASE_ORDER_STATUSES,
   purchaseOrderStatusColor,
   purchaseOrderStatusLabel,
+  purchaseOrderStatusTransitionMatrix,
   purchaseOrderTransitions,
   type PurchaseOrderStatus,
 } from "src/types/purchase-order";
@@ -398,6 +401,13 @@ const PurchaseOrderDetails = () => {
             <Tag color={purchaseOrderStatusColor[currentStatus as PurchaseOrderStatus]}>
               {purchaseOrderStatusLabel(currentStatus)}
             </Tag>
+            <StatusFlow
+              current={currentStatus as PurchaseOrderStatus}
+              statuses={PURCHASE_ORDER_STATUSES}
+              transitions={purchaseOrderStatusTransitionMatrix}
+              getLabel={purchaseOrderStatusLabel}
+              getColor={(s) => purchaseOrderStatusColor[s]}
+            />
           </Form.Item>
         </Col>
         <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />

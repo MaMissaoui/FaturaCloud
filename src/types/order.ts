@@ -47,9 +47,9 @@ export interface OrderTransition {
 }
 
 // Must stay in sync with orderStatusTransitions in db/order.go, which
-// enforces the same matrix server-side ("delivered" and "cancelled" are
-// terminal). A function rather than a constant for the same locale reason as
-// the label helper above.
+// enforces the same matrix server-side ("delivered" is terminal). A function
+// rather than a constant for the same locale reason as the label helper
+// above.
 export function orderTransitions(status: string): OrderTransition[] {
   switch (status) {
     case "draft":
@@ -58,7 +58,26 @@ export function orderTransitions(status: string): OrderTransition[] {
       return [{ next: "shipped", label: t`Mark as shipped`, type: "primary" }];
     case "shipped":
       return [{ next: "delivered", label: t`Mark as delivered`, type: "primary" }];
+    // "cancelled" is a correction fallback, not a forward move — offered as
+    // plain (not primary) buttons, since none of the three targets is "the"
+    // next step the way draft→confirm→ship→deliver is.
+    case "cancelled":
+      return [
+        { next: "confirmed", label: t`Restore to confirmed`, type: "default" },
+        { next: "shipped", label: t`Restore to shipped`, type: "default" },
+        { next: "delivered", label: t`Restore to delivered`, type: "default" },
+      ];
     default:
       return [];
   }
 }
+
+// The full transition matrix for src/components/status-flow.tsx. Mirrors
+// orderStatusTransitions in db/order.go exactly — a status absent as a key
+// is terminal.
+export const orderStatusTransitionMatrix: Partial<Record<OrderStatus, OrderStatus[]>> = {
+  draft: ["confirmed", "cancelled"],
+  confirmed: ["shipped", "cancelled"],
+  shipped: ["delivered", "cancelled"],
+  cancelled: ["confirmed", "shipped", "delivered"],
+};

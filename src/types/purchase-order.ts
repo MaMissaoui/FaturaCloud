@@ -42,10 +42,10 @@ export interface PurchaseOrderTransition {
   type?: "primary" | "default" | "dashed";
 }
 
-// PURCHASE_ORDER_STATUS_TRANSITIONS must stay in sync with
-// purchaseOrderStatusTransitions in db/purchase_order.go, which enforces the
-// same matrix server-side ("received" and "cancelled" are terminal). Keeping it
-// next to the statuses makes that pairing visible in one place.
+// Must stay in sync with purchaseOrderStatusTransitions in
+// db/purchase_order.go, which enforces the same matrix server-side
+// ("received" is terminal). Keeping it next to the statuses makes that
+// pairing visible in one place.
 //
 // A function rather than a constant for the same locale reason as the label
 // helper above.
@@ -55,7 +55,26 @@ export function purchaseOrderTransitions(status: string): PurchaseOrderTransitio
       return [{ next: "confirmed", label: t`Confirm order`, type: "primary" }];
     case "confirmed":
       return [{ next: "received", label: t`Mark as received`, type: "primary" }];
+    // "cancelled" is a correction fallback, not a forward move — offered as
+    // plain (not primary) buttons, since either target is equally valid and
+    // neither is "the" next step the way confirm→receive is.
+    case "cancelled":
+      return [
+        { next: "confirmed", label: t`Restore to confirmed`, type: "default" },
+        { next: "received", label: t`Restore to received`, type: "default" },
+      ];
     default:
       return [];
   }
 }
+
+// The full transition matrix for src/components/status-flow.tsx. Mirrors
+// purchaseOrderStatusTransitions in db/purchase_order.go exactly — a status
+// absent as a key is terminal.
+export const purchaseOrderStatusTransitionMatrix: Partial<
+  Record<PurchaseOrderStatus, PurchaseOrderStatus[]>
+> = {
+  draft: ["confirmed", "cancelled"],
+  confirmed: ["received", "cancelled"],
+  cancelled: ["confirmed", "received"],
+};

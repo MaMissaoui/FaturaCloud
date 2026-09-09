@@ -41,9 +41,12 @@ import {
 } from "src/atoms/delivery";
 import DeliveryNotePDF from "src/components/deliveries/delivery-note-pdf";
 import SerialCaptureModal from "src/components/stock/serial-capture-modal";
+import StatusFlow from "src/components/status-flow";
 import {
+  DELIVERY_STATUSES,
   deliveryStatusColor,
   deliveryStatusLabel,
+  deliveryStatusTransitionMatrix,
   deliveryTransitions,
   type DeliveryStatus,
 } from "src/types/delivery";
@@ -348,6 +351,13 @@ const DeliveryDetails = () => {
             >
               {deliveryStatusLabel(currentStatus)}
             </Tag>
+            <StatusFlow
+              current={currentStatus as DeliveryStatus}
+              statuses={DELIVERY_STATUSES}
+              transitions={deliveryStatusTransitionMatrix}
+              getLabel={deliveryStatusLabel}
+              getColor={(s) => deliveryStatusColor[s]}
+            />
           </Form.Item>
         </Col>
       </Row>

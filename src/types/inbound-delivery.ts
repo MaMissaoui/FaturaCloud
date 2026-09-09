@@ -48,3 +48,18 @@ export function inboundDeliveryTransitions(status: string): InboundDeliveryTrans
       return [];
   }
 }
+
+// The full transition matrix for src/components/status-flow.tsx. Mirrors
+// inboundDeliveryStatusTransitions in db/inbound_delivery.go exactly — a
+// status absent as a key is terminal. Unlike purchase orders/orders,
+// "cancelled" has deliberately NOT been given a fallback here: receiving
+// posts real stock movements and a GRNI GL accrual (db/gl_posting.go), and
+// reversing a cancellation would mean re-deriving those — plus re-checking
+// nothing was billed against the receipt in the meantime — not just
+// flipping a status column. A materially bigger, separate feature.
+export const inboundDeliveryStatusTransitionMatrix: Partial<
+  Record<InboundDeliveryStatus, InboundDeliveryStatus[]>
+> = {
+  draft: ["received", "cancelled"],
+  received: ["cancelled"],
+};

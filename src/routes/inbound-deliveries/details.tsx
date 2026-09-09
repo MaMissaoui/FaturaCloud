@@ -39,9 +39,12 @@ import ExchangeRateFields, {
 } from "src/components/currency/currency-fields";
 import LineItemsTable from "src/components/line-items/table";
 import SerialCaptureModal from "src/components/stock/serial-capture-modal";
+import StatusFlow from "src/components/status-flow";
 import {
+  INBOUND_DELIVERY_STATUSES,
   inboundDeliveryStatusColor,
   inboundDeliveryStatusLabel,
+  inboundDeliveryStatusTransitionMatrix,
   inboundDeliveryTransitions,
   type InboundDeliveryStatus,
 } from "src/types/inbound-delivery";
@@ -352,6 +355,13 @@ const InboundDeliveryDetails = () => {
             <Tag color={inboundDeliveryStatusColor[currentStatus as InboundDeliveryStatus]}>
               {inboundDeliveryStatusLabel(currentStatus)}
             </Tag>
+            <StatusFlow
+              current={currentStatus as InboundDeliveryStatus}
+              statuses={INBOUND_DELIVERY_STATUSES}
+              transitions={inboundDeliveryStatusTransitionMatrix}
+              getLabel={inboundDeliveryStatusLabel}
+              getColor={(s) => inboundDeliveryStatusColor[s]}
+            />
           </Form.Item>
         </Col>
         <CurrencySelect

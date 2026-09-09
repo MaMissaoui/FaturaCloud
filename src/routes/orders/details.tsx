@@ -57,7 +57,15 @@ import {
 } from "src/atoms/order";
 import OrderConfirmationPDF from "src/components/orders/order-confirmation-pdf";
 import LineItemsTable from "src/components/line-items/table";
-import { orderTransitions } from "src/types/order";
+import StatusFlow from "src/components/status-flow";
+import {
+  ORDER_STATUSES,
+  orderStatusColor,
+  orderStatusLabel,
+  orderStatusTransitionMatrix,
+  orderTransitions,
+  type OrderStatus,
+} from "src/types/order";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -288,6 +296,20 @@ const OrderDetails = () => {
             rules={[{ required: true, message: t`Order number is required` }]}
           >
             <Input />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Form.Item label={<Trans>Status</Trans>}>
+            <Tag color={orderStatusColor[currentStatus as OrderStatus]}>
+              {orderStatusLabel(currentStatus)}
+            </Tag>
+            <StatusFlow
+              current={currentStatus as OrderStatus}
+              statuses={ORDER_STATUSES}
+              transitions={orderStatusTransitionMatrix}
+              getLabel={orderStatusLabel}
+              getColor={(s) => orderStatusColor[s]}
+            />
           </Form.Item>
         </Col>
         <Col xs={24} md={12} xl={4}>

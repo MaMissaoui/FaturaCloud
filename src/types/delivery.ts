@@ -52,3 +52,15 @@ export function deliveryTransitions(status: string): DeliveryTransition[] {
       return [];
   }
 }
+
+// The full transition matrix for src/components/status-flow.tsx. Mirrors
+// deliveryStatusTransitions in db/delivery.go exactly — a status absent as a
+// key is terminal. Unlike purchase orders/orders, "cancelled" has
+// deliberately NOT been given a fallback here: shipping/cancelling posts
+// real stock movements and COGS GL entries (db/gl_posting.go), and reversing
+// a cancellation would mean re-deriving those, not just flipping a status
+// column — a materially bigger, separate feature.
+export const deliveryStatusTransitionMatrix: Partial<Record<DeliveryStatus, DeliveryStatus[]>> = {
+  draft: ["shipped", "cancelled"],
+  shipped: ["delivered", "cancelled"],
+};
