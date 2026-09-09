@@ -11,6 +11,7 @@ import (
 // invoices in the same months must not contribute. Also covers the new
 // upper bound: a document dated after endDate must be excluded.
 func TestGetRevenueByMonth(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -80,6 +81,7 @@ func TestGetRevenueByMonth(t *testing.T) {
 // service line with nothing selected) doesn't appear or break the query,
 // and that limit=0 returns the full ranked list uncapped.
 func TestGetSalesByClientAndProduct(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -175,6 +177,7 @@ func TestGetSalesByClientAndProduct(t *testing.T) {
 // vendor with a NULL name doesn't error (vendors.name has no NOT NULL
 // constraint).
 func TestGetPurchasesByVendor(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -228,6 +231,7 @@ func TestGetPurchasesByVendor(t *testing.T) {
 // line with no taxRate landing in the "" unrated bucket, and that only
 // sent/paid invoices (output) vs approved/paid bills (input) count.
 func TestGetTaxSummary(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -328,6 +332,7 @@ func TestGetTaxSummary(t *testing.T) {
 // the combined 600*0.085=51.0 once would wrongly give 51 — a real
 // divergence even in a single currency with no FX involved.
 func TestGetTaxSummaryRoundsPerDocument(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {

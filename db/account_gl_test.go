@@ -7,6 +7,7 @@ import "testing"
 // accounts, wired to the matching default*AccountId columns, in the same
 // seeding pass as the original nine.
 func TestCreateOrganizationSeedsInventoryAccounts(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-inv-seed", Name: ptr("Inventory Seed Test Org")})
 	if err != nil {
@@ -71,6 +72,7 @@ func TestCreateOrganizationSeedsInventoryAccounts(t *testing.T) {
 // re-enters seeding for it. SeedInventoryAccountingDefaultsForAllOrganizations
 // must independently backfill the four new accounts for such an org.
 func TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsExistingOrgs(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-inv-backfill", Name: ptr("Backfill Test Org")})
 	if err != nil {
@@ -142,6 +144,7 @@ func TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsExistingOrgs
 // seedInventoryAccountsTx itself is perfectly capable of filling them in
 // (its COALESCE leaves the manually-set column alone).
 func TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsPartialOrgs(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-inv-partial", Name: ptr("Partial Backfill Test Org")})
 	if err != nil {
@@ -204,6 +207,7 @@ func TestSeedInventoryAccountingDefaultsForAllOrganizationsBackfillsPartialOrgs(
 // leaves the matching default*AccountId column unset (NULL), rather than
 // silently overwriting the organization's own account or aborting entirely.
 func TestSeedInventoryAccountsSkipsCodeCollision(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-inv-collision", Name: ptr("Collision Test Org")})
 	if err != nil {

@@ -47,6 +47,7 @@ func mustValidationError(t *testing.T, err error) {
 }
 
 func TestCreateProductSerializedRequiresStockEnabled(t *testing.T) {
+	t.Parallel()
 	d, org := newTestDB(t), "org-ser-flag"
 	if _, err := d.CreateOrganization(CreateOrganizationRequest{ID: org}); err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
@@ -67,6 +68,7 @@ func TestCreateProductSerializedRequiresStockEnabled(t *testing.T) {
 // — turning it on would fabricate identity for untracked legacy stock,
 // turning it off would strand the registry with nothing to reconcile against.
 func TestUpdateProductSerializedToggleBlockedWhileStockNonZero(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-ser-toggle")
 
 	// Un-serialize, then try to re-serialize while stock is non-zero.
@@ -114,6 +116,7 @@ func TestUpdateProductSerializedToggleBlockedWhileStockNonZero(t *testing.T) {
 // serials, "out" requires each to already be in stock, and non-in/out types
 // are rejected outright since they have no per-unit mapping.
 func TestCreateStockMovementSerializedManualInOut(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-ser-manual")
 
 	result, err := d.CreateStockMovement(CreateStockMovementRequest{
@@ -177,6 +180,7 @@ func TestCreateStockMovementSerializedManualInOut(t *testing.T) {
 // Receiving a serialized line requires exactly as many serials as quantity,
 // a whole-number quantity, and rejects duplicates within the request.
 func TestSerializedInboundReceiveValidation(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-ser-recv-val")
 
 	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
@@ -226,6 +230,7 @@ func TestSerializedInboundReceiveValidation(t *testing.T) {
 // Receiving with valid serials registers each unit, raises stock, and stamps
 // sourceDocumentId on every movement row.
 func TestSerializedInboundReceiveRegistersSerialsAndRaisesStock(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-ser-recv-ok")
 
 	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
@@ -296,6 +301,7 @@ func TestSerializedInboundReceiveRegistersSerialsAndRaisesStock(t *testing.T) {
 // Cancelling a received receipt reverses exactly the serials it posted, and
 // is rejected if any of them has since been shipped out.
 func TestSerializedInboundCancelReversesExactSerials(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-ser-recv-cancel")
 
 	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
@@ -330,6 +336,7 @@ func TestSerializedInboundCancelReversesExactSerials(t *testing.T) {
 }
 
 func TestSerializedInboundCancelRejectedWhenSerialAlreadyShipped(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-ser-recv-shipped")
 
 	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
@@ -364,6 +371,7 @@ func TestSerializedInboundCancelRejectedWhenSerialAlreadyShipped(t *testing.T) {
 // Shipping a serialized line requires each serial to already be registered
 // and in stock; cancelling restores exactly the shipped serials.
 func TestSerializedOutboundShipAndCancel(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-ser-ship")
 
 	// Shipping an unregistered serial is rejected outright.

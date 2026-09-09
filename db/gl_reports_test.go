@@ -3,6 +3,7 @@ package db
 import "testing"
 
 func TestGetProfitAndLoss(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pl")
 
@@ -52,6 +53,7 @@ func TestGetProfitAndLoss(t *testing.T) {
 // `[...report.equity, ...]` then threw "report.equity is not iterable".
 // Every list field must always encode as an array, empty or not.
 func TestGetProfitAndLossAndBalanceSheetNeverReturnNilSlices(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-reports-empty")
 
@@ -74,6 +76,7 @@ func TestGetProfitAndLossAndBalanceSheetNeverReturnNilSlices(t *testing.T) {
 }
 
 func TestGetProfitAndLossRejectsInvertedRange(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pl-invalid")
 	if _, err := d.GetProfitAndLoss(fx.orgID, fx.date, fx.date-1); err == nil {
@@ -88,6 +91,7 @@ func TestGetProfitAndLossRejectsInvertedRange(t *testing.T) {
 // it holds because every journal entry balances debit=credit across every
 // account including revenue/expense.
 func TestGetBalanceSheetBalances(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-bs")
 
@@ -138,6 +142,7 @@ func TestGetBalanceSheetBalances(t *testing.T) {
 // entirely even though its state is still 'sent' (state is a free,
 // payment-independent flag — see CLAUDE.md).
 func TestReceivableAgingReflectsPartialPayment(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-ar-aging")
 
@@ -178,6 +183,7 @@ func TestReceivableAgingReflectsPartialPayment(t *testing.T) {
 }
 
 func TestGetPayableAging(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-ap-aging")
 
@@ -214,6 +220,7 @@ func TestGetPayableAging(t *testing.T) {
 // currency, unconverted, alongside Total (the existing functional-currency
 // figure every bucket sum is still expressed in).
 func TestReceivableAgingSurfacesForeignCurrency(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-ar-fx")
 
@@ -256,6 +263,7 @@ func TestReceivableAgingSurfacesForeignCurrency(t *testing.T) {
 // the same USD-purchasing-org scenario F116 was actually filed from
 // (motorcycle-parts demo org buying from China in USD, selling in TND).
 func TestPayableAgingSurfacesForeignCurrency(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-ap-fx")
 
@@ -300,6 +308,7 @@ func TestPayableAgingSurfacesForeignCurrency(t *testing.T) {
 // side land on the same number — the whole point of the report is that
 // these two independently-derived values agree when nothing has drifted.
 func TestGetInventoryValuationMatchesGLAfterReceiptAndShipment(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-inv-valuation", 10, 250)
 
@@ -336,6 +345,7 @@ func TestGetInventoryValuationMatchesGLAfterReceiptAndShipment(t *testing.T) {
 // report, and GLBalance must be 0 even though defaultInventoryAccountId is
 // configured but has no posted lines yet.
 func TestGetInventoryValuationWithNoActivityIsZero(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-inv-valuation-empty", 10, 250)
 

@@ -21,6 +21,7 @@ func newTestDB(t *testing.T) *Database {
 }
 
 func TestMigrations(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	// Verify the schema by checking a known table exists.
 	var count int
@@ -38,6 +39,7 @@ func TestMigrations(t *testing.T) {
 // group-bys all filter journal_entries by fiscalYearId with no supporting
 // index before this migration.
 func TestJournalEntriesFiscalYearIDIndexExists(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	var count int
 	if err := d.DB.Get(&count,
@@ -52,6 +54,7 @@ func TestJournalEntriesFiscalYearIDIndexExists(t *testing.T) {
 }
 
 func TestForeignKeysEnabled(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	var fk int
 	if err := d.DB.Get(&fk, `PRAGMA foreign_keys`); err != nil {
@@ -63,6 +66,7 @@ func TestForeignKeysEnabled(t *testing.T) {
 }
 
 func TestOrganizationCRUD(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	req := CreateOrganizationRequest{
@@ -112,6 +116,7 @@ func TestOrganizationCRUD(t *testing.T) {
 // clean it up otherwise. The row is inserted directly here (bypassing
 // CreateOrganization's guard) since that's the only way to reproduce it.
 func TestGetOrganizationsExcludesEmptyIDRow(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	if _, err := d.DB.Exec(`INSERT INTO organizations (id, name) VALUES ('', 'Corrupt Legacy Org')`); err != nil {
@@ -134,6 +139,7 @@ func TestGetOrganizationsExcludesEmptyIDRow(t *testing.T) {
 }
 
 func TestClientCRUD(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -173,6 +179,7 @@ func TestClientCRUD(t *testing.T) {
 // primary key, and a second such request 500ed on the PK collision instead
 // of getting a clean nanoid.
 func TestCreateInvoiceGeneratesIDWhenEmpty(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -210,6 +217,7 @@ func TestCreateInvoiceGeneratesIDWhenEmpty(t *testing.T) {
 }
 
 func TestInvoiceCRUD(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -298,6 +306,7 @@ func TestInvoiceCRUD(t *testing.T) {
 // silently dropping productId the way it used to before the productId column
 // existed on invoiceLineItems (it was only ever wired for incoming invoices).
 func TestInvoiceLineItemProductRoundTrips(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -358,6 +367,7 @@ func TestInvoiceLineItemProductRoundTrips(t *testing.T) {
 }
 
 func TestOrganizationCascadeDeletesClients(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -380,6 +390,7 @@ func TestOrganizationCascadeDeletesClients(t *testing.T) {
 }
 
 func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -474,6 +485,7 @@ func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
 // way deleting the delivery itself is — otherwise stockQuantity desyncs from
 // a delivery that still claims to have shipped it.
 func TestDeleteStockMovementBlockedForShippedDelivery(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-del-mv-1"})
@@ -532,6 +544,7 @@ func TestDeleteStockMovementBlockedForShippedDelivery(t *testing.T) {
 // Same guard, inbound side: deleting the movement a received receipt
 // generated must be blocked, mirroring DeleteInboundDelivery's own guard.
 func TestDeleteStockMovementBlockedForReceivedReceipt(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product, receipt := seedReceipt(t, d, "org-recv-mv-1", 10, 250)
 
@@ -564,6 +577,7 @@ func findMovementByReference(movements []StockMovement, reference, movementType 
 }
 
 func TestDeliveryShipInsufficientStockBlocked(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -625,6 +639,7 @@ func TestDeliveryShipInsufficientStockBlocked(t *testing.T) {
 }
 
 func TestStandaloneDeliveryShipReducesStock(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -683,6 +698,7 @@ func TestStandaloneDeliveryShipReducesStock(t *testing.T) {
 }
 
 func TestProductCodeUniquePerOrganization(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org1, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
@@ -723,6 +739,7 @@ func TestProductCodeUniquePerOrganization(t *testing.T) {
 // nonzero Limit/Offset must page correctly while total always reflects the
 // full matching count, not just the current page's length.
 func TestGetProductsPagination(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -771,6 +788,7 @@ func TestGetProductsPagination(t *testing.T) {
 // prefix/leading-anchor search — and confirms it matches across every field
 // the old client-side filter covered (name, sku, description, unit, type).
 func TestGetProductsSearch(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -815,6 +833,7 @@ func TestGetProductsSearch(t *testing.T) {
 // GetProducts, plus the ProductID filter that replaced Inventory's
 // client-side filtering.
 func TestGetStockMovementsPagination(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -872,6 +891,7 @@ func TestGetStockMovementsPagination(t *testing.T) {
 // raw taxRateId. An unrecognized SortField must not error or inject
 // anything; it falls back to the default.
 func TestGetProductsSort(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -938,6 +958,7 @@ func namesOf(products []Product) []string {
 // plain column, and "product" sorting by the joined product's *name* rather
 // than productId.
 func TestGetStockMovementsSort(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -992,6 +1013,7 @@ func ptr[T any](v T) *T { return &v }
 // UpdateDeliveryStatus is isolated from the stock-movement side effects
 // already covered by TestDeliveryShipReducesStockAndCancelRestores.
 func TestDeliveryStatusTransitions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		from    string
 		to      string
@@ -1015,6 +1037,7 @@ func TestDeliveryStatusTransitions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			t.Parallel()
 			d := newTestDB(t)
 			org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 			if err != nil {
@@ -1048,6 +1071,7 @@ func TestDeliveryStatusTransitions(t *testing.T) {
 // effects — see orderStatusTransitions in db/order.go); delivered terminal;
 // same-status a no-op.
 func TestOrderStatusTransitions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		from    string
 		to      string
@@ -1077,6 +1101,7 @@ func TestOrderStatusTransitions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			t.Parallel()
 			d := newTestDB(t)
 			org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 			if err != nil {
@@ -1104,6 +1129,7 @@ func TestOrderStatusTransitions(t *testing.T) {
 }
 
 func TestCreateOrderStatusValidation(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1134,6 +1160,7 @@ func TestCreateOrderStatusValidation(t *testing.T) {
 // when the currency doesn't change, and rejected if the currency changes
 // without a fresh rate.
 func TestOrderExchangeRate(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-fx-1", Currency: ptr("EUR")})
 	if err != nil {
@@ -1189,6 +1216,7 @@ func TestOrderExchangeRate(t *testing.T) {
 // productId) must not leave a delivery header persisted with only some of
 // its line items.
 func TestCreateDeliveryLineItemFailureRollsBackAtomically(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1216,6 +1244,7 @@ func TestCreateDeliveryLineItemFailureRollsBackAtomically(t *testing.T) {
 // counterpart: a failed line-item replacement must leave the original line
 // items in place, not a half-deleted state.
 func TestUpdateDeliveryLineItemFailureRollsBackAtomically(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1247,6 +1276,7 @@ func TestUpdateDeliveryLineItemFailureRollsBackAtomically(t *testing.T) {
 // TestNextDeliveryNumberSkipsGapsFromDeletions covers F9: COUNT(*)+1 would
 // reissue an in-use number as soon as any non-newest delivery is deleted.
 func TestNextDeliveryNumberSkipsGapsFromDeletions(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1279,6 +1309,7 @@ func TestNextDeliveryNumberSkipsGapsFromDeletions(t *testing.T) {
 // has shipped, its line items are frozen (they've already generated stock
 // movements) — only header fields like tracking number remain editable.
 func TestUpdateDeliveryRejectsLineItemEditAfterShip(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1310,6 +1341,7 @@ func TestUpdateDeliveryRejectsLineItemEditAfterShip(t *testing.T) {
 // SQLite's default (world-readable) mode — Backup must tighten that down to
 // owner-only since it's a full copy of the financial database.
 func TestBackupFilePermissions(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	dest := filepath.Join(t.TempDir(), "backup.db")
 	if err := d.Backup(dest); err != nil {
@@ -1328,6 +1360,7 @@ func TestBackupFilePermissions(t *testing.T) {
 // client-computed and stored verbatim — a total that doesn't match the line
 // items must be rejected rather than silently stored.
 func TestCreateInvoiceRejectsMismatchedTotals(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1360,6 +1393,7 @@ func TestCreateInvoiceRejectsMismatchedTotals(t *testing.T) {
 // recompute must agree exactly, or every invoice using this tax rate would
 // start getting rejected.
 func TestCreateInvoiceAcceptsRoundingBoundary(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1397,6 +1431,7 @@ func TestCreateInvoiceAcceptsRoundingBoundary(t *testing.T) {
 // float64: a fractional quantity (1.5 units at 3.33 each, 19.5% tax) still
 // has to land on exactly the right cent.
 func TestCreateInvoiceAcceptsFractionalQuantity(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1433,6 +1468,7 @@ func TestCreateInvoiceAcceptsFractionalQuantity(t *testing.T) {
 // line items, no totals) has nothing to recompute against and must not be
 // rejected.
 func TestUpdateInvoiceHeaderOnlyDoesNotValidateTotals(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1463,6 +1499,7 @@ func TestUpdateInvoiceHeaderOnlyDoesNotValidateTotals(t *testing.T) {
 // validated against the invoice's *stored* line items, not skipped just
 // because lineItems is absent from this particular request.
 func TestUpdateInvoiceRejectsTotalsOnlyMismatch(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1501,6 +1538,7 @@ func TestUpdateInvoiceRejectsTotalsOnlyMismatch(t *testing.T) {
 // against the invoice's *stored* totals, not skipped just because the
 // totals fields are absent from this request.
 func TestUpdateInvoiceRejectsLineItemsOnlyMismatch(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -1532,6 +1570,7 @@ func TestUpdateInvoiceRejectsLineItemsOnlyMismatch(t *testing.T) {
 // the canonical set on create and on the PATCH state endpoint, empty defaults
 // to draft, and unknown values are rejected.
 func TestInvoiceStateValidation(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	client, _ := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
@@ -1578,6 +1617,7 @@ func TestInvoiceStateValidation(t *testing.T) {
 // (F29 — the list is re-fetched on every auth change, and a multi-MB logo has
 // no business riding along with either), only GetOrganizationLogo does.
 func TestOrganizationLogoRoundTrip(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	if _, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1", Name: ptr("ACME")}); err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
@@ -1621,6 +1661,7 @@ func TestOrganizationLogoRoundTrip(t *testing.T) {
 // (the format used before the /logo endpoint existed) — GetOrganizationLogo
 // must decode it back to raw image bytes rather than returning the text.
 func TestOrganizationLogoLegacyDataURI(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	if _, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1", Name: ptr("ACME")}); err != nil {
 		t.Fatalf("CreateOrganization: %v", err)
@@ -1639,6 +1680,7 @@ func TestOrganizationLogoLegacyDataURI(t *testing.T) {
 }
 
 func TestVendorCRUD(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-vendor", Name: ptr("ACME Corp")})
@@ -1692,6 +1734,7 @@ func TestVendorCRUD(t *testing.T) {
 // Vendors must be scoped to their organization and cascade away with it, the
 // same as clients — otherwise deleting an org leaves orphaned master data.
 func TestVendorCascadesWithOrganization(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cascade", Name: ptr("ACME Corp")})
@@ -1733,6 +1776,7 @@ func TestVendorCascadesWithOrganization(t *testing.T) {
 // Rather than trusting a comment, this discovers every table with a vendorId
 // column from the live schema and requires it to be covered.
 func TestVendorDocumentCountCoversEveryReference(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	tables := []string{}
@@ -1786,6 +1830,7 @@ func TestVendorDocumentCountCoversEveryReference(t *testing.T) {
 // tables that reference a client with no ON DELETE clause; invoices.clientId
 // cascades on delete by design and is deliberately not in that list.
 func TestClientDocumentCountCoversEveryReference(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	tables := []string{}
@@ -1865,6 +1910,7 @@ func TestClientDocumentCountCoversEveryReference(t *testing.T) {
 // own master/transactional data; wiping it on a data reset would silently
 // revoke every member's access, which nothing about a data reset should do.
 func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	legacyUnusedTables := map[string]bool{
@@ -1924,7 +1970,14 @@ func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 // (master data survives untouched), the neither-checked validation error, and
 // master data forcing transactional data along with it (the referential-
 // integrity constraint documented on ResetOrganizationData).
+//
+// Its three t.Run subtests deliberately don't call t.Parallel() themselves,
+// unlike the table-driven status-transition tests elsewhere in this file —
+// they share one `d` (and its single SQLite connection, db.SetMaxOpenConns(1))
+// declared once below, so parallelizing them would just queue on that one
+// connection for no wall-clock benefit.
 func TestResetOrganizationData(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	seed := func(t *testing.T, orgID string) (client *Client, product *Product) {
@@ -2077,6 +2130,7 @@ func TestResetOrganizationData(t *testing.T) {
 // status directly via SQL so the guard is isolated from the rest of the
 // update path.
 func TestPurchaseOrderStatusTransitions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		from    string
 		to      string
@@ -2101,6 +2155,7 @@ func TestPurchaseOrderStatusTransitions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			t.Parallel()
 			d := newTestDB(t)
 			org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 			if err != nil {
@@ -2130,6 +2185,7 @@ func TestPurchaseOrderStatusTransitions(t *testing.T) {
 }
 
 func TestPurchaseOrderCRUDAndLineItems(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po", Name: ptr("ACME Corp")})
@@ -2193,6 +2249,7 @@ func TestPurchaseOrderCRUDAndLineItems(t *testing.T) {
 // A received purchase order can't be deleted — it must be cancelled instead,
 // mirroring the guard on shipped/delivered sales orders.
 func TestDeleteReceivedPurchaseOrderIsRejected(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-del"})
 	order, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
@@ -2222,6 +2279,7 @@ func TestDeleteReceivedPurchaseOrderIsRejected(t *testing.T) {
 // COUNT(*)+1 — the latter reissues a number as soon as one is deleted. The
 // SUBSTR offset is prefix-length-sensitive ("PO-" is 3 chars, unlike "DEL-").
 func TestNextPurchaseOrderNumber(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-num"})
 
@@ -2256,6 +2314,7 @@ func TestNextPurchaseOrderNumber(t *testing.T) {
 // Status must not be settable through PUT — only through the PATCH status
 // endpoint, which enforces the transition matrix.
 func TestUpdatePurchaseOrderCannotChangeStatus(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-status"})
 	order, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
@@ -2281,6 +2340,7 @@ func TestUpdatePurchaseOrderCannotChangeStatus(t *testing.T) {
 // ON DELETE SET NULL: a null vendor on an existing order is never a legitimate
 // state, and silently producing one would defeat DeleteVendor's guard.
 func TestUpdatePurchaseOrderKeepsVendorOnPartialUpdate(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-vendor"})
 	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")})
@@ -2352,6 +2412,7 @@ func productUnitCost(t *testing.T, d *Database, productID string) *int64 {
 // then 10 @ 200 must value stock at the weighted average of 150, and an outflow
 // must consume at that average without moving it.
 func TestAverageCostWeightsInflows(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product := seedCostProduct(t, d, "org-cost-1")
 
@@ -2395,6 +2456,7 @@ func TestAverageCostWeightsInflows(t *testing.T) {
 // becomes derived once real purchase data exists, so existing products are
 // untouched.
 func TestAverageCostLeavesManualCostAloneWithoutCostedInflows(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cost-2"})
 	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
@@ -2430,6 +2492,7 @@ func TestAverageCostLeavesManualCostAloneWithoutCostedInflows(t *testing.T) {
 // Replay must be a pure function of the movement history: recomputing twice
 // over the same rows yields the same answer, with no drift.
 func TestAverageCostReplayIsDeterministic(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product := seedCostProduct(t, d, "org-cost-3")
 
@@ -2496,6 +2559,7 @@ func seedReceipt(t *testing.T, d *Database, orgID string, qty float64, unitCost 
 // values the goods at the purchase order's price — resolved server-side, since
 // the request named neither the product nor the cost.
 func TestInboundReceiptRaisesStockAndSetsCost(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product, receipt := seedReceipt(t, d, "org-inb-1", 10, 250)
 
@@ -2547,6 +2611,7 @@ func TestInboundReceiptRaisesStockAndSetsCost(t *testing.T) {
 
 // Cancelling a received receipt reverses the stock it added.
 func TestInboundCancelReversesStock(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product, receipt := seedReceipt(t, d, "org-inb-2", 10, 250)
 
@@ -2579,6 +2644,7 @@ func TestInboundCancelReversesStock(t *testing.T) {
 // goods have already been shipped out would drive stock negative, so it is
 // rejected and nothing changes.
 func TestInboundCancelRejectedWhenStockAlreadyConsumed(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product, receipt := seedReceipt(t, d, "org-inb-3", 10, 250)
 
@@ -2614,6 +2680,7 @@ func TestInboundCancelRejectedWhenStockAlreadyConsumed(t *testing.T) {
 // A standalone receipt (no purchase order) still moves stock, using the product
 // named directly on the line.
 func TestInboundStandaloneReceiptMovesStock(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product := seedCostProduct(t, d, "org-inb-4")
 
@@ -2642,6 +2709,7 @@ func TestInboundStandaloneReceiptMovesStock(t *testing.T) {
 // Line items freeze once received; header-only edits stay allowed, which is why
 // UpdateInboundDelivery COALESCEs every column.
 func TestInboundLineItemsFrozenAfterReceipt(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	_, receipt := seedReceipt(t, d, "org-inb-5", 10, 250)
 
@@ -2680,6 +2748,7 @@ func TestInboundLineItemsFrozenAfterReceipt(t *testing.T) {
 
 // TestInboundDeliveryStatusTransitions covers every (from, to) pair.
 func TestInboundDeliveryStatusTransitions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		from    string
 		to      string
@@ -2698,6 +2767,7 @@ func TestInboundDeliveryStatusTransitions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
+			t.Parallel()
 			d := newTestDB(t)
 			org, _ := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 			receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
@@ -2729,6 +2799,7 @@ func TestInboundDeliveryStatusTransitions(t *testing.T) {
 // an in-use rate be deleted and silently strip line items off existing
 // invoices, which is exactly what DeleteTaxRate exists to prevent.
 func TestTaxRateUsageCountCoversEveryReference(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	tables := []string{}
@@ -2855,6 +2926,7 @@ func createIncomingInvoice(t *testing.T, d *Database, f matchFixture, number str
 // would silently orphan it — only "cancelled" reverses the entry and clears
 // the way to delete.
 func TestDeleteIncomingInvoiceBlockedWhenPaid(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-paid", 10, 250, 10)
 	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
@@ -2896,6 +2968,7 @@ func TestDeleteIncomingInvoiceBlockedWhenPaid(t *testing.T) {
 // An invoice matching what was ordered and received is clean, and approving it
 // is allowed.
 func TestIncomingInvoiceMatches(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-1", 10, 250, 10)
 	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
@@ -2922,6 +2995,7 @@ func TestIncomingInvoiceMatches(t *testing.T) {
 // Billing more than was received is the over-billing case, and it blocks
 // approval — but not saving.
 func TestIncomingInvoiceOverReceivedBlocksApproval(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-2", 10, 250, 4) // only 4 of 10 received
 	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
@@ -2948,6 +3022,7 @@ func TestIncomingInvoiceOverReceivedBlocksApproval(t *testing.T) {
 // A second invoice against the same order line must count what the first one
 // already billed — otherwise the same goods can be billed twice.
 func TestIncomingInvoiceDoubleBillingDetected(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-3", 10, 250, 10)
 
@@ -2974,6 +3049,7 @@ func TestIncomingInvoiceDoubleBillingDetected(t *testing.T) {
 // billing exceeds what's actually in hand) and still allowed to save, same
 // as every other variance status.
 func TestIncomingInvoiceMatchQuantityVariance(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-qtyvar", 5, 250, 10) // 5 ordered, 10 received
 	inv := createIncomingInvoice(t, d, f, "V-001", 8, 250)
@@ -3000,6 +3076,7 @@ func TestIncomingInvoiceMatchQuantityVariance(t *testing.T) {
 // not tied to any PO) is unlinked — informational only, and unlike every
 // other variance status it never blocks approval.
 func TestIncomingInvoiceMatchUnlinkedLine(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-match-unlinked"})
 	if err != nil {
@@ -3047,6 +3124,7 @@ func TestIncomingInvoiceMatchUnlinkedLine(t *testing.T) {
 // draft below would have made the second bill's line report
 // over_received/PreviouslyInvoiced=10 despite nothing yet approved.
 func TestIncomingInvoiceMatchIgnoresDraftBillsInPreviouslyInvoiced(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-4", 10, 250, 10)
 
@@ -3073,6 +3151,7 @@ func TestIncomingInvoiceMatchIgnoresDraftBillsInPreviouslyInvoiced(t *testing.T)
 
 // A unit price above what was ordered is a price variance.
 func TestIncomingInvoicePriceVariance(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-4", 10, 250, 10)
 	inv := createIncomingInvoice(t, d, f, "V-001", 10, 300) // ordered at 250
@@ -3102,6 +3181,7 @@ func TestIncomingInvoicePriceVariance(t *testing.T) {
 
 // The override is the documented escape hatch, and it requires a reason.
 func TestIncomingInvoiceOverrideRequiresReasonAndUnblocks(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-5", 10, 250, 4)
 	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
@@ -3132,6 +3212,7 @@ func TestIncomingInvoiceOverrideRequiresReasonAndUnblocks(t *testing.T) {
 // A free-text line with no purchase order link is informational only and must
 // never block approval.
 func TestIncomingInvoiceUnlinkedLineDoesNotBlock(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-6", 10, 250, 10)
 
@@ -3159,6 +3240,7 @@ func TestIncomingInvoiceUnlinkedLineDoesNotBlock(t *testing.T) {
 // Totals are re-validated server-side by the same routine sales invoices use,
 // including on a partial update that sends only new totals.
 func TestIncomingInvoiceTotalsValidated(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-7", 10, 250, 10)
 
@@ -3189,6 +3271,7 @@ func TestIncomingInvoiceTotalsValidated(t *testing.T) {
 
 // A vendor cannot bill the same number twice.
 func TestIncomingInvoiceDuplicateNumberRejected(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-8", 10, 250, 10)
 	createIncomingInvoice(t, d, f, "V-001", 10, 250)
@@ -3209,6 +3292,7 @@ func TestIncomingInvoiceDuplicateNumberRejected(t *testing.T) {
 // A tax rate used only by an incoming invoice must not be deletable — its FK
 // cascades, so deleting it would strip those line items.
 func TestTaxRateUsedOnlyByIncomingInvoiceCannotBeDeleted(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-match-9", 10, 250, 10)
 
@@ -3246,6 +3330,7 @@ func TestTaxRateUsedOnlyByIncomingInvoiceCannotBeDeleted(t *testing.T) {
 // An unknown BT-118 category code would produce invalid XRechnung/ZUGFeRD
 // XML at export time, so it's rejected up front on both create and update.
 func TestTaxRateRejectsUnknownCategoryCode(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-tax-cat"})
 	if err != nil {
@@ -3277,6 +3362,7 @@ func TestTaxRateRejectsUnknownCategoryCode(t *testing.T) {
 // stock is typically a manual adjustment with no cost; letting those units into
 // the valuation pool at a value of zero would halve the price actually paid.
 func TestAverageCostIgnoresUncostedStockBeforeFirstCostedReceipt(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	product := seedCostProduct(t, d, "org-cost-dilute")
 
@@ -3320,6 +3406,7 @@ func TestAverageCostIgnoresUncostedStockBeforeFirstCostedReceipt(t *testing.T) {
 // counted draft receipts while matching counted only received ones, so the same
 // goods read as both fully received and not received at all.
 func TestReceivedQuantityAgreesBetweenOrderAndMatch(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-received-agree", 10, 250, 0)
 
@@ -3379,6 +3466,7 @@ func TestReceivedQuantityAgreesBetweenOrderAndMatch(t *testing.T) {
 // outright — so this scenario now only reaches the override-clearing logic
 // after the entry has been reversed (cancelled) first.
 func TestIncomingInvoiceOverrideClearedWhenFinancialsChange(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-override-stale", 10, 250, 4)
 	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
@@ -3455,6 +3543,7 @@ func TestIncomingInvoiceOverrideClearedWhenFinancialsChange(t *testing.T) {
 // through the UI (the client field is only shown when there's no order) but
 // must still resolve deterministically if it ever does.
 func TestOutboundDeliveryClientPrecedence(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -3551,6 +3640,7 @@ func TestOutboundDeliveryClientPrecedence(t *testing.T) {
 // whenever Type isn't "product" — a service can't be "the component" or
 // "the finished good" of anything.
 func TestProductCategory(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {

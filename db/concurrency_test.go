@@ -34,6 +34,7 @@ func concurrentlyRun(n int, fn func(i int) error) []error {
 // once before any of the calls' transactions began, so every goroutine could
 // see "no posted entry" and each would post its own.
 func TestConcurrentUpdateInvoiceStateDoesNotDoublePost(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-concurrent-post")
 	inv := fx.createInvoice(t, d, "concurrent-inv-1", 1, 1000)
@@ -70,6 +71,7 @@ func TestConcurrentUpdateInvoiceStateDoesNotDoublePost(t *testing.T) {
 // 'posted'` guard, so a second concurrent void could re-reverse an
 // already-reversed entry.
 func TestConcurrentVoidPaymentDoesNotDoubleReverse(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-concurrent-void")
 	inv := fx.createInvoice(t, d, "concurrent-void-inv-1", 1, 1000) // total 1200
@@ -128,6 +130,7 @@ func TestConcurrentVoidPaymentDoesNotDoubleReverse(t *testing.T) {
 // computed "remaining balance" from a pre-transaction SUM, so both could pass
 // the check and together over-settle the invoice.
 func TestConcurrentCreatePaymentDoesNotOverpay(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-concurrent-overpay")
 	inv := fx.createInvoice(t, d, "concurrent-overpay-inv-1", 1, 1000) // total 1200
@@ -171,6 +174,7 @@ func TestConcurrentCreatePaymentDoesNotOverpay(t *testing.T) {
 // re-check, so every concurrent call that read the year as still-open before
 // any of them committed would each post its own closing entry.
 func TestConcurrentCloseFiscalYearPostsExactlyOneClosingEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-concurrent-close")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -230,6 +234,7 @@ func TestConcurrentCloseFiscalYearPostsExactlyOneClosingEntry(t *testing.T) {
 // plus a RowsAffected check) matches the same choke-point pattern already
 // proven to close the race in every other test here.
 func TestConcurrentDeleteJournalEntryDoesNotDeleteAPostedEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-concurrent-delete-post")
 
@@ -291,6 +296,7 @@ func TestConcurrentDeleteJournalEntryDoesNotDeleteAPostedEntry(t *testing.T) {
 // sales invoices, applied to vendor bills, which F48 fixed but had never
 // been exercised concurrently.
 func TestConcurrentUpdateIncomingInvoiceStateDoesNotDoublePost(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-concurrent-bill-post")
 	bill := fx.createIncomingInvoice(t, d, "concurrent-bill-1", 1, 1000)
@@ -333,6 +339,7 @@ func TestConcurrentUpdateIncomingInvoiceStateDoesNotDoublePost(t *testing.T) {
 // actually matters, and that the pre-fix code violated, is that only one
 // GRNI accrual ever posts and stock only ever moves once.
 func TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-concurrent-receive", 100, 250)
 
@@ -392,6 +399,7 @@ func TestConcurrentUpdateInboundDeliveryStatusDoesNotDoubleMoveStock(t *testing.
 // success. What must hold regardless is exactly one COGS entry and exactly
 // one stock movement.
 func TestConcurrentUpdateDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-concurrent-ship", 100, 250)
 	fx.receive(t, d, "GR-STOCK", 100) // stock the product up first

@@ -84,6 +84,7 @@ func seedGermanInvoice(t *testing.T, d *Database) *Invoice {
 // resolveEInvoiceProfile), which is why this fixture requires a buyer
 // reference.
 func TestGenerateEInvoiceGoldenGermany(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	invoice := seedGermanInvoice(t, d)
 
@@ -209,6 +210,7 @@ func TestGenerateEInvoiceGoldenGermany(t *testing.T) {
 // country (not the seller's), and the generic profile doesn't require (or
 // emit) a buyer reference the way XRechnung does.
 func TestGenerateEInvoiceGoldenGenericProfile(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	org, err := d.CreateOrganization(CreateOrganizationRequest{
@@ -271,6 +273,7 @@ func TestGenerateEInvoiceGoldenGenericProfile(t *testing.T) {
 // what makes that true at both read sites (resolveEInvoiceProfile and
 // buildParty).
 func TestGenerateEInvoiceNormalizesCountryCodeCasing(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	invoice := seedGermanInvoice(t, d)
 
@@ -303,6 +306,7 @@ func TestGenerateEInvoiceNormalizesCountryCodeCasing(t *testing.T) {
 }
 
 func TestGenerateEInvoiceRejectsIncompleteSeller(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	invoice := seedGermanInvoice(t, d)
 
@@ -323,6 +327,7 @@ func TestGenerateEInvoiceRejectsIncompleteSeller(t *testing.T) {
 }
 
 func TestGenerateEInvoiceRejectsMissingLineTaxRate(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	invoice := seedGermanInvoice(t, d)
 

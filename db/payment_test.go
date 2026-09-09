@@ -23,6 +23,7 @@ func accountByCode(t *testing.T, d *Database, orgID, code string) Account {
 }
 
 func TestCreatePaymentFullySettlesInvoiceSameCurrency(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pay-full")
 	inv := fx.createInvoice(t, d, "inv-1", 2, 1000) // total 2400 (2000 + 400 tax)
@@ -74,6 +75,7 @@ func TestCreatePaymentFullySettlesInvoiceSameCurrency(t *testing.T) {
 }
 
 func TestCreatePaymentPartialThenOverpayRejected(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pay-partial")
 	inv := fx.createInvoice(t, d, "inv-1", 1, 1000) // total 1200
@@ -133,6 +135,7 @@ func TestCreatePaymentPartialThenOverpayRejected(t *testing.T) {
 // the AR was booked for — a real realized gain — which must land as a
 // credit to the FX Gain account, not a debit.
 func TestCreatePaymentForeignCurrencyRealizesGain(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pay-fx-gain")
 
@@ -206,6 +209,7 @@ func TestCreatePaymentForeignCurrencyRealizesGain(t *testing.T) {
 // more than the liability was booked for — a real realized loss — which
 // must land as a debit to the FX Loss account.
 func TestCreatePaymentOutboundRealizesLoss(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pay-fx-loss")
 
@@ -262,6 +266,7 @@ func TestCreatePaymentOutboundRealizesLoss(t *testing.T) {
 }
 
 func TestVoidPaymentReversesAndRestoresBalance(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pay-void")
 	inv := fx.createInvoice(t, d, "inv-1", 1, 1000) // total 1200
@@ -317,6 +322,7 @@ func TestVoidPaymentReversesAndRestoresBalance(t *testing.T) {
 }
 
 func TestCreatePaymentRejectedWithoutPostedEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pay-no-entry")
 	inv := fx.createInvoice(t, d, "inv-1", 1, 1000) // still draft — never sent
@@ -333,6 +339,7 @@ func TestCreatePaymentRejectedWithoutPostedEntry(t *testing.T) {
 }
 
 func TestUpdateInvoiceStateBlockedWhilePaymentOpen(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-pay-state-guard")
 	inv := fx.createInvoice(t, d, "inv-1", 1, 1000) // total 1200

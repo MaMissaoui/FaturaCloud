@@ -8,6 +8,7 @@ import "testing"
 // P&L/balance sheet numbers, or (for isGroup) contradict postings that
 // already exist against what allocateAndFinalizeEntryTx treats as a leaf.
 func TestUpdateAccountRejectsRetypeWithPostedHistory(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-acct-retype")
 	inv := fx.createInvoice(t, d, "acct-retype-inv-1", 1, 1000)
@@ -53,6 +54,7 @@ func TestUpdateAccountRejectsRetypeWithPostedHistory(t *testing.T) {
 // to accounts with actual usage — a freshly created, never-posted account
 // must still be freely retypable (e.g. fixing a mis-categorized new account).
 func TestUpdateAccountAllowsRetypeWithoutHistory(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-acct-retype-free"})
 	if err != nil {
@@ -81,6 +83,7 @@ func TestUpdateAccountAllowsRetypeWithoutHistory(t *testing.T) {
 // turned into isGroup=0 (a leaf), which would leave those children pointing
 // at a parent that's no longer structurally a group.
 func TestUpdateAccountRejectsMakingAnAccountWithChildrenALeaf(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-acct-children"})
 	if err != nil {
@@ -109,6 +112,7 @@ func TestUpdateAccountRejectsMakingAnAccountWithChildrenALeaf(t *testing.T) {
 // nonexistent parent must be a clean validation error, not an opaque FK
 // 500, and an account can't be set as its own parent.
 func TestUpdateAccountValidatesParentID(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-acct-parent"})
 	if err != nil {
@@ -144,6 +148,7 @@ func TestUpdateAccountValidatesParentID(t *testing.T) {
 // org default, or a new per-product/per-document account override) without
 // it being wired into DeleteAccount's guard.
 func TestGetAccountUsageCountCoversEveryReference(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 
 	// Every {table, column} pair GetAccountUsageCount's hand-built query

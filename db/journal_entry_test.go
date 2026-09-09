@@ -69,6 +69,7 @@ func newJournalEntryTestFixture(t *testing.T, d *Database) journalEntryTestFixtu
 }
 
 func TestJournalEntryPostReverseRepostAllocatesSequentialNumbers(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newJournalEntryTestFixture(t, d)
 	date := fx.date
@@ -154,6 +155,7 @@ func TestJournalEntryPostReverseRepostAllocatesSequentialNumbers(t *testing.T) {
 }
 
 func TestPostJournalEntryRejectsUnbalancedEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newJournalEntryTestFixture(t, d)
 
@@ -179,6 +181,7 @@ func TestPostJournalEntryRejectsUnbalancedEntry(t *testing.T) {
 }
 
 func TestPostJournalEntryRejectsGroupAccount(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newJournalEntryTestFixture(t, d)
 
@@ -200,6 +203,7 @@ func TestPostJournalEntryRejectsGroupAccount(t *testing.T) {
 }
 
 func TestDeleteJournalEntryOnlyAllowsDraft(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newJournalEntryTestFixture(t, d)
 

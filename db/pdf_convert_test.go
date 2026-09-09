@@ -12,6 +12,7 @@ import (
 // skips rather than fails when soffice isn't on PATH, and actually exercises
 // the conversion when it is.
 func TestConvertXLSXToPDFSmoke(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("soffice"); err != nil {
 		t.Skip("soffice not on PATH — skipping LibreOffice conversion smoke test")
 	}
@@ -26,6 +27,7 @@ func TestConvertXLSXToPDFSmoke(t *testing.T) {
 }
 
 func TestConvertXLSXToPDFUnavailableWhenSofficeMissing(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("soffice"); err == nil {
 		t.Skip("soffice is on PATH in this environment — can't exercise the missing-binary path")
 	}

@@ -9,6 +9,7 @@ import "testing"
 // a silent-wrong-output bug on every exported document, not a crash — this
 // is what actually guards it.
 func TestFormatOrgDate(t *testing.T) {
+	t.Parallel()
 	// 2026-03-05 14:30:00 UTC.
 	const ts = int64(1772721000000)
 
@@ -38,6 +39,7 @@ func TestFormatOrgDate(t *testing.T) {
 }
 
 func TestFormatOptionalOrgDate(t *testing.T) {
+	t.Parallel()
 	if got := formatOptionalOrgDate(nil, ptr("YYYY-MM-DD")); got != "" {
 		t.Fatalf("expected empty string for nil timestamp, got %q", got)
 	}

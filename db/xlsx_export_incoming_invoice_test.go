@@ -39,6 +39,7 @@ func buildIncomingInvoiceFixtureTemplate(t *testing.T) []byte {
 }
 
 func TestFillIncomingInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
+	t.Parallel()
 	tmpl := buildIncomingInvoiceFixtureTemplate(t)
 	invoice := testIncomingInvoice()
 	lineItems := []IncomingInvoiceLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
@@ -72,6 +73,7 @@ func TestFillIncomingInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
 // answer if it were used, confirming the fill path never calls
 // computeExportTotals for this document type.
 func TestFillIncomingInvoiceTemplateUsesStoredTotals(t *testing.T) {
+	t.Parallel()
 	tmpl := buildIncomingInvoiceFixtureTemplate(t)
 	invoice := testIncomingInvoice() // subTotal=10000, taxTotal=1900, total=11900
 
@@ -103,6 +105,7 @@ func TestFillIncomingInvoiceTemplateUsesStoredTotals(t *testing.T) {
 // automated guard against a typo in the committed, non-diff-reviewable
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultIncomingInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(incomingInvoiceDefaultTemplate))
 	if err != nil {
 		t.Fatalf("open embedded default template: %v", err)

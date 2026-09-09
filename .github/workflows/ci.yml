@@ -51,6 +51,14 @@ jobs:
         # count, not with what any individual test actually asserts. Same
         # "bump the budget" call as before, with more headroom this time
         # since the suite is only going to keep growing test-by-test.
+        # Partially addressed the same day: every db-package test now calls
+        # t.Parallel() (each gets its own on-disk SQLite file via
+        # newTestDB/t.TempDir(), so they're fully isolated) — ~40% faster
+        # locally (392s -> ~230-270s for the db package alone). Left the 28m
+        # budget as-is rather than tightening it back down: this was only
+        # measured on one local machine, and CI's shared runners may see
+        # less benefit from parallelism (fewer cores, or -race's per-goroutine
+        # memory overhead capping effective concurrency) than this did.
         # -coverprofile writes per-line coverage alongside -race/-timeout
         # rather than as a separate run, since a second full `go test`
         # invocation would double the job's runtime for no reason.
