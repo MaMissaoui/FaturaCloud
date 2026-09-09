@@ -32,6 +32,9 @@ func (h *handler) createClient(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	client, err := h.db.CreateClient(req)
 	if err != nil {
 		writeInternalError(w, err)
