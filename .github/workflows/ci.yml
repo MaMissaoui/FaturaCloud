@@ -41,11 +41,20 @@ jobs:
         # the suite close to that on CI's shared runners before Phase 7's
         # inventory/COGS GL tests (more DB fixtures, each running its own
         # migration) added enough to tip it over — bump the budget rather
-        # than the suite's actual runtime being the problem. -coverprofile
-        # writes per-line coverage alongside -race/-timeout rather than as a
-        # separate run, since a second full `go test` invocation would double
-        # the job's runtime for no reason.
-        run: go test -race -timeout=20m -coverprofile=coverage.out -covermode=atomic ./...
+        # than the suite's actual runtime being the problem. Raised again
+        # 2026-09-09: the most recent successful run on main (v3.14.0's
+        # merge) already spent 16m04s of the 20m budget before 3 small,
+        # fast (0.05s locally) tests from PR #170 were enough to tip a
+        # later run into a 20m timeout — every `newTestDB` call runs the
+        # full migration set against a fresh on-disk SQLite file with real
+        # fsyncs, so per-test overhead scales with the growing migration
+        # count, not with what any individual test actually asserts. Same
+        # "bump the budget" call as before, with more headroom this time
+        # since the suite is only going to keep growing test-by-test.
+        # -coverprofile writes per-line coverage alongside -race/-timeout
+        # rather than as a separate run, since a second full `go test`
+        # invocation would double the job's runtime for no reason.
+        run: go test -race -timeout=28m -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Coverage summary
         # Printed to the job log for a quick read without downloading the
