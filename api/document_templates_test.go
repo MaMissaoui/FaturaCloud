@@ -46,6 +46,9 @@ func TestUploadDocumentTemplate_UnknownDocumentTypeReturns400(t *testing.T) {
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-1", Name: strPtr("ACME")}); err != nil {
 		t.Fatalf("seed CreateOrganization: %v", err)
 	}
+	if _, err := database.AddOrganizationUser("org-1", "test-user", "user"); err != nil {
+		t.Fatalf("seed org membership: %v", err)
+	}
 
 	body, contentType := multipartFile(t, "file", "template.xlsx", minimalXLSXBytes(t))
 	req := httptest.NewRequest(http.MethodPost, "/api/organizations/org-1/document-templates/not-a-real-type", body)
@@ -69,6 +72,9 @@ func TestUploadAndListDocumentTemplates(t *testing.T) {
 	token := mintTestJWT(t, "test-user", "user")
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-1", Name: strPtr("ACME")}); err != nil {
 		t.Fatalf("seed CreateOrganization: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-1", "test-user", "user"); err != nil {
+		t.Fatalf("seed org membership: %v", err)
 	}
 
 	listReq := func() *httptest.ResponseRecorder {
