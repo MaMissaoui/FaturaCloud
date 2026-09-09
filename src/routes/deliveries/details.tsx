@@ -15,17 +15,22 @@ import {
   Space,
   Tag,
   theme,
+  Tooltip,
+  message,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { useLingui } from "@lingui/react";
-import { DeleteOutlined, FilePdfOutlined, SaveOutlined } from "@ant-design/icons";
-import { pdf } from "@react-pdf/renderer";
+import {
+  DeleteOutlined,
+  FileExcelOutlined,
+  FilePdfOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
-import { SaveFile, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
+import { ExportDeliveryDocument, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import LineItemsTable from "src/components/line-items/table";
 import { organizationAtom } from "src/atoms/organization";
@@ -39,7 +44,6 @@ import {
   updateDeliveryStatusAtom,
   deleteDeliveryAtom,
 } from "src/atoms/delivery";
-import DeliveryNotePDF from "src/components/deliveries/delivery-note-pdf";
 import SerialCaptureModal from "src/components/stock/serial-capture-modal";
 import StatusFlow from "src/components/status-flow";
 import {
@@ -67,7 +71,6 @@ const DeliveryDetails = () => {
   const { id } = useParams<string>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { i18n } = useLingui();
   const {
     token: { colorBgContainer },
   } = theme.useToken();
@@ -103,6 +106,9 @@ const DeliveryDetails = () => {
     open: false,
     pendingStatus: null,
   });
+  const [isDirty, setIsDirty] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useEffect(() => {
     setClients();
@@ -178,6 +184,7 @@ const DeliveryDetails = () => {
 
   const handleSubmit = async (values: any) => {
     await setDelivery(values);
+    setIsDirty(false);
   };
 
   const handleDelete = async () => {
@@ -225,43 +232,22 @@ const DeliveryDetails = () => {
     setSerialCapture({ open: false, pendingStatus: null });
   };
 
-  const handlePrintDeliveryNote = async () => {
-    const values = form.getFieldsValue();
-    const deliveryData = {
-      ...(!isNew && delivery && !(delivery as any).then ? delivery : {}),
-      ...values,
-      deliveryDate: values.deliveryDate?.valueOf
-        ? values.deliveryDate.valueOf()
-        : values.deliveryDate,
-    };
-
-    const orderId = values.orderId;
-    const orderData = orderId ? find(orders, { id: orderId }) : null;
-    if (orderData) {
-      deliveryData.orderNumber = (orderData as any).orderNumber;
+  // Server fill-and-convert path (db/xlsx_export_delivery.go /
+  // db/pdf_convert.go) — the same mechanism invoices/purchase orders/orders/
+  // incoming invoices use. Reads persisted line items by delivery id, so
+  // both formats are gated on isDirty. Replaces the old client-side-only
+  // DeliveryNotePDF/@react-pdf/renderer button.
+  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
+    if (!id || isNew) return;
+    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
+    setDownloading(true);
+    try {
+      await ExportDeliveryDocument(id, format);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
     }
-
-    const clientId = orderData ? (orderData as any).clientId : values.clientId;
-    const clientData = clientId ? find(clients, { id: clientId }) : null;
-
-    const lineItemsForPdf = (values.lineItems ?? []).map((item: any) => ({
-      ...item,
-      sku: item.productId ? (find(products, { id: item.productId }) as any)?.sku : undefined,
-    }));
-
-    const doc = (
-      <DeliveryNotePDF
-        delivery={deliveryData}
-        lineItems={lineItemsForPdf}
-        client={clientData}
-        organization={organization}
-        i18n={i18n}
-      />
-    );
-
-    const blob = await pdf(doc).toBlob();
-    const num = deliveryData.deliveryNumber ?? id ?? "delivery";
-    await SaveFile(`delivery-note-${num}.pdf`, blob);
   };
 
   const initialValues = isNew
@@ -289,7 +275,13 @@ const DeliveryDetails = () => {
   if (!isNew && !delivery) return null;
 
   return (
-    <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
+    <Form
+      form={form}
+      onFinish={handleSubmit}
+      layout="vertical"
+      initialValues={initialValues}
+      onValuesChange={() => setIsDirty(true)}
+    >
       <Row gutter={24}>
         <Col xs={24} md={12} xl={6}>
           <Form.Item label={<Trans>Linked order</Trans>} name="orderId">
@@ -485,9 +477,31 @@ const DeliveryDetails = () => {
                     </Popconfirm>
                   )}
                   {!isNew && (
-                    <Button onClick={handlePrintDeliveryNote}>
-                      <FilePdfOutlined /> <Trans>Delivery note</Trans>
-                    </Button>
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingPdf}
+                        onClick={handleServerExport("pdf")}
+                      >
+                        <FilePdfOutlined /> PDF
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {!isNew && (
+                    // Always the server fill-and-convert path
+                    // (db/xlsx_export_delivery.go) — every delivery has an
+                    // embedded fallback template (resolveTemplateBytes) to
+                    // fill even with no org override, so both buttons
+                    // always work.
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingExcel}
+                        onClick={handleServerExport("xlsx")}
+                      >
+                        <FileExcelOutlined /> <Trans>Excel</Trans>
+                      </Button>
+                    </Tooltip>
                   )}
                   <Button type="primary" onClick={() => form.submit()}>
                     <SaveOutlined /> <Trans>Save</Trans>

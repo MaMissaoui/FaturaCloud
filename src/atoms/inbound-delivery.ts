@@ -131,6 +131,11 @@ export const inboundDeliveryAtom = atom(
         ? t`Goods receipt update failed`
         : t`Goods receipt creation failed`;
       message.error(error instanceof Error ? error.message : fallback);
+      // Rethrow (F56/F67 convention, also applied to purchase-order.ts/
+      // order.ts/delivery.ts — see CLAUDE.md) so details.tsx's handleSubmit
+      // can tell a failed save apart from a successful one and skip
+      // clearing its isDirty flag.
+      throw error;
     }
   },
 );
