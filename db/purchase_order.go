@@ -107,6 +107,14 @@ var validPurchaseOrderStatuses = map[string]bool{
 // Mirrors purchaseOrderStatusTransitionMatrix in src/types/purchase-order.ts,
 // enforced here too since that's client-side only.
 //
+// cancelled -> received deliberately skips confirmed — this means a PO can
+// now reach "received" without ever having been "confirmed", a path the
+// forward flow itself doesn't allow. That's intentional, not an oversight:
+// nothing downstream gates on having passed through "confirmed" (only
+// totalCommittedPOValueForImport in db/import.go excludes "cancelled", by
+// current status, not history), so there's nothing to protect by forcing a
+// detour through it here.
+//
 // Status is never advanced automatically from received quantities — sales
 // orders don't either, and per-line fulfilment is reported separately.
 var purchaseOrderStatusTransitions = map[string]map[string]bool{

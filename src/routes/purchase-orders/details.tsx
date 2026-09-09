@@ -557,18 +557,21 @@ const PurchaseOrderDetails = () => {
                       {transition.label}
                     </Button>
                   ))}
-                  {!isNew && !["cancelled", "received"].includes(currentStatus) && (
-                    <Popconfirm
-                      title={t`Cancel this purchase order?`}
-                      onConfirm={() => handleStatusChange("cancelled")}
-                      okText={t`Yes`}
-                      cancelText={t`No`}
-                    >
-                      <Button type="dashed" danger>
-                        <Trans>Cancel order</Trans>
-                      </Button>
-                    </Popconfirm>
-                  )}
+                  {!isNew &&
+                    purchaseOrderStatusTransitionMatrix[
+                      currentStatus as PurchaseOrderStatus
+                    ]?.includes("cancelled") && (
+                      <Popconfirm
+                        title={t`Cancel this purchase order?`}
+                        onConfirm={() => handleStatusChange("cancelled")}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
+                      >
+                        <Button type="dashed" danger>
+                          <Trans>Cancel order</Trans>
+                        </Button>
+                      </Popconfirm>
+                    )}
                   {!isNew && (
                     <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
                       <Button

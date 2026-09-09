@@ -471,18 +471,21 @@ const OrderDetails = () => {
                         {t2.label}
                       </Button>
                     ))}
-                  {!isNew && currentStatus !== "cancelled" && (
-                    <Popconfirm
-                      title={t`Cancel this order?`}
-                      onConfirm={() => handleStatusChange("cancelled")}
-                      okText={t`Yes`}
-                      cancelText={t`No`}
-                    >
-                      <Button type="dashed" danger>
-                        <Trans>Cancel order</Trans>
-                      </Button>
-                    </Popconfirm>
-                  )}
+                  {!isNew &&
+                    orderStatusTransitionMatrix[currentStatus as OrderStatus]?.includes(
+                      "cancelled",
+                    ) && (
+                      <Popconfirm
+                        title={t`Cancel this order?`}
+                        onConfirm={() => handleStatusChange("cancelled")}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
+                      >
+                        <Button type="dashed" danger>
+                          <Trans>Cancel order</Trans>
+                        </Button>
+                      </Popconfirm>
+                    )}
                   {!isNew && (
                     <Button onClick={handlePrintOrderConfirmation}>
                       <FilePdfOutlined /> <Trans>Order confirmation</Trans>
