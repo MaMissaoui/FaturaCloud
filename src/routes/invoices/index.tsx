@@ -54,6 +54,16 @@ const Invoices = () => {
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const [search, setSearch] = useAtom(searchAtom);
   const [loading, setLoading] = useState(false);
+  // Computed once per component render rather than inside the Due date
+  // column's per-row render callback, so every row's overdue comparison
+  // uses the same instant instead of each potentially reading a slightly
+  // different one. Reading the clock during render is exactly what a
+  // display-only "is this already overdue" comparison needs — there's no
+  // prop/state to derive it from instead, and the row naturally reflects a
+  // fresher value on the next re-render (e.g. a refetch) with no staleness
+  // risk worth guarding against here.
+  // oxlint-disable-next-line react/purity
+  const now = Date.now();
 
   useEffect(() => {
     setLoading(true);
@@ -182,7 +192,7 @@ const Invoices = () => {
           render={(date, invoice: Invoice) => {
             if (!date) return "-";
             // A sent (unpaid) invoice past its due date is overdue — flag it.
-            const overdue = invoice.state === "sent" && dayjs(date).valueOf() < Date.now();
+            const overdue = invoice.state === "sent" && dayjs(date).valueOf() < now;
             if (!overdue) return formatDate(date);
             return (
               <Tooltip title={t`Overdue`}>
