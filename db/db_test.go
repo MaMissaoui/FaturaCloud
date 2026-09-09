@@ -98,6 +98,41 @@ func TestOrganizationCRUD(t *testing.T) {
 	}
 }
 
+// TestGetOrganizationsExcludesEmptyIDRow guards against a real bug found in
+// a dev database that predates the empty-req.ID guard CreateOrganization has
+// had since 2026-08-13 (F68): a leftover organization row with id = ""
+// slipped past every truthy id-check the frontend makes (!organizationId,
+// !!editingId, ...), which treat "" the same as "no organization" — so the
+// row was unselectable in the org switcher, opened as a blank "New
+// organization" form instead of an edit form when clicked in Settings ▸
+// Organizations, and never showed a Delete button there (no user can ever
+// be "an admin of the empty-id org"). CreateOrganization can no longer
+// produce such a row, but GetOrganizations must still never surface one
+// that already exists, since there is no way to reach it through the UI to
+// clean it up otherwise. The row is inserted directly here (bypassing
+// CreateOrganization's guard) since that's the only way to reproduce it.
+func TestGetOrganizationsExcludesEmptyIDRow(t *testing.T) {
+	d := newTestDB(t)
+
+	if _, err := d.DB.Exec(`INSERT INTO organizations (id, name) VALUES ('', 'Corrupt Legacy Org')`); err != nil {
+		t.Fatalf("insert empty-id organization: %v", err)
+	}
+	if _, err := d.CreateOrganization(CreateOrganizationRequest{Name: ptr("Real Org")}); err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	orgs, err := d.GetOrganizations()
+	if err != nil {
+		t.Fatalf("GetOrganizations: %v", err)
+	}
+	if len(orgs) != 1 {
+		t.Fatalf("got %d organizations, want 1 (the empty-id row should be excluded): %+v", len(orgs), orgs)
+	}
+	if orgs[0].ID == "" {
+		t.Fatal("GetOrganizations returned the empty-id row")
+	}
+}
+
 func TestClientCRUD(t *testing.T) {
 	d := newTestDB(t)
 

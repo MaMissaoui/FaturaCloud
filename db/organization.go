@@ -262,7 +262,20 @@ func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
 	// The list is re-fetched on every auth change and can hold many orgs, so
 	// shipping each org's (potentially multi-MB) logo BLOB here is pure waste.
-	err := d.DB.Select(&orgs, `SELECT `+organizationColumns+` FROM organizations ORDER BY name ASC`)
+	// `id != ''` excludes a row that should be structurally impossible today
+	// (CreateOrganization has generated a nanoid for an empty req.ID since
+	// the F68 fix, 2026-08-13) but could still exist from data created
+	// before that fix: the frontend treats an empty organization id the same
+	// as "no organization selected" everywhere (truthy checks like
+	// `!organizationId`/`!!editingId`), so such a row isn't just cosmetically
+	// odd — it's unselectable in the org switcher, opens as a blank "New
+	// organization" form instead of an edit form when clicked in Settings ▸
+	// Organizations, and never shows a Delete button there either (no user
+	// can ever be an "admin of the empty-id org"). Filtering it out of the
+	// one query every organization list in the app is built on is simpler
+	// and safer than chasing down every truthy id-check that assumes an id
+	// is never empty.
+	err := d.DB.Select(&orgs, `SELECT `+organizationColumns+` FROM organizations WHERE id != '' ORDER BY name ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("get_organizations: %w", err)
 	}
