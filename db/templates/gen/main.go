@@ -133,6 +133,27 @@ func main() {
 	f.SetColWidth(sheet, "C", "E", 14)
 	f.SetColWidth(sheet, "F", "F", 16)
 
+	// Without an explicit page setup, LibreOffice's PDF conversion (db/pdf_convert.go)
+	// falls back to a default paper width that this six-column table doesn't fit —
+	// found by actually converting this template end-to-end (see the F114-style
+	// invoice-fiscal-stamp verification): columns A-B landed on PDF page 1 and C-F
+	// spilled onto page 2, splitting every invoice across two unreadable pages.
+	// FitToWidth=1/FitToHeight=0 (only takes effect with sheetPr's FitToPage set)
+	// scales the sheet to always fit one page wide while leaving height
+	// unconstrained, so a long line-item list still paginates vertically instead
+	// of being squeezed unreadably small.
+	fitToPage := true
+	if err := f.SetSheetProps(sheet, &excelize.SheetPropsOptions{FitToPage: &fitToPage}); err != nil {
+		log.Fatal(err)
+	}
+	fitToWidth, fitToHeight := 1, 0
+	if err := f.SetPageLayout(sheet, &excelize.PageLayoutOptions{
+		FitToWidth:  &fitToWidth,
+		FitToHeight: &fitToHeight,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	addAvailableFieldsSheet(f)
 
 	// Keep the invoice content sheet the one that opens by default — the
