@@ -229,6 +229,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("PUT", "/api/incoming-invoices/{id}", h.updateIncomingInvoice)
 	protected("PATCH", "/api/incoming-invoices/{id}/state", h.updateIncomingInvoiceState)
 	protected("DELETE", "/api/incoming-invoices/{id}", h.deleteIncomingInvoice)
+	// Same reasoning as GET /api/invoices/{id}/export above — registered
+	// directly on mux, not through protected(), so a LibreOffice PDF
+	// conversion never holds dbMu's read lock for its whole duration.
+	mux.Handle("GET /api/incoming-invoices/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportIncomingInvoiceDocument))))
 
 	// Invoices
 	protected("GET", "/api/organizations/{orgId}/invoices", h.listInvoices)

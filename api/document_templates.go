@@ -229,6 +229,60 @@ func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Req
 	_, _ = w.Write(pdfBytes)
 }
 
+// exportIncomingInvoiceDocument mirrors exportPurchaseOrderDocument above —
+// same document_templates/xlsx_export machinery, same not-through-protected()
+// registration for the same reason. Unlike purchase orders/orders, an
+// incoming invoice has server-validated stored totals, so
+// FillIncomingInvoiceTemplate reads them directly rather than computing them.
+func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	format := r.URL.Query().Get("format")
+	if format != "xlsx" && format != "pdf" {
+		writeError(w, http.StatusBadRequest, "format must be xlsx or pdf")
+		return
+	}
+
+	h.dbMu.RLock()
+	invoice, lineItems, org, vendor, templateBytes, taxRates, err := h.db.FetchIncomingInvoiceExportData(id)
+	h.dbMu.RUnlock()
+	if err != nil {
+		writeDBError(w, err, "incoming invoice not found")
+		return
+	}
+
+	filled, unresolved, err := db.FillIncomingInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *vendor, taxRates)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	if len(unresolved) > 0 {
+		log.Printf("export incoming invoice %s: template has unresolved placeholders: %v", id, unresolved)
+	}
+
+	filenameBase := "incoming-invoice-" + invoice.VendorInvoiceNumber
+	if format == "xlsx" {
+		w.Header().Set("Content-Type", documentTemplateContentType)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(filled)
+		return
+	}
+
+	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
+	if err != nil {
+		if errors.Is(err, db.ErrPDFConversionUnavailable) {
+			writeError(w, http.StatusServiceUnavailable, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(pdfBytes)
+}
+
 // exportOrderDocument mirrors exportInvoiceDocument/exportPurchaseOrderDocument
 // above — same document_templates/xlsx_export machinery, same
 // not-through-protected() registration for the same reason.
