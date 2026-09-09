@@ -21,6 +21,7 @@ func seedTestUser(t *testing.T, d *Database, id, role string, isPlatformAdmin in
 }
 
 func TestOrganizationUserCRUD(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -92,6 +93,7 @@ func TestOrganizationUserCRUD(t *testing.T) {
 }
 
 func TestAddOrganizationUser_UpsertsRoleOnReAdd(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -125,6 +127,7 @@ func TestAddOrganizationUser_UpsertsRoleOnReAdd(t *testing.T) {
 // (e.g. a re-invite that got the role wrong) must not silently leave the
 // organization with zero admins.
 func TestAddOrganizationUser_ReAddingSoleAdminAtLowerRoleBlocked(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -146,6 +149,7 @@ func TestAddOrganizationUser_ReAddingSoleAdminAtLowerRoleBlocked(t *testing.T) {
 }
 
 func TestAddOrganizationUser_RejectsInvalidRole(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -159,6 +163,7 @@ func TestAddOrganizationUser_RejectsInvalidRole(t *testing.T) {
 }
 
 func TestRemoveLastOrgAdminBlocked(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -183,6 +188,7 @@ func TestRemoveLastOrgAdminBlocked(t *testing.T) {
 }
 
 func TestUpdateOrganizationUserRole_DemotingLastAdminBlocked(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -202,6 +208,7 @@ func TestUpdateOrganizationUserRole_DemotingLastAdminBlocked(t *testing.T) {
 // counterpart — the last-admin guard must not over-block when a second admin
 // exists.
 func TestRemoveOrgAdmin_SucceedsWithAnotherAdminPresent(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -232,6 +239,7 @@ func TestRemoveOrgAdmin_SucceedsWithAnotherAdminPresent(t *testing.T) {
 // isLastOrgAdmin's "other admins" count: a deactivated admin shouldn't count
 // as coverage that lets the last active admin be removed or demoted.
 func TestIsLastOrgAdmin_IgnoresInactiveAdmins(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -258,6 +266,7 @@ func TestIsLastOrgAdmin_IgnoresInactiveAdmins(t *testing.T) {
 // deleteUser/updateUser use before deleting or deactivating a user, so that
 // action can't silently orphan an organization's admin membership.
 func TestGetOrganizationsWhereSoleAdmin(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	orgSolo, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-solo", Name: ptr("Solo Co")})
 	if err != nil {
@@ -329,6 +338,7 @@ func TestGetOrganizationsWhereSoleAdmin(t *testing.T) {
 // the right thing structurally, which this test verifies by replaying it by
 // hand against seeded data.
 func TestOrganizationUserBackfillPreservesAccess(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org1, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {

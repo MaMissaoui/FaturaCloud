@@ -11,6 +11,7 @@ import (
 // (full landed value) / GRNI (vendor value only) / Import Costs Payable
 // (the markup) — three legs of ONE posted entry, not two entries.
 func TestReceiptWithImportAllocatesLandedCostToInventory(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-import-landed-cost", 10, 250) // 10 * 250 = 2500 cents vendor value
 
@@ -84,6 +85,7 @@ func TestReceiptWithImportAllocatesLandedCostToInventory(t *testing.T) {
 // from the bill not knowing about the markup), and Import Costs Payable is
 // left completely untouched, since nothing in this codebase settles it yet.
 func TestBillAfterImportReceiptClearsGRNIVendorOnlyLeavingMarkupUntouched(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-import-bill-clears-grni", 10, 250) // 10 * 250 = 2500 vendor value
 
@@ -137,6 +139,7 @@ func TestBillAfterImportReceiptClearsGRNIVendorOnlyLeavingMarkupUntouched(t *tes
 // TestReceiptWithImportRequiresImportCostsPayableAccount checks the same 409
 // (not 500) discipline every Phase 7 default-account gap follows.
 func TestReceiptWithImportRequiresImportCostsPayableAccount(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-import-no-account", 10, 250)
 	imp, err := d.CreateImport(CreateImportRequest{
@@ -180,6 +183,7 @@ func TestReceiptWithImportRequiresImportCostsPayableAccount(t *testing.T) {
 // finds and reverses the whole 3-legged entry as one unit — the payable
 // credit doesn't dangle behind after GRNI is reversed.
 func TestCancelReceiptWithImportReversesLandedCostEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-import-cancel", 10, 250)
 	imp, err := d.CreateImport(CreateImportRequest{

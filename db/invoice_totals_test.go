@@ -6,6 +6,7 @@ import "testing"
 // half away from zero rather than truncate toward zero, matching the
 // ROUND_HALF_UP semantics roundHalfUp uses for tax.
 func TestRoundCents(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   float64
 		want int64
@@ -30,6 +31,7 @@ func TestRoundCents(t *testing.T) {
 // truncate toward zero — int64(1000.9) used to store 1000, silently a cent
 // short of what a client requesting 1000.9 actually meant.
 func TestIncomingInvoiceLineItemRoundsFractionalUnitPrice(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-f54-round"})
 	if err != nil {
@@ -68,6 +70,7 @@ func TestIncomingInvoiceLineItemRoundsFractionalUnitPrice(t *testing.T) {
 // total 100x. 100 cents of stamp must add exactly 100 cents to the expected
 // total, not 10000.
 func TestValidateInvoiceTotalsFiscalStampAmount(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	items := []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 1000000}}
 

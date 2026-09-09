@@ -6,6 +6,7 @@ import (
 )
 
 func TestImportCRUDAndNumbering(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-import-crud", Name: ptr("Import CRUD Org")})
 	if err != nil {
@@ -45,6 +46,7 @@ func TestImportCRUDAndNumbering(t *testing.T) {
 }
 
 func TestDeleteImportBlockedWhilePOLinked(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-import-delete-guard", 10, 250)
 	imp, err := d.CreateImport(CreateImportRequest{
@@ -86,6 +88,7 @@ func TestDeleteImportBlockedWhilePOLinked(t *testing.T) {
 }
 
 func TestImportSummaryComputesLandedCostRate(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-import-summary", 10, 250) // 10 * 250 = 2500 cents committed
 	imp, err := d.CreateImport(CreateImportRequest{

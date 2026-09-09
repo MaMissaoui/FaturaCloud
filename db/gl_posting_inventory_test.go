@@ -147,6 +147,7 @@ func (f grniTestFixture) receive(t *testing.T, d *Database, deliveryNumber strin
 }
 
 func TestGoodsReceiptPostsGRNIAccrual(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-grni-accrue", 10, 250) // 10 units @ 2.50 = 2500 cents
 	receipt := fx.receive(t, d, "GR-0001", 10)
@@ -191,6 +192,7 @@ func TestGoodsReceiptPostsGRNIAccrual(t *testing.T) {
 // valuation pool, the same rule recomputeAverageCostTx already applies, not
 // a 409. Standalone (no purchase order at all).
 func TestUncostedGoodsReceiptPostsNoGRNIEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-grni-uncosted", Name: ptr("Uncosted Org")})
 	if err != nil {
@@ -240,6 +242,7 @@ func TestUncostedGoodsReceiptPostsNoGRNIEntry(t *testing.T) {
 }
 
 func TestCancelReceivedReceiptReversesGRNIAccrual(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-grni-cancel", 10, 250)
 	receipt := fx.receive(t, d, "GR-0001", 10)
@@ -283,6 +286,7 @@ func TestCancelReceivedReceiptReversesGRNIAccrual(t *testing.T) {
 // no-op on the GL side — FindPostedEntryForSourceDocument returns nil, and
 // UpdateInboundDeliveryStatus must not treat that as an error.
 func TestCancelUncostedReceivedReceiptIsCleanNoOp(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-grni-cancel-uncosted", Name: ptr("Uncosted Cancel Org")})
 	if err != nil {
@@ -332,6 +336,7 @@ func TestCancelUncostedReceivedReceiptIsCleanNoOp(t *testing.T) {
 // (db_test.go) — the existing 3-way-match fixture, which already receives
 // via UpdateInboundDeliveryStatus, so GRNI accrual already applies to it.
 func TestCancelReceivedReceiptBlockedOnceBilled(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	f := seedMatch(t, d, "org-grni-finding-b", 10, 250, 10)
 	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
@@ -367,6 +372,7 @@ func TestCancelReceivedReceiptBlockedOnceBilled(t *testing.T) {
 // change to existing Phase 2 code: previously every bill line expensed
 // immediately regardless of whether the product was stock-tracked.
 func TestBillForStockEnabledProductWithNoPOLinkCapitalizesToInventory(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-grni-nolink", 10, 250)
 	inv := fx.bill(t, d, "V-001", 4, 300, false) // no PO link, priced independently
@@ -397,6 +403,7 @@ func TestBillForStockEnabledProductWithNoPOLinkCapitalizesToInventory(t *testing
 // full and posts zero net Inventory — the goods were already capitalized
 // at receipt time; nothing new to add.
 func TestBillMatchingReceiptClearsGRNIWithNoNetInventoryLine(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-grni-match", 10, 250) // 10 @ 2.50
 	fx.receive(t, d, "GR-0001", 10)                           // accrues 2500
@@ -442,6 +449,7 @@ func TestBillMatchingReceiptClearsGRNIWithNoNetInventoryLine(t *testing.T) {
 // accrued value and lands the difference on Inventory as a positive price
 // variance.
 func TestBillAboveReceiptCostPostsPositiveInventoryVariance(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-grni-above", 10, 250) // accrues 2500
 	fx.receive(t, d, "GR-0001", 10)
@@ -482,6 +490,7 @@ func TestBillAboveReceiptCostPostsPositiveInventoryVariance(t *testing.T) {
 // (quantity-first, valued at the accrued cost — not the bill's lower
 // price), and the difference lands on Inventory as a write-down (credit).
 func TestBillBelowReceiptCostPostsNegativeInventoryVariance(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-grni-below", 10, 250) // accrues 2500
 	fx.receive(t, d, "GR-0001", 10)
@@ -531,6 +540,7 @@ func TestBillBelowReceiptCostPostsNegativeInventoryVariance(t *testing.T) {
 // own proportional share of GRNI — no double-clearing, and the remainder
 // stays open after the first.
 func TestPartialBillingAcrossTwoBillsClearsGRNIProportionally(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-grni-partial", 10, 250) // accrues 2500 for 10 units
 	fx.receive(t, d, "GR-0001", 10)
@@ -578,6 +588,7 @@ func TestPartialBillingAcrossTwoBillsClearsGRNIProportionally(t *testing.T) {
 // Shipping a fungible product posts Dr COGS / Cr Inventory at the current
 // weighted average.
 func TestShipmentPostsCOGSAtWeightedAverage(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-cogs-avg", 10, 250) // accrues at 2.50/unit
 	fx.receive(t, d, "GR-0001", 10)
@@ -606,6 +617,7 @@ func TestShipmentPostsCOGSAtWeightedAverage(t *testing.T) {
 // specific identification — not the blended weighted average across other
 // units of the same product.
 func TestShipmentPostsCOGSAtSpecificSerialCostNotAverage(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-cogs-serial")
 	date := int64(1700000000000)
 
@@ -676,6 +688,7 @@ func TestShipmentPostsCOGSAtSpecificSerialCostNotAverage(t *testing.T) {
 // line items are frozen once received, so there's no way to retroactively
 // cost this exact unit otherwise.
 func TestShipmentFallsBackToAverageCostForUncostedSerial(t *testing.T) {
+	t.Parallel()
 	d, product := seedSerializedProduct(t, "org-cogs-serial-fallback")
 	date := int64(1700000000000)
 
@@ -744,6 +757,7 @@ func TestShipmentFallsBackToAverageCostForUncostedSerial(t *testing.T) {
 // buildDeliveryCOGSGLLines runs before the transaction opens, no stock
 // movement is ever attempted.
 func TestShipmentWithNoCostBasisIsRejectedAndTouchesNoStock(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-cogs-nocost", Name: ptr("No Cost Org")})
 	if err != nil {
@@ -805,6 +819,7 @@ func TestShipmentWithNoCostBasisIsRejectedAndTouchesNoStock(t *testing.T) {
 }
 
 func TestCancelShippedDeliveryReversesCOGS(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-cogs-cancel", 10, 250)
 	fx.receive(t, d, "GR-0001", 10)
@@ -866,6 +881,7 @@ func requireFiscalYearCoveringNow(t *testing.T, d *Database, orgID string) {
 // Inventory Adjustment account — Dr Inventory for a net increase, Cr
 // Inventory for a net decrease, valued at the product's current average.
 func TestManualStockAdjustmentPostsSignedInventoryLine(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-adj-signed", 10, 250) // establishes average via receive below
 	fx.receive(t, d, "GR-0001", 10)                           // average now 2.50/unit
@@ -927,6 +943,7 @@ func TestManualStockAdjustmentPostsSignedInventoryLine(t *testing.T) {
 // entry, mirroring GRNI's "uncosted inflows stay out of the valuation pool"
 // rule rather than COGS's 409.
 func TestUncostedStockAdjustmentWithNoAveragePostsNoEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-adj-nocost", Name: ptr("No Cost Org")})
 	if err != nil {
@@ -961,6 +978,7 @@ func TestUncostedStockAdjustmentWithNoAveragePostsNoEntry(t *testing.T) {
 // write-off — and the error message reads correctly for a manual
 // adjustment, not COGS's wording.
 func TestOutflowStockAdjustmentWithNoCostBasisIsRejected(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-adj-out-nocost", Name: ptr("No Cost Org")})
 	if err != nil {
@@ -997,6 +1015,7 @@ func TestOutflowStockAdjustmentWithNoCostBasisIsRejected(t *testing.T) {
 // A zero-value adjustment (net signed value rounds to exactly zero cents)
 // posts no entry at all.
 func TestZeroValueStockAdjustmentPostsNoEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-adj-zero", 10, 0) // 0 unit price -> zero-cost average
 	fx.receive(t, d, "GR-0001", 10)
@@ -1022,6 +1041,7 @@ func TestZeroValueStockAdjustmentPostsNoEntry(t *testing.T) {
 // blocked — the same immutability every other posted entry gets, corrected
 // by recording an offsetting adjustment instead.
 func TestDeleteStockMovementBlockedOnceGLPosted(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGRNITestFixture(t, d, "org-adj-delete", 10, 250)
 	fx.receive(t, d, "GR-0001", 10)

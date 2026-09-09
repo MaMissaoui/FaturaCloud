@@ -12,6 +12,7 @@ import (
 // carrying a datevAccountNumber — the property db/export_datev.go's
 // Sachkontenlänge rule depends on.
 func TestCreateOrganizationWithGermanyCountrySeedsSKR04Chart(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{
 		ID: "org-de-skr04", Name: ptr("Deutsche GmbH"), Country: ptr("Germany"),
@@ -123,6 +124,7 @@ func TestCreateOrganizationWithGermanyCountrySeedsSKR04Chart(t *testing.T) {
 // test above for pcgChartOfAccounts: real PCG numbers, correct default
 // wiring, and — since France has no DATEV — no datevAccountNumber anywhere.
 func TestCreateOrganizationWithFranceCountrySeedsPCGChart(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{
 		ID: "org-fr-pcg", Name: ptr("Société Française"), Country: ptr("France"),
@@ -187,6 +189,7 @@ func TestCreateOrganizationWithFranceCountrySeedsPCGChart(t *testing.T) {
 // key in chartTemplates (or no country at all) must still get the same
 // generic starter chart every organization got before this feature existed.
 func TestCreateOrganizationWithUnmappedCountryKeepsGenericChart(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{
 		ID: "org-es-generic", Name: ptr("Empresa Española"), Country: ptr("Spain"),

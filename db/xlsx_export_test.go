@@ -55,6 +55,7 @@ func buildFixtureTemplate(t *testing.T) []byte {
 }
 
 func TestFillInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
+	t.Parallel()
 	tmpl := buildFixtureTemplate(t)
 	lineItems := []InvoiceLineItem{
 		{Description: ptr("Widget"), Quantity: 1, UnitPrice: 10000},
@@ -82,6 +83,7 @@ func TestFillInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
 }
 
 func TestFillInvoiceTemplateExpandsLineItemRows(t *testing.T) {
+	t.Parallel()
 	tmpl := buildFixtureTemplate(t)
 	lineItems := []InvoiceLineItem{
 		{Description: ptr("Widget"), Quantity: 2, UnitPrice: 2500},
@@ -145,6 +147,7 @@ func TestFillInvoiceTemplateExpandsLineItemRows(t *testing.T) {
 }
 
 func TestFillInvoiceTemplateBlanksUnknownPlaceholder(t *testing.T) {
+	t.Parallel()
 	f := excelize.NewFile()
 	sheet := f.GetSheetName(0)
 	_ = f.SetCellStr(sheet, "A1", "{{invoice.nubmer}}") // typo, not a real placeholder
@@ -176,6 +179,7 @@ func TestFillInvoiceTemplateBlanksUnknownPlaceholder(t *testing.T) {
 }
 
 func TestFillInvoiceTemplateRequiresMarkerRow(t *testing.T) {
+	t.Parallel()
 	f := excelize.NewFile()
 	_ = f.SetCellStr(f.GetSheetName(0), "A1", "{{invoice.number}}") // no marker row anywhere
 	var buf bytes.Buffer
@@ -195,6 +199,7 @@ func TestFillInvoiceTemplateRequiresMarkerRow(t *testing.T) {
 // a custom layout can put {{#lineItems}} anywhere (here, column D, with the
 // real content in A-C) and still expand correctly.
 func TestFillInvoiceTemplateMarkerCanBeInAnyColumn(t *testing.T) {
+	t.Parallel()
 	f := excelize.NewFile()
 	sheet := f.GetSheetName(0)
 	_ = f.SetCellStr(sheet, "A1", "{{invoice.number}}")
@@ -244,6 +249,7 @@ func TestFillInvoiceTemplateMarkerCanBeInAnyColumn(t *testing.T) {
 // documentation for editing the template, not part of the document a
 // customer receives.
 func TestFillInvoiceTemplateStripsExtraSheets(t *testing.T) {
+	t.Parallel()
 	f := excelize.NewFile()
 	sheet := f.GetSheetName(0)
 	_ = f.SetCellStr(sheet, "A1", "{{invoice.number}}")
@@ -280,6 +286,7 @@ func TestFillInvoiceTemplateStripsExtraSheets(t *testing.T) {
 // binary isn't diff-reviewable, so this is the only automated guard against
 // a typo in the file every customer receives.
 func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(invoiceDefaultTemplate))
 	if err != nil {
 		t.Fatalf("open embedded default template: %v", err)
@@ -330,6 +337,7 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 // the header and data rows, with C-F carrying Quantity/Unit Price/Tax
 // Rate/Line Total in both — column-for-column, not shifted by one.
 func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T) {
+	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(invoiceDefaultTemplate))
 	if err != nil {
 		t.Fatalf("open embedded default template: %v", err)
@@ -363,7 +371,7 @@ func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T
 	}
 	wantMerged := map[string]bool{
 		fmt.Sprintf("A%d:B%d", headerRowNum, headerRowNum): false,
-		fmt.Sprintf("A%d:B%d", markerRow, markerRow):        false,
+		fmt.Sprintf("A%d:B%d", markerRow, markerRow):       false,
 	}
 	for _, m := range merges {
 		key := m.GetStartAxis() + ":" + m.GetEndAxis()
@@ -379,6 +387,7 @@ func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T
 }
 
 func TestUploadDocumentTemplateRejectsInvalidXLSX(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -396,6 +405,7 @@ func TestUploadDocumentTemplateRejectsInvalidXLSX(t *testing.T) {
 }
 
 func TestUploadAndResolveDocumentTemplateRoundTrips(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {

@@ -140,6 +140,7 @@ func sumLines(lines []JournalLine, accountID string) (debit, credit int64) {
 }
 
 func TestInvoiceSentPostsBalancedGLEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-inv-sent")
 	inv := fx.createInvoice(t, d, "inv-1", 2, 1000) // 2000 subtotal, 400 tax, 2400 total
@@ -196,6 +197,7 @@ func TestInvoiceSentPostsBalancedGLEntry(t *testing.T) {
 }
 
 func TestInvoiceStateBounceBackReversesGLEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-inv-bounce")
 	inv := fx.createInvoice(t, d, "inv-1", 1, 1000)
@@ -242,6 +244,7 @@ func TestInvoiceStateBounceBackReversesGLEntry(t *testing.T) {
 }
 
 func TestInvoiceDraftDirectlyToPaidPosts(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-inv-direct-paid")
 	inv := fx.createInvoice(t, d, "inv-1", 1, 1000)
@@ -258,6 +261,7 @@ func TestInvoiceDraftDirectlyToPaidPosts(t *testing.T) {
 }
 
 func TestInvoicePostingRejectedWithoutDefaultARAccount(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-inv-no-ar")
 	// UpdateOrganization's SQL COALESCEs every field (nil = keep unchanged),
@@ -286,6 +290,7 @@ func TestInvoicePostingRejectedWithoutDefaultARAccount(t *testing.T) {
 }
 
 func TestDeleteInvoiceBlockedByPostedGLEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-inv-delete-guard")
 	inv := fx.createInvoice(t, d, "inv-1", 1, 1000)
@@ -308,6 +313,7 @@ func TestDeleteInvoiceBlockedByPostedGLEntry(t *testing.T) {
 }
 
 func TestIncomingInvoiceApprovedPostsBalancedGLEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-bill-approved")
 	bill := fx.createIncomingInvoice(t, d, "bill-1", 2, 1000) // 2000 subtotal, 400 tax, 2400 total
@@ -344,6 +350,7 @@ func TestIncomingInvoiceApprovedPostsBalancedGLEntry(t *testing.T) {
 // than hand buildInvoiceGLLines a set of lines that would insert a
 // debit=0/credit=0 row and fail journal_lines' CHECK constraint.
 func TestZeroTotalInvoiceSkipsGLPosting(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-inv-zero")
 	inv, err := d.CreateInvoice(CreateInvoiceRequest{
@@ -373,6 +380,7 @@ func TestZeroTotalInvoiceSkipsGLPosting(t *testing.T) {
 // (credit=0)) rejects a debit=0/credit=0 row outright (caught live: sending
 // an invoice under a real 0% VAT rate 500'd instead of posting).
 func TestInvoiceWithZeroPercentTaxRateSkipsZeroTaxLine(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-inv-zero-pct-tax")
 

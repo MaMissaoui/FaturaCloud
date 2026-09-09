@@ -19,6 +19,7 @@ func fecFixtureFiscalYearID(t *testing.T, d *Database, orgID string) string {
 }
 
 func TestGenerateFECRejectsMissingSIREN(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-fec-no-siren")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -29,6 +30,7 @@ func TestGenerateFECRejectsMissingSIREN(t *testing.T) {
 }
 
 func TestGenerateFECRejectsInvalidSIREN(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-fec-bad-siren")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -42,6 +44,7 @@ func TestGenerateFECRejectsInvalidSIREN(t *testing.T) {
 }
 
 func TestGenerateFECRejectsFiscalYearFromOtherOrg(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx1 := newGLPostingTestFixture(t, d, "org-fec-a")
 	fx2 := newGLPostingTestFixture(t, d, "org-fec-b")
@@ -56,6 +59,7 @@ func TestGenerateFECRejectsFiscalYearFromOtherOrg(t *testing.T) {
 }
 
 func TestGenerateFECProducesExpectedRows(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-fec-happy")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -151,6 +155,7 @@ func TestGenerateFECProducesExpectedRows(t *testing.T) {
 // into 18 fields, just with the wrong values shifted into them, so a naive
 // field-count assertion alone can't catch this.
 func TestGenerateFECSanitizesTabsAndNewlines(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-fec-sanitize")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -203,6 +208,7 @@ func TestGenerateFECSanitizesTabsAndNewlines(t *testing.T) {
 // org's functional currency (EUR), which is exactly what
 // glLine populates the foreign-currency shadow columns for.
 func TestGenerateFECIncludesForeignCurrencyFields(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-fec-fx")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)

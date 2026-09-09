@@ -36,6 +36,7 @@ func buildOrderFixtureTemplate(t *testing.T) []byte {
 }
 
 func TestFillOrderTemplateResolvesScalarPlaceholders(t *testing.T) {
+	t.Parallel()
 	tmpl := buildOrderFixtureTemplate(t)
 	order := testOrder()
 	lineItems := []OrderLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
@@ -62,6 +63,7 @@ func TestFillOrderTemplateResolvesScalarPlaceholders(t *testing.T) {
 }
 
 func TestFillOrderTemplateComputesTotalsFromLineItemsWithNoTax(t *testing.T) {
+	t.Parallel()
 	f := excelize.NewFile()
 	sheet := f.GetSheetName(0)
 	_ = f.SetCellStr(sheet, "A3", "{{#lineItems}}")
@@ -101,6 +103,7 @@ func TestFillOrderTemplateComputesTotalsFromLineItemsWithNoTax(t *testing.T) {
 // automated guard against a typo in the committed, non-diff-reviewable
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultOrderTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(orderDefaultTemplate))
 	if err != nil {
 		t.Fatalf("open embedded default template: %v", err)

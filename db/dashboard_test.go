@@ -9,6 +9,7 @@ import (
 // pure function, no DB needed, so every boundary (30/31, 60/61, 90/91 days,
 // and the current/overdue line at the due date itself) is cheap to nail down.
 func TestBucketOutstanding(t *testing.T) {
+	t.Parallel()
 	now := time.Date(2026, 1, 31, 12, 0, 0, 0, time.UTC)
 	day := int64(86400000)
 	nowMillis := now.UnixMilli()
@@ -70,6 +71,7 @@ func TestBucketOutstanding(t *testing.T) {
 // counts as outstanding — draft/paid/cancelled must not appear at all,
 // regardless of their due date.
 func TestGetOutstandingInvoices(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -111,6 +113,7 @@ func TestGetOutstandingInvoices(t *testing.T) {
 // TestGetStockValuation covers COALESCE(unitCost, 0) for a product that's
 // never been costed, and that Total agrees with SUM(Items[].Value).
 func TestGetStockValuation(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {
@@ -184,6 +187,7 @@ func TestGetStockValuation(t *testing.T) {
 // migrated, empty database — the zero-invoices/zero-products case a real
 // new organization starts in.
 func TestGetDashboardData(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
 	if err != nil {

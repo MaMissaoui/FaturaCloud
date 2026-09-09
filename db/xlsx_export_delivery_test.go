@@ -35,6 +35,7 @@ func buildDeliveryFixtureTemplate(t *testing.T) []byte {
 }
 
 func TestFillDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
+	t.Parallel()
 	tmpl := buildDeliveryFixtureTemplate(t)
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 3, Unit: ptr("pcs")}}
@@ -68,6 +69,7 @@ func TestFillDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
 // via GetDeliveryLineItems) restores it — blank for a free-text line, same
 // convention as every other optional field here.
 func TestFillDeliveryTemplateIncludesSKU(t *testing.T) {
+	t.Parallel()
 	f := excelize.NewFile()
 	sheet := f.GetSheetName(0)
 	_ = f.SetCellStr(sheet, "A3", "{{#lineItems}}")
@@ -100,6 +102,7 @@ func TestFillDeliveryTemplateIncludesSKU(t *testing.T) {
 // Client) exports with client.* placeholders blank rather than failing —
 // the same precedent as purchase orders' vendor-less export.
 func TestFillDeliveryTemplateBlankClientOnStandaloneDelivery(t *testing.T) {
+	t.Parallel()
 	tmpl := buildDeliveryFixtureTemplate(t)
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 1}}
@@ -128,6 +131,7 @@ func TestFillDeliveryTemplateBlankClientOnStandaloneDelivery(t *testing.T) {
 // automated guard against a typo in the committed, non-diff-reviewable
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultDeliveryTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(deliveryDefaultTemplate))
 	if err != nil {
 		t.Fatalf("open embedded default template: %v", err)

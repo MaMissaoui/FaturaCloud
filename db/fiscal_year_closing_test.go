@@ -3,6 +3,7 @@ package db
 import "testing"
 
 func TestCloseFiscalYearZeroesRevenueAndExpenseIntoRetainedEarnings(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-close-happy")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -58,6 +59,7 @@ func TestCloseFiscalYearZeroesRevenueAndExpenseIntoRetainedEarnings(t *testing.T
 }
 
 func TestCloseFiscalYearRejectsAlreadyClosed(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-close-twice")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -71,6 +73,7 @@ func TestCloseFiscalYearRejectsAlreadyClosed(t *testing.T) {
 }
 
 func TestCloseFiscalYearBlocksNewEntriesAfterward(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-close-blocks")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -99,6 +102,7 @@ func TestCloseFiscalYearBlocksNewEntriesAfterward(t *testing.T) {
 // but the fiscal periods page would keep showing "Open" periods, with
 // working close/reopen buttons, under a year that no longer accepts entries.
 func TestCloseFiscalYearClosesItsOpenPeriodsToo(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-close-periods")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -128,6 +132,7 @@ func TestCloseFiscalYearClosesItsOpenPeriodsToo(t *testing.T) {
 }
 
 func TestCloseFiscalYearWithNoActivityPostsNoEntry(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-close-empty")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -157,6 +162,7 @@ func TestCloseFiscalYearWithNoActivityPostsNoEntry(t *testing.T) {
 // draft could still be posted afterward, landing revenue/expense into a
 // year whose closing entry was already computed.
 func TestCloseFiscalYearBlocksPostingAStrandedDraft(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-close-stranded-draft")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -183,6 +189,7 @@ func TestCloseFiscalYearBlocksPostingAStrandedDraft(t *testing.T) {
 }
 
 func TestCloseFiscalYearRejectsMissingRetainedEarningsAccount(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-close-no-re")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)

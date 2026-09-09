@@ -37,6 +37,7 @@ func buildInboundDeliveryFixtureTemplate(t *testing.T) []byte {
 }
 
 func TestFillInboundDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
+	t.Parallel()
 	tmpl := buildInboundDeliveryFixtureTemplate(t)
 	delivery := testInboundDelivery()
 	lineItems := []InboundDeliveryLineItem{{Description: "Widget", Quantity: 2, UnitCost: ptr(int64(500))}}
@@ -67,6 +68,7 @@ func TestFillInboundDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
 // every other line-item namespace uses — no aggregate footer to check here
 // since this document type deliberately has none.
 func TestFillInboundDeliveryTemplateComputesLineTotalFromCost(t *testing.T) {
+	t.Parallel()
 	tmpl := buildInboundDeliveryFixtureTemplate(t)
 	delivery := testInboundDelivery()
 	lineItems := []InboundDeliveryLineItem{{Description: "Widget", Quantity: 2, UnitCost: ptr(int64(1000))}}
@@ -95,6 +97,7 @@ func TestFillInboundDeliveryTemplateComputesLineTotalFromCost(t *testing.T) {
 // automated guard against a typo in the committed, non-diff-reviewable
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultInboundDeliveryTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(inboundDeliveryDefaultTemplate))
 	if err != nil {
 		t.Fatalf("open embedded default template: %v", err)

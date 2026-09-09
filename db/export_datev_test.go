@@ -45,6 +45,7 @@ func setDatevOrgFields(t *testing.T, d *Database, orgID string) {
 }
 
 func TestGenerateDATEVRejectsMissingConsultantAndClientNumber(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-datev-no-numbers")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -59,6 +60,7 @@ func TestGenerateDATEVRejectsMissingConsultantAndClientNumber(t *testing.T) {
 }
 
 func TestGenerateDATEVRejectsInvalidConsultantNumber(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-datev-bad-consultant")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -76,6 +78,7 @@ func TestGenerateDATEVRejectsInvalidConsultantNumber(t *testing.T) {
 }
 
 func TestGenerateDATEVRejectsFiscalYearFromOtherOrg(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx1 := newGLPostingTestFixture(t, d, "org-datev-a")
 	fx2 := newGLPostingTestFixture(t, d, "org-datev-b")
@@ -88,6 +91,7 @@ func TestGenerateDATEVRejectsFiscalYearFromOtherOrg(t *testing.T) {
 }
 
 func TestGenerateDATEVRejectsMissingAccountNumbers(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-datev-no-acct-numbers")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -108,6 +112,7 @@ func TestGenerateDATEVRejectsMissingAccountNumbers(t *testing.T) {
 }
 
 func TestGenerateDATEVRejectsMixedAccountNumberLengths(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-datev-mixed-lengths")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -141,6 +146,7 @@ func TestGenerateDATEVRejectsMixedAccountNumberLengths(t *testing.T) {
 }
 
 func TestGenerateDATEVProducesExpectedRows(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-datev-happy")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -273,6 +279,7 @@ func TestGenerateDATEVProducesExpectedRows(t *testing.T) {
 }
 
 func TestGenerateDATEVSplitsMultiLineBothSidesAgainstClearingAccount(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-datev-clearing")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -341,6 +348,7 @@ func TestGenerateDATEVSplitsMultiLineBothSidesAgainstClearingAccount(t *testing.
 // e.g. a CJK character anywhere in a fiscal year would otherwise turn the
 // whole export into a 500 with no actionable message.
 func TestGenerateDATEVReplacesUnsupportedCharactersInsteadOfFailing(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-datev-encoding")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)

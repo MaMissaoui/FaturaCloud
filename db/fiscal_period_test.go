@@ -8,6 +8,7 @@ import "testing"
 // have an ambiguous choice of which year a posting on an overlapping date
 // belongs to.
 func TestCreateFiscalYearRejectsOverlapWithOpenYear(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-fy-overlap"})
 	if err != nil {
@@ -58,6 +59,7 @@ func TestCreateFiscalYearRejectsOverlapWithOpenYear(t *testing.T) {
 // year may legitimately overlap it — e.g. closing happens partway through
 // the next year already having posted activity.
 func TestCreateFiscalYearAllowsOverlapWithClosedYear(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-fy-overlap-closed")
 	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
@@ -80,6 +82,7 @@ func TestCreateFiscalYearAllowsOverlapWithClosedYear(t *testing.T) {
 // half: a period must fall inside its year's own range, and two periods in
 // the same year must not overlap.
 func TestCreateFiscalPeriodRejectsRangeOutsideItsYear(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-fp-outside"})
 	if err != nil {
@@ -118,6 +121,7 @@ func TestCreateFiscalPeriodRejectsRangeOutsideItsYear(t *testing.T) {
 }
 
 func TestCreateFiscalPeriodRejectsOverlapWithSiblingPeriod(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-fp-overlap"})
 	if err != nil {
@@ -159,6 +163,7 @@ func TestCreateFiscalPeriodRejectsOverlapWithSiblingPeriod(t *testing.T) {
 // CreateFiscalYear guard, or seeded directly), resolution must consistently
 // pick the same one rather than depending on SQLite's unspecified row order.
 func TestResolveFiscalPeriodForDateIsDeterministicUnderOverlap(t *testing.T) {
+	t.Parallel()
 	d := newTestDB(t)
 	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-fy-resolve-det"})
 	if err != nil {
