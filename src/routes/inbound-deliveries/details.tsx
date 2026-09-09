@@ -26,6 +26,7 @@ import {
   DeleteOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
+  ImportOutlined,
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
@@ -36,6 +37,7 @@ import includes from "lodash/includes";
 import isString from "lodash/isString";
 import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
+import PageHeader from "src/components/page-header";
 
 import {
   ExportInboundDeliveryDocument,
@@ -301,296 +303,308 @@ const InboundDeliveryDetails = () => {
   if (!isNew && !delivery) return null;
 
   return (
-    <Form
-      form={form}
-      onFinish={handleSubmit}
-      layout="vertical"
-      initialValues={initialValues}
-      onValuesChange={() => setIsDirty(true)}
-    >
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={5}>
-          <Form.Item
-            label={<Trans>Vendor</Trans>}
-            name="vendorId"
-            rules={[{ required: true, message: t`Vendor is required` }]}
-          >
-            <Select
-              showSearch
-              allowClear
-              optionFilterProp="children"
-              filterOption={(input, option) => {
-                const name = get(option, ["props", "children"]);
-                return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
-              }}
-              onChange={(vendorId) => {
-                // Only cascade on a new receipt — see the identical guard on
-                // src/routes/orders/details.tsx's clientId.
-                if (!isNew) return;
-                const vendor = find(vendors, { id: vendorId }) as any;
-                if (vendor?.defaultCurrency) {
-                  form.setFieldValue("currency", vendor.defaultCurrency);
-                  prefillExchangeRate(form, organization?.id, vendor.defaultCurrency, orgCurrency);
-                }
-              }}
-              popupRender={(menu) => (
-                <>
-                  {menu}
-                  <Divider style={{ margin: "8px 0" }} />
-                  <Button
-                    type="text"
-                    block
-                    icon={<UserAddOutlined />}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigate("/vendors");
-                    }}
-                    style={{ textAlign: "left", paddingLeft: 11 }}
-                  >
-                    <Trans>Manage vendors</Trans>
-                  </Button>
-                </>
-              )}
-            >
-              {map(vendors, (v: any) => (
-                <Option key={v.id} value={v.id}>
-                  {v.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
-            <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
-              {map(purchaseOrders, (o: any) => (
-                <Option key={o.id} value={o.id}>
-                  {o.orderNumber}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item
-            label={<Trans>Receipt number</Trans>}
-            name="deliveryNumber"
-            rules={[{ required: true, message: t`Receipt number is required` }]}
-          >
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item
-            label={<Trans>Receipt date</Trans>}
-            name="deliveryDate"
-            rules={[{ required: true, message: t`Receipt date is required` }]}
-          >
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={5}>
-          <Form.Item label={<Trans>Status</Trans>}>
-            <Tag color={inboundDeliveryStatusColor[currentStatus as InboundDeliveryStatus]}>
-              {inboundDeliveryStatusLabel(currentStatus)}
-            </Tag>
-            <StatusFlow
-              current={currentStatus as InboundDeliveryStatus}
-              statuses={INBOUND_DELIVERY_STATUSES}
-              transitions={inboundDeliveryStatusTransitionMatrix}
-              getLabel={inboundDeliveryStatusLabel}
-              getColor={(s) => inboundDeliveryStatusColor[s]}
-            />
-          </Form.Item>
-        </Col>
-        <CurrencySelect
-          form={form}
-          organizationId={organization?.id}
-          orgCurrency={orgCurrency}
-          disabled={!isEditable}
-        />
-      </Row>
-
-      {showExchangeRateFields(watchedCurrency, orgCurrency) && (
+    <>
+      <PageHeader
+        icon={<ImportOutlined />}
+        title={<Trans>Goods Receipt</Trans>}
+        style={{ marginBottom: 24 }}
+      />
+      <Form
+        form={form}
+        onFinish={handleSubmit}
+        layout="vertical"
+        initialValues={initialValues}
+        onValuesChange={() => setIsDirty(true)}
+      >
         <Row gutter={24}>
-          <ExchangeRateFields
-            currency={watchedCurrency}
+          <Col xs={24} md={12} xl={5}>
+            <Form.Item
+              label={<Trans>Vendor</Trans>}
+              name="vendorId"
+              rules={[{ required: true, message: t`Vendor is required` }]}
+            >
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="children"
+                filterOption={(input, option) => {
+                  const name = get(option, ["props", "children"]);
+                  return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
+                }}
+                onChange={(vendorId) => {
+                  // Only cascade on a new receipt — see the identical guard on
+                  // src/routes/orders/details.tsx's clientId.
+                  if (!isNew) return;
+                  const vendor = find(vendors, { id: vendorId }) as any;
+                  if (vendor?.defaultCurrency) {
+                    form.setFieldValue("currency", vendor.defaultCurrency);
+                    prefillExchangeRate(
+                      form,
+                      organization?.id,
+                      vendor.defaultCurrency,
+                      orgCurrency,
+                    );
+                  }
+                }}
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    <Divider style={{ margin: "8px 0" }} />
+                    <Button
+                      type="text"
+                      block
+                      icon={<UserAddOutlined />}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate("/vendors");
+                      }}
+                      style={{ textAlign: "left", paddingLeft: 11 }}
+                    >
+                      <Trans>Manage vendors</Trans>
+                    </Button>
+                  </>
+                )}
+              >
+                {map(vendors, (v: any) => (
+                  <Option key={v.id} value={v.id}>
+                    {v.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
+              <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
+                {map(purchaseOrders, (o: any) => (
+                  <Option key={o.id} value={o.id}>
+                    {o.orderNumber}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item
+              label={<Trans>Receipt number</Trans>}
+              name="deliveryNumber"
+              rules={[{ required: true, message: t`Receipt number is required` }]}
+            >
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item
+              label={<Trans>Receipt date</Trans>}
+              name="deliveryDate"
+              rules={[{ required: true, message: t`Receipt date is required` }]}
+            >
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={5}>
+            <Form.Item label={<Trans>Status</Trans>}>
+              <Tag color={inboundDeliveryStatusColor[currentStatus as InboundDeliveryStatus]}>
+                {inboundDeliveryStatusLabel(currentStatus)}
+              </Tag>
+              <StatusFlow
+                current={currentStatus as InboundDeliveryStatus}
+                statuses={INBOUND_DELIVERY_STATUSES}
+                transitions={inboundDeliveryStatusTransitionMatrix}
+                getLabel={inboundDeliveryStatusLabel}
+                getColor={(s) => inboundDeliveryStatusColor[s]}
+              />
+            </Form.Item>
+          </Col>
+          <CurrencySelect
+            form={form}
+            organizationId={organization?.id}
             orgCurrency={orgCurrency}
             disabled={!isEditable}
           />
         </Row>
-      )}
 
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={8}>
-          <Form.Item label={<Trans>Vendor delivery note</Trans>} name="vendorDeliveryNote">
-            <Input placeholder={t`Number on the vendor's paperwork`} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={8}>
-          <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={8}>
-          <Form.Item label={<Trans>Notes</Trans>} name="notes">
-            <TextArea rows={1} autoSize />
-          </Form.Item>
-        </Col>
-      </Row>
+        {showExchangeRateFields(watchedCurrency, orgCurrency) && (
+          <Row gutter={24}>
+            <ExchangeRateFields
+              currency={watchedCurrency}
+              orgCurrency={orgCurrency}
+              disabled={!isEditable}
+            />
+          </Row>
+        )}
 
-      <LineItemsTable
-        disabled={!isEditable}
-        columns={[
-          { kind: "index" },
-          {
-            kind: "product",
-            products: purchasableProducts,
-            required: true,
-            onSelect: (productId, fieldName, formInstance) => {
-              const product = find(products, { id: productId });
-              if (product) {
-                const items = formInstance.getFieldValue("lineItems");
-                items[fieldName] = {
-                  ...items[fieldName],
-                  description: (product as any).name,
-                  unit: (product as any).unit,
-                  unitCost: centsToUnits((product as any).unitCost ?? 0),
-                  serialized: (product as any).serialized,
-                };
-                formInstance.setFieldValue("lineItems", [...items]);
-              }
+        <Row gutter={24}>
+          <Col xs={24} md={12} xl={8}>
+            <Form.Item label={<Trans>Vendor delivery note</Trans>} name="vendorDeliveryNote">
+              <Input placeholder={t`Number on the vendor's paperwork`} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={8}>
+            <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={8}>
+            <Form.Item label={<Trans>Notes</Trans>} name="notes">
+              <TextArea rows={1} autoSize />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <LineItemsTable
+          disabled={!isEditable}
+          columns={[
+            { kind: "index" },
+            {
+              kind: "product",
+              products: purchasableProducts,
+              required: true,
+              onSelect: (productId, fieldName, formInstance) => {
+                const product = find(products, { id: productId });
+                if (product) {
+                  const items = formInstance.getFieldValue("lineItems");
+                  items[fieldName] = {
+                    ...items[fieldName],
+                    description: (product as any).name,
+                    unit: (product as any).unit,
+                    unitCost: centsToUnits((product as any).unitCost ?? 0),
+                    serialized: (product as any).serialized,
+                  };
+                  formInstance.setFieldValue("lineItems", [...items]);
+                }
+              },
             },
-          },
-          { kind: "description", required: true },
-          {
-            kind: "quantity",
-            label: <Trans>Qty received</Trans>,
-            width: 110,
-            precision: (fieldName, formInstance) =>
-              formInstance.getFieldValue(["lineItems", fieldName, "serialized"]) ? 0 : 2,
-          },
-          { kind: "unit", width: 80 },
-          { kind: "unitPrice", name: "unitCost", label: <Trans>Unit cost</Trans> },
-          {
-            kind: "custom",
-            key: "currentStock",
-            title: <Trans>In stock</Trans>,
-            width: 90,
-            render: (field) => (
-              <Form.Item shouldUpdate noStyle>
-                {() => {
-                  const productId = form.getFieldValue(["lineItems", field.name, "productId"]);
-                  if (!productId) return null;
-                  const product: any = find(products, { id: productId });
-                  if (!product || !product.stockEnabled) return null;
-                  return <Tag>{product.stockQuantity}</Tag>;
-                }}
-              </Form.Item>
-            ),
-          },
-        ]}
-      />
+            { kind: "description", required: true },
+            {
+              kind: "quantity",
+              label: <Trans>Qty received</Trans>,
+              width: 110,
+              precision: (fieldName, formInstance) =>
+                formInstance.getFieldValue(["lineItems", fieldName, "serialized"]) ? 0 : 2,
+            },
+            { kind: "unit", width: 80 },
+            { kind: "unitPrice", name: "unitCost", label: <Trans>Unit cost</Trans> },
+            {
+              kind: "custom",
+              key: "currentStock",
+              title: <Trans>In stock</Trans>,
+              width: 90,
+              render: (field) => (
+                <Form.Item shouldUpdate noStyle>
+                  {() => {
+                    const productId = form.getFieldValue(["lineItems", field.name, "productId"]);
+                    if (!productId) return null;
+                    const product: any = find(products, { id: productId });
+                    if (!product || !product.stockEnabled) return null;
+                    return <Tag>{product.stockQuantity}</Tag>;
+                  }}
+                </Form.Item>
+              ),
+            },
+          ]}
+        />
 
-      {document.getElementById("footer") &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="space-between" style={{ height: 64 }}>
-              <Col>
-                {!isNew && currentStatus !== "received" && (
-                  <Popconfirm
-                    title={t`Delete this goods receipt?`}
-                    onConfirm={handleDelete}
-                    okText={t`Yes`}
-                    cancelText={t`No`}
-                  >
-                    <Button type="dashed" danger>
-                      <DeleteOutlined /> <Trans>Delete</Trans>
-                    </Button>
-                  </Popconfirm>
-                )}
-              </Col>
-              <Col>
-                <Space>
-                  {transitions.map((transition) => (
+        {document.getElementById("footer") &&
+          createPortal(
+            <Footer
+              style={{
+                position: "sticky",
+                bottom: 0,
+                zIndex: 1,
+                padding: "0 16px",
+                background: colorBgContainer,
+              }}
+            >
+              <Row align="middle" justify="space-between" style={{ height: 64 }}>
+                <Col>
+                  {!isNew && currentStatus !== "received" && (
                     <Popconfirm
-                      key={transition.next}
-                      title={t`This will add the received quantities to stock. Continue?`}
-                      onConfirm={() => handleStatusChange(transition.next)}
-                      okText={t`Yes`}
-                      cancelText={t`No`}
-                    >
-                      <Button type={transition.type ?? "default"}>{transition.label}</Button>
-                    </Popconfirm>
-                  ))}
-                  {!isNew && currentStatus !== "cancelled" && (
-                    <Popconfirm
-                      title={
-                        currentStatus === "received"
-                          ? t`This will reverse the stock this receipt added. Continue?`
-                          : t`Cancel this goods receipt?`
-                      }
-                      onConfirm={() => handleStatusChange("cancelled")}
+                      title={t`Delete this goods receipt?`}
+                      onConfirm={handleDelete}
                       okText={t`Yes`}
                       cancelText={t`No`}
                     >
                       <Button type="dashed" danger>
-                        <Trans>Cancel receipt</Trans>
+                        <DeleteOutlined /> <Trans>Delete</Trans>
                       </Button>
                     </Popconfirm>
                   )}
-                  {!isNew && (
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingPdf}
-                        onClick={handleServerExport("pdf")}
+                </Col>
+                <Col>
+                  <Space>
+                    {transitions.map((transition) => (
+                      <Popconfirm
+                        key={transition.next}
+                        title={t`This will add the received quantities to stock. Continue?`}
+                        onConfirm={() => handleStatusChange(transition.next)}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
                       >
-                        <FilePdfOutlined /> PDF
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && (
-                    // Always the server fill-and-convert path
-                    // (db/xlsx_export_inbound_delivery.go) — every receipt
-                    // has an embedded fallback template
-                    // (resolveTemplateBytes) to fill even with no org
-                    // override, so both buttons always work.
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingExcel}
-                        onClick={handleServerExport("xlsx")}
+                        <Button type={transition.type ?? "default"}>{transition.label}</Button>
+                      </Popconfirm>
+                    ))}
+                    {!isNew && currentStatus !== "cancelled" && (
+                      <Popconfirm
+                        title={
+                          currentStatus === "received"
+                            ? t`This will reverse the stock this receipt added. Continue?`
+                            : t`Cancel this goods receipt?`
+                        }
+                        onConfirm={() => handleStatusChange("cancelled")}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
                       >
-                        <FileExcelOutlined /> <Trans>Excel</Trans>
-                      </Button>
-                    </Tooltip>
-                  )}
-                  <Button type="primary" onClick={() => form.submit()}>
-                    <SaveOutlined /> <Trans>Save</Trans>
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Footer>,
-          document.getElementById("footer") as HTMLElement,
-        )}
-      <SerialCaptureModal
-        open={serialCapture.open}
-        mode="receive"
-        lines={serializedReceiveLines}
-        onCancel={() => setSerialCapture({ open: false, pendingStatus: null })}
-        onConfirm={handleSerialCaptureConfirm}
-      />
-    </Form>
+                        <Button type="dashed" danger>
+                          <Trans>Cancel receipt</Trans>
+                        </Button>
+                      </Popconfirm>
+                    )}
+                    {!isNew && (
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingPdf}
+                          onClick={handleServerExport("pdf")}
+                        >
+                          <FilePdfOutlined /> PDF
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && (
+                      // Always the server fill-and-convert path
+                      // (db/xlsx_export_inbound_delivery.go) — every receipt
+                      // has an embedded fallback template
+                      // (resolveTemplateBytes) to fill even with no org
+                      // override, so both buttons always work.
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingExcel}
+                          onClick={handleServerExport("xlsx")}
+                        >
+                          <FileExcelOutlined /> <Trans>Excel</Trans>
+                        </Button>
+                      </Tooltip>
+                    )}
+                    <Button type="primary" onClick={() => form.submit()}>
+                      <SaveOutlined /> <Trans>Save</Trans>
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </Footer>,
+            document.getElementById("footer") as HTMLElement,
+          )}
+        <SerialCaptureModal
+          open={serialCapture.open}
+          mode="receive"
+          lines={serializedReceiveLines}
+          onCancel={() => setSerialCapture({ open: false, pendingStatus: null })}
+          onConfirm={handleSerialCaptureConfirm}
+        />
+      </Form>
+    </>
   );
 };
 

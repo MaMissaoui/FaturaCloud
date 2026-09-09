@@ -30,6 +30,7 @@ import {
   FilePdfOutlined,
   PlusOutlined,
   SaveOutlined,
+  ShoppingCartOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -42,6 +43,7 @@ import map from "lodash/map";
 import sum from "lodash/sum";
 
 import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from "src/api";
+import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import ExchangeRateFields, {
@@ -277,345 +279,357 @@ const PurchaseOrderDetails = () => {
   if (!isNew && !order) return null;
 
   return (
-    <Form
-      form={form}
-      onFinish={handleSubmit}
-      layout="vertical"
-      initialValues={initialValues}
-      onValuesChange={() => setIsDirty(true)}
-    >
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={7}>
-          <Form.Item
-            label={<Trans>Vendor</Trans>}
-            name="vendorId"
-            rules={[{ required: true, message: t`Vendor is required` }]}
-          >
-            <Select
-              showSearch
-              allowClear
-              optionFilterProp="children"
-              filterOption={(input, option) => {
-                const name = get(option, ["props", "children"]);
-                return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
-              }}
-              onChange={(vendorId) => {
-                // Only cascade on a new order — see the identical guard on
-                // src/routes/orders/details.tsx's clientId.
-                if (!isNew) return;
-                const vendor = find(vendors, { id: vendorId }) as any;
-                if (vendor?.defaultCurrency) {
-                  form.setFieldValue("currency", vendor.defaultCurrency);
-                  prefillExchangeRate(form, organization?.id, vendor.defaultCurrency, orgCurrency);
-                }
-              }}
-              popupRender={(menu) => (
-                <>
-                  {menu}
-                  <Divider style={{ margin: "8px 0" }} />
-                  <Button
-                    type="text"
-                    block
-                    icon={<UserAddOutlined />}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigate("/vendors");
-                    }}
-                    style={{ textAlign: "left", paddingLeft: 11 }}
-                  >
-                    <Trans>Manage vendors</Trans>
-                  </Button>
-                </>
-              )}
-            >
-              {map(vendors, (v: any) => (
-                <Option key={v.id} value={v.id}>
-                  {v.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Import</Trans>}
-            name="importId"
-            tooltip={t`The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received.`}
-          >
-            <Select
-              allowClear
-              showSearch
-              optionFilterProp="children"
-              placeholder={t`None`}
-              onChange={(newImportId) => {
-                // Only cascade on a new order — same guard as the vendor
-                // cascade above. currency/exchangeRate are a *prefill*
-                // (db/migrations/0066's comment): the order still stores and
-                // freezes its own values once saved.
-                if (!isNew || !newImportId) return;
-                const imp = find(imports, { id: newImportId }) as any;
-                if (imp?.currency) {
-                  form.setFieldsValue({
-                    currency: imp.currency,
-                    exchangeRate: imp.exchangeRate ?? undefined,
-                    exchangeRateDate: imp.exchangeRateDate
-                      ? dayjs(imp.exchangeRateDate)
-                      : undefined,
-                  });
-                }
-              }}
-            >
-              {map(imports, (imp: any) => (
-                <Option key={imp.id} value={imp.id}>
-                  {imp.importNumber}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item
-            label={<Trans>Order number</Trans>}
-            name="orderNumber"
-            rules={[{ required: true, message: t`Order number is required` }]}
-          >
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item
-            label={<Trans>Order date</Trans>}
-            name="orderDate"
-            rules={[{ required: true, message: t`Order date is required` }]}
-          >
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item label={<Trans>Expected date</Trans>} name="expectedDate">
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Status</Trans>}>
-            <Tag color={purchaseOrderStatusColor[currentStatus as PurchaseOrderStatus]}>
-              {purchaseOrderStatusLabel(currentStatus)}
-            </Tag>
-            <StatusFlow
-              current={currentStatus as PurchaseOrderStatus}
-              statuses={PURCHASE_ORDER_STATUSES}
-              transitions={purchaseOrderStatusTransitionMatrix}
-              getLabel={purchaseOrderStatusLabel}
-              getColor={(s) => purchaseOrderStatusColor[s]}
-            />
-          </Form.Item>
-        </Col>
-        <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
-      </Row>
-
-      {showExchangeRateFields(watchedCurrency, orgCurrency) && (
-        <Row gutter={24}>
-          <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
-        </Row>
-      )}
-
-      <Row gutter={24}>
-        <Col xs={24} md={12}>
-          <Form.Item label={<Trans>Delivery address</Trans>} name="deliveryAddress">
-            <TextArea rows={2} placeholder={t`Leave blank to use organization address`} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12}>
-          <Form.Item label={<Trans>Notes</Trans>} name="notes">
-            <TextArea rows={2} />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      {/* Line items */}
-      <LineItemsTable
-        columns={[
-          { kind: "index" },
-          {
-            kind: "product",
-            products: purchasableProducts,
-            required: true,
-            onSelect: (productId, fieldName, formInstance) => {
-              const product = find(products, { id: productId });
-              if (product) {
-                const items = formInstance.getFieldValue("lineItems");
-                items[fieldName] = {
-                  ...items[fieldName],
-                  description: (product as any).name,
-                  unit: (product as any).unit,
-                  // Purchases are priced at cost, not at the sale price.
-                  unitPrice: centsToUnits((product as any).unitCost ?? 0),
-                };
-                formInstance.setFieldValue("lineItems", [...items]);
-              }
-            },
-          },
-          { kind: "description", required: true },
-          { kind: "quantity", width: 90 },
-          { kind: "unit", width: 90 },
-          { kind: "unitPrice", label: <Trans>Unit cost</Trans> },
-          ...(!isNew
-            ? [
-                {
-                  kind: "custom" as const,
-                  key: "received",
-                  title: <Trans>Received</Trans>,
-                  width: 100,
-                  render: (field: { name: number }) => (
-                    <Form.Item shouldUpdate noStyle>
-                      {() => {
-                        const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
-                        const quantity =
-                          form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
-                        if (!itemId) return null;
-                        const received = receivedQuantities[itemId] ?? 0;
-                        return (
-                          <Tag
-                            color={
-                              received >= quantity
-                                ? "success"
-                                : received > 0
-                                  ? "processing"
-                                  : "default"
-                            }
-                          >
-                            {received} / {quantity}
-                          </Tag>
-                        );
-                      }}
-                    </Form.Item>
-                  ),
-                },
-              ]
-            : []),
-        ]}
+    <>
+      <PageHeader
+        icon={<ShoppingCartOutlined />}
+        title={<Trans>Purchase Order</Trans>}
+        style={{ marginBottom: 24 }}
       />
-
-      {/* Totals */}
-      {subTotal > 0 && (
-        <Row justify="end" style={{ marginTop: 16 }}>
-          <Col>
-            <Descriptions
-              column={1}
-              styles={{
-                content: { textAlign: "right", minWidth: 100, fontSize: 14 },
-                label: { textAlign: "right", fontWeight: 500, fontSize: 14 },
-              }}
+      <Form
+        form={form}
+        onFinish={handleSubmit}
+        layout="vertical"
+        initialValues={initialValues}
+        onValuesChange={() => setIsDirty(true)}
+      >
+        <Row gutter={24}>
+          <Col xs={24} md={12} xl={7}>
+            <Form.Item
+              label={<Trans>Vendor</Trans>}
+              name="vendorId"
+              rules={[{ required: true, message: t`Vendor is required` }]}
             >
-              <Descriptions.Item label={<Trans>Subtotal</Trans>}>
-                {Intl.NumberFormat(i18n.locale, {
-                  style: "currency",
-                  currency,
-                  minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                }).format(subTotal)}
-              </Descriptions.Item>
-            </Descriptions>
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="children"
+                filterOption={(input, option) => {
+                  const name = get(option, ["props", "children"]);
+                  return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
+                }}
+                onChange={(vendorId) => {
+                  // Only cascade on a new order — see the identical guard on
+                  // src/routes/orders/details.tsx's clientId.
+                  if (!isNew) return;
+                  const vendor = find(vendors, { id: vendorId }) as any;
+                  if (vendor?.defaultCurrency) {
+                    form.setFieldValue("currency", vendor.defaultCurrency);
+                    prefillExchangeRate(
+                      form,
+                      organization?.id,
+                      vendor.defaultCurrency,
+                      orgCurrency,
+                    );
+                  }
+                }}
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    <Divider style={{ margin: "8px 0" }} />
+                    <Button
+                      type="text"
+                      block
+                      icon={<UserAddOutlined />}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate("/vendors");
+                      }}
+                      style={{ textAlign: "left", paddingLeft: 11 }}
+                    >
+                      <Trans>Manage vendors</Trans>
+                    </Button>
+                  </>
+                )}
+              >
+                {map(vendors, (v: any) => (
+                  <Option key={v.id} value={v.id}>
+                    {v.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item
+              label={<Trans>Import</Trans>}
+              name="importId"
+              tooltip={t`The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received.`}
+            >
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="children"
+                placeholder={t`None`}
+                onChange={(newImportId) => {
+                  // Only cascade on a new order — same guard as the vendor
+                  // cascade above. currency/exchangeRate are a *prefill*
+                  // (db/migrations/0066's comment): the order still stores and
+                  // freezes its own values once saved.
+                  if (!isNew || !newImportId) return;
+                  const imp = find(imports, { id: newImportId }) as any;
+                  if (imp?.currency) {
+                    form.setFieldsValue({
+                      currency: imp.currency,
+                      exchangeRate: imp.exchangeRate ?? undefined,
+                      exchangeRateDate: imp.exchangeRateDate
+                        ? dayjs(imp.exchangeRateDate)
+                        : undefined,
+                    });
+                  }
+                }}
+              >
+                {map(imports, (imp: any) => (
+                  <Option key={imp.id} value={imp.id}>
+                    {imp.importNumber}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item
+              label={<Trans>Order number</Trans>}
+              name="orderNumber"
+              rules={[{ required: true, message: t`Order number is required` }]}
+            >
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item
+              label={<Trans>Order date</Trans>}
+              name="orderDate"
+              rules={[{ required: true, message: t`Order date is required` }]}
+            >
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item label={<Trans>Expected date</Trans>} name="expectedDate">
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item label={<Trans>Status</Trans>}>
+              <Tag color={purchaseOrderStatusColor[currentStatus as PurchaseOrderStatus]}>
+                {purchaseOrderStatusLabel(currentStatus)}
+              </Tag>
+              <StatusFlow
+                current={currentStatus as PurchaseOrderStatus}
+                statuses={PURCHASE_ORDER_STATUSES}
+                transitions={purchaseOrderStatusTransitionMatrix}
+                getLabel={purchaseOrderStatusLabel}
+                getColor={(s) => purchaseOrderStatusColor[s]}
+              />
+            </Form.Item>
+          </Col>
+          <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
+        </Row>
+
+        {showExchangeRateFields(watchedCurrency, orgCurrency) && (
+          <Row gutter={24}>
+            <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
+          </Row>
+        )}
+
+        <Row gutter={24}>
+          <Col xs={24} md={12}>
+            <Form.Item label={<Trans>Delivery address</Trans>} name="deliveryAddress">
+              <TextArea rows={2} placeholder={t`Leave blank to use organization address`} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item label={<Trans>Notes</Trans>} name="notes">
+              <TextArea rows={2} />
+            </Form.Item>
           </Col>
         </Row>
-      )}
 
-      {/* Footer bar — portaled into the slot BaseLayout renders */}
-      {document.getElementById("footer") &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="space-between" style={{ height: 64 }}>
-              <Col>
-                {!isNew && currentStatus !== "received" && (
-                  <Popconfirm
-                    title={t`Delete this purchase order?`}
-                    onConfirm={handleDelete}
-                    okText={t`Yes`}
-                    cancelText={t`No`}
-                  >
-                    <Button type="dashed" danger>
-                      <DeleteOutlined /> <Trans>Delete</Trans>
-                    </Button>
-                  </Popconfirm>
-                )}
-              </Col>
-              <Col>
-                <Space>
-                  {transitions.map((transition) => (
-                    <Button
-                      key={transition.next}
-                      type={transition.type ?? "default"}
-                      onClick={() => handleStatusChange(transition.next)}
-                    >
-                      {transition.label}
-                    </Button>
-                  ))}
-                  {!isNew &&
-                    purchaseOrderStatusTransitionMatrix[
-                      currentStatus as PurchaseOrderStatus
-                    ]?.includes("cancelled") && (
-                      <Popconfirm
-                        title={t`Cancel this purchase order?`}
-                        onConfirm={() => handleStatusChange("cancelled")}
-                        okText={t`Yes`}
-                        cancelText={t`No`}
-                      >
-                        <Button type="dashed" danger>
-                          <Trans>Cancel order</Trans>
-                        </Button>
-                      </Popconfirm>
-                    )}
-                  {!isNew && (
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingPdf}
-                        onClick={handleServerExport("pdf")}
-                      >
-                        <FilePdfOutlined /> PDF
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && (
-                    // Always the server fill-and-convert path
-                    // (db/xlsx_export_purchase_order.go) — every purchase
-                    // order has an embedded fallback template
-                    // (resolveTemplateBytes) to fill even with no org
-                    // override, so both buttons always work.
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingExcel}
-                        onClick={handleServerExport("xlsx")}
-                      >
-                        <FileExcelOutlined /> <Trans>Excel</Trans>
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
-                    <Button
-                      onClick={() => navigate(`/inbound-deliveries/new?purchaseOrderId=${id}`)}
-                    >
-                      <PlusOutlined /> <Trans>New goods receipt</Trans>
-                    </Button>
-                  )}
-                  <Button type="primary" onClick={() => form.submit()}>
-                    <SaveOutlined /> <Trans>Save</Trans>
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Footer>,
-          document.getElementById("footer") as HTMLElement,
+        {/* Line items */}
+        <LineItemsTable
+          columns={[
+            { kind: "index" },
+            {
+              kind: "product",
+              products: purchasableProducts,
+              required: true,
+              onSelect: (productId, fieldName, formInstance) => {
+                const product = find(products, { id: productId });
+                if (product) {
+                  const items = formInstance.getFieldValue("lineItems");
+                  items[fieldName] = {
+                    ...items[fieldName],
+                    description: (product as any).name,
+                    unit: (product as any).unit,
+                    // Purchases are priced at cost, not at the sale price.
+                    unitPrice: centsToUnits((product as any).unitCost ?? 0),
+                  };
+                  formInstance.setFieldValue("lineItems", [...items]);
+                }
+              },
+            },
+            { kind: "description", required: true },
+            { kind: "quantity", width: 90 },
+            { kind: "unit", width: 90 },
+            { kind: "unitPrice", label: <Trans>Unit cost</Trans> },
+            ...(!isNew
+              ? [
+                  {
+                    kind: "custom" as const,
+                    key: "received",
+                    title: <Trans>Received</Trans>,
+                    width: 100,
+                    render: (field: { name: number }) => (
+                      <Form.Item shouldUpdate noStyle>
+                        {() => {
+                          const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
+                          const quantity =
+                            form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                          if (!itemId) return null;
+                          const received = receivedQuantities[itemId] ?? 0;
+                          return (
+                            <Tag
+                              color={
+                                received >= quantity
+                                  ? "success"
+                                  : received > 0
+                                    ? "processing"
+                                    : "default"
+                              }
+                            >
+                              {received} / {quantity}
+                            </Tag>
+                          );
+                        }}
+                      </Form.Item>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+
+        {/* Totals */}
+        {subTotal > 0 && (
+          <Row justify="end" style={{ marginTop: 16 }}>
+            <Col>
+              <Descriptions
+                column={1}
+                styles={{
+                  content: { textAlign: "right", minWidth: 100, fontSize: 14 },
+                  label: { textAlign: "right", fontWeight: 500, fontSize: 14 },
+                }}
+              >
+                <Descriptions.Item label={<Trans>Subtotal</Trans>}>
+                  {Intl.NumberFormat(i18n.locale, {
+                    style: "currency",
+                    currency,
+                    minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
+                  }).format(subTotal)}
+                </Descriptions.Item>
+              </Descriptions>
+            </Col>
+          </Row>
         )}
-    </Form>
+
+        {/* Footer bar — portaled into the slot BaseLayout renders */}
+        {document.getElementById("footer") &&
+          createPortal(
+            <Footer
+              style={{
+                position: "sticky",
+                bottom: 0,
+                zIndex: 1,
+                padding: "0 16px",
+                background: colorBgContainer,
+              }}
+            >
+              <Row align="middle" justify="space-between" style={{ height: 64 }}>
+                <Col>
+                  {!isNew && currentStatus !== "received" && (
+                    <Popconfirm
+                      title={t`Delete this purchase order?`}
+                      onConfirm={handleDelete}
+                      okText={t`Yes`}
+                      cancelText={t`No`}
+                    >
+                      <Button type="dashed" danger>
+                        <DeleteOutlined /> <Trans>Delete</Trans>
+                      </Button>
+                    </Popconfirm>
+                  )}
+                </Col>
+                <Col>
+                  <Space>
+                    {transitions.map((transition) => (
+                      <Button
+                        key={transition.next}
+                        type={transition.type ?? "default"}
+                        onClick={() => handleStatusChange(transition.next)}
+                      >
+                        {transition.label}
+                      </Button>
+                    ))}
+                    {!isNew &&
+                      purchaseOrderStatusTransitionMatrix[
+                        currentStatus as PurchaseOrderStatus
+                      ]?.includes("cancelled") && (
+                        <Popconfirm
+                          title={t`Cancel this purchase order?`}
+                          onConfirm={() => handleStatusChange("cancelled")}
+                          okText={t`Yes`}
+                          cancelText={t`No`}
+                        >
+                          <Button type="dashed" danger>
+                            <Trans>Cancel order</Trans>
+                          </Button>
+                        </Popconfirm>
+                      )}
+                    {!isNew && (
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingPdf}
+                          onClick={handleServerExport("pdf")}
+                        >
+                          <FilePdfOutlined /> PDF
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && (
+                      // Always the server fill-and-convert path
+                      // (db/xlsx_export_purchase_order.go) — every purchase
+                      // order has an embedded fallback template
+                      // (resolveTemplateBytes) to fill even with no org
+                      // override, so both buttons always work.
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingExcel}
+                          onClick={handleServerExport("xlsx")}
+                        >
+                          <FileExcelOutlined /> <Trans>Excel</Trans>
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
+                      <Button
+                        onClick={() => navigate(`/inbound-deliveries/new?purchaseOrderId=${id}`)}
+                      >
+                        <PlusOutlined /> <Trans>New goods receipt</Trans>
+                      </Button>
+                    )}
+                    <Button type="primary" onClick={() => form.submit()}>
+                      <SaveOutlined /> <Trans>Save</Trans>
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </Footer>,
+            document.getElementById("footer") as HTMLElement,
+          )}
+      </Form>
+    </>
   );
 };
 

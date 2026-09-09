@@ -28,6 +28,7 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import {
+  AuditOutlined,
   DeleteOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
@@ -43,6 +44,7 @@ import {
   GetIncomingInvoiceMatch,
   GetPurchaseOrderLineItems,
 } from "src/api";
+import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
 import {
@@ -314,348 +316,360 @@ const IncomingInvoiceDetails = () => {
   const money = (units: number) => getFormattedNumber(units, currency, i18n.locale, organization);
 
   return (
-    <Form
-      form={form}
-      onFinish={handleSubmit}
-      layout="vertical"
-      initialValues={initialValues}
-      onValuesChange={() => setIsDirty(true)}
-    >
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={6}>
-          <Form.Item
-            label={<Trans>Vendor</Trans>}
-            name="vendorId"
-            rules={[{ required: true, message: t`Vendor is required` }]}
-          >
-            <Select
-              showSearch
-              allowClear
-              optionFilterProp="children"
-              onChange={(vendorId) => {
-                // Only cascade on a new invoice — see the identical guard on
-                // src/routes/orders/details.tsx's clientId.
-                if (!isNew) return;
-                const vendor = find(vendors, { id: vendorId }) as any;
-                if (vendor?.defaultCurrency) {
-                  form.setFieldValue("currency", vendor.defaultCurrency);
-                  prefillExchangeRate(form, organization?.id, vendor.defaultCurrency, orgCurrency);
-                }
+    <>
+      <PageHeader
+        icon={<AuditOutlined />}
+        title={<Trans>Incoming Invoice</Trans>}
+        style={{ marginBottom: 24 }}
+      />
+      <Form
+        form={form}
+        onFinish={handleSubmit}
+        layout="vertical"
+        initialValues={initialValues}
+        onValuesChange={() => setIsDirty(true)}
+      >
+        <Row gutter={24}>
+          <Col xs={24} md={12} xl={6}>
+            <Form.Item
+              label={<Trans>Vendor</Trans>}
+              name="vendorId"
+              rules={[{ required: true, message: t`Vendor is required` }]}
+            >
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="children"
+                onChange={(vendorId) => {
+                  // Only cascade on a new invoice — see the identical guard on
+                  // src/routes/orders/details.tsx's clientId.
+                  if (!isNew) return;
+                  const vendor = find(vendors, { id: vendorId }) as any;
+                  if (vendor?.defaultCurrency) {
+                    form.setFieldValue("currency", vendor.defaultCurrency);
+                    prefillExchangeRate(
+                      form,
+                      organization?.id,
+                      vendor.defaultCurrency,
+                      orgCurrency,
+                    );
+                  }
+                }}
+              >
+                {map(vendors, (v: any) => (
+                  <Option key={v.id} value={v.id}>
+                    {v.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={5}>
+            <Form.Item
+              label={<Trans>Vendor invoice #</Trans>}
+              name="vendorInvoiceNumber"
+              rules={[{ required: true, message: t`Vendor invoice number is required` }]}
+            >
+              <Input placeholder={t`The number on the vendor's invoice`} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={5}>
+            <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
+              <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
+                {map(purchaseOrders, (o: any) => (
+                  <Option key={o.id} value={o.id}>
+                    {o.orderNumber}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item
+              label={<Trans>Invoice date</Trans>}
+              name="date"
+              rules={[{ required: true, message: t`Invoice date is required` }]}
+            >
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item label={<Trans>Due date</Trans>} name="dueDate">
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={24}>
+          <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
+          <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
+          <Col xs={24} md={12} xl={5}>
+            <Form.Item label={<Trans>Our reference</Trans>} name="reference">
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={5}>
+            <Form.Item label={<Trans>State</Trans>}>
+              <Space>
+                <Tag color={incomingInvoiceStateColor[currentState as IncomingInvoiceState]}>
+                  {incomingInvoiceStateLabel(currentState)}
+                </Tag>
+              </Space>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={10}>
+            <Form.Item label={<Trans>Notes</Trans>} name="notes">
+              <TextArea rows={1} autoSize />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <LineItemsTable
+          columns={[
+            { kind: "index" },
+            { kind: "description", required: true },
+            { kind: "quantity", width: 90 },
+            { kind: "unitPrice" },
+            { kind: "taxRate", taxRates },
+            {
+              kind: "custom",
+              key: "match",
+              title: <Trans>Match</Trans>,
+              width: 140,
+              render: (field) => (
+                <Form.Item shouldUpdate noStyle>
+                  {() => {
+                    const lineId = form.getFieldValue(["lineItems", field.name, "id"]);
+                    const line = matchLines.find((l) => l.lineItemId === lineId);
+                    if (!line) return null;
+                    return (
+                      <Tag color={matchStatusColor[line.status]} title={matchStatusDetail(line)}>
+                        {matchStatusLabel(line.status)}
+                      </Tag>
+                    );
+                  }}
+                </Form.Item>
+              ),
+            },
+          ]}
+        />
+
+        <Row justify="end" style={{ marginTop: 16 }}>
+          <Col>
+            <Descriptions
+              column={1}
+              styles={{
+                content: { textAlign: "right", minWidth: 120, fontSize: 14 },
+                label: { textAlign: "right", fontWeight: 500, fontSize: 14 },
               }}
             >
-              {map(vendors, (v: any) => (
-                <Option key={v.id} value={v.id}>
-                  {v.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={5}>
-          <Form.Item
-            label={<Trans>Vendor invoice #</Trans>}
-            name="vendorInvoiceNumber"
-            rules={[{ required: true, message: t`Vendor invoice number is required` }]}
-          >
-            <Input placeholder={t`The number on the vendor's invoice`} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={5}>
-          <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
-            <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
-              {map(purchaseOrders, (o: any) => (
-                <Option key={o.id} value={o.id}>
-                  {o.orderNumber}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Invoice date</Trans>}
-            name="date"
-            rules={[{ required: true, message: t`Invoice date is required` }]}
-          >
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Due date</Trans>} name="dueDate">
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-      </Row>
+              <Descriptions.Item label={<Trans>Subtotal</Trans>}>
+                {money(totals.subTotal)}
+              </Descriptions.Item>
+              <Descriptions.Item label={<Trans>Tax</Trans>}>
+                {money(totals.taxTotal)}
+              </Descriptions.Item>
+              <Descriptions.Item label={<Trans>Total</Trans>}>
+                {money(totals.total)}
+              </Descriptions.Item>
+            </Descriptions>
+          </Col>
+        </Row>
 
-      <Row gutter={24}>
-        <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
-        <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
-        <Col xs={24} md={12} xl={5}>
-          <Form.Item label={<Trans>Our reference</Trans>} name="reference">
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={5}>
-          <Form.Item label={<Trans>State</Trans>}>
-            <Space>
-              <Tag color={incomingInvoiceStateColor[currentState as IncomingInvoiceState]}>
-                {incomingInvoiceStateLabel(currentState)}
-              </Tag>
-            </Space>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={10}>
-          <Form.Item label={<Trans>Notes</Trans>} name="notes">
-            <TextArea rows={1} autoSize />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <LineItemsTable
-        columns={[
-          { kind: "index" },
-          { kind: "description", required: true },
-          { kind: "quantity", width: 90 },
-          { kind: "unitPrice" },
-          { kind: "taxRate", taxRates },
-          {
-            kind: "custom",
-            key: "match",
-            title: <Trans>Match</Trans>,
-            width: 140,
-            render: (field) => (
-              <Form.Item shouldUpdate noStyle>
-                {() => {
-                  const lineId = form.getFieldValue(["lineItems", field.name, "id"]);
-                  const line = matchLines.find((l) => l.lineItemId === lineId);
-                  if (!line) return null;
-                  return (
-                    <Tag color={matchStatusColor[line.status]} title={matchStatusDetail(line)}>
-                      {matchStatusLabel(line.status)}
-                    </Tag>
-                  );
-                }}
-              </Form.Item>
-            ),
-          },
-        ]}
-      />
-
-      <Row justify="end" style={{ marginTop: 16 }}>
-        <Col>
-          <Descriptions
-            column={1}
-            styles={{
-              content: { textAlign: "right", minWidth: 120, fontSize: 14 },
-              label: { textAlign: "right", fontWeight: 500, fontSize: 14 },
-            }}
-          >
-            <Descriptions.Item label={<Trans>Subtotal</Trans>}>
-              {money(totals.subTotal)}
-            </Descriptions.Item>
-            <Descriptions.Item label={<Trans>Tax</Trans>}>
-              {money(totals.taxTotal)}
-            </Descriptions.Item>
-            <Descriptions.Item label={<Trans>Total</Trans>}>
-              {money(totals.total)}
-            </Descriptions.Item>
-          </Descriptions>
-        </Col>
-      </Row>
-
-      {/* 3-way match panel — only meaningful once the invoice exists. */}
-      {!isNew && matchLines.length > 0 && (
-        <>
-          <Divider>
-            <Trans>3-way match</Trans>
-          </Divider>
-          <Table
-            dataSource={matchLines}
-            rowKey="lineItemId"
-            pagination={false}
-            size="small"
-            style={{ marginBottom: 16 }}
-          >
-            <Table.Column
-              title={<Trans>Description</Trans>}
-              dataIndex="description"
-              key="description"
-            />
-            <Table.Column
-              title={<Trans>Ordered</Trans>}
-              key="ordered"
-              align="right"
-              render={(line: MatchLine) => line.orderedQuantity ?? "—"}
-            />
-            <Table.Column
-              title={<Trans>Received</Trans>}
-              key="received"
-              align="right"
-              render={(line: MatchLine) => line.receivedQuantity ?? "—"}
-            />
-            <Table.Column
-              title={<Trans>Already invoiced</Trans>}
-              dataIndex="previouslyInvoicedQuantity"
-              key="previouslyInvoicedQuantity"
-              align="right"
-            />
-            <Table.Column
-              title={<Trans>On this invoice</Trans>}
-              dataIndex="invoicedQuantity"
-              key="invoicedQuantity"
-              align="right"
-            />
-            <Table.Column
-              title={<Trans>Status</Trans>}
-              key="status"
-              render={(line: MatchLine) => (
-                <Space direction="vertical" size={0}>
-                  <Tag color={matchStatusColor[line.status]}>{matchStatusLabel(line.status)}</Tag>
-                  {matchStatusDetail(line) && (
-                    <span style={{ fontSize: 12, opacity: 0.65 }}>{matchStatusDetail(line)}</span>
-                  )}
-                </Space>
-              )}
-            />
-          </Table>
-
-          {blocked && (
-            <Alert
-              type="warning"
-              showIcon
+        {/* 3-way match panel — only meaningful once the invoice exists. */}
+        {!isNew && matchLines.length > 0 && (
+          <>
+            <Divider>
+              <Trans>3-way match</Trans>
+            </Divider>
+            <Table
+              dataSource={matchLines}
+              rowKey="lineItemId"
+              pagination={false}
+              size="small"
               style={{ marginBottom: 16 }}
-              message={
-                <Trans>This invoice does not match the purchase order and goods received</Trans>
-              }
-              description={
-                <Trans>
-                  Approval is blocked until the variance is resolved, or recorded as an override
-                  with a reason.
-                </Trans>
-              }
-            />
-          )}
-
-          {blocked && (
-            <Row gutter={24}>
-              <Col xs={24} md={6}>
-                <Form.Item name="matchOverride" valuePropName="checked">
-                  <Checkbox>
-                    <Trans>Approve despite the variance</Trans>
-                  </Checkbox>
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={18}>
-                <Form.Item
-                  name="matchOverrideReason"
-                  label={<Trans>Override reason</Trans>}
-                  rules={
-                    overrideActive
-                      ? [{ required: true, message: t`A reason is required to override` }]
-                      : []
-                  }
-                >
-                  <Input
-                    placeholder={t`Why is this variance acceptable?`}
-                    disabled={!overrideActive}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          )}
-        </>
-      )}
-
-      {!isNew && invoice && (
-        <PaymentPanel
-          organizationId={organization?.id ?? ""}
-          documentType="incoming_invoice"
-          documentId={id!}
-          direction="outbound"
-          vendorId={(invoice as any).vendorId}
-          currency={(invoice as any).currency ?? orgCurrency}
-          orgCurrency={orgCurrency}
-          total={unitsToCents((invoice as any).total ?? 0)}
-          hasPostedEntry={currentState === "approved" || currentState === "paid"}
-        />
-      )}
-
-      {document.getElementById("footer") &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="space-between" style={{ height: 64 }}>
-              <Col>
-                {!isNew && (
-                  <Popconfirm
-                    title={t`Delete this incoming invoice?`}
-                    onConfirm={handleDelete}
-                    okText={t`Yes`}
-                    cancelText={t`No`}
-                  >
-                    <Button type="dashed" danger>
-                      <DeleteOutlined /> <Trans>Delete</Trans>
-                    </Button>
-                  </Popconfirm>
+            >
+              <Table.Column
+                title={<Trans>Description</Trans>}
+                dataIndex="description"
+                key="description"
+              />
+              <Table.Column
+                title={<Trans>Ordered</Trans>}
+                key="ordered"
+                align="right"
+                render={(line: MatchLine) => line.orderedQuantity ?? "—"}
+              />
+              <Table.Column
+                title={<Trans>Received</Trans>}
+                key="received"
+                align="right"
+                render={(line: MatchLine) => line.receivedQuantity ?? "—"}
+              />
+              <Table.Column
+                title={<Trans>Already invoiced</Trans>}
+                dataIndex="previouslyInvoicedQuantity"
+                key="previouslyInvoicedQuantity"
+                align="right"
+              />
+              <Table.Column
+                title={<Trans>On this invoice</Trans>}
+                dataIndex="invoicedQuantity"
+                key="invoicedQuantity"
+                align="right"
+              />
+              <Table.Column
+                title={<Trans>Status</Trans>}
+                key="status"
+                render={(line: MatchLine) => (
+                  <Space direction="vertical" size={0}>
+                    <Tag color={matchStatusColor[line.status]}>{matchStatusLabel(line.status)}</Tag>
+                    {matchStatusDetail(line) && (
+                      <span style={{ fontSize: 12, opacity: 0.65 }}>{matchStatusDetail(line)}</span>
+                    )}
+                  </Space>
                 )}
-              </Col>
-              <Col>
-                <Space>
-                  {!isNew && (
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingPdf}
-                        onClick={handleServerExport("pdf")}
-                      >
-                        <FilePdfOutlined /> PDF
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && (
-                    // Always the server fill-and-convert path
-                    // (db/xlsx_export_incoming_invoice.go) — every incoming
-                    // invoice has an embedded fallback template
-                    // (resolveTemplateBytes) to fill even with no org
-                    // override, so both buttons always work.
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingExcel}
-                        onClick={handleServerExport("xlsx")}
-                      >
-                        <FileExcelOutlined /> <Trans>Excel</Trans>
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && (
-                    <Select
-                      value={currentState}
-                      style={{ width: 150 }}
-                      onChange={handleStateChange}
-                      options={INCOMING_INVOICE_STATES.map((s) => ({
-                        value: s,
-                        label: incomingInvoiceStateLabel(s),
-                      }))}
+              />
+            </Table>
+
+            {blocked && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message={
+                  <Trans>This invoice does not match the purchase order and goods received</Trans>
+                }
+                description={
+                  <Trans>
+                    Approval is blocked until the variance is resolved, or recorded as an override
+                    with a reason.
+                  </Trans>
+                }
+              />
+            )}
+
+            {blocked && (
+              <Row gutter={24}>
+                <Col xs={24} md={6}>
+                  <Form.Item name="matchOverride" valuePropName="checked">
+                    <Checkbox>
+                      <Trans>Approve despite the variance</Trans>
+                    </Checkbox>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={18}>
+                  <Form.Item
+                    name="matchOverrideReason"
+                    label={<Trans>Override reason</Trans>}
+                    rules={
+                      overrideActive
+                        ? [{ required: true, message: t`A reason is required to override` }]
+                        : []
+                    }
+                  >
+                    <Input
+                      placeholder={t`Why is this variance acceptable?`}
+                      disabled={!overrideActive}
                     />
-                  )}
-                  <Button type="primary" onClick={() => form.submit()}>
-                    <SaveOutlined /> <Trans>Save</Trans>
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Footer>,
-          document.getElementById("footer") as HTMLElement,
+                  </Form.Item>
+                </Col>
+              </Row>
+            )}
+          </>
         )}
-    </Form>
+
+        {!isNew && invoice && (
+          <PaymentPanel
+            organizationId={organization?.id ?? ""}
+            documentType="incoming_invoice"
+            documentId={id!}
+            direction="outbound"
+            vendorId={(invoice as any).vendorId}
+            currency={(invoice as any).currency ?? orgCurrency}
+            orgCurrency={orgCurrency}
+            total={unitsToCents((invoice as any).total ?? 0)}
+            hasPostedEntry={currentState === "approved" || currentState === "paid"}
+          />
+        )}
+
+        {document.getElementById("footer") &&
+          createPortal(
+            <Footer
+              style={{
+                position: "sticky",
+                bottom: 0,
+                zIndex: 1,
+                padding: "0 16px",
+                background: colorBgContainer,
+              }}
+            >
+              <Row align="middle" justify="space-between" style={{ height: 64 }}>
+                <Col>
+                  {!isNew && (
+                    <Popconfirm
+                      title={t`Delete this incoming invoice?`}
+                      onConfirm={handleDelete}
+                      okText={t`Yes`}
+                      cancelText={t`No`}
+                    >
+                      <Button type="dashed" danger>
+                        <DeleteOutlined /> <Trans>Delete</Trans>
+                      </Button>
+                    </Popconfirm>
+                  )}
+                </Col>
+                <Col>
+                  <Space>
+                    {!isNew && (
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingPdf}
+                          onClick={handleServerExport("pdf")}
+                        >
+                          <FilePdfOutlined /> PDF
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && (
+                      // Always the server fill-and-convert path
+                      // (db/xlsx_export_incoming_invoice.go) — every incoming
+                      // invoice has an embedded fallback template
+                      // (resolveTemplateBytes) to fill even with no org
+                      // override, so both buttons always work.
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingExcel}
+                          onClick={handleServerExport("xlsx")}
+                        >
+                          <FileExcelOutlined /> <Trans>Excel</Trans>
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && (
+                      <Select
+                        value={currentState}
+                        style={{ width: 150 }}
+                        onChange={handleStateChange}
+                        options={INCOMING_INVOICE_STATES.map((s) => ({
+                          value: s,
+                          label: incomingInvoiceStateLabel(s),
+                        }))}
+                      />
+                    )}
+                    <Button type="primary" onClick={() => form.submit()}>
+                      <SaveOutlined /> <Trans>Save</Trans>
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </Footer>,
+            document.getElementById("footer") as HTMLElement,
+          )}
+      </Form>
+    </>
   );
 };
 
