@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
   Card,
@@ -83,12 +83,17 @@ function SettingsBackup() {
       .catch(() => {});
   }, [fetchList]);
 
-  const nextRunLabel = useMemo(() => {
-    const candidate = new Date();
-    candidate.setUTCHours(config.scheduleHour, 0, 0, 0);
-    if (candidate.getTime() <= Date.now()) candidate.setUTCDate(candidate.getUTCDate() + 1);
-    return dayjs(candidate).format("DD/MM/YYYY HH:mm");
-  }, [config.scheduleHour]);
+  // Not memoized: it depends on the current moment as much as
+  // config.scheduleHour, so a useMemo keyed only on the latter would freeze
+  // this label as of whenever scheduleHour last changed — silently still
+  // showing "today" well after that candidate time has actually passed.
+  // Recomputing on every render is cheap enough this doesn't matter.
+  // oxlint-disable-next-line react/purity
+  const now = Date.now();
+  const nextRun = new Date();
+  nextRun.setUTCHours(config.scheduleHour, 0, 0, 0);
+  if (nextRun.getTime() <= now) nextRun.setUTCDate(nextRun.getUTCDate() + 1);
+  const nextRunLabel = dayjs(nextRun).format("DD/MM/YYYY HH:mm");
 
   const handleSaveConfig = async () => {
     setSavingConfig(true);
