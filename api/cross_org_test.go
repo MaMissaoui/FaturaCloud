@@ -324,15 +324,19 @@ func TestCreateRouteOrgChecksArePresent(t *testing.T) {
 
 // --- Cross-organization access denial (issue #141 Phase C) ---------------
 
-// crossOrgProof is a representative sample of already-gated routes verified
-// end to end against a real cross-tenant request — grown alongside
-// pendingPhaseCRoutes shrinking in later Phase C PRs, per the rollout plan
-// (/Users/mam/.claude/plans/tranquil-toasting-eagle.md). Not exhaustive by
-// design (that's TestPhaseCRouteCoverage's job, structurally): a list + a
-// single-resource get + one mutation per newly-gated domain is enough to
-// prove the mechanism actually denies a real request, not just that the
-// router table claims it does. PR7's final regression sweep expands this to
-// every route.
+// crossOrgProof grew across Phase C's 7-PR rollout
+// (/Users/mam/.claude/plans/tranquil-toasting-eagle.md): each domain PR
+// added a list + a single-resource get + one mutation for its newly-gated
+// routes — enough to prove the mechanism actually denies a real request,
+// not just that the router table claims it does (that structural guarantee
+// is TestPhaseCRouteCoverage's job). PR7's final sweep extended this to
+// every remaining org-scoped route family — organization core fields,
+// members, document templates, dashboard, exchange-rate, every GL/document
+// report, GL export, fiscal-year close, and the next-number endpoints —
+// including the orgAdminProtected (not just orgMemberProtected) routes,
+// since those are exactly the highest-consequence ones (delete/reset an
+// organization, close a fiscal year) to prove actually deny a non-admin of
+// that org rather than trusting the router table's wrapper choice alone.
 var crossOrgProof = []struct {
 	name   string
 	method string
@@ -422,6 +426,58 @@ var crossOrgProof = []struct {
 	{name: "get payment by id", method: http.MethodGet, path: "/api/payments/org-a-payment"},
 	{name: "payment applications", method: http.MethodGet, path: "/api/payments/org-a-payment/applications"},
 	{name: "void payment by id", method: http.MethodPost, path: "/api/payments/org-a-payment/void"},
+
+	// PR7's final sweep: every remaining org-scoped route family not
+	// already exercised above — organization core fields/logo/usage-count,
+	// members (admin-only), document templates, dashboard, exchange-rate
+	// prefill, the GL/document-analytics report families, GL export
+	// (admin-only), fiscal-year close (admin-only, irreversible — this is
+	// exactly the kind of route where proving the deny-path actually denies
+	// matters most), and the four next-number endpoints. orgAdminProtected
+	// routes are included here too — orgAuthorized's 403-then-404 split
+	// still falls inside the same "403 or 404 accepted" assertion below.
+	{name: "get organization by id", method: http.MethodGet, path: "/api/organizations/org-a"},
+	{name: "update organization by id", method: http.MethodPut, path: "/api/organizations/org-a", body: []byte(`{"name":"hijacked"}`)},
+	{name: "organization usage count", method: http.MethodGet, path: "/api/organizations/org-a/usage-count"},
+	{name: "organization logo", method: http.MethodGet, path: "/api/organizations/org-a/logo"},
+	{name: "delete organization logo", method: http.MethodDelete, path: "/api/organizations/org-a/logo"},
+	{name: "delete organization by id (admin)", method: http.MethodDelete, path: "/api/organizations/org-a"},
+	{name: "reset organization data (admin)", method: http.MethodPost, path: "/api/organizations/org-a/reset"},
+
+	{name: "list organization members (admin)", method: http.MethodGet, path: "/api/organizations/org-a/members"},
+	{name: "add organization member (admin)", method: http.MethodPost, path: "/api/organizations/org-a/members", body: []byte(`{"email":"nobody@example.com","role":"user"}`)},
+	{name: "update organization member role (admin)", method: http.MethodPut, path: "/api/organizations/org-a/members/org-a-admin", body: []byte(`{"role":"user"}`)},
+	{name: "remove organization member (admin)", method: http.MethodDelete, path: "/api/organizations/org-a/members/org-a-admin"},
+
+	{name: "list document templates", method: http.MethodGet, path: "/api/organizations/org-a/document-templates"},
+	{name: "get document template", method: http.MethodGet, path: "/api/organizations/org-a/document-templates/invoice"},
+	{name: "delete document template", method: http.MethodDelete, path: "/api/organizations/org-a/document-templates/invoice"},
+
+	{name: "dashboard", method: http.MethodGet, path: "/api/organizations/org-a/dashboard"},
+	{name: "exchange rate prefill", method: http.MethodGet, path: "/api/organizations/org-a/exchange-rate"},
+
+	{name: "report: trial balance", method: http.MethodGet, path: "/api/organizations/org-a/reports/trial-balance"},
+	{name: "report: profit and loss", method: http.MethodGet, path: "/api/organizations/org-a/reports/profit-and-loss"},
+	{name: "report: balance sheet", method: http.MethodGet, path: "/api/organizations/org-a/reports/balance-sheet"},
+	{name: "report: ar aging", method: http.MethodGet, path: "/api/organizations/org-a/reports/ar-aging"},
+	{name: "report: ap aging", method: http.MethodGet, path: "/api/organizations/org-a/reports/ap-aging"},
+	{name: "report: inventory valuation", method: http.MethodGet, path: "/api/organizations/org-a/reports/inventory-valuation"},
+
+	{name: "reporting: revenue trend", method: http.MethodGet, path: "/api/organizations/org-a/reporting/revenue-trend"},
+	{name: "reporting: sales by client", method: http.MethodGet, path: "/api/organizations/org-a/reporting/sales-by-client"},
+	{name: "reporting: sales by product", method: http.MethodGet, path: "/api/organizations/org-a/reporting/sales-by-product"},
+	{name: "reporting: purchases by vendor", method: http.MethodGet, path: "/api/organizations/org-a/reporting/purchases-by-vendor"},
+	{name: "reporting: tax summary", method: http.MethodGet, path: "/api/organizations/org-a/reporting/tax-summary"},
+
+	{name: "gl export: fec (admin)", method: http.MethodGet, path: "/api/organizations/org-a/gl-export/fec"},
+	{name: "gl export: datev (admin)", method: http.MethodGet, path: "/api/organizations/org-a/gl-export/datev"},
+
+	{name: "close fiscal year (admin, irreversible)", method: http.MethodPost, path: "/api/fiscal-years/org-a-fiscal-year/close"},
+
+	{name: "imports next-number", method: http.MethodGet, path: "/api/organizations/org-a/imports/next-number"},
+	{name: "purchase orders next-number", method: http.MethodGet, path: "/api/organizations/org-a/purchase-orders/next-number"},
+	{name: "inbound deliveries next-number", method: http.MethodGet, path: "/api/organizations/org-a/inbound-deliveries/next-number"},
+	{name: "deliveries next-number", method: http.MethodGet, path: "/api/organizations/org-a/deliveries/next-number"},
 }
 
 // TestCrossOrgAccessDenied is the fail-closed regression test the original
