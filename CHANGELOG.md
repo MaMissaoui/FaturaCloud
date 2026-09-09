@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.12.0] - 2026-09-09
+
+Excel/PDF export now covers every document type in the app, and the
+status-flow popover is easier to read.
+
+### Added
+- Incoming invoices (vendor bills), outbound deliveries (delivery notes),
+  and inbound deliveries (goods receipts) can now export to Excel and PDF
+  through the same custom-template engine invoices, purchase orders, and
+  orders already used — completing template-based export across every
+  document type. Settings → Document Templates gained upload/download/reset
+  cards for all of them (Purchase Order and Order had the export capability
+  already but were missing their Settings card until now).
+
+### Fixed
+- The status-flow popover on Purchase Orders/Orders no longer repeats
+  "Cancelled" as a target on every row that can reach it — it's now
+  summarized once at the bottom instead.
+
 ## [3.11.0] - 2026-09-08
 
 Per-organization roles, working PDF export for custom invoice templates,
