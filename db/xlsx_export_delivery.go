@@ -98,13 +98,17 @@ func buildDeliveryScalarPlaceholders(delivery OutboundDelivery, org Organization
 }
 
 // buildDeliveryLineItemPlaceholders is the per-row namespace for the
-// repeated line item block — description, quantity, and unit only, no price
-// or line total, matching outbound_delivery_line_items' own columns.
-// Description is a plain string (unlike InvoiceLineItem's *string), same as
-// PurchaseOrderLineItem — no derefString here.
+// repeated line item block — description, quantity, unit, and the linked
+// product's SKU, no price or line total, matching
+// outbound_delivery_line_items' own columns. sku is a joined column (nil
+// for a free-text line, or a line whose product has none), the same
+// precedent as stockEnabled/serialized. Description is a plain string
+// (unlike InvoiceLineItem's *string), same as PurchaseOrderLineItem — no
+// derefString here.
 func buildDeliveryLineItemPlaceholders(li OutboundDeliveryLineItem) map[string]string {
 	return map[string]string{
 		"lineItems.description": li.Description,
+		"lineItems.sku":         derefString(li.SKU),
 		"lineItems.quantity":    formatQuantity(li.Quantity),
 		"lineItems.unit":        derefString(li.Unit),
 	}

@@ -61,6 +61,40 @@ func TestFillDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
 	}
 }
 
+// TestFillDeliveryTemplateIncludesSKU guards against a regression found via
+// advisor review: the old client-side DeliveryNotePDF button showed each
+// line's product SKU, and the first cut of this server template dropped it.
+// buildDeliveryLineItemPlaceholders' "lineItems.sku" (joined from products
+// via GetDeliveryLineItems) restores it — blank for a free-text line, same
+// convention as every other optional field here.
+func TestFillDeliveryTemplateIncludesSKU(t *testing.T) {
+	f := excelize.NewFile()
+	sheet := f.GetSheetName(0)
+	_ = f.SetCellStr(sheet, "A3", "{{#lineItems}}")
+	_ = f.SetCellStr(sheet, "B3", "{{lineItems.sku}}")
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		t.Fatalf("build fixture: %v", err)
+	}
+
+	delivery := testOutboundDelivery()
+	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 1, SKU: ptr("WID-001")}}
+
+	out, _, err := FillDeliveryTemplate(buf.Bytes(), delivery, lineItems, testOrg(), testClient())
+	if err != nil {
+		t.Fatalf("FillDeliveryTemplate: %v", err)
+	}
+	f2, err := excelize.OpenReader(bytes.NewReader(out))
+	if err != nil {
+		t.Fatalf("open output: %v", err)
+	}
+	defer f2.Close()
+	got, _ := f2.GetCellValue(f2.GetSheetName(0), "B3")
+	if got != "WID-001" {
+		t.Errorf("B3 = %q, want %q", got, "WID-001")
+	}
+}
+
 // TestFillDeliveryTemplateBlankClientOnStandaloneDelivery confirms a
 // walk-in/no-client delivery (ClientID nil, so the caller passes a zero
 // Client) exports with client.* placeholders blank rather than failing —
@@ -103,7 +137,8 @@ func TestEmbeddedDefaultDeliveryTemplatePlaceholdersAllResolve(t *testing.T) {
 
 	scalars := buildDeliveryScalarPlaceholders(testOutboundDelivery(), testOrg(), testClient())
 	lineItemKeys := map[string]bool{
-		"lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
+		"lineItems.description": true, "lineItems.sku": true,
+		"lineItems.quantity": true, "lineItems.unit": true,
 	}
 
 	rows, err := f.GetRows(sheet)

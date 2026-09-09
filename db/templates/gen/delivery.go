@@ -45,31 +45,40 @@ func buildDeliveryTemplate() {
 	set("A10", "{{client.postalCode}} {{client.city}}")
 	set("A11", "Shipping address: {{delivery.shippingAddress}}")
 
-	// Line item table header. Description spans A:C (merged, extra room since
-	// there's no price column competing for space); the {{#lineItems}} marker
-	// on the repeat row lives in column E, off to the right.
+	// Line item table header. Description spans A:B (merged, the same
+	// invoice-style layout as every other template) with a dedicated SKU
+	// column at C; the {{#lineItems}} marker on the repeat row lives in
+	// column E, off to the right.
 	headerRow := 13
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(headerRow), "C"+strconv.Itoa(headerRow)); err != nil {
+	if err := f.MergeCell(sheet, "A"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow)); err != nil {
 		log.Fatal(err)
 	}
-	set("A"+strconv.Itoa(headerRow), "Description")
-	f.SetCellStyle(sheet, "A"+strconv.Itoa(headerRow), "C"+strconv.Itoa(headerRow), styles.header)
-	set("D"+strconv.Itoa(headerRow), "Quantity")
-	f.SetCellStyle(sheet, "D"+strconv.Itoa(headerRow), "D"+strconv.Itoa(headerRow), styles.header)
+	cols := []string{"A", "C", "D"}
+	labels := []string{"Description", "SKU", "Quantity"}
+	for i, col := range cols {
+		cell := col + strconv.Itoa(headerRow)
+		set(cell, labels[i])
+		f.SetCellStyle(sheet, cell, cell, styles.header)
+	}
+	f.SetCellStyle(sheet, "B"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow), styles.header)
 
-	// Repeat row: A:C merged carries the description, D the quantity+unit, E the marker.
+	// Repeat row: A:B merged carries the description, C the SKU, D the
+	// quantity+unit, E the marker.
 	repeatRow := headerRow + 1
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(repeatRow), "C"+strconv.Itoa(repeatRow)); err != nil {
+	if err := f.MergeCell(sheet, "A"+strconv.Itoa(repeatRow), "B"+strconv.Itoa(repeatRow)); err != nil {
 		log.Fatal(err)
 	}
 	set("A"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
+	set("C"+strconv.Itoa(repeatRow), "{{lineItems.sku}}")
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.quantity}} {{lineItems.unit}}")
 	set("E"+strconv.Itoa(repeatRow), "{{#lineItems}}")
 
 	footerRow := repeatRow + 4
 	set("A"+strconv.Itoa(footerRow), "Notes: {{delivery.notes}}")
 
-	f.SetColWidth(sheet, "A", "C", 20)
+	f.SetColWidth(sheet, "A", "A", 24)
+	f.SetColWidth(sheet, "B", "B", 16)
+	f.SetColWidth(sheet, "C", "C", 16)
 	f.SetColWidth(sheet, "D", "D", 16)
 
 	applyFitToPageWidth(f, sheet)
@@ -105,6 +114,7 @@ var deliveryFieldRefs = []fieldRef{
 
 	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in any one cell of the row to repeat once per line item; that whole cell is blanked in the output"},
 	{"Item lines", "{{lineItems.description}}", "Line item description"},
+	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU, blank on a free-text line or an unset SKU"},
 	{"Item lines", "{{lineItems.quantity}}", "Quantity"},
 	{"Item lines", "{{lineItems.unit}}", "Unit of measure (e.g. pcs, kg), blank if unset"},
 
