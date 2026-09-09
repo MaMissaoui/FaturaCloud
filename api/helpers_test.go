@@ -42,6 +42,12 @@ func TestDecodeJSON_NormalBodyAccepted(t *testing.T) {
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-1", Name: strPtr("ACME")}); err != nil {
 		t.Fatalf("seed org: %v", err)
 	}
+	// POST /api/clients now requires org membership (issue #141 Phase C) —
+	// unrelated to what this test actually checks (body size), but the
+	// request must clear that check to reach decodeJSON at all.
+	if _, err := database.AddOrganizationUser("org-1", "test-user", "user"); err != nil {
+		t.Fatalf("seed org membership: %v", err)
+	}
 
 	// ~1 MiB of notes — well under the 10 MiB cap.
 	name := "ACME"

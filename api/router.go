@@ -107,6 +107,13 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgAdminProtected := func(method, pattern string, resolve orgIDResolver, handlerFn http.HandlerFunc) {
 		mux.Handle(method+" "+pattern, auth(h.orgAdmin(resolve)(csrf(limitBody(defaultMaxBody, withDB(handlerFn))))))
 	}
+	// orgMemberProtected gates an ordinary org-scoped route on plain
+	// membership (any role) — the Phase C counterpart to orgAdminProtected,
+	// for routes that only need "the caller belongs to this organization,"
+	// not admin privileges within it.
+	orgMemberProtected := func(method, pattern string, resolve orgIDResolver, handlerFn http.HandlerFunc) {
+		mux.Handle(method+" "+pattern, auth(h.orgMember(resolve)(csrf(limitBody(defaultMaxBody, withDB(handlerFn))))))
+	}
 
 	// Auth
 	protected("GET", "/api/auth/me", h.me)
@@ -171,12 +178,24 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}", h.deleteDocumentTemplate)
 
 	// Clients
-	protected("GET", "/api/organizations/{orgId}/clients", h.listClients)
+	// clientOrgID resolves a client route's {id} to its owning organization
+	// by reusing GetClient — the same row every one of these handlers
+	// already needs (or, for PUT/DELETE, cheaply can fetch), rather than a
+	// bespoke organizationId-only query. Reused across every route below
+	// keyed on a client's own {id}.
+	clientOrgID := func(r *http.Request) (string, error) {
+		client, err := h.db.GetClient(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return client.OrganizationID, nil
+	}
+	orgMemberProtected("GET", "/api/organizations/{orgId}/clients", pathOrgID("orgId"), h.listClients)
 	protected("POST", "/api/clients", h.createClient)
-	protected("GET", "/api/clients/{id}", h.getClient)
-	protected("PUT", "/api/clients/{id}", h.updateClient)
-	protected("DELETE", "/api/clients/{id}", h.deleteClient)
-	protected("GET", "/api/clients/{id}/invoice-count", h.getClientInvoiceCount)
+	orgMemberProtected("GET", "/api/clients/{id}", clientOrgID, h.getClient)
+	orgMemberProtected("PUT", "/api/clients/{id}", clientOrgID, h.updateClient)
+	orgMemberProtected("DELETE", "/api/clients/{id}", clientOrgID, h.deleteClient)
+	orgMemberProtected("GET", "/api/clients/{id}/invoice-count", clientOrgID, h.getClientInvoiceCount)
 
 	// Vendors
 	protected("GET", "/api/organizations/{orgId}/vendors", h.listVendors)

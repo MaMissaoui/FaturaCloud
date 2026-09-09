@@ -123,12 +123,25 @@ func pathOrgID(param string) orgIDResolver {
 	}
 }
 
-// orgAdmin gates an org-scoped admin action: the caller must hold the
-// "admin" role in the organization resolve identifies. Runs before withDB
-// (see api/router.go's route wiring), so — like authMiddleware's isActive
-// check — it takes its own short-lived dbMu read lock rather than relying on
-// a route's own withDB wrapper.
-func (h *handler) orgAdmin(resolve orgIDResolver) func(http.Handler) http.Handler {
+// orgAuthorized is the shared implementation orgAdmin and orgMember both
+// call. Runs before withDB (see api/router.go's route wiring), so — like
+// authMiddleware's isActive check — it takes its own short-lived dbMu read
+// lock around resolve()+the role check (resolve() may itself hit the DB,
+// e.g. looking up which organization a fiscal year belongs to) rather than
+// relying on a route's own withDB wrapper, released before next.ServeHTTP.
+//
+// orgAdmin and orgMember deliberately diverge on the failure response:
+// orgAdmin 404s only when resolve() itself fails (the row is genuinely
+// absent) and 403s when the caller isn't an admin of an org they already
+// know exists — fine for admin-tier routes, which the caller is almost
+// always already inside via pathOrgID. orgMember instead collapses BOTH
+// "resolve failed" and "caller isn't a member" to a plain 404: most of its
+// resolvers key off an attacker-controlled resource {id} unrelated to any
+// path the caller is otherwise authorized into, so a distinct 403 there
+// would let any authenticated user learn "this invoice id exists (in
+// someone else's org)" — a cross-tenant existence oracle. This is a
+// deliberate choice, not an inherited accident.
+func (h *handler) orgAuthorized(resolve orgIDResolver, requireAdmin bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims := getClaims(r)
@@ -136,10 +149,6 @@ func (h *handler) orgAdmin(resolve orgIDResolver) func(http.Handler) http.Handle
 				writeError(w, http.StatusForbidden, "forbidden")
 				return
 			}
-			// resolve() may itself hit the DB (e.g. looking up which
-			// organization a fiscal year belongs to) — held under the same
-			// lock as the role check below, not just the role check alone,
-			// since it runs before withDB's own read lock ever engages.
 			h.dbMu.RLock()
 			orgID, resolveErr := resolve(r)
 			var role string
@@ -149,21 +158,81 @@ func (h *handler) orgAdmin(resolve orgIDResolver) func(http.Handler) http.Handle
 				role, isMember, err = h.db.GetOrganizationRole(orgID, claims.UserID)
 			}
 			h.dbMu.RUnlock()
-			if resolveErr != nil || orgID == "" {
-				writeError(w, http.StatusNotFound, "not found")
-				return
-			}
-			if err != nil {
-				writeInternalError(w, err)
-				return
-			}
-			if !isMember || role != "admin" {
-				writeError(w, http.StatusForbidden, "forbidden")
-				return
+
+			if requireAdmin {
+				if resolveErr != nil || orgID == "" {
+					writeError(w, http.StatusNotFound, "not found")
+					return
+				}
+				if err != nil {
+					writeInternalError(w, err)
+					return
+				}
+				if !isMember || role != "admin" {
+					writeError(w, http.StatusForbidden, "forbidden")
+					return
+				}
+			} else {
+				if err != nil {
+					writeInternalError(w, err)
+					return
+				}
+				if resolveErr != nil || orgID == "" || !isMember {
+					writeError(w, http.StatusNotFound, "not found")
+					return
+				}
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// orgAdmin gates an org-scoped admin action: the caller must hold the
+// "admin" role in the organization resolve identifies.
+func (h *handler) orgAdmin(resolve orgIDResolver) func(http.Handler) http.Handler {
+	return h.orgAuthorized(resolve, true)
+}
+
+// orgMember gates an ordinary org-scoped action on plain membership (any
+// role) — the Phase C counterpart to orgAdmin, for routes that don't
+// require admin privileges, just that the caller belongs to the
+// organization resolve identifies.
+func (h *handler) orgMember(resolve orgIDResolver) func(http.Handler) http.Handler {
+	return h.orgAuthorized(resolve, false)
+}
+
+// requireOrgMember checks org membership from INSIDE a Create* handler,
+// after decodeJSON — orgIDResolver-based middleware can't run before the
+// body is parsed, since organizationId lives in the JSON, not the path.
+//
+// Unlike orgMember (which runs before withDB and takes its own
+// dbMu.RLock()), every Create* handler this is called from is already
+// running inside protected()'s withDB wrapper, which holds dbMu.RLock() for
+// the request's full duration (api/router.go). This must NOT call RLock()
+// again: Go's sync.RWMutex blocks new readers once a writer (e.g.
+// /api/restore's write-locked swapDatabase) is queued, so a second RLock()
+// from the same goroutine after that point deadlocks. Just use h.db
+// directly — the enclosing withDB already makes it safe.
+//
+// 403 here, not 404 (unlike orgMember): the caller supplied organizationId
+// themselves in the body, so there's no existence-probing angle — a plain
+// validation-style rejection is the right shape for a bad create payload.
+func (h *handler) requireOrgMember(w http.ResponseWriter, r *http.Request, orgID string) bool {
+	claims := getClaims(r)
+	if claims == nil || orgID == "" {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return false
+	}
+	_, isMember, err := h.db.GetOrganizationRole(orgID, claims.UserID)
+	if err != nil {
+		writeInternalError(w, err)
+		return false
+	}
+	if !isMember {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return false
+	}
+	return true
 }
 
 // csrfRequired wraps state-changing routes and rejects any request that omits

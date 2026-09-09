@@ -1,0 +1,545 @@
+package api
+
+import (
+	"bytes"
+	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/MaMissaoui/fatura-cloud/db"
+)
+
+// --- Route-coverage tripwire (issue #141 Phase C) -------------------------
+//
+// This is the automated guarantee that a route can't silently ship without
+// an org-scoping decision being made about it: every route registered in
+// router.go must be accounted for in exactly one of the lists below, or
+// this test fails the build. It parses router.go's actual source rather
+// than re-typing the route table by hand a second time, so the two can
+// never drift from each other silently — only from this list, which a
+// route addition/removal will now force a decision on.
+//
+// A route gated via orgMemberProtected/orgAdminProtected/platformAdminProtected
+// is self-evidently accounted for (that's what those wrappers exist for).
+// A route still registered via the bare protected()/mux.Handle wrapper is
+// either:
+//   - exemptRoutes: intentionally never org-scoped (public, self-limiting,
+//     or genuinely global — see each entry's own comment for why), or
+//   - createRouteOrgChecks: a POST create route where organizationId lives
+//     in the JSON body, so orgIDResolver-based middleware can't run before
+//     decodeJSON — gated instead by an inline h.requireOrgMember call this
+//     test verifies is actually present in the handler's source, or
+//   - pendingPhaseCRoutes: known, tracked, not yet migrated — Phase C
+//     (issue #141) ships across several PRs by design (see
+//     /Users/mam/.claude/plans/tranquil-toasting-eagle.md); an entry here
+//     is removed the same PR that adds its route to one of the lists above.
+//
+// Anything appearing in none of these, or in more than one, fails the test.
+
+type routeKey struct {
+	method  string
+	pattern string
+}
+
+func (rk routeKey) String() string { return rk.method + " " + rk.pattern }
+
+// discoverRoutes parses router.go's source (not the running mux — a raw
+// AST walk is what lets this test see every registration call site
+// directly, including the ones passed as unevaluated string literals to
+// protected/orgMemberProtected/orgAdminProtected/platformAdminProtected/mux.Handle).
+func discoverRoutes(t *testing.T) map[routeKey]string {
+	t.Helper()
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filepath.Join(".", "router.go"), nil, 0)
+	if err != nil {
+		t.Fatalf("parse router.go: %v", err)
+	}
+
+	routes := map[routeKey]string{}
+	wrapperNames := map[string]bool{
+		"protected": true, "orgMemberProtected": true,
+		"orgAdminProtected": true, "platformAdminProtected": true,
+	}
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		switch fn := call.Fun.(type) {
+		case *ast.Ident:
+			if !wrapperNames[fn.Name] || len(call.Args) < 2 {
+				return true
+			}
+			method, ok1 := stringLit(call.Args[0])
+			pattern, ok2 := stringLit(call.Args[1])
+			if ok1 && ok2 {
+				routes[routeKey{method, pattern}] = fn.Name
+			}
+		case *ast.SelectorExpr:
+			ident, ok := fn.X.(*ast.Ident)
+			if !ok || ident.Name != "mux" || fn.Sel.Name != "Handle" || len(call.Args) < 1 {
+				return true
+			}
+			combined, ok := stringLit(call.Args[0])
+			if !ok {
+				return true
+			}
+			parts := strings.SplitN(combined, " ", 2)
+			if len(parts) == 2 {
+				routes[routeKey{parts[0], parts[1]}] = "mux.Handle"
+			}
+		}
+		return true
+	})
+	return routes
+}
+
+func stringLit(e ast.Expr) (string, bool) {
+	lit, ok := e.(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", false
+	}
+	v, err := strconv.Unquote(lit.Value)
+	if err != nil {
+		return "", false
+	}
+	return v, true
+}
+
+// exemptRoutes are never org-scoped, on purpose.
+var exemptRoutes = map[routeKey]string{
+	{"GET", "/api/version"}:                       "public, pre-auth",
+	{"POST", "/api/auth/login"}:                   "public, pre-auth",
+	{"POST", "/api/auth/logout"}:                  "public, pre-auth",
+	{"GET", "/api/auth/oidc/enabled"}:             "public, pre-auth",
+	{"GET", "/api/auth/oidc/login"}:               "public, pre-auth",
+	{"GET", "/api/auth/oidc/callback"}:            "public, pre-auth",
+	{"GET", "/api/auth/me"}:                       "caller's own identity, no org context",
+	{"POST", "/api/organizations"}:                "no existing org to check; creator is auto-granted membership",
+	{"GET", "/api/organizations/{orgId}/my-role"}: "intentionally self-limiting — any authenticated user may ask their own role",
+	{"GET", "/api/countries/active"}:              "global picklist, not per-org",
+	// Both already platform-admin gated (auth(platformAdmin(csrf(...))) —
+	// registered directly via mux.Handle instead of platformAdminProtected
+	// only because they take dbMu's *write* lock themselves and must never
+	// be wrapped in withDB's read lock (see router.go's own comment there).
+	// Not org-scoped by nature — backup/restore is a global admin concern.
+	{"POST", "/api/backups/{name}/restore"}: "platform-admin gated via direct mux.Handle (write-lock routes can't use withDB)",
+	{"POST", "/api/restore"}:                "platform-admin gated via direct mux.Handle (write-lock routes can't use withDB)",
+}
+
+// createRouteOrgChecks are POST create routes gated by an inline
+// h.requireOrgMember call inside the handler (organizationId lives in the
+// JSON body, so router-level middleware can't check it before decodeJSON).
+// file/fn name the handler this test parses to verify the call is actually
+// present — catches a Create* handler that forgot the check as a build
+// failure, not just a code-review miss.
+var createRouteOrgChecks = map[routeKey]struct{ file, fn string }{
+	{"POST", "/api/clients"}: {"clients.go", "createClient"},
+}
+
+// pendingPhaseCRoutes are known, tracked, not-yet-migrated routes — see the
+// package comment above. Remove an entry the same PR its route moves to
+// orgMemberProtected/orgAdminProtected or gains a createRouteOrgChecks entry.
+var pendingPhaseCRoutes = map[routeKey]bool{
+	// Special case, not a plain wrapper swap: listOrganizations must switch
+	// from GetOrganizations() (all orgs) to GetUserOrganizations(caller) —
+	// tracked for the path-scoped-bucket PR (see the rollout plan).
+	{"GET", "/api/organizations"}: true,
+
+	{"GET", "/api/organizations/{id}"}:                                         true,
+	{"PUT", "/api/organizations/{id}"}:                                         true,
+	{"GET", "/api/organizations/{id}/usage-count"}:                             true,
+	{"GET", "/api/organizations/{id}/logo"}:                                    true,
+	{"POST", "/api/organizations/{id}/logo"}:                                   true,
+	{"DELETE", "/api/organizations/{id}/logo"}:                                 true,
+	{"GET", "/api/organizations/{orgId}/document-templates"}:                   true,
+	{"GET", "/api/organizations/{orgId}/document-templates/{documentType}"}:    true,
+	{"POST", "/api/organizations/{orgId}/document-templates/{documentType}"}:   true,
+	{"DELETE", "/api/organizations/{orgId}/document-templates/{documentType}"}: true,
+
+	{"GET", "/api/organizations/{orgId}/vendors"}: true,
+	{"POST", "/api/vendors"}:                      true,
+	{"GET", "/api/vendors/{id}"}:                  true,
+	{"PUT", "/api/vendors/{id}"}:                  true,
+	{"DELETE", "/api/vendors/{id}"}:               true,
+	{"GET", "/api/vendors/{id}/document-count"}:   true,
+
+	{"GET", "/api/organizations/{orgId}/imports"}:             true,
+	{"GET", "/api/organizations/{orgId}/imports/next-number"}: true,
+	{"POST", "/api/imports"}:                                  true,
+	{"GET", "/api/imports/{id}"}:                              true,
+	{"GET", "/api/imports/{id}/summary"}:                      true,
+	{"PUT", "/api/imports/{id}"}:                              true,
+	{"DELETE", "/api/imports/{id}"}:                           true,
+
+	{"GET", "/api/organizations/{orgId}/purchase-orders"}:             true,
+	{"GET", "/api/organizations/{orgId}/purchase-orders/next-number"}: true,
+	{"POST", "/api/purchase-orders"}:                                  true,
+	{"GET", "/api/purchase-orders/{id}"}:                              true,
+	{"GET", "/api/purchase-orders/{id}/line-items"}:                   true,
+	{"GET", "/api/purchase-orders/{id}/received-quantities"}:          true,
+	{"PUT", "/api/purchase-orders/{id}"}:                              true,
+	{"PATCH", "/api/purchase-orders/{id}/status"}:                     true,
+	{"DELETE", "/api/purchase-orders/{id}"}:                           true,
+	{"GET", "/api/purchase-orders/{id}/export"}:                       true,
+
+	{"GET", "/api/organizations/{orgId}/inbound-deliveries"}:             true,
+	{"GET", "/api/organizations/{orgId}/inbound-deliveries/next-number"}: true,
+	{"POST", "/api/inbound-deliveries"}:                                  true,
+	{"GET", "/api/inbound-deliveries/{id}"}:                              true,
+	{"GET", "/api/inbound-deliveries/{id}/line-items"}:                   true,
+	{"PUT", "/api/inbound-deliveries/{id}"}:                              true,
+	{"PATCH", "/api/inbound-deliveries/{id}/status"}:                     true,
+	{"DELETE", "/api/inbound-deliveries/{id}"}:                           true,
+	{"GET", "/api/inbound-deliveries/{id}/export"}:                       true,
+
+	{"GET", "/api/organizations/{orgId}/incoming-invoices"}: true,
+	{"POST", "/api/incoming-invoices"}:                      true,
+	{"GET", "/api/incoming-invoices/{id}"}:                  true,
+	{"GET", "/api/incoming-invoices/{id}/line-items"}:       true,
+	{"GET", "/api/incoming-invoices/{id}/match"}:            true,
+	{"PUT", "/api/incoming-invoices/{id}"}:                  true,
+	{"PATCH", "/api/incoming-invoices/{id}/state"}:          true,
+	{"DELETE", "/api/incoming-invoices/{id}"}:               true,
+	{"GET", "/api/incoming-invoices/{id}/export"}:           true,
+	{"GET", "/api/incoming-invoices/{id}/payments"}:         true,
+
+	{"GET", "/api/organizations/{orgId}/invoices"}: true,
+	{"POST", "/api/invoices"}:                      true,
+	{"GET", "/api/invoices/{id}"}:                  true,
+	{"GET", "/api/invoices/{id}/line-items"}:       true,
+	{"PUT", "/api/invoices/{id}"}:                  true,
+	{"PATCH", "/api/invoices/{id}/state"}:          true,
+	{"DELETE", "/api/invoices/{id}"}:               true,
+	{"GET", "/api/invoices/{id}/e-invoice"}:        true,
+	{"GET", "/api/invoices/{id}/export"}:           true,
+	{"GET", "/api/invoices/{id}/payments"}:         true,
+
+	{"GET", "/api/organizations/{orgId}/dashboard"}:     true,
+	{"GET", "/api/organizations/{orgId}/exchange-rate"}: true,
+
+	{"GET", "/api/organizations/{orgId}/tax-rates"}: true,
+	{"POST", "/api/tax-rates"}:                      true,
+	{"GET", "/api/tax-rates/{id}"}:                  true,
+	{"PUT", "/api/tax-rates/{id}"}:                  true,
+	{"DELETE", "/api/tax-rates/{id}"}:               true,
+	{"GET", "/api/tax-rates/{id}/usage-count"}:      true,
+
+	{"GET", "/api/organizations/{orgId}/payment-terms"}: true,
+	{"POST", "/api/payment-terms"}:                      true,
+	{"PUT", "/api/payment-terms/{id}"}:                  true,
+	{"DELETE", "/api/payment-terms/{id}"}:               true,
+
+	{"GET", "/api/organizations/{orgId}/products"}: true,
+	{"POST", "/api/products"}:                      true,
+	{"GET", "/api/products/{id}"}:                  true,
+	{"PUT", "/api/products/{id}"}:                  true,
+	{"DELETE", "/api/products/{id}"}:               true,
+	{"GET", "/api/products/{id}/stock-movements"}:  true,
+	{"GET", "/api/products/{id}/serial-numbers"}:   true,
+
+	{"GET", "/api/organizations/{orgId}/stock-movements"}: true,
+	{"POST", "/api/stock-movements"}:                      true,
+	{"DELETE", "/api/stock-movements/{id}"}:               true,
+
+	{"GET", "/api/organizations/{orgId}/orders"}:     true,
+	{"POST", "/api/orders"}:                          true,
+	{"GET", "/api/orders/{id}"}:                      true,
+	{"GET", "/api/orders/{id}/line-items"}:           true,
+	{"GET", "/api/orders/{id}/delivered-quantities"}: true,
+	{"PUT", "/api/orders/{id}"}:                      true,
+	{"PATCH", "/api/orders/{id}/status"}:             true,
+	{"DELETE", "/api/orders/{id}"}:                   true,
+	{"GET", "/api/orders/{id}/export"}:               true,
+
+	{"GET", "/api/organizations/{orgId}/deliveries"}:             true,
+	{"GET", "/api/organizations/{orgId}/deliveries/next-number"}: true,
+	{"POST", "/api/deliveries"}:                                  true,
+	{"GET", "/api/deliveries/{id}"}:                              true,
+	{"GET", "/api/deliveries/{id}/line-items"}:                   true,
+	{"PUT", "/api/deliveries/{id}"}:                              true,
+	{"PATCH", "/api/deliveries/{id}/status"}:                     true,
+	{"DELETE", "/api/deliveries/{id}"}:                           true,
+	{"GET", "/api/deliveries/{id}/export"}:                       true,
+
+	{"GET", "/api/organizations/{orgId}/accounts"}: true,
+	{"POST", "/api/accounts"}:                      true,
+	{"GET", "/api/accounts/{id}"}:                  true,
+	{"PUT", "/api/accounts/{id}"}:                  true,
+	{"DELETE", "/api/accounts/{id}"}:               true,
+
+	{"GET", "/api/organizations/{orgId}/journals"}: true,
+	{"POST", "/api/journals"}:                      true,
+	{"PUT", "/api/journals/{id}"}:                  true,
+	{"DELETE", "/api/journals/{id}"}:               true,
+
+	{"GET", "/api/organizations/{orgId}/fiscal-years"}: true,
+	{"POST", "/api/fiscal-years"}:                      true,
+	{"GET", "/api/fiscal-years/{id}/periods"}:          true,
+	{"POST", "/api/fiscal-periods"}:                    true,
+	{"PATCH", "/api/fiscal-periods/{id}/status"}:       true,
+
+	{"GET", "/api/organizations/{orgId}/journal-entries"}: true,
+	{"POST", "/api/journal-entries"}:                      true,
+	{"GET", "/api/journal-entries/{id}"}:                  true,
+	{"GET", "/api/journal-entries/{id}/lines"}:            true,
+	{"PATCH", "/api/journal-entries/{id}/post"}:           true,
+	{"POST", "/api/journal-entries/{id}/reverse"}:         true,
+	{"DELETE", "/api/journal-entries/{id}"}:               true,
+
+	{"GET", "/api/organizations/{orgId}/payments"}: true,
+	{"POST", "/api/payments"}:                      true,
+	{"GET", "/api/payments/{id}"}:                  true,
+	{"GET", "/api/payments/{id}/applications"}:     true,
+	{"POST", "/api/payments/{id}/void"}:            true,
+
+	{"GET", "/api/organizations/{orgId}/reports/trial-balance"}:       true,
+	{"GET", "/api/organizations/{orgId}/reports/profit-and-loss"}:     true,
+	{"GET", "/api/organizations/{orgId}/reports/balance-sheet"}:       true,
+	{"GET", "/api/organizations/{orgId}/reports/ar-aging"}:            true,
+	{"GET", "/api/organizations/{orgId}/reports/ap-aging"}:            true,
+	{"GET", "/api/organizations/{orgId}/reports/inventory-valuation"}: true,
+
+	{"GET", "/api/organizations/{orgId}/reporting/revenue-trend"}:       true,
+	{"GET", "/api/organizations/{orgId}/reporting/sales-by-client"}:     true,
+	{"GET", "/api/organizations/{orgId}/reporting/sales-by-product"}:    true,
+	{"GET", "/api/organizations/{orgId}/reporting/purchases-by-vendor"}: true,
+	{"GET", "/api/organizations/{orgId}/reporting/tax-summary"}:         true,
+}
+
+// TestPhaseCRouteCoverage is the tripwire described in the package comment
+// above: every route router.go registers must land in exactly one of
+// {gated by an org-scoped wrapper, exemptRoutes, createRouteOrgChecks,
+// pendingPhaseCRoutes}, and every route named in those maintained lists
+// must still exist in router.go.
+func TestPhaseCRouteCoverage(t *testing.T) {
+	discovered := discoverRoutes(t)
+	if len(discovered) == 0 {
+		t.Fatal("discovered zero routes — router.go parsing is broken, not that the app has no routes")
+	}
+
+	orgScopedWrappers := map[string]bool{
+		"orgMemberProtected": true, "orgAdminProtected": true,
+	}
+
+	for key, wrapper := range discovered {
+		if orgScopedWrappers[wrapper] || wrapper == "platformAdminProtected" {
+			continue // self-evidently accounted for — that's what the wrapper does
+		}
+		// wrapper is "protected" or "mux.Handle": must be exempt, a
+		// verified create-check, or a tracked pending route — never more
+		// than one, never none.
+		_, isExempt := exemptRoutes[key]
+		_, isCreateCheck := createRouteOrgChecks[key]
+		isPending := pendingPhaseCRoutes[key]
+		count := 0
+		for _, b := range []bool{isExempt, isCreateCheck, isPending} {
+			if b {
+				count++
+			}
+		}
+		switch count {
+		case 0:
+			t.Errorf(
+				"%s is registered via %s but appears in none of exemptRoutes/createRouteOrgChecks/pendingPhaseCRoutes — "+
+					"classify it (see the file-level comment in cross_org_test.go) before this route can ship",
+				key, wrapper,
+			)
+		case 1:
+			// fine
+		default:
+			t.Errorf("%s appears in more than one of exemptRoutes/createRouteOrgChecks/pendingPhaseCRoutes", key)
+		}
+	}
+
+	// Converse: every maintained-list entry must still be a real route —
+	// catches a stale entry left behind after a route was renamed/removed,
+	// same shape as TestVendorDocumentCountCoversEveryReference elsewhere.
+	for key := range exemptRoutes {
+		if _, ok := discovered[key]; !ok {
+			t.Errorf("exemptRoutes lists %s, which router.go no longer registers", key)
+		}
+	}
+	for key := range createRouteOrgChecks {
+		if _, ok := discovered[key]; !ok {
+			t.Errorf("createRouteOrgChecks lists %s, which router.go no longer registers", key)
+		}
+	}
+	for key := range pendingPhaseCRoutes {
+		if _, ok := discovered[key]; !ok {
+			t.Errorf("pendingPhaseCRoutes lists %s, which router.go no longer registers", key)
+		}
+	}
+}
+
+// TestCreateRouteOrgChecksArePresent parses each createRouteOrgChecks
+// handler's own source file and confirms its function body actually calls
+// h.requireOrgMember — the thing that makes "POST /api/clients is in
+// createRouteOrgChecks" a verified fact rather than an assertion the
+// handler could silently stop satisfying (e.g. a future refactor that
+// removes the check without anyone remembering to update this table).
+func TestCreateRouteOrgChecksArePresent(t *testing.T) {
+	for key, loc := range createRouteOrgChecks {
+		t.Run(key.String(), func(t *testing.T) {
+			fset := token.NewFileSet()
+			file, err := parser.ParseFile(fset, filepath.Join(".", loc.file), nil, 0)
+			if err != nil {
+				t.Fatalf("parse %s: %v", loc.file, err)
+			}
+			var found *ast.FuncDecl
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if ok && fn.Name.Name == loc.fn {
+					found = fn
+					break
+				}
+			}
+			if found == nil {
+				t.Fatalf("%s: handler func %q not found", loc.file, loc.fn)
+			}
+			callsRequireOrgMember := false
+			ast.Inspect(found, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				sel, ok := call.Fun.(*ast.SelectorExpr)
+				if ok && sel.Sel.Name == "requireOrgMember" {
+					callsRequireOrgMember = true
+				}
+				return true
+			})
+			if !callsRequireOrgMember {
+				t.Errorf(
+					"%s (%s) is listed in createRouteOrgChecks but its handler %s doesn't call h.requireOrgMember",
+					key, loc.file, loc.fn,
+				)
+			}
+		})
+	}
+}
+
+// --- Cross-organization access denial (issue #141 Phase C) ---------------
+
+// crossOrgProof is one already-gated route to verify end to end against a
+// real cross-tenant request — grown alongside pendingPhaseCRoutes shrinking
+// in later Phase C PRs, per the rollout plan
+// (/Users/mam/.claude/plans/tranquil-toasting-eagle.md).
+var crossOrgProof = []struct {
+	name   string
+	method string
+	path   func(clientID string) string
+	body   func(orgID string) []byte
+}{
+	{
+		name:   "list clients by org path",
+		method: http.MethodGet,
+		path:   func(_ string) string { return "/api/organizations/org-a/clients" },
+	},
+	{
+		name:   "get client by id",
+		method: http.MethodGet,
+		path:   func(clientID string) string { return "/api/clients/" + clientID },
+	},
+	{
+		name:   "update client by id",
+		method: http.MethodPut,
+		path:   func(clientID string) string { return "/api/clients/" + clientID },
+		body:   func(_ string) []byte { return []byte(`{"name":"hijacked"}`) },
+	},
+	{
+		name:   "delete client by id",
+		method: http.MethodDelete,
+		path:   func(clientID string) string { return "/api/clients/" + clientID },
+	},
+	{
+		name:   "client invoice count",
+		method: http.MethodGet,
+		path:   func(clientID string) string { return "/api/clients/" + clientID + "/invoice-count" },
+	},
+}
+
+// TestCrossOrgAccessDenied is the fail-closed regression test the original
+// Phase A/B/C design doc calls for: a member of org B must never be able to
+// read or write org A's data through a route Phase C has already gated.
+// Both 403 and 404 are accepted "denied" outcomes — see orgAuthorized's own
+// comment in api/middleware.go for why orgMember deliberately collapses
+// both cases to 404 (avoiding a cross-tenant existence oracle) while
+// orgAdmin keeps them distinct.
+func TestCrossOrgAccessDenied(t *testing.T) {
+	t.Parallel()
+	mux, database, _, _ := newTestRouter(t)
+
+	seedUser(t, database, "org-a-admin", "user", 1)
+	seedUser(t, database, "org-b-admin", "user", 1)
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-a"}); err != nil {
+		t.Fatalf("seed CreateOrganization org-a: %v", err)
+	}
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-b"}); err != nil {
+		t.Fatalf("seed CreateOrganization org-b: %v", err)
+	}
+	// Org-scoped admins, deliberately not platform admins — seedUser's
+	// "admin" role sets isPlatformAdmin, a different actor than what this
+	// test wants (see api/organizations_test.go's identical pattern).
+	if _, err := database.AddOrganizationUser("org-a", "org-a-admin", "admin"); err != nil {
+		t.Fatalf("seed org-a membership: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-b", "org-b-admin", "admin"); err != nil {
+		t.Fatalf("seed org-b membership: %v", err)
+	}
+	orgBToken := mintTestJWT(t, "org-b-admin", "user")
+
+	client, err := database.CreateClient(db.CreateClientRequest{
+		ID: "org-a-client", OrganizationID: "org-a", Name: strPtr("ACME"),
+	})
+	if err != nil {
+		t.Fatalf("seed CreateClient: %v", err)
+	}
+
+	for _, tc := range crossOrgProof {
+		t.Run(tc.name, func(t *testing.T) {
+			var body *bytes.Buffer
+			if tc.body != nil {
+				body = bytes.NewBuffer(tc.body("org-a"))
+			} else {
+				body = bytes.NewBuffer(nil)
+			}
+			req := httptest.NewRequest(tc.method, tc.path(client.ID), body)
+			req.Header.Set("Content-Type", "application/json")
+			authRequest(req, orgBToken)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusForbidden && rec.Code != http.StatusNotFound {
+				t.Fatalf("org-b-admin %s %s: expected 403 or 404, got %d: %s",
+					tc.method, tc.path(client.ID), rec.Code, rec.Body.String())
+			}
+		})
+	}
+
+	// Positive control: org-a's own admin must still be able to do all of
+	// the above — a test that only ever asserts "denied" can't tell a
+	// correctly-scoped check apart from one that denies everyone.
+	orgAToken := mintTestJWT(t, "org-a-admin", "user")
+	req := httptest.NewRequest(http.MethodGet, "/api/clients/"+client.ID, nil)
+	authRequest(req, orgAToken)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("org-a-admin GET /api/clients/%s: expected 200, got %d: %s", client.ID, rec.Code, rec.Body.String())
+	}
+	var got db.Client
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.ID != client.ID {
+		t.Fatalf("expected client %q, got %q", client.ID, got.ID)
+	}
+}
