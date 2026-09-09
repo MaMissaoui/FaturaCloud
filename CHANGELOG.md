@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.0] - 2026-09-09
+
+A batch of fixes and hardening from a full triage of the automated
+code-review backlog: a real (if narrow) organization-switching bug, several
+security and correctness fixes on the Go API, frontend correctness fixes,
+orphaned React-PDF component cleanup, and CI test coverage reporting.
+
+### Fixed
+- Switching organizations no longer falls back to a different organization
+  and looks like it silently "reverted" when the organization fetch hits a
+  transient error right after the switch — the app now only clears the
+  selection once it's confirmed the organization is actually gone, not on
+  any fetch failure.
+- `api/users.go` handlers now select an explicit column list instead of
+  `SELECT *`, and `updateUser` wraps its conditional updates in a single
+  transaction instead of several independent statements.
+- The login rate limiter now refuses new IP buckets once it holds 10,000
+  entries, instead of growing unbounded.
+- The backup-restore endpoint now explicitly rejects a `".."` path segment
+  and validates the resolved path stays inside the backup directory, and
+  several endpoints no longer leak raw internal error text to the client.
+- Every `Content-Disposition` filename (invoice/PO/order/delivery/backup
+  exports) is now sanitized against header injection via embedded quotes or
+  newlines.
+- A failed invoice save no longer silently clears the form's dirty flag —
+  the save button-disable state now matches every other document type.
+- Product pickers on invoice/order/delivery/purchase-order/inbound-delivery
+  detail pages no longer rebuild their filtered list on every render.
+
+### Changed
+- `del()` in the frontend API client now has typed overloads for a 204 (no
+  body) vs. a JSON response, instead of silently over-promising a body type
+  that isn't actually returned server-side.
+- Four unused legacy React-PDF components (purchase order, order
+  confirmation, and two delivery-note variants) were removed now that every
+  document type exports through the shared server-side Excel/PDF template
+  engine. Invoice's own two React-PDF components stay — they're still used
+  by the Organizations "Formatting" layout picker.
+
+### Added
+- CI now records Go test coverage (`-coverprofile`/`-covermode=atomic`
+  alongside the existing race-enabled test run), prints a one-line summary,
+  and uploads the full report as a workflow artifact.
+
 ## [3.13.0] - 2026-09-09
 
 Multi-page Excel/PDF exports repeat their header on every page, every
