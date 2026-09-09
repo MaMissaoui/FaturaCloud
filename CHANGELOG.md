@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.15.0] - 2026-09-10
+
+The headline fix: any authenticated user could previously read and write
+**every** organization's data — every client, invoice, payment, journal
+entry — through most of this app's ~150 API routes, since only a handful
+of genuinely org-admin-scoped routes checked membership at all. This
+release closes that hole completely, plus a round of testing-coverage and
+CI reliability work that preceded it.
+
+### Security
+- **Every API route is now gated on organization membership** (issue
+  #141). A user can only read or write data belonging to an organization
+  they're actually a member of; org-admin-only actions (deleting/resetting
+  an organization, managing members, closing a fiscal year, GL exports)
+  still require an `admin`-role membership specifically, not just any
+  membership. Enforced by a shared `orgAuthorized` middleware plus an
+  AST-based test that fails the build if a future route is added without
+  an explicit org-scoping decision. Verified with 98 automated cross-tenant
+  test cases and a live manual check: revoking a user's membership locks
+  them out on their very next request, with no stale token-baked role to
+  fall back on.
+- A known follow-up gap is tracked separately (issue #189, not yet fixed):
+  membership gating proves the caller belongs to the organization they
+  claim, but doesn't yet validate that every foreign-key id *referenced
+  inside* a create/update request body (e.g. a fiscal period's linked
+  fiscal year) belongs to that same organization.
+
+### Added
+- Vitest unit tests for currency and invoice utility functions.
+- Go API handler tests covering core document domains (clients, vendors,
+  invoices, orders, deliveries).
+- Reset-behavior test coverage for organization data reset.
+- `db.GetStockMovement(id)` — a previously-missing single-row getter for
+  stock movements, alongside the list-only version that already existed.
+
+### Changed
+- `organizations/index.tsx`, a 1389-line component, split into a page plus
+  four focused presentational components (list table, edit drawer, members
+  panel, danger zone).
+- Go test fixtures (`db` package) now clone a cached, pre-migrated golden
+  database instead of running every migration fresh for each test — the
+  `go` CI job dropped from a ~28-minute timeout budget to ~3.5 minutes of
+  actual runtime. `db` package tests also run in parallel.
+
+### Fixed
+- The two remaining `react(purity)` oxlint warnings (impure `Date.now()`
+  calls during render).
+- CI: `actions/upload-artifact`/`download-artifact` bumped past their
+  Node 20 deprecation warnings; the Docker build's optional Sentry
+  auth-token secret no longer warns when unset.
+- CI: the GHCR package-cleanup step had been silently doing nothing since
+  PR #171 (GITHUB_TOKEN can't delete versions of a personal-account-owned
+  package) — fixed with a dedicated `delete:packages` PAT and verified via
+  a real throwaway release.
+- CI: multi-arch Docker builds now run on native per-platform runners
+  instead of emulation.
+
 ## [3.14.0] - 2026-09-09
 
 A batch of fixes and hardening from a full triage of the automated
