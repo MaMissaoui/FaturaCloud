@@ -670,6 +670,76 @@ func TestShipmentPostsCOGSAtSpecificSerialCostNotAverage(t *testing.T) {
 	}
 }
 
+// A serialized unit whose own receiving movement carries no cost falls back
+// to the product's blended average (resolveMovementCost's documented
+// fallback branch) rather than being permanently unshippable — a receipt's
+// line items are frozen once received, so there's no way to retroactively
+// cost this exact unit otherwise.
+func TestShipmentFallsBackToAverageCostForUncostedSerial(t *testing.T) {
+	d, product := seedSerializedProduct(t, "org-cogs-serial-fallback")
+	date := int64(1700000000000)
+
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: product.OrganizationID, DeliveryNumber: "GR-0001", DeliveryDate: date,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1, UnitCost: ptr(float64(700))},
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1}, // no UnitCost
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+	rItems, _ := d.GetInboundDeliveryLineItems(receipt.ID)
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", map[string][]string{
+		rItems[0].ID: {"SN-COSTED"},
+		rItems[1].ID: {"SN-UNCOSTED"},
+	}); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+	// Sanity check: the uncosted unit must not have moved the average — it's
+	// still exactly what the one costed unit established.
+	afterReceive, err := d.GetProduct(product.ID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	if afterReceive.UnitCost == nil || *afterReceive.UnitCost != 700 {
+		t.Fatalf("sanity check: average = %v, want 700", afterReceive.UnitCost)
+	}
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		OrganizationID: product.OrganizationID, DeliveryNumber: "DEL-0001", DeliveryDate: date,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Serial Widget", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+	dItems, _ := d.GetDeliveryLineItems(delivery.ID)
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", map[string][]string{
+		dItems[0].ID: {"SN-UNCOSTED"},
+	}); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, entry)
+	}
+	org, err := d.GetOrganization(product.OrganizationID)
+	if err != nil {
+		t.Fatalf("GetOrganization: %v", err)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	cogsDebit, _ := sumLines(lines, *org.DefaultCOGSAccountID)
+	if cogsDebit != 700 {
+		t.Fatalf("COGS debit = %d, want 700 (SN-UNCOSTED's own receiving movement had no cost, so it must fall back to the product's average)", cogsDebit)
+	}
+}
+
 // Shipping a product with no cost basis at all is a clean 409 — and, since
 // buildDeliveryCOGSGLLines runs before the transaction opens, no stock
 // movement is ever attempted.
