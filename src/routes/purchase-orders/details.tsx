@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
@@ -110,7 +110,10 @@ const PurchaseOrderDetails = () => {
   const products = useAtomValue(productsAtom);
   // A finished good isn't purchasable from a vendor — exclude it from the
   // picker. Unclassified products (category null) stay eligible everywhere.
-  const purchasableProducts = products.filter((p: any) => p.category !== "finished");
+  const purchasableProducts = useMemo(
+    () => products.filter((p: any) => p.category !== "finished"),
+    [products],
+  );
   const setProducts = useSetAtom(setProductsAtom);
   // Read the async atom directly so the component suspends until the real
   // number arrives. A non-suspending read would let the Form mount with a

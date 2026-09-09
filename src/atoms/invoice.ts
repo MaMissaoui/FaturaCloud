@@ -188,6 +188,12 @@ export const invoiceAtom = atom(
       } else {
         message.error(t`Invoice update failed`);
       }
+      // Rethrow (F56/F67 convention — see CLAUDE.md's src/atoms/product.ts
+      // entry, and every other document-type atom) so the details page's
+      // handleSubmit can tell a failed save apart from a successful one and
+      // skip clearing its isDirty flag — otherwise a failed save would
+      // silently re-enable Excel/PDF export over stale server-persisted data.
+      throw error;
     }
   },
 );

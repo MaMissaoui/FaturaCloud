@@ -117,7 +117,10 @@ const InvoiceDetails: React.FC = () => {
   const setProducts = useSetAtom(setProductsAtom);
   // A component/intermediate isn't sellable — exclude it from the picker.
   // Unclassified products (category null) stay eligible everywhere.
-  const sellableProducts = products.filter((p: any) => p.category !== "component");
+  const sellableProducts = useMemo(
+    () => products.filter((p: any) => p.category !== "component"),
+    [products],
+  );
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
   const paymentTerms = useAtomValue(paymentTermsAtom);
