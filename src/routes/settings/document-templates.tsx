@@ -22,10 +22,12 @@ import {
 
 const { Title, Text } = Typography;
 
-// One card per document type. v1 (issue #115) covers only Invoice — phase 2
-// adds a card each for Purchase Order, Outbound Delivery, Inbound Delivery,
-// and Incoming Invoice, reusing this same component with a different
-// documentType/label.
+// One card per document type. v1 (issue #115) covered only Invoice; Purchase
+// Order, Order, and Incoming Invoice all reuse this same component with a
+// different documentType/label — their backend export/template endpoints
+// shipped earlier but this page was never updated to expose them. Outbound
+// Delivery and Inbound Delivery remain a stated, not-yet-shipped gap (no
+// export endpoint exists for either yet).
 function DocumentTemplateCard({
   documentType,
   label,
@@ -188,6 +190,27 @@ function SettingsDocumentTemplates() {
         label={t`Invoice`}
         orgId={organization.id}
         hasOverride={!!overrides.invoice}
+        onChange={handleChange}
+      />
+      <DocumentTemplateCard
+        documentType="purchase_order"
+        label={t`Purchase Order`}
+        orgId={organization.id}
+        hasOverride={!!overrides.purchase_order}
+        onChange={handleChange}
+      />
+      <DocumentTemplateCard
+        documentType="order"
+        label={t`Order`}
+        orgId={organization.id}
+        hasOverride={!!overrides.order}
+        onChange={handleChange}
+      />
+      <DocumentTemplateCard
+        documentType="incoming_invoice"
+        label={t`Incoming Invoice`}
+        orgId={organization.id}
+        hasOverride={!!overrides.incoming_invoice}
         onChange={handleChange}
       />
     </div>

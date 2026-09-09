@@ -19,19 +19,30 @@ import {
   Table,
   Tag,
   theme,
+  Tooltip,
+  message,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { DeleteOutlined, SaveOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  FileExcelOutlined,
+  FilePdfOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import map from "lodash/map";
 import sum from "lodash/sum";
 
-import { GetIncomingInvoiceMatch, GetPurchaseOrderLineItems } from "src/api";
+import {
+  ExportIncomingInvoiceDocument,
+  GetIncomingInvoiceMatch,
+  GetPurchaseOrderLineItems,
+} from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
 import {
@@ -113,6 +124,9 @@ const IncomingInvoiceDetails = () => {
   const [form] = Form.useForm();
   const [stateOverride, setStateOverride] = useState<string | null>(null);
   const [matchLines, setMatchLines] = useState<MatchLine[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useEffect(() => {
     setVendors();
@@ -245,7 +259,27 @@ const IncomingInvoiceDetails = () => {
       matchOverride: values.matchOverride ? 1 : 0,
       ...totals,
     });
-    if (ok) refreshMatch();
+    if (ok) {
+      setIsDirty(false);
+      refreshMatch();
+    }
+  };
+
+  // Server fill-and-convert path (db/xlsx_export_incoming_invoice.go /
+  // db/pdf_convert.go) — the same mechanism invoices/purchase orders/orders
+  // use. Reads persisted line items and stored totals by id, so both formats
+  // are gated on isDirty.
+  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
+    if (!id || isNew) return;
+    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
+    setDownloading(true);
+    try {
+      await ExportIncomingInvoiceDocument(id, format);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -280,7 +314,13 @@ const IncomingInvoiceDetails = () => {
   const money = (units: number) => getFormattedNumber(units, currency, i18n.locale, organization);
 
   return (
-    <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
+    <Form
+      form={form}
+      onFinish={handleSubmit}
+      layout="vertical"
+      initialValues={initialValues}
+      onValuesChange={() => setIsDirty(true)}
+    >
       <Row gutter={24}>
         <Col xs={24} md={12} xl={6}>
           <Form.Item
@@ -568,6 +608,33 @@ const IncomingInvoiceDetails = () => {
               </Col>
               <Col>
                 <Space>
+                  {!isNew && (
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingPdf}
+                        onClick={handleServerExport("pdf")}
+                      >
+                        <FilePdfOutlined /> PDF
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {!isNew && (
+                    // Always the server fill-and-convert path
+                    // (db/xlsx_export_incoming_invoice.go) — every incoming
+                    // invoice has an embedded fallback template
+                    // (resolveTemplateBytes) to fill even with no org
+                    // override, so both buttons always work.
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingExcel}
+                        onClick={handleServerExport("xlsx")}
+                      >
+                        <FileExcelOutlined /> <Trans>Excel</Trans>
+                      </Button>
+                    </Tooltip>
+                  )}
                   {!isNew && (
                     <Select
                       value={currentState}

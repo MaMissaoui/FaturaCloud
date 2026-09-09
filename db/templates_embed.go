@@ -27,11 +27,18 @@ var purchaseOrderDefaultTemplate []byte
 //go:embed templates/order_default.xlsx
 var orderDefaultTemplate []byte
 
+// incomingInvoiceDefaultTemplate is the built-in Incoming Invoice (vendor
+// bill) export template.
+//
+//go:embed templates/incoming_invoice_default.xlsx
+var incomingInvoiceDefaultTemplate []byte
+
 // embeddedDefaultTemplates maps a documentType to its built-in template.
-// Remaining Phase 2 types (deliveries, incoming invoices) each add one more
+// Remaining Phase 2 types (Outbound/Inbound Deliveries) each add one more
 // //go:embed + map entry, no other change to this file.
 var embeddedDefaultTemplates = map[string][]byte{
-	"invoice":        invoiceDefaultTemplate,
-	"purchase_order": purchaseOrderDefaultTemplate,
-	"order":          orderDefaultTemplate,
+	"invoice":          invoiceDefaultTemplate,
+	"purchase_order":   purchaseOrderDefaultTemplate,
+	"order":            orderDefaultTemplate,
+	"incoming_invoice": incomingInvoiceDefaultTemplate,
 }

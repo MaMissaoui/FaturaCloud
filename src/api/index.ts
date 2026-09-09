@@ -477,6 +477,14 @@ export const ExportPurchaseOrderDocument = (id: string, format: "xlsx" | "pdf") 
 export const ExportOrderDocument = (id: string, format: "xlsx" | "pdf") =>
   downloadDocumentExport(`/api/orders/${id}/export?format=${format}`, `order-${id}.${format}`);
 
+// Exports an incoming invoice (vendor bill) the same way — see
+// db/xlsx_export_incoming_invoice.go.
+export const ExportIncomingInvoiceDocument = (id: string, format: "xlsx" | "pdf") =>
+  downloadDocumentExport(
+    `/api/incoming-invoices/${id}/export?format=${format}`,
+    `incoming-invoice-${id}.${format}`,
+  );
+
 // ---- Tax Rates ----
 
 export const GetTaxRates = (organizationId: string) =>
