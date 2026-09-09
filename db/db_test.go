@@ -1008,8 +1008,10 @@ func TestDeliveryStatusTransitions(t *testing.T) {
 
 // TestOrderStatusTransitions mirrors TestDeliveryStatusTransitions for the
 // order lifecycle: draft→{confirmed,cancelled}, confirmed→{shipped,cancelled},
-// shipped→{delivered,cancelled}; delivered/cancelled terminal; same-status a
-// no-op.
+// shipped→{delivered,cancelled}, cancelled→{confirmed,shipped,delivered}
+// (a correction fallback, safe because order status changes have zero side
+// effects — see orderStatusTransitions in db/order.go); delivered terminal;
+// same-status a no-op.
 func TestOrderStatusTransitions(t *testing.T) {
 	tests := []struct {
 		from    string
@@ -1031,7 +1033,10 @@ func TestOrderStatusTransitions(t *testing.T) {
 		{"delivered", "shipped", true},
 		{"delivered", "cancelled", true},
 		{"delivered", "delivered", false},
-		{"cancelled", "confirmed", true},
+		{"cancelled", "confirmed", false},
+		{"cancelled", "shipped", false},
+		{"cancelled", "delivered", false},
+		{"cancelled", "draft", true},
 		{"cancelled", "cancelled", false},
 	}
 
@@ -2030,9 +2035,12 @@ func TestResetOrganizationData(t *testing.T) {
 
 // TestPurchaseOrderStatusTransitions mirrors TestOrderStatusTransitions for the
 // purchase order lifecycle: draft→{confirmed,cancelled},
-// confirmed→{received,cancelled}; received/cancelled terminal; same-status a
-// no-op. Each case force-sets the starting status directly via SQL so the guard
-// is isolated from the rest of the update path.
+// confirmed→{received,cancelled}, cancelled→{confirmed,received} (a
+// correction fallback, safe because purchase order status changes have zero
+// side effects — see purchaseOrderStatusTransitions in db/purchase_order.go);
+// received terminal; same-status a no-op. Each case force-sets the starting
+// status directly via SQL so the guard is isolated from the rest of the
+// update path.
 func TestPurchaseOrderStatusTransitions(t *testing.T) {
 	tests := []struct {
 		from    string
@@ -2050,7 +2058,8 @@ func TestPurchaseOrderStatusTransitions(t *testing.T) {
 		{"received", "confirmed", true},
 		{"received", "cancelled", true},
 		{"received", "received", false},
-		{"cancelled", "confirmed", true},
+		{"cancelled", "confirmed", false},
+		{"cancelled", "received", false},
 		{"cancelled", "draft", true},
 		{"cancelled", "cancelled", false},
 	}

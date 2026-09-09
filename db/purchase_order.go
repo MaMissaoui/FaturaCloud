@@ -95,15 +95,24 @@ var validPurchaseOrderStatuses = map[string]bool{
 }
 
 // purchaseOrderStatusTransitions enumerates the only legal moves; "received"
-// and "cancelled" are terminal (absent as keys, so any move out of them is
-// rejected). Mirrors PURCHASE_ORDER_STATUS_TRANSITIONS in
-// src/types/purchase-order.ts, enforced here too since that's client-side only.
+// is terminal (absent as a key, so any move out of it is rejected).
+// "cancelled" is NOT terminal — it can fall back to "confirmed" or
+// "received" (a correction for a cancellation made in error, or one that's
+// no longer wanted), which is safe to allow unconditionally here because
+// purchase order status changes have zero side effects (no stock, no GL
+// posting — contrast db/delivery.go's UpdateDeliveryStatus and
+// db/inbound_delivery.go's UpdateInboundDeliveryStatus, where "cancelled"
+// stays deliberately terminal since reversing it would mean re-deriving
+// stock movements and GL entries, not just flipping a status column).
+// Mirrors purchaseOrderStatusTransitionMatrix in src/types/purchase-order.ts,
+// enforced here too since that's client-side only.
 //
 // Status is never advanced automatically from received quantities — sales
 // orders don't either, and per-line fulfilment is reported separately.
 var purchaseOrderStatusTransitions = map[string]map[string]bool{
 	"draft":     {"confirmed": true, "cancelled": true},
 	"confirmed": {"received": true, "cancelled": true},
+	"cancelled": {"confirmed": true, "received": true},
 }
 
 func (d *Database) GetPurchaseOrders(organizationID string) ([]PurchaseOrder, error) {

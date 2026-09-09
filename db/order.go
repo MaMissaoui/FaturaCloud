@@ -85,13 +85,17 @@ var validOrderStatuses = map[string]bool{
 }
 
 // orderStatusTransitions enumerates the only legal order status moves;
-// "delivered" and "cancelled" are terminal (absent as keys, so any move out
-// of them is rejected). Mirrors src/routes/orders/details.tsx's
-// STATUS_TRANSITIONS, enforced here too since that's client-side only.
+// "delivered" is terminal (absent as a key, so any move out of it is
+// rejected). "cancelled" falls back to "confirmed"/"shipped"/"delivered" —
+// safe unconditionally since order status changes have zero side effects
+// (no stock, no GL), same reasoning as purchaseOrderStatusTransitions in
+// db/purchase_order.go. Mirrors orderStatusTransitionMatrix in
+// src/types/order.ts, enforced here too since that's client-side only.
 var orderStatusTransitions = map[string]map[string]bool{
 	"draft":     {"confirmed": true, "cancelled": true},
 	"confirmed": {"shipped": true, "cancelled": true},
 	"shipped":   {"delivered": true, "cancelled": true},
+	"cancelled": {"confirmed": true, "shipped": true, "delivered": true},
 }
 
 func (d *Database) GetOrders(organizationID string) ([]Order, error) {
