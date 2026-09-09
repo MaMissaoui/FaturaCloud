@@ -107,6 +107,8 @@ func buildIncomingInvoiceTemplate() {
 	f.SetColWidth(sheet, "F", "F", 16)
 
 	applyFitToPageWidth(f, sheet)
+	applyRepeatingHeaderRows(f, sheet, headerRow)
+	applyPageFooter(f, sheet)
 	addAvailableFieldsSheet(f, incomingInvoiceFieldRefs)
 	finalizeWorkbook(f, sheet, "db/templates/gen/incoming_invoice_default.xlsx")
 }

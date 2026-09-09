@@ -101,6 +101,8 @@ func buildOrderTemplate() {
 	f.SetColWidth(sheet, "E", "E", 16)
 
 	applyFitToPageWidth(f, sheet)
+	applyRepeatingHeaderRows(f, sheet, headerRow)
+	applyPageFooter(f, sheet)
 	addAvailableFieldsSheet(f, orderFieldRefs)
 	finalizeWorkbook(f, sheet, "db/templates/gen/order_default.xlsx")
 }

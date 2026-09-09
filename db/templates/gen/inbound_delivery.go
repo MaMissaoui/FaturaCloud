@@ -83,6 +83,8 @@ func buildInboundDeliveryTemplate() {
 	f.SetColWidth(sheet, "C", "E", 14)
 
 	applyFitToPageWidth(f, sheet)
+	applyRepeatingHeaderRows(f, sheet, headerRow)
+	applyPageFooter(f, sheet)
 	addAvailableFieldsSheet(f, inboundDeliveryFieldRefs)
 	finalizeWorkbook(f, sheet, "db/templates/gen/inbound_delivery_default.xlsx")
 }

@@ -82,6 +82,8 @@ func buildDeliveryTemplate() {
 	f.SetColWidth(sheet, "D", "D", 16)
 
 	applyFitToPageWidth(f, sheet)
+	applyRepeatingHeaderRows(f, sheet, headerRow)
+	applyPageFooter(f, sheet)
 	addAvailableFieldsSheet(f, deliveryFieldRefs)
 	finalizeWorkbook(f, sheet, "db/templates/gen/delivery_default.xlsx")
 }

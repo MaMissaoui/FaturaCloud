@@ -104,6 +104,8 @@ func buildPurchaseOrderTemplate() {
 	f.SetColWidth(sheet, "G", "G", 16)
 
 	applyFitToPageWidth(f, sheet)
+	applyRepeatingHeaderRows(f, sheet, headerRow)
+	applyPageFooter(f, sheet)
 	addAvailableFieldsSheet(f, purchaseOrderFieldRefs)
 	finalizeWorkbook(f, sheet, "db/templates/gen/purchase_order_default.xlsx")
 }
