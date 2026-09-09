@@ -172,6 +172,26 @@ func (d *Database) GetStockMovements(organizationID string, opts StockMovementLi
 	return movements, total, nil
 }
 
+// GetStockMovement fetches a single movement by id — previously only the
+// list version and an ad-hoc inline query inside DeleteStockMovement
+// existed; this fills that gap the same way every other domain has its own
+// GetX, and is what DELETE /api/stock-movements/{id}'s Phase C org-id
+// resolver reuses (see api/router.go).
+func (d *Database) GetStockMovement(id string) (*StockMovement, error) {
+	var m StockMovement
+	err := d.DB.Get(&m,
+		`SELECT sm.*, sn.serialNumber AS serialNumberValue
+		 FROM stockMovements sm
+		 LEFT JOIN product_serial_numbers sn ON sm.serialNumberId = sn.id
+		 WHERE sm.id = ?`,
+		id,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_stock_movement: %w", err)
+	}
+	return &m, nil
+}
+
 func (d *Database) GetProductStockMovements(productID string) ([]StockMovement, error) {
 	movements := []StockMovement{}
 	err := d.DB.Select(&movements,
