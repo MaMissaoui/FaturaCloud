@@ -1,6 +1,13 @@
 # Build output
 dist/
 dist-ssr/
+# `go build ./...`/`go vet ./...` from the repo root drops a compiled
+# binary here named after each `package main` dir it finds — cmd/seed-demo
+# included. Build/run it explicitly (`go build ./cmd/seed-demo`, `go run
+# ./cmd/seed-demo`) if you want the binary; either way it doesn't belong in
+# the repo.
+/seed-demo
+/fatura-cloud
 
 # Frontend
 node_modules/
