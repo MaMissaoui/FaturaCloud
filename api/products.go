@@ -39,6 +39,9 @@ func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	if req.SKU == nil || *req.SKU == "" {
 		writeError(w, http.StatusBadRequest, "product code is required")
 		return

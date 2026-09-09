@@ -32,6 +32,9 @@ func (h *handler) createTaxRate(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	rate, err := h.db.CreateTaxRate(req)
 	if err != nil {
 		writeInternalError(w, err)

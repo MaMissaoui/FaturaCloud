@@ -146,7 +146,25 @@ var exemptRoutes = map[routeKey]string{
 // present — catches a Create* handler that forgot the check as a build
 // failure, not just a code-review miss.
 var createRouteOrgChecks = map[routeKey]struct{ file, fn string }{
-	{"POST", "/api/clients"}: {"clients.go", "createClient"},
+	{"POST", "/api/clients"}:            {"clients.go", "createClient"},
+	{"POST", "/api/vendors"}:            {"vendors.go", "createVendor"},
+	{"POST", "/api/invoices"}:           {"invoices.go", "createInvoice"},
+	{"POST", "/api/orders"}:             {"orders.go", "createOrder"},
+	{"POST", "/api/deliveries"}:         {"deliveries.go", "createDelivery"},
+	{"POST", "/api/imports"}:            {"imports.go", "createImport"},
+	{"POST", "/api/purchase-orders"}:    {"purchase_orders.go", "createPurchaseOrder"},
+	{"POST", "/api/inbound-deliveries"}: {"inbound_deliveries.go", "createInboundDelivery"},
+	{"POST", "/api/incoming-invoices"}:  {"incoming_invoices.go", "createIncomingInvoice"},
+	{"POST", "/api/tax-rates"}:          {"tax_rates.go", "createTaxRate"},
+	{"POST", "/api/payment-terms"}:      {"payment_terms.go", "createPaymentTerm"},
+	{"POST", "/api/products"}:           {"products.go", "createProduct"},
+	{"POST", "/api/stock-movements"}:    {"stock.go", "createStockMovement"},
+	{"POST", "/api/accounts"}:           {"accounts.go", "createAccount"},
+	{"POST", "/api/journals"}:           {"journals.go", "createJournal"},
+	{"POST", "/api/fiscal-years"}:       {"fiscal_periods.go", "createFiscalYear"},
+	{"POST", "/api/fiscal-periods"}:     {"fiscal_periods.go", "createFiscalPeriod"},
+	{"POST", "/api/journal-entries"}:    {"journal_entries.go", "createJournalEntry"},
+	{"POST", "/api/payments"}:           {"payments.go", "createPayment"},
 }
 
 // pendingPhaseCRoutes are known, tracked, not-yet-migrated routes — see the
@@ -157,13 +175,11 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	// call yet) and single-resource/sub-resource/export buckets, grouped by
 	// the domain-family PRs that will migrate them per the rollout plan.
 
-	{"POST", "/api/vendors"}:                    true,
 	{"GET", "/api/vendors/{id}"}:                true,
 	{"PUT", "/api/vendors/{id}"}:                true,
 	{"DELETE", "/api/vendors/{id}"}:             true,
 	{"GET", "/api/vendors/{id}/document-count"}: true,
 
-	{"POST", "/api/invoices"}:                true,
 	{"GET", "/api/invoices/{id}"}:            true,
 	{"GET", "/api/invoices/{id}/line-items"}: true,
 	{"PUT", "/api/invoices/{id}"}:            true,
@@ -173,7 +189,6 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	{"GET", "/api/invoices/{id}/export"}:     true,
 	{"GET", "/api/invoices/{id}/payments"}:   true,
 
-	{"POST", "/api/orders"}:                          true,
 	{"GET", "/api/orders/{id}"}:                      true,
 	{"GET", "/api/orders/{id}/line-items"}:           true,
 	{"GET", "/api/orders/{id}/delivered-quantities"}: true,
@@ -182,7 +197,6 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	{"DELETE", "/api/orders/{id}"}:                   true,
 	{"GET", "/api/orders/{id}/export"}:               true,
 
-	{"POST", "/api/deliveries"}:                true,
 	{"GET", "/api/deliveries/{id}"}:            true,
 	{"GET", "/api/deliveries/{id}/line-items"}: true,
 	{"PUT", "/api/deliveries/{id}"}:            true,
@@ -190,13 +204,11 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	{"DELETE", "/api/deliveries/{id}"}:         true,
 	{"GET", "/api/deliveries/{id}/export"}:     true,
 
-	{"POST", "/api/imports"}:             true,
 	{"GET", "/api/imports/{id}"}:         true,
 	{"GET", "/api/imports/{id}/summary"}: true,
 	{"PUT", "/api/imports/{id}"}:         true,
 	{"DELETE", "/api/imports/{id}"}:      true,
 
-	{"POST", "/api/purchase-orders"}:                         true,
 	{"GET", "/api/purchase-orders/{id}"}:                     true,
 	{"GET", "/api/purchase-orders/{id}/line-items"}:          true,
 	{"GET", "/api/purchase-orders/{id}/received-quantities"}: true,
@@ -205,7 +217,6 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	{"DELETE", "/api/purchase-orders/{id}"}:                  true,
 	{"GET", "/api/purchase-orders/{id}/export"}:              true,
 
-	{"POST", "/api/inbound-deliveries"}:                true,
 	{"GET", "/api/inbound-deliveries/{id}"}:            true,
 	{"GET", "/api/inbound-deliveries/{id}/line-items"}: true,
 	{"PUT", "/api/inbound-deliveries/{id}"}:            true,
@@ -213,7 +224,6 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	{"DELETE", "/api/inbound-deliveries/{id}"}:         true,
 	{"GET", "/api/inbound-deliveries/{id}/export"}:     true,
 
-	{"POST", "/api/incoming-invoices"}:                true,
 	{"GET", "/api/incoming-invoices/{id}"}:            true,
 	{"GET", "/api/incoming-invoices/{id}/line-items"}: true,
 	{"GET", "/api/incoming-invoices/{id}/match"}:      true,
@@ -223,47 +233,37 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	{"GET", "/api/incoming-invoices/{id}/export"}:     true,
 	{"GET", "/api/incoming-invoices/{id}/payments"}:   true,
 
-	{"POST", "/api/tax-rates"}:                 true,
 	{"GET", "/api/tax-rates/{id}"}:             true,
 	{"PUT", "/api/tax-rates/{id}"}:             true,
 	{"DELETE", "/api/tax-rates/{id}"}:          true,
 	{"GET", "/api/tax-rates/{id}/usage-count"}: true,
 
-	{"POST", "/api/payment-terms"}:        true,
 	{"PUT", "/api/payment-terms/{id}"}:    true,
 	{"DELETE", "/api/payment-terms/{id}"}: true,
 
-	{"POST", "/api/products"}:                     true,
 	{"GET", "/api/products/{id}"}:                 true,
 	{"PUT", "/api/products/{id}"}:                 true,
 	{"DELETE", "/api/products/{id}"}:              true,
 	{"GET", "/api/products/{id}/stock-movements"}: true,
 	{"GET", "/api/products/{id}/serial-numbers"}:  true,
 
-	{"POST", "/api/stock-movements"}:        true,
 	{"DELETE", "/api/stock-movements/{id}"}: true,
 
-	{"POST", "/api/accounts"}:        true,
 	{"GET", "/api/accounts/{id}"}:    true,
 	{"PUT", "/api/accounts/{id}"}:    true,
 	{"DELETE", "/api/accounts/{id}"}: true,
 
-	{"POST", "/api/journals"}:        true,
 	{"PUT", "/api/journals/{id}"}:    true,
 	{"DELETE", "/api/journals/{id}"}: true,
 
-	{"POST", "/api/fiscal-years"}:                true,
-	{"POST", "/api/fiscal-periods"}:              true,
 	{"PATCH", "/api/fiscal-periods/{id}/status"}: true,
 
-	{"POST", "/api/journal-entries"}:              true,
 	{"GET", "/api/journal-entries/{id}"}:          true,
 	{"GET", "/api/journal-entries/{id}/lines"}:    true,
 	{"PATCH", "/api/journal-entries/{id}/post"}:   true,
 	{"POST", "/api/journal-entries/{id}/reverse"}: true,
 	{"DELETE", "/api/journal-entries/{id}"}:       true,
 
-	{"POST", "/api/payments"}:                  true,
 	{"GET", "/api/payments/{id}"}:              true,
 	{"GET", "/api/payments/{id}/applications"}: true,
 	{"POST", "/api/payments/{id}/void"}:        true,

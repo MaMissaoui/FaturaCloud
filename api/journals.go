@@ -22,6 +22,9 @@ func (h *handler) createJournal(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	journal, err := h.db.CreateJournal(req)
 	if err != nil {
 		writeMutationError(w, err)
