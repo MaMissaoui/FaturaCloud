@@ -42,6 +42,9 @@ func (h *handler) createPayment(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	payment, err := h.db.CreatePayment(req)
 	if err != nil {
 		writeMutationError(w, err)

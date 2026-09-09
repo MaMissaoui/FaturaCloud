@@ -30,6 +30,12 @@ func TestCreatePayment_RejectsDirectionPartnerMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed CreateVendor: %v", err)
 	}
+	// POST /api/payments now requires org membership (issue #141 Phase C) —
+	// unrelated to what this test actually checks (direction<->partner
+	// validation), but the request must clear that check first.
+	if _, err := database.AddOrganizationUser(org.ID, "test-user", "user"); err != nil {
+		t.Fatalf("seed org membership: %v", err)
+	}
 
 	// direction "inbound" with a vendorId and no clientId — CreatePayment's
 	// direction<->partner validation is enforced app-side first (returning a

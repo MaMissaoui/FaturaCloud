@@ -55,6 +55,9 @@ func (h *handler) createIncomingInvoice(w http.ResponseWriter, r *http.Request) 
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	row, err := h.db.CreateIncomingInvoice(req)
 	if err != nil {
 		if errors.Is(err, db.ErrDuplicateVendorInvoiceNumber) {

@@ -21,6 +21,9 @@ func (h *handler) createFiscalYear(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	year, err := h.db.CreateFiscalYear(req)
 	if err != nil {
 		writeMutationError(w, err)
@@ -42,6 +45,9 @@ func (h *handler) listFiscalPeriods(w http.ResponseWriter, r *http.Request) {
 func (h *handler) createFiscalPeriod(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateFiscalPeriodRequest
 	if err := decodeJSON(w, r, &req); err != nil {
+		return
+	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
 		return
 	}
 	period, err := h.db.CreateFiscalPeriod(req)

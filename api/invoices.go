@@ -43,6 +43,9 @@ func (h *handler) createInvoice(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	if !h.requireOrgMember(w, r, req.OrganizationID) {
+		return
+	}
 	invoice, err := h.db.CreateInvoice(req)
 	if err != nil {
 		writeMutationError(w, err)
