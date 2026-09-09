@@ -37,13 +37,21 @@ export default function StatusFlow<S extends string>({
     (status) => status === current || (transitions[status]?.length ?? 0) > 0,
   );
 
+  // "cancelled" is reachable from nearly every other status (an escape hatch,
+  // not a normal forward step), so inlining it as a target on each row
+  // repeats the same tag across most of the popover. Pull it out of every
+  // row's inline list and fold it into one summary line instead.
+  const cancelSources = rows.filter((status) =>
+    (transitions[status] ?? []).includes("cancelled" as S),
+  );
+
   return (
     <Popover
       title={<Trans>Status flow</Trans>}
       content={
         <Space direction="vertical" size={4}>
           {rows.map((status) => {
-            const next = transitions[status] ?? [];
+            const next = (transitions[status] ?? []).filter((n) => n !== "cancelled");
             return (
               <div key={status}>
                 <Tag color={getColor(status)}>{getLabel(status)}</Tag>
@@ -67,6 +75,18 @@ export default function StatusFlow<S extends string>({
               </div>
             );
           })}
+          {cancelSources.length > 0 && (
+            <div>
+              <Tag color={getColor("cancelled" as S)}>{getLabel("cancelled" as S)}</Tag>
+              {" ← "}
+              {cancelSources.map((s, i) => (
+                <span key={s}>
+                  {i > 0 && ", "}
+                  <Tag color={getColor(s)}>{getLabel(s)}</Tag>
+                </span>
+              ))}
+            </div>
+          )}
         </Space>
       }
     >
