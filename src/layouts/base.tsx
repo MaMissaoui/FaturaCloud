@@ -60,6 +60,7 @@ import toUpper from "lodash/toUpper";
 import { siderAtom, localeAtom, themeAtom } from "src/atoms/generic";
 import {
   organizationsAtom,
+  organizationsLoadedAtom,
   organizationIdAtom,
   organizationAtom,
   isOrgAdminAtom,
@@ -110,6 +111,7 @@ export default function BaseLayout() {
 
   // Organizations
   const organizations = useAtomValue(organizationsAtom);
+  const organizationsLoaded = useAtomValue(organizationsLoadedAtom);
 
   // Organization
   const organizationId = useAtomValue(organizationIdAtom);
@@ -140,8 +142,20 @@ export default function BaseLayout() {
     return null;
   }
 
-  // If organizationId exists but organization is null (not found), clear the invalid ID and redirect
-  if (organizationId && organization === null) {
+  // If organizationId exists but organization is null, clear the invalid ID and redirect —
+  // but only once organizationsAtom (a separate fetch) confirms the id truly isn't one of the
+  // caller's organizations. organizationAtom's getter also returns null on a transient fetch
+  // error (see src/atoms/organization.ts), not just on a genuinely nonexistent id; treating
+  // every null the same used to silently drop the user onto a different (alphabetically-first)
+  // organization after switching, right when a fetch blip made the newly-selected one fail to
+  // load — indistinguishable from the switch itself being broken. Until organizations has
+  // loaded, or if it still lists this id, fall through to the "Loading..." state below instead.
+  if (
+    organizationId &&
+    organization === null &&
+    organizationsLoaded &&
+    !organizations.some((org) => org.id === organizationId)
+  ) {
     setOrganizationId(null);
     navigate("/");
     return null;
