@@ -25,6 +25,7 @@ func FillIncomingInvoiceTemplate(
 	}
 
 	scalars := buildIncomingInvoiceScalarPlaceholders(invoice, org, vendor, currency)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))

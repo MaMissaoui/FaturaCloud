@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -40,11 +41,42 @@ func FillInvoiceTemplate(
 		currency = *org.Currency
 	}
 	scalars := buildScalarPlaceholders(invoice, org, client)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
 	return fillTemplate(templateBytes, scalars, lineRows)
+}
+
+// mergeExportMetaPlaceholders adds placeholders describing the export
+// operation itself — when this specific file was generated, not any
+// business-document date field — into an already-built scalars map. Called
+// from every FillXTemplate wrapper (not from the shared fillTemplate engine
+// below, which deliberately knows nothing about organizations or date
+// formats) so every document type gets these for free with no per-type
+// duplication of the actual date/time formatting. Useful for a "Printed on
+// ..." footer note, or simply to tell two exports of the same document
+// apart when it's re-exported later than it was created — export.generatedDate
+// follows the organization's own date_format for the same look-consistency
+// reason every other customer-facing date on these templates does;
+// export.generatedTime is always 24-hour HH:MM server time (organizations
+// have no separate time_format setting to follow).
+//
+// "Current page" / "total pages" are deliberately NOT offered here as a
+// {{}} placeholder: fillTemplate runs before LibreOffice ever paginates the
+// output, so no page count is knowable yet at substitution time — a
+// {{page.number}} placeholder could only ever resolve to a fabricated
+// constant. The true equivalent is Excel/LibreOffice's own native "&P" (page
+// number) / "&N" (total pages) codes, which only work inside the sheet's own
+// Page Layout ▸ Header/Footer — applyPageFooter (db/templates/gen/styles.go)
+// already wires "&CPage &P of &N" into every embedded default template's
+// footer for exactly this; a template author can move or restyle that from
+// within Excel/LibreOffice's own header/footer editor.
+func mergeExportMetaPlaceholders(scalars map[string]string, dateFormat *string) {
+	now := time.Now()
+	scalars["export.generatedDate"] = formatOrgDate(now.UnixMilli(), dateFormat)
+	scalars["export.generatedTime"] = now.Format("15:04")
 }
 
 // fillTemplate is the document-type-agnostic engine every FillXTemplate

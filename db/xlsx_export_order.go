@@ -32,6 +32,7 @@ func FillOrderTemplate(
 	subTotal, taxTotal, total := computeExportTotals(exportItems, nil)
 
 	scalars := buildOrderScalarPlaceholders(order, org, client, currency, subTotal, taxTotal, total)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits)

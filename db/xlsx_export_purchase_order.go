@@ -31,6 +31,7 @@ func FillPurchaseOrderTemplate(
 	subTotal, taxTotal, total := computeExportTotals(exportItems, taxRates)
 
 	scalars := buildPurchaseOrderScalarPlaceholders(order, org, vendor, currency, subTotal, taxTotal, total)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildPurchaseOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))

@@ -104,6 +104,8 @@ func buildPurchaseOrderTemplate() {
 	f.SetColWidth(sheet, "G", "G", 16)
 
 	applyFitToPageWidth(f, sheet)
+	applyRepeatingHeaderRows(f, sheet, headerRow)
+	applyPageFooter(f, sheet)
 	addAvailableFieldsSheet(f, purchaseOrderFieldRefs)
 	finalizeWorkbook(f, sheet, "db/templates/gen/purchase_order_default.xlsx")
 }
@@ -152,4 +154,10 @@ var purchaseOrderFieldRefs = []fieldRef{
 	{"Footer", "{{purchaseOrder.taxTotal}}", "Total tax, computed from line items"},
 	{"Footer", "{{purchaseOrder.total}}", "Grand total, computed from line items"},
 	{"Footer", "{{purchaseOrder.notes}}", "Free-text notes, blank if unset"},
+
+	// Export info — when this specific file was generated, not any document
+	// field. See mergeExportMetaPlaceholders (db/xlsx_export.go).
+	{"Export info", "{{export.generatedDate}}", "Date this file was exported (not the order's own date), in the organization's date format"},
+	{"Export info", "{{export.generatedTime}}", "Time this file was exported, 24-hour HH:MM, server time"},
+	{"Export info", "&P (page number) / &N (total pages)", "Native Excel/LibreOffice codes, not a {{}} placeholder — only work inside this sheet's own Page Layout ▸ Header/Footer, never in a regular cell, since the page count isn't known until export. The default footer already shows \"Page &P of &N\" on every page; edit it in Excel/LibreOffice's own header/footer editor to move or restyle it"},
 }
