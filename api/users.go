@@ -85,6 +85,13 @@ type userRow struct {
 	LastLoginAt     *int64 `db:"lastLoginAt"     json:"lastLoginAt"`
 }
 
+// userColumns is an explicit column list for every users query in this file,
+// used in place of SELECT * so a sensitive column added by a future
+// migration isn't silently loaded into every user lookup by default —
+// PasswordHash itself is already safe (json:"-"), this just keeps that true
+// on purpose rather than by accident.
+const userColumns = `id, email, passwordHash, displayName, role, isPlatformAdmin, isActive, createdAt, lastLoginAt`
+
 func userToJSON(u userRow) map[string]any {
 	return map[string]any{
 		"id":              u.ID,
@@ -104,9 +111,9 @@ func (h *handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if search != "" {
 		like := "%" + search + "%"
-		err = h.db.DB.Select(&rows, `SELECT * FROM users WHERE displayName LIKE ? OR email LIKE ? ORDER BY displayName`, like, like)
+		err = h.db.DB.Select(&rows, `SELECT `+userColumns+` FROM users WHERE displayName LIKE ? OR email LIKE ? ORDER BY displayName`, like, like)
 	} else {
-		err = h.db.DB.Select(&rows, `SELECT * FROM users ORDER BY displayName`)
+		err = h.db.DB.Select(&rows, `SELECT `+userColumns+` FROM users ORDER BY displayName`)
 	}
 	if err != nil {
 		writeInternalError(w, err)
@@ -121,7 +128,7 @@ func (h *handler) listUsers(w http.ResponseWriter, r *http.Request) {
 func (h *handler) getUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var u userRow
-	err := h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id)
+	err := h.db.DB.Get(&u, `SELECT `+userColumns+` FROM users WHERE id = ?`, id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
@@ -181,7 +188,7 @@ func (h *handler) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var u userRow
-	if err := h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+	if err := h.db.DB.Get(&u, `SELECT `+userColumns+` FROM users WHERE id = ?`, id); err != nil {
 		writeInternalError(w, err)
 		return
 	}
@@ -189,7 +196,13 @@ func (h *handler) createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // isDuplicateEmail recognizes the raw SQLite unique-index violation on
-// users.email (mirrors isDuplicateSKU's pattern in db/product.go).
+// users.email (mirrors isDuplicateSKU's pattern in db/product.go). This
+// depends on SQLite's own error message text, not a stable API contract —
+// accepted deliberately (consistent with isDuplicateSKU) rather than
+// replaced with a pre-check SELECT, which would just move the race from "an
+// unstable string match" to "a TOCTOU gap between the check and the insert"
+// without actually removing the string match, since the DB-level catch has
+// to remain the authoritative guard either way.
 func isDuplicateEmail(err error) bool {
 	return strings.Contains(err.Error(), "UNIQUE constraint failed") && strings.Contains(err.Error(), "users.email")
 }
@@ -215,7 +228,7 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var current userRow
-	if err := h.db.DB.Get(&current, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+	if err := h.db.DB.Get(&current, `SELECT `+userColumns+` FROM users WHERE id = ?`, id); err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
 	}
@@ -248,14 +261,39 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Hashing runs before the transaction opens, mirroring the F59 rationale
+	// in provisionOrSyncUser: it's ~50-100ms of pure CPU that doesn't need a
+	// held connection, and db.SetMaxOpenConns(1) means holding one during it
+	// would stall every other request in the app for no reason.
+	var passwordHash string
+	if body.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		passwordHash = string(hash)
+	}
+
+	// The four updates below used to run as independent statements — a
+	// failure partway through (e.g. on the role update) left the user
+	// partially changed, such as a new password persisted but the intended
+	// role change silently dropped. One transaction makes them atomic.
+	tx, err := h.db.DB.Beginx()
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op once committed
+
 	if body.IsActive != nil {
-		if _, err := h.db.DB.Exec(`UPDATE users SET isActive = ? WHERE id = ?`, *body.IsActive, id); err != nil {
+		if _, err := tx.Exec(`UPDATE users SET isActive = ? WHERE id = ?`, *body.IsActive, id); err != nil {
 			writeInternalError(w, err)
 			return
 		}
 	}
 	if body.DisplayName != "" {
-		if _, err := h.db.DB.Exec(`UPDATE users SET displayName = ? WHERE id = ?`, body.DisplayName, id); err != nil {
+		if _, err := tx.Exec(`UPDATE users SET displayName = ? WHERE id = ?`, body.DisplayName, id); err != nil {
 			writeInternalError(w, err)
 			return
 		}
@@ -265,25 +303,24 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		if body.Role == "admin" {
 			isPlatformAdmin = 1
 		}
-		if _, err := h.db.DB.Exec(`UPDATE users SET role = ?, isPlatformAdmin = ? WHERE id = ?`, body.Role, isPlatformAdmin, id); err != nil {
+		if _, err := tx.Exec(`UPDATE users SET role = ?, isPlatformAdmin = ? WHERE id = ?`, body.Role, isPlatformAdmin, id); err != nil {
 			writeInternalError(w, err)
 			return
 		}
 	}
-	if body.Password != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
-		if err != nil {
-			writeInternalError(w, err)
-			return
-		}
-		if _, err := h.db.DB.Exec(`UPDATE users SET passwordHash = ? WHERE id = ?`, string(hash), id); err != nil {
+	if passwordHash != "" {
+		if _, err := tx.Exec(`UPDATE users SET passwordHash = ? WHERE id = ?`, passwordHash, id); err != nil {
 			writeInternalError(w, err)
 			return
 		}
 	}
 
 	var u userRow
-	if err := h.db.DB.Get(&u, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+	if err := tx.Get(&u, `SELECT `+userColumns+` FROM users WHERE id = ?`, id); err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		writeInternalError(w, err)
 		return
 	}
@@ -299,7 +336,7 @@ func (h *handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var target userRow
-	if err := h.db.DB.Get(&target, `SELECT * FROM users WHERE id = ?`, id); err != nil {
+	if err := h.db.DB.Get(&target, `SELECT `+userColumns+` FROM users WHERE id = ?`, id); err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
 	}
@@ -369,7 +406,7 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 	var hash []byte
 	h.dbMu.RLock()
 	var precheck userRow
-	existsErr := h.db.DB.Get(&precheck, `SELECT * FROM users WHERE email = ?`, email)
+	existsErr := h.db.DB.Get(&precheck, `SELECT `+userColumns+` FROM users WHERE email = ?`, email)
 	h.dbMu.RUnlock()
 	if existsErr != nil {
 		var herr error
@@ -383,7 +420,7 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 	defer h.dbMu.Unlock()
 
 	var u userRow
-	err := h.db.DB.Get(&u, `SELECT * FROM users WHERE email = ?`, email)
+	err := h.db.DB.Get(&u, `SELECT `+userColumns+` FROM users WHERE email = ?`, email)
 	if err != nil {
 		if hash == nil {
 			var herr error
@@ -403,7 +440,7 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 		); err != nil {
 			return userRow{}, err
 		}
-		if err := h.db.DB.Get(&u, `SELECT * FROM users WHERE email = ?`, email); err != nil {
+		if err := h.db.DB.Get(&u, `SELECT `+userColumns+` FROM users WHERE email = ?`, email); err != nil {
 			return userRow{}, err
 		}
 	}
