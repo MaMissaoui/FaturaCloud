@@ -84,7 +84,7 @@ func discoverRoutes(t *testing.T) map[routeKey]string {
 			}
 		case *ast.SelectorExpr:
 			ident, ok := fn.X.(*ast.Ident)
-			if !ok || ident.Name != "mux" || fn.Sel.Name != "Handle" || len(call.Args) < 1 {
+			if !ok || ident.Name != "mux" || fn.Sel.Name != "Handle" || len(call.Args) < 2 {
 				return true
 			}
 			combined, ok := stringLit(call.Args[0])
@@ -92,9 +92,42 @@ func discoverRoutes(t *testing.T) map[routeKey]string {
 				return true
 			}
 			parts := strings.SplitN(combined, " ", 2)
-			if len(parts) == 2 {
-				routes[routeKey{parts[0], parts[1]}] = "mux.Handle"
+			if len(parts) != 2 {
+				return true
 			}
+			// A handful of routes (LibreOffice-conversion exports, and the
+			// two write-lock restore routes) are registered directly via
+			// mux.Handle instead of one of the *Protected wrappers, for
+			// reasons unrelated to authorization (see router.go's own
+			// comments at each site) — but still wrap their handler in
+			// h.orgMember(...)/h.platformAdmin(...) inline. Detect that
+			// nested call so these don't all need a manually-maintained
+			// exemptRoutes rationale forever; only genuinely bare
+			// mux.Handle calls (the restore routes, already in
+			// exemptRoutes) still need one.
+			wrapper := "mux.Handle"
+			ast.Inspect(call.Args[1], func(inner ast.Node) bool {
+				innerCall, ok := inner.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				sel, ok := innerCall.Fun.(*ast.SelectorExpr)
+				if !ok {
+					return true
+				}
+				recv, ok := sel.X.(*ast.Ident)
+				if !ok || recv.Name != "h" {
+					return true
+				}
+				switch sel.Sel.Name {
+				case "orgMember":
+					wrapper = "orgMemberProtected"
+				case "orgAdmin":
+					wrapper = "orgAdminProtected"
+				}
+				return true
+			})
+			routes[routeKey{parts[0], parts[1]}] = wrapper
 		}
 		return true
 	})
@@ -174,35 +207,6 @@ var pendingPhaseCRoutes = map[routeKey]bool{
 	// Create bucket (still POST-organizationId-in-body, no requireOrgMember
 	// call yet) and single-resource/sub-resource/export buckets, grouped by
 	// the domain-family PRs that will migrate them per the rollout plan.
-
-	{"GET", "/api/vendors/{id}"}:                true,
-	{"PUT", "/api/vendors/{id}"}:                true,
-	{"DELETE", "/api/vendors/{id}"}:             true,
-	{"GET", "/api/vendors/{id}/document-count"}: true,
-
-	{"GET", "/api/invoices/{id}"}:            true,
-	{"GET", "/api/invoices/{id}/line-items"}: true,
-	{"PUT", "/api/invoices/{id}"}:            true,
-	{"PATCH", "/api/invoices/{id}/state"}:    true,
-	{"DELETE", "/api/invoices/{id}"}:         true,
-	{"GET", "/api/invoices/{id}/e-invoice"}:  true,
-	{"GET", "/api/invoices/{id}/export"}:     true,
-	{"GET", "/api/invoices/{id}/payments"}:   true,
-
-	{"GET", "/api/orders/{id}"}:                      true,
-	{"GET", "/api/orders/{id}/line-items"}:           true,
-	{"GET", "/api/orders/{id}/delivered-quantities"}: true,
-	{"PUT", "/api/orders/{id}"}:                      true,
-	{"PATCH", "/api/orders/{id}/status"}:             true,
-	{"DELETE", "/api/orders/{id}"}:                   true,
-	{"GET", "/api/orders/{id}/export"}:               true,
-
-	{"GET", "/api/deliveries/{id}"}:            true,
-	{"GET", "/api/deliveries/{id}/line-items"}: true,
-	{"PUT", "/api/deliveries/{id}"}:            true,
-	{"PATCH", "/api/deliveries/{id}/status"}:   true,
-	{"DELETE", "/api/deliveries/{id}"}:         true,
-	{"GET", "/api/deliveries/{id}/export"}:     true,
 
 	{"GET", "/api/imports/{id}"}:         true,
 	{"GET", "/api/imports/{id}/summary"}: true,
@@ -383,42 +387,43 @@ func TestCreateRouteOrgChecksArePresent(t *testing.T) {
 
 // --- Cross-organization access denial (issue #141 Phase C) ---------------
 
-// crossOrgProof is one already-gated route to verify end to end against a
-// real cross-tenant request — grown alongside pendingPhaseCRoutes shrinking
-// in later Phase C PRs, per the rollout plan
-// (/Users/mam/.claude/plans/tranquil-toasting-eagle.md).
+// crossOrgProof is a representative sample of already-gated routes verified
+// end to end against a real cross-tenant request — grown alongside
+// pendingPhaseCRoutes shrinking in later Phase C PRs, per the rollout plan
+// (/Users/mam/.claude/plans/tranquil-toasting-eagle.md). Not exhaustive by
+// design (that's TestPhaseCRouteCoverage's job, structurally): a list + a
+// single-resource get + one mutation per newly-gated domain is enough to
+// prove the mechanism actually denies a real request, not just that the
+// router table claims it does. PR7's final regression sweep expands this to
+// every route.
 var crossOrgProof = []struct {
 	name   string
 	method string
-	path   func(clientID string) string
-	body   func(orgID string) []byte
+	path   string
+	body   []byte
 }{
-	{
-		name:   "list clients by org path",
-		method: http.MethodGet,
-		path:   func(_ string) string { return "/api/organizations/org-a/clients" },
-	},
-	{
-		name:   "get client by id",
-		method: http.MethodGet,
-		path:   func(clientID string) string { return "/api/clients/" + clientID },
-	},
-	{
-		name:   "update client by id",
-		method: http.MethodPut,
-		path:   func(clientID string) string { return "/api/clients/" + clientID },
-		body:   func(_ string) []byte { return []byte(`{"name":"hijacked"}`) },
-	},
-	{
-		name:   "delete client by id",
-		method: http.MethodDelete,
-		path:   func(clientID string) string { return "/api/clients/" + clientID },
-	},
-	{
-		name:   "client invoice count",
-		method: http.MethodGet,
-		path:   func(clientID string) string { return "/api/clients/" + clientID + "/invoice-count" },
-	},
+	{name: "list clients by org path", method: http.MethodGet, path: "/api/organizations/org-a/clients"},
+	{name: "get client by id", method: http.MethodGet, path: "/api/clients/org-a-client"},
+	{name: "update client by id", method: http.MethodPut, path: "/api/clients/org-a-client", body: []byte(`{"name":"hijacked"}`)},
+	{name: "delete client by id", method: http.MethodDelete, path: "/api/clients/org-a-client"},
+	{name: "client invoice count", method: http.MethodGet, path: "/api/clients/org-a-client/invoice-count"},
+
+	{name: "list vendors by org path", method: http.MethodGet, path: "/api/organizations/org-a/vendors"},
+	{name: "get vendor by id", method: http.MethodGet, path: "/api/vendors/org-a-vendor"},
+	{name: "delete vendor by id", method: http.MethodDelete, path: "/api/vendors/org-a-vendor"},
+
+	{name: "list invoices by org path", method: http.MethodGet, path: "/api/organizations/org-a/invoices"},
+	{name: "get invoice by id", method: http.MethodGet, path: "/api/invoices/org-a-invoice"},
+	{name: "invoice line items", method: http.MethodGet, path: "/api/invoices/org-a-invoice/line-items"},
+	{name: "delete invoice by id", method: http.MethodDelete, path: "/api/invoices/org-a-invoice"},
+
+	{name: "list orders by org path", method: http.MethodGet, path: "/api/organizations/org-a/orders"},
+	{name: "get order by id", method: http.MethodGet, path: "/api/orders/org-a-order"},
+	{name: "delete order by id", method: http.MethodDelete, path: "/api/orders/org-a-order"},
+
+	{name: "list deliveries by org path", method: http.MethodGet, path: "/api/organizations/org-a/deliveries"},
+	{name: "get delivery by id", method: http.MethodGet, path: "/api/deliveries/org-a-delivery"},
+	{name: "delete delivery by id", method: http.MethodDelete, path: "/api/deliveries/org-a-delivery"},
 }
 
 // TestCrossOrgAccessDenied is the fail-closed regression test the original
@@ -457,16 +462,37 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed CreateClient: %v", err)
 	}
+	if _, err := database.CreateVendor(db.CreateVendorRequest{
+		ID: "org-a-vendor", OrganizationID: "org-a", Name: strPtr("Acme Supplies"),
+	}); err != nil {
+		t.Fatalf("seed CreateVendor: %v", err)
+	}
+	if _, err := database.CreateInvoice(db.CreateInvoiceRequest{
+		ID: "org-a-invoice", OrganizationID: "org-a", Number: "INV-001", State: "draft",
+		ClientID: client.ID, Date: 1700000000000, Currency: "EUR",
+	}); err != nil {
+		t.Fatalf("seed CreateInvoice: %v", err)
+	}
+	if _, err := database.CreateOrder(db.CreateOrderRequest{
+		ID: "org-a-order", OrganizationID: "org-a", OrderNumber: "ORD-001", OrderDate: 1700000000000,
+	}); err != nil {
+		t.Fatalf("seed CreateOrder: %v", err)
+	}
+	if _, err := database.CreateDelivery(db.CreateDeliveryRequest{
+		ID: "org-a-delivery", OrganizationID: "org-a", DeliveryNumber: "DEL-001", DeliveryDate: 1700000000000,
+	}); err != nil {
+		t.Fatalf("seed CreateDelivery: %v", err)
+	}
 
 	for _, tc := range crossOrgProof {
 		t.Run(tc.name, func(t *testing.T) {
 			var body *bytes.Buffer
 			if tc.body != nil {
-				body = bytes.NewBuffer(tc.body("org-a"))
+				body = bytes.NewBuffer(tc.body)
 			} else {
 				body = bytes.NewBuffer(nil)
 			}
-			req := httptest.NewRequest(tc.method, tc.path(client.ID), body)
+			req := httptest.NewRequest(tc.method, tc.path, body)
 			req.Header.Set("Content-Type", "application/json")
 			authRequest(req, orgBToken)
 			rec := httptest.NewRecorder()
@@ -474,7 +500,7 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 
 			if rec.Code != http.StatusForbidden && rec.Code != http.StatusNotFound {
 				t.Fatalf("org-b-admin %s %s: expected 403 or 404, got %d: %s",
-					tc.method, tc.path(client.ID), rec.Code, rec.Body.String())
+					tc.method, tc.path, rec.Code, rec.Body.String())
 			}
 		})
 	}
