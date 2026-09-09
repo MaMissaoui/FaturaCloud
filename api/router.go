@@ -219,56 +219,102 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/vendors/{id}/document-count", vendorOrgID, h.getVendorDocumentCount)
 
 	// Imports (F114 — consolidated China shipments purchase orders link to)
+	// importOrgID resolves an import route's {id} to its owning organization
+	// by reusing GetImport — same shape as clientOrgID above.
+	importOrgID := func(r *http.Request) (string, error) {
+		imp, err := h.db.GetImport(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return imp.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/imports", pathOrgID("orgId"), h.listImports)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/imports/next-number", pathOrgID("orgId"), h.nextImportNumber)
 	protected("POST", "/api/imports", h.createImport)
-	protected("GET", "/api/imports/{id}", h.getImport)
-	protected("GET", "/api/imports/{id}/summary", h.getImportSummary)
-	protected("PUT", "/api/imports/{id}", h.updateImport)
-	protected("DELETE", "/api/imports/{id}", h.deleteImport)
+	orgMemberProtected("GET", "/api/imports/{id}", importOrgID, h.getImport)
+	orgMemberProtected("GET", "/api/imports/{id}/summary", importOrgID, h.getImportSummary)
+	orgMemberProtected("PUT", "/api/imports/{id}", importOrgID, h.updateImport)
+	orgMemberProtected("DELETE", "/api/imports/{id}", importOrgID, h.deleteImport)
 
 	// Purchase orders
+	// purchaseOrderOrgID resolves a purchase-order route's {id} to its
+	// owning organization by reusing GetPurchaseOrder — same shape as
+	// clientOrgID above. Reused below for the export route too.
+	purchaseOrderOrgID := func(r *http.Request) (string, error) {
+		po, err := h.db.GetPurchaseOrder(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return po.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/purchase-orders", pathOrgID("orgId"), h.listPurchaseOrders)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/purchase-orders/next-number", pathOrgID("orgId"), h.nextPurchaseOrderNumber)
 	protected("POST", "/api/purchase-orders", h.createPurchaseOrder)
-	protected("GET", "/api/purchase-orders/{id}", h.getPurchaseOrder)
-	protected("GET", "/api/purchase-orders/{id}/line-items", h.getPurchaseOrderLineItems)
-	protected("GET", "/api/purchase-orders/{id}/received-quantities", h.getPurchaseOrderReceivedQuantities)
-	protected("PUT", "/api/purchase-orders/{id}", h.updatePurchaseOrder)
-	protected("PATCH", "/api/purchase-orders/{id}/status", h.updatePurchaseOrderStatus)
-	protected("DELETE", "/api/purchase-orders/{id}", h.deletePurchaseOrder)
+	orgMemberProtected("GET", "/api/purchase-orders/{id}", purchaseOrderOrgID, h.getPurchaseOrder)
+	orgMemberProtected("GET", "/api/purchase-orders/{id}/line-items", purchaseOrderOrgID, h.getPurchaseOrderLineItems)
+	orgMemberProtected("GET", "/api/purchase-orders/{id}/received-quantities", purchaseOrderOrgID, h.getPurchaseOrderReceivedQuantities)
+	orgMemberProtected("PUT", "/api/purchase-orders/{id}", purchaseOrderOrgID, h.updatePurchaseOrder)
+	orgMemberProtected("PATCH", "/api/purchase-orders/{id}/status", purchaseOrderOrgID, h.updatePurchaseOrderStatus)
+	orgMemberProtected("DELETE", "/api/purchase-orders/{id}", purchaseOrderOrgID, h.deletePurchaseOrder)
 	// Same reasoning as GET /api/invoices/{id}/export above — registered
 	// directly on mux, not through protected(), so a LibreOffice PDF
 	// conversion never holds dbMu's read lock for its whole duration.
-	mux.Handle("GET /api/purchase-orders/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportPurchaseOrderDocument))))
+	// orgMember (not withDB) provides the membership check, same insertion
+	// point orgAdminProtected/the invoice export route already use.
+	mux.Handle("GET /api/purchase-orders/{id}/export", auth(h.orgMember(purchaseOrderOrgID)(csrf(limitBody(defaultMaxBody, h.exportPurchaseOrderDocument)))))
 
 	// Inbound deliveries (goods receipts)
+	// inboundDeliveryOrgID resolves an inbound-delivery route's {id} to its
+	// owning organization by reusing GetInboundDelivery — same shape as
+	// clientOrgID above. Reused below for the export route too.
+	inboundDeliveryOrgID := func(r *http.Request) (string, error) {
+		delivery, err := h.db.GetInboundDelivery(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return delivery.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/inbound-deliveries", pathOrgID("orgId"), h.listInboundDeliveries)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/inbound-deliveries/next-number", pathOrgID("orgId"), h.nextInboundDeliveryNumber)
 	protected("POST", "/api/inbound-deliveries", h.createInboundDelivery)
-	protected("GET", "/api/inbound-deliveries/{id}", h.getInboundDelivery)
-	protected("GET", "/api/inbound-deliveries/{id}/line-items", h.getInboundDeliveryLineItems)
-	protected("PUT", "/api/inbound-deliveries/{id}", h.updateInboundDelivery)
-	protected("PATCH", "/api/inbound-deliveries/{id}/status", h.updateInboundDeliveryStatus)
-	protected("DELETE", "/api/inbound-deliveries/{id}", h.deleteInboundDelivery)
+	orgMemberProtected("GET", "/api/inbound-deliveries/{id}", inboundDeliveryOrgID, h.getInboundDelivery)
+	orgMemberProtected("GET", "/api/inbound-deliveries/{id}/line-items", inboundDeliveryOrgID, h.getInboundDeliveryLineItems)
+	orgMemberProtected("PUT", "/api/inbound-deliveries/{id}", inboundDeliveryOrgID, h.updateInboundDelivery)
+	orgMemberProtected("PATCH", "/api/inbound-deliveries/{id}/status", inboundDeliveryOrgID, h.updateInboundDeliveryStatus)
+	orgMemberProtected("DELETE", "/api/inbound-deliveries/{id}", inboundDeliveryOrgID, h.deleteInboundDelivery)
 	// Same reasoning as GET /api/invoices/{id}/export above — registered
 	// directly on mux, not through protected(), so a LibreOffice PDF
 	// conversion never holds dbMu's read lock for its whole duration.
-	mux.Handle("GET /api/inbound-deliveries/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportInboundDeliveryDocument))))
+	// orgMember (not withDB) provides the membership check, same insertion
+	// point orgAdminProtected/the invoice export route already use.
+	mux.Handle("GET /api/inbound-deliveries/{id}/export", auth(h.orgMember(inboundDeliveryOrgID)(csrf(limitBody(defaultMaxBody, h.exportInboundDeliveryDocument)))))
 
 	// Incoming invoices (vendor bills)
+	// incomingInvoiceOrgID resolves an incoming-invoice route's {id} to its
+	// owning organization by reusing GetIncomingInvoice — same shape as
+	// clientOrgID above. Reused below for the export route and for the
+	// GET .../payments route further down (see that section's note).
+	incomingInvoiceOrgID := func(r *http.Request) (string, error) {
+		invoice, err := h.db.GetIncomingInvoice(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return invoice.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/incoming-invoices", pathOrgID("orgId"), h.listIncomingInvoices)
 	protected("POST", "/api/incoming-invoices", h.createIncomingInvoice)
-	protected("GET", "/api/incoming-invoices/{id}", h.getIncomingInvoice)
-	protected("GET", "/api/incoming-invoices/{id}/line-items", h.getIncomingInvoiceLineItems)
-	protected("GET", "/api/incoming-invoices/{id}/match", h.getIncomingInvoiceMatch)
-	protected("PUT", "/api/incoming-invoices/{id}", h.updateIncomingInvoice)
-	protected("PATCH", "/api/incoming-invoices/{id}/state", h.updateIncomingInvoiceState)
-	protected("DELETE", "/api/incoming-invoices/{id}", h.deleteIncomingInvoice)
+	orgMemberProtected("GET", "/api/incoming-invoices/{id}", incomingInvoiceOrgID, h.getIncomingInvoice)
+	orgMemberProtected("GET", "/api/incoming-invoices/{id}/line-items", incomingInvoiceOrgID, h.getIncomingInvoiceLineItems)
+	orgMemberProtected("GET", "/api/incoming-invoices/{id}/match", incomingInvoiceOrgID, h.getIncomingInvoiceMatch)
+	orgMemberProtected("PUT", "/api/incoming-invoices/{id}", incomingInvoiceOrgID, h.updateIncomingInvoice)
+	orgMemberProtected("PATCH", "/api/incoming-invoices/{id}/state", incomingInvoiceOrgID, h.updateIncomingInvoiceState)
+	orgMemberProtected("DELETE", "/api/incoming-invoices/{id}", incomingInvoiceOrgID, h.deleteIncomingInvoice)
 	// Same reasoning as GET /api/invoices/{id}/export above — registered
 	// directly on mux, not through protected(), so a LibreOffice PDF
 	// conversion never holds dbMu's read lock for its whole duration.
-	mux.Handle("GET /api/incoming-invoices/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportIncomingInvoiceDocument))))
+	// orgMember (not withDB) provides the membership check, same insertion
+	// point orgAdminProtected/the invoice export route already use.
+	mux.Handle("GET /api/incoming-invoices/{id}/export", auth(h.orgMember(incomingInvoiceOrgID)(csrf(limitBody(defaultMaxBody, h.exportIncomingInvoiceDocument)))))
 
 	// Invoices
 	// invoiceOrgID resolves an invoice route's {id} to its owning
@@ -434,7 +480,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/payments/{id}/applications", h.getPaymentApplications)
 	protected("POST", "/api/payments/{id}/void", h.voidPayment)
 	orgMemberProtected("GET", "/api/invoices/{id}/payments", invoiceOrgID, h.getInvoicePayments)
-	protected("GET", "/api/incoming-invoices/{id}/payments", h.getIncomingInvoicePayments)
+	orgMemberProtected("GET", "/api/incoming-invoices/{id}/payments", incomingInvoiceOrgID, h.getIncomingInvoicePayments)
 
 	// Reports
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/trial-balance", pathOrgID("orgId"), h.getTrialBalance)
