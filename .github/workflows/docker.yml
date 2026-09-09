@@ -178,6 +178,18 @@ jobs:
           keep-n-tagged: 15
           delete-untagged: true
           delete-partial-images: true
+          # ghcr.io/mamissaoui/fatura-cloud is a user-owned package (personal
+          # account, not an org) — the default GITHUB_TOKEN cannot delete
+          # versions of a user-owned package via the packages API regardless
+          # of this job's `permissions: packages: write` (confirmed via a
+          # real release log: every DELETE call 404s, which this action's
+          # own error handling silently treats as "already deleted" — so
+          # this step has actually been a no-op on every release since it
+          # was added in #171, not just on the throwaway-tag test that first
+          # surfaced it). GHCR_CLEANUP_TOKEN is a classic PAT scoped to
+          # read:packages + delete:packages, which a personal-account
+          # package does require.
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
 
   release:
     needs: merge
