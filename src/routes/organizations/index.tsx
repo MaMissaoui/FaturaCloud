@@ -1,33 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Account, Organization } from "src/types/models";
-import {
-  App,
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Collapse,
-  Drawer,
-  Form,
-  Input,
-  InputNumber,
-  Popconfirm,
-  Row,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-  Upload,
-  theme,
-} from "antd";
+import type { Account } from "src/types/models";
+import { App, Button, Form } from "antd";
 import { useAtom, useSetAtom } from "jotai";
-import {
-  ApartmentOutlined,
-  DeleteOutlined,
-  ExclamationCircleOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import { ApartmentOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -37,9 +12,6 @@ import some from "lodash/some";
 import get from "lodash/get";
 import includes from "lodash/includes";
 import toString from "lodash/toString";
-import compact from "lodash/compact";
-import map from "lodash/map";
-import uniq from "lodash/uniq";
 
 import {
   GetOrganizations,
@@ -59,27 +31,18 @@ import {
   type OrganizationUsageCount,
   type OrganizationMember,
 } from "src/api";
-import { CSRF_HEADER } from "src/api/client";
 import {
   organizationIdAtom,
   reloadOrganizationAtom,
   setOrganizationsAtom,
 } from "src/atoms/organization";
-import { DATE_FORMATS, type DateFormatKey, getDateFormatLabel } from "src/utils/date";
-import { countries } from "src/utils/countries";
-import { getDefaultFractionDigits } from "src/utils/currencies";
-import { useCountryOptions } from "src/hooks/useCountryOptions";
 import PageHeader from "src/components/page-header";
-import BrandColorPicker from "src/components/organizations/brand-color-picker";
-import { invoicePDFLayoutOptions } from "src/components/invoices/layouts";
+import OrganizationsTable from "src/components/organizations/organizations-table";
+import OrganizationEditDrawer from "src/components/organizations/organization-edit-drawer";
 import { centsToUnits, unitsToCents } from "src/utils/currency";
-
-const currencies = compact(uniq(map(countries, "currency_code")));
-const { Text } = Typography;
 
 export default function Organizations() {
   useLingui();
-  const { token } = theme.useToken();
   const { message } = App.useApp();
   const [form] = Form.useForm();
 
@@ -119,10 +82,6 @@ export default function Organizations() {
   const [organizationId, setOrganizationId] = useAtom(organizationIdAtom);
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
   const reloadActiveOrganization = useSetAtom(reloadOrganizationAtom);
-
-  const watchedCountryCode = Form.useWatch("country_code", form);
-  const watchedFiscalStampEnabled = Form.useWatch("fiscalStampEnabled", form);
-  const countryOptions = useCountryOptions(watchedCountryCode);
 
   const fetchOrgs = async () => {
     setLoading(true);
@@ -411,30 +370,37 @@ export default function Organizations() {
   const isEdit = !!editingId;
 
   const resetCounts = editingId ? usageCounts[editingId] : undefined;
-  const resetBreakdown = resetCounts
-    ? [
-        ...(resetMasterData
-          ? [
-              [resetCounts.clients, t`client(s)`],
-              [resetCounts.vendors, t`vendor(s)`],
-              [resetCounts.products, t`product(s)`],
-              [resetCounts.taxRates, t`tax rate(s)`],
-            ]
-          : []),
-        ...(resetMasterData || resetTransactionalData
-          ? [
-              [resetCounts.invoices, t`invoice(s)`],
-              [resetCounts.orders, t`order(s)`],
-              [resetCounts.deliveries, t`delivery(ies)`],
-              [resetCounts.purchaseOrders, t`purchase order(s)`],
-              [resetCounts.inboundDeliveries, t`goods receipt(s)`],
-              [resetCounts.incomingInvoices, t`incoming invoice(s)`],
-              [resetCounts.stockMovements, t`stock movement(s)`],
-            ]
-          : []),
-      ].filter(([n]) => (n as number) > 0)
+  const resetBreakdown: [number, string][] = resetCounts
+    ? (
+        [
+          ...(resetMasterData
+            ? [
+                [resetCounts.clients, t`client(s)`],
+                [resetCounts.vendors, t`vendor(s)`],
+                [resetCounts.products, t`product(s)`],
+                [resetCounts.taxRates, t`tax rate(s)`],
+              ]
+            : []),
+          ...(resetMasterData || resetTransactionalData
+            ? [
+                [resetCounts.invoices, t`invoice(s)`],
+                [resetCounts.orders, t`order(s)`],
+                [resetCounts.deliveries, t`delivery(ies)`],
+                [resetCounts.purchaseOrders, t`purchase order(s)`],
+                [resetCounts.inboundDeliveries, t`goods receipt(s)`],
+                [resetCounts.incomingInvoices, t`incoming invoice(s)`],
+                [resetCounts.stockMovements, t`stock movement(s)`],
+              ]
+            : []),
+        ] as [number, string][]
+      ).filter(([n]) => n > 0)
     : [];
   const resetSelected = resetMasterData || resetTransactionalData;
+
+  // Members/danger-zone Cards are only ever shown for an organization this
+  // actor administers — same condition as before, now computed once here
+  // instead of inline at each of the two Cards' old call sites.
+  const administersEditingOrg = isEdit && !!editingId && myOrgAdminIds.has(editingId);
 
   return (
     <>
@@ -456,934 +422,70 @@ export default function Organizations() {
         }
       />
 
-      <Table
+      <OrganizationsTable
         dataSource={filteredOrgs}
-        rowKey="id"
         loading={loading}
-        pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
-        size="middle"
-        onRow={(record) => ({ onClick: () => openEdit(record.id), style: { cursor: "pointer" } })}
-      >
-        <Table.Column
-          title={<Trans>Name</Trans>}
-          dataIndex="name"
-          key="name"
-          sorter={(a: Organization, b: Organization) => (a.name ?? "").localeCompare(b.name ?? "")}
-        />
-        <Table.Column
-          title={<Trans>Code</Trans>}
-          dataIndex="code"
-          key="code"
-          width={120}
-          sorter={(a: Organization, b: Organization) => (a.code ?? "").localeCompare(b.code ?? "")}
-        />
-        <Table.Column
-          title={<Trans>Email</Trans>}
-          dataIndex="email"
-          key="email"
-          sorter={(a: Organization, b: Organization) =>
-            (a.email ?? "").localeCompare(b.email ?? "")
-          }
-        />
-        <Table.Column
-          title={<Trans>Phone</Trans>}
-          dataIndex="phone"
-          key="phone"
-          width={150}
-          sorter={(a: Organization, b: Organization) =>
-            (a.phone ?? "").localeCompare(b.phone ?? "")
-          }
-        />
-        <Table.Column
-          title="IBAN"
-          dataIndex="iban"
-          key="iban"
-          width={200}
-          sorter={(a: Organization, b: Organization) => (a.iban ?? "").localeCompare(b.iban ?? "")}
-        />
-        <Table.Column
-          title={<Trans>Currency</Trans>}
-          dataIndex="currency"
-          key="currency"
-          width={100}
-          sorter={(a: Organization, b: Organization) =>
-            (a.currency ?? "").localeCompare(b.currency ?? "")
-          }
-        />
-        <Table.Column
-          title=""
-          key="actions"
-          width={80}
-          render={(_: unknown, record: Organization) => {
-            if (!myOrgAdminIds.has(record.id)) return null;
-            const counts = usageCounts[record.id];
-            const breakdown = counts
-              ? [
-                  [counts.clients, t`client(s)`],
-                  [counts.vendors, t`vendor(s)`],
-                  [counts.invoices, t`invoice(s)`],
-                  [counts.products, t`product(s)`],
-                  [counts.orders, t`order(s)`],
-                  [counts.purchaseOrders, t`purchase order(s)`],
-                  [counts.inboundDeliveries, t`goods receipt(s)`],
-                  [counts.incomingInvoices, t`incoming invoice(s)`],
-                  [counts.deliveries, t`delivery(ies)`],
-                  [counts.taxRates, t`tax rate(s)`],
-                ].filter(([n]) => (n as number) > 0)
-              : [];
-            return (
-              <Popconfirm
-                title={t`Delete this organization?`}
-                description={
-                  breakdown.length > 0 ? (
-                    <div style={{ maxWidth: 260 }}>
-                      <div>
-                        <Trans>This will permanently delete:</Trans>
-                      </div>
-                      <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                        {breakdown.map(([n, label]) => (
-                          <li key={label as string}>
-                            {n} {label}
-                          </li>
-                        ))}
-                      </ul>
-                      <div>
-                        <Trans>This cannot be undone.</Trans>
-                      </div>
-                    </div>
-                  ) : (
-                    <Trans>This cannot be undone.</Trans>
-                  )
-                }
-                onOpenChange={(open) => {
-                  if (open) fetchUsageCount(record.id);
-                }}
-                onConfirm={(e) => {
-                  e?.stopPropagation();
-                  handleDelete(record.id);
-                }}
-                onCancel={(e) => e?.stopPropagation()}
-              >
-                <Button size="small" danger onClick={(e) => e.stopPropagation()}>
-                  <Trans>Delete</Trans>
-                </Button>
-              </Popconfirm>
-            );
-          }}
-        />
-      </Table>
+        myOrgAdminIds={myOrgAdminIds}
+        usageCounts={usageCounts}
+        onRowClick={openEdit}
+        onFetchUsageCount={fetchUsageCount}
+        onDelete={handleDelete}
+      />
 
-      <Drawer
-        title={isEdit ? <Trans>Edit organization</Trans> : <Trans>New organization</Trans>}
+      <OrganizationEditDrawer
         open={drawerOpen}
-        placement="right"
-        size={640}
+        isEdit={isEdit}
+        editingId={editingId}
+        form={form}
+        submitting={submitting}
         onClose={handleClose}
-        footer={
-          <Space style={{ justifyContent: "flex-end", width: "100%", display: "flex" }}>
-            <Button onClick={handleClose}>
-              <Trans>Cancel</Trans>
-            </Button>
-            <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-              <Trans>Save</Trans>
-            </Button>
-          </Space>
+        onSubmit={handleSubmit}
+        activeSections={activeSections}
+        onActiveSectionsChange={setActiveSections}
+        hasLogo={hasLogo}
+        logoKey={logoKey}
+        logoBusy={logoBusy}
+        onLogoImgError={() => setHasLogo(false)}
+        onLogoUploaded={refreshLogo}
+        onLogoUploadError={() => message.error(t`Logo upload failed`)}
+        onLogoRemove={handleLogoRemove}
+        leafAccountOptions={leafAccountOptions}
+        membersPanelProps={
+          administersEditingOrg && editingId
+            ? {
+                members,
+                membersLoading,
+                newMemberEmail,
+                newMemberRole,
+                addingMember,
+                memberActionId,
+                onNewMemberEmailChange: setNewMemberEmail,
+                onNewMemberRoleChange: setNewMemberRole,
+                onAddMember: () => handleAddMember(editingId),
+                onMemberRoleChange: (userId, role) =>
+                  handleMemberRoleChange(editingId, userId, role),
+                onRemoveMember: (userId) => handleRemoveMember(editingId, userId),
+              }
+            : null
         }
-      >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Card size="small" title={<Trans>Details</Trans>} style={{ marginBottom: 12 }}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24} md={16}>
-                <Form.Item
-                  name="name"
-                  label={<Trans>Name</Trans>}
-                  rules={[{ required: true, message: t`This field is required!` }]}
-                >
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="code" label={<Trans>Code</Trans>}>
-                  <Input
-                    maxLength={20}
-                    onChange={(e) => form.setFieldValue("code", e.target.value.toUpperCase())}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="country" label={<Trans>Country</Trans>}>
-                  <Select showSearch placeholder={t`Select country`}>
-                    {countries.map((c) => (
-                      <Select.Option key={c.name} value={c.name}>
-                        {c.name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="currency" label={<Trans>Currency</Trans>}>
-                  <Select
-                    showSearch
-                    onChange={(c: string) =>
-                      form.setFieldValue("minimum_fraction_digits", getDefaultFractionDigits(c))
-                    }
-                  >
-                    {currencies.map((c) => (
-                      <Select.Option key={c} value={c}>
-                        {c}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="email" label={<Trans>E-mail</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="phone" label={<Trans>Phone</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="website" label={<Trans>Website</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="registration_number" label={<Trans>Registration number</Trans>}>
-                  <Input />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Card>
-
-          <Collapse
-            size="small"
-            activeKey={activeSections}
-            onChange={(keys) => setActiveSections(keys as string[])}
-            style={{ marginBottom: 12 }}
-            items={compact([
-              {
-                key: "appearance",
-                label: <Trans>Appearance</Trans>,
-                forceRender: true,
-                children: (
-                  <Form.Item
-                    name="brandColor"
-                    label={<Trans>Brand color</Trans>}
-                    tooltip={
-                      <Trans>
-                        Accent color used across the app while this organization is selected.
-                      </Trans>
-                    }
-                    style={{ marginBottom: 0 }}
-                  >
-                    <BrandColorPicker />
-                  </Form.Item>
-                ),
-              },
-              isEdit && editingId
-                ? {
-                    key: "logo",
-                    label: <Trans>Logo</Trans>,
-                    forceRender: true,
-                    children: (
-                      <Space direction="vertical" size={12}>
-                        {hasLogo && (
-                          <img
-                            key={logoKey}
-                            src={`/api/organizations/${editingId}/logo?t=${logoKey}`}
-                            alt="logo"
-                            onError={() => setHasLogo(false)}
-                            style={{
-                              maxWidth: 240,
-                              maxHeight: 80,
-                              objectFit: "contain",
-                              border: `1px solid ${token.colorBorderSecondary}`,
-                              borderRadius: 6,
-                              padding: 8,
-                              display: "block",
-                            }}
-                          />
-                        )}
-                        <Space>
-                          <Upload
-                            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                            showUploadList={false}
-                            name="file"
-                            action={`/api/organizations/${editingId}/logo`}
-                            headers={{ [CSRF_HEADER]: "1" }}
-                            onChange={({ file }) => {
-                              if (file.status === "done") refreshLogo();
-                              else if (file.status === "error")
-                                message.error(t`Logo upload failed`);
-                            }}
-                          >
-                            <Button icon={<UploadOutlined />} loading={logoBusy}>
-                              {hasLogo ? t`Change logo` : t`Upload logo`}
-                            </Button>
-                          </Upload>
-                          {hasLogo && (
-                            <Button
-                              danger
-                              icon={<DeleteOutlined />}
-                              loading={logoBusy}
-                              onClick={handleLogoRemove}
-                            >
-                              <Trans>Remove logo</Trans>
-                            </Button>
-                          )}
-                        </Space>
-                      </Space>
-                    ),
-                  }
-                : null,
-              {
-                key: "banking",
-                label: <Trans>Banking</Trans>,
-                forceRender: true,
-                children: (
-                  <Row gutter={[16, 0]}>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="bank_name" label={<Trans>Bank name</Trans>}>
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="iban" label="IBAN">
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="bic" label="BIC">
-                        <Input
-                          maxLength={11}
-                          onChange={(e) => form.setFieldValue("bic", e.target.value.toUpperCase())}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="vatin" label="VATIN" style={{ marginBottom: 0 }}>
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                ),
-              },
-              {
-                key: "address",
-                label: <Trans>Address</Trans>,
-                forceRender: true,
-                children: (
-                  <Row gutter={[16, 0]}>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="country_code" label={<Trans>Country</Trans>}>
-                        <Select
-                          showSearch
-                          allowClear
-                          placeholder={t`Select a country`}
-                          options={countryOptions}
-                          filterOption={(input, option) =>
-                            (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                          }
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={16}>
-                      <Form.Item name="street" label={<Trans>Street</Trans>}>
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item name="house_number" label={<Trans>House number</Trans>}>
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={16}>
-                      <Form.Item
-                        name="city"
-                        label={<Trans>City</Trans>}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                ),
-              },
-              {
-                key: "einvoicing",
-                label: <Trans>E-invoicing</Trans>,
-                forceRender: true,
-                children: (
-                  <Row gutter={[16, 0]}>
-                    <Col xs={24}>
-                      <Form.Item
-                        name="tax_number"
-                        label={<Trans>Tax number</Trans>}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Input />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                ),
-              },
-              {
-                key: "formatting",
-                label: <Trans>Formatting</Trans>,
-                forceRender: true,
-                children: (
-                  <Row gutter={[16, 0]}>
-                    <Col xs={24} md={8}>
-                      <Form.Item name="date_format" label={<Trans>Date format</Trans>}>
-                        <Select placeholder={t`Select date format`}>
-                          {Object.keys(DATE_FORMATS).map((key) => (
-                            <Select.Option
-                              key={key}
-                              value={DATE_FORMATS[key as DateFormatKey] ?? "AUTO"}
-                            >
-                              {getDateFormatLabel(key as DateFormatKey)}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item
-                        name="minimum_fraction_digits"
-                        label={<Trans>Decimal places</Trans>}
-                      >
-                        <InputNumber min={0} max={10} style={{ width: "100%" }} />
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item
-                        name="invoiceLayout"
-                        label={<Trans>Invoice PDF layout</Trans>}
-                        style={{ marginBottom: 0 }}
-                        tooltip={
-                          <Trans>Which template invoices for this organization render with.</Trans>
-                        }
-                      >
-                        <Select placeholder={t`Default`} allowClear>
-                          {invoicePDFLayoutOptions().map((option) => (
-                            <Select.Option key={option.value} value={option.value}>
-                              {option.label}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                ),
-              },
-              isEdit && editingId
-                ? {
-                    key: "accounting",
-                    label: <Trans>Accounting</Trans>,
-                    forceRender: true,
-                    children: (
-                      <Row gutter={[16, 0]}>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultArAccountId"
-                            label={<Trans>Accounts receivable</Trans>}
-                            tooltip={
-                              <Trans>Used for the AR line when a sales invoice posts.</Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultApAccountId"
-                            label={<Trans>Accounts payable</Trans>}
-                            tooltip={<Trans>Used for the AP line when a vendor bill posts.</Trans>}
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultRevenueAccountId"
-                            label={<Trans>Default revenue account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Used for a sales invoice line whose product has no override.
-                              </Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultExpenseAccountId"
-                            label={<Trans>Default expense account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Used for a vendor bill line whose product has no override.
-                              </Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultCashAccountId"
-                            label={<Trans>Default cash account</Trans>}
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultInventoryAccountId"
-                            label={<Trans>Default inventory account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Used to capitalize a stock-enabled product's value when it's
-                                received or adjusted.
-                              </Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultGRNIAccountId"
-                            label={<Trans>Default GRNI account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Goods Received Not Invoiced — accrues a liability when a receipt is
-                                received, cleared when the matching vendor bill is approved.
-                              </Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultCOGSAccountId"
-                            label={<Trans>Default COGS account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Cost of goods sold, recognized against inventory when a shipment
-                                ships.
-                              </Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultInventoryAdjustmentAccountId"
-                            label={<Trans>Default inventory adjustment account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Counter-account for a manual stock adjustment's signed inventory
-                                value change.
-                              </Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="defaultImportCostsPayableAccountId"
-                            label={<Trans>Default import costs payable account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Credited for the freight/customs allocated to a receipt whose
-                                purchase order belongs to an import — separate from GRNI, which
-                                stays valued at the vendor's goods price only.
-                              </Trans>
-                            }
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="datevClearingAccountId"
-                            label={<Trans>DATEV clearing account</Trans>}
-                            tooltip={
-                              <Trans>
-                                Synthetic counter-account for a manual journal entry with more than
-                                one line on both sides (no natural anchor line) when exporting to
-                                DATEV. Leave blank if you don't use DATEV.
-                              </Trans>
-                            }
-                            style={{ marginBottom: 0 }}
-                          >
-                            <Select
-                              allowClear
-                              showSearch
-                              placeholder={t`None`}
-                              options={leafAccountOptions}
-                              optionFilterProp="label"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="datev_consultant_number"
-                            label={<Trans>DATEV consultant number</Trans>}
-                            tooltip={
-                              <Trans>Required to generate a DATEV export (1001–9999999).</Trans>
-                            }
-                          >
-                            <Input placeholder={t`e.g. 1001`} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="datev_client_number"
-                            label={<Trans>DATEV client number</Trans>}
-                            tooltip={<Trans>Required to generate a DATEV export (1–99999).</Trans>}
-                          >
-                            <Input placeholder={t`e.g. 456`} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="fiscalStampEnabled"
-                            valuePropName="checked"
-                            label=" "
-                            tooltip={
-                              <Trans>
-                                Shows a fiscal stamp (flat, non-taxable duty) field on this
-                                organization's invoices, independent of the PDF layout.
-                              </Trans>
-                            }
-                          >
-                            <Checkbox>
-                              <Trans>Enable fiscal stamp</Trans>
-                            </Checkbox>
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="withholdingTaxEnabled"
-                            valuePropName="checked"
-                            label=" "
-                            tooltip={
-                              <Trans>
-                                Shows a withholding tax rate field on this organization's invoices,
-                                independent of the PDF layout.
-                              </Trans>
-                            }
-                          >
-                            <Checkbox>
-                              <Trans>Enable withholding tax</Trans>
-                            </Checkbox>
-                          </Form.Item>
-                        </Col>
-                        {!!watchedFiscalStampEnabled && (
-                          <>
-                            <Col xs={24} md={12}>
-                              <Form.Item
-                                name="defaultFiscalStampAmount"
-                                label={<Trans>Default fiscal stamp amount</Trans>}
-                                tooltip={
-                                  <Trans>
-                                    Prefills a new invoice's stamp amount. The statutory amount
-                                    changes by law from time to time, so this is a plain editable
-                                    default, not enforced.
-                                  </Trans>
-                                }
-                              >
-                                <InputNumber min={0} precision={3} style={{ width: "100%" }} />
-                              </Form.Item>
-                            </Col>
-                            <Col xs={24} md={12}>
-                              <Form.Item
-                                name="defaultStampDutyAccountId"
-                                label={<Trans>Stamp duty account</Trans>}
-                                tooltip={
-                                  <Trans>
-                                    Liability account credited when an invoice's fiscal stamp posts
-                                    — the seller collects it on behalf of the state, so it's never
-                                    revenue.
-                                  </Trans>
-                                }
-                              >
-                                <Select
-                                  allowClear
-                                  showSearch
-                                  placeholder={t`None`}
-                                  options={leafAccountOptions}
-                                  optionFilterProp="label"
-                                />
-                              </Form.Item>
-                            </Col>
-                          </>
-                        )}
-                      </Row>
-                    ),
-                  }
-                : null,
-            ])}
-          />
-
-          {isEdit && editingId && myOrgAdminIds.has(editingId) && (
-            <Card size="small" title={<Trans>Members</Trans>} style={{ marginTop: 12 }}>
-              <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                <Table
-                  size="small"
-                  loading={membersLoading}
-                  dataSource={members}
-                  rowKey="userId"
-                  pagination={false}
-                >
-                  <Table.Column
-                    title={<Trans>User</Trans>}
-                    key="user"
-                    render={(_: unknown, record: OrganizationMember) => (
-                      <>
-                        {record.displayName || record.email}
-                        {!record.isActive && (
-                          <Tag color="default" style={{ marginLeft: 8 }}>
-                            <Trans>Inactive</Trans>
-                          </Tag>
-                        )}
-                      </>
-                    )}
-                  />
-                  <Table.Column
-                    title={<Trans>Role</Trans>}
-                    key="role"
-                    width={140}
-                    render={(_: unknown, record: OrganizationMember) => (
-                      <Select
-                        size="small"
-                        value={record.role}
-                        style={{ width: 110 }}
-                        disabled={memberActionId === record.userId}
-                        onChange={(role) => handleMemberRoleChange(editingId, record.userId, role)}
-                        options={[
-                          { value: "admin", label: t`Admin` },
-                          { value: "user", label: t`User` },
-                        ]}
-                      />
-                    )}
-                  />
-                  <Table.Column
-                    title=""
-                    key="actions"
-                    width={60}
-                    render={(_: unknown, record: OrganizationMember) => (
-                      <Popconfirm
-                        title={t`Remove this member?`}
-                        onConfirm={() => handleRemoveMember(editingId, record.userId)}
-                      >
-                        <Button
-                          size="small"
-                          danger
-                          type="text"
-                          icon={<DeleteOutlined />}
-                          loading={memberActionId === record.userId}
-                        />
-                      </Popconfirm>
-                    )}
-                  />
-                </Table>
-                <Space.Compact style={{ width: "100%" }}>
-                  <Input
-                    placeholder={t`Email of an existing user`}
-                    value={newMemberEmail}
-                    onChange={(e) => setNewMemberEmail(e.target.value)}
-                    onPressEnter={() => handleAddMember(editingId)}
-                  />
-                  <Select
-                    value={newMemberRole}
-                    style={{ width: 110 }}
-                    onChange={setNewMemberRole}
-                    options={[
-                      { value: "admin", label: t`Admin` },
-                      { value: "user", label: t`User` },
-                    ]}
-                  />
-                  <Button
-                    type="primary"
-                    loading={addingMember}
-                    disabled={!newMemberEmail.trim()}
-                    onClick={() => handleAddMember(editingId)}
-                  >
-                    <Trans>Add</Trans>
-                  </Button>
-                </Space.Compact>
-              </Space>
-            </Card>
-          )}
-
-          {isEdit && editingId && myOrgAdminIds.has(editingId) && (
-            <Card
-              size="small"
-              title={<Trans>Danger zone</Trans>}
-              style={{ marginTop: 12, borderColor: token.colorErrorBorder }}
-            >
-              <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                <Text type="secondary">
-                  <Trans>
-                    Permanently delete this organization's data without deleting the organization
-                    itself.
-                  </Trans>
-                </Text>
-                <Checkbox
-                  checked={resetMasterData}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setResetMasterData(checked);
-                    if (checked) setResetTransactionalData(true);
-                  }}
-                >
-                  <Trans>Master data</Trans>{" "}
-                  <Text type="secondary">({t`clients, vendors, products, tax rates`})</Text>
-                </Checkbox>
-                <Checkbox
-                  checked={resetTransactionalData}
-                  disabled={resetMasterData}
-                  onChange={(e) => setResetTransactionalData(e.target.checked)}
-                >
-                  <Trans>Transactional data</Trans>{" "}
-                  <Text type="secondary">
-                    (
-                    {t`invoices, orders, deliveries, purchase orders, goods receipts, incoming invoices, stock movements`}
-                    )
-                  </Text>
-                </Checkbox>
-                {resetMasterData && (
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    <Trans>
-                      Master data can't be reset on its own — documents reference clients and
-                      vendors, so transactional data is included automatically.
-                    </Trans>
-                  </Text>
-                )}
-                <Popconfirm
-                  title={t`Reset this organization's data?`}
-                  description={
-                    <div style={{ maxWidth: 280 }}>
-                      {resetBreakdown.length > 0 ? (
-                        <>
-                          <div>
-                            <Trans>This will permanently delete:</Trans>
-                          </div>
-                          <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                            {resetBreakdown.map(([n, label]) => (
-                              <li key={label as string}>
-                                {n} {label}
-                              </li>
-                            ))}
-                          </ul>
-                        </>
-                      ) : (
-                        <div>
-                          <Trans>Nothing matches the current selection.</Trans>
-                        </div>
-                      )}
-                      <div>
-                        <Trans>This cannot be undone.</Trans>
-                      </div>
-                    </div>
-                  }
-                  okButtonProps={{ danger: true }}
-                  onOpenChange={(open) => {
-                    if (open) fetchUsageCount(editingId);
-                  }}
-                  onConfirm={() => handleReset(editingId)}
-                  disabled={!resetSelected}
-                >
-                  <Button
-                    danger
-                    icon={<ExclamationCircleOutlined />}
-                    loading={resetting}
-                    disabled={!resetSelected}
-                  >
-                    <Trans>Reset selected data</Trans>
-                  </Button>
-                </Popconfirm>
-              </Space>
-            </Card>
-          )}
-        </Form>
-      </Drawer>
+        dangerZoneProps={
+          administersEditingOrg && editingId
+            ? {
+                resetMasterData,
+                resetTransactionalData,
+                resetting,
+                resetBreakdown,
+                resetSelected,
+                onMasterDataChange: setResetMasterData,
+                onTransactionalDataChange: setResetTransactionalData,
+                onPopconfirmOpenChange: (open) => {
+                  if (open) fetchUsageCount(editingId);
+                },
+                onConfirmReset: () => handleReset(editingId),
+              }
+            : null
+        }
+      />
     </>
   );
 }
