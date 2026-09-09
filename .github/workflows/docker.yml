@@ -13,16 +13,117 @@ concurrency:
   group: docker-${{ github.workflow }}
   cancel-in-progress: false
 
+env:
+  IMAGE_NAME: ghcr.io/mamissaoui/fatura-cloud
+
 jobs:
+  # One job per platform, each on its own *native* runner — arm64 builds on
+  # a real arm64 machine instead of amd64+QEMU. Confirmed via the v3.14.0
+  # release build: the debian runtime stage's `apt-get install
+  # libreoffice-calc` (real package unpacking/postinst work, not something
+  # Go's cross-compilation trick below can route around) took 4m31s under
+  # QEMU emulation vs. 36s native — the dominant cost in the whole build.
+  # linux/arm64 hosted runners are free for public repos, so this is a pure
+  # win with no billing tradeoff on this repo. Each leg builds and pushes
+  # its own image *by digest only* (no tags yet) — the `merge` job below
+  # combines both digests into the one multi-arch manifest every existing
+  # tag (version, major.minor, sha) points at, matching Docker's own
+  # documented "distribute build across multiple runners" pattern.
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Prepare platform pair
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Labels only here — the actual tags (version, major.minor, sha) are
+      # applied once, in the merge job, to the combined manifest list. A
+      # per-platform image only ever needs to be addressable by digest.
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ env.IMAGE_NAME }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          # Scoped per platform now that each builds on its own runner —
+          # sharing one scope across two architectures' layer caches would
+          # mean every push evicts the other platform's cache instead of
+          # reusing it. Still capped and namespaced away from CI's Go build
+          # cache, same reasoning as before.
+          cache-from: type=gha,scope=docker-release-${{ env.PLATFORM_PAIR }}
+          cache-to: type=gha,scope=docker-release-${{ env.PLATFORM_PAIR }},mode=max,size-limit=8g
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Combines the two per-platform digests from above into one multi-arch
+  # manifest list and applies every real tag to it in one step — this is
+  # the only job that ever writes a named tag, so `latest`/the version tags
+  # always point at a manifest covering both platforms, never a
+  # single-platform image.
+  merge:
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Download digests
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
@@ -38,30 +139,21 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
-          images: ghcr.io/mamissaoui/fatura-cloud
+          images: ${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-,format=short
 
-      - name: Build and push
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VERSION=${{ github.ref_name }}
-          secrets: |
-            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
-          # The GHA cache shares the repo's 10 GB actions-cache budget with
-          # CI's Go build cache. Multi-arch layer caches grow fast; scope this
-          # cache to the docker workflow and cap it so an oversized release
-          # build can't evict the Go cache that CI depends on for its speed.
-          cache-from: type=gha,scope=docker-release
-          cache-to: type=gha,scope=docker-release,mode=max,size-limit=8g
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf "${{ env.IMAGE_NAME }}@sha256:%s " *)
+
+      - name: Inspect image
+        run: docker buildx imagetools inspect ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
 
       # Every multi-arch push adds 3 package versions (manifest list + one
       # per platform) that are never superseded, since each git tag gets its
@@ -81,7 +173,7 @@ jobs:
           delete-partial-images: true
 
   release:
-    needs: build
+    needs: merge
     runs-on: ubuntu-latest
     permissions:
       contents: write
