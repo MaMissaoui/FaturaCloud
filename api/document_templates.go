@@ -46,7 +46,7 @@ func (h *handler) getDocumentTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", documentTemplateContentType)
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filename)+`"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
 }
@@ -155,7 +155,7 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 	filenameBase := "invoice-" + invoice.Number
 	if format == "xlsx" {
 		w.Header().Set("Content-Type", documentTemplateContentType)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.xlsx"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(filled)
 		return
@@ -171,7 +171,7 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.pdf"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
 }
@@ -208,7 +208,7 @@ func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Req
 	filenameBase := "purchase-order-" + order.OrderNumber
 	if format == "xlsx" {
 		w.Header().Set("Content-Type", documentTemplateContentType)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.xlsx"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(filled)
 		return
@@ -224,7 +224,7 @@ func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Req
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.pdf"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
 }
@@ -262,7 +262,7 @@ func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.R
 	filenameBase := "incoming-invoice-" + invoice.VendorInvoiceNumber
 	if format == "xlsx" {
 		w.Header().Set("Content-Type", documentTemplateContentType)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.xlsx"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(filled)
 		return
@@ -278,7 +278,7 @@ func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.R
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.pdf"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
 }
@@ -315,7 +315,7 @@ func (h *handler) exportDeliveryDocument(w http.ResponseWriter, r *http.Request)
 	filenameBase := "delivery-" + delivery.DeliveryNumber
 	if format == "xlsx" {
 		w.Header().Set("Content-Type", documentTemplateContentType)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.xlsx"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(filled)
 		return
@@ -331,7 +331,7 @@ func (h *handler) exportDeliveryDocument(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.pdf"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
 }
@@ -368,7 +368,7 @@ func (h *handler) exportInboundDeliveryDocument(w http.ResponseWriter, r *http.R
 	filenameBase := "goods-receipt-" + delivery.DeliveryNumber
 	if format == "xlsx" {
 		w.Header().Set("Content-Type", documentTemplateContentType)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.xlsx"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(filled)
 		return
@@ -384,7 +384,7 @@ func (h *handler) exportInboundDeliveryDocument(w http.ResponseWriter, r *http.R
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.pdf"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
 }
@@ -420,7 +420,7 @@ func (h *handler) exportOrderDocument(w http.ResponseWriter, r *http.Request) {
 	filenameBase := "order-" + order.OrderNumber
 	if format == "xlsx" {
 		w.Header().Set("Content-Type", documentTemplateContentType)
-		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.xlsx"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(filled)
 		return
@@ -436,7 +436,7 @@ func (h *handler) exportOrderDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filenameBase)+`.pdf"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
 }

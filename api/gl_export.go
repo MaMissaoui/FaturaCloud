@@ -30,7 +30,7 @@ func (h *handler) getFECExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/tab-separated-values; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filename)+`"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
 }
@@ -63,7 +63,7 @@ func (h *handler) getDATEVExport(w http.ResponseWriter, r *http.Request) {
 	// might suggest — DATEV import tools and Excel both key off this to
 	// treat it as delimited text rather than an opaque download.
 	w.Header().Set("Content-Type", "text/csv; charset=windows-1252")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(filename)+`"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
 }
