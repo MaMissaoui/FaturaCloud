@@ -175,3 +175,56 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(pdfBytes)
 }
+
+// exportPurchaseOrderDocument mirrors exportInvoiceDocument above — same
+// document_templates/xlsx_export machinery, same not-through-protected()
+// registration for the same reason (a multi-second LibreOffice conversion
+// must never hold dbMu's request-long read lock).
+func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	format := r.URL.Query().Get("format")
+	if format != "xlsx" && format != "pdf" {
+		writeError(w, http.StatusBadRequest, "format must be xlsx or pdf")
+		return
+	}
+
+	h.dbMu.RLock()
+	order, lineItems, org, vendor, templateBytes, taxRates, err := h.db.FetchPurchaseOrderExportData(id)
+	h.dbMu.RUnlock()
+	if err != nil {
+		writeDBError(w, err, "purchase order not found")
+		return
+	}
+
+	filled, unresolved, err := db.FillPurchaseOrderTemplate(templateBytes, *order, lineItems, *org, *vendor, taxRates)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	if len(unresolved) > 0 {
+		log.Printf("export purchase order %s: template has unresolved placeholders: %v", id, unresolved)
+	}
+
+	filenameBase := "purchase-order-" + order.OrderNumber
+	if format == "xlsx" {
+		w.Header().Set("Content-Type", documentTemplateContentType)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.xlsx"`)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(filled)
+		return
+	}
+
+	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
+	if err != nil {
+		if errors.Is(err, db.ErrPDFConversionUnavailable) {
+			writeError(w, http.StatusServiceUnavailable, err.Error())
+			return
+		}
+		writeInternalError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filenameBase+`.pdf"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(pdfBytes)
+}

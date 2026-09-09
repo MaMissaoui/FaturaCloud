@@ -15,9 +15,17 @@ import _ "embed"
 //go:embed templates/invoice_default.xlsx
 var invoiceDefaultTemplate []byte
 
+// purchaseOrderDefaultTemplate is the built-in Purchase Order export
+// template, generated the same way (db/templates/gen/main.go) and guarded
+// the same way (TestEmbeddedDefaultPurchaseOrderTemplatePlaceholdersAllResolve).
+//
+//go:embed templates/purchase_order_default.xlsx
+var purchaseOrderDefaultTemplate []byte
+
 // embeddedDefaultTemplates maps a documentType to its built-in template.
-// Phase 2 (purchase orders, deliveries, incoming invoices) adds one more
-// //go:embed + map entry each, no other change to this file.
+// Remaining Phase 2 types (deliveries, orders, incoming invoices) each add
+// one more //go:embed + map entry, no other change to this file.
 var embeddedDefaultTemplates = map[string][]byte{
-	"invoice": invoiceDefaultTemplate,
+	"invoice":        invoiceDefaultTemplate,
+	"purchase_order": purchaseOrderDefaultTemplate,
 }

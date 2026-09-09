@@ -35,15 +35,36 @@ func FillInvoiceTemplate(
 	client Client,
 	taxRates map[string]TaxRate,
 ) ([]byte, []string, error) {
+	currency := ""
+	if org.Currency != nil {
+		currency = *org.Currency
+	}
+	scalars := buildScalarPlaceholders(invoice, org, client)
+	lineRows := make([]map[string]string, len(lineItems))
+	for i, li := range lineItems {
+		lineRows[i] = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
+	}
+	return fillTemplate(templateBytes, scalars, lineRows)
+}
+
+// fillTemplate is the document-type-agnostic engine every FillXTemplate
+// function (FillInvoiceTemplate, FillPurchaseOrderTemplate, …) is a thin
+// wrapper around: it knows nothing about invoices, purchase orders, or any
+// other domain type — only "scalars" (resolved once) and "lineRows" (one
+// placeholder map per repeated row, already resolved by the caller). This
+// split exists so adding a new exportable document type only ever means
+// writing that type's own scalar/line-item placeholder builders, never
+// touching the marker-expansion/substitution/sheet-stripping mechanics below.
+func fillTemplate(templateBytes []byte, scalars map[string]string, lineRows []map[string]string) ([]byte, []string, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(templateBytes))
 	if err != nil {
-		return nil, nil, fmt.Errorf("fill_invoice_template: open: %w", err)
+		return nil, nil, fmt.Errorf("fill_template: open: %w", err)
 	}
 	defer f.Close()
 
 	sheet := f.GetSheetName(0)
 	if sheet == "" {
-		return nil, nil, fmt.Errorf("fill_invoice_template: template has no sheets")
+		return nil, nil, fmt.Errorf("fill_template: template has no sheets")
 	}
 
 	markerRow, markerCol, err := findMarkerRow(f, sheet)
@@ -51,11 +72,11 @@ func FillInvoiceTemplate(
 		return nil, nil, err
 	}
 
-	n := len(lineItems)
+	n := len(lineRows)
 	if n > 1 {
 		for i := 1; i < n; i++ {
 			if err := f.DuplicateRowTo(sheet, markerRow, markerRow+i); err != nil {
-				return nil, nil, fmt.Errorf("fill_invoice_template: duplicate line item row: %w", err)
+				return nil, nil, fmt.Errorf("fill_template: duplicate line item row: %w", err)
 			}
 		}
 	}
@@ -69,18 +90,12 @@ func FillInvoiceTemplate(
 	for i := 0; i < repeatRowCount; i++ {
 		cell, err := excelize.CoordinatesToCellName(markerCol, markerRow+i)
 		if err != nil {
-			return nil, nil, fmt.Errorf("fill_invoice_template: %w", err)
+			return nil, nil, fmt.Errorf("fill_template: %w", err)
 		}
 		if err := f.SetCellStr(sheet, cell, ""); err != nil {
-			return nil, nil, fmt.Errorf("fill_invoice_template: clear marker: %w", err)
+			return nil, nil, fmt.Errorf("fill_template: clear marker: %w", err)
 		}
 	}
-
-	currency := ""
-	if org.Currency != nil {
-		currency = *org.Currency
-	}
-	scalars := buildScalarPlaceholders(invoice, org, client)
 
 	unresolvedSet := map[string]bool{}
 
@@ -90,15 +105,14 @@ func FillInvoiceTemplate(
 	// row index captured earlier.
 	rows, err := f.GetRows(sheet)
 	if err != nil {
-		return nil, nil, fmt.Errorf("fill_invoice_template: read rows: %w", err)
+		return nil, nil, fmt.Errorf("fill_template: read rows: %w", err)
 	}
 
 	for rIdx, rowVals := range rows {
 		rowNum := rIdx + 1 // excelize sheet rows are 1-indexed; GetRows is a 0-indexed slice
 		var liPlaceholders map[string]string
 		if n > 0 && rowNum >= markerRow && rowNum < markerRow+repeatRowCount {
-			li := lineItems[rowNum-markerRow]
-			liPlaceholders = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
+			liPlaceholders = lineRows[rowNum-markerRow]
 		}
 
 		for cIdx, cellVal := range rowVals {
@@ -107,7 +121,7 @@ func FillInvoiceTemplate(
 			}
 			colName, err := excelize.ColumnNumberToName(cIdx + 1)
 			if err != nil {
-				return nil, nil, fmt.Errorf("fill_invoice_template: %w", err)
+				return nil, nil, fmt.Errorf("fill_template: %w", err)
 			}
 			cellRef := colName + strconv.Itoa(rowNum)
 
@@ -126,7 +140,7 @@ func FillInvoiceTemplate(
 			})
 			if newVal != cellVal {
 				if err := f.SetCellStr(sheet, cellRef, newVal); err != nil {
-					return nil, nil, fmt.Errorf("fill_invoice_template: set cell %s: %w", cellRef, err)
+					return nil, nil, fmt.Errorf("fill_template: set cell %s: %w", cellRef, err)
 				}
 			}
 		}
@@ -142,13 +156,13 @@ func FillInvoiceTemplate(
 			continue
 		}
 		if err := f.DeleteSheet(name); err != nil {
-			return nil, nil, fmt.Errorf("fill_invoice_template: delete extra sheet %q: %w", name, err)
+			return nil, nil, fmt.Errorf("fill_template: delete extra sheet %q: %w", name, err)
 		}
 	}
 
 	var buf bytes.Buffer
 	if err := f.Write(&buf); err != nil {
-		return nil, nil, fmt.Errorf("fill_invoice_template: write: %w", err)
+		return nil, nil, fmt.Errorf("fill_template: write: %w", err)
 	}
 
 	unresolved := make([]string, 0, len(unresolvedSet))
