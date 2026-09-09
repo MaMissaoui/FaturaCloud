@@ -20,6 +20,13 @@ func seedOrgAndClient(t *testing.T, database *db.Database) (orgID, clientID stri
 	if err != nil {
 		t.Fatalf("seed CreateClient: %v", err)
 	}
+	// Every caller of this helper also seeds "test-user" via seedUser — this
+	// grants that same, consistently-named user org membership, now
+	// required (issue #141 Phase C) for the single-resource routes these
+	// tests exercise.
+	if _, err := database.AddOrganizationUser(org.ID, "test-user", "user"); err != nil {
+		t.Fatalf("seed org membership: %v", err)
+	}
 	return org.ID, client.ID
 }
 

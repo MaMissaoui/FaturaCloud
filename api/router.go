@@ -202,12 +202,21 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/clients/{id}/invoice-count", clientOrgID, h.getClientInvoiceCount)
 
 	// Vendors
+	// vendorOrgID resolves a vendor route's {id} to its owning organization
+	// by reusing GetVendor — same shape as clientOrgID above.
+	vendorOrgID := func(r *http.Request) (string, error) {
+		vendor, err := h.db.GetVendor(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return vendor.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/vendors", pathOrgID("orgId"), h.listVendors)
 	protected("POST", "/api/vendors", h.createVendor)
-	protected("GET", "/api/vendors/{id}", h.getVendor)
-	protected("PUT", "/api/vendors/{id}", h.updateVendor)
-	protected("DELETE", "/api/vendors/{id}", h.deleteVendor)
-	protected("GET", "/api/vendors/{id}/document-count", h.getVendorDocumentCount)
+	orgMemberProtected("GET", "/api/vendors/{id}", vendorOrgID, h.getVendor)
+	orgMemberProtected("PUT", "/api/vendors/{id}", vendorOrgID, h.updateVendor)
+	orgMemberProtected("DELETE", "/api/vendors/{id}", vendorOrgID, h.deleteVendor)
+	orgMemberProtected("GET", "/api/vendors/{id}/document-count", vendorOrgID, h.getVendorDocumentCount)
 
 	// Imports (F114 — consolidated China shipments purchase orders link to)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/imports", pathOrgID("orgId"), h.listImports)
@@ -262,21 +271,33 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/incoming-invoices/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportIncomingInvoiceDocument))))
 
 	// Invoices
+	// invoiceOrgID resolves an invoice route's {id} to its owning
+	// organization by reusing GetInvoice — same shape as clientOrgID above.
+	// Reused below for the export route and for GET .../payments.
+	invoiceOrgID := func(r *http.Request) (string, error) {
+		invoice, err := h.db.GetInvoice(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return invoice.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/invoices", pathOrgID("orgId"), h.listInvoices)
 	protected("POST", "/api/invoices", h.createInvoice)
-	protected("GET", "/api/invoices/{id}", h.getInvoice)
-	protected("GET", "/api/invoices/{id}/line-items", h.getInvoiceLineItems)
-	protected("PUT", "/api/invoices/{id}", h.updateInvoice)
-	protected("PATCH", "/api/invoices/{id}/state", h.updateInvoiceState)
-	protected("DELETE", "/api/invoices/{id}", h.deleteInvoice)
-	protected("GET", "/api/invoices/{id}/e-invoice", h.getInvoiceEInvoice)
+	orgMemberProtected("GET", "/api/invoices/{id}", invoiceOrgID, h.getInvoice)
+	orgMemberProtected("GET", "/api/invoices/{id}/line-items", invoiceOrgID, h.getInvoiceLineItems)
+	orgMemberProtected("PUT", "/api/invoices/{id}", invoiceOrgID, h.updateInvoice)
+	orgMemberProtected("PATCH", "/api/invoices/{id}/state", invoiceOrgID, h.updateInvoiceState)
+	orgMemberProtected("DELETE", "/api/invoices/{id}", invoiceOrgID, h.deleteInvoice)
+	orgMemberProtected("GET", "/api/invoices/{id}/e-invoice", invoiceOrgID, h.getInvoiceEInvoice)
 	// Registered directly on mux, not through protected() — a LibreOffice
 	// PDF conversion can take seconds, and protected()'s withDB would hold
 	// dbMu's read lock for that whole duration, blocking a pending
 	// /api/restore write-lock acquisition and everything behind it (see
 	// exportInvoiceDocument's comment). The handler takes its own short RLock
-	// around just the DB reads instead.
-	mux.Handle("GET /api/invoices/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportInvoiceDocument))))
+	// around just the DB reads instead. orgMember (not withDB) provides the
+	// membership check, same insertion point orgAdminProtected already uses
+	// for its own no-withDB routes.
+	mux.Handle("GET /api/invoices/{id}/export", auth(h.orgMember(invoiceOrgID)(csrf(limitBody(defaultMaxBody, h.exportInvoiceDocument)))))
 
 	// Dashboard
 	orgMemberProtected("GET", "/api/organizations/{orgId}/dashboard", pathOrgID("orgId"), h.getDashboard)
@@ -319,32 +340,50 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("DELETE", "/api/stock-movements/{id}", h.deleteStockMovement)
 
 	// Orders
+	// orderOrgID resolves an order route's {id} to its owning organization
+	// by reusing GetOrder — same shape as clientOrgID above.
+	orderOrgID := func(r *http.Request) (string, error) {
+		order, err := h.db.GetOrder(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return order.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/orders", pathOrgID("orgId"), h.listOrders)
 	protected("POST", "/api/orders", h.createOrder)
-	protected("GET", "/api/orders/{id}", h.getOrder)
-	protected("GET", "/api/orders/{id}/line-items", h.getOrderLineItems)
-	protected("GET", "/api/orders/{id}/delivered-quantities", h.getOrderDeliveredQuantities)
-	protected("PUT", "/api/orders/{id}", h.updateOrder)
-	protected("PATCH", "/api/orders/{id}/status", h.updateOrderStatus)
-	protected("DELETE", "/api/orders/{id}", h.deleteOrder)
+	orgMemberProtected("GET", "/api/orders/{id}", orderOrgID, h.getOrder)
+	orgMemberProtected("GET", "/api/orders/{id}/line-items", orderOrgID, h.getOrderLineItems)
+	orgMemberProtected("GET", "/api/orders/{id}/delivered-quantities", orderOrgID, h.getOrderDeliveredQuantities)
+	orgMemberProtected("PUT", "/api/orders/{id}", orderOrgID, h.updateOrder)
+	orgMemberProtected("PATCH", "/api/orders/{id}/status", orderOrgID, h.updateOrderStatus)
+	orgMemberProtected("DELETE", "/api/orders/{id}", orderOrgID, h.deleteOrder)
 	// Same reasoning as GET /api/invoices/{id}/export above — registered
 	// directly on mux, not through protected(), so a LibreOffice PDF
 	// conversion never holds dbMu's read lock for its whole duration.
-	mux.Handle("GET /api/orders/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportOrderDocument))))
+	mux.Handle("GET /api/orders/{id}/export", auth(h.orgMember(orderOrgID)(csrf(limitBody(defaultMaxBody, h.exportOrderDocument)))))
 
 	// Outbound deliveries
+	// deliveryOrgID resolves a delivery route's {id} to its owning
+	// organization by reusing GetDelivery — same shape as clientOrgID above.
+	deliveryOrgID := func(r *http.Request) (string, error) {
+		delivery, err := h.db.GetDelivery(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return delivery.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/deliveries", pathOrgID("orgId"), h.listDeliveries)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/deliveries/next-number", pathOrgID("orgId"), h.nextDeliveryNumber)
 	protected("POST", "/api/deliveries", h.createDelivery)
-	protected("GET", "/api/deliveries/{id}", h.getDelivery)
-	protected("GET", "/api/deliveries/{id}/line-items", h.getDeliveryLineItems)
-	protected("PUT", "/api/deliveries/{id}", h.updateDelivery)
-	protected("PATCH", "/api/deliveries/{id}/status", h.updateDeliveryStatus)
-	protected("DELETE", "/api/deliveries/{id}", h.deleteDelivery)
+	orgMemberProtected("GET", "/api/deliveries/{id}", deliveryOrgID, h.getDelivery)
+	orgMemberProtected("GET", "/api/deliveries/{id}/line-items", deliveryOrgID, h.getDeliveryLineItems)
+	orgMemberProtected("PUT", "/api/deliveries/{id}", deliveryOrgID, h.updateDelivery)
+	orgMemberProtected("PATCH", "/api/deliveries/{id}/status", deliveryOrgID, h.updateDeliveryStatus)
+	orgMemberProtected("DELETE", "/api/deliveries/{id}", deliveryOrgID, h.deleteDelivery)
 	// Same reasoning as GET /api/invoices/{id}/export above — registered
 	// directly on mux, not through protected(), so a LibreOffice PDF
 	// conversion never holds dbMu's read lock for its whole duration.
-	mux.Handle("GET /api/deliveries/{id}/export", auth(csrf(limitBody(defaultMaxBody, h.exportDeliveryDocument))))
+	mux.Handle("GET /api/deliveries/{id}/export", auth(h.orgMember(deliveryOrgID)(csrf(limitBody(defaultMaxBody, h.exportDeliveryDocument)))))
 
 	// Chart of accounts
 	orgMemberProtected("GET", "/api/organizations/{orgId}/accounts", pathOrgID("orgId"), h.listAccounts)
@@ -394,7 +433,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("GET", "/api/payments/{id}", h.getPayment)
 	protected("GET", "/api/payments/{id}/applications", h.getPaymentApplications)
 	protected("POST", "/api/payments/{id}/void", h.voidPayment)
-	protected("GET", "/api/invoices/{id}/payments", h.getInvoicePayments)
+	orgMemberProtected("GET", "/api/invoices/{id}/payments", invoiceOrgID, h.getInvoicePayments)
 	protected("GET", "/api/incoming-invoices/{id}/payments", h.getIncomingInvoicePayments)
 
 	// Reports
