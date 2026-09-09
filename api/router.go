@@ -352,17 +352,38 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/exchange-rate", pathOrgID("orgId"), h.getLastExchangeRate)
 
 	// Tax rates
+	// taxRateOrgID resolves a tax-rate route's {id} to its owning
+	// organization by reusing GetTaxRate — same shape as clientOrgID above.
+	taxRateOrgID := func(r *http.Request) (string, error) {
+		taxRate, err := h.db.GetTaxRate(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return taxRate.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/tax-rates", pathOrgID("orgId"), h.listTaxRates)
 	protected("POST", "/api/tax-rates", h.createTaxRate)
-	protected("GET", "/api/tax-rates/{id}", h.getTaxRate)
-	protected("PUT", "/api/tax-rates/{id}", h.updateTaxRate)
-	protected("DELETE", "/api/tax-rates/{id}", h.deleteTaxRate)
-	protected("GET", "/api/tax-rates/{id}/usage-count", h.getTaxRateUsageCount)
+	orgMemberProtected("GET", "/api/tax-rates/{id}", taxRateOrgID, h.getTaxRate)
+	orgMemberProtected("PUT", "/api/tax-rates/{id}", taxRateOrgID, h.updateTaxRate)
+	orgMemberProtected("DELETE", "/api/tax-rates/{id}", taxRateOrgID, h.deleteTaxRate)
+	orgMemberProtected("GET", "/api/tax-rates/{id}/usage-count", taxRateOrgID, h.getTaxRateUsageCount)
 
+	// paymentTermOrgID resolves a payment-term route's {id} to its owning
+	// organization by reusing GetPaymentTerm — same shape as clientOrgID
+	// above. There is no GET /api/payment-terms/{id} route at all (only
+	// PUT/DELETE by id, plus the org-scoped list) — see pendingPhaseCRoutes'
+	// prior entries.
+	paymentTermOrgID := func(r *http.Request) (string, error) {
+		term, err := h.db.GetPaymentTerm(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return term.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/payment-terms", pathOrgID("orgId"), h.listPaymentTerms)
 	protected("POST", "/api/payment-terms", h.createPaymentTerm)
-	protected("PUT", "/api/payment-terms/{id}", h.updatePaymentTerm)
-	protected("DELETE", "/api/payment-terms/{id}", h.deletePaymentTerm)
+	orgMemberProtected("PUT", "/api/payment-terms/{id}", paymentTermOrgID, h.updatePaymentTerm)
+	orgMemberProtected("DELETE", "/api/payment-terms/{id}", paymentTermOrgID, h.deletePaymentTerm)
 
 	// Countries — global picklist activation, not per-organization (the
 	// new-organization form has no organization yet). Read is available to
@@ -372,18 +393,37 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	platformAdminProtected("PATCH", "/api/countries/{code}", h.setCountryActive)
 
 	// Products
+	// productOrgID resolves a product route's {id} to its owning
+	// organization by reusing GetProduct — same shape as clientOrgID above.
+	productOrgID := func(r *http.Request) (string, error) {
+		product, err := h.db.GetProduct(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return product.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products", pathOrgID("orgId"), h.listProducts)
 	protected("POST", "/api/products", h.createProduct)
-	protected("GET", "/api/products/{id}", h.getProduct)
-	protected("PUT", "/api/products/{id}", h.updateProduct)
-	protected("DELETE", "/api/products/{id}", h.deleteProduct)
-	protected("GET", "/api/products/{id}/stock-movements", h.listProductStockMovements)
-	protected("GET", "/api/products/{id}/serial-numbers", h.listProductSerialNumbers)
+	orgMemberProtected("GET", "/api/products/{id}", productOrgID, h.getProduct)
+	orgMemberProtected("PUT", "/api/products/{id}", productOrgID, h.updateProduct)
+	orgMemberProtected("DELETE", "/api/products/{id}", productOrgID, h.deleteProduct)
+	orgMemberProtected("GET", "/api/products/{id}/stock-movements", productOrgID, h.listProductStockMovements)
+	orgMemberProtected("GET", "/api/products/{id}/serial-numbers", productOrgID, h.listProductSerialNumbers)
 
 	// Stock movements
+	// stockMovementOrgID resolves a stock-movement route's {id} to its
+	// owning organization by reusing the new GetStockMovement (db/stock.go)
+	// — same shape as clientOrgID above. DELETE is the only by-id route here.
+	stockMovementOrgID := func(r *http.Request) (string, error) {
+		movement, err := h.db.GetStockMovement(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return movement.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/stock-movements", pathOrgID("orgId"), h.listStockMovements)
 	protected("POST", "/api/stock-movements", h.createStockMovement)
-	protected("DELETE", "/api/stock-movements/{id}", h.deleteStockMovement)
+	orgMemberProtected("DELETE", "/api/stock-movements/{id}", stockMovementOrgID, h.deleteStockMovement)
 
 	// Orders
 	// orderOrgID resolves an order route's {id} to its owning organization
@@ -432,17 +472,37 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/deliveries/{id}/export", auth(h.orgMember(deliveryOrgID)(csrf(limitBody(defaultMaxBody, h.exportDeliveryDocument)))))
 
 	// Chart of accounts
+	// accountOrgID resolves an account route's {id} to its owning
+	// organization by reusing GetAccount — same shape as clientOrgID above.
+	accountOrgID := func(r *http.Request) (string, error) {
+		account, err := h.db.GetAccount(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return account.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/accounts", pathOrgID("orgId"), h.listAccounts)
 	protected("POST", "/api/accounts", h.createAccount)
-	protected("GET", "/api/accounts/{id}", h.getAccount)
-	protected("PUT", "/api/accounts/{id}", h.updateAccount)
-	protected("DELETE", "/api/accounts/{id}", h.deleteAccount)
+	orgMemberProtected("GET", "/api/accounts/{id}", accountOrgID, h.getAccount)
+	orgMemberProtected("PUT", "/api/accounts/{id}", accountOrgID, h.updateAccount)
+	orgMemberProtected("DELETE", "/api/accounts/{id}", accountOrgID, h.deleteAccount)
 
 	// Journals
+	// journalOrgID resolves a journal route's {id} to its owning
+	// organization by reusing GetJournal — same shape as clientOrgID above.
+	// There is no GET /api/journals/{id} route at all (only PUT/DELETE by
+	// id, plus the org-scoped list) — see pendingPhaseCRoutes' prior entries.
+	journalOrgID := func(r *http.Request) (string, error) {
+		journal, err := h.db.GetJournal(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return journal.OrganizationID, nil
+	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/journals", pathOrgID("orgId"), h.listJournals)
 	protected("POST", "/api/journals", h.createJournal)
-	protected("PUT", "/api/journals/{id}", h.updateJournal)
-	protected("DELETE", "/api/journals/{id}", h.deleteJournal)
+	orgMemberProtected("PUT", "/api/journals/{id}", journalOrgID, h.updateJournal)
+	orgMemberProtected("DELETE", "/api/journals/{id}", journalOrgID, h.deleteJournal)
 
 	// The fiscal year's own row names its organization — {id} is the fiscal
 	// year, not the org, so this needs a lookup instead of pathOrgID. Hoisted
@@ -456,29 +516,63 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		return fy.OrganizationID, nil
 	}
 
+	// fiscalPeriodOrgID resolves a fiscal-period route's {id} to its owning
+	// organization by reusing GetFiscalPeriod, which carries its own
+	// OrganizationID column directly (no need to hop through its fiscal
+	// year) — {id} here is a fiscal *period*, not a fiscal *year*, unlike
+	// every other route in this section.
+	fiscalPeriodOrgID := func(r *http.Request) (string, error) {
+		period, err := h.db.GetFiscalPeriod(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return period.OrganizationID, nil
+	}
+
 	// Fiscal years / periods
 	orgMemberProtected("GET", "/api/organizations/{orgId}/fiscal-years", pathOrgID("orgId"), h.listFiscalYears)
 	protected("POST", "/api/fiscal-years", h.createFiscalYear)
 	orgMemberProtected("GET", "/api/fiscal-years/{id}/periods", fiscalYearOrgID, h.listFiscalPeriods)
 	protected("POST", "/api/fiscal-periods", h.createFiscalPeriod)
-	protected("PATCH", "/api/fiscal-periods/{id}/status", h.updateFiscalPeriodStatus)
+	orgMemberProtected("PATCH", "/api/fiscal-periods/{id}/status", fiscalPeriodOrgID, h.updateFiscalPeriodStatus)
 	orgAdminProtected("POST", "/api/fiscal-years/{id}/close", fiscalYearOrgID, h.closeFiscalYear)
+
+	// journalEntryOrgID resolves a journal-entry route's {id} to its owning
+	// organization by reusing GetJournalEntry — same shape as clientOrgID
+	// above.
+	journalEntryOrgID := func(r *http.Request) (string, error) {
+		entry, err := h.db.GetJournalEntry(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return entry.OrganizationID, nil
+	}
 
 	// Journal entries
 	orgMemberProtected("GET", "/api/organizations/{orgId}/journal-entries", pathOrgID("orgId"), h.listJournalEntries)
 	protected("POST", "/api/journal-entries", h.createJournalEntry)
-	protected("GET", "/api/journal-entries/{id}", h.getJournalEntry)
-	protected("GET", "/api/journal-entries/{id}/lines", h.getJournalEntryLines)
-	protected("PATCH", "/api/journal-entries/{id}/post", h.postJournalEntry)
-	protected("POST", "/api/journal-entries/{id}/reverse", h.reverseJournalEntry)
-	protected("DELETE", "/api/journal-entries/{id}", h.deleteJournalEntry)
+	orgMemberProtected("GET", "/api/journal-entries/{id}", journalEntryOrgID, h.getJournalEntry)
+	orgMemberProtected("GET", "/api/journal-entries/{id}/lines", journalEntryOrgID, h.getJournalEntryLines)
+	orgMemberProtected("PATCH", "/api/journal-entries/{id}/post", journalEntryOrgID, h.postJournalEntry)
+	orgMemberProtected("POST", "/api/journal-entries/{id}/reverse", journalEntryOrgID, h.reverseJournalEntry)
+	orgMemberProtected("DELETE", "/api/journal-entries/{id}", journalEntryOrgID, h.deleteJournalEntry)
+
+	// paymentOrgID resolves a payment route's {id} to its owning
+	// organization by reusing GetPayment — same shape as clientOrgID above.
+	paymentOrgID := func(r *http.Request) (string, error) {
+		payment, err := h.db.GetPayment(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return payment.OrganizationID, nil
+	}
 
 	// Payments
 	orgMemberProtected("GET", "/api/organizations/{orgId}/payments", pathOrgID("orgId"), h.listPayments)
 	protected("POST", "/api/payments", h.createPayment)
-	protected("GET", "/api/payments/{id}", h.getPayment)
-	protected("GET", "/api/payments/{id}/applications", h.getPaymentApplications)
-	protected("POST", "/api/payments/{id}/void", h.voidPayment)
+	orgMemberProtected("GET", "/api/payments/{id}", paymentOrgID, h.getPayment)
+	orgMemberProtected("GET", "/api/payments/{id}/applications", paymentOrgID, h.getPaymentApplications)
+	orgMemberProtected("POST", "/api/payments/{id}/void", paymentOrgID, h.voidPayment)
 	orgMemberProtected("GET", "/api/invoices/{id}/payments", invoiceOrgID, h.getInvoicePayments)
 	orgMemberProtected("GET", "/api/incoming-invoices/{id}/payments", incomingInvoiceOrgID, h.getIncomingInvoicePayments)
 

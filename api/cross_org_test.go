@@ -202,47 +202,13 @@ var createRouteOrgChecks = map[routeKey]struct{ file, fn string }{
 
 // pendingPhaseCRoutes are known, tracked, not-yet-migrated routes — see the
 // package comment above. Remove an entry the same PR its route moves to
-// orgMemberProtected/orgAdminProtected or gains a createRouteOrgChecks entry.
-var pendingPhaseCRoutes = map[routeKey]bool{
-	// Create bucket (still POST-organizationId-in-body, no requireOrgMember
-	// call yet) and single-resource/sub-resource/export buckets, grouped by
-	// the domain-family PRs that will migrate them per the rollout plan.
-
-	{"GET", "/api/tax-rates/{id}"}:             true,
-	{"PUT", "/api/tax-rates/{id}"}:             true,
-	{"DELETE", "/api/tax-rates/{id}"}:          true,
-	{"GET", "/api/tax-rates/{id}/usage-count"}: true,
-
-	{"PUT", "/api/payment-terms/{id}"}:    true,
-	{"DELETE", "/api/payment-terms/{id}"}: true,
-
-	{"GET", "/api/products/{id}"}:                 true,
-	{"PUT", "/api/products/{id}"}:                 true,
-	{"DELETE", "/api/products/{id}"}:              true,
-	{"GET", "/api/products/{id}/stock-movements"}: true,
-	{"GET", "/api/products/{id}/serial-numbers"}:  true,
-
-	{"DELETE", "/api/stock-movements/{id}"}: true,
-
-	{"GET", "/api/accounts/{id}"}:    true,
-	{"PUT", "/api/accounts/{id}"}:    true,
-	{"DELETE", "/api/accounts/{id}"}: true,
-
-	{"PUT", "/api/journals/{id}"}:    true,
-	{"DELETE", "/api/journals/{id}"}: true,
-
-	{"PATCH", "/api/fiscal-periods/{id}/status"}: true,
-
-	{"GET", "/api/journal-entries/{id}"}:          true,
-	{"GET", "/api/journal-entries/{id}/lines"}:    true,
-	{"PATCH", "/api/journal-entries/{id}/post"}:   true,
-	{"POST", "/api/journal-entries/{id}/reverse"}: true,
-	{"DELETE", "/api/journal-entries/{id}"}:       true,
-
-	{"GET", "/api/payments/{id}"}:              true,
-	{"GET", "/api/payments/{id}/applications"}: true,
-	{"POST", "/api/payments/{id}/void"}:        true,
-}
+// orgMemberProtected/orgAdminProtected or gains a createRouteOrgChecks
+// entry. Empty as of PR6 (6/7) — every route this app registers now lands
+// in exactly one of {an org-scoped wrapper, exemptRoutes,
+// createRouteOrgChecks}. Kept (not deleted) as the live tripwire's
+// documented third bucket, in case a future route needs a deliberate
+// migration window again.
+var pendingPhaseCRoutes = map[routeKey]bool{}
 
 // TestPhaseCRouteCoverage is the tripwire described in the package comment
 // above: every route router.go registers must land in exactly one of
@@ -418,6 +384,44 @@ var crossOrgProof = []struct {
 	{name: "incoming invoice payments", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice/payments"},
 	{name: "incoming invoice export", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice/export"},
 	{name: "delete incoming invoice by id", method: http.MethodDelete, path: "/api/incoming-invoices/org-a-incoming-invoice"},
+
+	{name: "list tax rates by org path", method: http.MethodGet, path: "/api/organizations/org-a/tax-rates"},
+	{name: "get tax rate by id", method: http.MethodGet, path: "/api/tax-rates/org-a-tax-rate"},
+	{name: "tax rate usage count", method: http.MethodGet, path: "/api/tax-rates/org-a-tax-rate/usage-count"},
+	{name: "delete tax rate by id", method: http.MethodDelete, path: "/api/tax-rates/org-a-tax-rate"},
+
+	{name: "list payment terms by org path", method: http.MethodGet, path: "/api/organizations/org-a/payment-terms"},
+	{name: "update payment term by id", method: http.MethodPut, path: "/api/payment-terms/org-a-payment-term", body: []byte(`{"name":"hijacked"}`)},
+	{name: "delete payment term by id", method: http.MethodDelete, path: "/api/payment-terms/org-a-payment-term"},
+
+	{name: "list products by org path", method: http.MethodGet, path: "/api/organizations/org-a/products"},
+	{name: "get product by id", method: http.MethodGet, path: "/api/products/org-a-product"},
+	{name: "product stock movements", method: http.MethodGet, path: "/api/products/org-a-product/stock-movements"},
+	{name: "product serial numbers", method: http.MethodGet, path: "/api/products/org-a-product/serial-numbers"},
+	{name: "delete product by id", method: http.MethodDelete, path: "/api/products/org-a-product"},
+
+	{name: "delete stock movement by id", method: http.MethodDelete, path: "/api/stock-movements/org-a-stock-movement"},
+
+	{name: "list accounts by org path", method: http.MethodGet, path: "/api/organizations/org-a/accounts"},
+	{name: "get account by id", method: http.MethodGet, path: "/api/accounts/org-a-account"},
+	{name: "delete account by id", method: http.MethodDelete, path: "/api/accounts/org-a-account"},
+
+	{name: "list journals by org path", method: http.MethodGet, path: "/api/organizations/org-a/journals"},
+	{name: "delete journal by id", method: http.MethodDelete, path: "/api/journals/org-a-journal"},
+
+	{name: "list fiscal years by org path", method: http.MethodGet, path: "/api/organizations/org-a/fiscal-years"},
+	{name: "list fiscal periods", method: http.MethodGet, path: "/api/fiscal-years/org-a-fiscal-year/periods"},
+	{name: "fiscal period status update", method: http.MethodPatch, path: "/api/fiscal-periods/org-a-fiscal-period/status", body: []byte(`{"status":"closed"}`)},
+
+	{name: "list journal entries by org path", method: http.MethodGet, path: "/api/organizations/org-a/journal-entries"},
+	{name: "get journal entry by id", method: http.MethodGet, path: "/api/journal-entries/org-a-journal-entry"},
+	{name: "journal entry lines", method: http.MethodGet, path: "/api/journal-entries/org-a-journal-entry/lines"},
+	{name: "delete journal entry by id", method: http.MethodDelete, path: "/api/journal-entries/org-a-journal-entry"},
+
+	{name: "list payments by org path", method: http.MethodGet, path: "/api/organizations/org-a/payments"},
+	{name: "get payment by id", method: http.MethodGet, path: "/api/payments/org-a-payment"},
+	{name: "payment applications", method: http.MethodGet, path: "/api/payments/org-a-payment/applications"},
+	{name: "void payment by id", method: http.MethodPost, path: "/api/payments/org-a-payment/void"},
 }
 
 // TestCrossOrgAccessDenied is the fail-closed regression test the original
@@ -433,7 +437,8 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 
 	seedUser(t, database, "org-a-admin", "user", 1)
 	seedUser(t, database, "org-b-admin", "user", 1)
-	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-a"}); err != nil {
+	orgA, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-a"})
+	if err != nil {
 		t.Fatalf("seed CreateOrganization org-a: %v", err)
 	}
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-b"}); err != nil {
@@ -498,6 +503,80 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 		State: "draft", Date: 1700000000000, Currency: "EUR",
 	}); err != nil {
 		t.Fatalf("seed CreateIncomingInvoice: %v", err)
+	}
+	if _, err := database.CreateTaxRate(db.CreateTaxRateRequest{
+		ID: "org-a-tax-rate", OrganizationID: "org-a", Name: "Test Rate", Percentage: 10,
+	}); err != nil {
+		t.Fatalf("seed CreateTaxRate: %v", err)
+	}
+	paymentTermIsDefault := int64(0)
+	if _, err := database.CreatePaymentTerm(db.CreatePaymentTermRequest{
+		ID: "org-a-payment-term", OrganizationID: "org-a", Name: "Test Term", IsDefault: &paymentTermIsDefault,
+	}); err != nil {
+		t.Fatalf("seed CreatePaymentTerm: %v", err)
+	}
+	product, err := database.CreateProduct(db.CreateProductRequest{
+		ID: "org-a-product", OrganizationID: "org-a", Name: "Test Product", Type: "product", Price: 1000,
+	})
+	if err != nil {
+		t.Fatalf("seed CreateProduct: %v", err)
+	}
+	if _, err := database.CreateStockMovement(db.CreateStockMovementRequest{
+		ID: "org-a-stock-movement", OrganizationID: "org-a", ProductID: product.ID, Type: "in", Quantity: 1,
+	}); err != nil {
+		t.Fatalf("seed CreateStockMovement: %v", err)
+	}
+	// A fresh code well outside every seeded chart template's own numbering
+	// (SKR04/PCG/generic — see db/account.go) to avoid colliding with the
+	// organization's auto-seeded default chart of accounts.
+	account, err := database.CreateAccount(db.CreateAccountRequest{
+		ID: "org-a-account", OrganizationID: "org-a", Code: "9999", Name: "Test Account", Type: "asset",
+	})
+	if err != nil {
+		t.Fatalf("seed CreateAccount: %v", err)
+	}
+	if _, err := database.CreateJournal(db.CreateJournalRequest{
+		ID: "org-a-journal", OrganizationID: "org-a", Code: "TSTJ", Name: "Test Journal", Type: "miscellaneous",
+	}); err != nil {
+		t.Fatalf("seed CreateJournal: %v", err)
+	}
+	fiscalYear, err := database.CreateFiscalYear(db.CreateFiscalYearRequest{
+		ID: "org-a-fiscal-year", OrganizationID: "org-a", Name: "FY2030",
+		StartDate: 1893456000000, EndDate: 1924992000000, // 2030-01-01 .. 2030-12-31 (a range no other seed in this test touches)
+	})
+	if err != nil {
+		t.Fatalf("seed CreateFiscalYear: %v", err)
+	}
+	if _, err := database.CreateFiscalPeriod(db.CreateFiscalPeriodRequest{
+		ID: "org-a-fiscal-period", OrganizationID: "org-a", FiscalYearID: fiscalYear.ID, Name: "Q1 2030",
+		StartDate: 1893456000000, EndDate: 1901318400000,
+	}); err != nil {
+		t.Fatalf("seed CreateFiscalPeriod: %v", err)
+	}
+	if orgA.DefaultRevenueAccountID == nil {
+		t.Fatal("expected org-a's auto-seeded chart of accounts to set a default revenue account")
+	}
+	if _, err := database.CreateJournalEntry(db.CreateJournalEntryRequest{
+		ID: "org-a-journal-entry", OrganizationID: "org-a", JournalID: "org-a-journal", Date: 1893456000000,
+		Description: "Test entry",
+		Lines: []db.CreateJournalLineRequest{
+			{AccountID: account.ID, Debit: 100},
+			{AccountID: *orgA.DefaultRevenueAccountID, Credit: 100},
+		},
+	}); err != nil {
+		t.Fatalf("seed CreateJournalEntry: %v", err)
+	}
+	// CreatePayment requires a posted GL entry on the invoice it settles —
+	// real business-rule setup this fixture has no need to satisfy just to
+	// prove the route's org-membership gate. Inserted directly, the same
+	// precedent api/auth_test.go and api/restore_test.go already use for a
+	// fixture the public API can't (or shouldn't have to) produce.
+	if _, err := database.DB.Exec(
+		`INSERT INTO payments (id, organizationId, direction, clientId, bankAccountId, amount, currency, date, method)
+		 VALUES (?, ?, 'inbound', ?, ?, 100, 'EUR', 1700000000000, 'bank_transfer')`,
+		"org-a-payment", "org-a", client.ID, account.ID,
+	); err != nil {
+		t.Fatalf("seed payment insert: %v", err)
 	}
 
 	for _, tc := range crossOrgProof {
