@@ -17,6 +17,7 @@ func FillDeliveryTemplate(
 	client Client,
 ) ([]byte, []string, error) {
 	scalars := buildDeliveryScalarPlaceholders(delivery, org, client)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildDeliveryLineItemPlaceholders(li)

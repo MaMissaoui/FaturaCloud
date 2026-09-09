@@ -26,6 +26,7 @@ func FillInboundDeliveryTemplate(
 	}
 
 	scalars := buildInboundDeliveryScalarPlaceholders(delivery, org, vendor, currency)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildInboundDeliveryLineItemPlaceholders(li, currency, org.MinimumFractionDigits)

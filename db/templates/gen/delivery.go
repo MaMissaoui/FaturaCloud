@@ -121,4 +121,10 @@ var deliveryFieldRefs = []fieldRef{
 	{"Item lines", "{{lineItems.unit}}", "Unit of measure (e.g. pcs, kg), blank if unset"},
 
 	{"Footer", "{{delivery.notes}}", "Free-text notes, blank if unset"},
+
+	// Export info — when this specific file was generated, not any document
+	// field. See mergeExportMetaPlaceholders (db/xlsx_export.go).
+	{"Export info", "{{export.generatedDate}}", "Date this file was exported (not the delivery's own date), in the organization's date format"},
+	{"Export info", "{{export.generatedTime}}", "Time this file was exported, 24-hour HH:MM, server time"},
+	{"Export info", "&P (page number) / &N (total pages)", "Native Excel/LibreOffice codes, not a {{}} placeholder — only work inside this sheet's own Page Layout ▸ Header/Footer, never in a regular cell, since the page count isn't known until export. The default footer already shows \"Page &P of &N\" on every page; edit it in Excel/LibreOffice's own header/footer editor to move or restyle it"},
 }
