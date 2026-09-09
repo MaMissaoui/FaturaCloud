@@ -33,12 +33,25 @@ var orderDefaultTemplate []byte
 //go:embed templates/incoming_invoice_default.xlsx
 var incomingInvoiceDefaultTemplate []byte
 
-// embeddedDefaultTemplates maps a documentType to its built-in template.
-// Remaining Phase 2 types (Outbound/Inbound Deliveries) each add one more
-// //go:embed + map entry, no other change to this file.
+// deliveryDefaultTemplate is the built-in Outbound Delivery (delivery note)
+// export template.
+//
+//go:embed templates/delivery_default.xlsx
+var deliveryDefaultTemplate []byte
+
+// inboundDeliveryDefaultTemplate is the built-in Inbound Delivery (goods
+// receipt) export template.
+//
+//go:embed templates/inbound_delivery_default.xlsx
+var inboundDeliveryDefaultTemplate []byte
+
+// embeddedDefaultTemplates maps a documentType to its built-in template —
+// every document type from the original Phase 2 list now has one.
 var embeddedDefaultTemplates = map[string][]byte{
 	"invoice":          invoiceDefaultTemplate,
 	"purchase_order":   purchaseOrderDefaultTemplate,
 	"order":            orderDefaultTemplate,
 	"incoming_invoice": incomingInvoiceDefaultTemplate,
+	"delivery":         deliveryDefaultTemplate,
+	"inbound_delivery": inboundDeliveryDefaultTemplate,
 }

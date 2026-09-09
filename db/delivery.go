@@ -58,6 +58,7 @@ type OutboundDeliveryLineItem struct {
 	StockEnabled   *int     `db:"stockEnabled"   json:"stockEnabled"`
 	AvailableStock *float64 `db:"availableStock" json:"availableStock"`
 	Serialized     *int     `db:"serialized"     json:"serialized"`
+	SKU            *string  `db:"sku"            json:"sku"`
 }
 
 type CreateDeliveryLineItemRequest struct {
@@ -144,7 +145,8 @@ func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLi
 		SELECT dli.*,
 		       p.stockEnabled AS stockEnabled,
 		       p.stockQuantity AS availableStock,
-		       p.serialized AS serialized
+		       p.serialized AS serialized,
+		       p.sku AS sku
 		FROM outbound_delivery_line_items dli
 		LEFT JOIN products p ON dli.productId = p.id
 		WHERE dli.deliveryId = ?

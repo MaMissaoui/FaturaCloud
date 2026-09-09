@@ -96,6 +96,11 @@ export const deliveryAtom = atom(
     } catch (error) {
       console.error("Delivery operation failed:", error);
       message.error(deliveryId ? t`Delivery update failed` : t`Delivery creation failed`);
+      // Rethrow (F56/F67 convention, also applied to purchase-order.ts/
+      // order.ts — see CLAUDE.md) so details.tsx's handleSubmit can tell a
+      // failed save apart from a successful one and skip clearing its
+      // isDirty flag.
+      throw error;
     }
   },
 );

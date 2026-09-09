@@ -15,12 +15,20 @@ import {
   Space,
   Tag,
   theme,
+  Tooltip,
+  message,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { DeleteOutlined, SaveOutlined, UserAddOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  FileExcelOutlined,
+  FilePdfOutlined,
+  SaveOutlined,
+  UserAddOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import get from "lodash/get";
@@ -29,7 +37,11 @@ import isString from "lodash/isString";
 import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 
-import { GetPurchaseOrderLineItems, GetPurchaseOrderReceivedQuantities } from "src/api";
+import {
+  ExportInboundDeliveryDocument,
+  GetPurchaseOrderLineItems,
+  GetPurchaseOrderReceivedQuantities,
+} from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import ExchangeRateFields, {
@@ -113,6 +125,9 @@ const InboundDeliveryDetails = () => {
     open: false,
     pendingStatus: null,
   });
+  const [isDirty, setIsDirty] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useEffect(() => {
     setVendors();
@@ -198,12 +213,30 @@ const InboundDeliveryDetails = () => {
   // with no registered fields, and onFinish then reports nothing.
   const handleSubmit = async () => {
     await setDelivery(form.getFieldsValue(true));
+    setIsDirty(false);
   };
 
   const handleDelete = async () => {
     if (!id || isNew) return;
     const success = await deleteDelivery(id);
     if (success) navigate("/inbound-deliveries");
+  };
+
+  // Server fill-and-convert path (db/xlsx_export_inbound_delivery.go /
+  // db/pdf_convert.go) — the same mechanism invoices/purchase orders/
+  // orders/incoming invoices/outbound deliveries use. Reads persisted line
+  // items by receipt id, so both formats are gated on isDirty.
+  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
+    if (!id || isNew) return;
+    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
+    setDownloading(true);
+    try {
+      await ExportInboundDeliveryDocument(id, format);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   // Serialized lines this receipt would receive, resolved from the
@@ -268,7 +301,13 @@ const InboundDeliveryDetails = () => {
   if (!isNew && !delivery) return null;
 
   return (
-    <Form form={form} onFinish={handleSubmit} layout="vertical" initialValues={initialValues}>
+    <Form
+      form={form}
+      onFinish={handleSubmit}
+      layout="vertical"
+      initialValues={initialValues}
+      onValuesChange={() => setIsDirty(true)}
+    >
       <Row gutter={24}>
         <Col xs={24} md={12} xl={5}>
           <Form.Item
@@ -507,6 +546,33 @@ const InboundDeliveryDetails = () => {
                         <Trans>Cancel receipt</Trans>
                       </Button>
                     </Popconfirm>
+                  )}
+                  {!isNew && (
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingPdf}
+                        onClick={handleServerExport("pdf")}
+                      >
+                        <FilePdfOutlined /> PDF
+                      </Button>
+                    </Tooltip>
+                  )}
+                  {!isNew && (
+                    // Always the server fill-and-convert path
+                    // (db/xlsx_export_inbound_delivery.go) — every receipt
+                    // has an embedded fallback template
+                    // (resolveTemplateBytes) to fill even with no org
+                    // override, so both buttons always work.
+                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                      <Button
+                        disabled={isDirty}
+                        loading={downloadingExcel}
+                        onClick={handleServerExport("xlsx")}
+                      >
+                        <FileExcelOutlined /> <Trans>Excel</Trans>
+                      </Button>
+                    </Tooltip>
                   )}
                   <Button type="primary" onClick={() => form.submit()}>
                     <SaveOutlined /> <Trans>Save</Trans>

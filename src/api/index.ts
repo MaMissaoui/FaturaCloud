@@ -485,6 +485,22 @@ export const ExportIncomingInvoiceDocument = (id: string, format: "xlsx" | "pdf"
     `incoming-invoice-${id}.${format}`,
   );
 
+// Exports an outbound delivery (delivery note) the same way — see
+// db/xlsx_export_delivery.go.
+export const ExportDeliveryDocument = (id: string, format: "xlsx" | "pdf") =>
+  downloadDocumentExport(
+    `/api/deliveries/${id}/export?format=${format}`,
+    `delivery-${id}.${format}`,
+  );
+
+// Exports an inbound delivery (goods receipt) the same way — see
+// db/xlsx_export_inbound_delivery.go.
+export const ExportInboundDeliveryDocument = (id: string, format: "xlsx" | "pdf") =>
+  downloadDocumentExport(
+    `/api/inbound-deliveries/${id}/export?format=${format}`,
+    `goods-receipt-${id}.${format}`,
+  );
+
 // ---- Tax Rates ----
 
 export const GetTaxRates = (organizationId: string) =>
