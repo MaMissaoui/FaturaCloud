@@ -2969,6 +2969,77 @@ func TestIncomingInvoiceDoubleBillingDetected(t *testing.T) {
 	}
 }
 
+// Billing more than was ordered, but still within what was received, is the
+// quantity_variance case — distinct from over_received (which fires when
+// billing exceeds what's actually in hand) and still allowed to save, same
+// as every other variance status.
+func TestIncomingInvoiceMatchQuantityVariance(t *testing.T) {
+	d := newTestDB(t)
+	f := seedMatch(t, d, "org-match-qtyvar", 5, 250, 10) // 5 ordered, 10 received
+	inv := createIncomingInvoice(t, d, f, "V-001", 8, 250)
+
+	lines, err := d.GetIncomingInvoiceMatch(inv.ID)
+	if err != nil {
+		t.Fatalf("GetIncomingInvoiceMatch: %v", err)
+	}
+	if lines[0].Status != MatchQuantityVariance {
+		t.Fatalf("status: got %q (%s), want quantity_variance", lines[0].Status, lines[0].Message)
+	}
+
+	_, err = d.UpdateIncomingInvoiceState(inv.ID, "approved")
+	if err == nil {
+		t.Fatal("expected approving a quantity-variance invoice to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+}
+
+// A bill line with no linked purchase order line at all (an ad hoc charge,
+// not tied to any PO) is unlinked — informational only, and unlike every
+// other variance status it never blocks approval.
+func TestIncomingInvoiceMatchUnlinkedLine(t *testing.T) {
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-match-unlinked"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "FY2023", StartDate: 1690000000000, EndDate: 1710000000000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+
+	inv, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: org.ID, VendorID: vendor.ID,
+		VendorInvoiceNumber: "V-001", Date: 1700000000000, Currency: "EUR",
+		SubTotal: 5000, TaxTotal: 0, Total: 5000,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Description: ptr("Freight surcharge"), Quantity: 1, UnitPrice: 5000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateIncomingInvoice: %v", err)
+	}
+
+	lines, err := d.GetIncomingInvoiceMatch(inv.ID)
+	if err != nil {
+		t.Fatalf("GetIncomingInvoiceMatch: %v", err)
+	}
+	if lines[0].Status != MatchUnlinked {
+		t.Fatalf("status: got %q, want unlinked", lines[0].Status)
+	}
+
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("expected an unlinked line to not block approval: %v", err)
+	}
+}
+
 // F53's regression test: a draft bill against a PO line must not count
 // toward another bill's PreviouslyInvoiced — only approved/paid bills have
 // an AP obligation and have actually cleared anything against GRNI, the
