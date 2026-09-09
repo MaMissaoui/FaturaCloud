@@ -27,12 +27,14 @@ import {
   FileExcelOutlined,
   FilePdfOutlined,
   SaveOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import { ExportDeliveryDocument, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
 import { useDatePickerFormat } from "src/utils/date";
 import LineItemsTable from "src/components/line-items/table";
+import PageHeader from "src/components/page-header";
 import { organizationAtom } from "src/atoms/organization";
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
@@ -275,251 +277,261 @@ const DeliveryDetails = () => {
   if (!isNew && !delivery) return null;
 
   return (
-    <Form
-      form={form}
-      onFinish={handleSubmit}
-      layout="vertical"
-      initialValues={initialValues}
-      onValuesChange={() => setIsDirty(true)}
-    >
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={6}>
-          <Form.Item label={<Trans>Linked order</Trans>} name="orderId">
-            <Select allowClear showSearch optionFilterProp="children">
-              {(orders as any[]).map((o: any) => (
-                <Option key={o.id} value={o.id}>
-                  {o.orderNumber}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        {!watchedOrderId && (
+    <>
+      <PageHeader
+        icon={<SendOutlined />}
+        title={<Trans>Outbound Delivery</Trans>}
+        style={{ marginBottom: 24 }}
+      />
+      <Form
+        form={form}
+        onFinish={handleSubmit}
+        layout="vertical"
+        initialValues={initialValues}
+        onValuesChange={() => setIsDirty(true)}
+      >
+        <Row gutter={24}>
           <Col xs={24} md={12} xl={6}>
-            <Form.Item label={<Trans>Client</Trans>} name="clientId">
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="children"
-                placeholder={t`Walk-in / no client`}
-              >
-                {(clients as any[]).map((c: any) => (
-                  <Option key={c.id} value={c.id}>
-                    {c.name}
+            <Form.Item label={<Trans>Linked order</Trans>} name="orderId">
+              <Select allowClear showSearch optionFilterProp="children">
+                {(orders as any[]).map((o: any) => (
+                  <Option key={o.id} value={o.id}>
+                    {o.orderNumber}
                   </Option>
                 ))}
               </Select>
             </Form.Item>
           </Col>
-        )}
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Delivery number</Trans>}
-            name="deliveryNumber"
-            rules={[{ required: true, message: t`Required` }]}
-          >
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item
-            label={<Trans>Delivery date</Trans>}
-            name="deliveryDate"
-            rules={[{ required: true, message: t`Delivery date is required` }]}
-          >
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Status</Trans>}>
-            <Tag
-              color={deliveryStatusColor[currentStatus as DeliveryStatus]}
-              style={{ fontSize: 13, padding: "4px 10px", marginTop: 4 }}
-            >
-              {deliveryStatusLabel(currentStatus)}
-            </Tag>
-            <StatusFlow
-              current={currentStatus as DeliveryStatus}
-              statuses={DELIVERY_STATUSES}
-              transitions={deliveryStatusTransitionMatrix}
-              getLabel={deliveryStatusLabel}
-              getColor={(s) => deliveryStatusColor[s]}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={24}>
-        <Col xs={24} md={12}>
-          <Form.Item label={<Trans>Shipping address</Trans>} name="shippingAddress">
-            <TextArea rows={2} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12}>
-          <Form.Item label={<Trans>Notes</Trans>} name="notes">
-            <TextArea rows={2} />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Divider style={{ marginTop: 0 }} />
-
-      {/* Line items — no prices */}
-      <LineItemsTable
-        disabled={!isEditable}
-        columns={[
-          { kind: "index" },
-          {
-            kind: "product",
-            products: sellableProducts,
-            required: true,
-            onSelect: (productId, fieldName, formInstance) => {
-              const lineItems = formInstance.getFieldValue("lineItems");
-              const product = productId ? find(products, { id: productId }) : null;
-              lineItems[fieldName] = {
-                ...lineItems[fieldName],
-                description: (product as any)?.name ?? lineItems[fieldName]?.description,
-                unit: (product as any)?.unit,
-                stockEnabled: (product as any)?.stockEnabled,
-                availableStock: (product as any)?.stockQuantity,
-                serialized: (product as any)?.serialized,
-              };
-              formInstance.setFieldValue("lineItems", [...lineItems]);
-            },
-          },
-          { kind: "description", required: true },
-          {
-            kind: "quantity",
-            width: 110,
-            precision: (fieldName, formInstance) =>
-              formInstance.getFieldValue(["lineItems", fieldName, "serialized"]) ? 0 : 2,
-          },
-          {
-            kind: "custom",
-            key: "availableStock",
-            title: <Trans>Available stock</Trans>,
-            width: 120,
-            render: (field) => (
-              <Form.Item shouldUpdate noStyle>
-                {() => {
-                  const stockEnabled = form.getFieldValue([
-                    "lineItems",
-                    field.name,
-                    "stockEnabled",
-                  ]);
-                  if (!stockEnabled) return null;
-                  const available =
-                    form.getFieldValue(["lineItems", field.name, "availableStock"]) ?? 0;
-                  const requested = form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
-                  return <Tag color={requested > available ? "error" : "default"}>{available}</Tag>;
-                }}
+          {!watchedOrderId && (
+            <Col xs={24} md={12} xl={6}>
+              <Form.Item label={<Trans>Client</Trans>} name="clientId">
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="children"
+                  placeholder={t`Walk-in / no client`}
+                >
+                  {(clients as any[]).map((c: any) => (
+                    <Option key={c.id} value={c.id}>
+                      {c.name}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
-            ),
-          },
-          { kind: "unit" },
-        ]}
-      />
+            </Col>
+          )}
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item
+              label={<Trans>Delivery number</Trans>}
+              name="deliveryNumber"
+              rules={[{ required: true, message: t`Required` }]}
+            >
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item
+              label={<Trans>Delivery date</Trans>}
+              name="deliveryDate"
+              rules={[{ required: true, message: t`Delivery date is required` }]}
+            >
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item label={<Trans>Status</Trans>}>
+              <Tag
+                color={deliveryStatusColor[currentStatus as DeliveryStatus]}
+                style={{ fontSize: 13, padding: "4px 10px", marginTop: 4 }}
+              >
+                {deliveryStatusLabel(currentStatus)}
+              </Tag>
+              <StatusFlow
+                current={currentStatus as DeliveryStatus}
+                statuses={DELIVERY_STATUSES}
+                transitions={deliveryStatusTransitionMatrix}
+                getLabel={deliveryStatusLabel}
+                getColor={(s) => deliveryStatusColor[s]}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
-      {/* Footer bar */}
-      {document.getElementById("footer") &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="space-between" style={{ height: 64 }}>
-              <Col>
-                {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
-                  <Popconfirm
-                    title={t`Delete this delivery?`}
-                    onConfirm={handleDelete}
-                    okText={t`Yes`}
-                    cancelText={t`No`}
-                  >
-                    <Button type="dashed" danger>
-                      <DeleteOutlined /> <Trans>Delete</Trans>
-                    </Button>
-                  </Popconfirm>
-                )}
-              </Col>
-              <Col>
-                <Space>
-                  {!isNew &&
-                    transitions.map((tr) => (
-                      <Button
-                        key={tr.next}
-                        type={tr.type ?? "default"}
-                        onClick={() => handleStatusChange(tr.next)}
-                      >
-                        {tr.label}
-                      </Button>
-                    ))}
-                  {!isNew && !["cancelled", "delivered"].includes(currentStatus) && (
+        <Row gutter={24}>
+          <Col xs={24} md={12}>
+            <Form.Item label={<Trans>Shipping address</Trans>} name="shippingAddress">
+              <TextArea rows={2} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item label={<Trans>Notes</Trans>} name="notes">
+              <TextArea rows={2} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Divider style={{ marginTop: 0 }} />
+
+        {/* Line items — no prices */}
+        <LineItemsTable
+          disabled={!isEditable}
+          columns={[
+            { kind: "index" },
+            {
+              kind: "product",
+              products: sellableProducts,
+              required: true,
+              onSelect: (productId, fieldName, formInstance) => {
+                const lineItems = formInstance.getFieldValue("lineItems");
+                const product = productId ? find(products, { id: productId }) : null;
+                lineItems[fieldName] = {
+                  ...lineItems[fieldName],
+                  description: (product as any)?.name ?? lineItems[fieldName]?.description,
+                  unit: (product as any)?.unit,
+                  stockEnabled: (product as any)?.stockEnabled,
+                  availableStock: (product as any)?.stockQuantity,
+                  serialized: (product as any)?.serialized,
+                };
+                formInstance.setFieldValue("lineItems", [...lineItems]);
+              },
+            },
+            { kind: "description", required: true },
+            {
+              kind: "quantity",
+              width: 110,
+              precision: (fieldName, formInstance) =>
+                formInstance.getFieldValue(["lineItems", fieldName, "serialized"]) ? 0 : 2,
+            },
+            {
+              kind: "custom",
+              key: "availableStock",
+              title: <Trans>Available stock</Trans>,
+              width: 120,
+              render: (field) => (
+                <Form.Item shouldUpdate noStyle>
+                  {() => {
+                    const stockEnabled = form.getFieldValue([
+                      "lineItems",
+                      field.name,
+                      "stockEnabled",
+                    ]);
+                    if (!stockEnabled) return null;
+                    const available =
+                      form.getFieldValue(["lineItems", field.name, "availableStock"]) ?? 0;
+                    const requested =
+                      form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                    return (
+                      <Tag color={requested > available ? "error" : "default"}>{available}</Tag>
+                    );
+                  }}
+                </Form.Item>
+              ),
+            },
+            { kind: "unit" },
+          ]}
+        />
+
+        {/* Footer bar */}
+        {document.getElementById("footer") &&
+          createPortal(
+            <Footer
+              style={{
+                position: "sticky",
+                bottom: 0,
+                zIndex: 1,
+                padding: "0 16px",
+                background: colorBgContainer,
+              }}
+            >
+              <Row align="middle" justify="space-between" style={{ height: 64 }}>
+                <Col>
+                  {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
                     <Popconfirm
-                      title={t`Cancel this delivery?`}
-                      onConfirm={() => handleStatusChange("cancelled")}
+                      title={t`Delete this delivery?`}
+                      onConfirm={handleDelete}
                       okText={t`Yes`}
                       cancelText={t`No`}
                     >
                       <Button type="dashed" danger>
-                        <Trans>Cancel delivery</Trans>
+                        <DeleteOutlined /> <Trans>Delete</Trans>
                       </Button>
                     </Popconfirm>
                   )}
-                  {!isNew && (
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingPdf}
-                        onClick={handleServerExport("pdf")}
+                </Col>
+                <Col>
+                  <Space>
+                    {!isNew &&
+                      transitions.map((tr) => (
+                        <Button
+                          key={tr.next}
+                          type={tr.type ?? "default"}
+                          onClick={() => handleStatusChange(tr.next)}
+                        >
+                          {tr.label}
+                        </Button>
+                      ))}
+                    {!isNew && !["cancelled", "delivered"].includes(currentStatus) && (
+                      <Popconfirm
+                        title={t`Cancel this delivery?`}
+                        onConfirm={() => handleStatusChange("cancelled")}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
                       >
-                        <FilePdfOutlined /> PDF
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && (
-                    // Always the server fill-and-convert path
-                    // (db/xlsx_export_delivery.go) — every delivery has an
-                    // embedded fallback template (resolveTemplateBytes) to
-                    // fill even with no org override, so both buttons
-                    // always work.
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingExcel}
-                        onClick={handleServerExport("xlsx")}
-                      >
-                        <FileExcelOutlined /> <Trans>Excel</Trans>
-                      </Button>
-                    </Tooltip>
-                  )}
-                  <Button type="primary" onClick={() => form.submit()}>
-                    <SaveOutlined /> <Trans>Save</Trans>
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Footer>,
-          document.getElementById("footer") as HTMLElement,
-        )}
-      <SerialCaptureModal
-        open={serialCapture.open}
-        mode="ship"
-        lines={serializedShipLines}
-        onCancel={() => setSerialCapture({ open: false, pendingStatus: null })}
-        onConfirm={handleSerialCaptureConfirm}
-      />
-    </Form>
+                        <Button type="dashed" danger>
+                          <Trans>Cancel delivery</Trans>
+                        </Button>
+                      </Popconfirm>
+                    )}
+                    {!isNew && (
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingPdf}
+                          onClick={handleServerExport("pdf")}
+                        >
+                          <FilePdfOutlined /> PDF
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && (
+                      // Always the server fill-and-convert path
+                      // (db/xlsx_export_delivery.go) — every delivery has an
+                      // embedded fallback template (resolveTemplateBytes) to
+                      // fill even with no org override, so both buttons
+                      // always work.
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingExcel}
+                          onClick={handleServerExport("xlsx")}
+                        >
+                          <FileExcelOutlined /> <Trans>Excel</Trans>
+                        </Button>
+                      </Tooltip>
+                    )}
+                    <Button type="primary" onClick={() => form.submit()}>
+                      <SaveOutlined /> <Trans>Save</Trans>
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </Footer>,
+            document.getElementById("footer") as HTMLElement,
+          )}
+        <SerialCaptureModal
+          open={serialCapture.open}
+          mode="ship"
+          lines={serializedShipLines}
+          onCancel={() => setSerialCapture({ open: false, pendingStatus: null })}
+          onConfirm={handleSerialCaptureConfirm}
+        />
+      </Form>
+    </>
   );
 };
 

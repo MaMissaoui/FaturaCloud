@@ -39,6 +39,7 @@ import {
   UserAddOutlined,
 } from "@ant-design/icons";
 import LineItemsTable from "src/components/line-items/table";
+import PageHeader from "src/components/page-header";
 import { DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
 import dayjs from "dayjs";
 
@@ -407,6 +408,11 @@ const InvoiceDetails: React.FC = () => {
 
   return (
     <>
+      <PageHeader
+        icon={<FileTextOutlined />}
+        title={<Trans>Invoice</Trans>}
+        style={{ marginBottom: 24 }}
+      />
       <Row>
         <Col span={24}>
           <Form

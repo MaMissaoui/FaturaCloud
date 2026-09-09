@@ -30,6 +30,7 @@ import {
   FilePdfOutlined,
   PlusOutlined,
   SaveOutlined,
+  ShoppingOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -41,6 +42,7 @@ import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import sum from "lodash/sum";
 import { ExportOrderDocument, GetOrderDeliveredQuantities } from "src/api";
+import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import ExchangeRateFields, {
@@ -223,305 +225,317 @@ const OrderDetails = () => {
   if (!isNew && !order) return null;
 
   return (
-    <Form
-      form={form}
-      onFinish={handleSubmit}
-      layout="vertical"
-      initialValues={initialValues}
-      onValuesChange={() => setIsDirty(true)}
-    >
-      <Row gutter={24}>
-        <Col xs={24} md={12} xl={7}>
-          <Form.Item
-            label={<Trans>Client</Trans>}
-            name="clientId"
-            rules={[{ required: true, message: t`Client is required` }]}
-          >
-            <Select
-              showSearch
-              allowClear
-              optionFilterProp="children"
-              filterOption={(input, option) => {
-                const name = get(option, ["props", "children"]);
-                return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
-              }}
-              onChange={(clientId) => {
-                // Only cascade the default on a new order — resetting the
-                // currency of an already-saved order just because its client
-                // changed would silently disturb an existing document.
-                if (!isNew) return;
-                const client = find(clients, { id: clientId }) as any;
-                if (client?.defaultCurrency) {
-                  form.setFieldValue("currency", client.defaultCurrency);
-                  prefillExchangeRate(form, organization?.id, client.defaultCurrency, orgCurrency);
-                }
-              }}
-              popupRender={(menu) => (
-                <>
-                  {menu}
-                  <Divider style={{ margin: "8px 0" }} />
-                  <Button
-                    type="text"
-                    block
-                    icon={<UserAddOutlined />}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigate("/clients");
-                    }}
-                    style={{ textAlign: "left", paddingLeft: 11 }}
-                  >
-                    <Trans>Manage clients</Trans>
-                  </Button>
-                </>
-              )}
-            >
-              {map(clients, (c: any) => (
-                <Option key={c.id} value={c.id}>
-                  {c.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item
-            label={<Trans>Order number</Trans>}
-            name="orderNumber"
-            rules={[{ required: true, message: t`Order number is required` }]}
-          >
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item
-            label={<Trans>Order date</Trans>}
-            name="orderDate"
-            rules={[{ required: true, message: t`Order date is required` }]}
-          >
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item label={<Trans>Delivery date</Trans>} name="deliveryDate">
-            <DatePicker style={{ width: "100%" }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={3}>
-          <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
-            <Input placeholder="e.g. FX1234567890" />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Form.Item label={<Trans>Status</Trans>}>
-            <Tag color={orderStatusColor[currentStatus as OrderStatus]}>
-              {orderStatusLabel(currentStatus)}
-            </Tag>
-            <StatusFlow
-              current={currentStatus as OrderStatus}
-              statuses={ORDER_STATUSES}
-              transitions={orderStatusTransitionMatrix}
-              getLabel={orderStatusLabel}
-              getColor={(s) => orderStatusColor[s]}
-            />
-          </Form.Item>
-        </Col>
-        <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
-        <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
-      </Row>
-
-      <Row gutter={24}>
-        <Col xs={24} md={12}>
-          <Form.Item label={<Trans>Shipping address</Trans>} name="shippingAddress">
-            <TextArea rows={2} placeholder={t`Leave blank to use client address`} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={12}>
-          <Form.Item label={<Trans>Notes</Trans>} name="notes">
-            <TextArea rows={2} />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      {/* Line items */}
-      <LineItemsTable
-        columns={[
-          { kind: "index" },
-          {
-            kind: "product",
-            products: sellableProducts,
-            required: true,
-            onSelect: (productId, fieldName, formInstance) => {
-              const product = find(products, { id: productId });
-              if (product) {
-                const lineItems = formInstance.getFieldValue("lineItems");
-                lineItems[fieldName] = {
-                  ...lineItems[fieldName],
-                  description: (product as any).name,
-                  unitPrice: centsToUnits((product as any).price ?? 0),
-                };
-                formInstance.setFieldValue("lineItems", [...lineItems]);
-              }
-            },
-          },
-          { kind: "description", required: true },
-          { kind: "quantity" },
-          { kind: "unitPrice" },
-          ...(!isNew
-            ? [
-                {
-                  kind: "custom" as const,
-                  key: "delivered",
-                  title: <Trans>Delivered</Trans>,
-                  width: 90,
-                  render: (field: { name: number }) => (
-                    <Form.Item shouldUpdate noStyle>
-                      {() => {
-                        const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
-                        const quantity =
-                          form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
-                        if (!itemId) return null;
-                        const delivered = deliveredQuantities[itemId] ?? 0;
-                        return (
-                          <Tag
-                            color={
-                              delivered >= quantity
-                                ? "success"
-                                : delivered > 0
-                                  ? "processing"
-                                  : "default"
-                            }
-                          >
-                            {delivered} / {quantity}
-                          </Tag>
-                        );
-                      }}
-                    </Form.Item>
-                  ),
-                },
-              ]
-            : []),
-        ]}
+    <>
+      <PageHeader
+        icon={<ShoppingOutlined />}
+        title={<Trans>Order</Trans>}
+        style={{ marginBottom: 24 }}
       />
-
-      {/* Totals */}
-      {subTotal > 0 && (
-        <Row justify="end" style={{ marginTop: 16 }}>
-          <Col>
-            <Descriptions
-              column={1}
-              styles={{
-                content: { textAlign: "right", minWidth: 100, fontSize: 14 },
-                label: { textAlign: "right", fontWeight: 500, fontSize: 14 },
-              }}
+      <Form
+        form={form}
+        onFinish={handleSubmit}
+        layout="vertical"
+        initialValues={initialValues}
+        onValuesChange={() => setIsDirty(true)}
+      >
+        <Row gutter={24}>
+          <Col xs={24} md={12} xl={7}>
+            <Form.Item
+              label={<Trans>Client</Trans>}
+              name="clientId"
+              rules={[{ required: true, message: t`Client is required` }]}
             >
-              <Descriptions.Item label={<Trans>Subtotal</Trans>}>
-                {Intl.NumberFormat(i18n.locale, {
-                  style: "currency",
-                  currency,
-                  minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                }).format(subTotal)}
-              </Descriptions.Item>
-            </Descriptions>
+              <Select
+                showSearch
+                allowClear
+                optionFilterProp="children"
+                filterOption={(input, option) => {
+                  const name = get(option, ["props", "children"]);
+                  return isString(name) ? includes(lowerCase(name), lowerCase(input)) : true;
+                }}
+                onChange={(clientId) => {
+                  // Only cascade the default on a new order — resetting the
+                  // currency of an already-saved order just because its client
+                  // changed would silently disturb an existing document.
+                  if (!isNew) return;
+                  const client = find(clients, { id: clientId }) as any;
+                  if (client?.defaultCurrency) {
+                    form.setFieldValue("currency", client.defaultCurrency);
+                    prefillExchangeRate(
+                      form,
+                      organization?.id,
+                      client.defaultCurrency,
+                      orgCurrency,
+                    );
+                  }
+                }}
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    <Divider style={{ margin: "8px 0" }} />
+                    <Button
+                      type="text"
+                      block
+                      icon={<UserAddOutlined />}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate("/clients");
+                      }}
+                      style={{ textAlign: "left", paddingLeft: 11 }}
+                    >
+                      <Trans>Manage clients</Trans>
+                    </Button>
+                  </>
+                )}
+              >
+                {map(clients, (c: any) => (
+                  <Option key={c.id} value={c.id}>
+                    {c.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item
+              label={<Trans>Order number</Trans>}
+              name="orderNumber"
+              rules={[{ required: true, message: t`Order number is required` }]}
+            >
+              <Input />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item
+              label={<Trans>Order date</Trans>}
+              name="orderDate"
+              rules={[{ required: true, message: t`Order date is required` }]}
+            >
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item label={<Trans>Delivery date</Trans>} name="deliveryDate">
+              <DatePicker style={{ width: "100%" }} format={dateFormat} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={3}>
+            <Form.Item label={<Trans>Tracking number</Trans>} name="trackingNumber">
+              <Input placeholder="e.g. FX1234567890" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12} xl={4}>
+            <Form.Item label={<Trans>Status</Trans>}>
+              <Tag color={orderStatusColor[currentStatus as OrderStatus]}>
+                {orderStatusLabel(currentStatus)}
+              </Tag>
+              <StatusFlow
+                current={currentStatus as OrderStatus}
+                statuses={ORDER_STATUSES}
+                transitions={orderStatusTransitionMatrix}
+                getLabel={orderStatusLabel}
+                getColor={(s) => orderStatusColor[s]}
+              />
+            </Form.Item>
+          </Col>
+          <CurrencySelect form={form} organizationId={organization?.id} orgCurrency={orgCurrency} />
+          <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
+        </Row>
+
+        <Row gutter={24}>
+          <Col xs={24} md={12}>
+            <Form.Item label={<Trans>Shipping address</Trans>} name="shippingAddress">
+              <TextArea rows={2} placeholder={t`Leave blank to use client address`} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item label={<Trans>Notes</Trans>} name="notes">
+              <TextArea rows={2} />
+            </Form.Item>
           </Col>
         </Row>
-      )}
 
-      {/* Footer bar */}
-      {document.getElementById("footer") &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="space-between" style={{ height: 64 }}>
-              <Col>
-                {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
-                  <Popconfirm
-                    title={t`Delete this order?`}
-                    onConfirm={handleDelete}
-                    okText={t`Yes`}
-                    cancelText={t`No`}
-                  >
-                    <Button type="dashed" danger>
-                      <DeleteOutlined /> <Trans>Delete</Trans>
-                    </Button>
-                  </Popconfirm>
-                )}
-              </Col>
-              <Col>
-                <Space>
-                  {!isNew &&
-                    transitions.map((t2) => (
-                      <Button
-                        key={t2.next}
-                        type={t2.type ?? "default"}
-                        onClick={() => handleStatusChange(t2.next)}
-                      >
-                        {t2.label}
-                      </Button>
-                    ))}
-                  {!isNew &&
-                    orderStatusTransitionMatrix[currentStatus as OrderStatus]?.includes(
-                      "cancelled",
-                    ) && (
-                      <Popconfirm
-                        title={t`Cancel this order?`}
-                        onConfirm={() => handleStatusChange("cancelled")}
-                        okText={t`Yes`}
-                        cancelText={t`No`}
-                      >
-                        <Button type="dashed" danger>
-                          <Trans>Cancel order</Trans>
-                        </Button>
-                      </Popconfirm>
-                    )}
-                  {!isNew && (
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingPdf}
-                        onClick={handleServerExport("pdf")}
-                      >
-                        <FilePdfOutlined /> PDF
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && (
-                    // Always the server fill-and-convert path
-                    // (db/xlsx_export_order.go) — every order has an
-                    // embedded fallback template (resolveTemplateBytes) to
-                    // fill even with no org override, so both buttons
-                    // always work.
-                    <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                      <Button
-                        disabled={isDirty}
-                        loading={downloadingExcel}
-                        onClick={handleServerExport("xlsx")}
-                      >
-                        <FileExcelOutlined /> <Trans>Excel</Trans>
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {!isNew && (
-                    <Button onClick={() => navigate(`/deliveries/new?orderId=${id}`)}>
-                      <PlusOutlined /> <Trans>New delivery</Trans>
-                    </Button>
-                  )}
-                  <Button type="primary" onClick={() => form.submit()}>
-                    <SaveOutlined /> <Trans>Save</Trans>
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Footer>,
-          document.getElementById("footer") as HTMLElement,
+        {/* Line items */}
+        <LineItemsTable
+          columns={[
+            { kind: "index" },
+            {
+              kind: "product",
+              products: sellableProducts,
+              required: true,
+              onSelect: (productId, fieldName, formInstance) => {
+                const product = find(products, { id: productId });
+                if (product) {
+                  const lineItems = formInstance.getFieldValue("lineItems");
+                  lineItems[fieldName] = {
+                    ...lineItems[fieldName],
+                    description: (product as any).name,
+                    unitPrice: centsToUnits((product as any).price ?? 0),
+                  };
+                  formInstance.setFieldValue("lineItems", [...lineItems]);
+                }
+              },
+            },
+            { kind: "description", required: true },
+            { kind: "quantity" },
+            { kind: "unitPrice" },
+            ...(!isNew
+              ? [
+                  {
+                    kind: "custom" as const,
+                    key: "delivered",
+                    title: <Trans>Delivered</Trans>,
+                    width: 90,
+                    render: (field: { name: number }) => (
+                      <Form.Item shouldUpdate noStyle>
+                        {() => {
+                          const itemId = form.getFieldValue(["lineItems", field.name, "id"]);
+                          const quantity =
+                            form.getFieldValue(["lineItems", field.name, "quantity"]) ?? 0;
+                          if (!itemId) return null;
+                          const delivered = deliveredQuantities[itemId] ?? 0;
+                          return (
+                            <Tag
+                              color={
+                                delivered >= quantity
+                                  ? "success"
+                                  : delivered > 0
+                                    ? "processing"
+                                    : "default"
+                              }
+                            >
+                              {delivered} / {quantity}
+                            </Tag>
+                          );
+                        }}
+                      </Form.Item>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+
+        {/* Totals */}
+        {subTotal > 0 && (
+          <Row justify="end" style={{ marginTop: 16 }}>
+            <Col>
+              <Descriptions
+                column={1}
+                styles={{
+                  content: { textAlign: "right", minWidth: 100, fontSize: 14 },
+                  label: { textAlign: "right", fontWeight: 500, fontSize: 14 },
+                }}
+              >
+                <Descriptions.Item label={<Trans>Subtotal</Trans>}>
+                  {Intl.NumberFormat(i18n.locale, {
+                    style: "currency",
+                    currency,
+                    minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
+                  }).format(subTotal)}
+                </Descriptions.Item>
+              </Descriptions>
+            </Col>
+          </Row>
         )}
-    </Form>
+
+        {/* Footer bar */}
+        {document.getElementById("footer") &&
+          createPortal(
+            <Footer
+              style={{
+                position: "sticky",
+                bottom: 0,
+                zIndex: 1,
+                padding: "0 16px",
+                background: colorBgContainer,
+              }}
+            >
+              <Row align="middle" justify="space-between" style={{ height: 64 }}>
+                <Col>
+                  {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
+                    <Popconfirm
+                      title={t`Delete this order?`}
+                      onConfirm={handleDelete}
+                      okText={t`Yes`}
+                      cancelText={t`No`}
+                    >
+                      <Button type="dashed" danger>
+                        <DeleteOutlined /> <Trans>Delete</Trans>
+                      </Button>
+                    </Popconfirm>
+                  )}
+                </Col>
+                <Col>
+                  <Space>
+                    {!isNew &&
+                      transitions.map((t2) => (
+                        <Button
+                          key={t2.next}
+                          type={t2.type ?? "default"}
+                          onClick={() => handleStatusChange(t2.next)}
+                        >
+                          {t2.label}
+                        </Button>
+                      ))}
+                    {!isNew &&
+                      orderStatusTransitionMatrix[currentStatus as OrderStatus]?.includes(
+                        "cancelled",
+                      ) && (
+                        <Popconfirm
+                          title={t`Cancel this order?`}
+                          onConfirm={() => handleStatusChange("cancelled")}
+                          okText={t`Yes`}
+                          cancelText={t`No`}
+                        >
+                          <Button type="dashed" danger>
+                            <Trans>Cancel order</Trans>
+                          </Button>
+                        </Popconfirm>
+                      )}
+                    {!isNew && (
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingPdf}
+                          onClick={handleServerExport("pdf")}
+                        >
+                          <FilePdfOutlined /> PDF
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && (
+                      // Always the server fill-and-convert path
+                      // (db/xlsx_export_order.go) — every order has an
+                      // embedded fallback template (resolveTemplateBytes) to
+                      // fill even with no org override, so both buttons
+                      // always work.
+                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                        <Button
+                          disabled={isDirty}
+                          loading={downloadingExcel}
+                          onClick={handleServerExport("xlsx")}
+                        >
+                          <FileExcelOutlined /> <Trans>Excel</Trans>
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {!isNew && (
+                      <Button onClick={() => navigate(`/deliveries/new?orderId=${id}`)}>
+                        <PlusOutlined /> <Trans>New delivery</Trans>
+                      </Button>
+                    )}
+                    <Button type="primary" onClick={() => form.submit()}>
+                      <SaveOutlined /> <Trans>Save</Trans>
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </Footer>,
+            document.getElementById("footer") as HTMLElement,
+          )}
+      </Form>
+    </>
   );
 };
 
