@@ -1053,13 +1053,12 @@ const InvoiceDetails: React.FC = () => {
                         )}
                         {id && !isNew && currentInvoiceState !== "paid" && (
                           <Popconfirm
-                            title={t`Delete the invoice?`}
-                            description={t`Are you sure to delete this invoice?`}
+                            title={t`Delete this invoice?`}
                             onConfirm={handleDelete(id)}
                             okText={t`Yes`}
                             cancelText={t`No`}
                           >
-                            <Button type="dashed">
+                            <Button type="dashed" danger>
                               <DeleteOutlined /> <Trans>Delete</Trans>
                             </Button>
                           </Popconfirm>
