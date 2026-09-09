@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
@@ -105,7 +105,10 @@ const InboundDeliveryDetails = () => {
   const products = useAtomValue(productsAtom);
   // A finished good isn't purchasable from a vendor — exclude it from the
   // picker. Unclassified products (category null) stay eligible everywhere.
-  const purchasableProducts = products.filter((p: any) => p.category !== "finished");
+  const purchasableProducts = useMemo(
+    () => products.filter((p: any) => p.category !== "finished"),
+    [products],
+  );
   const setProducts = useSetAtom(setProductsAtom);
   const purchaseOrders = useAtomValue(purchaseOrdersAtom);
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);

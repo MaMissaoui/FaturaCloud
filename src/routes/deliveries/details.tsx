@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
@@ -89,7 +89,10 @@ const DeliveryDetails = () => {
   const products = useAtomValue(productsAtom);
   // A component/intermediate isn't sellable — exclude it from the picker.
   // Unclassified products (category null) stay eligible everywhere.
-  const sellableProducts = products.filter((p: any) => p.category !== "component");
+  const sellableProducts = useMemo(
+    () => products.filter((p: any) => p.category !== "component"),
+    [products],
+  );
   const setProducts = useSetAtom(setProductsAtom);
   const nextNumber = useAtomValue(nextDeliveryNumberAtom);
 
