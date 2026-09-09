@@ -103,7 +103,7 @@ func (h *handler) getInvoiceEInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/xml")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+id+`-e-invoice.xml"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+sanitizeContentDispositionFilename(id)+`-e-invoice.xml"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(doc)
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
 )
@@ -19,6 +20,23 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+// contentDispositionFilenameReplacer strips characters that could let a
+// filename break out of the quoted Content-Disposition value it's placed
+// into — '"' would close the quoted string early, and CR/LF could inject
+// additional header lines. The worst-case source is a user's own upload
+// filename (document_templates.go's uploaded-template name), stored and
+// echoed back verbatim on every later download.
+var contentDispositionFilenameReplacer = strings.NewReplacer(`"`, "_", "\r", "_", "\n", "_")
+
+// sanitizeContentDispositionFilename makes name safe to embed inside a
+// quoted Content-Disposition filename value. Apply it at every call site
+// that sets that header, regardless of whether the name looks server-derived
+// today — this is what keeps a future change to how a filename is built from
+// silently reopening the same gap.
+func sanitizeContentDispositionFilename(name string) string {
+	return contentDispositionFilenameReplacer.Replace(name)
 }
 
 // maxJSONBody caps the size of any JSON request body — comfortably larger

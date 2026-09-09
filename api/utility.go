@@ -118,7 +118,7 @@ func (h *handler) triggerBackup(w http.ResponseWriter, r *http.Request) {
 	dst := filepath.Join(h.backupDir, filename)
 
 	if err := h.db.Backup(dst); err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("backup failed: %v", err))
+		writeInternalError(w, fmt.Errorf("backup failed: %w", err))
 		return
 	}
 
@@ -130,7 +130,7 @@ func (h *handler) triggerBackup(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, sanitizeContentDispositionFilename(filename)))
 	http.ServeContent(w, r, filename, time.Now(), f)
 }
 
@@ -138,11 +138,20 @@ func (h *handler) triggerBackup(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) restoreNamedBackup(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.PathValue("name"))
-	if name == "" || name == "." || name == "config.json" {
+	if name == "" || name == "." || name == ".." || name == "config.json" {
 		writeError(w, http.StatusBadRequest, "invalid backup name")
 		return
 	}
 	src := filepath.Join(h.backupDir, name)
+	// filepath.Base above already strips any directory components, but that
+	// alone (plus Go 1.22+'s mux normally stripping ".." path segments before
+	// this handler even runs) is the only thing standing between this and a
+	// path escaping backupDir — confirm the resolved path is still actually
+	// inside it rather than relying solely on upstream routing behavior.
+	if rel, err := filepath.Rel(h.backupDir, src); err != nil || strings.HasPrefix(rel, "..") {
+		writeError(w, http.StatusBadRequest, "invalid backup name")
+		return
+	}
 	if _, err := os.Stat(src); err != nil {
 		writeError(w, http.StatusNotFound, "backup not found")
 		return
@@ -216,7 +225,8 @@ func validateRestoreCandidate(srcPath string) error {
 
 func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 	if err := validateRestoreCandidate(srcPath); err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("not a valid FaturaCloud database: %v", err))
+		log.Printf("restore: invalid database upload: %v", err)
+		writeError(w, http.StatusBadRequest, "not a valid FaturaCloud database")
 		return
 	}
 
@@ -227,13 +237,13 @@ func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 
 	if _, statErr := os.Stat(h.dbPath); statErr == nil {
 		if err := h.db.Backup(safetyPath); err != nil {
-			writeError(w, http.StatusInternalServerError, fmt.Sprintf("safety backup: %v", err))
+			writeInternalError(w, fmt.Errorf("safety backup: %w", err))
 			return
 		}
 	}
 
 	if err := h.db.Close(); err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("close db: %v", err))
+		writeInternalError(w, fmt.Errorf("close db: %w", err))
 		return
 	}
 	h.db = nil
@@ -245,7 +255,8 @@ func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 		if !h.recoverFromSafety(safetyPath) {
 			log.Fatalf("restore failed (%v) and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", err)
 		}
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("restore copy failed, rolled back to the pre-restore database: %v", err))
+		log.Printf("restore: copy failed, rolled back to the pre-restore database: %v", err)
+		writeError(w, http.StatusInternalServerError, "restore copy failed, rolled back to the pre-restore database")
 		return
 	}
 
@@ -254,7 +265,8 @@ func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 		if !h.recoverFromSafety(safetyPath) {
 			log.Fatalf("restored database failed to open (%v) and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", err)
 		}
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("restored database failed to open, rolled back to the pre-restore database: %v", err))
+		log.Printf("restore: restored database failed to open, rolled back to the pre-restore database: %v", err)
+		writeError(w, http.StatusInternalServerError, "restored database failed to open, rolled back to the pre-restore database")
 		return
 	}
 	h.db = database

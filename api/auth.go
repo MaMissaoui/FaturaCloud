@@ -21,6 +21,13 @@ type loginBucket struct {
 const (
 	loginMaxAttempts = 10
 	loginWindow      = time.Minute
+
+	// maxLoginBucketEntries bounds each rate-limit map (IP and email) so a
+	// distributed attacker spraying requests across many thousands of
+	// unique IPs/emails can't grow it without limit in the window between
+	// sweepLoginBuckets runs. Defense-in-depth on top of the sweep, not a
+	// replacement for it.
+	maxLoginBucketEntries = 10000
 )
 
 var (
@@ -40,6 +47,13 @@ func checkRate(buckets map[string]*loginBucket, key string) bool {
 	defer loginMu.Unlock()
 	b, ok := buckets[key]
 	if !ok || time.Now().After(b.windowEnd) {
+		if !ok && len(buckets) >= maxLoginBucketEntries {
+			// The map is already at its bound and this is a brand new key —
+			// from this vantage point that's indistinguishable from a
+			// distributed attack, so fail closed (rate-limited) rather than
+			// grow the map further.
+			return false
+		}
 		buckets[key] = &loginBucket{count: 1, windowEnd: time.Now().Add(loginWindow)}
 		return true
 	}
