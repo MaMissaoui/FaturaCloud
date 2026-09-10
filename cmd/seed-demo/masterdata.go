@@ -227,6 +227,10 @@ func (s *Seeder) setupProducts() error {
 			unitPtr = strPtr(entry.unit)
 			stockEnabled = 1
 		}
+		var categoryPtr *string
+		if entry.category != "" {
+			categoryPtr = strPtr(entry.category)
+		}
 		req := db.CreateProductRequest{
 			OrganizationID: s.orgID,
 			Name:           entry.name,
@@ -235,6 +239,7 @@ func (s *Seeder) setupProducts() error {
 			UnitCost:       costPtr,
 			Unit:           unitPtr,
 			Type:           typ,
+			Category:       categoryPtr,
 			TaxRateID:      strPtr(taxID),
 			StockEnabled:   stockEnabled,
 		}
@@ -245,7 +250,7 @@ func (s *Seeder) setupProducts() error {
 		s.products = append(s.products, productRef{
 			id: p.ID, name: entry.name, unit: entry.unit, stockEnabled: entry.stockEnabled,
 			priceCents: price, costCents: cost, taxRateID: taxID,
-			qtyLo: entry.qtyLo, qtyHi: entry.qtyHi,
+			qtyLo: entry.qtyLo, qtyHi: entry.qtyHi, category: entry.category,
 		})
 		s.stats.Products++
 		return nil

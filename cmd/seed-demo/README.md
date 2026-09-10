@@ -63,9 +63,19 @@ documents, and a short `--months` value while iterating on the tool itself.
 - **Fiscal years/periods** — one full calendar year (12 open monthly
   periods) per year the simulated range touches. Deliberately left **open**
   forever — see "What this deliberately doesn't do" below.
-- **Vendors, clients, products** — counts from the chosen `--volume`
-  profile. Products are a mix of services (no stock) and physical goods
-  (`stockEnabled`), see `catalog.go`.
+- **Vendors, clients** — counts from the chosen `--volume` profile.
+  **Products** are fixed regardless of `--volume` (`catalog.go`): 10
+  generic services, 25 "finished" motorcycles (5 model lines × 5
+  displacement classes, `buildFinishedMotorcycleCatalog`), and 275
+  "component" parts assembled into them (55 part templates × the same 5
+  displacement classes, `buildComponentCatalog`) — `products.category` is
+  set on every physical good, and `sales.go`/`purchasing.go` each filter by
+  it (sales excludes "component", purchasing excludes "finished") so a
+  vendor is never asked to supply a finished vehicle and a client is never
+  sold a bare part. This models "Atlas Moto Assemblage SARL"-style
+  businesses specifically — a from-scratch catalog for a different kind of
+  business would mean replacing `productCatalog` and the two filters above,
+  not tuning a knob.
 - **Daily simulation** (`seeder.go`'s `Run`, one pass per calendar day):
   - **Direct sales invoices** — the bulk of the volume. Created draft, sent,
     then a randomly chosen fate: paid in full (most), paid via two partial

@@ -64,7 +64,8 @@ type productRef struct {
 	costCents    int64
 	taxRateID    string // "" = untaxed
 	onHand       float64
-	qtyLo, qtyHi int // plausible line-item quantity range, from catalog.go
+	qtyLo, qtyHi int    // plausible line-item quantity range, from catalog.go
+	category     string // "finished" | "component" | "" — see catalog.go's productCatalogEntry
 }
 
 // Stats tallies what actually got created, printed as a summary at the end

@@ -157,14 +157,30 @@ type orderLineSet struct {
 	items []db.CreateOrderLineItemRequest
 }
 
+// sellableProducts excludes "component" products (catalog.go) — bought
+// from vendors to assemble a finished good, never sold directly to a
+// client. Services (category == "") and "finished" goods both remain
+// sellable. The purchasing-side mirror is stockProducts (purchasing.go),
+// which excludes "finished" instead.
+func (s *Seeder) sellableProducts() []productRef {
+	out := make([]productRef, 0, len(s.products))
+	for _, p := range s.products {
+		if p.category != "component" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // randomInvoiceLines picks n distinct-ish products (repeats are fine and
 // realistic — "2 line items of the same consulting rate" happens) and
 // random quantities appropriate to whether it's a per-hour service or a
 // physical unit.
 func (s *Seeder) randomInvoiceLines(n int) invoiceLines {
+	sellable := s.sellableProducts()
 	out := invoiceLines{}
 	for i := 0; i < n; i++ {
-		p := Pick(s.rng, s.products)
+		p := Pick(s.rng, sellable)
 		qty := s.quantityFor(p)
 		taxPercent := s.taxPercentFor(p.taxRateID)
 
@@ -367,9 +383,10 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 // have on-hand quantity, falling back to service products when nothing
 // does (see createOrder's doc comment).
 func (s *Seeder) orderableLines(n int) orderLineSet {
+	sellable := s.sellableProducts()
 	out := orderLineSet{}
 	var inStock []productRef
-	for _, p := range s.products {
+	for _, p := range sellable {
 		if p.stockEnabled && p.onHand >= 1 {
 			inStock = append(inStock, p)
 		}
@@ -380,7 +397,7 @@ func (s *Seeder) orderableLines(n int) orderLineSet {
 			p = Pick(s.rng, inStock)
 		} else {
 			var services []productRef
-			for _, sp := range s.products {
+			for _, sp := range sellable {
 				if !sp.stockEnabled {
 					services = append(services, sp)
 				}
