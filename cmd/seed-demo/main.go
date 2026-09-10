@@ -53,6 +53,8 @@ type Config struct {
 	AdminEmail    string
 	AdminPassword string
 	OrgName       string
+	Country       string
+	Currency      string
 	Months        int
 	EndDate       time.Time
 	Seed          uint64
@@ -70,6 +72,8 @@ func parseFlags() Config {
 	flag.StringVar(&cfg.AdminEmail, "admin-email", envOr("SEED_ADMIN_EMAIL", envOr("ADMIN_EMAIL", "admin@fatura.cloud")), "platform admin login email (creating the org grants it admin membership)")
 	flag.StringVar(&cfg.AdminPassword, "admin-password", envOr("SEED_ADMIN_PASSWORD", envOr("ADMIN_PASSWORD", "admin")), "platform admin login password")
 	flag.StringVar(&cfg.OrgName, "org-name", "Demo Organization", "name of the organization to create/reset and seed")
+	flag.StringVar(&cfg.Country, "country", "Germany", "organization's country — also selects a chart-of-accounts template (masterdata.go's orgProfiles) and, through it, which VAT accounts tax rates wire to; \"Germany\" and \"Tunisia\" have dedicated profiles, anything else falls back to a generic one matching db/account.go's defaultChartOfAccounts")
+	flag.StringVar(&cfg.Currency, "currency", "EUR", "organization's functional currency (ISO 4217 code)")
 	flag.IntVar(&cfg.Months, "months", 18, "how many months of daily history to generate, ending at --end-date")
 	flag.StringVar(&endDateStr, "end-date", time.Now().Format("2006-01-02"), "last day of the simulated range, YYYY-MM-DD (default: today)")
 	flag.Uint64Var(&cfg.Seed, "seed", 20260101, "RNG seed — the same seed always reproduces the same dataset")

@@ -208,7 +208,7 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 		State:               "draft",
 		Date:                midnightUTC(day),
 		DueDate:             &dueDate,
-		Currency:            "EUR",
+		Currency:            s.cfg.Currency,
 		Total:               total,
 		TaxTotal:            taxTotal,
 		SubTotal:            subTotal,
@@ -242,10 +242,13 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 	return nil
 }
 
+// stockProducts excludes "finished" goods (catalog.go) — assembled, not
+// bought from a vendor. The sales-side mirror is sellableProducts
+// (sales.go), which excludes "component" instead.
 func (s *Seeder) stockProducts() []productRef {
 	var out []productRef
 	for _, p := range s.products {
-		if p.stockEnabled {
+		if p.stockEnabled && p.category != "finished" {
 			out = append(out, p)
 		}
 	}

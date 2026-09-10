@@ -75,6 +75,16 @@ type productCatalogEntry struct {
 	costFactorLo float64 // cost as a fraction of price, e.g. 0.55
 	costFactorHi float64
 	qtyLo, qtyHi int
+	// category mirrors products.category (db/product.go) — "finished" or
+	// "component", "" for a service or anything left unclassified. Drives
+	// both CreateProductRequest.Category and, more importantly, which side
+	// of the business a generator is allowed to pick the product for: a
+	// component is bought from a vendor and never sold directly, a
+	// finished good is sold and never purchased — see sales.go/
+	// purchasing.go's category filters, which mirror the same
+	// finished/component split the real frontend product pickers apply
+	// (CLAUDE.md's "products.category" note).
+	category string
 }
 
 var serviceCatalog = []productCatalogEntry{
@@ -90,33 +100,174 @@ var serviceCatalog = []productCatalogEntry{
 	{name: "Logistics coordination (per shipment)", priceCentsLo: 8000, priceCentsHi: 25000, qtyLo: 1, qtyHi: 4},
 }
 
-var productCatalog = []productCatalogEntry{
-	{name: "Steel bracket, galvanized", unit: "pcs", stockEnabled: true, priceCentsLo: 350, priceCentsHi: 1200, costFactorLo: 0.45, costFactorHi: 0.65},
-	{name: "Aluminium profile, 2m", unit: "pcs", stockEnabled: true, priceCentsLo: 1200, priceCentsHi: 4500, costFactorLo: 0.5, costFactorHi: 0.7},
-	{name: "Cable duct, 40x60mm", unit: "m", stockEnabled: true, priceCentsLo: 450, priceCentsHi: 900, costFactorLo: 0.4, costFactorHi: 0.6},
-	{name: "Hex bolt set M8 (100pcs)", unit: "pcs", stockEnabled: true, priceCentsLo: 800, priceCentsHi: 1800, costFactorLo: 0.5, costFactorHi: 0.65},
-	{name: "Industrial hinge, heavy duty", unit: "pcs", stockEnabled: true, priceCentsLo: 1500, priceCentsHi: 3500, costFactorLo: 0.5, costFactorHi: 0.7},
-	{name: "PVC conduit, 25mm", unit: "m", stockEnabled: true, priceCentsLo: 200, priceCentsHi: 550, costFactorLo: 0.4, costFactorHi: 0.55},
-	{name: "Circuit breaker, 16A", unit: "pcs", stockEnabled: true, priceCentsLo: 900, priceCentsHi: 2200, costFactorLo: 0.5, costFactorHi: 0.68},
-	{name: "LED panel light, 60x60cm", unit: "pcs", stockEnabled: true, priceCentsLo: 3500, priceCentsHi: 9000, costFactorLo: 0.45, costFactorHi: 0.6},
-	{name: "Safety helmet, EN397", unit: "pcs", stockEnabled: true, priceCentsLo: 1200, priceCentsHi: 2800, costFactorLo: 0.4, costFactorHi: 0.55},
-	{name: "Work gloves, cut resistant", unit: "pair", stockEnabled: true, priceCentsLo: 600, priceCentsHi: 1500, costFactorLo: 0.4, costFactorHi: 0.55},
-	{name: "Pallet wrap, 500mm x 300m", unit: "roll", stockEnabled: true, priceCentsLo: 800, priceCentsHi: 1600, costFactorLo: 0.45, costFactorHi: 0.6},
-	{name: "Corrugated shipping box, large", unit: "pcs", stockEnabled: true, priceCentsLo: 150, priceCentsHi: 450, costFactorLo: 0.4, costFactorHi: 0.6},
-	{name: "Network switch, 24-port", unit: "pcs", stockEnabled: true, priceCentsLo: 12000, priceCentsHi: 38000, costFactorLo: 0.55, costFactorHi: 0.72},
-	{name: "Ethernet cable, Cat6, 10m", unit: "pcs", stockEnabled: true, priceCentsLo: 800, priceCentsHi: 1800, costFactorLo: 0.4, costFactorHi: 0.55},
-	{name: "UPS battery backup, 1500VA", unit: "pcs", stockEnabled: true, priceCentsLo: 15000, priceCentsHi: 32000, costFactorLo: 0.55, costFactorHi: 0.7},
-	{name: "Server rack, 42U", unit: "pcs", stockEnabled: true, priceCentsLo: 45000, priceCentsHi: 120000, costFactorLo: 0.55, costFactorHi: 0.72},
-	{name: "Industrial fan, 400mm", unit: "pcs", stockEnabled: true, priceCentsLo: 4000, priceCentsHi: 9500, costFactorLo: 0.45, costFactorHi: 0.62},
-	{name: "Hydraulic hose, 5m", unit: "pcs", stockEnabled: true, priceCentsLo: 2500, priceCentsHi: 6000, costFactorLo: 0.5, costFactorHi: 0.68},
-	{name: "Ball bearing, 6205-2RS", unit: "pcs", stockEnabled: true, priceCentsLo: 300, priceCentsHi: 900, costFactorLo: 0.45, costFactorHi: 0.6},
-	{name: "Toolbox, steel, lockable", unit: "pcs", stockEnabled: true, priceCentsLo: 3500, priceCentsHi: 8000, costFactorLo: 0.45, costFactorHi: 0.62},
-	{name: "Office chair, ergonomic", unit: "pcs", stockEnabled: true, priceCentsLo: 12000, priceCentsHi: 32000, costFactorLo: 0.5, costFactorHi: 0.65},
-	{name: "Desk, adjustable height", unit: "pcs", stockEnabled: true, priceCentsLo: 25000, priceCentsHi: 55000, costFactorLo: 0.5, costFactorHi: 0.68},
-	{name: "Filing cabinet, 4-drawer", unit: "pcs", stockEnabled: true, priceCentsLo: 15000, priceCentsHi: 32000, costFactorLo: 0.5, costFactorHi: 0.65},
-	{name: "Printer toner cartridge", unit: "pcs", stockEnabled: true, priceCentsLo: 4500, priceCentsHi: 11000, costFactorLo: 0.5, costFactorHi: 0.7},
-	{name: "Label printer roll, 100m", unit: "roll", stockEnabled: true, priceCentsLo: 900, priceCentsHi: 2200, costFactorLo: 0.45, costFactorHi: 0.6},
+// displacementClass is the one dimension both the finished-motorcycle and
+// component catalogs below are generated across — a part or model sized for
+// a bigger engine costs proportionally more. multiplier scales a tier's
+// baseline (125cc) price range.
+type displacementClass struct {
+	label      string
+	multiplier float64
 }
+
+var displacementClasses = []displacementClass{
+	{"50cc", 0.5}, {"125cc", 1.0}, {"250cc", 1.8}, {"400cc", 2.8}, {"650cc", 4.0},
+}
+
+// motorcycleModelLines × displacementClasses gives the 25 finished-goods
+// entries a motorcycle assembler like "Atlas Moto Assemblage SARL" sells —
+// see buildFinishedMotorcycleCatalog below. Not every line/displacement
+// pairing is a real-world product a manufacturer would actually offer (a
+// 650cc "Scooter" is a stretch), but distinct, plausible-sounding SKUs
+// matter more here than a fully curated model lineup would.
+var motorcycleModelLines = []string{"Roadster", "Cruiser", "Adventure", "Scrambler", "Scooter"}
+
+// buildFinishedMotorcycleCatalog returns one entry per (model line,
+// displacement) pair — 5x5 = 25, matching issue-driven demand for "around
+// 25 finished products". costFactor is higher than a typical resold good
+// (0.65-0.8, not the 0.4-0.7 range componentTiers below use): a finished
+// motorcycle's cost is dominated by the parts and labor that went into
+// assembling it, not a wholesale markup.
+func buildFinishedMotorcycleCatalog() []productCatalogEntry {
+	const baseLo, baseHi int64 = 180000, 280000 // 125cc baseline, EUR cents
+	out := make([]productCatalogEntry, 0, len(motorcycleModelLines)*len(displacementClasses))
+	for _, line := range motorcycleModelLines {
+		for _, c := range displacementClasses {
+			out = append(out, productCatalogEntry{
+				name:         fmt.Sprintf("Atlas %s %s", line, c.label),
+				unit:         "pcs",
+				stockEnabled: true,
+				priceCentsLo: int64(float64(baseLo) * c.multiplier),
+				priceCentsHi: int64(float64(baseHi) * c.multiplier),
+				costFactorLo: 0.65, costFactorHi: 0.8,
+				qtyLo: 1, qtyHi: 3,
+				category: "finished",
+			})
+		}
+	}
+	return out
+}
+
+// componentTier is a shared price/cost/quantity bucket a componentTemplate
+// picks by rough complexity — cheaper to maintain and reason about than a
+// unique price range hand-tuned per one of 55 part names. qtyLo/qtyHi is a
+// purchase-order line's bulk restocking quantity (small hardware ordered in
+// the hundreds, an engine block ordered a handful at a time).
+type componentTier struct {
+	priceCentsLo, priceCentsHi int64
+	costFactorLo, costFactorHi float64
+	qtyLo, qtyHi               int
+}
+
+var (
+	tierEngineCore      = componentTier{25000, 120000, 0.6, 0.75, 1, 6}
+	tierMajorAssembly   = componentTier{8000, 35000, 0.55, 0.7, 2, 15}
+	tierMidComponent    = componentTier{2000, 9000, 0.5, 0.65, 5, 40}
+	tierElectricalSmall = componentTier{800, 4500, 0.45, 0.62, 10, 80}
+	tierSmallHardware   = componentTier{250, 1200, 0.45, 0.6, 20, 200}
+)
+
+type componentTemplate struct {
+	name string
+	tier componentTier
+}
+
+// componentTemplates are the parts that go into assembling one of the
+// motorcycles above — bought from vendors (purchasing.go's stockProducts
+// excludes "finished" goods, the mirror image of sales.go excluding
+// "component" ones), never sold directly to a client. 55 templates x 5
+// displacementClasses = 275 rows, the middle of the requested 250-300
+// component range.
+var componentTemplates = []componentTemplate{
+	{"Engine block", tierEngineCore},
+	{"Cylinder head", tierEngineCore},
+	{"Crankshaft", tierEngineCore},
+	{"Gearbox housing", tierEngineCore},
+	{"Frame chassis", tierEngineCore},
+
+	{"Front fork assembly", tierMajorAssembly},
+	{"Rear shock absorber", tierMajorAssembly},
+	{"Swingarm", tierMajorAssembly},
+	{"Radiator", tierMajorAssembly},
+	{"Carburetor", tierMajorAssembly},
+	{"Starter motor", tierMajorAssembly},
+	{"Stator/alternator", tierMajorAssembly},
+	{"Wiring harness", tierMajorAssembly},
+	{"Fuel tank", tierMajorAssembly},
+	{"Wheel rim", tierMajorAssembly},
+
+	{"Piston kit", tierMidComponent},
+	{"Connecting rod", tierMidComponent},
+	{"Camshaft", tierMidComponent},
+	{"Timing chain", tierMidComponent},
+	{"Fuel injector", tierMidComponent},
+	{"Fuel pump", tierMidComponent},
+	{"Clutch plate set", tierMidComponent},
+	{"Drive chain", tierMidComponent},
+	{"Chain sprocket set", tierMidComponent},
+	{"Exhaust header pipe", tierMidComponent},
+	{"Muffler/silencer", tierMidComponent},
+	{"Cooling fan", tierMidComponent},
+	{"Oil pump", tierMidComponent},
+	{"Brake caliper", tierMidComponent},
+	{"Brake disc", tierMidComponent},
+	{"Master cylinder", tierMidComponent},
+	{"Wheel hub", tierMidComponent},
+	{"Wheel bearing set", tierMidComponent},
+	{"Battery", tierMidComponent},
+	{"Voltage regulator", tierMidComponent},
+
+	{"Ignition switch", tierElectricalSmall},
+	{"Ignition coil", tierElectricalSmall},
+	{"Headlight assembly", tierElectricalSmall},
+	{"Tail light assembly", tierElectricalSmall},
+	{"Turn signal set", tierElectricalSmall},
+	{"Speedometer cluster", tierElectricalSmall},
+	{"Horn", tierElectricalSmall},
+	{"Handlebar", tierElectricalSmall},
+	{"Handlebar grip set", tierElectricalSmall},
+	{"Mirror set", tierElectricalSmall},
+
+	{"Spark plug", tierSmallHardware},
+	{"Clutch cable", tierSmallHardware},
+	{"Brake cable", tierSmallHardware},
+	{"Brake lever", tierSmallHardware},
+	{"Brake pad set", tierSmallHardware},
+	{"Air filter", tierSmallHardware},
+	{"Oil filter", tierSmallHardware},
+	{"Tire", tierSmallHardware},
+	{"Inner tube", tierSmallHardware},
+	{"Spoke set", tierSmallHardware},
+}
+
+// buildComponentCatalog expands componentTemplates across every
+// displacementClass, scaling each tier's baseline price range by the
+// class's multiplier — the same "bigger engine, pricier part" scaling
+// buildFinishedMotorcycleCatalog uses for the vehicles these parts build.
+func buildComponentCatalog() []productCatalogEntry {
+	out := make([]productCatalogEntry, 0, len(componentTemplates)*len(displacementClasses))
+	for _, t := range componentTemplates {
+		for _, c := range displacementClasses {
+			out = append(out, productCatalogEntry{
+				name:         fmt.Sprintf("%s (%s)", t.name, c.label),
+				unit:         "pcs",
+				stockEnabled: true,
+				priceCentsLo: int64(float64(t.tier.priceCentsLo) * c.multiplier),
+				priceCentsHi: int64(float64(t.tier.priceCentsHi) * c.multiplier),
+				costFactorLo: t.tier.costFactorLo, costFactorHi: t.tier.costFactorHi,
+				qtyLo: t.tier.qtyLo, qtyHi: t.tier.qtyHi,
+				category: "component",
+			})
+		}
+	}
+	return out
+}
+
+// productCatalog is every physical good "Atlas Moto Assemblage SARL" deals
+// in: 25 finished motorcycles it sells, plus 275 components it buys from
+// vendors to assemble them — see setupProducts (masterdata.go) for how
+// category then drives which side of the business (sales vs. purchasing)
+// a generator is allowed to pick each one for.
+var productCatalog = append(buildFinishedMotorcycleCatalog(), buildComponentCatalog()...)
 
 // Rand wraps math/rand/v2's PCG source seeded deterministically, plus the
 // small helpers every generator in this tool needs (weighted picks, business
