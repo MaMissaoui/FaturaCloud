@@ -203,6 +203,16 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, req.FiscalStampAmount); err != nil {
 		return nil, err
 	}
+	client, err := d.GetClient(req.ClientID)
+	if err != nil {
+		return nil, newValidationError("client not found")
+	}
+	if err := requireSameOrg(req.OrganizationID, client.OrganizationID, "client"); err != nil {
+		return nil, err
+	}
+	if err := d.checkInvoiceLineItemsFKOwnership(req.OrganizationID, req.LineItems); err != nil {
+		return nil, err
+	}
 	org, err := d.GetOrganization(req.OrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("create_invoice organization: %w", err)
@@ -273,6 +283,30 @@ func invoiceUpdateTouchesGLFields(updates UpdateInvoiceRequest) bool {
 }
 
 func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest) (*Invoice, error) {
+	// Cross-org FK-ownership check (issue #189): a clientId/productId/taxRate
+	// this request is actually setting must belong to the SAME organization
+	// as the invoice being updated, not just exist.
+	if updates.ClientID != nil || updates.LineItems != nil {
+		current, err := d.GetInvoice(invoiceID)
+		if err != nil {
+			return nil, fmt.Errorf("update_invoice fetch current for ownership check: %w", err)
+		}
+		if updates.ClientID != nil {
+			client, err := d.GetClient(*updates.ClientID)
+			if err != nil {
+				return nil, newValidationError("client not found")
+			}
+			if err := requireSameOrg(current.OrganizationID, client.OrganizationID, "client"); err != nil {
+				return nil, err
+			}
+		}
+		if updates.LineItems != nil {
+			if err := d.checkInvoiceLineItemsFKOwnership(current.OrganizationID, *updates.LineItems); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// A posted GL entry was built from the invoice's line items, totals,
 	// currency, and client — editing any of those out from under it would
 	// leave the entry silently wrong (the trial balance would keep the old
