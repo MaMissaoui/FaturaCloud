@@ -28,11 +28,14 @@ type orgProfile struct {
 // placeholder data and VAT account codes for. "Germany" was this tool's
 // original (and only) shape; "Tunisia" was added alongside the --country/
 // --currency flags for seeding a Tunisia-based organization. Client/vendor
-// generation (setupVendors/setupClients) still uses German-flavored phone
-// numbers, VATIN format, and city names (catalog.go's cities/VATIN helpers)
-// regardless of --country — a deliberate, not yet closed, scope boundary:
-// full per-country business-partner realism would mean per-country city/
-// phone/VATIN generators too, not just the organization's own profile.
+// generation (setupVendors/setupClients) draws its own company/person
+// names, cities, phone numbers, and VATIN format from catalog.go's
+// countryLocale/localeFor for the same --country — the two profiles stay
+// separate types (orgProfile here is only the organization's own address/
+// VAT-account data) but are resolved from the same --country flag, so a
+// Tunisia-seeded organization's vendors and clients read as Tunisian too,
+// not German placeholder data with a Tunisian address bolted onto the
+// organization alone.
 var orgProfiles = map[string]orgProfile{
 	"Germany": {
 		countryCode: "DE",
@@ -129,6 +132,15 @@ func (s *Seeder) setupOrganization() error {
 		return fmt.Errorf("newly created organization has no default cash account — cannot record payments")
 	}
 	s.cashAccountID = *org.DefaultCashAccountID
+	// db/gl_posting.go's applyLandedCost (F114) credits this account when
+	// receiving a purchase order linked to an import — seedDefaultChartOfAccounts
+	// should always set it via importCostAdditions, but verify rather than
+	// let every import-linked receipt in this run 409 one at a time until
+	// the 25-error abort threshold (seeder.go's maybeAbort) trips partway
+	// through an otherwise-successful multi-minute run.
+	if org.DefaultImportCostsPayableAccountID == nil {
+		return fmt.Errorf("newly created organization has no default import-costs-payable account — cannot receive a purchase order linked to an import")
+	}
 	s.log.Printf("seed-demo: organization %q ready (%s)", s.cfg.OrgName, s.orgID)
 	return nil
 }
@@ -213,13 +225,15 @@ func (s *Seeder) setupTaxRates() error {
 	return nil
 }
 
-// setupVendors and setupClients still generate German-flavored phone
-// numbers, VATIN format, and city names (catalog.go's City/VATIN helpers)
-// regardless of --country — see orgProfiles' doc comment above for why
-// that's a known, not yet closed, scope boundary. CountryCode itself does
-// follow the resolved orgProfile, since (unlike those cosmetic details) it
-// feeds real business logic elsewhere (e.g. db/einvoice.go's e-invoice
-// profile resolution keys off a client's own CountryCode).
+// setupVendors and setupClients generate company/person names, city names,
+// phone numbers, and VATIN format from the locale catalog.go resolves for
+// --country (countryLocale/localeFor) — "Germany" and "Tunisia" have
+// dedicated locales, anything else falls back to Germany's, the same
+// scope boundary orgProfiles documents for the organization's own address
+// data. CountryCode itself always followed the resolved orgProfile even
+// before this, since (unlike those cosmetic details) it feeds real
+// business logic elsewhere (e.g. db/einvoice.go's e-invoice profile
+// resolution keys off a client's own CountryCode).
 func (s *Seeder) setupVendors() error {
 	for i := 0; i < s.profile.Vendors; i++ {
 		name := s.rng.CompanyName()
@@ -229,7 +243,7 @@ func (s *Seeder) setupVendors() error {
 			Name:           strPtr(name),
 			Vatin:          strPtr(s.rng.VATIN()),
 			Emails:         strPtr(fmt.Sprintf(`["%s"]`, s.rng.Email(name))),
-			Phone:          strPtr(fmt.Sprintf("+49 %d %d", s.rng.IntRange(30, 891), s.rng.IntRange(100000, 999999))),
+			Phone:          strPtr(s.rng.Phone()),
 			Street:         strPtr(s.rng.Street()),
 			HouseNumber:    strPtr(fmt.Sprintf("%d", s.rng.IntRange(1, 200))),
 			PostalCode:     strPtr(plz),
@@ -254,7 +268,7 @@ func (s *Seeder) setupClients() error {
 			OrganizationID: s.orgID,
 			Name:           strPtr(name),
 			Vatin:          strPtr(s.rng.VATIN()),
-			Phone:          strPtr(fmt.Sprintf("+49 %d %d", s.rng.IntRange(30, 891), s.rng.IntRange(100000, 999999))),
+			Phone:          strPtr(s.rng.Phone()),
 			Street:         strPtr(s.rng.Street()),
 			HouseNumber:    strPtr(fmt.Sprintf("%d", s.rng.IntRange(1, 200))),
 			PostalCode:     strPtr(plz),

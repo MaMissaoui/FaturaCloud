@@ -10,51 +10,151 @@ import (
 // so extending the demo data's variety (a new product category, a new city)
 // only ever means editing one list here.
 
-var companyStems = []string{
-	"Nordlicht", "Rheinblick", "Alpenwerk", "Havelstern", "Elbmarkt", "Baltisch",
-	"Schwarzwald", "Havelland", "Spreewerk", "Odertal", "Isarquell", "Mainstrom",
-	"Nordkontor", "Maschinenwerk", "Feinwerk", "Metallbau", "Solartech", "Bauzentrum",
-	"Logistik", "Handwerk", "Systemtechnik", "Datenwerk", "Industriebau", "Werkstoff",
-	"Kupfer", "Silber", "Granit", "Quarz", "Bernstein", "Zeder",
-}
-
-var companySuffixes = []string{
-	"GmbH", "GmbH & Co. KG", "AG", "KG", "e.K.", "Handels GmbH", "Systems GmbH",
-	"Solutions AG", "Service GmbH", "Vertrieb GmbH",
-}
-
-var vendorFocus = []string{
-	"Metallwaren", "Elektronik", "Bürobedarf", "Verpackung", "Werkzeuge",
-	"Baustoffe", "Textilien", "Chemie", "Maschinenteile", "IT-Zubehör",
-}
-
-var personFirstNames = []string{
-	"Anna", "Ben", "Clara", "David", "Elif", "Finn", "Greta", "Hannah", "Ismail",
-	"Jonas", "Katrin", "Lukas", "Mira", "Noah", "Olga", "Paul", "Quentin", "Rosa",
-	"Sven", "Theresa", "Uwe", "Vera", "Wilhelm", "Yasmin", "Zoe",
-}
-
-var personLastNames = []string{
-	"Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner",
-	"Becker", "Hoffmann", "Schulz", "Koch", "Bauer", "Richter", "Klein", "Wolf",
-	"Neumann", "Schwarz", "Zimmermann", "Braun", "Krüger",
-}
-
-var cities = []struct {
+// cityEntry is one entry in a locale's cities list — a name plus a
+// plausible postal code, picked together so the two never drift apart the
+// way independently-random name/code fields would.
+type cityEntry struct {
 	name string
 	plz  string
-}{
-	{"Berlin", "10115"}, {"Munich", "80331"}, {"Hamburg", "20095"},
-	{"Cologne", "50667"}, {"Frankfurt", "60311"}, {"Stuttgart", "70173"},
-	{"Düsseldorf", "40213"}, {"Leipzig", "04109"}, {"Dortmund", "44135"},
-	{"Essen", "45127"}, {"Bremen", "28195"}, {"Dresden", "01067"},
-	{"Hanover", "30159"}, {"Nuremberg", "90402"}, {"Mannheim", "68159"},
 }
 
-var streetNames = []string{
-	"Hauptstraße", "Bahnhofstraße", "Industriering", "Gewerbepark", "Am Kanal",
-	"Marktplatz", "Werkstraße", "Lindenallee", "Schulstraße", "Rosenweg",
-	"Fabrikstraße", "Kirchweg", "Talstraße", "Bergstraße", "Ringstraße",
+// countryLocale is every hand-picked word list/generator setupVendors and
+// setupClients (masterdata.go) draw from for a given --country — company
+// names, person names, cities, streets, and the phone/VATIN formats real
+// businesses in that country actually use. This is deliberately a
+// different (larger) set of concerns than orgProfile (masterdata.go): that
+// type is the *organization's own* address/VAT-account profile, this one
+// is the shape of the *other* businesses (clients/vendors) it trades with —
+// see localeFor's doc comment for why every --country still gets one
+// rather than only Germany/Tunisia.
+type countryLocale struct {
+	companyStems, companySuffixes, vendorFocus []string
+	personFirstNames, personLastNames          []string
+	cities                                     []cityEntry
+	streetNames                                []string
+	phone                                      func(rr *Rand) string
+	vatin                                      func(rr *Rand) string
+}
+
+var localeGermany = countryLocale{
+	companyStems: []string{
+		"Nordlicht", "Rheinblick", "Alpenwerk", "Havelstern", "Elbmarkt", "Baltisch",
+		"Schwarzwald", "Havelland", "Spreewerk", "Odertal", "Isarquell", "Mainstrom",
+		"Nordkontor", "Maschinenwerk", "Feinwerk", "Metallbau", "Solartech", "Bauzentrum",
+		"Logistik", "Handwerk", "Systemtechnik", "Datenwerk", "Industriebau", "Werkstoff",
+		"Kupfer", "Silber", "Granit", "Quarz", "Bernstein", "Zeder",
+	},
+	companySuffixes: []string{
+		"GmbH", "GmbH & Co. KG", "AG", "KG", "e.K.", "Handels GmbH", "Systems GmbH",
+		"Solutions AG", "Service GmbH", "Vertrieb GmbH",
+	},
+	vendorFocus: []string{
+		"Metallwaren", "Elektronik", "Bürobedarf", "Verpackung", "Werkzeuge",
+		"Baustoffe", "Textilien", "Chemie", "Maschinenteile", "IT-Zubehör",
+	},
+	personFirstNames: []string{
+		"Anna", "Ben", "Clara", "David", "Elif", "Finn", "Greta", "Hannah", "Ismail",
+		"Jonas", "Katrin", "Lukas", "Mira", "Noah", "Olga", "Paul", "Quentin", "Rosa",
+		"Sven", "Theresa", "Uwe", "Vera", "Wilhelm", "Yasmin", "Zoe",
+	},
+	personLastNames: []string{
+		"Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner",
+		"Becker", "Hoffmann", "Schulz", "Koch", "Bauer", "Richter", "Klein", "Wolf",
+		"Neumann", "Schwarz", "Zimmermann", "Braun", "Krüger",
+	},
+	cities: []cityEntry{
+		{"Berlin", "10115"}, {"Munich", "80331"}, {"Hamburg", "20095"},
+		{"Cologne", "50667"}, {"Frankfurt", "60311"}, {"Stuttgart", "70173"},
+		{"Düsseldorf", "40213"}, {"Leipzig", "04109"}, {"Dortmund", "44135"},
+		{"Essen", "45127"}, {"Bremen", "28195"}, {"Dresden", "01067"},
+		{"Hanover", "30159"}, {"Nuremberg", "90402"}, {"Mannheim", "68159"},
+	},
+	streetNames: []string{
+		"Hauptstraße", "Bahnhofstraße", "Industriering", "Gewerbepark", "Am Kanal",
+		"Marktplatz", "Werkstraße", "Lindenallee", "Schulstraße", "Rosenweg",
+		"Fabrikstraße", "Kirchweg", "Talstraße", "Bergstraße", "Ringstraße",
+	},
+	phone: func(rr *Rand) string {
+		return fmt.Sprintf("+49 %d %d", rr.IntRange(30, 891), rr.IntRange(100000, 999999))
+	},
+	vatin: func(rr *Rand) string {
+		return fmt.Sprintf("DE%09d", rr.IntRange(100000000, 999999999))
+	},
+}
+
+// localeTunisia backs client/vendor generation for --country Tunisia —
+// added alongside orgProfiles' own Tunisia entry so a Tunisia-seeded
+// organization's master data actually reads as Tunisian rather than
+// German placeholder text with a Tunisian address bolted onto the
+// organization alone. companySuffixes leans on the legal forms that
+// actually appear on Tunisian trade registers (SARL/SUARL — a
+// single-member SARL is common there — and Ets for a smaller family
+// business, "Établissement"), and vatin mirrors the org profile's own
+// "Matricule Fiscal" shape (7 digits + a check letter + the category
+// codes) rather than reusing DE's VATIN format — the client/vendor form
+// relabels this field "MF" specifically when countryCode is "TN" (see
+// src/components/clients/form.tsx).
+var localeTunisia = countryLocale{
+	companyStems: []string{
+		"Carthage", "Maghreb", "Méditerranée", "Zaghouan", "Kairouan", "Sahel",
+		"Jasmin", "Oliveraie", "Ariana", "Kerkennah", "Sidi Bou", "Technopole",
+		"Nord-Sud", "Atlas", "Ichkeul", "Jerba", "Utique", "Bizerte Nord",
+	},
+	companySuffixes: []string{
+		"SARL", "SUARL", "SA", "Ets", "& Fils", "Groupe",
+	},
+	vendorFocus: []string{
+		"Mécanique", "Électronique", "Import-Export", "Industrie", "Métallurgie",
+		"Plastique", "Textile", "Logistique", "Négoce", "Matériaux",
+	},
+	personFirstNames: []string{
+		"Ahmed", "Mohamed", "Amine", "Karim", "Sami", "Walid", "Yassine", "Mehdi",
+		"Nizar", "Anis", "Amira", "Ines", "Sarra", "Rania", "Nour", "Yosra",
+		"Emna", "Salma", "Wafa", "Dorra",
+	},
+	personLastNames: []string{
+		"Trabelsi", "Bouazizi", "Jlassi", "Gharbi", "Cherif", "Hammami",
+		"Mansour", "Zaidi", "Khelifi", "Mejri", "Sassi", "Bouzid", "Karoui",
+		"Slim", "Ben Salah", "Ayari", "Ferjani", "Guesmi", "Chaabane", "Rekik",
+	},
+	cities: []cityEntry{
+		{"Tunis", "1000"}, {"Sfax", "3000"}, {"Sousse", "4000"},
+		{"Bizerte", "7000"}, {"Gabès", "6000"}, {"Ariana", "2080"},
+		{"Monastir", "5000"}, {"Nabeul", "8000"}, {"Kairouan", "3100"},
+		{"Gafsa", "2100"}, {"Médenine", "4100"}, {"Kasserine", "1200"},
+	},
+	streetNames: []string{
+		"Avenue Habib Bourguiba", "Rue de Marseille", "Avenue Mohamed V",
+		"Rue Ibn Khaldoun", "Zone Industrielle", "Rue de la Liberté",
+		"Avenue de la République", "Rue du 18 Janvier", "Rue Farhat Hached",
+		"Avenue Taïeb Mhiri",
+	},
+	phone: func(rr *Rand) string {
+		// Real Tunisian numbers are 8 digits total (2+3+3), matching the
+		// org's own profile phone (+216 71 234 567, masterdata.go).
+		return fmt.Sprintf("+216 %02d %03d %03d", rr.IntRange(20, 99), rr.IntRange(100, 999), rr.IntRange(100, 999))
+	},
+	vatin: func(rr *Rand) string {
+		letters := "ABCDEHMNPT"
+		letter := letters[rr.IntRange(0, len(letters)-1)]
+		return fmt.Sprintf("%07d%c/A/M/000", rr.IntRange(1000000, 9999999), letter)
+	},
+}
+
+// locales maps --country to its countryLocale; localeFor falls back to
+// localeGermany for any country besides the two above — the same
+// deliberate, not-yet-closed scope boundary orgProfiles documents for the
+// organization's own address data (masterdata.go's genericOrgProfile).
+var locales = map[string]countryLocale{
+	"Germany": localeGermany,
+	"Tunisia": localeTunisia,
+}
+
+func localeFor(country string) countryLocale {
+	if l, ok := locales[country]; ok {
+		return l
+	}
+	return localeGermany
 }
 
 // productCatalogEntry is a template for a product/service the demo org
@@ -272,13 +372,17 @@ var productCatalog = append(buildFinishedMotorcycleCatalog(), buildComponentCata
 // Rand wraps math/rand/v2's PCG source seeded deterministically, plus the
 // small helpers every generator in this tool needs (weighted picks, business
 // names, money ranges). Everything in cmd/seed-demo goes through one *Rand
-// so a given --seed always reproduces the same dataset end to end.
+// so a given --seed always reproduces the same dataset end to end. locale
+// is resolved once from --country at construction (localeFor) and read by
+// every name/city/street/phone/VATIN helper below — see countryLocale's
+// doc comment for why this is a separate concern from orgProfile.
 type Rand struct {
-	r *rand.Rand
+	r      *rand.Rand
+	locale countryLocale
 }
 
-func NewRand(seed uint64) *Rand {
-	return &Rand{r: rand.New(rand.NewPCG(seed, seed^0x9E3779B97F4A7C15))}
+func NewRand(seed uint64, country string) *Rand {
+	return &Rand{r: rand.New(rand.NewPCG(seed, seed^0x9E3779B97F4A7C15)), locale: localeFor(country)}
 }
 
 // IntRange returns a value in [lo, hi] inclusive.
@@ -314,7 +418,7 @@ func Shuffle[T any](rr *Rand, items []T) {
 }
 
 func (rr *Rand) CompanyName() string {
-	return fmt.Sprintf("%s %s %s", Pick(rr, companyStems), Pick(rr, vendorFocus), Pick(rr, companySuffixes))
+	return fmt.Sprintf("%s %s %s", Pick(rr, rr.locale.companyStems), Pick(rr, rr.locale.vendorFocus), Pick(rr, rr.locale.companySuffixes))
 }
 
 func (rr *Rand) ClientName() string {
@@ -323,21 +427,25 @@ func (rr *Rand) ClientName() string {
 	if rr.Chance(0.85) {
 		return rr.CompanyName()
 	}
-	return Pick(rr, personFirstNames) + " " + Pick(rr, personLastNames)
+	return Pick(rr, rr.locale.personFirstNames) + " " + Pick(rr, rr.locale.personLastNames)
 }
 
 func (rr *Rand) City() (name, plz string) {
-	c := Pick(rr, cities)
+	c := Pick(rr, rr.locale.cities)
 	return c.name, c.plz
 }
 
 func (rr *Rand) Street() string {
-	return fmt.Sprintf("%s %d", Pick(rr, streetNames), rr.IntRange(1, 180))
+	return fmt.Sprintf("%s %d", Pick(rr, rr.locale.streetNames), rr.IntRange(1, 180))
 }
 
-func (rr *Rand) VATIN() string {
-	return fmt.Sprintf("DE%09d", rr.IntRange(100000000, 999999999))
-}
+// Phone and VATIN dispatch on the resolved locale — see countryLocale's
+// phone/vatin fields. setupVendors/setupClients (masterdata.go) call these
+// instead of hand-formatting a German-shaped string themselves, which is
+// what previously made every country's client/vendor data look German
+// regardless of --country.
+func (rr *Rand) Phone() string { return rr.locale.phone(rr) }
+func (rr *Rand) VATIN() string { return rr.locale.vatin(rr) }
 
 func (rr *Rand) Email(company string) string {
 	return fmt.Sprintf("contact@%s.example", slugify(company))

@@ -67,7 +67,14 @@ documents, and a short `--months` value while iterating on the tool itself.
 - **Fiscal years/periods** — one full calendar year (12 open monthly
   periods) per year the simulated range touches. Deliberately left **open**
   forever — see "What this deliberately doesn't do" below.
-- **Vendors, clients** — counts from the chosen `--volume` profile.
+- **Vendors, clients** — counts from the chosen `--volume` profile, with
+  company/person names, cities, phone numbers, and VATIN format drawn from
+  the `countryLocale` `--country` resolves to (`catalog.go`'s `localeFor`)
+  — `Germany` and `Tunisia` have dedicated locales matching their
+  `orgProfiles` entry, so a Tunisia-seeded organization's clients and
+  vendors read as Tunisian too, not German placeholder data with a
+  Tunisian address bolted onto the organization alone; any other
+  `--country` falls back to Germany's.
   **Products** are fixed regardless of `--volume` (`catalog.go`): 10
   generic services, 25 "finished" motorcycles (5 model lines × 5
   displacement classes, `buildFinishedMotorcycleCatalog`), and 275
@@ -80,7 +87,12 @@ documents, and a short `--months` value while iterating on the tool itself.
   businesses specifically — a from-scratch catalog for a different kind of
   business would mean replacing `productCatalog` and the two filters above,
   not tuning a knob.
-- **Daily simulation** (`seeder.go`'s `Run`, one pass per calendar day):
+- **Daily simulation** (`seeder.go`'s `Run`, one pass per calendar day).
+  Invoice/bill due dates and the "Net N days" payment-terms text both
+  follow the organization's own `orgProfile.dueDays` (14 for Germany, 30
+  for Tunisia) rather than a hardcoded number, so AR/AP aging buckets a
+  document lands in stay consistent with what the organization's own
+  settings actually say:
   - **Direct sales invoices** — the bulk of the volume. Created draft, sent,
     then a randomly chosen fate: paid in full (most), paid via two partial
     payments, left outstanding (so AR aging has something to show), or
@@ -94,7 +106,20 @@ documents, and a short `--months` value while iterating on the tool itself.
     (posts the GRNI accrual, raises stock) → (a few days later) bill,
     linking each line back to its PO line item for the 3-way match (~12% of
     bills get a deliberate small price or quantity variance, exercising the
-    match-override workflow) → approve → (later) pay.
+    match-override workflow) → approve → a randomly chosen fate mirroring
+    the AR side (paid in full, paid via two partials, or left outstanding
+    for AP aging — same small ~5% never-paid share as AR).
+  - **Imports** (F114, `imports.go`) — roughly once a month, a consolidated
+    shipment is created with a freight/customs cost in the organization's
+    own currency (`Currency`/`ExchangeRate` left unset — this tool still
+    has no multi-currency documents, see below). For the following ~3
+    weeks, newly placed purchase orders for stock-tracked components have
+    a chance to link to it (up to 5 POs per import), the same way a real
+    consolidated shipment collects several vendors' orders before it
+    ships. Linking is what makes a receipt against that PO spread the
+    import's landed cost across it (`db/gl_posting.go`'s `applyLandedCost`)
+    and what the Imports list's "Purchase orders"/"Committed value"
+    columns have something to show.
 
 Everything multi-step is coordinated by `scheduler.go`'s day-keyed task
 queue — see its doc comment for the mechanism every generator uses to say
@@ -138,11 +163,11 @@ missing feature is a bug:
   serial numbers in `purchasing.go`/`sales.go` at receive/ship time.
 - **No multi-currency documents.** Every document is EUR, the organization's
   own currency — no `exchangeRate`/foreign-currency path is exercised.
-- **No imports (China-shipment consolidation), OIDC users, backups, or
-  organization membership beyond the creating admin.** Out of scope for a
-  "day-to-day trading activity" demo dataset; add a generator file for any
-  of these the same way `purchasing.go`/`sales.go` were added, following
-  `scheduler.go`'s task-queue pattern for anything multi-step.
+- **No OIDC users, backups, or organization membership beyond the creating
+  admin.** Out of scope for a "day-to-day trading activity" demo dataset;
+  add a generator file for any of these the same way `purchasing.go`/
+  `sales.go`/`imports.go` were added, following `scheduler.go`'s task-queue
+  pattern for anything multi-step.
 - **Stock tracking is a local estimate, not read back from the server.**
   `stock.go`'s `onHand`/`adjustOnHand` mirror what *this run* has
   received/shipped, seeded at zero — it has no way to know about stock a

@@ -54,6 +54,7 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 	n := s.rng.IntRange(1, 4)
 	var reqLines []db.CreatePurchaseOrderLineItemRequest
 	var localLines []purchaseLine
+	var poValueCents int64
 	for i := 0; i < n; i++ {
 		p := Pick(s.rng, stockProducts)
 		qty := float64(s.rng.IntRange(20, 150)) // restocking bulk, not a single-unit sale
@@ -65,6 +66,7 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 			Unit:        strPtr(p.unit),
 		})
 		localLines = append(localLines, purchaseLine{productID: p.id, productName: p.name, unit: p.unit, quantity: qty, unitCost: p.costCents})
+		poValueCents += int64(qty * float64(p.costCents))
 	}
 
 	req := db.CreatePurchaseOrderRequest{
@@ -74,6 +76,7 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 		Status:         "draft",
 		OrderDate:      midnightUTC(day),
 		LineItems:      reqLines,
+		ImportID:       s.maybeLinkToImport(day, poValueCents),
 	}
 	var po db.PurchaseOrder
 	if err := s.c.Post("/api/purchase-orders", req, &po); err != nil {

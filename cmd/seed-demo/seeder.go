@@ -75,6 +75,7 @@ type Stats struct {
 	Clients, Vendors, Products                          int
 	Invoices, Orders, Deliveries                        int
 	PurchaseOrders, InboundDeliveries, IncomingInvoices int
+	Imports                                             int
 	Payments                                            int
 	Errors                                              int
 }
@@ -107,7 +108,12 @@ type Seeder struct {
 
 	sched *Scheduler
 
-	invoiceNum, orderNum, deliveryNum, poNum, inboundNum, incomingNum *numberer
+	// currentImport is the most recently created consolidated shipment
+	// (F114) still open for new purchase orders to link to — see
+	// imports.go's maybeStartImport/maybeLinkToImport.
+	currentImport *importRef
+
+	invoiceNum, orderNum, deliveryNum, poNum, inboundNum, incomingNum, importNum *numberer
 
 	start time.Time
 	stats Stats
@@ -133,7 +139,7 @@ func (n *numberer) next(year int) string {
 func NewSeeder(c *Client, cfg Config) *Seeder {
 	return &Seeder{
 		c:       c,
-		rng:     NewRand(cfg.Seed),
+		rng:     NewRand(cfg.Seed, cfg.Country),
 		cfg:     cfg,
 		log:     log.New(log.Writer(), "", log.LstdFlags),
 		profile: volumeProfiles[cfg.Volume],
@@ -145,6 +151,7 @@ func NewSeeder(c *Client, cfg Config) *Seeder {
 		poNum:       newNumberer("PO"),
 		inboundNum:  newNumberer("GR"),
 		incomingNum: newNumberer("BILL"),
+		importNum:   newNumberer("IMP"),
 	}
 }
 
@@ -196,17 +203,24 @@ func (s *Seeder) Run() error {
 			if err := s.maybeStartOrder(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("order: %w", err))
 			}
+			// maybeStartImport runs before maybeStartPurchaseOrder so a
+			// newly opened import is already s.currentImport by the time
+			// this same day's purchase orders decide whether to link to
+			// it (see purchasing.go's createPurchaseOrder).
+			if err := s.maybeStartImport(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("import: %w", err))
+			}
 			if err := s.maybeStartPurchaseOrder(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("purchase order: %w", err))
 			}
 		}
 
 		if s.cfg.ProgressEvery > 0 && dayNum%s.cfg.ProgressEvery == 0 {
-			s.log.Printf("seed-demo: %s (%d/%d days) — invoices=%d orders=%d deliveries=%d POs=%d receipts=%d bills=%d payments=%d errors=%d",
+			s.log.Printf("seed-demo: %s (%d/%d days) — invoices=%d orders=%d deliveries=%d POs=%d receipts=%d bills=%d imports=%d payments=%d errors=%d",
 				day.Format("2006-01-02"), dayNum, totalDays,
 				s.stats.Invoices, s.stats.Orders, s.stats.Deliveries,
 				s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices,
-				s.stats.Payments, s.stats.Errors)
+				s.stats.Imports, s.stats.Payments, s.stats.Errors)
 		}
 	}
 
@@ -218,7 +232,7 @@ func (s *Seeder) Run() error {
 	s.log.Printf("seed-demo: done in %s", elapsed.Round(time.Second))
 	s.log.Printf("seed-demo: clients=%d vendors=%d products=%d", s.stats.Clients, s.stats.Vendors, s.stats.Products)
 	s.log.Printf("seed-demo: invoices=%d orders=%d deliveries=%d", s.stats.Invoices, s.stats.Orders, s.stats.Deliveries)
-	s.log.Printf("seed-demo: purchase_orders=%d inbound_deliveries=%d incoming_invoices=%d", s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices)
+	s.log.Printf("seed-demo: purchase_orders=%d inbound_deliveries=%d incoming_invoices=%d imports=%d", s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices, s.stats.Imports)
 	s.log.Printf("seed-demo: payments=%d errors=%d", s.stats.Payments, s.stats.Errors)
 	if s.stats.Errors > 0 {
 		s.log.Printf("seed-demo: WARNING — %d step(s) failed; see the log above for which day/kind. The rest of the run continued.", s.stats.Errors)
