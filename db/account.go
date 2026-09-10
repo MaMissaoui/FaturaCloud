@@ -107,6 +107,15 @@ func (d *Database) CreateAccount(req CreateAccountRequest) (*Account, error) {
 	if !accountTypes[req.Type] {
 		return nil, newValidationError("invalid account type %q", req.Type)
 	}
+	if req.ParentID != nil && *req.ParentID != "" {
+		parent, err := d.GetAccount(*req.ParentID)
+		if err != nil {
+			return nil, newValidationError("parent account not found")
+		}
+		if err := requireSameOrg(req.OrganizationID, parent.OrganizationID, "parent account"); err != nil {
+			return nil, err
+		}
+	}
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
@@ -169,16 +178,16 @@ func (d *Database) UpdateAccount(accountID string, updates UpdateAccountRequest)
 			return nil, newValidationError("cannot make this account a leaf — it still has child accounts under it")
 		}
 	}
-	if updates.ParentID != nil {
+	if updates.ParentID != nil && *updates.ParentID != "" {
 		if *updates.ParentID == accountID {
 			return nil, newValidationError("an account cannot be its own parent")
 		}
-		var exists int64
-		if err := d.DB.Get(&exists, `SELECT COUNT(*) FROM accounts WHERE id = ?`, *updates.ParentID); err != nil {
-			return nil, fmt.Errorf("update_account parent_check: %w", err)
-		}
-		if exists == 0 {
+		parent, err := d.GetAccount(*updates.ParentID)
+		if err != nil {
 			return nil, newValidationError("parent account %q does not exist", *updates.ParentID)
+		}
+		if err := requireSameOrg(current.OrganizationID, parent.OrganizationID, "parent account"); err != nil {
+			return nil, err
 		}
 	}
 

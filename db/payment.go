@@ -224,6 +224,33 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 			return nil, newValidationError("an outbound payment cannot have a client")
 		}
 	}
+	// Cross-org FK-ownership check (issue #189): bankAccountId/clientId/
+	// vendorId must belong to the SAME organization as the payment.
+	bankAccount, err := d.GetAccount(req.BankAccountID)
+	if err != nil {
+		return nil, newValidationError("bank/cash account not found")
+	}
+	if err := requireSameOrg(req.OrganizationID, bankAccount.OrganizationID, "bank/cash account"); err != nil {
+		return nil, err
+	}
+	if req.ClientID != nil && *req.ClientID != "" {
+		client, err := d.GetClient(*req.ClientID)
+		if err != nil {
+			return nil, newValidationError("client not found")
+		}
+		if err := requireSameOrg(req.OrganizationID, client.OrganizationID, "client"); err != nil {
+			return nil, err
+		}
+	}
+	if req.VendorID != nil && *req.VendorID != "" {
+		vendor, err := d.GetVendor(*req.VendorID)
+		if err != nil {
+			return nil, newValidationError("vendor not found")
+		}
+		if err := requireSameOrg(req.OrganizationID, vendor.OrganizationID, "vendor"); err != nil {
+			return nil, err
+		}
+	}
 	if len(req.Applications) == 0 {
 		return nil, newValidationError("a payment needs at least one application")
 	}

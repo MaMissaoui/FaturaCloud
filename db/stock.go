@@ -239,6 +239,9 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 	if err != nil {
 		return nil, fmt.Errorf("create_stock_movement product: %w", err)
 	}
+	if err := requireSameOrg(req.OrganizationID, product.OrganizationID, "product"); err != nil {
+		return nil, err
+	}
 
 	// Phase 7: every d.DB read this request needs (serial lookups, the
 	// resulting GL lines) happens here, before the transaction opens — a

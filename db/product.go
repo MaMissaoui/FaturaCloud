@@ -173,6 +173,41 @@ func (d *Database) GetProduct(productID string) (*Product, error) {
 	return &product, nil
 }
 
+// checkProductFKOwnership validates that taxRateId/revenueAccountId/
+// expenseAccountId (if set) belong to the SAME organization as the product
+// (issue #189). A nil/empty field means "not part of this request," not a
+// mismatch.
+func (d *Database) checkProductFKOwnership(organizationID string, taxRateID, revenueAccountID, expenseAccountID *string) error {
+	if taxRateID != nil && *taxRateID != "" {
+		taxRate, err := d.GetTaxRate(*taxRateID)
+		if err != nil {
+			return newValidationError("tax rate not found")
+		}
+		if err := requireSameOrg(organizationID, taxRate.OrganizationID, "tax rate"); err != nil {
+			return err
+		}
+	}
+	if revenueAccountID != nil && *revenueAccountID != "" {
+		account, err := d.GetAccount(*revenueAccountID)
+		if err != nil {
+			return newValidationError("revenue account not found")
+		}
+		if err := requireSameOrg(organizationID, account.OrganizationID, "revenue account"); err != nil {
+			return err
+		}
+	}
+	if expenseAccountID != nil && *expenseAccountID != "" {
+		account, err := d.GetAccount(*expenseAccountID)
+		if err != nil {
+			return newValidationError("expense account not found")
+		}
+		if err := requireSameOrg(organizationID, account.OrganizationID, "expense account"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
@@ -190,6 +225,9 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	}
 	if req.Category != nil && !productCategories[*req.Category] {
 		return nil, newValidationError("invalid product category %q", *req.Category)
+	}
+	if err := d.checkProductFKOwnership(req.OrganizationID, req.TaxRateID, req.RevenueAccountID, req.ExpenseAccountID); err != nil {
+		return nil, err
 	}
 	// A brand-new product always has zero stock, so the toggle guard
 	// UpdateProduct enforces has nothing to check here.
@@ -239,6 +277,9 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 			"cannot change serial number tracking for %q while stock is non-zero (%.2f) — adjust stock to zero first",
 			current.Name, current.StockQuantity,
 		)
+	}
+	if err := d.checkProductFKOwnership(current.OrganizationID, updates.TaxRateID, updates.RevenueAccountID, updates.ExpenseAccountID); err != nil {
+		return nil, err
 	}
 
 	_, err = d.DB.Exec(

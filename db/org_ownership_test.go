@@ -550,3 +550,201 @@ func TestCreateIncomingInvoiceRejectsCrossOrgReferences(t *testing.T) {
 		t.Fatal("expected UpdateIncomingInvoice to reject switching to org-a's vendor")
 	}
 }
+
+// TestCreateAccountRejectsCrossOrgReferences covers CreateAccount/UpdateAccount's
+// parentId.
+func TestCreateAccountRejectsCrossOrgReferences(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-acct-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-acct-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	parentA, err := d.CreateAccount(CreateAccountRequest{OrganizationID: orgA.ID, Code: "8000", Name: "Org A Parent", Type: "asset", IsGroup: 1})
+	if err != nil {
+		t.Fatalf("CreateAccount org-a: %v", err)
+	}
+
+	if _, err := d.CreateAccount(CreateAccountRequest{
+		OrganizationID: orgB.ID, ParentID: &parentA.ID, Code: "8000", Name: "Org B Child", Type: "asset",
+	}); err == nil {
+		t.Fatal("expected an org-b account pointing at org-a's parent account to be rejected")
+	}
+
+	accountB, err := d.CreateAccount(CreateAccountRequest{OrganizationID: orgB.ID, Code: "8000", Name: "Org B Account", Type: "asset"})
+	if err != nil {
+		t.Fatalf("expected a fully self-consistent org-b account to succeed, got: %v", err)
+	}
+	if _, err := d.UpdateAccount(accountB.ID, UpdateAccountRequest{
+		ParentID: &parentA.ID, Code: "8000", Name: "Org B Account", Type: "asset",
+	}); err == nil {
+		t.Fatal("expected UpdateAccount to reject switching to org-a's parent account")
+	}
+}
+
+// TestCreateTaxRateRejectsCrossOrgReferences covers CreateTaxRate/UpdateTaxRate's
+// outputTaxAccountId/inputTaxAccountId.
+func TestCreateTaxRateRejectsCrossOrgReferences(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-tax-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-tax-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	if orgA.DefaultRevenueAccountID == nil {
+		t.Fatal("expected org-a's auto-seeded chart of accounts to set a default revenue account")
+	}
+
+	if _, err := d.CreateTaxRate(CreateTaxRateRequest{
+		OrganizationID: orgB.ID, Name: "Cross-org Rate", Percentage: 10, OutputTaxAccountID: orgA.DefaultRevenueAccountID,
+	}); err == nil {
+		t.Fatal("expected an org-b tax rate pointing at org-a's output tax account to be rejected")
+	}
+
+	rateB, err := d.CreateTaxRate(CreateTaxRateRequest{OrganizationID: orgB.ID, Name: "Org B Rate", Percentage: 10})
+	if err != nil {
+		t.Fatalf("expected a fully self-consistent org-b tax rate to succeed, got: %v", err)
+	}
+	if _, err := d.UpdateTaxRate(rateB.ID, UpdateTaxRateRequest{InputTaxAccountID: orgA.DefaultRevenueAccountID}); err == nil {
+		t.Fatal("expected UpdateTaxRate to reject switching to org-a's input tax account")
+	}
+}
+
+// TestCreateProductRejectsCrossOrgReferences covers CreateProduct/UpdateProduct's
+// taxRateId/revenueAccountId/expenseAccountId.
+func TestCreateProductRejectsCrossOrgReferences(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-prod-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-prod-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	taxRateA, err := d.CreateTaxRate(CreateTaxRateRequest{OrganizationID: orgA.ID, Name: "Org A Rate", Percentage: 10})
+	if err != nil {
+		t.Fatalf("CreateTaxRate org-a: %v", err)
+	}
+
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: orgB.ID, Name: "Org B Product", Type: "product", Price: 1000, TaxRateID: &taxRateA.ID,
+	}); err == nil {
+		t.Fatal("expected an org-b product pointing at org-a's tax rate to be rejected")
+	}
+
+	productB, err := d.CreateProduct(CreateProductRequest{OrganizationID: orgB.ID, Name: "Org B Product", Type: "product", Price: 1000})
+	if err != nil {
+		t.Fatalf("expected a fully self-consistent org-b product to succeed, got: %v", err)
+	}
+	if _, err := d.UpdateProduct(productB.ID, UpdateProductRequest{
+		Name: "Org B Product", Type: "product", Price: 1000, TaxRateID: &taxRateA.ID,
+	}); err == nil {
+		t.Fatal("expected UpdateProduct to reject switching to org-a's tax rate")
+	}
+}
+
+// TestCreateStockMovementRejectsCrossOrgProduct covers CreateStockMovement's
+// productId.
+func TestCreateStockMovementRejectsCrossOrgProduct(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-stk-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-stk-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{OrganizationID: orgA.ID, Name: "Org A Product", Type: "product", Price: 1000, StockEnabled: 1})
+	if err != nil {
+		t.Fatalf("CreateProduct org-a: %v", err)
+	}
+
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: orgB.ID, ProductID: productA.ID, Type: "in", Quantity: 1,
+	}); err == nil {
+		t.Fatal("expected an org-b stock movement pointing at org-a's product to be rejected")
+	}
+}
+
+// TestCreatePaymentRejectsCrossOrgReferences covers CreatePayment's
+// bankAccountId/clientId/vendorId.
+func TestCreatePaymentRejectsCrossOrgReferences(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-pay-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-pay-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	if orgA.DefaultCashAccountID == nil || orgB.DefaultCashAccountID == nil {
+		t.Fatal("expected both organizations' auto-seeded chart of accounts to set a default cash account")
+	}
+	clientA, err := d.CreateClient(CreateClientRequest{OrganizationID: orgA.ID, Name: ptr("Org A Client")})
+	if err != nil {
+		t.Fatalf("CreateClient org-a: %v", err)
+	}
+	clientB, err := d.CreateClient(CreateClientRequest{OrganizationID: orgB.ID, Name: ptr("Org B Client")})
+	if err != nil {
+		t.Fatalf("CreateClient org-b: %v", err)
+	}
+	// UpdateInvoiceState (sent, below) posts GL, which needs an open fiscal
+	// year covering the invoice date — 1700000000000 is 2023-11-14.
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: orgB.ID, Name: "2023", StartDate: 1672531200000, EndDate: 1703980799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear org-b: %v", err)
+	}
+	invoiceB, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: orgB.ID, Number: "INV-B1", ClientID: clientB.ID, Date: 1700000000000, Currency: "EUR",
+		Total: 100, TaxTotal: 0, SubTotal: 100,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 100}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice org-b: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(invoiceB.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState org-b invoice to sent: %v", err)
+	}
+
+	// bankAccountId points at org-a.
+	if _, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: orgB.ID, Direction: "inbound", ClientID: &clientB.ID, BankAccountID: *orgA.DefaultCashAccountID,
+		Amount: 100, Currency: "EUR", Date: 1700000000000, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "invoice", DocumentID: invoiceB.ID, Amount: 100}},
+	}); err == nil {
+		t.Fatal("expected an org-b payment pointing at org-a's bank account to be rejected")
+	}
+
+	// clientId points at org-a (still an inbound payment, still under org-b).
+	if _, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: orgB.ID, Direction: "inbound", ClientID: &clientA.ID, BankAccountID: *orgB.DefaultCashAccountID,
+		Amount: 100, Currency: "EUR", Date: 1700000000000, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "invoice", DocumentID: invoiceB.ID, Amount: 100}},
+	}); err == nil {
+		t.Fatal("expected an org-b payment pointing at org-a's client to be rejected")
+	}
+
+	// A fully self-consistent org-b payment still succeeds.
+	if _, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: orgB.ID, Direction: "inbound", ClientID: &clientB.ID, BankAccountID: *orgB.DefaultCashAccountID,
+		Amount: 100, Currency: "EUR", Date: 1700000000000, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "invoice", DocumentID: invoiceB.ID, Amount: 100}},
+	}); err != nil {
+		t.Fatalf("expected a fully self-consistent org-b payment to succeed, got: %v", err)
+	}
+}

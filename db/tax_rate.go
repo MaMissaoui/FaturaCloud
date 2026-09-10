@@ -110,6 +110,32 @@ func (d *Database) GetTaxRate(taxRateID string) (*TaxRate, error) {
 	return &rate, nil
 }
 
+// checkTaxRateAccountFKOwnership validates that outputAccountID/
+// inputAccountID (if set) belong to the SAME organization as the tax rate
+// (issue #189). A nil/empty field means "not part of this request," not a
+// mismatch.
+func (d *Database) checkTaxRateAccountFKOwnership(organizationID string, outputAccountID, inputAccountID *string) error {
+	if outputAccountID != nil && *outputAccountID != "" {
+		account, err := d.GetAccount(*outputAccountID)
+		if err != nil {
+			return newValidationError("output tax account not found")
+		}
+		if err := requireSameOrg(organizationID, account.OrganizationID, "output tax account"); err != nil {
+			return err
+		}
+	}
+	if inputAccountID != nil && *inputAccountID != "" {
+		account, err := d.GetAccount(*inputAccountID)
+		if err != nil {
+			return newValidationError("input tax account not found")
+		}
+		if err := requireSameOrg(organizationID, account.OrganizationID, "input tax account"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
@@ -119,6 +145,9 @@ func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
 	}
 	if !taxRateCategoryCodes[req.CategoryCode] {
 		return nil, newValidationError("invalid tax rate category code %q", req.CategoryCode)
+	}
+	if err := d.checkTaxRateAccountFKOwnership(req.OrganizationID, req.OutputTaxAccountID, req.InputTaxAccountID); err != nil {
+		return nil, err
 	}
 
 	tx, err := d.DB.Beginx()
@@ -155,6 +184,15 @@ func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
 func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest) (*TaxRate, error) {
 	if updates.CategoryCode != nil && !taxRateCategoryCodes[*updates.CategoryCode] {
 		return nil, newValidationError("invalid tax rate category code %q", *updates.CategoryCode)
+	}
+	if updates.OutputTaxAccountID != nil || updates.InputTaxAccountID != nil {
+		current, err := d.GetTaxRate(taxRateID)
+		if err != nil {
+			return nil, fmt.Errorf("update_tax_rate fetch current for ownership check: %w", err)
+		}
+		if err := d.checkTaxRateAccountFKOwnership(current.OrganizationID, updates.OutputTaxAccountID, updates.InputTaxAccountID); err != nil {
+			return nil, err
+		}
 	}
 
 	tx, err := d.DB.Beginx()
