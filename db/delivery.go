@@ -159,9 +159,39 @@ func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLi
 	return items, nil
 }
 
+// checkDeliveryHeaderFKOwnership validates that orderId/clientId (if set)
+// belong to the SAME organization as the delivery (issue #189) — a line
+// item's orderLineItemId/productId are checked separately, inside
+// replaceDeliveryLineItemsTx, since resolving a line's product from its
+// order line requires the same query either way.
+func (d *Database) checkDeliveryHeaderFKOwnership(organizationID string, orderID, clientID *string) error {
+	if orderID != nil && *orderID != "" {
+		order, err := d.GetOrder(*orderID)
+		if err != nil {
+			return newValidationError("order not found")
+		}
+		if err := requireSameOrg(organizationID, order.OrganizationID, "order"); err != nil {
+			return err
+		}
+	}
+	if clientID != nil && *clientID != "" {
+		client, err := d.GetClient(*clientID)
+		if err != nil {
+			return newValidationError("client not found")
+		}
+		if err := requireSameOrg(organizationID, client.OrganizationID, "client"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
+	}
+	if err := d.checkDeliveryHeaderFKOwnership(req.OrganizationID, req.OrderID, req.ClientID); err != nil {
+		return nil, err
 	}
 
 	tx, err := d.DB.Beginx()
@@ -180,7 +210,7 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 	if err != nil {
 		return nil, fmt.Errorf("create_delivery: %w", err)
 	}
-	if err := replaceDeliveryLineItemsTx(tx, req.ID, req.LineItems); err != nil {
+	if err := replaceDeliveryLineItemsTx(tx, req.OrganizationID, req.ID, req.LineItems); err != nil {
 		return nil, err
 	}
 
@@ -191,14 +221,15 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 }
 
 func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*OutboundDelivery, error) {
-	if req.LineItems != nil {
-		current, err := d.GetDelivery(id)
-		if err != nil {
-			return nil, fmt.Errorf("update_delivery lookup: %w", err)
-		}
-		if current.Status == "shipped" || current.Status == "delivered" {
-			return nil, newValidationError("cannot edit line items of a %s delivery", current.Status)
-		}
+	current, err := d.GetDelivery(id)
+	if err != nil {
+		return nil, fmt.Errorf("update_delivery lookup: %w", err)
+	}
+	if req.LineItems != nil && (current.Status == "shipped" || current.Status == "delivered") {
+		return nil, newValidationError("cannot edit line items of a %s delivery", current.Status)
+	}
+	if err := d.checkDeliveryHeaderFKOwnership(current.OrganizationID, req.OrderID, req.ClientID); err != nil {
+		return nil, err
 	}
 
 	tx, err := d.DB.Beginx()
@@ -225,7 +256,7 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 		return nil, fmt.Errorf("update_delivery: %w", err)
 	}
 	if req.LineItems != nil {
-		if err := replaceDeliveryLineItemsTx(tx, id, *req.LineItems); err != nil {
+		if err := replaceDeliveryLineItemsTx(tx, current.OrganizationID, id, *req.LineItems); err != nil {
 			return nil, err
 		}
 	}
@@ -624,7 +655,13 @@ type sqlGetExecer interface {
 	Get(dest any, query string, args ...any) error
 }
 
-func replaceDeliveryLineItemsTx(exec sqlGetExecer, deliveryID string, items []CreateDeliveryLineItemRequest) error {
+// replaceDeliveryLineItemsTx also enforces issue #189's ownership rule for
+// this table's two cross-org-referenceable fields: orderLineItemId (via its
+// parent order) and productId, checked with the same tx-capable exec used
+// for every other read/write here rather than a separate d.DB call — this
+// runs inside CreateDelivery/UpdateDelivery's already-open transaction, and
+// SetMaxOpenConns(1) means a second connection from d.DB would deadlock.
+func replaceDeliveryLineItemsTx(exec sqlGetExecer, organizationID, deliveryID string, items []CreateDeliveryLineItemRequest) error {
 	_, err := exec.Exec(`DELETE FROM outbound_delivery_line_items WHERE deliveryId = ?`, deliveryID)
 	if err != nil {
 		return fmt.Errorf("delete_delivery_line_items: %w", err)
@@ -632,10 +669,33 @@ func replaceDeliveryLineItemsTx(exec sqlGetExecer, deliveryID string, items []Cr
 	for i, item := range items {
 		id, _ := gonanoid.New()
 		productID := item.ProductID
-		if productID == nil && item.OrderLineItemID != nil {
-			var resolved sql.NullString
-			if err := exec.Get(&resolved, `SELECT productId FROM orderLineItems WHERE id = ?`, *item.OrderLineItemID); err == nil && resolved.Valid {
-				productID = &resolved.String
+		if item.OrderLineItemID != nil {
+			var resolved struct {
+				ProductID      sql.NullString `db:"productId"`
+				OrganizationID string         `db:"organizationId"`
+			}
+			if err := exec.Get(&resolved, `
+				SELECT ol.productId AS productId, o.organizationId AS organizationId
+				FROM orderLineItems ol
+				JOIN orders o ON o.id = ol.orderId
+				WHERE ol.id = ?`, *item.OrderLineItemID,
+			); err != nil {
+				return newValidationError("line %d: order line item not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, resolved.OrganizationID, fmt.Sprintf("line %d: order line item", i+1)); err != nil {
+				return err
+			}
+			if productID == nil && resolved.ProductID.Valid {
+				productID = &resolved.ProductID.String
+			}
+		}
+		if productID != nil && *productID != "" {
+			var productOrgID string
+			if err := exec.Get(&productOrgID, `SELECT organizationId FROM products WHERE id = ?`, *productID); err != nil {
+				return newValidationError("line %d: product not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, productOrgID, fmt.Sprintf("line %d: product", i+1)); err != nil {
+				return err
 			}
 		}
 		_, err := exec.Exec(`

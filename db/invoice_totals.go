@@ -23,6 +23,38 @@ func roundCents(x float64) int64 {
 	return int64(math.Round(x))
 }
 
+// checkInvoiceLineItemsFKOwnership validates that every line item's
+// productId and taxRate belong to the SAME organization as the invoice
+// itself (issue #189) — Phase C's route-level membership check only proves
+// the caller belongs to organizationID, not that ids referenced INSIDE the
+// body do too. Shared by both invoice paths (sales and incoming) since
+// CreateInvoiceLineItemRequest itself is (see that type's own doc comment);
+// PurchaseOrderLineItemID is incoming-invoice-specific and checked
+// separately by that caller.
+func (d *Database) checkInvoiceLineItemsFKOwnership(organizationID string, lineItems []CreateInvoiceLineItemRequest) error {
+	for i, item := range lineItems {
+		if item.ProductID != nil && *item.ProductID != "" {
+			product, err := d.GetProduct(*item.ProductID)
+			if err != nil {
+				return newValidationError("line %d: product not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, product.OrganizationID, fmt.Sprintf("line %d: product", i+1)); err != nil {
+				return err
+			}
+		}
+		if item.TaxRate != nil && *item.TaxRate != "" {
+			taxRate, err := d.GetTaxRate(*item.TaxRate)
+			if err != nil {
+				return newValidationError("line %d: tax rate not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, taxRate.OrganizationID, fmt.Sprintf("line %d: tax rate", i+1)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // validateInvoiceTotals independently recomputes subtotal/tax/total from the
 // line items and their tax rates, and rejects the request if they don't
 // match what the client submitted (F18: totals are otherwise client-computed

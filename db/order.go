@@ -169,6 +169,36 @@ func (d *Database) GetOrderDeliveredQuantities(orderID string) (map[string]float
 	return result, nil
 }
 
+// checkOrderFKOwnership validates that clientId (if set) and each line
+// item's productId belong to the SAME organization as the order (issue
+// #189) — Phase C's route-level membership check only proves the caller
+// belongs to organizationID, not that ids referenced INSIDE the body do
+// too. clientID nil/empty and an empty lineItems both mean "not part of
+// this request," not a mismatch.
+func (d *Database) checkOrderFKOwnership(organizationID string, clientID *string, lineItems []CreateOrderLineItemRequest) error {
+	if clientID != nil && *clientID != "" {
+		client, err := d.GetClient(*clientID)
+		if err != nil {
+			return newValidationError("client not found")
+		}
+		if err := requireSameOrg(organizationID, client.OrganizationID, "client"); err != nil {
+			return err
+		}
+	}
+	for i, item := range lineItems {
+		if item.ProductID != nil && *item.ProductID != "" {
+			product, err := d.GetProduct(*item.ProductID)
+			if err != nil {
+				return newValidationError("line %d: product not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, product.OrganizationID, fmt.Sprintf("line %d: product", i+1)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
@@ -178,6 +208,9 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	}
 	if !validOrderStatuses[req.Status] {
 		return nil, newValidationError("invalid order status %q", req.Status)
+	}
+	if err := d.checkOrderFKOwnership(req.OrganizationID, req.ClientID, req.LineItems); err != nil {
+		return nil, err
 	}
 	org, err := d.GetOrganization(req.OrganizationID)
 	if err != nil {
@@ -231,6 +264,13 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 	current, err := d.GetOrder(orderID)
 	if err != nil {
 		return nil, fmt.Errorf("update_order fetch current: %w", err)
+	}
+	var updateLineItems []CreateOrderLineItemRequest
+	if updates.LineItems != nil {
+		updateLineItems = *updates.LineItems
+	}
+	if err := d.checkOrderFKOwnership(current.OrganizationID, updates.ClientID, updateLineItems); err != nil {
+		return nil, err
 	}
 	org, err := d.GetOrganization(current.OrganizationID)
 	if err != nil {
