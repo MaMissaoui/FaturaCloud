@@ -368,6 +368,7 @@ var crossOrgProof = []struct {
 	{name: "delete delivery by id", method: http.MethodDelete, path: "/api/deliveries/org-a-delivery"},
 
 	{name: "list imports by org path", method: http.MethodGet, path: "/api/organizations/org-a/imports"},
+	{name: "import summaries by org path", method: http.MethodGet, path: "/api/organizations/org-a/imports/summaries"},
 	{name: "get import by id", method: http.MethodGet, path: "/api/imports/org-a-import"},
 	{name: "import summary", method: http.MethodGet, path: "/api/imports/org-a-import/summary"},
 	{name: "delete import by id", method: http.MethodDelete, path: "/api/imports/org-a-import"},

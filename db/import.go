@@ -242,6 +242,84 @@ func (d *Database) GetImportSummary(importID string) (*ImportSummary, error) {
 	}, nil
 }
 
+// GetImportSummaries is the batch counterpart to GetImportSummary — every
+// import's committed value / landed cost rate / linked PO count for an
+// organization in one query, instead of one round trip per import (the
+// Imports list page would otherwise call GetImportSummary once per row —
+// the same N+1 shape issue #147 fixed for organization roles). An import
+// with no linked purchase orders still gets an entry (zero value, zero
+// count, zero rate) — matching GetImportSummary's own behavior for a
+// freshly created import, not an absent-key special case.
+func (d *Database) GetImportSummaries(organizationID string) (map[string]ImportSummary, error) {
+	imports, err := d.GetImports(organizationID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Same shape as totalCommittedPOValueForImport's own query, scoped to
+	// the whole organization instead of one importId, so every import's
+	// committed-value line items arrive in a single round trip — grouped by
+	// importId in Go below rather than the database, since the exact-
+	// rational conversion (parseExchangeRate/convertCents) isn't expressible
+	// in SQL.
+	var rows []struct {
+		ImportID        string  `db:"importId"`
+		PurchaseOrderID string  `db:"purchaseOrderId"`
+		ExchangeRate    *string `db:"exchangeRate"`
+		Quantity        float64 `db:"quantity"`
+		UnitPrice       int64   `db:"unitPrice"`
+	}
+	if err := d.DB.Select(&rows, `
+		SELECT po.importId AS importId, poli.purchaseOrderId AS purchaseOrderId,
+		       po.exchangeRate AS exchangeRate, poli.quantity AS quantity, poli.unitPrice AS unitPrice
+		FROM purchase_order_line_items poli
+		JOIN purchase_orders po ON po.id = poli.purchaseOrderId
+		WHERE po.organizationId = ? AND po.importId IS NOT NULL AND po.status != 'cancelled'`,
+		organizationID,
+	); err != nil {
+		return nil, fmt.Errorf("get_import_summaries: %w", err)
+	}
+
+	totals := map[string]*big.Rat{}
+	poIDsByImport := map[string]map[string]bool{}
+	for _, r := range rows {
+		rate, err := parseExchangeRate(r.ExchangeRate)
+		if err != nil {
+			return nil, err
+		}
+		converted := convertCents(r.UnitPrice, rate)
+		qty, err := floatToRat(r.Quantity)
+		if err != nil {
+			return nil, fmt.Errorf("get_import_summaries: invalid quantity")
+		}
+		if totals[r.ImportID] == nil {
+			totals[r.ImportID] = new(big.Rat)
+			poIDsByImport[r.ImportID] = map[string]bool{}
+		}
+		totals[r.ImportID].Add(totals[r.ImportID], new(big.Rat).Mul(qty, new(big.Rat).SetInt64(converted)))
+		poIDsByImport[r.ImportID][r.PurchaseOrderID] = true
+	}
+
+	summaries := make(map[string]ImportSummary, len(imports))
+	for _, imp := range imports {
+		totalValue := totals[imp.ID]
+		if totalValue == nil {
+			totalValue = new(big.Rat)
+		}
+		totalCents := roundHalfUp(totalValue, 0).Num().Int64()
+		rate := landedCostRate(imp.FreightCost+imp.CustomsCost, totalValue)
+		rateFloat, _ := rate.Float64()
+		summaries[imp.ID] = ImportSummary{
+			TotalCommittedValue: totalCents,
+			FreightCost:         imp.FreightCost,
+			CustomsCost:         imp.CustomsCost,
+			LandedCostRate:      rateFloat,
+			PurchaseOrderCount:  int64(len(poIDsByImport[imp.ID])),
+		}
+	}
+	return summaries, nil
+}
+
 // totalCommittedPOValueForImport sums Σ(quantity × unitPrice) across every
 // non-cancelled purchase order linked to importID, converting each PO's own
 // line items to organization-currency cents via that PO's own frozen

@@ -755,6 +755,14 @@ export const GetNextImportNumber = (organizationId: string) =>
   );
 export const GetImport = (id: string) => get<Import>(`/imports/${id}`);
 export const GetImportSummary = (id: string) => get<ImportSummary>(`/imports/${id}/summary`);
+// Batch counterpart to GetImportSummary — every import's committed value/
+// landed cost rate/linked PO count for an organization in one request,
+// for the Imports list page (one row per import) rather than N per-row
+// GetImportSummary calls. Absent key means "no linked purchase orders" is
+// NOT the convention here (unlike GetMyOrganizationRoles) — every import
+// the org has gets an entry, zeroed if nothing's linked; see db.GetImportSummaries.
+export const GetImportSummaries = (organizationId: string) =>
+  get<Record<string, ImportSummary>>(`/organizations/${organizationId}/imports/summaries`);
 export const CreateImport = (req: Partial<Import>) => post<Import>("/imports", req);
 export const UpdateImport = (id: string, req: Partial<Import>) =>
   put<Import>(`/imports/${id}`, req);

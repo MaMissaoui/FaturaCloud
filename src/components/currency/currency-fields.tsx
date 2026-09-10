@@ -76,16 +76,26 @@ const ExchangeRateFields = ({
   currency,
   orgCurrency,
   disabled,
+  xl = 4,
 }: {
   currency: string | undefined | null;
   orgCurrency: string;
   disabled?: boolean;
+  // antd's `xl` breakpoint sizes a Col against the *viewport* width, not
+  // its containing element — fine for a full-width detail page (4/24 of a
+  // 1200px+ row is still plenty of room for a DatePicker), but far too
+  // narrow inside a fixed-width Drawer (e.g. the Import drawer's 640px):
+  // the date input renders wide enough on a real desktop for `xl` to win,
+  // then gets clipped to a fraction of the drawer's actual pixel width.
+  // Override to a larger fraction (e.g. 12, half-width) for any narrow
+  // container caller.
+  xl?: number;
 }) => {
   if (!showExchangeRateFields(currency, orgCurrency)) return null;
 
   return (
     <>
-      <Col xs={24} md={12} xl={4}>
+      <Col xs={24} md={12} xl={xl}>
         <Form.Item
           label={<Trans>Exchange rate</Trans>}
           name="exchangeRate"
@@ -101,7 +111,7 @@ const ExchangeRateFields = ({
           />
         </Form.Item>
       </Col>
-      <Col xs={24} md={12} xl={4}>
+      <Col xs={24} md={12} xl={xl}>
         <Form.Item
           label={<Trans>Rate date</Trans>}
           name="exchangeRateDate"

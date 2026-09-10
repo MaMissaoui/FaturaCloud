@@ -235,6 +235,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		return imp.OrganizationID, nil
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/imports", pathOrgID("orgId"), h.listImports)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/imports/summaries", pathOrgID("orgId"), h.listImportSummaries)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/imports/next-number", pathOrgID("orgId"), h.nextImportNumber)
 	protected("POST", "/api/imports", h.createImport)
 	orgMemberProtected("GET", "/api/imports/{id}", importOrgID, h.getImport)
