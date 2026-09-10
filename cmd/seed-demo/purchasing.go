@@ -208,7 +208,7 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 		State:               "draft",
 		Date:                midnightUTC(day),
 		DueDate:             &dueDate,
-		Currency:            "EUR",
+		Currency:            s.cfg.Currency,
 		Total:               total,
 		TaxTotal:            taxTotal,
 		SubTotal:            subTotal,

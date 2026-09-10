@@ -94,6 +94,10 @@ type Seeder struct {
 
 	orgID         string
 	cashAccountID string
+	// orgProfile is resolved once in setupOrganization from cfg.Country and
+	// reused by setupTaxRates (VAT account codes) and setupVendors/
+	// setupClients (CountryCode) — see masterdata.go's orgProfiles.
+	orgProfile orgProfile
 
 	standardTax, reducedTax, zeroTax taxRateRef
 
@@ -248,6 +252,16 @@ func (s *Seeder) maybeAbort() {
 func strPtr(s string) *string       { return &s }
 func int64Ptr(v int64) *int64       { return &v }
 func float64Ptr(v float64) *float64 { return &v }
+
+// nonEmptyStrPtr is strPtr, except "" becomes nil — for genericOrgProfile's
+// (masterdata.go) blank placeholder fields, where an actual empty string on
+// the wire would set e.g. City to "" instead of leaving it unset.
+func nonEmptyStrPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
 
 func midnightUTC(t time.Time) int64 {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).UnixMilli()

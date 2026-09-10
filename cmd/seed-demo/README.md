@@ -43,6 +43,8 @@ documents, and a short `--months` value while iterating on the tool itself.
 | `--base-url` | `http://localhost:8080` (or `$SEED_BASE_URL`) | Server to seed |
 | `--admin-email` / `--admin-password` | `admin@fatura.cloud` / `admin` (or `$SEED_ADMIN_EMAIL`/`$SEED_ADMIN_PASSWORD`/`$ADMIN_EMAIL`/`$ADMIN_PASSWORD`) | Login used to create the organization — see "Why a platform admin" below |
 | `--org-name` | `Demo Organization` | Organization to create/reset/seed |
+| `--country` | `Germany` | Organization's country — also picks a chart-of-accounts template (`masterdata.go`'s `orgProfiles`); `Germany` and `Tunisia` have dedicated address/VATIN/VAT-account profiles, anything else falls back to a generic one |
+| `--currency` | `EUR` | Organization's functional currency (ISO 4217 code) — independent of `--country`, so e.g. `--country Tunisia --currency TND` is expected, not implied |
 | `--months` | `18` | Length of the simulated history, ending at `--end-date` |
 | `--end-date` | today | Last simulated day, `YYYY-MM-DD` |
 | `--seed` | `20260101` | RNG seed — same seed always reproduces the same dataset |
@@ -53,9 +55,11 @@ documents, and a short `--months` value while iterating on the tool itself.
 
 ## What gets created
 
-- **Organization** — `Country: "Germany"` (so it gets the SKR04 chart of
-  accounts and every account this tool needs, e.g. the VAT accounts tax
-  rates require), EUR, 14-day payment terms.
+- **Organization** — `Country`/`Currency` from `--country`/`--currency`
+  (default `Germany`/`EUR`, so it gets the SKR04 chart of accounts and
+  every account this tool needs, e.g. the VAT accounts tax rates require;
+  `Tunisia` is the other country with a dedicated profile — see
+  `masterdata.go`'s `orgProfiles`), 14-day payment terms (30 for Tunisia).
 - **Tax rates** — Standard (19%), Reduced (7%), Zero-rated (0%), each wired
   to the SKR04 chart's output/input VAT accounts (codes `3800`/`1400`) —
   without that wiring, sending an invoice 409s with "no output tax account

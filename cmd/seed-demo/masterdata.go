@@ -6,6 +6,74 @@ import (
 	"github.com/MaMissaoui/fatura-cloud/db"
 )
 
+// orgProfile is everything about the seeded organization that varies by
+// --country beyond Currency (its own independent flag): the address/VATIN/
+// bank placeholder data, and — functionally load-bearing, not just cosmetic
+// — the ISO country code and which chart-of-accounts VAT account codes
+// setupTaxRates must wire tax rates to (db/account.go's resolveChartTemplate
+// picks a chart by this same Country string; a tax rate needs an
+// output/input VAT account before any invoice referencing it can post GL,
+// see setupTaxRates below).
+type orgProfile struct {
+	countryCode                 string
+	email, phone                string
+	street, houseNumber         string
+	postalCode, city            string
+	vatin, bankName, iban       string
+	dueDays                     int64
+	outputTaxCode, inputTaxCode string
+}
+
+// orgProfiles has one entry per --country this tool has been taught real
+// placeholder data and VAT account codes for. "Germany" was this tool's
+// original (and only) shape; "Tunisia" was added alongside the --country/
+// --currency flags for seeding a Tunisia-based organization. Client/vendor
+// generation (setupVendors/setupClients) still uses German-flavored phone
+// numbers, VATIN format, and city names (catalog.go's cities/VATIN helpers)
+// regardless of --country — a deliberate, not yet closed, scope boundary:
+// full per-country business-partner realism would mean per-country city/
+// phone/VATIN generators too, not just the organization's own profile.
+var orgProfiles = map[string]orgProfile{
+	"Germany": {
+		countryCode: "DE",
+		email:       "billing@demo-organization.example", phone: "+49 30 5550100",
+		street: "Musterstraße", houseNumber: "12", postalCode: "10115", city: "Berlin",
+		vatin: "DE111222333", bankName: "Demo Bank AG", iban: "DE89370400440532013000",
+		dueDays:       14,
+		outputTaxCode: "3800", inputTaxCode: "1400", // SKR04: Umsatzsteuer / Abziehbare Vorsteuer
+	},
+	"Tunisia": {
+		countryCode: "TN",
+		email:       "billing@demo-organization.example", phone: "+216 71 234 567",
+		street: "Zone Industrielle", houseNumber: "Lot 12", postalCode: "2013", city: "Ben Arous",
+		vatin: "0987654X/A/M/000", bankName: "Banque Démo Tunisie", iban: "TN5904018104004942711234",
+		dueDays:       30,
+		outputTaxCode: "2200", inputTaxCode: "1200", // no Tunisia-specific chart template yet — falls back to db/account.go's defaultChartOfAccounts
+	},
+}
+
+// genericOrgProfile is the fallback for any --country besides the two
+// above: blank address/VATIN/bank fields rather than guessed ones (the same
+// "absence over a false claim" convention as this app's e-invoice generator
+// — see CLAUDE.md's db/einvoice.go note), but still the correct VAT account
+// codes for whatever chart resolveChartTemplate actually resolves to for an
+// unrecognized country (db/account.go: anything besides "Germany"/"France"
+// falls back to defaultChartOfAccounts, which is what these codes match —
+// note this fallback would be wrong for --country France specifically,
+// since the PCG chart uses 4457/4456 instead; add a "France" entry above if
+// that combination is ever needed).
+var genericOrgProfile = orgProfile{
+	dueDays:       30,
+	outputTaxCode: "2200", inputTaxCode: "1200",
+}
+
+func orgProfileFor(country string) orgProfile {
+	if p, ok := orgProfiles[country]; ok {
+		return p
+	}
+	return genericOrgProfile
+}
+
 // setupOrganization creates (or, with --reset, recreates) the demo
 // organization and records the ids every later step needs (org id, cash
 // account for payments). Importing db's own request/response types instead
@@ -13,6 +81,7 @@ import (
 // the server is a compile error here, not a silently-wrong wire payload —
 // see cmd/seed-demo/README.md's "why HTTP, and why db types" note.
 func (s *Seeder) setupOrganization() error {
+	s.orgProfile = orgProfileFor(s.cfg.Country)
 	if s.cfg.Reset {
 		var orgs []db.Organization
 		if err := s.c.Get("/api/organizations", &orgs); err != nil {
@@ -29,24 +98,25 @@ func (s *Seeder) setupOrganization() error {
 		}
 	}
 
+	p := s.orgProfile
 	req := db.CreateOrganizationRequest{
 		Name:                  strPtr(s.cfg.OrgName),
 		Code:                  strPtr("DEMO"),
-		Country:               strPtr("Germany"), // -> SKR04 chart of accounts template
-		CountryCode:           strPtr("DE"),
-		Currency:              strPtr("EUR"),
+		Country:               strPtr(s.cfg.Country), // -> chart-of-accounts template, db/account.go's resolveChartTemplate
+		CountryCode:           nonEmptyStrPtr(p.countryCode),
+		Currency:              strPtr(s.cfg.Currency),
 		MinimumFractionDigits: int64Ptr(2),
-		DueDays:               int64Ptr(14),
+		DueDays:               int64Ptr(p.dueDays),
 		DateFormat:            strPtr("DD/MM/YYYY"),
-		Email:                 strPtr("billing@demo-organization.example"),
-		Phone:                 strPtr("+49 30 5550100"),
-		Street:                strPtr("Musterstraße"),
-		HouseNumber:           strPtr("12"),
-		PostalCode:            strPtr("10115"),
-		City:                  strPtr("Berlin"),
-		Vatin:                 strPtr("DE111222333"),
-		BankName:              strPtr("Demo Bank AG"),
-		IBAN:                  strPtr("DE89370400440532013000"),
+		Email:                 nonEmptyStrPtr(p.email),
+		Phone:                 nonEmptyStrPtr(p.phone),
+		Street:                nonEmptyStrPtr(p.street),
+		HouseNumber:           nonEmptyStrPtr(p.houseNumber),
+		PostalCode:            nonEmptyStrPtr(p.postalCode),
+		City:                  nonEmptyStrPtr(p.city),
+		Vatin:                 nonEmptyStrPtr(p.vatin),
+		BankName:              nonEmptyStrPtr(p.bankName),
+		IBAN:                  nonEmptyStrPtr(p.iban),
 		InvoiceNumberFormat:   strPtr("INV-{YYYY}-{NNNN}"),
 	}
 
@@ -89,10 +159,10 @@ func (s *Seeder) setupTaxRates() error {
 	// A tax rate needs an output (liability) and input (asset) VAT account
 	// before UpdateInvoiceState/UpdateIncomingInvoiceState can post GL for
 	// any line item referencing it — 409s with "no output tax account
-	// configured" otherwise. seedDefaultChartOfAccounts's SKR04 template
-	// (this org's Country is "Germany") always creates code 3800
-	// "Umsatzsteuer" (output) and 1400 "Abziehbare Vorsteuer" (input) — see
-	// db/account.go.
+	// configured" otherwise. Which codes to look for depends on which chart
+	// of accounts db/account.go's resolveChartTemplate picked for this
+	// org's Country — s.orgProfile.outputTaxCode/inputTaxCode (set in
+	// setupOrganization) is that chart's own pair, not a hardcoded one.
 	var accounts []db.Account
 	if err := s.c.Get("/api/organizations/"+s.orgID+"/accounts", &accounts); err != nil {
 		return fmt.Errorf("list accounts: %w", err)
@@ -100,14 +170,15 @@ func (s *Seeder) setupTaxRates() error {
 	var outputTaxAccountID, inputTaxAccountID string
 	for _, a := range accounts {
 		switch a.Code {
-		case "3800":
+		case s.orgProfile.outputTaxCode:
 			outputTaxAccountID = a.ID
-		case "1400":
+		case s.orgProfile.inputTaxCode:
 			inputTaxAccountID = a.ID
 		}
 	}
 	if outputTaxAccountID == "" || inputTaxAccountID == "" {
-		return fmt.Errorf("could not find SKR04 VAT accounts (code 3800/1400) on the new organization's chart of accounts")
+		return fmt.Errorf("could not find VAT accounts (code %s/%s) on the new organization's chart of accounts",
+			s.orgProfile.outputTaxCode, s.orgProfile.inputTaxCode)
 	}
 
 	create := func(name string, percent float64, isDefault bool, category string) (taxRateRef, error) {
@@ -142,6 +213,13 @@ func (s *Seeder) setupTaxRates() error {
 	return nil
 }
 
+// setupVendors and setupClients still generate German-flavored phone
+// numbers, VATIN format, and city names (catalog.go's City/VATIN helpers)
+// regardless of --country — see orgProfiles' doc comment above for why
+// that's a known, not yet closed, scope boundary. CountryCode itself does
+// follow the resolved orgProfile, since (unlike those cosmetic details) it
+// feeds real business logic elsewhere (e.g. db/einvoice.go's e-invoice
+// profile resolution keys off a client's own CountryCode).
 func (s *Seeder) setupVendors() error {
 	for i := 0; i < s.profile.Vendors; i++ {
 		name := s.rng.CompanyName()
@@ -156,7 +234,7 @@ func (s *Seeder) setupVendors() error {
 			HouseNumber:    strPtr(fmt.Sprintf("%d", s.rng.IntRange(1, 200))),
 			PostalCode:     strPtr(plz),
 			City:           strPtr(city),
-			CountryCode:    strPtr("DE"),
+			CountryCode:    nonEmptyStrPtr(s.orgProfile.countryCode),
 		}
 		var v db.Vendor
 		if err := s.c.Post("/api/vendors", req, &v); err != nil {
@@ -181,7 +259,7 @@ func (s *Seeder) setupClients() error {
 			HouseNumber:    strPtr(fmt.Sprintf("%d", s.rng.IntRange(1, 200))),
 			PostalCode:     strPtr(plz),
 			City:           strPtr(city),
-			CountryCode:    strPtr("DE"),
+			CountryCode:    nonEmptyStrPtr(s.orgProfile.countryCode),
 		}
 		var cl db.Client
 		if err := s.c.Post("/api/clients", req, &cl); err != nil {
@@ -206,6 +284,25 @@ func (s *Seeder) setupProducts() error {
 			return s.reducedTax.id
 		default:
 			return s.standardTax.id
+		}
+	}
+
+	// usedSKUs guards against productSKU's random 4-digit suffix colliding
+	// on the products.sku UNIQUE(organizationId, sku) constraint —
+	// slugPrefix truncates to 8 characters, so every displacement variant
+	// of a componentTemplate/motorcycle model line (catalog.go) shares one
+	// prefix (e.g. "Radiator (50cc)".."Radiator (650cc)" all slug to
+	// "radiator"), and with 300+ products drawn from a 9000-value space per
+	// prefix group, an unretried collision became likely rather than rare
+	// once the catalog grew from ~34 to 310 entries.
+	usedSKUs := make(map[string]bool, len(serviceCatalog)+len(productCatalog))
+	uniqueSKU := func(name string) string {
+		for {
+			sku := productSKU(name, s.rng)
+			if !usedSKUs[sku] {
+				usedSKUs[sku] = true
+				return sku
+			}
 		}
 	}
 
@@ -234,7 +331,7 @@ func (s *Seeder) setupProducts() error {
 		req := db.CreateProductRequest{
 			OrganizationID: s.orgID,
 			Name:           entry.name,
-			SKU:            strPtr(productSKU(entry.name, s.rng)),
+			SKU:            strPtr(uniqueSKU(entry.name)),
 			Price:          price,
 			UnitCost:       costPtr,
 			Unit:           unitPtr,
