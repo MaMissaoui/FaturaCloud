@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import type { Client } from "src/types/client";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -12,7 +13,7 @@ import { GetClients, GetClient, CreateClient, UpdateClient, DeleteClient } from 
 import { organizationIdAtom } from "./organization";
 
 // Clients
-export const clientsAtom = atom<any[]>([]);
+export const clientsAtom = atom<Client[]>([]);
 clientsAtom.debugLabel = "clientsAtom";
 
 export const setClientsAtom = atom(null, async (get, set) => {
@@ -33,6 +34,10 @@ setClientsAtom.debugLabel = "setClientsAtom";
 export const clientIdAtom = atom<string | null>(null);
 clientIdAtom.debugLabel = "clientIdAtom";
 
+// The client form edits emails as a string[] (a Select), not the JSON-string
+// the wire type stores it as.
+type ClientFormValues = Omit<Partial<Client>, "emails"> & { emails?: string[] | string };
+
 export const clientAtom = atom(
   async (get) => {
     const clientId = get(clientIdAtom);
@@ -44,7 +49,7 @@ export const clientAtom = atom(
       // Parse emails from JSON string to array for the form
       return {
         ...client,
-        emails: client?.emails ? JSON.parse(client.emails) : [],
+        emails: client?.emails ? (JSON.parse(client.emails) as string[]) : [],
       };
     } catch (error) {
       console.error("Failed to fetch client:", error);
@@ -52,7 +57,7 @@ export const clientAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: ClientFormValues) => {
     const clientId = get(clientIdAtom);
 
     try {
@@ -66,13 +71,15 @@ export const clientAtom = atom(
 
       if (!clientId) {
         // Insert
-        processedValues.id = nanoid();
-        processedValues.organizationId = get(organizationIdAtom);
-        const createdClient = await CreateClient(processedValues);
+        const createdClient = await CreateClient({
+          ...processedValues,
+          id: nanoid(),
+          organizationId: get(organizationIdAtom)!,
+        });
         message.success(t`Client created`);
 
         // Update the clients list
-        const clients: any = get(clientsAtom);
+        const clients = get(clientsAtom);
         set(clientsAtom, orderBy([...clients, createdClient], "name", "asc"));
       } else {
         // Update
@@ -80,8 +87,8 @@ export const clientAtom = atom(
         message.success(t`Client updated successfully`);
 
         // Update the clients list
-        const clients: any = get(clientsAtom);
-        const mergedClients: any = keyBy([...clients, updatedClient], "id");
+        const clients = get(clientsAtom);
+        const mergedClients = keyBy([...clients, updatedClient], "id");
         set(clientsAtom, orderBy(map(mergedClients), "name", "asc"));
       }
     } catch (error) {
@@ -103,7 +110,7 @@ export const deleteClientAtom = atom(null, async (get, set, clientId: string) =>
 
     if (success) {
       // Remove client from the list
-      const clients: any = reject(get(clientsAtom), (obj: any) => isEqual(obj.id, clientId));
+      const clients = reject(get(clientsAtom), (obj) => isEqual(obj.id, clientId));
       set(clientsAtom, clients);
       message.success(t`Client deleted`);
     } else {

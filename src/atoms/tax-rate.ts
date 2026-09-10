@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import type { TaxRate } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -12,7 +13,7 @@ import { GetTaxRates, GetTaxRate, CreateTaxRate, UpdateTaxRate, DeleteTaxRate } 
 import { organizationIdAtom } from "./organization";
 
 // Tax rates
-export const taxRatesAtom = atom<any[]>([]);
+export const taxRatesAtom = atom<TaxRate[]>([]);
 export const setTaxRatesAtom = atom(null, async (get, set) => {
   const organizationId = get(organizationIdAtom);
   try {
@@ -27,6 +28,14 @@ export const setTaxRatesAtom = atom(null, async (get, set) => {
 
 // Tax rate
 export const taxRateIdAtom = atom<string | null>(null);
+
+// The tax rate form edits percentage as a string (raw input) and isDefault
+// as a boolean (a Checkbox), not the wire type's number/0-1.
+type TaxRateFormValues = Omit<Partial<TaxRate>, "percentage" | "isDefault"> & {
+  percentage?: string | number;
+  isDefault?: boolean | number | null;
+};
+
 export const taxRateAtom = atom(
   async (get) => {
     const taxRateId = get(taxRateIdAtom);
@@ -41,7 +50,7 @@ export const taxRateAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: TaxRateFormValues) => {
     const taxRateId = get(taxRateIdAtom);
 
     try {
@@ -50,9 +59,9 @@ export const taxRateAtom = atom(
         const taxRateData = {
           ...newValues,
           id: nanoid(),
-          organizationId: get(organizationIdAtom),
+          organizationId: get(organizationIdAtom)!,
           // Convert percentage string to number
-          percentage: parseFloat(newValues.percentage),
+          percentage: parseFloat(String(newValues.percentage)),
           // Convert boolean to integer for isDefault
           isDefault:
             typeof newValues.isDefault === "boolean"
@@ -67,14 +76,14 @@ export const taxRateAtom = atom(
         message.success(t`Tax rate created`);
 
         // Update the tax rates list
-        const taxRates: any = get(taxRatesAtom);
+        const taxRates = get(taxRatesAtom);
         set(taxRatesAtom, orderBy([...taxRates, createdTaxRate], "name", "asc"));
       } else {
         // Update
         const updateData = {
           ...newValues,
           // Convert percentage string to number if present
-          percentage: newValues.percentage ? parseFloat(newValues.percentage) : undefined,
+          percentage: newValues.percentage ? parseFloat(String(newValues.percentage)) : undefined,
           // Convert boolean to integer for isDefault
           isDefault:
             typeof newValues.isDefault === "boolean"
@@ -88,8 +97,8 @@ export const taxRateAtom = atom(
         message.success(t`Tax rate updated successfully`);
 
         // Update the tax rates list
-        const taxRates: any = get(taxRatesAtom);
-        const mergedTaxRates: any = keyBy([...taxRates, updatedTaxRate], "id");
+        const taxRates = get(taxRatesAtom);
+        const mergedTaxRates = keyBy([...taxRates, updatedTaxRate], "id");
         set(taxRatesAtom, orderBy(map(mergedTaxRates), "name", "asc"));
       }
     } catch (error) {
@@ -108,7 +117,7 @@ export const deleteTaxRateAtom = atom(null, async (get, set, taxRateId: string) 
   try {
     const success = await DeleteTaxRate(taxRateId);
     if (success) {
-      const taxRates: any = reject(get(taxRatesAtom), (obj: any) => isEqual(obj.id, taxRateId));
+      const taxRates = reject(get(taxRatesAtom), (obj) => isEqual(obj.id, taxRateId));
       set(taxRatesAtom, taxRates);
       message.success(t`Tax rate deleted`);
     } else {

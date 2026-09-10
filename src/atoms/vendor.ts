@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import type { Vendor } from "src/types/vendor";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -12,7 +13,7 @@ import { GetVendors, GetVendor, CreateVendor, UpdateVendor, DeleteVendor } from 
 import { organizationIdAtom } from "./organization";
 
 // Vendors
-export const vendorsAtom = atom<any[]>([]);
+export const vendorsAtom = atom<Vendor[]>([]);
 vendorsAtom.debugLabel = "vendorsAtom";
 
 export const setVendorsAtom = atom(null, async (get, set) => {
@@ -33,6 +34,10 @@ setVendorsAtom.debugLabel = "setVendorsAtom";
 export const vendorIdAtom = atom<string | null>(null);
 vendorIdAtom.debugLabel = "vendorIdAtom";
 
+// The vendor form edits emails as a string[] (a Select), not the JSON-string
+// the wire type stores it as.
+type VendorFormValues = Omit<Partial<Vendor>, "emails"> & { emails?: string[] | string };
+
 export const vendorAtom = atom(
   async (get) => {
     const vendorId = get(vendorIdAtom);
@@ -44,7 +49,7 @@ export const vendorAtom = atom(
       // Parse emails from JSON string to array for the form
       return {
         ...vendor,
-        emails: vendor?.emails ? JSON.parse(vendor.emails) : [],
+        emails: vendor?.emails ? (JSON.parse(vendor.emails) as string[]) : [],
       };
     } catch (error) {
       console.error("Failed to fetch vendor:", error);
@@ -52,7 +57,7 @@ export const vendorAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: VendorFormValues) => {
     const vendorId = get(vendorIdAtom);
 
     try {
@@ -66,13 +71,15 @@ export const vendorAtom = atom(
 
       if (!vendorId) {
         // Insert
-        processedValues.id = nanoid();
-        processedValues.organizationId = get(organizationIdAtom);
-        const createdVendor = await CreateVendor(processedValues);
+        const createdVendor = await CreateVendor({
+          ...processedValues,
+          id: nanoid(),
+          organizationId: get(organizationIdAtom)!,
+        });
         message.success(t`Vendor created`);
 
         // Update the vendors list
-        const vendors: any = get(vendorsAtom);
+        const vendors = get(vendorsAtom);
         set(vendorsAtom, orderBy([...vendors, createdVendor], "name", "asc"));
       } else {
         // Update
@@ -80,8 +87,8 @@ export const vendorAtom = atom(
         message.success(t`Vendor updated successfully`);
 
         // Update the vendors list
-        const vendors: any = get(vendorsAtom);
-        const mergedVendors: any = keyBy([...vendors, updatedVendor], "id");
+        const vendors = get(vendorsAtom);
+        const mergedVendors = keyBy([...vendors, updatedVendor], "id");
         set(vendorsAtom, orderBy(map(mergedVendors), "name", "asc"));
       }
     } catch (error) {
@@ -103,7 +110,7 @@ export const deleteVendorAtom = atom(null, async (get, set, vendorId: string) =>
 
     if (success) {
       // Remove vendor from the list
-      const vendors: any = reject(get(vendorsAtom), (obj: any) => isEqual(obj.id, vendorId));
+      const vendors = reject(get(vendorsAtom), (obj) => isEqual(obj.id, vendorId));
       set(vendorsAtom, vendors);
       message.success(t`Vendor deleted`);
     } else {

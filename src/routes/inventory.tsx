@@ -8,7 +8,6 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { InboxOutlined, DeleteOutlined } from "@ant-design/icons";
-import filter from "lodash/filter";
 import find from "lodash/find";
 
 import { organizationIdAtom } from "src/atoms/organization";
@@ -108,7 +107,7 @@ const Inventory = () => {
     }
   }, [location, fetchMovements, setProducts]);
 
-  const trackedProducts = filter(products, (p: Product) => p.stockEnabled);
+  const trackedProducts = products.filter((p) => p.stockEnabled);
 
   const handleDelete = async (movement: StockMovement) => {
     const success = await deleteMovement({
