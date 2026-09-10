@@ -36,7 +36,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 	lines := s.randomInvoiceLines(s.rng.IntRange(1, 5))
 
 	subTotal, taxTotal, total := computeTotals(lines.totals)
-	dueDate := midnightUTC(day.AddDate(0, 0, 14))
+	dueDate := midnightUTC(day.AddDate(0, 0, int(s.orgProfile.dueDays)))
 
 	req := db.CreateInvoiceRequest{
 		OrganizationID: s.orgID,
@@ -50,7 +50,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		TaxTotal:       taxTotal,
 		SubTotal:       subTotal,
 		LineItems:      lines.items,
-		PaymentTerms:   strPtr("Net 14 days"),
+		PaymentTerms:   strPtr(fmt.Sprintf("Net %d days", s.orgProfile.dueDays)),
 	}
 	var inv db.Invoice
 	if err := s.c.Post("/api/invoices", req, &inv); err != nil {
@@ -63,16 +63,22 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 	}
 
 	// Target shares: 3% cancelled, 80% paid in full, 13% paid via two
-	// partials, 4% genuinely never paid. That last 4% is deliberately small
-	// — it's a bad-debt/write-off rate, and it compounds: every invoice in
-	// this bucket stays outstanding for the rest of the 18-month run, so
-	// even a modest per-invoice rate here inflates the AR aging report's
-	// 90+ days bucket a lot by the end of a long run. (First tuned after
-	// generating a full run at 17% and finding the 90+ bucket had grown to
-	// several million euros — unrealistic for a small business.) Each
-	// `case` below is a conditional probability given every earlier case
-	// was false, chosen so the unconditional shares work out to the
-	// targets above.
+	// partials, ~4% that don't pay on the normal schedule — split between a
+	// slow-paying client eventually collected well past due (~3.2%) and
+	// genuine permanent bad debt (~0.8%). That last figure is deliberately
+	// small and, unlike the slow-pay bucket, never resolves: every invoice
+	// in it stays outstanding for the rest of the 18-month run, so even a
+	// modest per-invoice rate compounds. (First tuned after generating a
+	// full run at 17% never-paid and finding the 90+ bucket had grown to
+	// several million euros; a later run at a flat 4% never-paid still put
+	// ~38% of all outstanding AR value in the 90+ bucket — because paid
+	// invoices keep leaving the outstanding set while a permanent bucket
+	// never does, so it dominates the snapshot even at a small headline
+	// rate. Splitting most of that 4% into "slow but eventually collected"
+	// keeps the aging report's 31-90 buckets populated with real texture
+	// instead of an ever-accumulating tail.) Each `case` below is a
+	// conditional probability given every earlier case was false, chosen
+	// so the unconditional shares work out to the targets above.
 	switch {
 	case s.rng.Chance(0.03):
 		// A small fraction never go out at all — cancelled shortly after
@@ -95,9 +101,18 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		s.schedulePayment(firstDay, inv.ID, first, client.id, "invoice")
 		s.schedulePayment(secondDay, inv.ID, second, client.id, "invoice")
 
+	case s.rng.Chance(0.80):
+		// A slow-paying client — genuinely collected eventually, just well
+		// past due (60-150 business days), not written off. This is the
+		// bucket that gives the 31-60/61-90/90+ aging buckets real content
+		// without it accumulating forever the way the permanent-bad-debt
+		// default case below does.
+		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice")
+
 	default:
-		// Left outstanding — as of "today" this is exactly the open/overdue
-		// tail an AR aging report needs to have something to show.
+		// Genuinely never paid — permanent bad debt/write-off, ~0.8% of all
+		// invoices. Left outstanding for the rest of the run.
 	}
 	return nil
 }
@@ -347,7 +362,7 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 		totals = append(totals, lineItem{quantity: ol.Quantity, unitPriceCents: ol.UnitPrice, taxPercent: taxPercent})
 	}
 	subTotal, taxTotal, total := computeTotals(totals)
-	dueDate := midnightUTC(day.AddDate(0, 0, 14))
+	dueDate := midnightUTC(day.AddDate(0, 0, int(s.orgProfile.dueDays)))
 	invReq := db.CreateInvoiceRequest{
 		OrganizationID: s.orgID,
 		Number:         s.invoiceNum.next(day.Year()),
@@ -360,7 +375,7 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 		TaxTotal:       taxTotal,
 		SubTotal:       subTotal,
 		LineItems:      invLines,
-		PaymentTerms:   strPtr("Net 14 days"),
+		PaymentTerms:   strPtr(fmt.Sprintf("Net %d days", s.orgProfile.dueDays)),
 	}
 	var inv db.Invoice
 	if err := s.c.Post("/api/invoices", invReq, &inv); err != nil {
@@ -370,11 +385,17 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 	if err := s.c.Patch("/api/invoices/"+inv.ID+"/state", map[string]string{"state": "sent"}, nil); err != nil {
 		return fmt.Errorf("send order invoice %s: %w", inv.Number, err)
 	}
-	if s.rng.Chance(0.95) {
-		// See createDirectInvoice's comment on why the unpaid share is kept
-		// small — it compounds across the whole run.
+	switch {
+	case s.rng.Chance(0.95):
 		payDay := businessDaysLater(day, s.rng.IntRange(5, 35))
 		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice")
+	case s.rng.Chance(0.8):
+		// Slow-paying client, eventually collected — see createDirectInvoice's
+		// comment on why this bucket exists instead of a flat never-paid share.
+		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice")
+	default:
+		// Genuinely never paid (~1% of shipped-order invoices).
 	}
 	return nil
 }

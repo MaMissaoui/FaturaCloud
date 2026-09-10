@@ -201,7 +201,7 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 		items = append(items, lineItem{quantity: qty, unitPriceCents: unitCost})
 	}
 	subTotal, taxTotal, total := computeTotals(items)
-	dueDate := midnightUTC(day.AddDate(0, 0, 30))
+	dueDate := midnightUTC(day.AddDate(0, 0, int(s.orgProfile.dueDays)))
 
 	req := db.CreateIncomingInvoiceRequest{
 		OrganizationID:      s.orgID,
@@ -236,11 +236,35 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 		return fmt.Errorf("approve bill %s: %w", bill.VendorInvoiceNumber, err)
 	}
 
-	if s.rng.Chance(0.95) {
-		// See sales.go's createDirectInvoice comment on why the unpaid
-		// share is kept small — it compounds across the whole run.
+	// Target shares mirror createDirectInvoice's AR split (sales.go): ~10%
+	// paid via two partials (a vendor dispute or cash-flow-driven split
+	// payment, not just an all-or-nothing bill), ~85% paid in full, and a
+	// ~5% tail that doesn't pay on the normal schedule — split between a
+	// slow-paying relationship eventually settled well past due (~4%) and
+	// genuine permanent bad debt/dispute write-off (~1%). See sales.go's
+	// createDirectInvoice comment for why that split exists instead of a
+	// flat never-paid share: a permanent bucket dominates an aging report's
+	// 90+ bucket over an 18-month run even at a small headline rate, since
+	// everything else eventually leaves the outstanding set and it doesn't.
+	switch {
+	case s.rng.Chance(0.10):
+		first := total / 2
+		second := total - first
+		firstDay := businessDaysLater(day, s.rng.IntRange(5, 20))
+		secondDay := businessDaysLater(firstDay, s.rng.IntRange(10, 30))
+		s.schedulePayment(firstDay, bill.ID, first, vendor.id, "incoming_invoice")
+		s.schedulePayment(secondDay, bill.ID, second, vendor.id, "incoming_invoice")
+
+	case s.rng.Chance(0.85 / 0.90):
 		payDay := businessDaysLater(day, s.rng.IntRange(5, 30))
 		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice")
+
+	case s.rng.Chance(0.80):
+		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
+		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice")
+
+	default:
+		// Left outstanding — permanent AP bad debt/write-off, ~1% of bills.
 	}
 	return nil
 }
