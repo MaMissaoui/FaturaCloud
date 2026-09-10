@@ -4,6 +4,7 @@ import type { FormInstance } from "antd/es/form";
 import { DeleteOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
+import find from "lodash/find";
 import map from "lodash/map";
 import {
   DndContext,
@@ -78,7 +79,7 @@ export type LineItemColumn =
       required?: boolean;
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
     }
-  | { kind: "description"; required?: boolean; rows?: number }
+  | { kind: "description"; required?: boolean; rows?: number; width?: number }
   | {
       kind: "quantity";
       label?: ReactNode;
@@ -204,14 +205,32 @@ const LineItemsTable = ({
                             showSearch
                             style={{ width: "100%" }}
                             placeholder={t`Select product`}
-                            optionFilterProp="children"
+                            // Filters on SKU too even though it isn't shown
+                            // in the option below — every catalog entry here
+                            // is already uniquely named, so rendering the
+                            // SKU alongside the name was pure clutter (and,
+                            // at a few hundred products, actively pushed the
+                            // Description column below off screen — see the
+                            // "description" case's width comment). A real
+                            // catalog with colliding names still benefits
+                            // from being able to type a SKU to disambiguate.
+                            filterOption={(input, option) => {
+                              const p = find(col.products, { id: option?.value });
+                              const needle = input.toLowerCase();
+                              return (
+                                !!p &&
+                                (String(p.name).toLowerCase().includes(needle) ||
+                                  String(p.sku ?? "")
+                                    .toLowerCase()
+                                    .includes(needle))
+                              );
+                            }}
                             disabled={disabled}
                             onChange={(productId) => col.onSelect?.(productId, field.name, form)}
                           >
                             {map(col.products, (p: any) => (
                               <Option key={p.id} value={p.id}>
                                 {p.name}
-                                {p.sku ? ` (${p.sku})` : ""}
                               </Option>
                             ))}
                           </Select>
@@ -224,6 +243,16 @@ const LineItemsTable = ({
                     <Table.Column<LineItemField>
                       title={<Trans>Description</Trans>}
                       key="description"
+                      // Every other column here sets an explicit width and
+                      // gets it; this one didn't, and in practice that left
+                      // it squeezed to a sliver next to the Product column
+                      // (table-layout:auto plus an autoSize TextArea don't
+                      // reliably claim remaining space) — at this catalog's
+                      // longer names, that wrapped the same text the Product
+                      // select already shows into a 4-5 line stack. Default
+                      // width is deliberately wider than Product's (180) —
+                      // it's usually the longest free-text cell in the row.
+                      width={col.width ?? 260}
                       render={(field) => (
                         <Form.Item
                           name={[field.name, "description"]}
