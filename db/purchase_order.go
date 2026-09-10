@@ -188,6 +188,52 @@ func (d *Database) NextPurchaseOrderNumber(organizationID string) string {
 	return fmt.Sprintf("PO-%04d", maxNumber.Int64+1)
 }
 
+// checkPurchaseOrderFKOwnership validates that vendorId/importId (if set)
+// and each line item's productId/taxRate belong to the SAME organization as
+// the purchase order (issue #189). A nil/empty field means "not part of
+// this request," not a mismatch.
+func (d *Database) checkPurchaseOrderFKOwnership(organizationID string, vendorID, importID *string, lineItems []CreatePurchaseOrderLineItemRequest) error {
+	if vendorID != nil && *vendorID != "" {
+		vendor, err := d.GetVendor(*vendorID)
+		if err != nil {
+			return newValidationError("vendor not found")
+		}
+		if err := requireSameOrg(organizationID, vendor.OrganizationID, "vendor"); err != nil {
+			return err
+		}
+	}
+	if importID != nil && *importID != "" {
+		imp, err := d.GetImport(*importID)
+		if err != nil {
+			return newValidationError("import not found")
+		}
+		if err := requireSameOrg(organizationID, imp.OrganizationID, "import"); err != nil {
+			return err
+		}
+	}
+	for i, item := range lineItems {
+		if item.ProductID != nil && *item.ProductID != "" {
+			product, err := d.GetProduct(*item.ProductID)
+			if err != nil {
+				return newValidationError("line %d: product not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, product.OrganizationID, fmt.Sprintf("line %d: product", i+1)); err != nil {
+				return err
+			}
+		}
+		if item.TaxRate != nil && *item.TaxRate != "" {
+			taxRate, err := d.GetTaxRate(*item.TaxRate)
+			if err != nil {
+				return newValidationError("line %d: tax rate not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, taxRate.OrganizationID, fmt.Sprintf("line %d: tax rate", i+1)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*PurchaseOrder, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
@@ -197,6 +243,9 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 	}
 	if !validPurchaseOrderStatuses[req.Status] {
 		return nil, newValidationError("invalid purchase order status %q", req.Status)
+	}
+	if err := d.checkPurchaseOrderFKOwnership(req.OrganizationID, req.VendorID, req.ImportID, req.LineItems); err != nil {
+		return nil, err
 	}
 	org, err := d.GetOrganization(req.OrganizationID)
 	if err != nil {
@@ -256,6 +305,13 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 		updates.Currency, updates.ExchangeRate,
 	)
 	if err != nil {
+		return nil, err
+	}
+	var updateLineItems []CreatePurchaseOrderLineItemRequest
+	if updates.LineItems != nil {
+		updateLineItems = *updates.LineItems
+	}
+	if err := d.checkPurchaseOrderFKOwnership(current.OrganizationID, updates.VendorID, updates.ImportID, updateLineItems); err != nil {
 		return nil, err
 	}
 

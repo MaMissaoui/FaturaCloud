@@ -205,9 +205,38 @@ func (d *Database) NextInboundDeliveryNumber(organizationID string) string {
 	return fmt.Sprintf("GR-%04d", maxNumber.Int64+1)
 }
 
+// checkInboundDeliveryHeaderFKOwnership validates that purchaseOrderId/
+// vendorId (if set) belong to the SAME organization as the receipt (issue
+// #189) — a line item's purchaseOrderLineItemId/productId are checked
+// separately, inside replaceInboundDeliveryLineItemsTx.
+func (d *Database) checkInboundDeliveryHeaderFKOwnership(organizationID string, purchaseOrderID, vendorID *string) error {
+	if purchaseOrderID != nil && *purchaseOrderID != "" {
+		po, err := d.GetPurchaseOrder(*purchaseOrderID)
+		if err != nil {
+			return newValidationError("purchase order not found")
+		}
+		if err := requireSameOrg(organizationID, po.OrganizationID, "purchase order"); err != nil {
+			return err
+		}
+	}
+	if vendorID != nil && *vendorID != "" {
+		vendor, err := d.GetVendor(*vendorID)
+		if err != nil {
+			return newValidationError("vendor not found")
+		}
+		if err := requireSameOrg(organizationID, vendor.OrganizationID, "vendor"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*InboundDelivery, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
+	}
+	if err := d.checkInboundDeliveryHeaderFKOwnership(req.OrganizationID, req.PurchaseOrderID, req.VendorID); err != nil {
+		return nil, err
 	}
 
 	org, err := d.GetOrganization(req.OrganizationID)
@@ -240,7 +269,7 @@ func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*Inb
 	if err != nil {
 		return nil, fmt.Errorf("create_inbound_delivery: %w", err)
 	}
-	if err := replaceInboundDeliveryLineItemsTx(tx, req.ID, req.LineItems); err != nil {
+	if err := replaceInboundDeliveryLineItemsTx(tx, req.OrganizationID, req.ID, req.LineItems); err != nil {
 		return nil, err
 	}
 
@@ -267,6 +296,9 @@ func (d *Database) UpdateInboundDelivery(id string, req UpdateInboundDeliveryReq
 		return nil, newValidationError(
 			"cannot change currency or exchange rate of a %s goods receipt", current.Status,
 		)
+	}
+	if err := d.checkInboundDeliveryHeaderFKOwnership(current.OrganizationID, req.PurchaseOrderID, req.VendorID); err != nil {
+		return nil, err
 	}
 
 	// Same "only when touched" rule as the other document types: resolving/
@@ -327,7 +359,7 @@ func (d *Database) UpdateInboundDelivery(id string, req UpdateInboundDeliveryReq
 		return nil, fmt.Errorf("update_inbound_delivery: %w", err)
 	}
 	if req.LineItems != nil {
-		if err := replaceInboundDeliveryLineItemsTx(tx, id, *req.LineItems); err != nil {
+		if err := replaceInboundDeliveryLineItemsTx(tx, current.OrganizationID, id, *req.LineItems); err != nil {
 			return nil, err
 		}
 	}
@@ -771,8 +803,14 @@ func (d *Database) DeleteInboundDelivery(id string) (bool, error) {
 // comes from a purchase order and doesn't name a product directly, both the
 // product and the cost are resolved from that order line — the receipt then
 // values the goods at what was ordered unless the user overrides it.
+// replaceInboundDeliveryLineItemsTx also enforces issue #189's ownership
+// rule for this table's two cross-org-referenceable fields:
+// purchaseOrderLineItemId (via its parent purchase order) and productId,
+// checked with the same tx-capable exec used for every other read/write
+// here — see the identical reasoning on outbound delivery's
+// replaceDeliveryLineItemsTx.
 func replaceInboundDeliveryLineItemsTx(
-	exec sqlGetExecer, deliveryID string, items []CreateInboundDeliveryLineItemRequest,
+	exec sqlGetExecer, organizationID, deliveryID string, items []CreateInboundDeliveryLineItemRequest,
 ) error {
 	if _, err := exec.Exec(
 		`DELETE FROM inbound_delivery_line_items WHERE deliveryId = ?`, deliveryID,
@@ -789,21 +827,38 @@ func replaceInboundDeliveryLineItemsTx(
 			unitCost = &cost
 		}
 
-		if item.PurchaseOrderLineItemID != nil && (productID == nil || unitCost == nil) {
+		if item.PurchaseOrderLineItemID != nil {
 			var resolved struct {
-				ProductID sql.NullString `db:"productId"`
-				UnitPrice sql.NullInt64  `db:"unitPrice"`
+				ProductID      sql.NullString `db:"productId"`
+				UnitPrice      sql.NullInt64  `db:"unitPrice"`
+				OrganizationID string         `db:"organizationId"`
 			}
-			if err := exec.Get(&resolved,
-				`SELECT productId, unitPrice FROM purchase_order_line_items WHERE id = ?`,
-				*item.PurchaseOrderLineItemID,
-			); err == nil {
-				if productID == nil && resolved.ProductID.Valid {
-					productID = &resolved.ProductID.String
-				}
-				if unitCost == nil && resolved.UnitPrice.Valid {
-					unitCost = &resolved.UnitPrice.Int64
-				}
+			if err := exec.Get(&resolved, `
+				SELECT pol.productId AS productId, pol.unitPrice AS unitPrice, po.organizationId AS organizationId
+				FROM purchase_order_line_items pol
+				JOIN purchase_orders po ON po.id = pol.purchaseOrderId
+				WHERE pol.id = ?`, *item.PurchaseOrderLineItemID,
+			); err != nil {
+				return newValidationError("line %d: purchase order line item not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, resolved.OrganizationID, fmt.Sprintf("line %d: purchase order line item", i+1)); err != nil {
+				return err
+			}
+			if productID == nil && resolved.ProductID.Valid {
+				productID = &resolved.ProductID.String
+			}
+			if unitCost == nil && resolved.UnitPrice.Valid {
+				unitCost = &resolved.UnitPrice.Int64
+			}
+		}
+
+		if productID != nil && *productID != "" {
+			var productOrgID string
+			if err := exec.Get(&productOrgID, `SELECT organizationId FROM products WHERE id = ?`, *productID); err != nil {
+				return newValidationError("line %d: product not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, productOrgID, fmt.Sprintf("line %d: product", i+1)); err != nil {
+				return err
 			}
 		}
 
