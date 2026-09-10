@@ -766,7 +766,22 @@ const InvoiceDetails: React.FC = () => {
                               showSearch
                               style={{ width: "100%" }}
                               placeholder={t`Select product`}
-                              optionFilterProp="children"
+                              // Filters on SKU too even though the option
+                              // below only renders the name — see the
+                              // matching comment in
+                              // src/components/line-items/table.tsx's
+                              // "product" case for why.
+                              filterOption={(input, option) => {
+                                const p = find(sellableProducts, { id: option?.value });
+                                const needle = input.toLowerCase();
+                                return (
+                                  !!p &&
+                                  ((p as any).name.toLowerCase().includes(needle) ||
+                                    String((p as any).sku ?? "")
+                                      .toLowerCase()
+                                      .includes(needle))
+                                );
+                              }}
                               onChange={(productId) => {
                                 const product = find(products, { id: productId });
                                 if (product) {
@@ -789,7 +804,6 @@ const InvoiceDetails: React.FC = () => {
                               {map(sellableProducts, (p: any) => (
                                 <Option key={p.id} value={p.id}>
                                   {p.name}
-                                  {p.sku ? ` (${p.sku})` : ""}
                                 </Option>
                               ))}
                             </Select>
