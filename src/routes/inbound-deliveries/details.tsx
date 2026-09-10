@@ -78,6 +78,10 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Footer } = Layout;
 
+// Module-level so it's referentially stable across renders — StatusFlow is
+// memoized and an inline arrow here would defeat that on every keystroke.
+const getInboundDeliveryStatusColor = (s: InboundDeliveryStatus) => inboundDeliveryStatusColor[s];
+
 // inboundDeliveryAtom is async; reading it with plain useAtom throws to the
 // app's single top-level Suspense boundary whenever inboundDeliveryIdAtom
 // changes after mount, which unmounts this whole route (the effect below's
@@ -415,7 +419,7 @@ const InboundDeliveryDetails = () => {
                 statuses={INBOUND_DELIVERY_STATUSES}
                 transitions={inboundDeliveryStatusTransitionMatrix}
                 getLabel={inboundDeliveryStatusLabel}
-                getColor={(s) => inboundDeliveryStatusColor[s]}
+                getColor={getInboundDeliveryStatusColor}
               />
             </Form.Item>
           </Col>

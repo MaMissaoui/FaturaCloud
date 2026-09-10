@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Popover, Space, Tag, Typography } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
@@ -21,7 +22,7 @@ interface StatusFlowProps<S extends string> {
 // incoming invoices move freely between states with no matrix to show, so
 // this component is deliberately not used on those two detail pages.
 // Placed next to the status Tag on each applicable detail page.
-export default function StatusFlow<S extends string>({
+function StatusFlowInner<S extends string>({
   current,
   statuses,
   transitions,
@@ -94,3 +95,12 @@ export default function StatusFlow<S extends string>({
     </Popover>
   );
 }
+
+// memo() erases the generic signature on its own — the cast restores it so
+// callers still get a type-checked `current`/`statuses`/etc. per status enum
+// (PurchaseOrderStatus, OrderStatus, ...), same as before this was memoized.
+// Callers must still pass a referentially stable getColor/getLabel (a
+// module-level function, not an inline arrow) for this memo to do anything.
+const StatusFlow = memo(StatusFlowInner) as typeof StatusFlowInner;
+
+export default StatusFlow;
