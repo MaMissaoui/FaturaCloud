@@ -39,6 +39,13 @@ export interface Invoice {
   withholdingTaxAmount: number | null;
 }
 
+// invoicesAtom's shape: invoiceToDisplay (src/atoms/invoice.ts) converts
+// every money field from the wire's integer cents to display currency
+// units before the list atom stores it. Field types are identical to
+// Invoice's (both plain numbers) — this alias documents the unit, it does
+// not let TypeScript catch a cents/units mix-up on its own.
+export type InvoiceDisplay = Invoice;
+
 export interface InvoiceLineItem {
   id: string;
   invoiceId: string;

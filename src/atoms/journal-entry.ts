@@ -1,4 +1,6 @@
 import { atom } from "jotai";
+import type { Dayjs } from "dayjs";
+import type { JournalEntry, JournalLine } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -22,7 +24,7 @@ import { centsToUnits, unitsToCents } from "src/utils/currency";
 import { organizationIdAtom } from "./organization";
 
 // Journal entries list
-export const journalEntriesAtom = atom<any[]>([]);
+export const journalEntriesAtom = atom<JournalEntry[]>([]);
 journalEntriesAtom.debugLabel = "journalEntriesAtom";
 
 export const journalEntryFiltersAtom = atom<{ journalId?: string; status?: string }>({});
@@ -43,6 +45,18 @@ export const setJournalEntriesAtom = atom(null, async (get, set) => {
 // Single journal entry (read+create). There is no update endpoint — a draft
 // is deleted and recreated rather than edited in place, and a posted entry
 // is immutable (see ReverseJournalEntry).
+// The journal entry form edits date as a dayjs object and each line's
+// debit/credit in display currency units — not the wire shape either field
+// is stored as.
+type JournalLineFormValues = Omit<Partial<JournalLine>, "debit" | "credit"> & {
+  debit?: number;
+  credit?: number;
+};
+type JournalEntryFormValues = Omit<Partial<JournalEntry>, "date"> & {
+  date?: Dayjs | number;
+  lines?: JournalLineFormValues[];
+};
+
 export const journalEntryIdAtom = atom<string | null>(null);
 
 export const journalEntryAtom = atom(
@@ -58,7 +72,7 @@ export const journalEntryAtom = atom(
       return {
         ...entry,
         date: dayjs(entry.date),
-        lines: (lines || []).map((line: any) => ({
+        lines: (lines || []).map((line) => ({
           ...line,
           debit: centsToUnits(line.debit),
           credit: centsToUnits(line.credit),
@@ -70,14 +84,15 @@ export const journalEntryAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
-    const toTimestamp = (v: any) => (v?.valueOf ? v.valueOf() : v);
+  async (get, set, newValues: JournalEntryFormValues) => {
+    const toTimestamp = (v: Dayjs | number | null | undefined) =>
+      v && typeof v === "object" && "valueOf" in v ? v.valueOf() : v;
     const data = {
       ...newValues,
       id: nanoid(),
-      organizationId: get(organizationIdAtom),
+      organizationId: get(organizationIdAtom)!,
       date: toTimestamp(newValues.date),
-      lines: (newValues.lines || []).map((line: any) => ({
+      lines: (newValues.lines || []).map((line) => ({
         ...line,
         debit: unitsToCents(line.debit || 0),
         credit: unitsToCents(line.credit || 0),
@@ -141,7 +156,7 @@ export const deleteJournalEntryAtom = atom(null, async (get, set, entryId: strin
     if (success) {
       set(
         journalEntriesAtom,
-        reject(get(journalEntriesAtom), (e: any) => isEqual(e.id, entryId)),
+        reject(get(journalEntriesAtom), (e) => isEqual(e.id, entryId)),
       );
       message.success(t`Journal entry deleted`);
     }

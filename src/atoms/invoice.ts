@@ -1,4 +1,6 @@
 import { atom } from "jotai";
+import type { Dayjs } from "dayjs";
+import type { Invoice, InvoiceDisplay, InvoiceLineItem } from "src/types/invoice";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -22,7 +24,7 @@ import {
 import { centsToUnits, unitsToCents, multiplyDecimal } from "src/utils/currency";
 import { organizationIdAtom, nextInvoiceNumberAtom } from "./organization";
 
-function invoiceToDisplay(invoice: any) {
+function invoiceToDisplay(invoice: Invoice): InvoiceDisplay {
   return {
     ...invoice,
     total: centsToUnits(invoice.total),
@@ -34,8 +36,9 @@ function invoiceToDisplay(invoice: any) {
   };
 }
 
-// Invoices
-export const invoicesAtom = atom<any[]>([]);
+// Invoices — display shape (money in currency units, not cents); see
+// InvoiceDisplay in src/types/invoice.ts.
+export const invoicesAtom = atom<InvoiceDisplay[]>([]);
 export const setInvoicesAtom = atom(null, async (get, set) => {
   const organizationId = get(organizationIdAtom);
   try {
@@ -48,6 +51,39 @@ export const setInvoicesAtom = atom(null, async (get, set) => {
     set(invoicesAtom, []);
   }
 });
+
+// The invoice form edits dates as dayjs objects and money (including each
+// line item's unitPrice/total) in display currency units — not the wire
+// shape either field is stored as.
+type InvoiceLineItemFormValues = Omit<Partial<InvoiceLineItem>, "unitPrice"> & {
+  unitPrice?: number;
+  // Display-only computed total (quantity * unitPrice); stripped before save.
+  total?: number;
+};
+type InvoiceFormValues = Omit<
+  Partial<Invoice>,
+  | "date"
+  | "dueDate"
+  | "exchangeRateDate"
+  | "total"
+  | "taxTotal"
+  | "subTotal"
+  | "fiscalStampAmount"
+  | "withholdingTaxAmount"
+> & {
+  date?: Dayjs | number;
+  dueDate?: Dayjs | number | null;
+  exchangeRateDate?: Dayjs | number | null;
+  total?: number;
+  taxTotal?: number;
+  subTotal?: number;
+  fiscalStampAmount?: number;
+  withholdingTaxAmount?: number | null;
+  lineItems?: InvoiceLineItemFormValues[];
+};
+
+const toTimestamp = (v: Dayjs | number | null | undefined) =>
+  v && typeof v === "object" && "valueOf" in v ? v.valueOf() : v;
 
 // Invoice
 export const invoiceIdAtom = atom<string | null>(null);
@@ -76,7 +112,7 @@ export const invoiceAtom = atom(
         fiscalStampAmount: centsToUnits(invoice.fiscalStampAmount || 0),
         withholdingTaxAmount:
           invoice.withholdingTaxAmount != null ? centsToUnits(invoice.withholdingTaxAmount) : null,
-        lineItems: (lineItems || []).map((item: any) => ({
+        lineItems: (lineItems || []).map((item) => ({
           ...item,
           unitPrice: centsToUnits(item.unitPrice),
           total: centsToUnits(multiplyDecimal(item.quantity, item.unitPrice)),
@@ -88,7 +124,7 @@ export const invoiceAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: InvoiceFormValues) => {
     const invoiceId = get(invoiceIdAtom);
 
     const invoice = omit(newValues, "lineItems");
@@ -100,18 +136,16 @@ export const invoiceAtom = atom(
         const invoiceData = {
           ...invoice,
           id: nanoid(),
-          organizationId: get(organizationIdAtom),
+          organizationId: get(organizationIdAtom)!,
           state: invoice.state || "draft", // Default to draft if not specified
           // Convert dayjs objects to unix timestamps
-          date: invoice.date?.valueOf ? invoice.date.valueOf() : invoice.date,
-          dueDate: invoice.dueDate?.valueOf ? invoice.dueDate.valueOf() : invoice.dueDate,
-          exchangeRateDate: invoice.exchangeRateDate?.valueOf
-            ? invoice.exchangeRateDate.valueOf()
-            : invoice.exchangeRateDate,
+          date: toTimestamp(invoice.date),
+          dueDate: toTimestamp(invoice.dueDate),
+          exchangeRateDate: toTimestamp(invoice.exchangeRateDate),
           // Convert currency units to cents for storage
-          total: unitsToCents(invoice.total),
-          taxTotal: unitsToCents(invoice.taxTotal),
-          subTotal: unitsToCents(invoice.subTotal),
+          total: unitsToCents(invoice.total ?? 0),
+          taxTotal: unitsToCents(invoice.taxTotal ?? 0),
+          subTotal: unitsToCents(invoice.subTotal ?? 0),
           fiscalStampAmount: unitsToCents(invoice.fiscalStampAmount || 0),
           withholdingTaxRate: invoice.withholdingTaxRate ?? null,
           withholdingTaxAmount:
@@ -119,9 +153,9 @@ export const invoiceAtom = atom(
               ? unitsToCents(invoice.withholdingTaxAmount)
               : null,
           overdueCharge: invoice.overdueCharge,
-          lineItems: lineItems.map((item: any) => ({
+          lineItems: lineItems.map((item) => ({
             ...omit(item, ["id", "total"]),
-            unitPrice: unitsToCents(item.unitPrice),
+            unitPrice: unitsToCents(item.unitPrice ?? 0),
           })),
         };
 
@@ -131,7 +165,7 @@ export const invoiceAtom = atom(
         message.success(t`Invoice created`);
 
         // Update the invoices list
-        const invoices: any = get(invoicesAtom);
+        const invoices = get(invoicesAtom);
         set(invoicesAtom, [invoiceToDisplay(createdInvoice), ...invoices]);
 
         // Force refresh organization data to get updated invoice counter
@@ -147,11 +181,9 @@ export const invoiceAtom = atom(
           // state endpoint (server rejects it on PUT), so drop it here.
           ...omit(invoice, "state"),
           // Convert dayjs objects to unix timestamps
-          date: invoice.date?.valueOf ? invoice.date.valueOf() : invoice.date,
-          dueDate: invoice.dueDate?.valueOf ? invoice.dueDate.valueOf() : invoice.dueDate,
-          exchangeRateDate: invoice.exchangeRateDate?.valueOf
-            ? invoice.exchangeRateDate.valueOf()
-            : invoice.exchangeRateDate,
+          date: toTimestamp(invoice.date),
+          dueDate: toTimestamp(invoice.dueDate),
+          exchangeRateDate: toTimestamp(invoice.exchangeRateDate),
           // Convert currency units to cents for storage
           total: invoice.total != null ? unitsToCents(invoice.total) : undefined,
           taxTotal: invoice.taxTotal != null ? unitsToCents(invoice.taxTotal) : undefined,
@@ -165,9 +197,9 @@ export const invoiceAtom = atom(
               : null,
           overdueCharge: invoice.overdueCharge,
           lineItems: lineItems
-            ? lineItems.map((item: any) => ({
+            ? lineItems.map((item) => ({
                 ...omit(item, ["id", "total"]),
-                unitPrice: unitsToCents(item.unitPrice),
+                unitPrice: unitsToCents(item.unitPrice ?? 0),
               }))
             : undefined,
         };
@@ -177,8 +209,8 @@ export const invoiceAtom = atom(
         message.success(t`Invoice updated successfully`);
 
         // Update the invoices list
-        const invoices: any = get(invoicesAtom);
-        const mergedInvoices: any = keyBy([...invoices, invoiceToDisplay(updatedInvoice)], "id");
+        const invoices = get(invoicesAtom);
+        const mergedInvoices = keyBy([...invoices, invoiceToDisplay(updatedInvoice)], "id");
         set(invoicesAtom, orderBy(map(mergedInvoices), "date", "desc"));
       }
     } catch (error) {
@@ -205,7 +237,7 @@ export const deleteInvoiceAtom = atom(null, async (get, set, invoiceId: string) 
 
     if (success) {
       // Remove invoice from the list
-      const invoices: any = reject(get(invoicesAtom), (obj: any) => isEqual(obj.id, invoiceId));
+      const invoices = reject(get(invoicesAtom), (obj) => isEqual(obj.id, invoiceId));
       set(invoicesAtom, invoices);
       message.success(t`Invoice deleted`);
     } else {
@@ -229,8 +261,8 @@ export const updateInvoiceStateAtom = atom(
       message.success(t`Invoice state updated`);
 
       // Update the invoices list
-      const invoices: any = get(invoicesAtom);
-      const mergedInvoices: any = keyBy([...invoices, invoiceToDisplay(updatedInvoice)], "id");
+      const invoices = get(invoicesAtom);
+      const mergedInvoices = keyBy([...invoices, invoiceToDisplay(updatedInvoice)], "id");
       set(invoicesAtom, orderBy(map(mergedInvoices), "date", "desc"));
     } catch (error) {
       // Surface the server's message (e.g. a posted GL entry blocked by an
@@ -267,7 +299,7 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
     const currentDate = dayjs();
     const duplicatedInvoice = {
       id: newInvoiceId,
-      organizationId: get(organizationIdAtom),
+      organizationId: get(organizationIdAtom)!,
       number: nextNumber,
       state: "draft", // Always start as draft
       clientId: originalInvoice.clientId,
@@ -290,7 +322,7 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
       overdueCharge: originalInvoice.overdueCharge,
       buyerReference: originalInvoice.buyerReference,
       paymentTerms: originalInvoice.paymentTerms,
-      lineItems: (lineItems || []).map((item: any) => ({
+      lineItems: (lineItems || []).map((item) => ({
         ...omit(item, ["id", "invoiceId", "createdAt"]),
       })),
     };
@@ -301,7 +333,7 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
     message.success(t`Invoice duplicated successfully`);
 
     // Update the invoices list
-    const invoices: any = get(invoicesAtom);
+    const invoices = get(invoicesAtom);
     set(invoicesAtom, [invoiceToDisplay(createdInvoice), ...invoices]);
 
     // Force refresh organization data to get updated invoice counter

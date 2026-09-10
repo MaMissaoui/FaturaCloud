@@ -1,4 +1,6 @@
 import { atom } from "jotai";
+import type { Dayjs } from "dayjs";
+import type { IncomingInvoice, IncomingInvoiceLineItem } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -22,7 +24,7 @@ import {
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 import { organizationIdAtom } from "./organization";
 
-export const incomingInvoicesAtom = atom<any[]>([]);
+export const incomingInvoicesAtom = atom<IncomingInvoice[]>([]);
 incomingInvoicesAtom.debugLabel = "incomingInvoicesAtom";
 
 export const setIncomingInvoicesAtom = atom(null, async (get, set) => {
@@ -36,6 +38,24 @@ export const setIncomingInvoicesAtom = atom(null, async (get, set) => {
     set(incomingInvoicesAtom, []);
   }
 });
+
+// The incoming invoice form edits dates as dayjs objects and money in
+// display currency units — not the wire shape either field is stored as.
+type IncomingInvoiceLineItemFormValues = Omit<Partial<IncomingInvoiceLineItem>, "unitPrice"> & {
+  unitPrice?: number;
+};
+type IncomingInvoiceFormValues = Omit<
+  Partial<IncomingInvoice>,
+  "date" | "dueDate" | "exchangeRateDate" | "total" | "taxTotal" | "subTotal"
+> & {
+  date?: Dayjs | number;
+  dueDate?: Dayjs | number | null;
+  exchangeRateDate?: Dayjs | number | null;
+  total?: number;
+  taxTotal?: number;
+  subTotal?: number;
+  lineItems?: IncomingInvoiceLineItemFormValues[];
+};
 
 export const incomingInvoiceIdAtom = atom<string | null>(null);
 
@@ -57,7 +77,7 @@ export const incomingInvoiceAtom = atom(
         total: centsToUnits(invoice.total),
         taxTotal: centsToUnits(invoice.taxTotal),
         subTotal: centsToUnits(invoice.subTotal),
-        lineItems: (lineItems || []).map((item: any) => ({
+        lineItems: (lineItems || []).map((item) => ({
           ...item,
           unitPrice: centsToUnits(item.unitPrice),
         })),
@@ -68,15 +88,16 @@ export const incomingInvoiceAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: IncomingInvoiceFormValues) => {
     const invoiceId = get(incomingInvoiceIdAtom);
     // State is not editable through PUT — it changes only via the PATCH state
     // endpoint, which is where the matching gate lives.
     const invoice = omit(newValues, ["lineItems", "state"]);
     const lineItems = newValues.lineItems || [];
 
-    const toTimestamp = (v: any) => (v?.valueOf ? v.valueOf() : v);
-    const toPayload = (values: any) => ({
+    const toTimestamp = (v: Dayjs | number | null | undefined) =>
+      v && typeof v === "object" && "valueOf" in v ? v.valueOf() : v;
+    const toPayload = (values: typeof invoice) => ({
       ...values,
       date: toTimestamp(values.date),
       dueDate: values.dueDate ? toTimestamp(values.dueDate) : null,
@@ -84,7 +105,7 @@ export const incomingInvoiceAtom = atom(
       total: unitsToCents(values.total ?? 0),
       taxTotal: unitsToCents(values.taxTotal ?? 0),
       subTotal: unitsToCents(values.subTotal ?? 0),
-      lineItems: lineItems.map((item: any) => ({
+      lineItems: lineItems.map((item) => ({
         ...omit(item, ["id", "incomingInvoiceId", "position"]),
         unitPrice: unitsToCents(item.unitPrice ?? 0),
       })),
@@ -95,17 +116,17 @@ export const incomingInvoiceAtom = atom(
         const created = await CreateIncomingInvoice({
           ...toPayload(invoice),
           id: nanoid(),
-          organizationId: get(organizationIdAtom),
+          organizationId: get(organizationIdAtom)!,
         });
         set(incomingInvoiceIdAtom, created.id);
         message.success(t`Incoming invoice created`);
-        const list: any = get(incomingInvoicesAtom);
+        const list = get(incomingInvoicesAtom);
         set(incomingInvoicesAtom, [created, ...list]);
       } else {
         const updated = await UpdateIncomingInvoice(invoiceId, toPayload(invoice));
         message.success(t`Incoming invoice saved`);
-        const list: any = get(incomingInvoicesAtom);
-        const merged: any = keyBy([...list, updated], "id");
+        const list = get(incomingInvoicesAtom);
+        const merged = keyBy([...list, updated], "id");
         set(incomingInvoicesAtom, orderBy(map(merged), "date", "desc"));
       }
       return true;
@@ -128,8 +149,8 @@ export const updateIncomingInvoiceStateAtom = atom(
     try {
       const updated = await UpdateIncomingInvoiceState(invoiceId, state);
       message.success(t`Incoming invoice state updated`);
-      const list: any = get(incomingInvoicesAtom);
-      const merged: any = keyBy([...list, updated], "id");
+      const list = get(incomingInvoicesAtom);
+      const merged = keyBy([...list, updated], "id");
       set(incomingInvoicesAtom, orderBy(map(merged), "date", "desc"));
       return true;
     } catch (error) {
@@ -148,7 +169,7 @@ export const deleteIncomingInvoiceAtom = atom(null, async (get, set, invoiceId: 
   try {
     const success = await DeleteIncomingInvoice(invoiceId);
     if (success) {
-      const list: any = reject(get(incomingInvoicesAtom), (i: any) => isEqual(i.id, invoiceId));
+      const list = reject(get(incomingInvoicesAtom), (i) => isEqual(i.id, invoiceId));
       set(incomingInvoicesAtom, list);
       message.success(t`Incoming invoice deleted`);
     } else {
