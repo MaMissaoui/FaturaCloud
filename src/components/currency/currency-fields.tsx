@@ -49,6 +49,7 @@ export const CurrencySelect = ({
       rules={[{ required: true, message: t`This field is required!` }]}
     >
       <Select
+        showSearch
         disabled={disabled}
         onChange={(newCurrency: string) =>
           prefillExchangeRate(form, organizationId, newCurrency, orgCurrency)
