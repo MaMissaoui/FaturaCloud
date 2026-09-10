@@ -185,6 +185,69 @@ func TestGetMyOrganizationRole(t *testing.T) {
 	}
 }
 
+// TestGetMyOrganizationRoles covers the batch counterpart to my-role (issue
+// #147) — one request returning every organization the caller belongs to,
+// instead of the list page's old one-my-role-call-per-row pattern.
+func TestGetMyOrganizationRoles(t *testing.T) {
+	mux, database, _, _ := newTestRouter(t)
+	seedUser(t, database, "multi-org-user", "user", 1)
+	seedUser(t, database, "outsider", "user", 1)
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-a", Name: strPtr("A")}); err != nil {
+		t.Fatalf("seed org-a: %v", err)
+	}
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-b", Name: strPtr("B")}); err != nil {
+		t.Fatalf("seed org-b: %v", err)
+	}
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-c", Name: strPtr("C")}); err != nil {
+		t.Fatalf("seed org-c: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-a", "multi-org-user", "admin"); err != nil {
+		t.Fatalf("seed org-a membership: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-b", "multi-org-user", "user"); err != nil {
+		t.Fatalf("seed org-b membership: %v", err)
+	}
+	// Deliberately no membership in org-c.
+
+	token := mintTestJWT(t, "multi-org-user", "")
+	req := httptest.NewRequest(http.MethodGet, "/api/organizations/my-roles", nil)
+	authRequest(req, token)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var roles map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &roles); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(roles) != 2 || roles["org-a"] != "admin" || roles["org-b"] != "user" {
+		t.Fatalf("expected {org-a: admin, org-b: user}, got %v", roles)
+	}
+	if _, present := roles["org-c"]; present {
+		t.Fatalf("expected org-c absent (not a member), got %v", roles)
+	}
+
+	// An outsider with no memberships at all still gets a clean 200 with an
+	// empty map, not an error — same "reveals nothing beyond the caller's
+	// own memberships" shape as my-role's isMember=false case.
+	token = mintTestJWT(t, "outsider", "")
+	req = httptest.NewRequest(http.MethodGet, "/api/organizations/my-roles", nil)
+	authRequest(req, token)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for an outsider, got %d: %s", rec.Code, rec.Body.String())
+	}
+	roles = nil
+	if err := json.Unmarshal(rec.Body.Bytes(), &roles); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(roles) != 0 {
+		t.Fatalf("expected no roles for an outsider, got %v", roles)
+	}
+}
+
 // TestOrganizationMembers_RemoveLastAdminRejected covers the last-org-admin
 // guard surfacing as a clean 409 through the HTTP layer.
 func TestOrganizationMembers_RemoveLastAdminRejected(t *testing.T) {

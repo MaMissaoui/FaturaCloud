@@ -92,6 +92,59 @@ func TestOrganizationUserCRUD(t *testing.T) {
 	}
 }
 
+func TestGetUserOrganizationRoles(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-roles-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization A: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-roles-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization B: %v", err)
+	}
+	orgC, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-roles-c"})
+	if err != nil {
+		t.Fatalf("CreateOrganization C: %v", err)
+	}
+	seedTestUser(t, d, "roles-user", "user", 0)
+	if _, err := d.AddOrganizationUser(orgA.ID, "roles-user", "admin"); err != nil {
+		t.Fatalf("add to org A: %v", err)
+	}
+	if _, err := d.AddOrganizationUser(orgB.ID, "roles-user", "user"); err != nil {
+		t.Fatalf("add to org B: %v", err)
+	}
+	// Deliberately no membership added for orgC — it must be absent from the
+	// map, not present with an empty-string role.
+
+	roles, err := d.GetUserOrganizationRoles("roles-user")
+	if err != nil {
+		t.Fatalf("GetUserOrganizationRoles: %v", err)
+	}
+	if len(roles) != 2 {
+		t.Fatalf("expected exactly 2 organizations, got %+v", roles)
+	}
+	if roles[orgA.ID] != "admin" {
+		t.Errorf("expected org A role=admin, got %q", roles[orgA.ID])
+	}
+	if roles[orgB.ID] != "user" {
+		t.Errorf("expected org B role=user, got %q", roles[orgB.ID])
+	}
+	if _, present := roles[orgC.ID]; present {
+		t.Errorf("expected org C to be absent (not a member), got role %q", roles[orgC.ID])
+	}
+
+	// A user with no memberships at all gets an empty, non-nil map.
+	seedTestUser(t, d, "roles-user-none", "user", 0)
+	emptyRoles, err := d.GetUserOrganizationRoles("roles-user-none")
+	if err != nil {
+		t.Fatalf("GetUserOrganizationRoles (no memberships): %v", err)
+	}
+	if len(emptyRoles) != 0 {
+		t.Fatalf("expected no roles, got %+v", emptyRoles)
+	}
+}
+
 func TestAddOrganizationUser_UpsertsRoleOnReAdd(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)

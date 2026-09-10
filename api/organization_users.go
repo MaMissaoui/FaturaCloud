@@ -40,6 +40,28 @@ func (h *handler) getMyOrganizationRole(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{"role": role, "isMember": isMember})
 }
 
+// getMyOrganizationRoles is the batch counterpart to getMyOrganizationRole —
+// issue #147: the Organizations list page was calling my-role once per
+// organization row (an N+1 HTTP pattern), just to know which rows to show
+// admin-only actions for. Same self-limiting scope as my-role (not
+// org-admin gated, reveals nothing beyond the caller's own memberships) but
+// across every organization at once, matching GetUserOrganizations'
+// "no single target org to resolve" shape — see this route's exemptRoutes
+// entry in cross_org_test.go.
+func (h *handler) getMyOrganizationRoles(w http.ResponseWriter, r *http.Request) {
+	claims := getClaims(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	roles, err := h.db.GetUserOrganizationRoles(claims.UserID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, roles)
+}
+
 type addOrganizationUserRequest struct {
 	// Email, not userId: an org admin isn't necessarily a platform admin and
 	// has no route to list every user account to find an id by — email is

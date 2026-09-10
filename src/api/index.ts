@@ -297,6 +297,13 @@ export const GetMyOrganizationRole = (organizationId: string) =>
     `/organizations/${organizationId}/my-role`,
   );
 
+// Batch counterpart to GetMyOrganizationRole (issue #147) — every
+// organization the caller belongs to, in one request, keyed by organization
+// id. An organization absent from the map means "not a member," same as
+// GetMyOrganizationRole's isMember: false.
+export const GetMyOrganizationRoles = () =>
+  get<Record<string, "admin" | "user">>("/organizations/my-roles");
+
 // Grants an existing user account access by email — an org admin has no
 // route to list every platform user account to find an id by, so email is
 // what they'd actually have on hand to invite someone with.
