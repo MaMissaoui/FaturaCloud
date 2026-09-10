@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import type { Organization } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -15,7 +16,7 @@ import {
 import { generateInvoiceNumber } from "src/utils/invoice";
 
 // Organizations
-export const organizationsAtom = atom<any[]>([]);
+export const organizationsAtom = atom<Organization[]>([]);
 export const organizationsLoadedAtom = atom<boolean>(false);
 
 export const setOrganizationsAtom = atom(null, async (_get, set) => {
@@ -70,7 +71,7 @@ export const organizationAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: Partial<Organization>) => {
     const organizationId = get(organizationIdAtom);
 
     try {

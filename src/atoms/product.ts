@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import type { Product } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -11,7 +12,7 @@ import { GetProducts, GetProduct, CreateProduct, UpdateProduct, DeleteProduct } 
 
 import { organizationIdAtom } from "./organization";
 
-export const productsAtom = atom<any[]>([]);
+export const productsAtom = atom<Product[]>([]);
 productsAtom.debugLabel = "productsAtom";
 
 export const setProductsAtom = atom(null, async (get, set) => {
@@ -42,21 +43,21 @@ export const productAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: Partial<Product>) => {
     const productId = get(productIdAtom);
     try {
       if (!productId) {
         const created = await CreateProduct({
           ...newValues,
           id: nanoid(),
-          organizationId: get(organizationIdAtom),
+          organizationId: get(organizationIdAtom)!,
         });
         message.success(t`Product created`);
         set(productsAtom, orderBy([...get(productsAtom), created], "name", "asc"));
       } else {
         const updated = await UpdateProduct(productId, newValues);
         message.success(t`Product updated`);
-        const merged: any = keyBy([...get(productsAtom), updated], "id");
+        const merged = keyBy([...get(productsAtom), updated], "id");
         set(productsAtom, orderBy(map(merged), "name", "asc"));
       }
     } catch (error) {
@@ -79,7 +80,7 @@ export const deleteProductAtom = atom(null, async (get, set, productId: string) 
     if (success) {
       set(
         productsAtom,
-        reject(get(productsAtom), (p: any) => isEqual(p.id, productId)),
+        reject(get(productsAtom), (p) => isEqual(p.id, productId)),
       );
       message.success(t`Product deleted`);
     } else {

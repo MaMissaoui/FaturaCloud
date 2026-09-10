@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import type { Import } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -12,7 +13,7 @@ import { GetImports, GetImport, CreateImport, UpdateImport, DeleteImport } from 
 import { organizationIdAtom } from "./organization";
 
 // Imports
-export const importsAtom = atom<any[]>([]);
+export const importsAtom = atom<Import[]>([]);
 importsAtom.debugLabel = "importsAtom";
 
 export const setImportsAtom = atom(null, async (get, set) => {
@@ -45,7 +46,7 @@ export const importAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: Partial<Import>) => {
     const importId = get(importIdAtom);
 
     try {
@@ -53,19 +54,19 @@ export const importAtom = atom(
         const processedValues = {
           ...newValues,
           id: nanoid(),
-          organizationId: get(organizationIdAtom),
+          organizationId: get(organizationIdAtom)!,
         };
         const created = await CreateImport(processedValues);
         message.success(t`Import created`);
 
-        const imports: any = get(importsAtom);
+        const imports = get(importsAtom);
         set(importsAtom, orderBy([...imports, created], "date", "desc"));
       } else {
         const updated = await UpdateImport(importId, newValues);
         message.success(t`Import updated successfully`);
 
-        const imports: any = get(importsAtom);
-        const merged: any = keyBy([...imports, updated], "id");
+        const imports = get(importsAtom);
+        const merged = keyBy([...imports, updated], "id");
         set(importsAtom, orderBy(map(merged), "date", "desc"));
       }
     } catch (error) {
@@ -86,7 +87,7 @@ export const deleteImportAtom = atom(null, async (get, set, importId: string) =>
     const success = await DeleteImport(importId);
 
     if (success) {
-      const imports: any = reject(get(importsAtom), (obj: any) => isEqual(obj.id, importId));
+      const imports = reject(get(importsAtom), (obj) => isEqual(obj.id, importId));
       set(importsAtom, imports);
       message.success(t`Import deleted`);
     } else {

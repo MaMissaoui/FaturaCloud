@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import type { StockMovement } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -13,32 +14,37 @@ import { productsAtom } from "./product";
 // every line-item picker) read productsAtom.stockQuantity and expect it to
 // reflect a movement immediately, without waiting for a refetch.
 
-export const createStockMovementAtom = atom(null, async (get, set, req: any) => {
-  try {
-    const { movements, product } = await CreateStockMovement({
-      ...req,
-      id: nanoid(),
-      organizationId: get(organizationIdAtom),
-    });
+type CreateStockMovementRequest = Partial<StockMovement> & { serialNumbers?: string[] };
 
-    // Replace the product wholesale from the server's own refreshed state,
-    // rather than patching stockQuantity by a single movement's quantity —
-    // a serialized request can post many movement rows at once (one per
-    // unit), so there's no single delta to apply locally.
-    const products: any[] = get(productsAtom);
-    set(
-      productsAtom,
-      products.map((p: any) => (p.id === product.id ? product : p)),
-    );
+export const createStockMovementAtom = atom(
+  null,
+  async (get, set, req: CreateStockMovementRequest) => {
+    try {
+      const { movements, product } = await CreateStockMovement({
+        ...req,
+        id: nanoid(),
+        organizationId: get(organizationIdAtom)!,
+      });
 
-    message.success(t`Stock movement recorded`);
-    return movements;
-  } catch (error) {
-    console.error("Failed to create stock movement:", error);
-    message.error(error instanceof Error ? error.message : t`Failed to record stock movement`);
-    return null;
-  }
-});
+      // Replace the product wholesale from the server's own refreshed state,
+      // rather than patching stockQuantity by a single movement's quantity —
+      // a serialized request can post many movement rows at once (one per
+      // unit), so there's no single delta to apply locally.
+      const products = get(productsAtom);
+      set(
+        productsAtom,
+        products.map((p) => (p.id === product.id ? product : p)),
+      );
+
+      message.success(t`Stock movement recorded`);
+      return movements;
+    } catch (error) {
+      console.error("Failed to create stock movement:", error);
+      message.error(error instanceof Error ? error.message : t`Failed to record stock movement`);
+      return null;
+    }
+  },
+);
 
 export const deleteStockMovementAtom = atom(
   null,
@@ -47,10 +53,10 @@ export const deleteStockMovementAtom = atom(
       const success = await DeleteStockMovement(movement.id);
       if (success) {
         // Reverse the movement's effect on the product
-        const products: any[] = get(productsAtom);
+        const products = get(productsAtom);
         set(
           productsAtom,
-          products.map((p: any) =>
+          products.map((p) =>
             p.id === movement.productId
               ? { ...p, stockQuantity: p.stockQuantity - movement.quantity }
               : p,
