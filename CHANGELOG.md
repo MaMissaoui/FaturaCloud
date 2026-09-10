@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.0] - 2026-09-10
+
+### Added
+- Per-document-type page orientation (Portrait/Landscape) for Excel/PDF
+  exports, set from a new control on each Document Templates settings
+  card — overrides the template's own layout at export time, whether
+  that's the embedded default or an org's own uploaded template.
+- `cmd/seed-demo`: an imports generator (consolidated shipments that
+  purchase orders link to, with landed cost spread across them) and
+  locale-aware client/vendor master data driven by `--country`.
+- Inventory's stock-levels view is now a searchable, sortable, paginated
+  table instead of a card grid — usable at real product-catalog volume
+  (hundreds of products).
+- The currency dropdown, and other comparable `Select` fields, now
+  support typing to filter.
+
+### Fixed
+- Invoice PDF/Excel exports no longer print a broken
+  "Withholding tax (): " line for organizations that don't use Tunisia's
+  withholding-tax feature — the line is now entirely blank when unset.
+- Line-item Product/Description pickers no longer repeat the product's
+  name in both columns, and the Product picker is now searchable by
+  name or SKU.
+- `cmd/seed-demo`'s AR/AP aging is more realistic over a long run (a
+  small permanent bad-debt tail plus a larger slow-but-eventually-paid
+  tail, instead of a flat never-paid rate that dominated the 90+ day
+  bucket), and due dates now follow the organization's configured terms
+  instead of a hardcoded default.
+
 ## [3.16.0] - 2026-09-10
 
 ### Security
