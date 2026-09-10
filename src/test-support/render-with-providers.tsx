@@ -6,7 +6,7 @@ import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import type { Atom } from "jotai";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { organizationAtom } from "src/atoms/organization";
 
 // Shared harness for issue #175's component tests — every provider a real
@@ -50,12 +50,21 @@ export async function renderWithProviders(
   ui: ReactElement,
   options?: {
     route?: string;
+    // The route PATTERN a component's useParams() matches against (e.g.
+    // "/invoices/:id") — distinct from `route`, the actual URL being
+    // visited (e.g. "/invoices/new"). MemoryRouter alone never populates
+    // useParams; it needs an actual <Routes><Route path={path} .../></Routes>
+    // match. Defaults to `route` (no :params), which is a no-op wrapper for
+    // components that don't read route params — safe for every existing
+    // caller that never needed this.
+    path?: string;
     jotaiStore?: ReturnType<typeof createStore>;
     flushAtoms?: Atom<unknown>[];
   },
 ) {
   const store = options?.jotaiStore ?? createStore();
   const route = options?.route ?? "/";
+  const path = options?.path ?? route;
   const flushAtoms = [organizationAtom, ...(options?.flushAtoms ?? [])];
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
@@ -64,7 +73,11 @@ export async function renderWithProviders(
         <ConfigProvider>
           <App>
             <MemoryRouter initialEntries={[route]}>
-              <Suspense fallback={null}>{children}</Suspense>
+              <Suspense fallback={null}>
+                <Routes>
+                  <Route path={path} element={children} />
+                </Routes>
+              </Suspense>
             </MemoryRouter>
           </App>
         </ConfigProvider>

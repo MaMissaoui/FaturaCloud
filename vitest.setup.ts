@@ -25,3 +25,16 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     dispatchEvent: () => false,
   });
 }
+
+// jsdom has no ResizeObserver either — rc-resize-observer (a transitive
+// dependency of antd's Table/Select/Form among others) instantiates one
+// unconditionally on mount, same failure-before-the-test-even-starts shape
+// as matchMedia above. A no-op stub is fine for jsdom, which never reports
+// real size changes anyway.
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
