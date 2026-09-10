@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Product, StockMovement } from "src/types/models";
 import { Link, useLocation } from "react-router";
-import { Button, Col, Popconfirm, Row, Select, Table, Tag, theme, Tooltip } from "antd";
+import {
+  Button,
+  Col,
+  Input,
+  Popconfirm,
+  Row,
+  Select,
+  Table,
+  Tag,
+  theme,
+  Tooltip,
+  Typography,
+} from "antd";
 import type { TableProps } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -70,6 +82,7 @@ const Inventory = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [productFilter, setProductFilter] = useState<string | null>(null);
+  const [stockSearch, setStockSearch] = useState("");
   const [sortField, setSortField] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
 
@@ -108,6 +121,11 @@ const Inventory = () => {
   }, [location, fetchMovements, setProducts]);
 
   const trackedProducts = products.filter((p) => p.stockEnabled);
+  const filteredTrackedProducts = trackedProducts.filter((p) => {
+    if (!stockSearch) return true;
+    const needle = stockSearch.toLowerCase();
+    return p.name.toLowerCase().includes(needle) || (p.sku ?? "").toLowerCase().includes(needle);
+  });
 
   const handleDelete = async (movement: StockMovement) => {
     const success = await deleteMovement({
@@ -168,52 +186,105 @@ const Inventory = () => {
         }
       />
 
-      {/* Stock levels summary */}
+      {/* Stock levels — a Table rather than one card per product (the
+          previous shape) once this app's own demo catalog reached ~300
+          stock-tracked products: an unpaginated, unsearchable, unsortable
+          grid of cards is fine at a handful of products but becomes
+          unnavigable at that scale, and gives no way to answer "what's
+          actually low or out of stock" without scanning every card. Search
+          is client-side over the already-loaded productsAtom (the same data
+          the old card grid and the "Filter by product" Select above both
+          already relied on) — no new endpoint needed. */}
       {trackedProducts.length > 0 && (
-        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-          {trackedProducts.map((p: Product) => {
-            const qty: number = p.stockQuantity ?? 0;
-            const color =
-              qty <= 0 ? token.colorError : qty <= 5 ? token.colorWarning : token.colorSuccess;
-            return (
-              <Col key={p.id} xs={12} sm={8} md={6} lg={4}>
-                <div
-                  style={{
-                    padding: "12px 16px",
-                    border: `1px solid ${token.colorBorderSecondary}`,
-                    borderRadius: 6,
-                    borderLeft: `4px solid ${color}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: token.colorTextSecondary,
-                      marginBottom: 4,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {p.name}
-                  </div>
-                  <div style={{ fontSize: 20, fontWeight: 600, color }}>
-                    {qty % 1 === 0 ? qty : qty.toFixed(2)}
-                    {p.unit && (
-                      <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 4 }}>
-                        {unitLabel(p.unit)}
+        <>
+          <Row style={{ marginTop: 24 }} align="middle" justify="space-between">
+            <Col>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                <Trans>Stock levels</Trans>
+              </Typography.Title>
+            </Col>
+            <Col>
+              <Input.Search
+                allowClear
+                placeholder={t`Search products`}
+                style={{ width: 260 }}
+                value={stockSearch}
+                onChange={(e) => setStockSearch(e.target.value)}
+              />
+            </Col>
+          </Row>
+          <Row style={{ marginTop: 12 }}>
+            <Col span={24}>
+              <Table
+                dataSource={filteredTrackedProducts}
+                rowKey="id"
+                pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
+                locale={{ emptyText: t`No products match your search` }}
+              >
+                <Table.Column
+                  title={<Trans>Product</Trans>}
+                  dataIndex="name"
+                  key="name"
+                  sorter={(a: Product, b: Product) => a.name.localeCompare(b.name)}
+                  defaultSortOrder="ascend"
+                  render={(name: string, p: Product) => (
+                    <Link to="/products" state={{ productModal: true, productId: p.id }}>
+                      {name}
+                    </Link>
+                  )}
+                />
+                <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" sorter />
+                <Table.Column
+                  title={<Trans>Category</Trans>}
+                  dataIndex="category"
+                  key="category"
+                  render={(category: string | null) =>
+                    category === "finished" ? (
+                      <Tag color="purple">
+                        <Trans>Finished good</Trans>
+                      </Tag>
+                    ) : category === "component" ? (
+                      <Tag color="gold">
+                        <Trans>Component</Trans>
+                      </Tag>
+                    ) : null
+                  }
+                />
+                <Table.Column
+                  title={<Trans>On hand</Trans>}
+                  dataIndex="stockQuantity"
+                  key="stockQuantity"
+                  align="right"
+                  sorter={(a: Product, b: Product) =>
+                    (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0)
+                  }
+                  render={(qty: number, p: Product) => {
+                    const q = qty ?? 0;
+                    const color =
+                      q <= 0 ? token.colorError : q <= 5 ? token.colorWarning : token.colorSuccess;
+                    return (
+                      <span style={{ color, fontWeight: 600 }}>
+                        {q % 1 === 0 ? q : q.toFixed(2)}
+                        {p.unit && (
+                          <span style={{ fontWeight: 400, marginLeft: 4 }}>
+                            {unitLabel(p.unit)}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </div>
-                </div>
-              </Col>
-            );
-          })}
-        </Row>
+                    );
+                  }}
+                />
+              </Table>
+            </Col>
+          </Row>
+        </>
       )}
 
-      <Row style={{ marginTop: 16 }}>
+      <Row style={{ marginTop: 24 }}>
         <Col span={24}>
+          <Typography.Title level={5} style={{ marginBottom: 12 }}>
+            <Trans>Recent movements</Trans>
+          </Typography.Title>
           <Table
             dataSource={movements}
             pagination={{ current: page, pageSize, total, showSizeChanger: true }}
