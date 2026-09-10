@@ -410,7 +410,13 @@ const ImportForm = () => {
                       okText={<Trans>Yes</Trans>}
                       cancelText={<Trans>No</Trans>}
                     >
-                      <Button type="text" danger size="small" icon={<DisconnectOutlined />} />
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
+                        icon={<DisconnectOutlined />}
+                        aria-label={t`Unlink purchase order`}
+                      />
                     </Popconfirm>
                   )}
                 />

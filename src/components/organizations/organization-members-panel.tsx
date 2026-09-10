@@ -91,6 +91,7 @@ export default function OrganizationMembersPanel({
                   type="text"
                   icon={<DeleteOutlined />}
                   loading={memberActionId === record.userId}
+                  aria-label={t`Remove member`}
                 />
               </Popconfirm>
             )}

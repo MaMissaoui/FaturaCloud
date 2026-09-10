@@ -1,3 +1,18 @@
 body {
   margin: 0;
 }
+
+// Off-screen until keyboard-focused, so it doesn't intrude visually but is
+// reachable as the very first Tab stop for a keyboard/screen-reader user.
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 8px;
+  z-index: 1100;
+  padding: 8px 16px;
+  border-radius: 4px;
+
+  &:focus {
+    top: 8px;
+  }
+}

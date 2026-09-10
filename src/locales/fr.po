@@ -13,7 +13,7 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: src/components/status-flow.tsx:53
+#: src/components/status-flow.tsx:64
 msgid "(current)"
 msgstr "(actuel)"
 
@@ -27,7 +27,7 @@ msgstr "% par jour"
 
 #: src/components/currency/currency-fields.tsx:92
 #: src/components/payments/payment-panel.tsx:344
-#: src/routes/invoices/details.tsx:606
+#: src/routes/invoices/details.tsx:615
 msgid "1 {currency} = this many {orgCurrency}"
 msgstr "1 {currency} équivaut à autant de {orgCurrency}"
 
@@ -51,7 +51,7 @@ msgstr "Mois à 2 chiffres ({0})"
 msgid "2-digit year ({0})"
 msgstr "Année à 2 chiffres ({0})"
 
-#: src/routes/incoming-invoices/details.tsx:430
+#: src/routes/incoming-invoices/details.tsx:483
 msgid "3-way match"
 msgstr "Rapprochement à trois voies"
 
@@ -78,7 +78,7 @@ msgstr "61 à 90 jours"
 msgid "90+ days"
 msgstr "90+ jours"
 
-#: src/routes/invoices/details.tsx:694
+#: src/routes/invoices/details.tsx:703
 msgid "A flat statutory duty added to the invoice total, not subject to VAT."
 msgstr "Un droit fixe légal ajouté au total de la facture, non soumis à la TVA."
 
@@ -86,16 +86,16 @@ msgstr "Un droit fixe légal ajouté au total de la facture, non soumis à la TV
 msgid "A journal entry can only be posted within an open fiscal year. Create one under <0>Fiscal Periods</0> first."
 msgstr "Une écriture ne peut être comptabilisée que dans un exercice ouvert. Créez-en un d'abord sous <0>Exercices comptables</0>."
 
-#: src/routes/incoming-invoices/details.tsx:514
+#: src/routes/incoming-invoices/details.tsx:567
 msgid "A reason is required to override"
 msgstr "Une justification est requise pour passer outre"
 
-#: src/routes/organizations/index.tsx:678
+#: src/components/organizations/organization-edit-drawer.tsx:213
 msgid "Accent color used across the app while this organization is selected."
 msgstr "Couleur d'accent utilisée dans toute l'application lorsque cette organisation est sélectionnée."
 
 #: src/routes/accounting/journal-entries/details.tsx:229
-#: src/routes/accounting/journal-entries/details.tsx:411
+#: src/routes/accounting/journal-entries/details.tsx:412
 #: src/routes/accounting/reports/balance-sheet.tsx:44
 #: src/routes/accounting/reports/profit-and-loss.tsx:64
 msgid "Account"
@@ -121,18 +121,18 @@ msgstr "Échec de l'enregistrement du compte"
 msgid "Account updated"
 msgstr "Compte mis à jour"
 
+#: src/components/organizations/organization-edit-drawer.tsx:419
 #: src/components/products/form.tsx:405
 #: src/components/tax-rates/form.tsx:246
-#: src/layouts/base.tsx:428
-#: src/routes/organizations/index.tsx:892
+#: src/layouts/base.tsx:543
 msgid "Accounting"
 msgstr "Comptabilité"
 
-#: src/routes/organizations/index.tsx:916
+#: src/components/organizations/organization-edit-drawer.tsx:441
 msgid "Accounts payable"
 msgstr "Comptes fournisseurs"
 
-#: src/routes/organizations/index.tsx:899
+#: src/components/organizations/organization-edit-drawer.tsx:426
 msgid "Accounts receivable"
 msgstr "Comptes clients"
 
@@ -145,7 +145,7 @@ msgstr "Comptes clients"
 msgid "Active"
 msgstr "Actif"
 
-#: src/routes/organizations/index.tsx:1288
+#: src/components/organizations/organization-members-panel.tsx:122
 msgid "Add"
 msgstr ""
 
@@ -162,9 +162,9 @@ msgid "Add line item"
 msgstr "Ajouter une ligne"
 
 #: src/components/clients/form.tsx:264
+#: src/components/organizations/organization-edit-drawer.tsx:312
 #: src/components/vendors/form.tsx:231
 #: src/routes/clients.tsx:97
-#: src/routes/organizations/index.tsx:778
 #: src/routes/vendors.tsx:97
 msgid "Address"
 msgstr "Adresse"
@@ -173,7 +173,7 @@ msgstr "Adresse"
 msgid "Adjust stock to zero first"
 msgstr "Ramenez d'abord le stock à zéro"
 
-#: src/routes/inventory.tsx:49
+#: src/routes/inventory.tsx:48
 msgid "Adjustment"
 msgstr "Ajustement"
 
@@ -181,8 +181,8 @@ msgstr "Ajustement"
 msgid "Adjustment — set count to"
 msgstr "Ajustement — définir le compte à"
 
-#: src/routes/organizations/index.tsx:1240
-#: src/routes/organizations/index.tsx:1278
+#: src/components/organizations/organization-members-panel.tsx:73
+#: src/components/organizations/organization-members-panel.tsx:112
 #: src/routes/settings/users.tsx:196
 #: src/routes/settings/users.tsx:329
 msgid "Admin"
@@ -204,11 +204,11 @@ msgstr "Toutes les périodes"
 msgid "All statuses"
 msgstr "Tous les statuts"
 
-#: src/components/imports/form.tsx:422
+#: src/components/imports/form.tsx:428
 msgid "Allocation"
 msgstr ""
 
-#: src/routes/incoming-invoices/details.tsx:457
+#: src/routes/incoming-invoices/details.tsx:510
 msgid "Already invoiced"
 msgstr "Déjà facturé"
 
@@ -222,24 +222,24 @@ msgstr "Montant"
 msgid "Amount ({currency})"
 msgstr "Montant ({currency})"
 
-#: src/layouts/base.tsx:507
+#: src/layouts/base.tsx:622
 #: src/routes/accounting/reports/ap-aging.tsx:45
 msgid "AP Aging"
 msgstr "Balance âgée fournisseurs"
 
-#: src/routes/organizations/index.tsx:671
+#: src/components/organizations/organization-edit-drawer.tsx:206
 msgid "Appearance"
 msgstr "Apparence"
 
-#: src/components/imports/form.tsx:437
+#: src/components/imports/form.tsx:443
 msgid "Applied to each received line's own value once its purchase order's goods are received — not force-balanced against freight+customs across partial or uncosted receiving."
 msgstr ""
 
-#: src/routes/incoming-invoices/details.tsx:491
+#: src/routes/incoming-invoices/details.tsx:544
 msgid "Approval is blocked until the variance is resolved, or recorded as an override with a reason."
 msgstr "L'approbation est bloquée jusqu'à ce que l'écart soit résolu ou justifié par une dérogation."
 
-#: src/routes/incoming-invoices/details.tsx:504
+#: src/routes/incoming-invoices/details.tsx:557
 msgid "Approve despite the variance"
 msgstr "Approuver malgré l'écart"
 
@@ -247,13 +247,12 @@ msgstr "Approuver malgré l'écart"
 msgid "Approved"
 msgstr "Approuvée"
 
-#: src/layouts/base.tsx:498
+#: src/layouts/base.tsx:613
 #: src/routes/accounting/reports/ar-aging.tsx:45
 msgid "AR Aging"
 msgstr "Balance âgée clients"
 
-#: src/routes/invoices/details.tsx:1057
-#: src/routes/invoices/index.tsx:104
+#: src/routes/invoices/index.tsx:114
 msgid "Are you sure to delete this invoice?"
 msgstr "Êtes-vous sûr(e) de vouloir supprimer cette facture ?"
 
@@ -303,14 +302,14 @@ msgid "At least one serial number is required"
 msgstr "Au moins un numéro de série est requis"
 
 #: src/components/deliveries/delivery-note-pdf.tsx:271
-msgid "Authorized signature"
-msgstr "Signature autorisée"
+#~ msgid "Authorized signature"
+#~ msgstr "Signature autorisée"
 
-#: src/routes/settings/backup.tsx:185
+#: src/routes/settings/backup.tsx:190
 msgid "Automatic schedule"
 msgstr "Planification automatique"
 
-#: src/routes/deliveries/details.tsx:413
+#: src/routes/deliveries/details.tsx:420
 msgid "Available stock"
 msgstr "Stock disponible"
 
@@ -318,24 +317,24 @@ msgstr "Stock disponible"
 msgid "Available variables"
 msgstr "Variables disponibles"
 
-#: src/layouts/base.tsx:622
+#: src/layouts/base.tsx:262
 msgid "Backup"
 msgstr "Sauvegarde"
 
-#: src/routes/settings/backup.tsx:180
+#: src/routes/settings/backup.tsx:185
 msgid "Backup & Restore"
 msgstr "Sauvegarde et restauration"
 
-#: src/routes/settings/backup.tsx:110
+#: src/routes/settings/backup.tsx:115
 msgid "Backup downloaded: {filename}"
 msgstr "Sauvegarde téléchargée : {filename}"
 
 #. placeholder {0}: String(err)
-#: src/routes/settings/backup.tsx:113
+#: src/routes/settings/backup.tsx:118
 msgid "Backup failed: {0}"
 msgstr "Échec de la sauvegarde : {0}"
 
-#: src/routes/settings/backup.tsx:327
+#: src/routes/settings/backup.tsx:332
 msgid "Backup history"
 msgstr "Historique des sauvegardes"
 
@@ -345,12 +344,12 @@ msgstr "Historique des sauvegardes"
 msgid "Balance due"
 msgstr "Solde dû"
 
-#: src/layouts/base.tsx:489
+#: src/layouts/base.tsx:604
 #: src/routes/accounting/reports/balance-sheet.tsx:70
 msgid "Balance Sheet"
 msgstr "Bilan"
 
-#: src/routes/accounting/journal-entries/details.tsx:320
+#: src/routes/accounting/journal-entries/details.tsx:321
 msgid "Balanced"
 msgstr "Équilibrée"
 
@@ -363,7 +362,7 @@ msgstr "Banque"
 msgid "Bank / cash account"
 msgstr "Compte bancaire / caisse"
 
-#: src/routes/organizations/index.tsx:751
+#: src/components/organizations/organization-edit-drawer.tsx:285
 msgid "Bank name"
 msgstr "Nom de la banque"
 
@@ -371,7 +370,7 @@ msgstr "Nom de la banque"
 msgid "Bank transfer"
 msgstr "Virement bancaire"
 
-#: src/routes/organizations/index.tsx:746
+#: src/components/organizations/organization-edit-drawer.tsx:280
 msgid "Banking"
 msgstr "Coordonnées bancaires"
 
@@ -389,7 +388,6 @@ msgstr "Facturé par"
 
 #: src/components/invoices/pdf-tunisia.tsx:185
 #: src/components/invoices/pdf.tsx:263
-#: src/components/orders/order-confirmation-pdf.tsx:212
 msgid "Bill To"
 msgstr "Facturé à"
 
@@ -410,7 +408,7 @@ msgstr "{0} facturé, mais seulement {1} commandé."
 msgid "Billing {0} but only {1} received ({2} already invoiced)."
 msgstr "{0} facturé, mais seulement {1} reçu ({2} déjà facturé)."
 
-#: src/routes/organizations/index.tsx:676
+#: src/components/organizations/organization-edit-drawer.tsx:211
 msgid "Brand color"
 msgstr "Couleur de marque"
 
@@ -423,7 +421,7 @@ msgstr "Intégré"
 msgid "Built-in journals can't be deleted"
 msgstr "Les journaux intégrés ne peuvent pas être supprimés"
 
-#: src/routes/invoices/details.tsx:672
+#: src/routes/invoices/details.tsx:681
 msgid "Buyer reference"
 msgstr "Référence acheteur"
 
@@ -440,6 +438,7 @@ msgstr "Taxe générale indirecte des îles Canaries"
 #: src/components/clients/form.tsx:174
 #: src/components/feedback-modal.tsx:55
 #: src/components/imports/form.tsx:240
+#: src/components/organizations/organization-edit-drawer.tsx:120
 #: src/components/payment-terms/form.tsx:107
 #: src/components/payments/payment-panel.tsx:266
 #: src/components/products/form.tsx:184
@@ -448,16 +447,15 @@ msgstr "Taxe générale indirecte des îles Canaries"
 #: src/components/tax-rates/form.tsx:162
 #: src/components/vendors/form.tsx:151
 #: src/routes/accounting/fiscal-periods.tsx:114
-#: src/routes/organizations/index.tsx:585
 #: src/routes/organizations/new.tsx:113
-#: src/routes/settings/backup.tsx:125
-#: src/routes/settings/backup.tsx:149
-#: src/routes/settings/backup.tsx:296
+#: src/routes/settings/backup.tsx:130
+#: src/routes/settings/backup.tsx:154
+#: src/routes/settings/backup.tsx:301
 #: src/routes/settings/users.tsx:279
 msgid "Cancel"
 msgstr "Annuler"
 
-#: src/routes/deliveries/details.tsx:483
+#: src/routes/deliveries/details.tsx:493
 msgid "Cancel delivery"
 msgstr "Annuler la livraison"
 
@@ -465,20 +463,20 @@ msgstr "Annuler la livraison"
 #~ msgid "Cancel invoice"
 #~ msgstr "Annuler la facture"
 
-#: src/routes/orders/details.tsx:479
-#: src/routes/purchase-orders/details.tsx:571
+#: src/routes/orders/details.tsx:499
+#: src/routes/purchase-orders/details.tsx:591
 msgid "Cancel order"
 msgstr "Annuler la commande"
 
-#: src/routes/inbound-deliveries/details.tsx:507
+#: src/routes/inbound-deliveries/details.tsx:566
 msgid "Cancel receipt"
 msgstr "Annuler la réception"
 
-#: src/routes/deliveries/details.tsx:477
+#: src/routes/deliveries/details.tsx:487
 msgid "Cancel this delivery?"
 msgstr "Annuler cette livraison ?"
 
-#: src/routes/inbound-deliveries/details.tsx:500
+#: src/routes/inbound-deliveries/details.tsx:559
 msgid "Cancel this goods receipt?"
 msgstr "Annuler cette réception de marchandises ?"
 
@@ -486,18 +484,18 @@ msgstr "Annuler cette réception de marchandises ?"
 #~ msgid "Cancel this invoice?"
 #~ msgstr "Annuler cette facture ?"
 
-#: src/routes/orders/details.tsx:473
+#: src/routes/orders/details.tsx:493
 msgid "Cancel this order?"
 msgstr "Annuler cette commande ?"
 
-#: src/routes/purchase-orders/details.tsx:565
+#: src/routes/purchase-orders/details.tsx:585
 msgid "Cancel this purchase order?"
 msgstr "Annuler cette commande d'achat ?"
 
 #: src/types/delivery.ts:29
 #: src/types/inbound-delivery.ts:27
 #: src/types/incoming-invoice.ts:32
-#: src/types/invoice.ts:80
+#: src/types/invoice.ts:87
 #: src/types/order.ts:37
 #: src/types/purchase-order.ts:33
 msgid "Cancelled"
@@ -527,7 +525,7 @@ msgstr "Caisse"
 msgid "Category"
 msgstr ""
 
-#: src/routes/organizations/index.tsx:726
+#: src/components/organizations/organization-edit-drawer.tsx:260
 msgid "Change logo"
 msgstr "Changer le logo"
 
@@ -535,7 +533,7 @@ msgstr "Changer le logo"
 msgid "Chart"
 msgstr "Graphique"
 
-#: src/layouts/base.tsx:435
+#: src/layouts/base.tsx:550
 #: src/routes/accounting/chart-of-accounts.tsx:70
 msgid "Chart of Accounts"
 msgstr "Plan comptable"
@@ -544,15 +542,15 @@ msgstr "Plan comptable"
 msgid "Check"
 msgstr "Chèque"
 
-#: src/routes/settings/backup.tsx:278
+#: src/routes/settings/backup.tsx:283
 msgid "Choose file"
 msgstr "Choisir un fichier"
 
 #: src/components/clients/form.tsx:299
 #: src/components/clients/form.tsx:300
+#: src/components/organizations/organization-edit-drawer.tsx:345
 #: src/components/vendors/form.tsx:262
 #: src/components/vendors/form.tsx:263
-#: src/routes/organizations/index.tsx:813
 msgid "City"
 msgstr "Ville"
 
@@ -560,10 +558,10 @@ msgstr "Ville"
 #: src/routes/dashboard.tsx:175
 #: src/routes/dashboard.tsx:231
 #: src/routes/deliveries.tsx:93
-#: src/routes/deliveries/details.tsx:307
-#: src/routes/invoices/index.tsx:161
+#: src/routes/deliveries/details.tsx:314
+#: src/routes/invoices/index.tsx:171
 #: src/routes/orders.tsx:86
-#: src/routes/orders/details.tsx:236
+#: src/routes/orders/details.tsx:251
 #: src/routes/reporting/sales-by-client.tsx:96
 msgid "Client"
 msgstr "Client"
@@ -572,46 +570,46 @@ msgstr "Client"
 msgid "Client code (e.g. AP, MS)"
 msgstr "Code client (ex. AP, MS)"
 
-#: src/atoms/client.ts:72
+#: src/atoms/client.ts:79
 msgid "Client created"
 msgstr "Client créé"
 
-#: src/atoms/client.ts:90
+#: src/atoms/client.ts:97
 msgid "Client creation failed"
 msgstr "Échec de la création du client"
 
-#: src/atoms/client.ts:108
+#: src/atoms/client.ts:115
 msgid "Client deleted"
 msgstr "Client supprimé"
 
-#: src/atoms/client.ts:110
-#: src/atoms/client.ts:114
+#: src/atoms/client.ts:117
+#: src/atoms/client.ts:121
 msgid "Client deletion failed"
 msgstr "Échec de la suppression du client"
 
-#: src/routes/orders/details.tsx:238
+#: src/routes/orders/details.tsx:253
 msgid "Client is required"
 msgstr "Le client est obligatoire"
 
-#: src/atoms/client.ts:92
+#: src/atoms/client.ts:99
 msgid "Client update failed"
 msgstr "Échec de la mise à jour du client"
 
-#: src/atoms/client.ts:80
+#: src/atoms/client.ts:87
 msgid "Client updated successfully"
 msgstr "Client mis à jour avec succès"
 
-#: src/routes/organizations/index.tsx:418
-#: src/routes/organizations/index.tsx:522
+#: src/components/organizations/organizations-table.tsx:89
+#: src/routes/organizations/index.tsx:376
 msgid "client(s)"
 msgstr "client(s)"
 
-#: src/layouts/base.tsx:392
+#: src/layouts/base.tsx:507
 #: src/routes/clients.tsx:59
 msgid "Clients"
 msgstr "Clients"
 
-#: src/routes/organizations/index.tsx:1317
+#: src/components/organizations/organization-danger-zone.tsx:57
 msgid "clients, vendors, products, tax rates"
 msgstr "clients, fournisseurs, produits, taux de taxe"
 
@@ -642,6 +640,8 @@ msgstr "Clôturée"
 #: src/components/accounting/journal-form.tsx:139
 #: src/components/clients/form.tsx:207
 #: src/components/clients/form.tsx:208
+#: src/components/organizations/organization-edit-drawer.tsx:141
+#: src/components/organizations/organizations-table.tsx:45
 #: src/components/vendors/form.tsx:179
 #: src/components/vendors/form.tsx:180
 #: src/routes/accounting/chart-of-accounts.tsx:96
@@ -649,13 +649,15 @@ msgstr "Clôturée"
 #: src/routes/accounting/reports/balance-sheet.tsx:43
 #: src/routes/accounting/reports/profit-and-loss.tsx:63
 #: src/routes/accounting/trial-balance.tsx:119
-#: src/routes/organizations/index.tsx:474
-#: src/routes/organizations/index.tsx:606
 #: src/routes/settings/countries.tsx:91
 msgid "Code"
 msgstr "Code"
 
-#: src/components/imports/form.tsx:426
+#: src/layouts/base.tsx:721
+msgid "Collapse sidebar"
+msgstr "Réduire la barre latérale"
+
+#: src/components/imports/form.tsx:432
 msgid "Committed value"
 msgstr ""
 
@@ -702,7 +704,7 @@ msgstr "Copiée dans les nouvelles factures de ce client, par ex. un Leitweg-ID 
 msgid "Cost"
 msgstr "Coût"
 
-#: src/routes/organizations/index.tsx:1025
+#: src/components/organizations/organization-edit-drawer.tsx:550
 msgid "Cost of goods sold, recognized against inventory when a shipment ships."
 msgstr "Coût des marchandises vendues, comptabilisé en contrepartie du stock lors de l'expédition d'une livraison."
 
@@ -714,19 +716,19 @@ msgstr "Prix de revient"
 msgid "Counter must be 0 or greater"
 msgstr "Le compteur doit être supérieur ou égal à 0"
 
-#: src/routes/organizations/index.tsx:1045
+#: src/components/organizations/organization-edit-drawer.tsx:570
 msgid "Counter-account for a manual stock adjustment's signed inventory value change."
 msgstr "Contrepartie pour la variation signée de la valeur du stock d'un ajustement manuel."
 
-#: src/layouts/base.tsx:640
+#: src/layouts/base.tsx:280
 #: src/routes/settings/countries.tsx:62
 msgid "Countries"
 msgstr "Pays"
 
 #: src/components/clients/form.tsx:267
+#: src/components/organizations/organization-edit-drawer.tsx:149
+#: src/components/organizations/organization-edit-drawer.tsx:317
 #: src/components/vendors/form.tsx:234
-#: src/routes/organizations/index.tsx:614
-#: src/routes/organizations/index.tsx:783
 #: src/routes/organizations/new.tsx:67
 msgid "Country"
 msgstr "Pays"
@@ -735,24 +737,24 @@ msgstr "Pays"
 msgid "Create Organization"
 msgstr "Créer une organisation"
 
-#: src/routes/settings/backup.tsx:259
+#: src/routes/settings/backup.tsx:264
 msgid "Creates a snapshot, saves it to the backup list, and downloads it."
 msgstr "Crée un instantané, l'enregistre dans la liste des sauvegardes et le télécharge."
 
 #: src/routes/accounting/journal-entries/details.tsx:277
-#: src/routes/accounting/journal-entries/details.tsx:317
-#: src/routes/accounting/journal-entries/details.tsx:433
+#: src/routes/accounting/journal-entries/details.tsx:318
+#: src/routes/accounting/journal-entries/details.tsx:434
 #: src/routes/accounting/trial-balance.tsx:135
 msgid "Credit"
 msgstr "Crédit"
 
-#: src/routes/organizations/index.tsx:1065
+#: src/components/organizations/organization-edit-drawer.tsx:590
 msgid "Credited for the freight/customs allocated to a receipt whose purchase order belongs to an import — separate from GRNI, which stays valued at the vendor's goods price only."
 msgstr ""
 
 #: src/components/currency/currency-fields.tsx:47
-#: src/routes/organizations/index.tsx:505
-#: src/routes/organizations/index.tsx:625
+#: src/components/organizations/organization-edit-drawer.tsx:160
+#: src/components/organizations/organizations-table.tsx:72
 #: src/routes/organizations/new.tsx:78
 #: src/routes/settings/invoice.tsx:84
 msgid "Currency"
@@ -776,7 +778,7 @@ msgstr ""
 msgid "Custom (uploaded template)"
 msgstr ""
 
-#: src/routes/invoices/details.tsx:525
+#: src/routes/invoices/details.tsx:534
 msgid "Customer note"
 msgstr "Note client"
 
@@ -788,22 +790,22 @@ msgstr ""
 msgid "Customs cost"
 msgstr ""
 
-#: src/routes/invoices/details.tsx:656
+#: src/routes/invoices/details.tsx:665
 msgid "Daily %"
 msgstr "Quotidien %"
 
-#: src/routes/organizations/index.tsx:1298
+#: src/components/organizations/organization-danger-zone.tsx:39
 msgid "Danger zone"
 msgstr "Zone de danger"
 
-#: src/layouts/base.tsx:285
+#: src/layouts/base.tsx:400
 #: src/routes/dashboard.tsx:61
 msgid "Dashboard"
 msgstr "Tableau de bord"
 
-#: src/routes/settings/backup.tsx:130
-#: src/routes/settings/backup.tsx:154
-#: src/routes/settings/backup.tsx:301
+#: src/routes/settings/backup.tsx:135
+#: src/routes/settings/backup.tsx:159
+#: src/routes/settings/backup.tsx:306
 msgid "Database restored — reload to see changes"
 msgstr "Base de données restaurée — actualisez pour voir les changements"
 
@@ -813,17 +815,17 @@ msgstr "Base de données restaurée — actualisez pour voir les changements"
 #: src/components/payments/payment-panel.tsx:271
 #: src/routes/accounting/journal-entries.tsx:104
 #: src/routes/accounting/journal-entries/details.tsx:192
-#: src/routes/accounting/journal-entries/details.tsx:386
+#: src/routes/accounting/journal-entries/details.tsx:387
 #: src/routes/imports.tsx:102
 #: src/routes/incoming-invoices.tsx:131
-#: src/routes/inventory.tsx:226
-#: src/routes/invoices/details.tsx:631
-#: src/routes/invoices/index.tsx:169
-#: src/routes/settings/backup.tsx:364
+#: src/routes/inventory.tsx:225
+#: src/routes/invoices/details.tsx:640
+#: src/routes/invoices/index.tsx:179
+#: src/routes/settings/backup.tsx:369
 msgid "Date"
 msgstr "Date"
 
-#: src/routes/organizations/index.tsx:847
+#: src/components/organizations/organization-edit-drawer.tsx:377
 msgid "Date format"
 msgstr "Format de date"
 
@@ -844,15 +846,15 @@ msgstr "Numéro de compte DATEV"
 #~ msgid "DATEV Buchungsstapel export requires validating the exact column layout and format version against a current DATEV EXTF specification, which isn't available in this environment. Shipping an unverified layout risks producing a file that looks plausible but is rejected on import, so this export is deferred rather than guessed at."
 #~ msgstr "L'export DATEV Buchungsstapel nécessite de valider la disposition exacte des colonnes et la version du format par rapport à une spécification DATEV EXTF actuelle, non disponible dans cet environnement. Publier une disposition non vérifiée risquerait de produire un fichier plausible mais rejeté à l'import ; cet export est donc reporté plutôt que deviné."
 
-#: src/routes/organizations/index.tsx:1084
+#: src/components/organizations/organization-edit-drawer.tsx:609
 msgid "DATEV clearing account"
 msgstr "Compte de compensation DATEV"
 
-#: src/routes/organizations/index.tsx:1117
+#: src/components/organizations/organization-edit-drawer.tsx:642
 msgid "DATEV client number"
 msgstr "Numéro de client DATEV"
 
-#: src/routes/organizations/index.tsx:1106
+#: src/components/organizations/organization-edit-drawer.tsx:631
 msgid "DATEV consultant number"
 msgstr "Numéro de conseiller DATEV"
 
@@ -884,21 +886,21 @@ msgid "Days overdue"
 msgstr "Jours de retard"
 
 #: src/routes/accounting/journal-entries/details.tsx:260
-#: src/routes/accounting/journal-entries/details.tsx:314
-#: src/routes/accounting/journal-entries/details.tsx:426
+#: src/routes/accounting/journal-entries/details.tsx:315
+#: src/routes/accounting/journal-entries/details.tsx:427
 #: src/routes/accounting/trial-balance.tsx:128
 msgid "Debit"
 msgstr "Débit"
 
-#: src/routes/organizations/index.tsx:863
+#: src/components/organizations/organization-edit-drawer.tsx:391
 #: src/routes/organizations/new.tsx:97
 #: src/routes/settings/invoice.tsx:109
 msgid "Decimal places"
 msgstr "Décimales"
 
 #: src/components/invoices/layouts.ts:31
+#: src/components/organizations/organization-edit-drawer.tsx:404
 #: src/components/tax-rates/form.tsx:207
-#: src/routes/organizations/index.tsx:877
 #: src/routes/settings/document-templates.tsx:109
 #: src/routes/settings/payment-terms.tsx:87
 #: src/routes/settings/tax-rates.tsx:97
@@ -910,11 +912,11 @@ msgstr "Par défaut"
 msgid "Default buyer reference"
 msgstr "Référence acheteur par défaut"
 
-#: src/routes/organizations/index.tsx:969
+#: src/components/organizations/organization-edit-drawer.tsx:494
 msgid "Default cash account"
 msgstr "Compte de caisse par défaut"
 
-#: src/routes/organizations/index.tsx:1023
+#: src/components/organizations/organization-edit-drawer.tsx:548
 msgid "Default COGS account"
 msgstr "Compte de coût des marchandises vendues par défaut"
 
@@ -925,7 +927,7 @@ msgstr "Compte de coût des marchandises vendues par défaut"
 msgid "Default currency"
 msgstr "Devise par défaut"
 
-#: src/routes/organizations/index.tsx:950
+#: src/components/organizations/organization-edit-drawer.tsx:475
 msgid "Default expense account"
 msgstr "Compte de charges par défaut"
 
@@ -933,7 +935,7 @@ msgstr "Compte de charges par défaut"
 #~ msgid "Default fiscal stamp (timbre fiscal)"
 #~ msgstr "Timbre fiscal par défaut"
 
-#: src/routes/organizations/index.tsx:1162
+#: src/components/organizations/organization-edit-drawer.tsx:687
 msgid "Default fiscal stamp amount"
 msgstr "Montant du timbre fiscal par défaut"
 
@@ -941,23 +943,23 @@ msgstr "Montant du timbre fiscal par défaut"
 msgid "Default for new invoices"
 msgstr "Par défaut pour les nouvelles factures"
 
-#: src/routes/organizations/index.tsx:1003
+#: src/components/organizations/organization-edit-drawer.tsx:528
 msgid "Default GRNI account"
 msgstr "Compte de marchandises reçues non facturées par défaut"
 
-#: src/routes/organizations/index.tsx:1063
+#: src/components/organizations/organization-edit-drawer.tsx:588
 msgid "Default import costs payable account"
 msgstr ""
 
-#: src/routes/organizations/index.tsx:983
+#: src/components/organizations/organization-edit-drawer.tsx:508
 msgid "Default inventory account"
 msgstr "Compte de stock par défaut"
 
-#: src/routes/organizations/index.tsx:1043
+#: src/components/organizations/organization-edit-drawer.tsx:568
 msgid "Default inventory adjustment account"
 msgstr "Compte d'ajustement de stock par défaut"
 
-#: src/routes/organizations/index.tsx:931
+#: src/components/organizations/organization-edit-drawer.tsx:456
 msgid "Default revenue account"
 msgstr "Compte de produits par défaut"
 
@@ -973,20 +975,20 @@ msgstr "Valeurs par défaut"
 #: src/components/accounting/journal-form.tsx:115
 #: src/components/clients/form.tsx:167
 #: src/components/imports/form.tsx:233
+#: src/components/organizations/organizations-table.tsx:135
 #: src/components/payment-terms/form.tsx:100
 #: src/components/products/form.tsx:177
 #: src/components/tax-rates/form.tsx:143
 #: src/components/tax-rates/form.tsx:155
 #: src/components/vendors/form.tsx:139
-#: src/routes/accounting/journal-entries/details.tsx:369
-#: src/routes/deliveries/details.tsx:458
-#: src/routes/inbound-deliveries/details.tsx:477
-#: src/routes/incoming-invoices/details.tsx:564
-#: src/routes/invoices/details.tsx:1063
-#: src/routes/invoices/index.tsx:113
-#: src/routes/orders/details.tsx:451
-#: src/routes/organizations/index.tsx:568
-#: src/routes/purchase-orders/details.tsx:544
+#: src/routes/accounting/journal-entries/details.tsx:370
+#: src/routes/deliveries/details.tsx:468
+#: src/routes/inbound-deliveries/details.tsx:536
+#: src/routes/incoming-invoices/details.tsx:617
+#: src/routes/invoices/details.tsx:1071
+#: src/routes/invoices/index.tsx:123
+#: src/routes/orders/details.tsx:471
+#: src/routes/purchase-orders/details.tsx:564
 #: src/routes/settings/users.tsx:247
 #: src/routes/settings/users.tsx:272
 msgid "Delete"
@@ -996,44 +998,48 @@ msgstr "Supprimer"
 msgid "Delete failed"
 msgstr ""
 
-#: src/routes/inventory.tsx:286
+#: src/routes/inventory.tsx:285
+#: src/routes/inventory.tsx:302
 msgid "Delete movement"
 msgstr "Supprimer le mouvement"
 
-#: src/routes/invoices/details.tsx:1056
-#: src/routes/invoices/index.tsx:103
+#: src/routes/invoices/index.tsx:113
 msgid "Delete the invoice?"
 msgstr "Supprimer la facture ?"
 
-#: src/routes/deliveries/details.tsx:452
+#: src/routes/deliveries/details.tsx:462
 msgid "Delete this delivery?"
 msgstr "Supprimer cette livraison ?"
 
-#: src/routes/accounting/journal-entries/details.tsx:363
+#: src/routes/accounting/journal-entries/details.tsx:364
 msgid "Delete this draft?"
 msgstr "Supprimer ce brouillon ?"
 
-#: src/routes/inbound-deliveries/details.tsx:471
+#: src/routes/inbound-deliveries/details.tsx:530
 msgid "Delete this goods receipt?"
 msgstr "Supprimer cette réception de marchandises ?"
 
-#: src/routes/incoming-invoices/details.tsx:558
+#: src/routes/incoming-invoices/details.tsx:611
 msgid "Delete this incoming invoice?"
 msgstr "Supprimer cette facture fournisseur ?"
 
-#: src/routes/orders/details.tsx:445
+#: src/routes/invoices/details.tsx:1065
+msgid "Delete this invoice?"
+msgstr "Supprimer cette facture ?"
+
+#: src/routes/orders/details.tsx:465
 msgid "Delete this order?"
 msgstr "Supprimer cette commande ?"
 
-#: src/routes/organizations/index.tsx:536
+#: src/components/organizations/organizations-table.tsx:103
 msgid "Delete this organization?"
 msgstr "Supprimer cette organisation ?"
 
-#: src/routes/purchase-orders/details.tsx:538
+#: src/routes/purchase-orders/details.tsx:558
 msgid "Delete this purchase order?"
 msgstr "Supprimer cette commande d'achat ?"
 
-#: src/routes/inventory.tsx:289
+#: src/routes/inventory.tsx:288
 msgid "Delete this stock movement? The stock level will be recalculated."
 msgstr "Supprimer ce mouvement de stock ? Le niveau de stock sera recalculé."
 
@@ -1042,100 +1048,95 @@ msgstr "Supprimer ce mouvement de stock ? Le niveau de stock sera recalculé."
 msgid "Delete this user?"
 msgstr "Supprimer cet utilisateur ?"
 
-#: src/routes/organizations/index.tsx:388
+#: src/routes/organizations/index.tsx:345
 msgid "Deleted {total} record(s)"
 msgstr "{total} enregistrement(s) supprimé(s)"
 
 #: src/components/deliveries/delivery-note-pdf.tsx:204
 #: src/components/purchase-orders/purchase-order-pdf.tsx:185
-msgid "Deliver To"
-msgstr "Livrer à"
+#~ msgid "Deliver To"
+#~ msgstr "Livrer à"
 
-#: src/routes/orders/details.tsx:374
+#: src/routes/orders/details.tsx:394
 #: src/types/delivery.ts:27
 #: src/types/order.ts:35
 msgid "Delivered"
 msgstr "Livré"
 
-#: src/routes/purchase-orders/details.tsx:424
+#: src/routes/purchase-orders/details.tsx:444
 msgid "Delivery address"
 msgstr "Adresse de livraison"
 
-#: src/atoms/delivery.ts:84
+#: src/atoms/delivery.ts:94
 msgid "Delivery created"
 msgstr "Livraison créée"
 
-#: src/atoms/delivery.ts:98
+#: src/atoms/delivery.ts:108
 msgid "Delivery creation failed"
 msgstr "Échec de la création de la livraison"
 
-#: src/components/deliveries/delivery-note-pdf.tsx:160
-#: src/components/orders/order-confirmation-pdf.tsx:173
 #: src/routes/deliveries.tsx:101
-#: src/routes/deliveries/details.tsx:334
+#: src/routes/deliveries/details.tsx:341
 #: src/routes/orders.tsx:109
-#: src/routes/orders/details.tsx:305
+#: src/routes/orders/details.tsx:325
 msgid "Delivery date"
 msgstr "Date de livraison"
 
-#: src/routes/deliveries/details.tsx:336
+#: src/routes/deliveries/details.tsx:343
 msgid "Delivery date is required"
 msgstr "La date de livraison est obligatoire"
 
-#: src/atoms/delivery.ts:132
+#: src/atoms/delivery.ts:147
 msgid "Delivery deleted"
 msgstr "Livraison supprimée"
 
-#: src/atoms/delivery.ts:134
-#: src/atoms/delivery.ts:139
+#: src/atoms/delivery.ts:149
+#: src/atoms/delivery.ts:154
 msgid "Delivery deletion failed"
 msgstr "Échec de la suppression de la livraison"
 
 #: src/routes/deliveries/details.tsx:489
-msgid "Delivery note"
-msgstr "Bon de livraison"
+#~ msgid "Delivery note"
+#~ msgstr "Bon de livraison"
 
 #: src/components/deliveries/delivery-note-pdf.tsx:147
-msgid "DELIVERY NOTE"
-msgstr "BON DE LIVRAISON"
+#~ msgid "DELIVERY NOTE"
+#~ msgstr "BON DE LIVRAISON"
 
-#: src/routes/deliveries/details.tsx:325
+#: src/routes/deliveries/details.tsx:332
 msgid "Delivery number"
 msgstr "Numéro de livraison"
 
-#: src/atoms/delivery.ts:94
+#: src/atoms/delivery.ts:104
 msgid "Delivery saved"
 msgstr "Livraison enregistrée"
 
-#: src/atoms/delivery.ts:116
+#: src/atoms/delivery.ts:131
 msgid "Delivery status updated"
 msgstr "Statut de la livraison mis à jour"
 
-#: src/atoms/delivery.ts:98
+#: src/atoms/delivery.ts:108
 msgid "Delivery update failed"
 msgstr "Échec de la mise à jour de la livraison"
 
-#: src/routes/organizations/index.tsx:428
-#: src/routes/organizations/index.tsx:530
+#: src/components/organizations/organizations-table.tsx:97
+#: src/routes/organizations/index.tsx:386
 msgid "delivery(ies)"
 msgstr "livraison(s)"
 
 #: src/components/accounting/account-form.tsx:201
-#: src/components/deliveries/delivery-note-pdf.tsx:224
 #: src/components/invoices/pdf-tunisia.tsx:197
 #: src/components/invoices/pdf.tsx:279
 #: src/components/line-items/table.tsx:225
-#: src/components/orders/order-confirmation-pdf.tsx:231
 #: src/components/products/form.tsx:331
-#: src/components/purchase-orders/purchase-order-pdf.tsx:233
 #: src/components/tax-rates/form.tsx:191
 #: src/components/tax-rates/form.tsx:192
 #: src/routes/accounting/journal-entries.tsx:119
 #: src/routes/accounting/journal-entries/details.tsx:206
 #: src/routes/accounting/journal-entries/details.tsx:251
-#: src/routes/accounting/journal-entries/details.tsx:392
-#: src/routes/accounting/journal-entries/details.tsx:420
-#: src/routes/incoming-invoices/details.tsx:440
+#: src/routes/accounting/journal-entries/details.tsx:393
+#: src/routes/accounting/journal-entries/details.tsx:421
+#: src/routes/incoming-invoices/details.tsx:493
 #: src/routes/settings/tax-rates.tsx:81
 msgid "Description"
 msgstr "Description"
@@ -1144,9 +1145,9 @@ msgstr "Description"
 msgid "Description required"
 msgstr "La description est obligatoire"
 
+#: src/components/organizations/organization-edit-drawer.tsx:129
 #: src/components/products/form.tsx:200
 #: src/components/stock/movement-form.tsx:255
-#: src/routes/organizations/index.tsx:594
 msgid "Details"
 msgstr "Détails"
 
@@ -1162,12 +1163,12 @@ msgstr "Prélèvement automatique"
 msgid "Discard unsaved changes to this import?"
 msgstr "Abandonner les modifications non enregistrées de cet import ?"
 
-#: src/layouts/base.tsx:611
+#: src/layouts/base.tsx:251
 #: src/routes/settings/document-templates.tsx:176
 msgid "Document Templates"
 msgstr ""
 
-#: src/routes/settings/backup.tsx:254
+#: src/routes/settings/backup.tsx:259
 msgid "Download backup"
 msgstr "Télécharger la sauvegarde"
 
@@ -1190,7 +1191,7 @@ msgstr ""
 #: src/types/delivery.ts:23
 #: src/types/inbound-delivery.ts:23
 #: src/types/incoming-invoice.ts:26
-#: src/types/invoice.ts:74
+#: src/types/invoice.ts:81
 #: src/types/journal-entry.ts:21
 #: src/types/order.ts:29
 #: src/types/purchase-order.ts:27
@@ -1200,9 +1201,9 @@ msgstr "Brouillon"
 #: src/components/invoices/pdf-tunisia.tsx:175
 #: src/components/invoices/pdf.tsx:228
 #: src/routes/incoming-invoices.tsx:138
-#: src/routes/incoming-invoices/details.tsx:344
-#: src/routes/invoices/details.tsx:640
-#: src/routes/invoices/index.tsx:176
+#: src/routes/incoming-invoices/details.tsx:397
+#: src/routes/invoices/details.tsx:649
+#: src/routes/invoices/index.tsx:188
 msgid "Due date"
 msgstr "Date d'échéance"
 
@@ -1210,26 +1211,26 @@ msgstr "Date d'échéance"
 msgid "Due days"
 msgstr "Jours d'échéance"
 
-#: src/routes/invoices/details.tsx:1051
-#: src/routes/invoices/index.tsx:92
+#: src/routes/invoices/details.tsx:1060
+#: src/routes/invoices/index.tsx:102
 msgid "Duplicate"
 msgstr "Dupliquer"
 
-#: src/routes/invoices/details.tsx:387
+#: src/routes/invoices/details.tsx:391
 msgid "E-Invoice (XML)"
 msgstr "Facture électronique (XML)"
 
-#: src/routes/invoices/details.tsx:381
+#: src/routes/invoices/details.tsx:385
 msgid "E-invoice export failed"
 msgstr "Échec de l'export de la facture électronique"
 
 #: src/components/clients/form.tsx:313
+#: src/components/organizations/organization-edit-drawer.tsx:354
 #: src/components/tax-rates/form.tsx:214
-#: src/routes/organizations/index.tsx:824
 msgid "E-invoicing"
 msgstr "Facturation électronique"
 
-#: src/routes/organizations/index.tsx:641
+#: src/components/organizations/organization-edit-drawer.tsx:176
 msgid "E-mail"
 msgstr "E-mail"
 
@@ -1240,7 +1241,7 @@ msgstr "E-mail"
 msgid "E-mails"
 msgstr "E-mails"
 
-#: src/routes/organizations/index.tsx:1111
+#: src/components/organizations/organization-edit-drawer.tsx:636
 msgid "e.g. 1001"
 msgstr "ex. 1001"
 
@@ -1261,7 +1262,7 @@ msgstr "p. ex. 1234567A/B/C/000"
 msgid "e.g. 2026"
 msgstr "ex. 2026"
 
-#: src/routes/organizations/index.tsx:1120
+#: src/components/organizations/organization-edit-drawer.tsx:645
 msgid "e.g. 456"
 msgstr "ex. 456"
 
@@ -1301,8 +1302,8 @@ msgstr "ex. SVC-001"
 msgid "e.g. VK"
 msgstr "ex. VK"
 
-#: src/routes/invoices/details.tsx:336
-#: src/routes/invoices/index.tsx:86
+#: src/routes/invoices/details.tsx:340
+#: src/routes/invoices/index.tsx:96
 msgid "Edit"
 msgstr "Modifier"
 
@@ -1322,7 +1323,7 @@ msgstr ""
 msgid "Edit journal"
 msgstr "Modifier le journal"
 
-#: src/routes/organizations/index.tsx:577
+#: src/components/organizations/organization-edit-drawer.tsx:112
 msgid "Edit organization"
 msgstr "Modifier l'organisation"
 
@@ -1347,14 +1348,14 @@ msgid "Edit vendor"
 msgstr "Modifier le fournisseur"
 
 #: src/components/feedback-modal.tsx:65
+#: src/components/organizations/organizations-table.tsx:52
 #: src/routes/login.tsx:111
-#: src/routes/organizations/index.tsx:481
 #: src/routes/settings/users.tsx:183
 #: src/routes/settings/users.tsx:315
 msgid "Email"
 msgstr "Email"
 
-#: src/routes/organizations/index.tsx:1268
+#: src/components/organizations/organization-members-panel.tsx:102
 msgid "Email of an existing user"
 msgstr ""
 
@@ -1363,15 +1364,15 @@ msgstr ""
 msgid "Emails"
 msgstr "E-mails"
 
-#: src/routes/settings/backup.tsx:194
+#: src/routes/settings/backup.tsx:199
 msgid "Enable automatic backups"
 msgstr "Activer les sauvegardes automatiques"
 
-#: src/routes/organizations/index.tsx:1136
+#: src/components/organizations/organization-edit-drawer.tsx:661
 msgid "Enable fiscal stamp"
 msgstr "Activer le timbre fiscal"
 
-#: src/routes/organizations/index.tsx:1153
+#: src/components/organizations/organization-edit-drawer.tsx:678
 msgid "Enable withholding tax"
 msgstr "Activer la retenue à la source"
 
@@ -1406,15 +1407,18 @@ msgstr "Capitaux propres"
 #~ msgid "Error generating PDF preview. Please try again."
 #~ msgstr "Erreur lors de la génération de l'aperçu PDF. Veuillez réessayer."
 
-#: src/routes/invoices/details.tsx:363
-#: src/routes/orders/details.tsx:506
-#: src/routes/purchase-orders/details.tsx:598
+#: src/routes/deliveries/details.tsx:520
+#: src/routes/inbound-deliveries/details.tsx:593
+#: src/routes/incoming-invoices/details.tsx:647
+#: src/routes/invoices/details.tsx:367
+#: src/routes/orders/details.tsx:526
+#: src/routes/purchase-orders/details.tsx:618
 msgid "Excel"
 msgstr ""
 
 #: src/components/currency/currency-fields.tsx:90
 #: src/components/payments/payment-panel.tsx:342
-#: src/routes/invoices/details.tsx:598
+#: src/routes/invoices/details.tsx:607
 msgid "Exchange rate"
 msgstr "Taux de change"
 
@@ -1426,14 +1430,18 @@ msgstr "Exonéré de taxe"
 msgid "Exemption reason"
 msgstr "Motif d'exonération"
 
+#: src/layouts/base.tsx:721
+msgid "Expand sidebar"
+msgstr "Déployer la barre latérale"
+
 #: src/routes/purchase-orders.tsx:147
-#: src/routes/purchase-orders/details.tsx:395
+#: src/routes/purchase-orders/details.tsx:415
 msgid "Expected date"
 msgstr "Date prévue"
 
 #: src/components/purchase-orders/purchase-order-pdf.tsx:175
-msgid "Expected Date"
-msgstr "Date prévue"
+#~ msgid "Expected Date"
+#~ msgstr "Date prévue"
 
 #: src/routes/orders/details.tsx:303
 #~ msgid "Expected delivery"
@@ -1456,9 +1464,12 @@ msgstr "Charges"
 msgid "Export DATEV"
 msgstr "Exporter DATEV"
 
-#: src/routes/invoices/details.tsx:316
-#: src/routes/orders/details.tsx:195
-#: src/routes/purchase-orders/details.tsx:255
+#: src/routes/deliveries/details.tsx:256
+#: src/routes/inbound-deliveries/details.tsx:245
+#: src/routes/incoming-invoices/details.tsx:281
+#: src/routes/invoices/details.tsx:320
+#: src/routes/orders/details.tsx:204
+#: src/routes/purchase-orders/details.tsx:264
 msgid "Export failed"
 msgstr ""
 
@@ -1474,7 +1485,7 @@ msgstr "Exporte chaque ligne d'écriture comptabilisée de l'exercice sélection
 msgid "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 msgstr "Exporte chaque ligne d'écriture validée de l'exercice sélectionné sous forme de fichier SirenFECAAAAMMJJ.txt, conformément au format imposé par l'administration fiscale française. Nécessite un SIREN à 9 chiffres dans le numéro d'immatriculation de l'organisation."
 
-#: src/routes/organizations/index.tsx:238
+#: src/routes/organizations/index.tsx:195
 msgid "Failed to add member"
 msgstr ""
 
@@ -1482,8 +1493,8 @@ msgstr ""
 msgid "Failed to close fiscal year"
 msgstr "Échec de la clôture de l'exercice"
 
-#: src/atoms/stock.ts:62
-#: src/atoms/stock.ts:67
+#: src/atoms/stock.ts:68
+#: src/atoms/stock.ts:73
 msgid "Failed to delete stock movement"
 msgstr "Échec de la suppression du mouvement de stock"
 
@@ -1495,11 +1506,11 @@ msgstr "Échec de la suppression de l'utilisateur"
 msgid "Failed to fetch accounts"
 msgstr "Échec du chargement des comptes"
 
-#: src/atoms/client.ts:51
+#: src/atoms/client.ts:56
 msgid "Failed to fetch client"
 msgstr "Échec de la récupération du client"
 
-#: src/atoms/client.ts:26
+#: src/atoms/client.ts:27
 msgid "Failed to fetch clients"
 msgstr "Échec de la récupération des clients"
 
@@ -1507,11 +1518,11 @@ msgstr "Échec de la récupération des clients"
 msgid "Failed to fetch countries"
 msgstr "Échec de la récupération des pays"
 
-#: src/atoms/delivery.ts:40
+#: src/atoms/delivery.ts:42
 msgid "Failed to fetch deliveries"
 msgstr "Échec de la récupération des livraisons"
 
-#: src/atoms/delivery.ts:63
+#: src/atoms/delivery.ts:72
 msgid "Failed to fetch delivery"
 msgstr "Échec de la récupération de la livraison"
 
@@ -1523,43 +1534,43 @@ msgstr "Échec du chargement des périodes"
 msgid "Failed to fetch fiscal years"
 msgstr "Échec du chargement des exercices"
 
-#: src/atoms/inbound-delivery.ts:75
+#: src/atoms/inbound-delivery.ts:92
 msgid "Failed to fetch goods receipt"
 msgstr "Échec du chargement de la réception"
 
-#: src/atoms/inbound-delivery.ts:36
+#: src/atoms/inbound-delivery.ts:38
 msgid "Failed to fetch goods receipts"
 msgstr "Échec du chargement des réceptions"
 
-#: src/atoms/import.ts:44
+#: src/atoms/import.ts:45
 msgid "Failed to fetch import"
 msgstr ""
 
-#: src/atoms/import.ts:25
+#: src/atoms/import.ts:26
 msgid "Failed to fetch imports"
 msgstr ""
 
-#: src/atoms/incoming-invoice.ts:67
+#: src/atoms/incoming-invoice.ts:87
 msgid "Failed to fetch incoming invoice"
 msgstr "Échec du chargement de la facture fournisseur"
 
-#: src/atoms/incoming-invoice.ts:35
+#: src/atoms/incoming-invoice.ts:37
 msgid "Failed to fetch incoming invoices"
 msgstr "Échec du chargement des factures fournisseurs"
 
-#: src/atoms/invoice.ts:87
+#: src/atoms/invoice.ts:123
 msgid "Failed to fetch invoice"
 msgstr "Échec de la récupération de la facture"
 
-#: src/atoms/invoice.ts:47
+#: src/atoms/invoice.ts:50
 msgid "Failed to fetch invoices"
 msgstr "Échec de la récupération des factures"
 
-#: src/atoms/journal-entry.ts:38
+#: src/atoms/journal-entry.ts:40
 msgid "Failed to fetch journal entries"
 msgstr "Échec du chargement des écritures"
 
-#: src/atoms/journal-entry.ts:69
+#: src/atoms/journal-entry.ts:83
 msgid "Failed to fetch journal entry"
 msgstr "Échec du chargement de l'écriture"
 
@@ -1567,23 +1578,23 @@ msgstr "Échec du chargement de l'écriture"
 msgid "Failed to fetch journals"
 msgstr "Échec du chargement des journaux"
 
-#: src/atoms/order.ts:72
+#: src/atoms/order.ts:87
 msgid "Failed to fetch order"
 msgstr "Échec de la récupération de la commande"
 
-#: src/atoms/order.ts:34
+#: src/atoms/order.ts:36
 msgid "Failed to fetch orders"
 msgstr "Échec de la récupération des commandes"
 
-#: src/atoms/organization.ts:69
+#: src/atoms/organization.ts:70
 msgid "Failed to fetch organization"
 msgstr "Échec de la récupération de l'organisation"
 
-#: src/atoms/organization.ts:28
+#: src/atoms/organization.ts:29
 msgid "Failed to fetch organizations"
 msgstr "Échec de la récupération des organisations"
 
-#: src/atoms/payment-term.ts:23
+#: src/atoms/payment-term.ts:24
 msgid "Failed to fetch payment terms"
 msgstr "Échec du chargement des conditions de paiement"
 
@@ -1591,19 +1602,19 @@ msgstr "Échec du chargement des conditions de paiement"
 msgid "Failed to fetch payments"
 msgstr "Échec du chargement des paiements"
 
-#: src/atoms/product.ts:41
+#: src/atoms/product.ts:42
 msgid "Failed to fetch product"
 msgstr "Échec de la récupération du produit"
 
-#: src/atoms/product.ts:24
+#: src/atoms/product.ts:25
 msgid "Failed to fetch products"
 msgstr "Échec de la récupération des produits"
 
-#: src/atoms/purchase-order.ts:80
+#: src/atoms/purchase-order.ts:98
 msgid "Failed to fetch purchase order"
 msgstr "Échec du chargement de la commande d'achat"
 
-#: src/atoms/purchase-order.ts:37
+#: src/atoms/purchase-order.ts:39
 msgid "Failed to fetch purchase orders"
 msgstr "Échec du chargement des commandes d'achat"
 
@@ -1611,23 +1622,23 @@ msgstr "Échec du chargement des commandes d'achat"
 msgid "Failed to fetch serial numbers"
 msgstr "Échec du chargement des numéros de série"
 
-#: src/atoms/tax-rate.ts:40
+#: src/atoms/tax-rate.ts:49
 msgid "Failed to fetch tax rate"
 msgstr "Échec de la récupération du taux de taxe"
 
-#: src/atoms/tax-rate.ts:23
+#: src/atoms/tax-rate.ts:24
 msgid "Failed to fetch tax rates"
 msgstr "Échec de la récupération des taux de taxe"
 
-#: src/atoms/vendor.ts:51
+#: src/atoms/vendor.ts:56
 msgid "Failed to fetch vendor"
 msgstr "Échec du chargement du fournisseur"
 
-#: src/atoms/vendor.ts:26
+#: src/atoms/vendor.ts:27
 msgid "Failed to fetch vendors"
 msgstr "Échec du chargement des fournisseurs"
 
-#: src/atoms/invoice.ts:255
+#: src/atoms/invoice.ts:293
 msgid "Failed to generate invoice number"
 msgstr "Échec de la génération du numéro de facture"
 
@@ -1635,7 +1646,7 @@ msgstr "Échec de la génération du numéro de facture"
 msgid "Failed to load templates"
 msgstr ""
 
-#: src/atoms/journal-entry.ts:111
+#: src/atoms/journal-entry.ts:126
 msgid "Failed to post journal entry"
 msgstr "Échec de la comptabilisation de l'écriture"
 
@@ -1643,19 +1654,19 @@ msgstr "Échec de la comptabilisation de l'écriture"
 msgid "Failed to record payment"
 msgstr "Échec de l'enregistrement du paiement"
 
-#: src/atoms/stock.ts:38
+#: src/atoms/stock.ts:43
 msgid "Failed to record stock movement"
 msgstr "Échec de l'enregistrement du mouvement de stock"
 
-#: src/routes/organizations/index.tsx:263
+#: src/routes/organizations/index.tsx:220
 msgid "Failed to remove member"
 msgstr ""
 
-#: src/atoms/journal-entry.ts:132
+#: src/atoms/journal-entry.ts:147
 msgid "Failed to reverse journal entry"
 msgstr "Échec de l'extourne de l'écriture"
 
-#: src/routes/settings/backup.tsx:100
+#: src/routes/settings/backup.tsx:105
 msgid "Failed to save schedule"
 msgstr "Échec de l'enregistrement de la planification"
 
@@ -1671,35 +1682,35 @@ msgstr "Échec de l'envoi des commentaires. Veuillez réessayer."
 msgid "Failed to update country"
 msgstr "Échec de la mise à jour du pays"
 
-#: src/atoms/delivery.ts:120
+#: src/atoms/delivery.ts:135
 msgid "Failed to update delivery status"
 msgstr "Échec de la mise à jour du statut de la livraison"
 
-#: src/atoms/inbound-delivery.ts:161
+#: src/atoms/inbound-delivery.ts:184
 msgid "Failed to update goods receipt status"
 msgstr "Échec de la mise à jour du statut de la réception"
 
-#: src/atoms/incoming-invoice.ts:140
+#: src/atoms/incoming-invoice.ts:161
 msgid "Failed to update incoming invoice state"
 msgstr "Échec de la mise à jour du statut de la facture fournisseur"
 
-#: src/atoms/invoice.ts:233
+#: src/atoms/invoice.ts:271
 msgid "Failed to update invoice state"
 msgstr "Échec de la mise à jour de l'état de la facture"
 
-#: src/routes/organizations/index.tsx:250
+#: src/routes/organizations/index.tsx:207
 msgid "Failed to update member role"
 msgstr ""
 
-#: src/atoms/order.ts:143
+#: src/atoms/order.ts:159
 msgid "Failed to update order status"
 msgstr "Échec de la mise à jour du statut de la commande"
 
-#: src/atoms/purchase-order.ts:204
+#: src/atoms/purchase-order.ts:223
 msgid "Failed to update purchase order"
 msgstr "Échec de la mise à jour de la commande d'achat"
 
-#: src/atoms/purchase-order.ts:158
+#: src/atoms/purchase-order.ts:177
 msgid "Failed to update purchase order status"
 msgstr "Échec de la mise à jour du statut de la commande d'achat"
 
@@ -1719,11 +1730,11 @@ msgstr "Échec de l'export FEC"
 msgid "Feedback sent successfully!"
 msgstr "Commentaires envoyés avec succès !"
 
-#: src/routes/settings/backup.tsx:347
+#: src/routes/settings/backup.tsx:352
 msgid "File"
 msgstr "Fichier"
 
-#: src/routes/inventory.tsx:147
+#: src/routes/inventory.tsx:146
 msgid "Filter by product"
 msgstr "Filtrer par produit"
 
@@ -1748,15 +1759,15 @@ msgstr "Échec de la mise à jour de la période"
 msgid "Fiscal period updated"
 msgstr "Période mise à jour"
 
-#: src/layouts/base.tsx:453
+#: src/layouts/base.tsx:568
 #: src/routes/accounting/fiscal-periods.tsx:131
 msgid "Fiscal Periods"
 msgstr "Exercices comptables"
 
 #: src/components/invoices/pdf-tunisia.tsx:263
 #: src/components/invoices/pdf.tsx:368
-#: src/routes/invoices/details.tsx:691
-#: src/routes/invoices/details.tsx:993
+#: src/routes/invoices/details.tsx:700
+#: src/routes/invoices/details.tsx:1002
 msgid "Fiscal stamp"
 msgstr "Timbre fiscal"
 
@@ -1776,7 +1787,7 @@ msgstr "Exercice créé"
 msgid "Fiscal year creation failed"
 msgstr "Échec de la création de l'exercice"
 
-#: src/routes/organizations/index.tsx:842
+#: src/components/organizations/organization-edit-drawer.tsx:372
 msgid "Formatting"
 msgstr "Mise en forme"
 
@@ -1798,8 +1809,8 @@ msgstr ""
 
 #: src/components/deliveries/delivery-note-pdf.tsx:188
 #: src/components/orders/order-confirmation-pdf.tsx:196
-msgid "From"
-msgstr "De"
+#~ msgid "From"
+#~ msgstr "De"
 
 #: src/routes/settings/gl-export.tsx:99
 msgid "Germany — DATEV"
@@ -1809,51 +1820,55 @@ msgstr "Allemagne — DATEV"
 msgid "GL balance"
 msgstr "Solde comptable"
 
-#: src/layouts/base.tsx:657
+#: src/layouts/base.tsx:298
 #: src/routes/settings/gl-export.tsx:65
 msgid "GL Export"
 msgstr "Export comptable"
 
-#: src/atoms/inbound-delivery.ts:110
+#: src/routes/inbound-deliveries/details.tsx:316
+msgid "Goods Receipt"
+msgstr "Réception de marchandises"
+
+#: src/atoms/inbound-delivery.ts:128
 msgid "Goods receipt created"
 msgstr "Réception créée"
 
-#: src/atoms/inbound-delivery.ts:132
+#: src/atoms/inbound-delivery.ts:150
 msgid "Goods receipt creation failed"
 msgstr "Échec de la création de la réception"
 
-#: src/atoms/inbound-delivery.ts:174
+#: src/atoms/inbound-delivery.ts:197
 msgid "Goods receipt deleted"
 msgstr "Réception supprimée"
 
-#: src/atoms/inbound-delivery.ts:176
-#: src/atoms/inbound-delivery.ts:181
+#: src/atoms/inbound-delivery.ts:199
+#: src/atoms/inbound-delivery.ts:204
 msgid "Goods receipt deletion failed"
 msgstr "Échec de la suppression de la réception"
 
-#: src/atoms/inbound-delivery.ts:123
+#: src/atoms/inbound-delivery.ts:141
 msgid "Goods receipt saved"
 msgstr "Réception enregistrée"
 
-#: src/atoms/inbound-delivery.ts:151
+#: src/atoms/inbound-delivery.ts:174
 msgid "Goods receipt status updated"
 msgstr "Statut de la réception mis à jour"
 
-#: src/atoms/inbound-delivery.ts:131
+#: src/atoms/inbound-delivery.ts:149
 msgid "Goods receipt update failed"
 msgstr "Échec de la mise à jour de la réception"
 
-#: src/routes/organizations/index.tsx:430
-#: src/routes/organizations/index.tsx:528
+#: src/components/organizations/organizations-table.tsx:95
+#: src/routes/organizations/index.tsx:388
 msgid "goods receipt(s)"
 msgstr "réception(s) de marchandises"
 
-#: src/layouts/base.tsx:351
+#: src/layouts/base.tsx:466
 #: src/routes/inbound-deliveries.tsx:56
 msgid "Goods Receipts"
 msgstr "Réceptions de marchandises"
 
-#: src/routes/organizations/index.tsx:1005
+#: src/components/organizations/organization-edit-drawer.tsx:530
 msgid "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 msgstr "Marchandises reçues non facturées — comptabilise un passif à la réception d'un bon de réception, soldé lors de l'approbation de la facture fournisseur correspondante."
 
@@ -1877,15 +1892,15 @@ msgstr "Les comptes collectifs organisent le plan comptable et ne peuvent pas re
 msgid "hour"
 msgstr "heure"
 
-#: src/routes/settings/backup.tsx:199
+#: src/routes/settings/backup.tsx:204
 msgid "Hour (UTC)"
 msgstr "Heure (UTC)"
 
 #: src/components/clients/form.tsx:285
 #: src/components/clients/form.tsx:286
+#: src/components/organizations/organization-edit-drawer.tsx:335
 #: src/components/vendors/form.tsx:252
 #: src/components/vendors/form.tsx:253
-#: src/routes/organizations/index.tsx:801
 msgid "House number"
 msgstr "Numéro de rue"
 
@@ -1898,24 +1913,24 @@ msgid "How far a vendor's unit price may differ from the purchase order."
 msgstr "De combien le prix unitaire du fournisseur peut s'écarter de la commande d'achat."
 
 #: src/routes/purchase-orders.tsx:98
-#: src/routes/purchase-orders/details.tsx:341
+#: src/routes/purchase-orders/details.tsx:361
 msgid "Import"
 msgstr ""
 
-#: src/atoms/import.ts:59
+#: src/atoms/import.ts:60
 msgid "Import created"
 msgstr ""
 
-#: src/atoms/import.ts:74
+#: src/atoms/import.ts:75
 msgid "Import creation failed"
 msgstr ""
 
-#: src/atoms/import.ts:91
+#: src/atoms/import.ts:92
 msgid "Import deleted"
 msgstr ""
 
-#: src/atoms/import.ts:93
-#: src/atoms/import.ts:100
+#: src/atoms/import.ts:94
+#: src/atoms/import.ts:101
 msgid "Import deletion failed"
 msgstr ""
 
@@ -1924,67 +1939,76 @@ msgstr ""
 msgid "Import number"
 msgstr ""
 
-#: src/atoms/import.ts:76
+#: src/atoms/import.ts:77
 msgid "Import update failed"
 msgstr ""
 
-#: src/atoms/import.ts:65
+#: src/atoms/import.ts:66
 msgid "Import updated successfully"
 msgstr ""
 
-#: src/layouts/base.tsx:333
+#: src/layouts/base.tsx:448
 #: src/routes/imports.tsx:64
 msgid "Imports"
 msgstr ""
 
-#: src/routes/inventory.tsx:26
+#: src/routes/inventory.tsx:25
 msgid "In"
 msgstr "Entrée"
 
-#: src/routes/inbound-deliveries/details.tsx:439
+#: src/routes/inbound-deliveries/details.tsx:498
 msgid "In stock"
 msgstr "En stock"
 
+#: src/components/organizations/organization-members-panel.tsx:55
 #: src/routes/accounting/chart-of-accounts.tsx:155
-#: src/routes/organizations/index.tsx:1222
 msgid "Inactive"
 msgstr "Inactif"
 
-#: src/atoms/incoming-invoice.ts:101
+#: src/routes/settings/document-templates.tsx:223
+msgid "Inbound Delivery"
+msgstr "Livraison entrante"
+
+#: src/routes/incoming-invoices/details.tsx:322
+#: src/routes/settings/document-templates.tsx:209
+msgid "Incoming Invoice"
+msgstr "Facture fournisseur"
+
+#: src/atoms/incoming-invoice.ts:122
 msgid "Incoming invoice created"
 msgstr "Facture fournisseur créée"
 
-#: src/atoms/incoming-invoice.ts:118
+#: src/atoms/incoming-invoice.ts:139
 msgid "Incoming invoice creation failed"
 msgstr "Échec de la création de la facture fournisseur"
 
-#: src/atoms/incoming-invoice.ts:153
+#: src/atoms/incoming-invoice.ts:174
 msgid "Incoming invoice deleted"
 msgstr "Facture fournisseur supprimée"
 
-#: src/atoms/incoming-invoice.ts:155
-#: src/atoms/incoming-invoice.ts:160
+#: src/atoms/incoming-invoice.ts:176
+#: src/atoms/incoming-invoice.ts:181
 msgid "Incoming invoice deletion failed"
 msgstr "Échec de la suppression de la facture fournisseur"
 
-#: src/atoms/incoming-invoice.ts:106
+#: src/atoms/incoming-invoice.ts:127
 msgid "Incoming invoice saved"
 msgstr "Facture fournisseur enregistrée"
 
-#: src/atoms/incoming-invoice.ts:130
+#: src/atoms/incoming-invoice.ts:151
 msgid "Incoming invoice state updated"
 msgstr "Statut de la facture fournisseur mis à jour"
 
-#: src/atoms/incoming-invoice.ts:117
+#: src/atoms/incoming-invoice.ts:138
 msgid "Incoming invoice update failed"
 msgstr "Échec de la mise à jour de la facture fournisseur"
 
-#: src/routes/organizations/index.tsx:431
-#: src/routes/organizations/index.tsx:529
+#: src/components/organizations/organizations-table.tsx:96
+#: src/routes/organizations/index.tsx:389
 msgid "incoming invoice(s)"
 msgstr "facture(s) fournisseur"
 
-#: src/layouts/base.tsx:360
+#: src/layouts/base.tsx:475
 #: src/routes/incoming-invoices.tsx:60
 msgid "Incoming Invoices"
 msgstr "Factures fournisseurs"
@@ -2001,68 +2025,69 @@ msgstr "TVA déductible (Achats)"
 msgid "Intra-community supply (EEA)"
 msgstr "Livraison intracommunautaire (EEE)"
 
-#: src/layouts/base.tsx:369
-#: src/layouts/base.tsx:376
-#: src/routes/inventory.tsx:143
+#: src/layouts/base.tsx:484
+#: src/layouts/base.tsx:491
+#: src/routes/inventory.tsx:142
 msgid "Inventory"
 msgstr "Inventaire"
 
-#: src/layouts/base.tsx:516
+#: src/layouts/base.tsx:631
 #: src/routes/accounting/reports/inventory-valuation.tsx:44
 msgid "Inventory Valuation"
 msgstr "Valorisation des stocks"
 
 #: src/components/invoices/pdf-tunisia.tsx:167
 #: src/components/invoices/pdf.tsx:214
-#: src/layouts/base.tsx:584
+#: src/layouts/base.tsx:224
 #: src/routes/accounting/reports/ar-aging.tsx:97
 #: src/routes/dashboard.tsx:174
+#: src/routes/invoices/details.tsx:416
 #: src/routes/settings/document-templates.tsx:188
 msgid "Invoice"
 msgstr "Facture"
 
-#: src/atoms/invoice.ts:131
+#: src/atoms/invoice.ts:165
 msgid "Invoice created"
 msgstr "Facture créée"
 
-#: src/atoms/invoice.ts:187
+#: src/atoms/invoice.ts:219
 msgid "Invoice creation failed"
 msgstr "Échec de la création de la facture"
 
-#: src/routes/incoming-invoices/details.tsx:336
+#: src/routes/incoming-invoices/details.tsx:389
 msgid "Invoice date"
 msgstr "Date de facture"
 
-#: src/routes/incoming-invoices/details.tsx:338
+#: src/routes/incoming-invoices/details.tsx:391
 msgid "Invoice date is required"
 msgstr "La date de facture est obligatoire"
 
-#: src/atoms/invoice.ts:204
+#: src/atoms/invoice.ts:242
 msgid "Invoice deleted"
 msgstr "Facture supprimée"
 
-#: src/atoms/invoice.ts:206
-#: src/atoms/invoice.ts:211
+#: src/atoms/invoice.ts:244
+#: src/atoms/invoice.ts:249
 msgid "Invoice deletion failed"
 msgstr "Échec de la suppression de la facture"
 
-#: src/routes/invoices/details.tsx:422
+#: src/routes/invoices/details.tsx:431
 msgid "Invoice details"
 msgstr "Détails de la facture"
 
-#: src/atoms/invoice.ts:295
+#: src/atoms/invoice.ts:333
 msgid "Invoice duplicated successfully"
 msgstr "Facture dupliquée avec succès"
 
-#: src/atoms/invoice.ts:311
+#: src/atoms/invoice.ts:349
 msgid "Invoice duplication failed"
 msgstr "Échec de la duplication de la facture"
 
-#: src/atoms/invoice.ts:248
+#: src/atoms/invoice.ts:286
 msgid "Invoice not found"
 msgstr "Facture introuvable"
 
-#: src/routes/invoices/details.tsx:576
+#: src/routes/invoices/details.tsx:585
 msgid "Invoice number"
 msgstr "Numéro de facture"
 
@@ -2074,7 +2099,7 @@ msgstr "Compteur de numéro de facture"
 msgid "Invoice number format"
 msgstr "Format du numéro de facture"
 
-#: src/routes/organizations/index.tsx:871
+#: src/components/organizations/organization-edit-drawer.tsx:398
 msgid "Invoice PDF layout"
 msgstr "Mise en page PDF de la facture"
 
@@ -2082,29 +2107,29 @@ msgstr "Mise en page PDF de la facture"
 msgid "Invoice settings"
 msgstr "Paramètres des factures"
 
-#: src/atoms/invoice.ts:223
+#: src/atoms/invoice.ts:261
 msgid "Invoice state updated"
 msgstr "État de la facture mis à jour"
 
-#: src/atoms/invoice.ts:189
+#: src/atoms/invoice.ts:221
 msgid "Invoice update failed"
 msgstr "Échec de la mise à jour de la facture"
 
-#: src/atoms/invoice.ts:177
+#: src/atoms/invoice.ts:209
 msgid "Invoice updated successfully"
 msgstr "Facture mise à jour avec succès"
 
-#: src/routes/organizations/index.tsx:426
-#: src/routes/organizations/index.tsx:524
+#: src/components/organizations/organizations-table.tsx:91
+#: src/routes/organizations/index.tsx:384
 msgid "invoice(s)"
 msgstr "facture(s)"
 
-#: src/layouts/base.tsx:299
-#: src/routes/invoices/index.tsx:127
+#: src/layouts/base.tsx:414
+#: src/routes/invoices/index.tsx:137
 msgid "Invoices"
 msgstr "Factures"
 
-#: src/routes/organizations/index.tsx:1327
+#: src/components/organizations/organization-danger-zone.tsx:67
 msgid "invoices, orders, deliveries, purchase orders, goods receipts, incoming invoices, stock movements"
 msgstr "factures, commandes, livraisons, commandes d'achat, réceptions de marchandises, factures fournisseurs, mouvements de stock"
 
@@ -2114,7 +2139,7 @@ msgstr "Date d'émission"
 
 #: src/routes/accounting/journal-entries.tsx:110
 #: src/routes/accounting/journal-entries/details.tsx:180
-#: src/routes/accounting/journal-entries/details.tsx:383
+#: src/routes/accounting/journal-entries/details.tsx:384
 msgid "Journal"
 msgstr "Journal"
 
@@ -2130,7 +2155,7 @@ msgstr "Journal supprimé"
 msgid "Journal deletion failed"
 msgstr "Échec de la suppression du journal"
 
-#: src/layouts/base.tsx:462
+#: src/layouts/base.tsx:577
 #: src/routes/accounting/journal-entries.tsx:53
 msgid "Journal Entries"
 msgstr "Écritures"
@@ -2139,31 +2164,31 @@ msgstr "Écritures"
 msgid "Journal entries can only be posted within an open fiscal year. Create one to start using the general ledger."
 msgstr "Les écritures ne peuvent être comptabilisées que dans un exercice ouvert. Créez-en un pour commencer à utiliser la comptabilité générale."
 
-#: src/routes/accounting/journal-entries/details.tsx:339
+#: src/routes/accounting/journal-entries/details.tsx:340
 msgid "Journal entry"
 msgstr "Écriture"
 
-#: src/atoms/journal-entry.ts:89
+#: src/atoms/journal-entry.ts:104
 msgid "Journal entry created"
 msgstr "Écriture créée"
 
-#: src/atoms/journal-entry.ts:95
+#: src/atoms/journal-entry.ts:110
 msgid "Journal entry creation failed"
 msgstr "Échec de la création de l'écriture"
 
-#: src/atoms/journal-entry.ts:146
+#: src/atoms/journal-entry.ts:161
 msgid "Journal entry deleted"
 msgstr "Écriture supprimée"
 
-#: src/atoms/journal-entry.ts:151
+#: src/atoms/journal-entry.ts:166
 msgid "Journal entry deletion failed"
 msgstr "Échec de la suppression de l'écriture"
 
-#: src/atoms/journal-entry.ts:104
+#: src/atoms/journal-entry.ts:119
 msgid "Journal entry posted"
 msgstr "Écriture comptabilisée"
 
-#: src/atoms/journal-entry.ts:125
+#: src/atoms/journal-entry.ts:140
 msgid "Journal entry reversed"
 msgstr "Écriture extournée"
 
@@ -2175,7 +2200,7 @@ msgstr "Échec de l'enregistrement du journal"
 msgid "Journal updated"
 msgstr "Journal mis à jour"
 
-#: src/layouts/base.tsx:444
+#: src/layouts/base.tsx:559
 #: src/routes/accounting/journals.tsx:51
 msgid "Journals"
 msgstr "Journaux"
@@ -2184,9 +2209,13 @@ msgstr "Journaux"
 msgid "Landed cost"
 msgstr ""
 
-#: src/components/imports/form.tsx:432
+#: src/components/imports/form.tsx:438
 msgid "Landed cost rate"
 msgstr ""
+
+#: src/layouts/base.tsx:811
+msgid "Language"
+msgstr "Langue"
 
 #: src/routes/dashboard.tsx:69
 msgid "Last {m} months"
@@ -2196,11 +2225,11 @@ msgstr "{m} derniers mois"
 msgid "Last login"
 msgstr "Dernière connexion"
 
-#: src/routes/orders/details.tsx:335
+#: src/routes/orders/details.tsx:355
 msgid "Leave blank to use client address"
 msgstr "Laisser vide pour utiliser l'adresse du client"
 
-#: src/routes/purchase-orders/details.tsx:425
+#: src/routes/purchase-orders/details.tsx:445
 msgid "Leave blank to use organization address"
 msgstr "Laisser vide pour utiliser l'adresse de l'organisation"
 
@@ -2213,11 +2242,11 @@ msgstr "Passifs"
 msgid "Liability"
 msgstr "Passif"
 
-#: src/routes/organizations/index.tsx:1179
+#: src/components/organizations/organization-edit-drawer.tsx:704
 msgid "Liability account credited when an invoice's fiscal stamp posts — the seller collects it on behalf of the state, so it's never revenue."
 msgstr "Compte de passif crédité lors de la comptabilisation du timbre fiscal d'une facture — le vendeur le collecte pour le compte de l'État, ce n'est donc jamais un revenu."
 
-#: src/routes/invoices/details.tsx:732
+#: src/routes/invoices/details.tsx:741
 msgid "Line items"
 msgstr "Lignes"
 
@@ -2229,7 +2258,7 @@ msgstr "Lier"
 msgid "Link an existing purchase order"
 msgstr "Lier une commande d'achat existante"
 
-#: src/routes/deliveries/details.tsx:295
+#: src/routes/deliveries/details.tsx:302
 msgid "Linked order"
 msgstr "Commande liée"
 
@@ -2241,36 +2270,36 @@ msgstr "Commande liée"
 msgid "Login failed"
 msgstr "Échec de la connexion"
 
-#: src/routes/organizations/index.tsx:691
+#: src/components/organizations/organization-edit-drawer.tsx:226
 msgid "Logo"
 msgstr "Logo"
 
-#: src/routes/organizations/index.tsx:291
+#: src/routes/organizations/index.tsx:248
 msgid "Logo removal failed"
 msgstr "Échec de la suppression du logo"
 
-#: src/routes/organizations/index.tsx:722
+#: src/routes/organizations/index.tsx:448
 msgid "Logo upload failed"
 msgstr "Échec du téléchargement du logo"
 
-#: src/routes/orders/details.tsx:273
+#: src/routes/orders/details.tsx:293
 msgid "Manage clients"
 msgstr "Gérer les clients"
 
-#: src/routes/invoices/details.tsx:555
+#: src/routes/invoices/details.tsx:564
 msgid "Manage payment terms"
 msgstr "Gérer les conditions de paiement"
 
-#: src/routes/inbound-deliveries/details.tsx:311
-#: src/routes/purchase-orders/details.tsx:326
+#: src/routes/inbound-deliveries/details.tsx:370
+#: src/routes/purchase-orders/details.tsx:346
 msgid "Manage vendors"
 msgstr "Gérer les fournisseurs"
 
-#: src/routes/invoices/details.tsx:674
+#: src/routes/invoices/details.tsx:683
 msgid "Mandatory for German B2G XRechnung, e.g. a Leitweg-ID."
 msgstr "Obligatoire pour les factures B2G allemandes XRechnung, par ex. un Leitweg-ID."
 
-#: src/routes/settings/backup.tsx:244
+#: src/routes/settings/backup.tsx:249
 msgid "Manual backup"
 msgstr "Sauvegarde manuelle"
 
@@ -2289,19 +2318,19 @@ msgstr "Marquer comme reçue"
 msgid "Mark as shipped"
 msgstr "Marquer comme expédiée"
 
-#: src/routes/organizations/index.tsx:1316
+#: src/components/organizations/organization-danger-zone.tsx:56
 msgid "Master data"
 msgstr "Données de base"
 
-#: src/layouts/base.tsx:385
+#: src/layouts/base.tsx:500
 msgid "Master Data"
 msgstr "Données de base"
 
-#: src/routes/organizations/index.tsx:1333
+#: src/components/organizations/organization-danger-zone.tsx:73
 msgid "Master data can't be reset on its own — documents reference clients and vendors, so transactional data is included automatically."
 msgstr "Les données de base ne peuvent pas être réinitialisées seules — les documents référencent des clients et fournisseurs, les données transactionnelles sont donc incluses automatiquement."
 
-#: src/routes/incoming-invoices/details.tsx:384
+#: src/routes/incoming-invoices/details.tsx:437
 msgid "Match"
 msgstr "Rapprochement"
 
@@ -2313,15 +2342,15 @@ msgstr "Concordante"
 msgid "Matricule Fiscal (MF)"
 msgstr "Matricule Fiscal (MF)"
 
-#: src/routes/organizations/index.tsx:233
+#: src/routes/organizations/index.tsx:190
 msgid "Member added"
 msgstr ""
 
-#: src/routes/organizations/index.tsx:260
+#: src/routes/organizations/index.tsx:217
 msgid "Member removed"
 msgstr ""
 
-#: src/routes/organizations/index.tsx:1205
+#: src/components/organizations/organization-members-panel.tsx:38
 msgid "Members"
 msgstr ""
 
@@ -2357,6 +2386,10 @@ msgstr "Mois"
 msgid "Month name ({0})"
 msgstr "Nom du mois ({0})"
 
+#: src/routes/invoices/index.tsx:238
+msgid "More actions"
+msgstr "Plus d'actions"
+
 #: src/components/stock/movement-form.tsx:130
 msgid "Movement"
 msgstr "Mouvement"
@@ -2366,6 +2399,8 @@ msgstr "Mouvement"
 #: src/components/clients/form.tsx:195
 #: src/components/clients/form.tsx:199
 #: src/components/feedback-modal.tsx:59
+#: src/components/organizations/organization-edit-drawer.tsx:134
+#: src/components/organizations/organizations-table.tsx:39
 #: src/components/payment-terms/form.tsx:119
 #: src/components/products/form.tsx:205
 #: src/components/tax-rates/form.tsx:186
@@ -2380,8 +2415,6 @@ msgstr "Mouvement"
 #: src/routes/accounting/journals.tsx:84
 #: src/routes/accounting/trial-balance.tsx:126
 #: src/routes/clients.tsx:83
-#: src/routes/organizations/index.tsx:468
-#: src/routes/organizations/index.tsx:599
 #: src/routes/organizations/new.tsx:63
 #: src/routes/products.tsx:159
 #: src/routes/settings/countries.tsx:98
@@ -2399,7 +2432,7 @@ msgstr "Le nom est obligatoire"
 
 #: src/components/invoices/pdf-tunisia.tsx:284
 #: src/components/invoices/pdf.tsx:389
-#: src/routes/invoices/details.tsx:1016
+#: src/routes/invoices/details.tsx:1025
 msgid "Net amount due"
 msgstr "Net à recevoir"
 
@@ -2414,12 +2447,12 @@ msgstr "Nouveau compte"
 
 #: src/components/clients/form.tsx:137
 #: src/routes/clients.tsx:64
-#: src/routes/invoices/details.tsx:505
+#: src/routes/invoices/details.tsx:514
 msgid "New client"
 msgstr "Nouveau client"
 
 #: src/routes/deliveries.tsx:59
-#: src/routes/orders/details.tsx:512
+#: src/routes/orders/details.tsx:532
 msgid "New delivery"
 msgstr "Nouvelle livraison"
 
@@ -2433,7 +2466,7 @@ msgid "New fiscal year"
 msgstr "Nouvel exercice"
 
 #: src/routes/inbound-deliveries.tsx:60
-#: src/routes/purchase-orders/details.tsx:606
+#: src/routes/purchase-orders/details.tsx:626
 msgid "New goods receipt"
 msgstr "Nouvelle réception"
 
@@ -2446,7 +2479,7 @@ msgstr ""
 msgid "New incoming invoice"
 msgstr "Nouvelle facture fournisseur"
 
-#: src/routes/invoices/index.tsx:132
+#: src/routes/invoices/index.tsx:142
 msgid "New invoice"
 msgstr "Nouvelle facture"
 
@@ -2464,9 +2497,9 @@ msgstr "Nouvelle écriture"
 msgid "New order"
 msgstr "Nouvelle commande"
 
-#: src/layouts/base.tsx:731
-#: src/routes/organizations/index.tsx:454
-#: src/routes/organizations/index.tsx:577
+#: src/components/organizations/organization-edit-drawer.tsx:112
+#: src/layouts/base.tsx:756
+#: src/routes/organizations/index.tsx:418
 msgid "New organization"
 msgstr "Nouvelle organisation"
 
@@ -2521,7 +2554,7 @@ msgstr "Nouveau fournisseur"
 msgid "Next invoice will use this number + 1"
 msgstr "La prochaine facture utilisera ce numéro + 1"
 
-#: src/routes/settings/backup.tsx:237
+#: src/routes/settings/backup.tsx:242
 msgid "Next run: {nextRunLabel}"
 msgstr "Prochaine exécution : {nextRunLabel}"
 
@@ -2537,21 +2570,21 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 #: src/components/tax-rates/form.tsx:151
 #: src/components/vendors/form.tsx:135
 #: src/routes/accounting/fiscal-periods.tsx:225
-#: src/routes/accounting/journal-entries/details.tsx:356
-#: src/routes/accounting/journal-entries/details.tsx:366
-#: src/routes/deliveries/details.tsx:455
-#: src/routes/deliveries/details.tsx:480
-#: src/routes/inbound-deliveries/details.tsx:474
-#: src/routes/inbound-deliveries/details.tsx:490
-#: src/routes/inbound-deliveries/details.tsx:504
-#: src/routes/incoming-invoices/details.tsx:561
-#: src/routes/inventory.tsx:295
-#: src/routes/invoices/details.tsx:1060
-#: src/routes/invoices/index.tsx:110
-#: src/routes/orders/details.tsx:448
-#: src/routes/orders/details.tsx:476
-#: src/routes/purchase-orders/details.tsx:541
-#: src/routes/purchase-orders/details.tsx:568
+#: src/routes/accounting/journal-entries/details.tsx:357
+#: src/routes/accounting/journal-entries/details.tsx:367
+#: src/routes/deliveries/details.tsx:465
+#: src/routes/deliveries/details.tsx:490
+#: src/routes/inbound-deliveries/details.tsx:533
+#: src/routes/inbound-deliveries/details.tsx:549
+#: src/routes/inbound-deliveries/details.tsx:563
+#: src/routes/incoming-invoices/details.tsx:614
+#: src/routes/inventory.tsx:294
+#: src/routes/invoices/details.tsx:1068
+#: src/routes/invoices/index.tsx:120
+#: src/routes/orders/details.tsx:468
+#: src/routes/orders/details.tsx:496
+#: src/routes/purchase-orders/details.tsx:561
+#: src/routes/purchase-orders/details.tsx:588
 #: src/routes/settings/users.tsx:268
 msgid "No"
 msgstr "Non"
@@ -2615,25 +2648,25 @@ msgstr "Aucun fournisseur"
 
 #: src/components/accounting/account-form.tsx:183
 #: src/components/line-items/table.tsx:321
+#: src/components/organizations/organization-edit-drawer.tsx:432
+#: src/components/organizations/organization-edit-drawer.tsx:447
+#: src/components/organizations/organization-edit-drawer.tsx:466
+#: src/components/organizations/organization-edit-drawer.tsx:485
+#: src/components/organizations/organization-edit-drawer.tsx:499
+#: src/components/organizations/organization-edit-drawer.tsx:519
+#: src/components/organizations/organization-edit-drawer.tsx:539
+#: src/components/organizations/organization-edit-drawer.tsx:559
+#: src/components/organizations/organization-edit-drawer.tsx:579
+#: src/components/organizations/organization-edit-drawer.tsx:600
+#: src/components/organizations/organization-edit-drawer.tsx:622
+#: src/components/organizations/organization-edit-drawer.tsx:714
 #: src/components/tax-rates/form.tsx:262
 #: src/components/tax-rates/form.tsx:281
-#: src/routes/organizations/index.tsx:907
-#: src/routes/organizations/index.tsx:922
-#: src/routes/organizations/index.tsx:941
-#: src/routes/organizations/index.tsx:960
-#: src/routes/organizations/index.tsx:974
-#: src/routes/organizations/index.tsx:994
-#: src/routes/organizations/index.tsx:1014
-#: src/routes/organizations/index.tsx:1034
-#: src/routes/organizations/index.tsx:1054
-#: src/routes/organizations/index.tsx:1075
-#: src/routes/organizations/index.tsx:1097
-#: src/routes/organizations/index.tsx:1189
-#: src/routes/purchase-orders/details.tsx:349
+#: src/routes/purchase-orders/details.tsx:369
 msgid "None"
 msgstr "Aucune"
 
-#: src/routes/accounting/journal-entries/details.tsx:320
+#: src/routes/accounting/journal-entries/details.tsx:321
 msgid "Not balanced"
 msgstr "Non équilibrée"
 
@@ -2650,32 +2683,29 @@ msgstr "Non liée à une ligne de commande d'achat."
 #~ msgstr "Pas encore disponible"
 
 #: src/components/stock/movement-form.tsx:261
-#: src/routes/inventory.tsx:275
+#: src/routes/inventory.tsx:274
 msgid "Note"
 msgstr "Note"
 
-#: src/components/deliveries/delivery-note-pdf.tsx:255
 #: src/components/imports/form.tsx:317
 #: src/components/imports/form.tsx:318
 #: src/components/invoices/pdf.tsx:339
-#: src/components/orders/order-confirmation-pdf.tsx:277
 #: src/components/payments/payment-panel.tsx:321
-#: src/components/purchase-orders/purchase-order-pdf.tsx:283
-#: src/routes/deliveries/details.tsx:372
+#: src/routes/deliveries/details.tsx:379
 #: src/routes/imports.tsx:124
-#: src/routes/inbound-deliveries/details.tsx:397
-#: src/routes/incoming-invoices/details.tsx:368
-#: src/routes/orders/details.tsx:339
-#: src/routes/purchase-orders/details.tsx:429
+#: src/routes/inbound-deliveries/details.tsx:456
+#: src/routes/incoming-invoices/details.tsx:421
+#: src/routes/orders/details.tsx:359
+#: src/routes/purchase-orders/details.tsx:449
 #: src/routes/settings/invoice.tsx:135
 msgid "Notes"
 msgstr "Notes"
 
-#: src/routes/organizations/index.tsx:1358
+#: src/components/organizations/organization-danger-zone.tsx:98
 msgid "Nothing matches the current selection."
 msgstr "Rien ne correspond à la sélection actuelle."
 
-#: src/routes/organizations/index.tsx:389
+#: src/routes/organizations/index.tsx:346
 msgid "Nothing to delete — this organization was empty"
 msgstr "Rien à supprimer — cette organisation était vide"
 
@@ -2684,7 +2714,7 @@ msgstr "Rien à supprimer — cette organisation était vide"
 msgid "Number"
 msgstr "Numéro"
 
-#: src/routes/inbound-deliveries/details.tsx:388
+#: src/routes/inbound-deliveries/details.tsx:447
 msgid "Number on the vendor's paperwork"
 msgstr "Numéro figurant sur le bon du fournisseur"
 
@@ -2692,7 +2722,7 @@ msgstr "Numéro figurant sur le bon du fournisseur"
 msgid "Numbering"
 msgstr "Numérotation"
 
-#: src/routes/incoming-invoices/details.tsx:463
+#: src/routes/incoming-invoices/details.tsx:516
 msgid "On this invoice"
 msgstr "Sur cette facture"
 
@@ -2706,8 +2736,8 @@ msgid "Open"
 msgstr "Ouvert"
 
 #: src/routes/accounting/journal-entries/details.tsx:255
-#: src/routes/inbound-deliveries/details.tsx:326
-#: src/routes/incoming-invoices/details.tsx:325
+#: src/routes/inbound-deliveries/details.tsx:385
+#: src/routes/incoming-invoices/details.tsx:378
 msgid "Optional"
 msgstr "Facultatif"
 
@@ -2731,8 +2761,9 @@ msgstr "Référence facultative"
 msgid "or"
 msgstr "ou"
 
-#: src/components/deliveries/delivery-note-pdf.tsx:154
 #: src/routes/deliveries.tsx:85
+#: src/routes/orders/details.tsx:238
+#: src/routes/settings/document-templates.tsx:202
 msgid "Order"
 msgstr "Commande"
 
@@ -2747,88 +2778,88 @@ msgstr "Commande n°"
 #~ msgstr "Confirmation de commande"
 
 #: src/components/orders/order-confirmation-pdf.tsx:158
-msgid "ORDER CONFIRMATION"
-msgstr "CONFIRMATION DE COMMANDE"
+#~ msgid "ORDER CONFIRMATION"
+#~ msgstr "CONFIRMATION DE COMMANDE"
 
-#: src/atoms/order.ts:100
+#: src/atoms/order.ts:116
 msgid "Order created"
 msgstr "Commande créée"
 
-#: src/atoms/order.ts:122
+#: src/atoms/order.ts:138
 msgid "Order creation failed"
 msgstr "Échec de la création de la commande"
 
 #: src/routes/orders.tsx:102
-#: src/routes/orders/details.tsx:297
+#: src/routes/orders/details.tsx:317
 #: src/routes/purchase-orders.tsx:138
-#: src/routes/purchase-orders/details.tsx:387
+#: src/routes/purchase-orders/details.tsx:407
 msgid "Order date"
 msgstr "Date de commande"
 
 #: src/components/orders/order-confirmation-pdf.tsx:166
 #: src/components/purchase-orders/purchase-order-pdf.tsx:168
-msgid "Order Date"
-msgstr "Date de commande"
+#~ msgid "Order Date"
+#~ msgstr "Date de commande"
 
-#: src/routes/orders/details.tsx:299
-#: src/routes/purchase-orders/details.tsx:389
+#: src/routes/orders/details.tsx:319
+#: src/routes/purchase-orders/details.tsx:409
 msgid "Order date is required"
 msgstr "La date de commande est obligatoire"
 
-#: src/atoms/order.ts:154
+#: src/atoms/order.ts:170
 msgid "Order deleted"
 msgstr "Commande supprimée"
 
-#: src/atoms/order.ts:156
-#: src/atoms/order.ts:161
+#: src/atoms/order.ts:172
+#: src/atoms/order.ts:177
 msgid "Order deletion failed"
 msgstr "Échec de la suppression de la commande"
 
-#: src/routes/orders/details.tsx:288
-#: src/routes/purchase-orders/details.tsx:378
+#: src/routes/orders/details.tsx:308
+#: src/routes/purchase-orders/details.tsx:398
 msgid "Order number"
 msgstr "Numéro de commande"
 
-#: src/routes/orders/details.tsx:290
-#: src/routes/purchase-orders/details.tsx:380
+#: src/routes/orders/details.tsx:310
+#: src/routes/purchase-orders/details.tsx:400
 msgid "Order number is required"
 msgstr "Le numéro de commande est obligatoire"
 
-#: src/atoms/order.ts:115
+#: src/atoms/order.ts:131
 msgid "Order saved"
 msgstr "Commande enregistrée"
 
-#: src/atoms/order.ts:137
+#: src/atoms/order.ts:153
 msgid "Order status updated"
 msgstr "Statut de la commande mis à jour"
 
-#: src/atoms/order.ts:122
+#: src/atoms/order.ts:138
 msgid "Order update failed"
 msgstr "Échec de la mise à jour de la commande"
 
-#: src/routes/organizations/index.tsx:427
-#: src/routes/organizations/index.tsx:526
+#: src/components/organizations/organizations-table.tsx:93
+#: src/routes/organizations/index.tsx:385
 msgid "order(s)"
 msgstr "commande(s)"
 
-#: src/routes/incoming-invoices/details.tsx:445
+#: src/routes/incoming-invoices/details.tsx:498
 msgid "Ordered"
 msgstr "Commandé"
 
 #: src/components/purchase-orders/purchase-order-pdf.tsx:198
-msgid "Ordered By"
-msgstr "Commandé par"
+#~ msgid "Ordered By"
+#~ msgstr "Commandé par"
 
-#: src/layouts/base.tsx:317
+#: src/layouts/base.tsx:432
 #: src/routes/orders.tsx:52
 msgid "Orders"
 msgstr "Commandes"
 
-#: src/atoms/organization.ts:102
+#: src/atoms/organization.ts:103
 msgid "Organization created"
 msgstr "Organisation créée"
 
-#: src/atoms/organization.ts:113
+#: src/atoms/organization.ts:114
 msgid "Organization creation failed"
 msgstr "Échec de la création de l'organisation"
 
@@ -2837,24 +2868,24 @@ msgstr "Échec de la création de l'organisation"
 msgid "Organization default"
 msgstr "Valeur par défaut de l'organisation"
 
-#: src/routes/organizations/index.tsx:361
+#: src/routes/organizations/index.tsx:318
 msgid "Organization deleted"
 msgstr "Organisation supprimée"
 
-#: src/routes/organizations/index.tsx:364
+#: src/routes/organizations/index.tsx:321
 msgid "Organization deletion failed"
 msgstr "Échec de la suppression de l'organisation"
 
-#: src/atoms/organization.ts:115
+#: src/atoms/organization.ts:116
 msgid "Organization update failed"
 msgstr "Échec de la mise à jour de l'organisation"
 
-#: src/atoms/organization.ts:106
+#: src/atoms/organization.ts:107
 msgid "Organization updated successfully"
 msgstr "Organisation mise à jour avec succès"
 
-#: src/layouts/base.tsx:419
-#: src/routes/organizations/index.tsx:444
+#: src/layouts/base.tsx:534
+#: src/routes/organizations/index.tsx:408
 msgid "Organizations"
 msgstr "Organisations"
 
@@ -2862,18 +2893,23 @@ msgstr "Organisations"
 msgid "Other"
 msgstr "Autre"
 
-#: src/routes/incoming-invoices/details.tsx:354
+#: src/routes/incoming-invoices/details.tsx:407
 msgid "Our reference"
 msgstr "Notre référence"
 
-#: src/routes/inventory.tsx:32
+#: src/routes/inventory.tsx:31
 msgid "Out"
 msgstr "Sortie"
 
-#: src/layouts/base.tsx:308
+#: src/layouts/base.tsx:423
 #: src/routes/deliveries.tsx:54
 msgid "Outbound Deliveries"
 msgstr "Livraisons sortantes"
+
+#: src/routes/deliveries/details.tsx:290
+#: src/routes/settings/document-templates.tsx:216
+msgid "Outbound Delivery"
+msgstr "Livraison sortante"
 
 #: src/components/tax-rates/form.tsx:252
 msgid "Output tax account"
@@ -2903,12 +2939,12 @@ msgstr "Au-delà du commandé"
 msgid "Over received"
 msgstr "Au-delà du reçu"
 
-#: src/routes/invoices/index.tsx:188
+#: src/routes/invoices/index.tsx:200
 msgid "Overdue"
 msgstr "En retard"
 
 #: src/components/invoices/pdf.tsx:237
-#: src/routes/invoices/details.tsx:651
+#: src/routes/invoices/details.tsx:660
 #: src/routes/settings/invoice.tsx:120
 msgid "Overdue charge"
 msgstr "Frais de retard"
@@ -2917,7 +2953,7 @@ msgstr "Frais de retard"
 msgid "Override"
 msgstr "Dérogation"
 
-#: src/routes/incoming-invoices/details.tsx:511
+#: src/routes/incoming-invoices/details.tsx:564
 msgid "Override reason"
 msgstr "Motif de la dérogation"
 
@@ -2931,7 +2967,7 @@ msgstr "Remplace le compte de produits par défaut de l'organisation pour une li
 
 #: src/components/payments/payment-panel.tsx:186
 #: src/types/incoming-invoice.ts:30
-#: src/types/invoice.ts:78
+#: src/types/invoice.ts:85
 msgid "Paid"
 msgstr "Payée"
 
@@ -2960,34 +2996,34 @@ msgstr "Détails de paiement"
 msgid "Payment recorded"
 msgstr "Paiement enregistré"
 
-#: src/atoms/payment-term.ts:50
+#: src/atoms/payment-term.ts:58
 msgid "Payment term created"
 msgstr "Condition de paiement créée"
 
-#: src/atoms/payment-term.ts:63
+#: src/atoms/payment-term.ts:71
 msgid "Payment term creation failed"
 msgstr "Échec de la création de la condition de paiement"
 
-#: src/atoms/payment-term.ts:76
+#: src/atoms/payment-term.ts:84
 msgid "Payment term deleted"
 msgstr "Condition de paiement supprimée"
 
-#: src/atoms/payment-term.ts:78
-#: src/atoms/payment-term.ts:83
+#: src/atoms/payment-term.ts:86
+#: src/atoms/payment-term.ts:91
 msgid "Payment term deletion failed"
 msgstr "Échec de la suppression de la condition de paiement"
 
-#: src/atoms/payment-term.ts:63
+#: src/atoms/payment-term.ts:71
 msgid "Payment term update failed"
 msgstr "Échec de la mise à jour de la condition de paiement"
 
-#: src/atoms/payment-term.ts:56
+#: src/atoms/payment-term.ts:64
 msgid "Payment term updated"
 msgstr "Condition de paiement mise à jour"
 
 #: src/components/invoices/pdf-tunisia.tsx:235
-#: src/layouts/base.tsx:602
-#: src/routes/invoices/details.tsx:532
+#: src/layouts/base.tsx:242
+#: src/routes/invoices/details.tsx:541
 #: src/routes/settings/payment-terms.tsx:46
 msgid "Payment terms"
 msgstr "Conditions de paiement"
@@ -3015,21 +3051,21 @@ msgstr "pcs, kg, m…"
 msgid "Percentage"
 msgstr "Pourcentage"
 
-#: src/routes/invoices/details.tsx:710
+#: src/routes/invoices/details.tsx:719
 msgid "Percentage the client withholds and remits to the tax authority on your behalf. Reduces the net amount you'll actually receive, not the invoice total."
 msgstr "Pourcentage que le client retient et reverse à l'administration fiscale en votre nom. Réduit le montant net que vous recevrez réellement, pas le total de la facture."
 
-#: src/routes/organizations/index.tsx:1303
+#: src/components/organizations/organization-danger-zone.tsx:44
 msgid "Permanently delete this organization's data without deleting the organization itself."
 msgstr "Supprime définitivement les données de cette organisation sans supprimer l'organisation elle-même."
 
 #: src/components/clients/form.tsx:237
 #: src/components/clients/form.tsx:238
+#: src/components/organizations/organization-edit-drawer.tsx:181
+#: src/components/organizations/organizations-table.tsx:58
 #: src/components/vendors/form.tsx:194
 #: src/components/vendors/form.tsx:195
 #: src/routes/clients.tsx:121
-#: src/routes/organizations/index.tsx:489
-#: src/routes/organizations/index.tsx:646
 #: src/routes/vendors.tsx:121
 msgid "Phone"
 msgstr "Téléphone"
@@ -3039,8 +3075,8 @@ msgid "piece"
 msgstr "pièce"
 
 #: src/components/purchase-orders/purchase-order-pdf.tsx:291
-msgid "Please confirm receipt of this purchase order."
-msgstr "Merci de confirmer la réception de cette commande d'achat."
+#~ msgid "Please confirm receipt of this purchase order."
+#~ msgstr "Merci de confirmer la réception de cette commande d'achat."
 
 #: src/routes/login.tsx:109
 msgid "Please enter a valid email"
@@ -3058,7 +3094,7 @@ msgstr "Veuillez entrer vos commentaires"
 msgid "Please enter your password"
 msgstr "Veuillez saisir votre mot de passe"
 
-#: src/routes/accounting/journal-entries/details.tsx:466
+#: src/routes/accounting/journal-entries/details.tsx:467
 msgid "Please explain why this entry is being reversed!"
 msgstr "Veuillez expliquer pourquoi cette écriture est extournée !"
 
@@ -3103,7 +3139,7 @@ msgid "Please select a date range!"
 msgstr "Veuillez sélectionner une période !"
 
 #: src/routes/accounting/journal-entries/details.tsx:193
-#: src/routes/accounting/journal-entries/details.tsx:458
+#: src/routes/accounting/journal-entries/details.tsx:459
 msgid "Please select a date!"
 msgstr "Veuillez sélectionner une date !"
 
@@ -3124,19 +3160,19 @@ msgstr "Veuillez sélectionner une catégorie de TVA !"
 msgid "PO number, invoice ID, …"
 msgstr "N° de bon de commande, ID de facture, …"
 
-#: src/routes/accounting/journal-entries/details.tsx:359
+#: src/routes/accounting/journal-entries/details.tsx:360
 msgid "Post"
 msgstr "Comptabiliser"
 
-#: src/routes/accounting/journal-entries/details.tsx:353
+#: src/routes/accounting/journal-entries/details.tsx:354
 msgid "Post this entry? It cannot be edited afterward."
 msgstr "Comptabiliser cette écriture ? Elle ne pourra plus être modifiée ensuite."
 
 #: src/components/clients/form.tsx:292
 #: src/components/clients/form.tsx:295
+#: src/components/organizations/organization-edit-drawer.tsx:340
 #: src/components/vendors/form.tsx:257
 #: src/components/vendors/form.tsx:258
-#: src/routes/organizations/index.tsx:806
 msgid "Postal code"
 msgstr "Code postal"
 
@@ -3149,7 +3185,7 @@ msgstr "Comptabilisée"
 msgid "Prefill only — every purchase order linked to this import still stores and freezes its own currency and rate when saved."
 msgstr ""
 
-#: src/routes/organizations/index.tsx:1164
+#: src/components/organizations/organization-edit-drawer.tsx:689
 msgid "Prefills a new invoice's stamp amount. The statutory amount changes by law from time to time, so this is a plain editable default, not enforced."
 msgstr "Préremplit le montant du timbre d'une nouvelle facture. Le montant légal change périodiquement par la loi, il s'agit donc d'une simple valeur par défaut modifiable, non imposée."
 
@@ -3161,7 +3197,7 @@ msgstr "Préremplit le montant du timbre d'une nouvelle facture. Le montant lég
 msgid "Preview"
 msgstr "Aperçu"
 
-#: src/routes/invoices/details.tsx:1087
+#: src/routes/invoices/details.tsx:1095
 msgid "Preview isn't available — export to PDF or Excel to see the result."
 msgstr "Aperçu non disponible — exportez en PDF ou Excel pour voir le résultat."
 
@@ -3175,7 +3211,7 @@ msgstr "Aperçu non disponible — exportez en PDF ou Excel pour voir le résult
 
 #: src/components/invoices/pdf.tsx:285
 #: src/components/products/form.tsx:345
-#: src/routes/invoices/details.tsx:834
+#: src/routes/invoices/details.tsx:843
 #: src/routes/products.tsx:207
 msgid "Price"
 msgstr "Prix"
@@ -3202,8 +3238,8 @@ msgstr "Tarification"
 #: src/routes/accounting/reports/inventory-valuation.tsx:84
 #: src/routes/dashboard.tsx:202
 #: src/routes/dashboard.tsx:251
-#: src/routes/inventory.tsx:233
-#: src/routes/invoices/details.tsx:746
+#: src/routes/inventory.tsx:232
+#: src/routes/invoices/details.tsx:755
 #: src/routes/products.tsx:180
 #: src/routes/reporting/sales-by-product.tsx:96
 msgid "Product"
@@ -3213,20 +3249,20 @@ msgstr "Produit"
 msgid "Product code is required"
 msgstr "Le code produit est obligatoire"
 
-#: src/atoms/product.ts:54
+#: src/atoms/product.ts:55
 msgid "Product created"
 msgstr "Produit créé"
 
-#: src/atoms/product.ts:69
+#: src/atoms/product.ts:70
 msgid "Product creation failed"
 msgstr "Échec de la création du produit"
 
-#: src/atoms/product.ts:84
+#: src/atoms/product.ts:85
 msgid "Product deleted"
 msgstr "Produit supprimé"
 
-#: src/atoms/product.ts:86
-#: src/atoms/product.ts:90
+#: src/atoms/product.ts:87
+#: src/atoms/product.ts:91
 msgid "Product deletion failed"
 msgstr "Échec de la suppression du produit"
 
@@ -3234,58 +3270,63 @@ msgstr "Échec de la suppression du produit"
 msgid "Product or service name"
 msgstr "Nom du produit ou service"
 
-#: src/atoms/product.ts:68
+#: src/atoms/product.ts:69
 msgid "Product update failed"
 msgstr "Échec de la mise à jour du produit"
 
-#: src/atoms/product.ts:58
+#: src/atoms/product.ts:59
 msgid "Product updated"
 msgstr "Produit mis à jour"
 
-#: src/routes/organizations/index.tsx:420
-#: src/routes/organizations/index.tsx:525
+#: src/components/organizations/organizations-table.tsx:92
+#: src/routes/organizations/index.tsx:378
 msgid "product(s)"
 msgstr "produit(s)"
 
-#: src/layouts/base.tsx:410
+#: src/layouts/base.tsx:525
 #: src/routes/products.tsx:121
 msgid "Products"
 msgstr "Produits"
 
-#: src/layouts/base.tsx:480
+#: src/layouts/base.tsx:595
 #: src/routes/accounting/reports/profit-and-loss.tsx:78
 msgid "Profit & Loss"
 msgstr "Compte de résultat"
 
 #: src/routes/inbound-deliveries.tsx:99
-#: src/routes/inbound-deliveries/details.tsx:325
+#: src/routes/inbound-deliveries/details.tsx:384
 #: src/routes/incoming-invoices.tsx:103
-#: src/routes/incoming-invoices/details.tsx:324
+#: src/routes/incoming-invoices/details.tsx:377
 msgid "Purchase order"
 msgstr "Commande d'achat"
 
-#: src/components/purchase-orders/purchase-order-pdf.tsx:160
-msgid "PURCHASE ORDER"
-msgstr "COMMANDE D'ACHAT"
+#: src/routes/purchase-orders/details.tsx:292
+#: src/routes/settings/document-templates.tsx:195
+msgid "Purchase Order"
+msgstr "Bon de commande"
 
-#: src/atoms/purchase-order.ts:110
+#: src/components/purchase-orders/purchase-order-pdf.tsx:160
+#~ msgid "PURCHASE ORDER"
+#~ msgstr "COMMANDE D'ACHAT"
+
+#: src/atoms/purchase-order.ts:129
 msgid "Purchase order created"
 msgstr "Commande d'achat créée"
 
-#: src/atoms/purchase-order.ts:133
+#: src/atoms/purchase-order.ts:152
 msgid "Purchase order creation failed"
 msgstr "Échec de la création de la commande d'achat"
 
-#: src/atoms/purchase-order.ts:216
+#: src/atoms/purchase-order.ts:235
 msgid "Purchase order deleted"
 msgstr "Commande d'achat supprimée"
 
-#: src/atoms/purchase-order.ts:218
-#: src/atoms/purchase-order.ts:223
+#: src/atoms/purchase-order.ts:237
+#: src/atoms/purchase-order.ts:242
 msgid "Purchase order deletion failed"
 msgstr "Échec de la suppression de la commande d'achat"
 
-#: src/atoms/purchase-order.ts:200
+#: src/atoms/purchase-order.ts:219
 msgid "Purchase order linked"
 msgstr "Commande d'achat liée"
 
@@ -3293,24 +3334,24 @@ msgstr "Commande d'achat liée"
 #~ msgid "Purchase order PDF"
 #~ msgstr "Commande d'achat en PDF"
 
-#: src/atoms/purchase-order.ts:122
+#: src/atoms/purchase-order.ts:141
 msgid "Purchase order saved"
 msgstr "Commande d'achat enregistrée"
 
-#: src/atoms/purchase-order.ts:150
+#: src/atoms/purchase-order.ts:169
 msgid "Purchase order status updated"
 msgstr "Statut de la commande d'achat mis à jour"
 
-#: src/atoms/purchase-order.ts:200
+#: src/atoms/purchase-order.ts:219
 msgid "Purchase order unlinked"
 msgstr "Commande d'achat déliée"
 
-#: src/atoms/purchase-order.ts:132
+#: src/atoms/purchase-order.ts:151
 msgid "Purchase order update failed"
 msgstr "Échec de la mise à jour de la commande d'achat"
 
-#: src/routes/organizations/index.tsx:429
-#: src/routes/organizations/index.tsx:527
+#: src/components/organizations/organizations-table.tsx:94
+#: src/routes/organizations/index.tsx:387
 msgid "purchase order(s)"
 msgstr "commande(s) d'achat"
 
@@ -3318,7 +3359,7 @@ msgstr "commande(s) d'achat"
 msgid "Purchase orders"
 msgstr "Commandes d'achat"
 
-#: src/layouts/base.tsx:342
+#: src/layouts/base.tsx:457
 #: src/routes/purchase-orders.tsx:55
 msgid "Purchase Orders"
 msgstr "Commandes d'achat"
@@ -3332,35 +3373,32 @@ msgstr "Prix d'achat unitaire"
 msgid "Purchases"
 msgstr "Achats"
 
-#: src/layouts/base.tsx:559
+#: src/layouts/base.tsx:674
 #: src/routes/reporting/purchases-by-vendor.tsx:55
 msgid "Purchases by Vendor"
 msgstr "Achats par fournisseur"
 
-#: src/layouts/base.tsx:326
+#: src/layouts/base.tsx:441
 msgid "Purchasing"
 msgstr "Achats"
 
-#: src/components/deliveries/delivery-note-pdf.tsx:227
 #: src/components/line-items/table.tsx:245
-#: src/components/orders/order-confirmation-pdf.tsx:234
-#: src/components/purchase-orders/purchase-order-pdf.tsx:236
 msgid "Qty"
 msgstr "Qté"
 
-#: src/routes/inbound-deliveries/details.tsx:429
+#: src/routes/inbound-deliveries/details.tsx:488
 msgid "Qty received"
 msgstr "Qté reçue"
 
 #: src/components/invoices/pdf-tunisia.tsx:200
 #: src/components/invoices/pdf.tsx:282
-#: src/routes/invoices/details.tsx:794
+#: src/routes/invoices/details.tsx:803
 msgid "Qty."
 msgstr "Qté"
 
 #: src/routes/accounting/reports/inventory-valuation.tsx:86
 #: src/routes/dashboard.tsx:204
-#: src/routes/inventory.tsx:256
+#: src/routes/inventory.tsx:255
 msgid "Quantity"
 msgstr "Quantité"
 
@@ -3386,11 +3424,11 @@ msgstr "Taux"
 
 #: src/components/currency/currency-fields.tsx:106
 #: src/components/payments/payment-panel.tsx:352
-#: src/routes/invoices/details.tsx:619
+#: src/routes/invoices/details.tsx:628
 msgid "Rate date"
 msgstr "Date du taux"
 
-#: src/routes/accounting/journal-entries/details.tsx:464
+#: src/routes/accounting/journal-entries/details.tsx:465
 msgid "Reason"
 msgstr "Motif"
 
@@ -3399,38 +3437,38 @@ msgid "Receipt #"
 msgstr "Réception n°"
 
 #: src/routes/inbound-deliveries.tsx:126
-#: src/routes/inbound-deliveries/details.tsx:346
+#: src/routes/inbound-deliveries/details.tsx:405
 msgid "Receipt date"
 msgstr "Date de réception"
 
-#: src/routes/inbound-deliveries/details.tsx:348
+#: src/routes/inbound-deliveries/details.tsx:407
 msgid "Receipt date is required"
 msgstr "La date de réception est obligatoire"
 
-#: src/routes/inbound-deliveries/details.tsx:337
+#: src/routes/inbound-deliveries/details.tsx:396
 msgid "Receipt number"
 msgstr "Numéro de réception"
 
-#: src/routes/inbound-deliveries/details.tsx:339
+#: src/routes/inbound-deliveries/details.tsx:398
 msgid "Receipt number is required"
 msgstr "Le numéro de réception est obligatoire"
 
-#: src/routes/incoming-invoices/details.tsx:451
-#: src/routes/purchase-orders/details.tsx:467
+#: src/routes/incoming-invoices/details.tsx:504
+#: src/routes/purchase-orders/details.tsx:487
 #: src/types/inbound-delivery.ts:25
 #: src/types/purchase-order.ts:31
 msgid "Received"
 msgstr "Reçue"
 
 #: src/components/deliveries/delivery-note-pdf.tsx:265
-msgid "Received by / Date"
-msgstr "Reçu par / Date"
+#~ msgid "Received by / Date"
+#~ msgstr "Reçu par / Date"
 
 #: src/components/payments/payment-panel.tsx:265
 msgid "Record"
 msgstr "Enregistrer"
 
-#: src/routes/inventory.tsx:166
+#: src/routes/inventory.tsx:165
 msgid "Record movement"
 msgstr "Enregistrer le mouvement"
 
@@ -3448,28 +3486,36 @@ msgstr "Enregistrer un mouvement de stock"
 #: src/components/stock/movement-form.tsx:257
 #: src/routes/accounting/journal-entries.tsx:131
 #: src/routes/accounting/journal-entries/details.tsx:199
-#: src/routes/accounting/journal-entries/details.tsx:389
-#: src/routes/inventory.tsx:268
+#: src/routes/accounting/journal-entries/details.tsx:390
+#: src/routes/inventory.tsx:267
 msgid "Reference"
 msgstr "Référence"
 
-#: src/routes/settings/backup.tsx:335
+#: src/routes/settings/backup.tsx:340
 msgid "Refresh"
 msgstr "Actualiser"
 
-#: src/routes/organizations/index.tsx:656
+#: src/components/organizations/organization-edit-drawer.tsx:191
 msgid "Registration number"
 msgstr "Numéro d'enregistrement"
+
+#: src/routes/accounting/journal-entries/details.tsx:302
+msgid "Remove line"
+msgstr "Supprimer la ligne"
 
 #: src/components/line-items/table.tsx:361
 msgid "Remove line item"
 msgstr "Supprimer la ligne"
 
-#: src/routes/organizations/index.tsx:736
+#: src/components/organizations/organization-edit-drawer.tsx:270
 msgid "Remove logo"
 msgstr "Supprimer le logo"
 
-#: src/routes/organizations/index.tsx:1252
+#: src/components/organizations/organization-members-panel.tsx:94
+msgid "Remove member"
+msgstr "Supprimer le membre"
+
+#: src/components/organizations/organization-members-panel.tsx:85
 msgid "Remove this member?"
 msgstr ""
 
@@ -3481,42 +3527,42 @@ msgstr "Rouvrir"
 msgid "Reopen this period?"
 msgstr "Rouvrir cette période ?"
 
-#: src/routes/settings/backup.tsx:122
+#: src/routes/settings/backup.tsx:127
 msgid "Replace all current data with backup \"{name}\"? This cannot be undone."
 msgstr "Remplacer toutes les données actuelles par la sauvegarde \"{name}\" ? Cette action est irréversible."
 
-#: src/routes/settings/backup.tsx:146
-#: src/routes/settings/backup.tsx:293
+#: src/routes/settings/backup.tsx:151
+#: src/routes/settings/backup.tsx:298
 msgid "Replace all current data with the uploaded file? This cannot be undone."
 msgstr "Remplacer toutes les données actuelles par le fichier téléchargé ? Cette action est irréversible."
 
-#: src/layouts/base.tsx:525
+#: src/layouts/base.tsx:640
 msgid "Reporting"
 msgstr "Rapports"
 
 #: src/components/line-items/table.tsx:260
 #: src/routes/accounting/journal-entries/details.tsx:235
-#: src/routes/deliveries/details.tsx:327
+#: src/routes/deliveries/details.tsx:334
 msgid "Required"
 msgstr "Obligatoire"
 
-#: src/routes/organizations/index.tsx:1118
+#: src/components/organizations/organization-edit-drawer.tsx:643
 msgid "Required to generate a DATEV export (1–99999)."
 msgstr "Requis pour générer un export DATEV (1–99999)."
 
-#: src/routes/organizations/index.tsx:1108
+#: src/components/organizations/organization-edit-drawer.tsx:633
 msgid "Required to generate a DATEV export (1001–9999999)."
 msgstr "Requis pour générer un export DATEV (1001–9999999)."
 
-#: src/routes/organizations/index.tsx:405
+#: src/routes/organizations/index.tsx:362
 msgid "Reset failed"
 msgstr "Échec de la réinitialisation"
 
-#: src/routes/organizations/index.tsx:1379
+#: src/components/organizations/organization-danger-zone.tsx:117
 msgid "Reset selected data"
 msgstr "Réinitialiser les données sélectionnées"
 
-#: src/routes/organizations/index.tsx:1340
+#: src/components/organizations/organization-danger-zone.tsx:80
 msgid "Reset this organization's data?"
 msgstr "Réinitialiser les données de cette organisation ?"
 
@@ -3524,27 +3570,27 @@ msgstr "Réinitialiser les données de cette organisation ?"
 msgid "Reset to default"
 msgstr ""
 
-#: src/routes/settings/backup.tsx:123
-#: src/routes/settings/backup.tsx:147
-#: src/routes/settings/backup.tsx:294
-#: src/routes/settings/backup.tsx:383
+#: src/routes/settings/backup.tsx:128
+#: src/routes/settings/backup.tsx:152
+#: src/routes/settings/backup.tsx:299
+#: src/routes/settings/backup.tsx:388
 msgid "Restore"
 msgstr "Restaurer"
 
-#: src/routes/settings/backup.tsx:121
-#: src/routes/settings/backup.tsx:145
-#: src/routes/settings/backup.tsx:292
+#: src/routes/settings/backup.tsx:126
+#: src/routes/settings/backup.tsx:150
+#: src/routes/settings/backup.tsx:297
 msgid "Restore database"
 msgstr "Restaurer la base de données"
 
 #. placeholder {0}: String(err)
-#: src/routes/settings/backup.tsx:132
-#: src/routes/settings/backup.tsx:156
-#: src/routes/settings/backup.tsx:304
+#: src/routes/settings/backup.tsx:137
+#: src/routes/settings/backup.tsx:161
+#: src/routes/settings/backup.tsx:309
 msgid "Restore failed: {0}"
 msgstr "Échec de la restauration : {0}"
 
-#: src/routes/settings/backup.tsx:313
+#: src/routes/settings/backup.tsx:318
 msgid "Restore from file"
 msgstr "Restaurer à partir d'un fichier"
 
@@ -3565,7 +3611,7 @@ msgstr "Rétablir à reçue"
 msgid "Restore to shipped"
 msgstr "Rétablir à expédiée"
 
-#: src/routes/settings/backup.tsx:214
+#: src/routes/settings/backup.tsx:219
 msgid "Retention (days)"
 msgstr "Rétention (jours)"
 
@@ -3600,24 +3646,24 @@ msgstr "Chiffre d'affaires par mois"
 msgid "Revenue over time"
 msgstr "Évolution du chiffre d'affaires"
 
-#: src/layouts/base.tsx:532
+#: src/layouts/base.tsx:647
 #: src/routes/reporting/revenue-trend.tsx:63
 msgid "Revenue Trend"
 msgstr "Évolution du chiffre d'affaires"
 
-#: src/routes/accounting/journal-entries/details.tsx:457
+#: src/routes/accounting/journal-entries/details.tsx:458
 msgid "Reversal date"
 msgstr "Date d'extourne"
 
-#: src/routes/accounting/journal-entries/details.tsx:403
+#: src/routes/accounting/journal-entries/details.tsx:404
 msgid "Reversal reason"
 msgstr "Motif de l'extourne"
 
-#: src/routes/accounting/journal-entries/details.tsx:376
+#: src/routes/accounting/journal-entries/details.tsx:377
 msgid "Reverse"
 msgstr "Extourner"
 
-#: src/routes/accounting/journal-entries/details.tsx:442
+#: src/routes/accounting/journal-entries/details.tsx:443
 msgid "Reverse journal entry"
 msgstr "Extourner l'écriture"
 
@@ -3625,7 +3671,7 @@ msgstr "Extourner l'écriture"
 msgid "Reversed"
 msgstr "Extournée"
 
-#: src/routes/accounting/journal-entries/details.tsx:396
+#: src/routes/accounting/journal-entries/details.tsx:397
 msgid "Reverses"
 msgstr "Extourne"
 
@@ -3633,24 +3679,24 @@ msgstr "Extourne"
 msgid "Reverted to the default template"
 msgstr ""
 
-#: src/routes/organizations/index.tsx:1229
+#: src/components/organizations/organization-members-panel.tsx:62
 #: src/routes/settings/users.tsx:189
 #: src/routes/settings/users.tsx:324
 msgid "Role"
 msgstr "Rôle"
 
 #: src/components/accounting/journal-form.tsx:17
-#: src/layouts/base.tsx:292
+#: src/layouts/base.tsx:407
 #: src/routes/accounting/journals.tsx:18
 msgid "Sales"
 msgstr "Ventes"
 
-#: src/layouts/base.tsx:541
+#: src/layouts/base.tsx:656
 #: src/routes/reporting/sales-by-client.tsx:55
 msgid "Sales by Client"
 msgstr "Ventes par client"
 
-#: src/layouts/base.tsx:550
+#: src/layouts/base.tsx:665
 #: src/routes/reporting/sales-by-product.tsx:55
 msgid "Sales by Product"
 msgstr "Ventes par produit"
@@ -3659,19 +3705,19 @@ msgstr "Ventes par produit"
 #: src/components/accounting/journal-form.tsx:130
 #: src/components/clients/form.tsx:177
 #: src/components/imports/form.tsx:243
+#: src/components/organizations/organization-edit-drawer.tsx:123
 #: src/components/payment-terms/form.tsx:110
 #: src/components/products/form.tsx:187
 #: src/components/stock/movement-form.tsx:122
 #: src/components/tax-rates/form.tsx:165
 #: src/components/vendors/form.tsx:154
-#: src/routes/deliveries/details.tsx:493
-#: src/routes/inbound-deliveries/details.tsx:512
-#: src/routes/incoming-invoices/details.tsx:583
-#: src/routes/invoices/details.tsx:397
-#: src/routes/orders/details.tsx:516
-#: src/routes/organizations/index.tsx:588
-#: src/routes/purchase-orders/details.tsx:610
-#: src/routes/settings/backup.tsx:232
+#: src/routes/deliveries/details.tsx:525
+#: src/routes/inbound-deliveries/details.tsx:598
+#: src/routes/incoming-invoices/details.tsx:663
+#: src/routes/invoices/details.tsx:401
+#: src/routes/orders/details.tsx:536
+#: src/routes/purchase-orders/details.tsx:630
+#: src/routes/settings/backup.tsx:237
 #: src/routes/settings/invoice.tsx:305
 #: src/routes/settings/users.tsx:282
 msgid "Save"
@@ -3681,12 +3727,18 @@ msgstr "Enregistrer"
 msgid "Save as draft"
 msgstr "Enregistrer comme brouillon"
 
-#: src/routes/invoices/details.tsx:349
-#: src/routes/invoices/details.tsx:357
-#: src/routes/orders/details.tsx:484
-#: src/routes/orders/details.tsx:500
-#: src/routes/purchase-orders/details.tsx:576
-#: src/routes/purchase-orders/details.tsx:592
+#: src/routes/deliveries/details.tsx:498
+#: src/routes/deliveries/details.tsx:514
+#: src/routes/inbound-deliveries/details.tsx:571
+#: src/routes/inbound-deliveries/details.tsx:587
+#: src/routes/incoming-invoices/details.tsx:625
+#: src/routes/incoming-invoices/details.tsx:641
+#: src/routes/invoices/details.tsx:353
+#: src/routes/invoices/details.tsx:361
+#: src/routes/orders/details.tsx:504
+#: src/routes/orders/details.tsx:520
+#: src/routes/purchase-orders/details.tsx:596
+#: src/routes/purchase-orders/details.tsx:612
 msgid "Save your changes before exporting"
 msgstr ""
 
@@ -3694,7 +3746,7 @@ msgstr ""
 msgid "Scan with your banking app to pay this invoice."
 msgstr "Scannez avec votre application bancaire pour payer cette facture."
 
-#: src/routes/settings/backup.tsx:98
+#: src/routes/settings/backup.tsx:103
 msgid "Schedule saved"
 msgstr "Planification enregistrée"
 
@@ -3702,7 +3754,7 @@ msgstr "Planification enregistrée"
 #: src/routes/inbound-deliveries.tsx:57
 #: src/routes/incoming-invoices.tsx:61
 #: src/routes/orders.tsx:53
-#: src/routes/organizations/index.tsx:446
+#: src/routes/organizations/index.tsx:410
 #: src/routes/products.tsx:123
 #: src/routes/purchase-orders.tsx:56
 #: src/routes/settings/countries.tsx:67
@@ -3715,14 +3767,14 @@ msgstr "Rechercher"
 #: src/routes/accounting/chart-of-accounts.tsx:71
 #: src/routes/clients.tsx:60
 #: src/routes/imports.tsx:65
-#: src/routes/invoices/index.tsx:128
+#: src/routes/invoices/index.tsx:138
 #: src/routes/vendors.tsx:60
 msgid "Search text"
 msgstr "Rechercher du texte"
 
 #: src/components/clients/form.tsx:271
+#: src/components/organizations/organization-edit-drawer.tsx:321
 #: src/components/vendors/form.tsx:238
-#: src/routes/organizations/index.tsx:787
 msgid "Select a country"
 msgstr "Sélectionner un pays"
 
@@ -3744,11 +3796,11 @@ msgstr "Sélectionner un produit"
 msgid "Select an account"
 msgstr "Sélectionner un compte"
 
-#: src/routes/organizations/index.tsx:615
+#: src/components/organizations/organization-edit-drawer.tsx:150
 msgid "Select country"
 msgstr "Sélectionner le pays"
 
-#: src/routes/organizations/index.tsx:848
+#: src/components/organizations/organization-edit-drawer.tsx:378
 msgid "Select date format"
 msgstr "Sélectionner le format de date"
 
@@ -3761,7 +3813,7 @@ msgstr "Sélectionnez exactement un numéro de série par unité expédiée."
 msgid "Select in-stock serial numbers"
 msgstr "Sélectionner les numéros de série en stock"
 
-#: src/routes/invoices/details.tsx:448
+#: src/routes/invoices/details.tsx:457
 msgid "Select or create a client"
 msgstr "Sélectionner ou créer un client"
 
@@ -3769,13 +3821,13 @@ msgstr "Sélectionner ou créer un client"
 msgid "Select or type a unit"
 msgstr "Sélectionner ou saisir une unité"
 
-#: src/routes/invoices/details.tsx:540
+#: src/routes/invoices/details.tsx:549
 msgid "Select payment terms"
 msgstr "Sélectionner les conditions de paiement"
 
 #: src/components/line-items/table.tsx:206
 #: src/components/stock/movement-form.tsx:137
-#: src/routes/invoices/details.tsx:759
+#: src/routes/invoices/details.tsx:768
 msgid "Select product"
 msgstr "Sélectionner un produit"
 
@@ -3784,7 +3836,7 @@ msgid "Select serial numbers to ship"
 msgstr "Sélectionner les numéros de série à expédier"
 
 #: src/components/products/form.tsx:393
-#: src/routes/invoices/details.tsx:881
+#: src/routes/invoices/details.tsx:890
 msgid "Select tax rate"
 msgstr "Sélectionner un taux de taxe"
 
@@ -3792,7 +3844,8 @@ msgstr "Sélectionner un taux de taxe"
 msgid "Send"
 msgstr "Envoyer"
 
-#: src/layouts/base.tsx:758
+#: src/layouts/base.tsx:783
+#: src/layouts/base.tsx:784
 msgid "Send feedback"
 msgstr "Envoyer un commentaire"
 
@@ -3800,7 +3853,7 @@ msgstr "Envoyer un commentaire"
 msgid "Send Feedback"
 msgstr "Envoyer des commentaires"
 
-#: src/types/invoice.ts:76
+#: src/types/invoice.ts:83
 msgid "Sent"
 msgstr "Envoyée"
 
@@ -3821,14 +3874,15 @@ msgstr "Numéros de série à retirer"
 msgid "Service"
 msgstr "Service"
 
-#: src/layouts/base.tsx:577
+#: src/layouts/base.tsx:804
+#: src/layouts/base.tsx:805
 msgid "Settings"
 msgstr "Paramètres"
 
 #: src/components/deliveries/delivery-note-pdf.tsx:213
 #: src/components/orders/order-confirmation-pdf.tsx:183
-msgid "Ship To"
-msgstr "Adresse de livraison"
+#~ msgid "Ship To"
+#~ msgstr "Adresse de livraison"
 
 #: src/components/imports/form.tsx:256
 msgid "Shipment"
@@ -3839,8 +3893,8 @@ msgstr ""
 msgid "Shipped"
 msgstr "Expédiée"
 
-#: src/routes/deliveries/details.tsx:367
-#: src/routes/orders/details.tsx:334
+#: src/routes/deliveries/details.tsx:374
+#: src/routes/orders/details.tsx:354
 msgid "Shipping address"
 msgstr "Adresse de livraison"
 
@@ -3848,11 +3902,15 @@ msgstr "Adresse de livraison"
 msgid "Shortage quantity found"
 msgstr "Quantité manquante détectée"
 
-#: src/routes/organizations/index.tsx:1129
+#: src/components/status-flow.tsx:100
+msgid "Show status flow"
+msgstr "Afficher le flux de statut"
+
+#: src/components/organizations/organization-edit-drawer.tsx:654
 msgid "Shows a fiscal stamp (flat, non-taxable duty) field on this organization's invoices, independent of the PDF layout."
 msgstr "Affiche un champ de timbre fiscal (droit fixe non soumis à taxe) sur les factures de cette organisation, indépendamment de la mise en page PDF."
 
-#: src/routes/organizations/index.tsx:1146
+#: src/components/organizations/organization-edit-drawer.tsx:671
 msgid "Shows a withholding tax rate field on this organization's invoices, independent of the PDF layout."
 msgstr "Affiche un champ de taux de retenue à la source sur les factures de cette organisation, indépendamment de la mise en page PDF."
 
@@ -3868,7 +3926,8 @@ msgstr "Connectez-vous à votre compte"
 msgid "Sign in with SSO"
 msgstr "Se connecter avec le SSO"
 
-#: src/layouts/base.tsx:802
+#: src/layouts/base.tsx:845
+#: src/layouts/base.tsx:846
 msgid "Sign out"
 msgstr "Se déconnecter"
 
@@ -3876,9 +3935,13 @@ msgstr "Se déconnecter"
 msgid "Single sign-on login failed — try again, or use your email and password below."
 msgstr "Échec de la connexion via l'authentification unique — réessayez, ou utilisez votre e-mail et votre mot de passe ci-dessous."
 
-#: src/routes/settings/backup.tsx:357
+#: src/routes/settings/backup.tsx:362
 msgid "Size"
 msgstr "Taille"
+
+#: src/layouts/base.tsx:318
+msgid "Skip to main content"
+msgstr "Passer au contenu principal"
 
 #: src/components/accounting/account-form.tsx:208
 msgid "SKR03/SKR04-style numeric account code for the DATEV export's \"Konto\" column. Required on every account referenced by a posted entry before a DATEV export can be generated."
@@ -3897,7 +3960,7 @@ msgstr "SKU / Code produit"
 msgid "Spend"
 msgstr "Dépenses"
 
-#: src/routes/organizations/index.tsx:1177
+#: src/components/organizations/organization-edit-drawer.tsx:702
 msgid "Stamp duty account"
 msgstr "Compte de timbre fiscal"
 
@@ -3911,30 +3974,29 @@ msgid "Start"
 msgstr "Début"
 
 #: src/routes/incoming-invoices.tsx:109
-#: src/routes/incoming-invoices/details.tsx:359
-#: src/routes/invoices/index.tsx:205
+#: src/routes/incoming-invoices/details.tsx:412
+#: src/routes/invoices/index.tsx:217
 msgid "State"
 msgstr "État"
 
-#: src/components/deliveries/delivery-note-pdf.tsx:176
 #: src/components/imports/form.tsx:394
 #: src/components/payments/payment-panel.tsx:225
 #: src/routes/accounting/fiscal-periods.tsx:198
 #: src/routes/accounting/fiscal-periods.tsx:257
 #: src/routes/accounting/journal-entries.tsx:137
 #: src/routes/deliveries.tsx:108
-#: src/routes/deliveries/details.tsx:347
+#: src/routes/deliveries/details.tsx:354
 #: src/routes/inbound-deliveries.tsx:108
-#: src/routes/inbound-deliveries/details.tsx:354
-#: src/routes/incoming-invoices/details.tsx:469
+#: src/routes/inbound-deliveries/details.tsx:413
+#: src/routes/incoming-invoices/details.tsx:522
 #: src/routes/orders.tsx:95
-#: src/routes/orders/details.tsx:315
+#: src/routes/orders/details.tsx:335
 #: src/routes/purchase-orders.tsx:118
-#: src/routes/purchase-orders/details.tsx:400
+#: src/routes/purchase-orders/details.tsx:420
 msgid "Status"
 msgstr "Statut"
 
-#: src/components/status-flow.tsx:42
+#: src/components/status-flow.tsx:52
 msgid "Status flow"
 msgstr "Flux de statut"
 
@@ -3950,11 +4012,11 @@ msgstr "Comptage de stock — manque détecté (soustraction)"
 msgid "Stock count — surplus found (add)"
 msgstr "Comptage de stock — surplus détecté (ajout)"
 
-#: src/routes/inventory.tsx:44
+#: src/routes/inventory.tsx:43
 msgid "Stock count (shortage)"
 msgstr "Comptage de stock (manque)"
 
-#: src/routes/inventory.tsx:38
+#: src/routes/inventory.tsx:37
 msgid "Stock count (surplus)"
 msgstr "Comptage de stock (surplus)"
 
@@ -3962,15 +4024,15 @@ msgstr "Comptage de stock (surplus)"
 msgid "Stock in — receive goods"
 msgstr "Entrée de stock — réception de marchandises"
 
-#: src/atoms/stock.ts:60
+#: src/atoms/stock.ts:66
 msgid "Stock movement deleted"
 msgstr "Mouvement de stock supprimé"
 
-#: src/atoms/stock.ts:34
+#: src/atoms/stock.ts:39
 msgid "Stock movement recorded"
 msgstr "Mouvement de stock enregistré"
 
-#: src/routes/organizations/index.tsx:432
+#: src/routes/organizations/index.tsx:390
 msgid "stock movement(s)"
 msgstr "mouvement(s) de stock"
 
@@ -3985,18 +4047,18 @@ msgstr "Valorisation des stocks"
 
 #: src/components/clients/form.tsx:280
 #: src/components/clients/form.tsx:281
+#: src/components/organizations/organization-edit-drawer.tsx:330
 #: src/components/vendors/form.tsx:247
 #: src/components/vendors/form.tsx:248
-#: src/routes/organizations/index.tsx:796
 msgid "Street"
 msgstr "Rue"
 
 #: src/components/invoices/pdf-tunisia.tsx:244
 #: src/components/invoices/pdf.tsx:349
-#: src/routes/incoming-invoices/details.tsx:413
-#: src/routes/invoices/details.tsx:975
-#: src/routes/orders/details.tsx:417
-#: src/routes/purchase-orders/details.tsx:510
+#: src/routes/incoming-invoices/details.tsx:466
+#: src/routes/invoices/details.tsx:984
+#: src/routes/orders/details.tsx:437
+#: src/routes/purchase-orders/details.tsx:530
 msgid "Subtotal"
 msgstr "Sous-total"
 
@@ -4004,15 +4066,17 @@ msgstr "Sous-total"
 msgid "Surplus quantity found"
 msgstr "Quantité en surplus détectée"
 
-#: src/layouts/base.tsx:764
+#: src/layouts/base.tsx:790
+#: src/layouts/base.tsx:792
 msgid "Switch to dark mode"
 msgstr "Passer au mode sombre"
 
-#: src/layouts/base.tsx:764
+#: src/layouts/base.tsx:790
+#: src/layouts/base.tsx:792
 msgid "Switch to light mode"
 msgstr "Passer au mode clair"
 
-#: src/routes/organizations/index.tsx:1086
+#: src/components/organizations/organization-edit-drawer.tsx:611
 msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 msgstr "Contre-compte synthétique pour une écriture manuelle comportant plusieurs lignes des deux côtés (sans ligne d'ancrage naturelle) lors de l'export vers DATEV. Laisser vide si vous n'utilisez pas DATEV."
 
@@ -4022,15 +4086,15 @@ msgstr "Tableau"
 
 #: src/components/invoices/pdf-tunisia.tsx:206
 #: src/components/line-items/table.tsx:314
-#: src/routes/incoming-invoices/details.tsx:416
-#: src/routes/invoices/details.tsx:982
-#: src/routes/invoices/details.tsx:988
+#: src/routes/incoming-invoices/details.tsx:469
+#: src/routes/invoices/details.tsx:991
+#: src/routes/invoices/details.tsx:997
 #: src/routes/reporting/tax-summary.tsx:67
 msgid "Tax"
 msgstr "Taxe"
 
 #: src/components/invoices/pdf.tsx:288
-#: src/routes/invoices/details.tsx:874
+#: src/routes/invoices/details.tsx:883
 msgid "Tax %"
 msgstr "Taxe %"
 
@@ -4045,7 +4109,7 @@ msgstr "Taxe sur la production, les services et l'importation à Ceuta et Melill
 
 #: src/components/clients/form.tsx:318
 #: src/components/clients/form.tsx:319
-#: src/routes/organizations/index.tsx:831
+#: src/components/organizations/organization-edit-drawer.tsx:361
 msgid "Tax number"
 msgstr "Numéro fiscal"
 
@@ -4054,42 +4118,42 @@ msgstr "Numéro fiscal"
 msgid "Tax rate"
 msgstr "Taux de taxe"
 
-#: src/atoms/tax-rate.ts:67
+#: src/atoms/tax-rate.ts:76
 msgid "Tax rate created"
 msgstr "Taux de taxe créé"
 
-#: src/atoms/tax-rate.ts:98
+#: src/atoms/tax-rate.ts:107
 msgid "Tax rate creation failed"
 msgstr "Échec de la création du taux de taxe"
 
-#: src/atoms/tax-rate.ts:113
+#: src/atoms/tax-rate.ts:122
 msgid "Tax rate deleted"
 msgstr "Taux de taxe supprimé"
 
-#: src/atoms/tax-rate.ts:115
-#: src/atoms/tax-rate.ts:119
+#: src/atoms/tax-rate.ts:124
+#: src/atoms/tax-rate.ts:128
 msgid "Tax rate deletion failed"
 msgstr "Échec de la suppression du taux de taxe"
 
-#: src/atoms/tax-rate.ts:100
+#: src/atoms/tax-rate.ts:109
 msgid "Tax rate update failed"
 msgstr "Échec de la mise à jour du taux de taxe"
 
-#: src/atoms/tax-rate.ts:88
+#: src/atoms/tax-rate.ts:97
 msgid "Tax rate updated successfully"
 msgstr "Taux de taxe mis à jour avec succès"
 
-#: src/routes/organizations/index.tsx:421
-#: src/routes/organizations/index.tsx:531
+#: src/components/organizations/organizations-table.tsx:98
+#: src/routes/organizations/index.tsx:379
 msgid "tax rate(s)"
 msgstr "taux de taxe"
 
-#: src/layouts/base.tsx:593
+#: src/layouts/base.tsx:233
 #: src/routes/settings/tax-rates.tsx:48
 msgid "Tax rates"
 msgstr "Taux de taxe"
 
-#: src/layouts/base.tsx:568
+#: src/layouts/base.tsx:683
 #: src/routes/reporting/tax-summary.tsx:81
 msgid "Tax Summary"
 msgstr "Récapitulatif de TVA"
@@ -4107,20 +4171,20 @@ msgid "Thank you for your business"
 msgstr "Merci pour votre confiance"
 
 #: src/components/orders/order-confirmation-pdf.tsx:285
-msgid "Thank you for your order. This document confirms your order as listed above."
-msgstr "Merci pour votre commande. Ce document confirme votre commande telle que listée ci-dessus."
+#~ msgid "Thank you for your order. This document confirms your order as listed above."
+#~ msgstr "Merci pour votre commande. Ce document confirme votre commande telle que listée ci-dessus."
 
-#: src/routes/incoming-invoices/details.tsx:320
+#: src/routes/incoming-invoices/details.tsx:373
 msgid "The number on the vendor's invoice"
 msgstr "Le numéro figurant sur la facture du fournisseur"
 
-#: src/routes/purchase-orders/details.tsx:343
+#: src/routes/purchase-orders/details.tsx:363
 msgid "The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received."
 msgstr ""
 
-#: src/routes/organizations/index.tsx:551
-#: src/routes/organizations/index.tsx:555
-#: src/routes/organizations/index.tsx:1362
+#: src/components/organizations/organization-danger-zone.tsx:102
+#: src/components/organizations/organizations-table.tsx:118
+#: src/components/organizations/organizations-table.tsx:122
 msgid "This cannot be undone."
 msgstr "Cette action est irréversible."
 
@@ -4128,6 +4192,7 @@ msgstr "Cette action est irréversible."
 #: src/components/currency/currency-fields.tsx:93
 #: src/components/currency/currency-fields.tsx:108
 #: src/components/line-items/table.tsx:196
+#: src/components/organizations/organization-edit-drawer.tsx:135
 #: src/components/payment-terms/form.tsx:120
 #: src/components/payments/payment-panel.tsx:273
 #: src/components/payments/payment-panel.tsx:280
@@ -4135,24 +4200,23 @@ msgstr "Cette action est irréversible."
 #: src/components/payments/payment-panel.tsx:306
 #: src/components/payments/payment-panel.tsx:345
 #: src/components/payments/payment-panel.tsx:354
-#: src/routes/invoices/details.tsx:450
-#: src/routes/invoices/details.tsx:578
-#: src/routes/invoices/details.tsx:607
-#: src/routes/invoices/details.tsx:621
-#: src/routes/invoices/details.tsx:633
+#: src/routes/invoices/details.tsx:459
+#: src/routes/invoices/details.tsx:587
+#: src/routes/invoices/details.tsx:616
+#: src/routes/invoices/details.tsx:630
 #: src/routes/invoices/details.tsx:642
-#: src/routes/invoices/details.tsx:752
-#: src/routes/invoices/details.tsx:799
-#: src/routes/invoices/details.tsx:839
-#: src/routes/invoices/details.tsx:900
-#: src/routes/organizations/index.tsx:600
+#: src/routes/invoices/details.tsx:651
+#: src/routes/invoices/details.tsx:761
+#: src/routes/invoices/details.tsx:808
+#: src/routes/invoices/details.tsx:848
+#: src/routes/invoices/details.tsx:909
 #: src/routes/settings/invoice.tsx:86
 #: src/routes/settings/invoice.tsx:151
 #: src/routes/settings/invoice.tsx:235
 msgid "This field is required!"
 msgstr "Ce champ est obligatoire !"
 
-#: src/routes/incoming-invoices/details.tsx:488
+#: src/routes/incoming-invoices/details.tsx:541
 msgid "This invoice does not match the purchase order and goods received"
 msgstr "Cette facture ne concorde pas avec la commande d'achat et les marchandises reçues"
 
@@ -4168,16 +4232,16 @@ msgstr "Cela annule son écriture comptable et rétablit le solde dû."
 msgid "This VAT category requires an exemption reason!"
 msgstr "Cette catégorie de TVA nécessite un motif d'exonération !"
 
-#: src/routes/inbound-deliveries/details.tsx:487
+#: src/routes/inbound-deliveries/details.tsx:546
 msgid "This will add the received quantities to stock. Continue?"
 msgstr "Les quantités reçues seront ajoutées au stock. Continuer ?"
 
-#: src/routes/organizations/index.tsx:541
-#: src/routes/organizations/index.tsx:1346
+#: src/components/organizations/organization-danger-zone.tsx:86
+#: src/components/organizations/organizations-table.tsx:108
 msgid "This will permanently delete:"
 msgstr "Ceci supprimera définitivement :"
 
-#: src/routes/inbound-deliveries/details.tsx:499
+#: src/routes/inbound-deliveries/details.tsx:558
 msgid "This will reverse the stock this receipt added. Continue?"
 msgstr "Le stock ajouté par cette réception sera contrepassé. Continuer ?"
 
@@ -4200,20 +4264,16 @@ msgstr "Meilleurs produits"
 
 #: src/components/invoices/pdf.tsx:291
 #: src/components/invoices/pdf.tsx:375
-#: src/components/orders/order-confirmation-pdf.tsx:240
-#: src/components/orders/order-confirmation-pdf.tsx:268
 #: src/components/payments/payment-panel.tsx:183
-#: src/components/purchase-orders/purchase-order-pdf.tsx:245
-#: src/components/purchase-orders/purchase-order-pdf.tsx:274
 #: src/routes/accounting/reports/ap-aging.tsx:50
 #: src/routes/accounting/reports/ar-aging.tsx:50
 #: src/routes/accounting/trial-balance.tsx:106
 #: src/routes/dashboard.tsx:184
 #: src/routes/incoming-invoices.tsx:147
-#: src/routes/incoming-invoices/details.tsx:419
-#: src/routes/invoices/details.tsx:895
-#: src/routes/invoices/details.tsx:1000
-#: src/routes/invoices/index.tsx:195
+#: src/routes/incoming-invoices/details.tsx:472
+#: src/routes/invoices/details.tsx:904
+#: src/routes/invoices/details.tsx:1009
+#: src/routes/invoices/index.tsx:207
 msgid "Total"
 msgstr "Total"
 
@@ -4261,22 +4321,21 @@ msgstr "Suivre l'inventaire"
 msgid "Track serial numbers"
 msgstr "Suivre les numéros de série"
 
-#: src/components/deliveries/delivery-note-pdf.tsx:169
 #: src/routes/orders.tsx:116
 msgid "Tracking"
 msgstr "Suivi"
 
-#: src/routes/deliveries/details.tsx:342
-#: src/routes/inbound-deliveries/details.tsx:392
-#: src/routes/orders/details.tsx:310
+#: src/routes/deliveries/details.tsx:349
+#: src/routes/inbound-deliveries/details.tsx:451
+#: src/routes/orders/details.tsx:330
 msgid "Tracking number"
 msgstr "Numéro de suivi"
 
-#: src/routes/organizations/index.tsx:1324
+#: src/components/organizations/organization-danger-zone.tsx:64
 msgid "Transactional data"
 msgstr "Données transactionnelles"
 
-#: src/layouts/base.tsx:471
+#: src/layouts/base.tsx:586
 #: src/routes/accounting/trial-balance.tsx:69
 msgid "Trial Balance"
 msgstr "Balance générale"
@@ -4291,7 +4350,7 @@ msgstr "Tunisie"
 #: src/components/stock/movement-form.tsx:147
 #: src/routes/accounting/chart-of-accounts.tsx:119
 #: src/routes/accounting/journals.tsx:98
-#: src/routes/inventory.tsx:250
+#: src/routes/inventory.tsx:249
 #: src/routes/products.tsx:173
 msgid "Type"
 msgstr "Type"
@@ -4305,24 +4364,21 @@ msgstr "Saisissez un numéro de série et appuyez sur Entrée"
 msgid "Unclassified"
 msgstr ""
 
-#: src/components/deliveries/delivery-note-pdf.tsx:230
 #: src/components/line-items/table.tsx:278
 #: src/components/products/form.tsx:381
-#: src/components/purchase-orders/purchase-order-pdf.tsx:239
 msgid "Unit"
 msgstr "Unité"
 
-#: src/routes/inbound-deliveries/details.tsx:435
-#: src/routes/purchase-orders/details.tsx:461
+#: src/routes/inbound-deliveries/details.tsx:494
+#: src/routes/purchase-orders/details.tsx:481
 msgid "Unit cost"
 msgstr "Coût unitaire"
 
 #: src/components/purchase-orders/purchase-order-pdf.tsx:242
-msgid "Unit Cost"
-msgstr "Coût unitaire"
+#~ msgid "Unit Cost"
+#~ msgstr "Coût unitaire"
 
 #: src/components/line-items/table.tsx:294
-#: src/components/orders/order-confirmation-pdf.tsx:237
 msgid "Unit price"
 msgstr "Prix unitaire"
 
@@ -4334,6 +4390,10 @@ msgstr "PU HT"
 msgid "units"
 msgstr "unités"
 
+#: src/components/imports/form.tsx:418
+msgid "Unlink purchase order"
+msgstr "Dissocier le bon de commande"
+
 #: src/components/imports/form.tsx:408
 msgid "Unlink this purchase order from the shipment?"
 msgstr "Délier cette commande d'achat de l'import ?"
@@ -4342,7 +4402,7 @@ msgstr "Délier cette commande d'achat de l'import ?"
 msgid "Unrated"
 msgstr "Non taxé"
 
-#: src/routes/settings/backup.tsx:318
+#: src/routes/settings/backup.tsx:323
 msgid "Upload a .db file to replace the current database."
 msgstr "Téléversez un fichier .db pour remplacer la base de données actuelle."
 
@@ -4354,7 +4414,7 @@ msgstr ""
 msgid "Upload failed"
 msgstr ""
 
-#: src/routes/organizations/index.tsx:726
+#: src/components/organizations/organization-edit-drawer.tsx:260
 msgid "Upload logo"
 msgstr "Téléverser le logo"
 
@@ -4366,23 +4426,23 @@ msgstr ""
 msgid "Used by {documentCount} document(s)"
 msgstr "Utilisé par {documentCount} document(s)"
 
-#: src/routes/organizations/index.tsx:933
+#: src/components/organizations/organization-edit-drawer.tsx:458
 msgid "Used for a sales invoice line whose product has no override."
 msgstr "Utilisé pour une ligne de facture de vente dont le produit ne définit pas de compte propre."
 
-#: src/routes/organizations/index.tsx:952
+#: src/components/organizations/organization-edit-drawer.tsx:477
 msgid "Used for a vendor bill line whose product has no override."
 msgstr "Utilisé pour une ligne de facture fournisseur dont le produit ne définit pas de compte propre."
 
-#: src/routes/organizations/index.tsx:917
+#: src/components/organizations/organization-edit-drawer.tsx:442
 msgid "Used for the AP line when a vendor bill posts."
 msgstr "Utilisé pour la ligne comptes fournisseurs lors de la comptabilisation d'une facture fournisseur."
 
-#: src/routes/organizations/index.tsx:901
+#: src/components/organizations/organization-edit-drawer.tsx:427
 msgid "Used for the AR line when a sales invoice posts."
 msgstr "Utilisé pour la ligne comptes clients lors de la comptabilisation d'une facture de vente."
 
-#: src/routes/organizations/index.tsx:985
+#: src/components/organizations/organization-edit-drawer.tsx:510
 msgid "Used to capitalize a stock-enabled product's value when it's received or adjusted."
 msgstr "Utilisé pour activer la valeur d'un produit géré en stock lors de sa réception ou d'un ajustement."
 
@@ -4394,15 +4454,15 @@ msgstr "Utilisé lorsque ce taux s'applique à une facture de vente — un compt
 msgid "Used when this rate applies to a vendor bill — a reclaimable asset account."
 msgstr "Utilisé lorsque ce taux s'applique à une facture fournisseur — un compte d'actif récupérable."
 
-#: src/routes/organizations/index.tsx:1215
-#: src/routes/organizations/index.tsx:1241
-#: src/routes/organizations/index.tsx:1279
+#: src/components/organizations/organization-members-panel.tsx:48
+#: src/components/organizations/organization-members-panel.tsx:74
+#: src/components/organizations/organization-members-panel.tsx:113
 #: src/routes/settings/users.tsx:200
 #: src/routes/settings/users.tsx:330
 msgid "User"
 msgstr "Utilisateur"
 
-#: src/layouts/base.tsx:631
+#: src/layouts/base.tsx:271
 #: src/routes/settings/users.tsx:149
 msgid "Users"
 msgstr "Utilisateurs"
@@ -4417,8 +4477,8 @@ msgstr "Valeur"
 #: src/components/orders/order-confirmation-pdf.tsx:221
 #: src/components/purchase-orders/purchase-order-pdf.tsx:208
 #: src/components/purchase-orders/purchase-order-pdf.tsx:223
-msgid "VAT"
-msgstr "TVA"
+#~ msgid "VAT"
+#~ msgstr "TVA"
 
 #: src/components/tax-rates/form.tsx:218
 msgid "VAT category"
@@ -4441,41 +4501,40 @@ msgid "VATIN"
 msgstr "N° TVA"
 
 #: src/components/imports/form.tsx:389
-#: src/components/purchase-orders/purchase-order-pdf.tsx:214
 #: src/routes/accounting/reports/ap-aging.tsx:98
 #: src/routes/inbound-deliveries.tsx:90
-#: src/routes/inbound-deliveries/details.tsx:275
+#: src/routes/inbound-deliveries/details.tsx:329
 #: src/routes/incoming-invoices.tsx:94
-#: src/routes/incoming-invoices/details.tsx:287
+#: src/routes/incoming-invoices/details.tsx:335
 #: src/routes/purchase-orders.tsx:89
-#: src/routes/purchase-orders/details.tsx:290
+#: src/routes/purchase-orders/details.tsx:305
 #: src/routes/reporting/purchases-by-vendor.tsx:94
 msgid "Vendor"
 msgstr "Fournisseur"
 
-#: src/atoms/vendor.ts:72
+#: src/atoms/vendor.ts:79
 msgid "Vendor created"
 msgstr "Fournisseur créé"
 
-#: src/atoms/vendor.ts:90
+#: src/atoms/vendor.ts:97
 msgid "Vendor creation failed"
 msgstr "Échec de la création du fournisseur"
 
-#: src/atoms/vendor.ts:108
+#: src/atoms/vendor.ts:115
 msgid "Vendor deleted"
 msgstr "Fournisseur supprimé"
 
-#: src/atoms/vendor.ts:110
 #: src/atoms/vendor.ts:117
+#: src/atoms/vendor.ts:124
 msgid "Vendor deletion failed"
 msgstr "Échec de la suppression du fournisseur"
 
-#: src/routes/inbound-deliveries/details.tsx:387
+#: src/routes/inbound-deliveries/details.tsx:446
 msgid "Vendor delivery note"
 msgstr "Bon de livraison du fournisseur"
 
 #: src/routes/incoming-invoices.tsx:82
-#: src/routes/incoming-invoices/details.tsx:316
+#: src/routes/incoming-invoices/details.tsx:369
 msgid "Vendor invoice #"
 msgstr "N° de facture fournisseur"
 
@@ -4483,35 +4542,35 @@ msgstr "N° de facture fournisseur"
 msgid "Vendor invoice matching"
 msgstr "Rapprochement des factures fournisseurs"
 
-#: src/routes/incoming-invoices/details.tsx:318
+#: src/routes/incoming-invoices/details.tsx:371
 msgid "Vendor invoice number is required"
 msgstr "Le numéro de facture fournisseur est obligatoire"
 
-#: src/routes/inbound-deliveries/details.tsx:277
-#: src/routes/incoming-invoices/details.tsx:289
-#: src/routes/purchase-orders/details.tsx:292
+#: src/routes/inbound-deliveries/details.tsx:331
+#: src/routes/incoming-invoices/details.tsx:337
+#: src/routes/purchase-orders/details.tsx:307
 msgid "Vendor is required"
 msgstr "Le fournisseur est obligatoire"
 
-#: src/atoms/vendor.ts:92
+#: src/atoms/vendor.ts:99
 msgid "Vendor update failed"
 msgstr "Échec de la mise à jour du fournisseur"
 
-#: src/atoms/vendor.ts:80
+#: src/atoms/vendor.ts:87
 msgid "Vendor updated successfully"
 msgstr "Fournisseur mis à jour avec succès"
 
-#: src/routes/organizations/index.tsx:419
-#: src/routes/organizations/index.tsx:523
+#: src/components/organizations/organizations-table.tsx:90
+#: src/routes/organizations/index.tsx:377
 msgid "vendor(s)"
 msgstr "fournisseur(s)"
 
-#: src/layouts/base.tsx:401
+#: src/layouts/base.tsx:516
 #: src/routes/vendors.tsx:59
 msgid "Vendors"
 msgstr "Fournisseurs"
 
-#: src/routes/invoices/details.tsx:340
+#: src/routes/invoices/details.tsx:344
 msgid "View"
 msgstr "Afficher"
 
@@ -4527,7 +4586,7 @@ msgstr "Annuler ce paiement ?"
 msgid "Voided"
 msgstr "Annulé"
 
-#: src/routes/deliveries/details.tsx:312
+#: src/routes/deliveries/details.tsx:319
 msgid "Walk-in / no client"
 msgstr ""
 
@@ -4537,10 +4596,10 @@ msgstr "Attention : Cela supprimera également {invoiceCount} facture(s) associ�
 
 #: src/components/clients/form.tsx:242
 #: src/components/clients/form.tsx:243
+#: src/components/organizations/organization-edit-drawer.tsx:186
 #: src/components/vendors/form.tsx:199
 #: src/components/vendors/form.tsx:200
 #: src/routes/clients.tsx:143
-#: src/routes/organizations/index.tsx:651
 #: src/routes/vendors.tsx:143
 msgid "Website"
 msgstr "Site web"
@@ -4549,11 +4608,11 @@ msgstr "Site web"
 msgid "week"
 msgstr "semaine"
 
-#: src/routes/organizations/index.tsx:874
+#: src/components/organizations/organization-edit-drawer.tsx:401
 msgid "Which template invoices for this organization render with."
 msgstr "Le modèle avec lequel les factures de cette organisation sont générées."
 
-#: src/routes/incoming-invoices/details.tsx:519
+#: src/routes/incoming-invoices/details.tsx:572
 msgid "Why is this variance acceptable?"
 msgstr "Pourquoi cet écart est-il acceptable ?"
 
@@ -4562,11 +4621,11 @@ msgstr "Pourquoi cet écart est-il acceptable ?"
 msgid "Withholding tax"
 msgstr "Retenue à la source"
 
-#: src/routes/invoices/details.tsx:1009
+#: src/routes/invoices/details.tsx:1018
 msgid "Withholding tax ({withholdingTaxRate}%)"
 msgstr "Retenue à la source ({withholdingTaxRate}%)"
 
-#: src/routes/invoices/details.tsx:707
+#: src/routes/invoices/details.tsx:716
 msgid "Withholding tax rate"
 msgstr "Taux de retenue à la source"
 
@@ -4586,21 +4645,21 @@ msgstr "Taux de retenue à la source"
 #: src/components/tax-rates/form.tsx:150
 #: src/components/vendors/form.tsx:134
 #: src/routes/accounting/fiscal-periods.tsx:224
-#: src/routes/accounting/journal-entries/details.tsx:355
-#: src/routes/accounting/journal-entries/details.tsx:365
-#: src/routes/deliveries/details.tsx:454
-#: src/routes/deliveries/details.tsx:479
-#: src/routes/inbound-deliveries/details.tsx:473
-#: src/routes/inbound-deliveries/details.tsx:489
-#: src/routes/inbound-deliveries/details.tsx:503
-#: src/routes/incoming-invoices/details.tsx:560
-#: src/routes/inventory.tsx:294
-#: src/routes/invoices/details.tsx:1059
-#: src/routes/invoices/index.tsx:109
-#: src/routes/orders/details.tsx:447
-#: src/routes/orders/details.tsx:475
-#: src/routes/purchase-orders/details.tsx:540
-#: src/routes/purchase-orders/details.tsx:567
+#: src/routes/accounting/journal-entries/details.tsx:356
+#: src/routes/accounting/journal-entries/details.tsx:366
+#: src/routes/deliveries/details.tsx:464
+#: src/routes/deliveries/details.tsx:489
+#: src/routes/inbound-deliveries/details.tsx:532
+#: src/routes/inbound-deliveries/details.tsx:548
+#: src/routes/inbound-deliveries/details.tsx:562
+#: src/routes/incoming-invoices/details.tsx:613
+#: src/routes/inventory.tsx:293
+#: src/routes/invoices/details.tsx:1067
+#: src/routes/invoices/index.tsx:119
+#: src/routes/orders/details.tsx:467
+#: src/routes/orders/details.tsx:495
+#: src/routes/purchase-orders/details.tsx:560
+#: src/routes/purchase-orders/details.tsx:587
 #: src/routes/settings/users.tsx:267
 msgid "Yes"
 msgstr "Oui"

@@ -299,6 +299,7 @@ const JournalEntryDetails = () => {
                         danger
                         icon={<DeleteOutlined />}
                         onClick={() => remove(field.name)}
+                        aria-label={t`Remove line`}
                       />
                     )}
                   />

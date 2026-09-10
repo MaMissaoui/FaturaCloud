@@ -306,6 +306,17 @@ export default function BaseLayout() {
 
   return (
     <Layout hasSider style={{ minHeight: "100vh", width: "100%" }}>
+      <a
+        href="#main-content"
+        className="skip-link"
+        style={{
+          background: colorBgContainer,
+          color: colorPrimary,
+          border: `1px solid ${colorPrimary}`,
+        }}
+      >
+        <Trans>Skip to main content</Trans>
+      </a>
       {isMobile && (
         <div
           onClick={closeMobileMenu}
@@ -707,6 +718,7 @@ export default function BaseLayout() {
                       ? setMobileMenuOpen(!mobileMenuOpen)
                       : setSiderCollapsed(!siderCollapsed)
                   }
+                  aria-label={siderIsCollapsed ? t`Expand sidebar` : t`Collapse sidebar`}
                   style={{
                     fontSize: "16px",
                     width: 64,
@@ -769,12 +781,16 @@ export default function BaseLayout() {
                     setFeedbackModalOpen(true);
                   }}
                   title={t`Send feedback`}
+                  aria-label={t`Send feedback`}
                 />
                 <Button
                   type="text"
                   icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
                   onClick={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
                   title={themeMode === "dark" ? t`Switch to light mode` : t`Switch to dark mode`}
+                  aria-label={
+                    themeMode === "dark" ? t`Switch to light mode` : t`Switch to dark mode`
+                  }
                 />
                 <Dropdown
                   menu={{ items: settingsMenuItems }}
@@ -786,11 +802,13 @@ export default function BaseLayout() {
                     icon={<SettingOutlined />}
                     style={isSettingsRoute ? { color: colorPrimary } : undefined}
                     title={t`Settings`}
+                    aria-label={t`Settings`}
                   />
                 </Dropdown>
                 <Select
                   variant="borderless"
                   popupMatchSelectWidth={false}
+                  aria-label={t`Language`}
                   onSelect={(value) => {
                     setLocale(value);
                     dynamicActivate(value);
@@ -825,6 +843,7 @@ export default function BaseLayout() {
                       size="small"
                       onClick={handleLogout}
                       title={t`Sign out`}
+                      aria-label={t`Sign out`}
                     />
                   </Space>
                 )}
@@ -833,6 +852,8 @@ export default function BaseLayout() {
           </Row>
         </Header>
         <Content
+          id="main-content"
+          tabIndex={-1}
           style={{
             margin: "24px 16px",
             padding: 24,

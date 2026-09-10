@@ -294,7 +294,13 @@ const Inventory = () => {
                     cancelText={<Trans>No</Trans>}
                     placement="left"
                   >
-                    <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      size="small"
+                      aria-label={t`Delete movement`}
+                    />
                   </Popconfirm>
                 </Tooltip>
               )}
