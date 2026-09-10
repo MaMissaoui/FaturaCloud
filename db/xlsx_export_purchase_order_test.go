@@ -45,7 +45,7 @@ func TestFillPurchaseOrderTemplateResolvesScalarPlaceholders(t *testing.T) {
 	order := testPurchaseOrder()
 	lineItems := []PurchaseOrderLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
 
-	out, unresolved, err := FillPurchaseOrderTemplate(tmpl, order, lineItems, testOrg(), testVendor(), nil)
+	out, unresolved, err := FillPurchaseOrderTemplate(tmpl, order, lineItems, testOrg(), testVendor(), nil, "")
 	if err != nil {
 		t.Fatalf("FillPurchaseOrderTemplate: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestFillPurchaseOrderTemplateComputesTotalsFromLineItems(t *testing.T) {
 	}
 	taxRates := map[string]TaxRate{"rate1": {ID: "rate1", Percentage: 19}}
 
-	out, _, err := FillPurchaseOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testVendor(), taxRates)
+	out, _, err := FillPurchaseOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testVendor(), taxRates, "")
 	if err != nil {
 		t.Fatalf("FillPurchaseOrderTemplate: %v", err)
 	}

@@ -42,7 +42,7 @@ func TestFillInboundDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
 	delivery := testInboundDelivery()
 	lineItems := []InboundDeliveryLineItem{{Description: "Widget", Quantity: 2, UnitCost: ptr(int64(500))}}
 
-	out, unresolved, err := FillInboundDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testVendor())
+	out, unresolved, err := FillInboundDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testVendor(), "")
 	if err != nil {
 		t.Fatalf("FillInboundDeliveryTemplate: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestFillInboundDeliveryTemplateComputesLineTotalFromCost(t *testing.T) {
 	delivery := testInboundDelivery()
 	lineItems := []InboundDeliveryLineItem{{Description: "Widget", Quantity: 2, UnitCost: ptr(int64(1000))}}
 
-	out, _, err := FillInboundDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testVendor())
+	out, _, err := FillInboundDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testVendor(), "")
 	if err != nil {
 		t.Fatalf("FillInboundDeliveryTemplate: %v", err)
 	}

@@ -77,6 +77,11 @@ var masterDataTables = []string{
 	// export-template overrides the same way it clears every other
 	// configuration/reference table in this list.
 	"document_templates",
+	// document_template_settings (per-document-type orientation) is the
+	// same category of org configuration as document_templates just above —
+	// a reset clears an org's orientation overrides too, reverting every
+	// document type back to whatever its template itself is authored with.
+	"document_template_settings",
 	// payment_terms (the maintained Payment terms list) is reference data
 	// with no FK from invoices, same category as taxRates above.
 	"payment_terms",

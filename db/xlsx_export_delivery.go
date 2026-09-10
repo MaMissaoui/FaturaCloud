@@ -15,6 +15,7 @@ func FillDeliveryTemplate(
 	lineItems []OutboundDeliveryLineItem,
 	org Organization,
 	client Client,
+	orientation string,
 ) ([]byte, []string, error) {
 	scalars := buildDeliveryScalarPlaceholders(delivery, org, client)
 	mergeExportMetaPlaceholders(scalars, org.DateFormat)
@@ -22,7 +23,7 @@ func FillDeliveryTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildDeliveryLineItemPlaceholders(li)
 	}
-	return fillTemplate(templateBytes, scalars, lineRows)
+	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
 
 // FetchDeliveryExportData gathers everything FillDeliveryTemplate needs for
@@ -30,18 +31,18 @@ func FillDeliveryTemplate(
 // Callers hold dbMu only around this call; the fill/convert step that
 // follows must run lock-free (see api/document_templates.go's
 // exportInvoiceDocument for why).
-func (d *Database) FetchDeliveryExportData(deliveryID string) (*OutboundDelivery, []OutboundDeliveryLineItem, *Organization, *Client, []byte, error) {
+func (d *Database) FetchDeliveryExportData(deliveryID string) (*OutboundDelivery, []OutboundDeliveryLineItem, *Organization, *Client, []byte, string, error) {
 	delivery, err := d.GetDelivery(deliveryID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_delivery_export_data: get delivery: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_delivery_export_data: get delivery: %w", err)
 	}
 	lineItems, err := d.GetDeliveryLineItems(deliveryID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_delivery_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_delivery_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(delivery.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_delivery_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_delivery_export_data: get organization: %w", err)
 	}
 
 	// ClientID is the *effective* client (order's, or the delivery's own —
@@ -52,17 +53,21 @@ func (d *Database) FetchDeliveryExportData(deliveryID string) (*OutboundDelivery
 	if delivery.ClientID != nil {
 		c, err := d.GetClient(*delivery.ClientID)
 		if err != nil {
-			return nil, nil, nil, nil, nil, fmt.Errorf("fetch_delivery_export_data: get client: %w", err)
+			return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_delivery_export_data: get client: %w", err)
 		}
 		client = *c
 	}
 
 	templateBytes, _, err := resolveTemplateBytes(d, delivery.OrganizationID, "delivery")
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_delivery_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_delivery_export_data: resolve template: %w", err)
+	}
+	orientation, err := d.GetDocumentTemplateOrientation(delivery.OrganizationID, "delivery")
+	if err != nil {
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_delivery_export_data: resolve orientation: %w", err)
 	}
 
-	return delivery, lineItems, org, &client, templateBytes, nil
+	return delivery, lineItems, org, &client, templateBytes, orientation, nil
 }
 
 // buildDeliveryScalarPlaceholders is the fixed namespace->field allowlist

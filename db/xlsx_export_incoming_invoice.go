@@ -18,6 +18,7 @@ func FillIncomingInvoiceTemplate(
 	org Organization,
 	vendor Vendor,
 	taxRates map[string]TaxRate,
+	orientation string,
 ) ([]byte, []string, error) {
 	currency := invoice.Currency
 	if currency == "" && org.Currency != nil {
@@ -30,7 +31,7 @@ func FillIncomingInvoiceTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	return fillTemplate(templateBytes, scalars, lineRows)
+	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
 
 // FetchIncomingInvoiceExportData gathers everything FillIncomingInvoiceTemplate
@@ -39,18 +40,18 @@ func FillIncomingInvoiceTemplate(
 // Callers hold dbMu only around this call; the fill/convert step that
 // follows must run lock-free (see api/document_templates.go's
 // exportInvoiceDocument for why).
-func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingInvoice, []IncomingInvoiceLineItem, *Organization, *Vendor, []byte, map[string]TaxRate, error) {
+func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingInvoice, []IncomingInvoiceLineItem, *Organization, *Vendor, []byte, map[string]TaxRate, string, error) {
 	invoice, err := d.GetIncomingInvoice(invoiceID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_incoming_invoice_export_data: get incoming invoice: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get incoming invoice: %w", err)
 	}
 	lineItems, err := d.GetIncomingInvoiceLineItems(invoiceID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_incoming_invoice_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(invoice.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_incoming_invoice_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get organization: %w", err)
 	}
 
 	// Unlike purchase_orders.vendorId, incoming_invoices.vendorId is a
@@ -58,12 +59,16 @@ func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingIn
 	// so no vendor-less fallback is needed here.
 	vendor, err := d.GetVendor(invoice.VendorID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_incoming_invoice_export_data: get vendor: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get vendor: %w", err)
 	}
 
 	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "incoming_invoice")
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_incoming_invoice_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve template: %w", err)
+	}
+	orientation, err := d.GetDocumentTemplateOrientation(invoice.OrganizationID, "incoming_invoice")
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve orientation: %w", err)
 	}
 
 	taxRates := map[string]TaxRate{}
@@ -81,7 +86,7 @@ func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingIn
 		taxRates[*li.TaxRate] = *rate
 	}
 
-	return invoice, lineItems, org, vendor, templateBytes, taxRates, nil
+	return invoice, lineItems, org, vendor, templateBytes, taxRates, orientation, nil
 }
 
 // buildIncomingInvoiceScalarPlaceholders is the fixed namespace->field

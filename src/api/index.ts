@@ -387,6 +387,34 @@ export const UploadDocumentTemplate = async (
 export const DeleteDocumentTemplate = (orgId: string, documentType: string) =>
   del<void>(`/organizations/${orgId}/document-templates/${documentType}`);
 
+// Page orientation (landscape/portrait) override for one document type's
+// export. orientation is "" when the org has never set one — the fill
+// engine then leaves the template's own authored page setup untouched
+// (every embedded default renders portrait with no override).
+export interface DocumentTemplateOrientation {
+  orientation: "" | "portrait" | "landscape";
+}
+
+export const GetDocumentTemplateOrientation = (orgId: string, documentType: string) =>
+  get<DocumentTemplateOrientation>(
+    `/organizations/${orgId}/document-templates/${documentType}/orientation`,
+  );
+
+export const UpdateDocumentTemplateOrientation = (
+  orgId: string,
+  documentType: string,
+  orientation: "portrait" | "landscape",
+) =>
+  put<DocumentTemplateOrientation>(
+    `/organizations/${orgId}/document-templates/${documentType}/orientation`,
+    {
+      orientation,
+    },
+  );
+
+export const DeleteDocumentTemplateOrientation = (orgId: string, documentType: string) =>
+  del<void>(`/organizations/${orgId}/document-templates/${documentType}/orientation`);
+
 // ---- Clients ----
 
 export const GetClients = (organizationId: string) =>

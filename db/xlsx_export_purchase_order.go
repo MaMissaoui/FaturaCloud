@@ -16,6 +16,7 @@ func FillPurchaseOrderTemplate(
 	org Organization,
 	vendor Vendor,
 	taxRates map[string]TaxRate,
+	orientation string,
 ) ([]byte, []string, error) {
 	currency := ""
 	if order.Currency != nil {
@@ -36,7 +37,7 @@ func FillPurchaseOrderTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildPurchaseOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	return fillTemplate(templateBytes, scalars, lineRows)
+	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
 
 // FetchPurchaseOrderExportData gathers everything FillPurchaseOrderTemplate
@@ -45,18 +46,18 @@ func FillPurchaseOrderTemplate(
 // Callers hold dbMu only around this call; the fill/convert step that
 // follows must run lock-free (see api/document_templates.go's
 // exportInvoiceDocument for why).
-func (d *Database) FetchPurchaseOrderExportData(orderID string) (*PurchaseOrder, []PurchaseOrderLineItem, *Organization, *Vendor, []byte, map[string]TaxRate, error) {
+func (d *Database) FetchPurchaseOrderExportData(orderID string) (*PurchaseOrder, []PurchaseOrderLineItem, *Organization, *Vendor, []byte, map[string]TaxRate, string, error) {
 	order, err := d.GetPurchaseOrder(orderID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_purchase_order_export_data: get purchase order: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: get purchase order: %w", err)
 	}
 	lineItems, err := d.GetPurchaseOrderLineItems(orderID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_purchase_order_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(order.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_purchase_order_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: get organization: %w", err)
 	}
 
 	// A purchase order's vendorId has no ON DELETE clause and no NOT NULL
@@ -66,14 +67,18 @@ func (d *Database) FetchPurchaseOrderExportData(orderID string) (*PurchaseOrder,
 	if order.VendorID != nil {
 		v, err := d.GetVendor(*order.VendorID)
 		if err != nil {
-			return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_purchase_order_export_data: get vendor: %w", err)
+			return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: get vendor: %w", err)
 		}
 		vendor = *v
 	}
 
 	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "purchase_order")
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_purchase_order_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: resolve template: %w", err)
+	}
+	orientation, err := d.GetDocumentTemplateOrientation(order.OrganizationID, "purchase_order")
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: resolve orientation: %w", err)
 	}
 
 	taxRates := map[string]TaxRate{}
@@ -91,7 +96,7 @@ func (d *Database) FetchPurchaseOrderExportData(orderID string) (*PurchaseOrder,
 		taxRates[*li.TaxRate] = *rate
 	}
 
-	return order, lineItems, org, &vendor, templateBytes, taxRates, nil
+	return order, lineItems, org, &vendor, templateBytes, taxRates, orientation, nil
 }
 
 // buildPurchaseOrderScalarPlaceholders is the fixed namespace->field

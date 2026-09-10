@@ -44,7 +44,7 @@ func TestFillIncomingInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
 	invoice := testIncomingInvoice()
 	lineItems := []IncomingInvoiceLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
 
-	out, unresolved, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil)
+	out, unresolved, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil, "")
 	if err != nil {
 		t.Fatalf("FillIncomingInvoiceTemplate: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestFillIncomingInvoiceTemplateUsesStoredTotals(t *testing.T) {
 	// match the invoice's own stored totals.
 	lineItems := []IncomingInvoiceLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 100}}
 
-	out, _, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil)
+	out, _, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil, "")
 	if err != nil {
 		t.Fatalf("FillIncomingInvoiceTemplate: %v", err)
 	}

@@ -186,6 +186,12 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.getDocumentTemplate)
 	orgMemberProtected("POST", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.uploadDocumentTemplate)
 	orgMemberProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.deleteDocumentTemplate)
+	// Per-document-type page orientation (landscape/portrait) — a setting,
+	// not a file, so it's a separate sub-resource rather than folded into
+	// the upload/download routes above. Same org-member protection tier.
+	orgMemberProtected("GET", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.getDocumentTemplateOrientation)
+	orgMemberProtected("PUT", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.updateDocumentTemplateOrientation)
+	orgMemberProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.deleteDocumentTemplateOrientation)
 
 	// Clients
 	// clientOrgID resolves a client route's {id} to its owning organization

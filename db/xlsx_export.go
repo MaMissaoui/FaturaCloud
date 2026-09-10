@@ -35,6 +35,7 @@ func FillInvoiceTemplate(
 	org Organization,
 	client Client,
 	taxRates map[string]TaxRate,
+	orientation string,
 ) ([]byte, []string, error) {
 	currency := ""
 	if org.Currency != nil {
@@ -46,7 +47,7 @@ func FillInvoiceTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	return fillTemplate(templateBytes, scalars, lineRows)
+	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
 
 // mergeExportMetaPlaceholders adds placeholders describing the export
@@ -87,7 +88,17 @@ func mergeExportMetaPlaceholders(scalars map[string]string, dateFormat *string) 
 // split exists so adding a new exportable document type only ever means
 // writing that type's own scalar/line-item placeholder builders, never
 // touching the marker-expansion/substitution/sheet-stripping mechanics below.
-func fillTemplate(templateBytes []byte, scalars map[string]string, lineRows []map[string]string) ([]byte, []string, error) {
+//
+// orientation is "portrait", "landscape", or "" — "" means no org override
+// exists (db.GetDocumentTemplateOrientation's no-row case) and the
+// template's own authored page setup is left completely untouched, so
+// every organization that has never visited the orientation setting gets
+// byte-identical output to before this parameter existed. A non-empty
+// value always wins over whatever the source template (embedded default or
+// an org's own upload) itself specifies — see the doc comment on
+// db.SetDocumentTemplateOrientation for why that's the deliberate
+// direction, not just a default.
+func fillTemplate(templateBytes []byte, scalars map[string]string, lineRows []map[string]string, orientation string) ([]byte, []string, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(templateBytes))
 	if err != nil {
 		return nil, nil, fmt.Errorf("fill_template: open: %w", err)
@@ -178,6 +189,12 @@ func fillTemplate(templateBytes []byte, scalars map[string]string, lineRows []ma
 		}
 	}
 
+	if orientation != "" {
+		if err := f.SetPageLayout(sheet, &excelize.PageLayoutOptions{Orientation: &orientation}); err != nil {
+			return nil, nil, fmt.Errorf("fill_template: set orientation: %w", err)
+		}
+	}
+
 	// Strip every sheet but the content sheet before returning. A template
 	// author may keep a reference/notes sheet alongside the content sheet
 	// (the embedded default's "Available fields" tab documents every
@@ -209,30 +226,36 @@ func fillTemplate(templateBytes []byte, scalars map[string]string, lineRows []ma
 // FetchInvoiceExportData gathers everything FillInvoiceTemplate needs for one
 // invoice: the invoice itself, its line items, the owning organization and
 // client, the org's resolved template bytes (override or embedded default),
-// and a map of every distinct tax rate referenced by a line item (one query
-// per distinct rate, not per line). Callers hold dbMu only around this call —
-// see api/document_templates.go's exportInvoiceDocument for why the
+// a map of every distinct tax rate referenced by a line item (one query per
+// distinct rate, not per line), and the org's orientation override for this
+// document type ("" if none — see db.GetDocumentTemplateOrientation).
+// Callers hold dbMu only around this call — see
+// api/document_templates.go's exportInvoiceDocument for why the
 // fill/convert step that follows must run lock-free.
-func (d *Database) FetchInvoiceExportData(invoiceID string) (*Invoice, []InvoiceLineItem, *Organization, *Client, []byte, map[string]TaxRate, error) {
+func (d *Database) FetchInvoiceExportData(invoiceID string) (*Invoice, []InvoiceLineItem, *Organization, *Client, []byte, map[string]TaxRate, string, error) {
 	invoice, err := d.GetInvoice(invoiceID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_invoice_export_data: get invoice: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_invoice_export_data: get invoice: %w", err)
 	}
 	lineItems, err := d.GetInvoiceLineItems(invoiceID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_invoice_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_invoice_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(invoice.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_invoice_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_invoice_export_data: get organization: %w", err)
 	}
 	client, err := d.GetClient(invoice.ClientID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_invoice_export_data: get client: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_invoice_export_data: get client: %w", err)
 	}
 	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "invoice")
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, fmt.Errorf("fetch_invoice_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_invoice_export_data: resolve template: %w", err)
+	}
+	orientation, err := d.GetDocumentTemplateOrientation(invoice.OrganizationID, "invoice")
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_invoice_export_data: resolve orientation: %w", err)
 	}
 
 	taxRates := map[string]TaxRate{}
@@ -250,7 +273,7 @@ func (d *Database) FetchInvoiceExportData(invoiceID string) (*Invoice, []Invoice
 		taxRates[*li.TaxRate] = *rate
 	}
 
-	return invoice, lineItems, org, client, templateBytes, taxRates, nil
+	return invoice, lineItems, org, client, templateBytes, taxRates, orientation, nil
 }
 
 // findMarkerRow scans every cell for the lineItemMarker, returning its

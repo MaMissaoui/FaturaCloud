@@ -40,7 +40,7 @@ func TestFillDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 3, Unit: ptr("pcs")}}
 
-	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testClient())
+	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testClient(), "")
 	if err != nil {
 		t.Fatalf("FillDeliveryTemplate: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestFillDeliveryTemplateIncludesSKU(t *testing.T) {
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 1, SKU: ptr("WID-001")}}
 
-	out, _, err := FillDeliveryTemplate(buf.Bytes(), delivery, lineItems, testOrg(), testClient())
+	out, _, err := FillDeliveryTemplate(buf.Bytes(), delivery, lineItems, testOrg(), testClient(), "")
 	if err != nil {
 		t.Fatalf("FillDeliveryTemplate: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestFillDeliveryTemplateBlankClientOnStandaloneDelivery(t *testing.T) {
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 1}}
 
-	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), Client{})
+	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), Client{}, "")
 	if err != nil {
 		t.Fatalf("FillDeliveryTemplate: %v", err)
 	}
