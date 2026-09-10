@@ -31,7 +31,7 @@ import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
 import PageHeader from "src/components/page-header";
 import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
-import type { Invoice } from "src/types/models";
+import type { InvoiceDisplay } from "src/types/invoice";
 
 const searchAtom = atom<string>("");
 
@@ -71,7 +71,7 @@ const Invoices = () => {
   }, [setInvoices]);
 
   const searchInvoices = () => {
-    return filter(invoices, (invoice: Invoice) => {
+    return filter(invoices, (invoice: InvoiceDisplay) => {
       return some(["clientName", "number", "customerNotes", "total"], (field) => {
         const value = get(invoice, field);
         return includes(toString(value).toLowerCase(), search.toLowerCase());
@@ -90,7 +90,7 @@ const Invoices = () => {
     await deleteInvoice(invoiceId);
   };
 
-  const getActionItems = (invoice: Invoice): MenuProps["items"] => [
+  const getActionItems = (invoice: InvoiceDisplay): MenuProps["items"] => [
     {
       key: "edit",
       label: <Trans>Edit</Trans>,
@@ -150,7 +150,7 @@ const Invoices = () => {
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         rowKey="id"
         loading={loading}
-        onRow={(record: Invoice) => ({
+        onRow={(record: InvoiceDisplay) => ({
           onClick: () => navigate(`/invoices/${record.id}`),
           style: { cursor: "pointer" },
         })}
@@ -158,10 +158,10 @@ const Invoices = () => {
         <Table.Column
           title="#"
           dataIndex="number"
-          sorter={(a: Invoice, b: Invoice) =>
+          sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
             a.number < b.number ? -1 : a.number === b.number ? 0 : 1
           }
-          render={(number, invoice: Invoice) => (
+          render={(number, invoice: InvoiceDisplay) => (
             <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>
               {number}
             </Link>
@@ -170,7 +170,7 @@ const Invoices = () => {
         <Table.Column
           title={<Trans>Client</Trans>}
           dataIndex="clientName"
-          sorter={(a: Invoice, b: Invoice) =>
+          sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
             (a.clientName ?? "").localeCompare(b.clientName ?? "")
           }
           render={(clientName) => (clientName ? clientName : "-")}
@@ -179,17 +179,19 @@ const Invoices = () => {
           title={<Trans>Date</Trans>}
           dataIndex="date"
           key="date"
-          sorter={(a: Invoice, b: Invoice) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()}
+          sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
+            dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
+          }
           render={(date) => (date ? formatDate(date) : "-")}
         />
         <Table.Column
           title={<Trans>Due date</Trans>}
           dataIndex="dueDate"
           key="dueDate"
-          sorter={(a: Invoice, b: Invoice) =>
+          sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
             dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()
           }
-          render={(date, invoice: Invoice) => {
+          render={(date, invoice: InvoiceDisplay) => {
             if (!date) return "-";
             // A sent (unpaid) invoice past its due date is overdue — flag it.
             const overdue = invoice.state === "sent" && dayjs(date).valueOf() < now;
@@ -206,8 +208,8 @@ const Invoices = () => {
           dataIndex="total"
           key="total"
           align="right"
-          sorter={(a: Invoice, b: Invoice) => a.total - b.total}
-          render={(total, invoice: Invoice) =>
+          sorter={(a: InvoiceDisplay, b: InvoiceDisplay) => a.total - b.total}
+          render={(total, invoice: InvoiceDisplay) =>
             getFormattedNumber(total, invoice.currency, i18n.locale, organization)
           }
         />
@@ -215,9 +217,11 @@ const Invoices = () => {
           title={<Trans>State</Trans>}
           key="state"
           align="right"
-          sorter={(a: Invoice, b: Invoice) => (a.state ?? "").localeCompare(b.state ?? "")}
+          sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
+            (a.state ?? "").localeCompare(b.state ?? "")
+          }
           filters={stateFilter}
-          onFilter={(value, record: Invoice) => record.state === String(value)}
+          onFilter={(value, record: InvoiceDisplay) => record.state === String(value)}
           render={(invoice) => (
             <span onClick={(e) => e.stopPropagation()}>
               <InvoiceStateSelect invoice={invoice} />
