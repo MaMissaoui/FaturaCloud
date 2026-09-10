@@ -116,6 +116,85 @@ func (h *handler) deleteDocumentTemplate(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// documentTemplateOrientationResponse is the shape both getDocumentTemplateOrientation
+// and updateDocumentTemplateOrientation return. Orientation is "" when the
+// org has never set one — the fill engine's own "no override" signal (see
+// db/xlsx_export.go's fillTemplate) — which the frontend renders as
+// whatever the template itself is authored with, defaulting its own Select
+// display to "portrait" since that's what every embedded default in fact
+// renders as with no override at all.
+type documentTemplateOrientationResponse struct {
+	Orientation string `json:"orientation"`
+}
+
+// getDocumentTemplateOrientation returns the org's orientation override for
+// a document type, or {"orientation": ""} if none was ever set.
+func (h *handler) getDocumentTemplateOrientation(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	documentType := r.PathValue("documentType")
+	if !db.IsKnownDocumentType(documentType) {
+		writeError(w, http.StatusBadRequest, "unknown document type")
+		return
+	}
+
+	orientation, err := h.db.GetDocumentTemplateOrientation(orgID, documentType)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, documentTemplateOrientationResponse{Orientation: orientation})
+}
+
+// updateDocumentTemplateOrientation sets the org's page orientation
+// override for a document type — see db.SetDocumentTemplateOrientation for
+// why this wins over the template's own authored page setup at export time.
+func (h *handler) updateDocumentTemplateOrientation(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	documentType := r.PathValue("documentType")
+	if !db.IsKnownDocumentType(documentType) {
+		writeError(w, http.StatusBadRequest, "unknown document type")
+		return
+	}
+
+	var req documentTemplateOrientationResponse
+	if err := decodeJSON(w, r, &req); err != nil {
+		return
+	}
+
+	if err := h.db.SetDocumentTemplateOrientation(orgID, documentType, req.Orientation); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "organization not found")
+			return
+		}
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, documentTemplateOrientationResponse{Orientation: req.Orientation})
+}
+
+// deleteDocumentTemplateOrientation removes an org's orientation override,
+// reverting to whatever the template (embedded default or upload) is
+// authored with.
+func (h *handler) deleteDocumentTemplateOrientation(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	documentType := r.PathValue("documentType")
+	if !db.IsKnownDocumentType(documentType) {
+		writeError(w, http.StatusBadRequest, "unknown document type")
+		return
+	}
+
+	ok, err := h.db.DeleteDocumentTemplateOrientation(orgID, documentType)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if !ok {
+		writeError(w, http.StatusNotFound, "no orientation override set for this document type")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // exportInvoiceDocument fills the org's invoice template (uploaded override,
 // or the embedded default) with a real invoice's data and streams it back as
 // .xlsx or, if converted, .pdf.
@@ -136,14 +215,14 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 	}
 
 	h.dbMu.RLock()
-	invoice, lineItems, org, client, templateBytes, taxRates, err := h.db.FetchInvoiceExportData(id)
+	invoice, lineItems, org, client, templateBytes, taxRates, orientation, err := h.db.FetchInvoiceExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "invoice not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *client, taxRates)
+	filled, unresolved, err := db.FillInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *client, taxRates, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -189,14 +268,14 @@ func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Req
 	}
 
 	h.dbMu.RLock()
-	order, lineItems, org, vendor, templateBytes, taxRates, err := h.db.FetchPurchaseOrderExportData(id)
+	order, lineItems, org, vendor, templateBytes, taxRates, orientation, err := h.db.FetchPurchaseOrderExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "purchase order not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillPurchaseOrderTemplate(templateBytes, *order, lineItems, *org, *vendor, taxRates)
+	filled, unresolved, err := db.FillPurchaseOrderTemplate(templateBytes, *order, lineItems, *org, *vendor, taxRates, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -243,14 +322,14 @@ func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.R
 	}
 
 	h.dbMu.RLock()
-	invoice, lineItems, org, vendor, templateBytes, taxRates, err := h.db.FetchIncomingInvoiceExportData(id)
+	invoice, lineItems, org, vendor, templateBytes, taxRates, orientation, err := h.db.FetchIncomingInvoiceExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "incoming invoice not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillIncomingInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *vendor, taxRates)
+	filled, unresolved, err := db.FillIncomingInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *vendor, taxRates, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -296,14 +375,14 @@ func (h *handler) exportDeliveryDocument(w http.ResponseWriter, r *http.Request)
 	}
 
 	h.dbMu.RLock()
-	delivery, lineItems, org, client, templateBytes, err := h.db.FetchDeliveryExportData(id)
+	delivery, lineItems, org, client, templateBytes, orientation, err := h.db.FetchDeliveryExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "delivery not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *client)
+	filled, unresolved, err := db.FillDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *client, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -349,14 +428,14 @@ func (h *handler) exportInboundDeliveryDocument(w http.ResponseWriter, r *http.R
 	}
 
 	h.dbMu.RLock()
-	delivery, lineItems, org, vendor, templateBytes, err := h.db.FetchInboundDeliveryExportData(id)
+	delivery, lineItems, org, vendor, templateBytes, orientation, err := h.db.FetchInboundDeliveryExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "goods receipt not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillInboundDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *vendor)
+	filled, unresolved, err := db.FillInboundDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *vendor, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -401,14 +480,14 @@ func (h *handler) exportOrderDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.dbMu.RLock()
-	order, lineItems, org, client, templateBytes, err := h.db.FetchOrderExportData(id)
+	order, lineItems, org, client, templateBytes, orientation, err := h.db.FetchOrderExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "order not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillOrderTemplate(templateBytes, *order, lineItems, *org, *client)
+	filled, unresolved, err := db.FillOrderTemplate(templateBytes, *order, lineItems, *org, *client, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return

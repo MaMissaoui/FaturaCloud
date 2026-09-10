@@ -61,7 +61,7 @@ func TestFillInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
 		{Description: ptr("Widget"), Quantity: 1, UnitPrice: 10000},
 	}
 
-	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil)
+	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestFillInvoiceTemplateExpandsLineItemRows(t *testing.T) {
 		{Description: ptr("Gizmo"), Quantity: 3, UnitPrice: 1000},
 	}
 
-	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil)
+	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestFillInvoiceTemplateBlanksUnknownPlaceholder(t *testing.T) {
 	}
 
 	lineItems := []InvoiceLineItem{{Description: ptr("Widget"), Quantity: 1, UnitPrice: 1000}}
-	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil)
+	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate should not error on an unknown placeholder: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestFillInvoiceTemplateRequiresMarkerRow(t *testing.T) {
 		t.Fatalf("build fixture: %v", err)
 	}
 
-	_, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), nil, testOrg(), testClient(), nil)
+	_, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), nil, testOrg(), testClient(), nil, "")
 	if err == nil {
 		t.Fatal("expected an error for a template with no {{#lineItems}} marker row")
 	}
@@ -216,7 +216,7 @@ func TestFillInvoiceTemplateMarkerCanBeInAnyColumn(t *testing.T) {
 		{Description: ptr("Widget"), Quantity: 2, UnitPrice: 500},
 		{Description: ptr("Gadget"), Quantity: 1, UnitPrice: 1000},
 	}
-	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil)
+	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -265,7 +265,7 @@ func TestFillInvoiceTemplateStripsExtraSheets(t *testing.T) {
 	}
 
 	lineItems := []InvoiceLineItem{{Description: ptr("Widget"), Quantity: 1, UnitPrice: 1000}}
-	out, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil)
+	out, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -277,6 +277,53 @@ func TestFillInvoiceTemplateStripsExtraSheets(t *testing.T) {
 	defer out2.Close()
 	if sheets := out2.GetSheetList(); len(sheets) != 1 || sheets[0] != sheet {
 		t.Fatalf("expected output to have only the content sheet %q, got %v", sheet, sheets)
+	}
+}
+
+// TestFillInvoiceTemplateOrientationOverride verifies the two orientation
+// contract points: an empty orientation ("" — no org override) leaves the
+// template's page setup completely untouched (the embedded default has no
+// <pageSetup> orientation attribute at all — GetPageLayout falls back to
+// "" in that case, not a fabricated "portrait"), and a non-empty value is
+// written into the workbook's own page layout, overriding whatever the
+// template itself carried.
+func TestFillInvoiceTemplateOrientationOverride(t *testing.T) {
+	t.Parallel()
+	tmpl := buildFixtureTemplate(t)
+	lineItems := []InvoiceLineItem{{Description: ptr("Widget"), Quantity: 1, UnitPrice: 1000}}
+
+	outNoOverride, _, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "")
+	if err != nil {
+		t.Fatalf("FillInvoiceTemplate (no override): %v", err)
+	}
+	f1, err := excelize.OpenReader(bytes.NewReader(outNoOverride))
+	if err != nil {
+		t.Fatalf("open filled output: %v", err)
+	}
+	defer f1.Close()
+	layout1, err := f1.GetPageLayout(f1.GetSheetName(0))
+	if err != nil {
+		t.Fatalf("GetPageLayout: %v", err)
+	}
+	if layout1.Orientation != nil && *layout1.Orientation == "landscape" {
+		t.Fatalf("expected no orientation override to leave the page setup untouched, got %q", *layout1.Orientation)
+	}
+
+	outLandscape, _, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "landscape")
+	if err != nil {
+		t.Fatalf("FillInvoiceTemplate (landscape): %v", err)
+	}
+	f2, err := excelize.OpenReader(bytes.NewReader(outLandscape))
+	if err != nil {
+		t.Fatalf("open filled output: %v", err)
+	}
+	defer f2.Close()
+	layout2, err := f2.GetPageLayout(f2.GetSheetName(0))
+	if err != nil {
+		t.Fatalf("GetPageLayout: %v", err)
+	}
+	if layout2.Orientation == nil || *layout2.Orientation != "landscape" {
+		t.Fatalf("expected orientation \"landscape\" to be written into the output, got %v", layout2.Orientation)
 	}
 }
 

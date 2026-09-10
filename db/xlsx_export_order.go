@@ -17,6 +17,7 @@ func FillOrderTemplate(
 	lineItems []OrderLineItem,
 	org Organization,
 	client Client,
+	orientation string,
 ) ([]byte, []string, error) {
 	currency := ""
 	if order.Currency != nil {
@@ -37,25 +38,25 @@ func FillOrderTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits)
 	}
-	return fillTemplate(templateBytes, scalars, lineRows)
+	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
 
 // FetchOrderExportData gathers everything FillOrderTemplate needs for one
 // order — mirrors FetchPurchaseOrderExportData's shape. Callers hold dbMu
 // only around this call; the fill/convert step that follows must run
 // lock-free (see api/document_templates.go's exportInvoiceDocument for why).
-func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem, *Organization, *Client, []byte, error) {
+func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem, *Organization, *Client, []byte, string, error) {
 	order, err := d.GetOrder(orderID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_order_export_data: get order: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get order: %w", err)
 	}
 	lineItems, err := d.GetOrderLineItems(orderID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_order_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(order.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_order_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get organization: %w", err)
 	}
 
 	// orders.clientId is nullable (ON DELETE SET NULL) — an order that's lost
@@ -64,17 +65,21 @@ func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem
 	if order.ClientID != nil {
 		c, err := d.GetClient(*order.ClientID)
 		if err != nil {
-			return nil, nil, nil, nil, nil, fmt.Errorf("fetch_order_export_data: get client: %w", err)
+			return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get client: %w", err)
 		}
 		client = *c
 	}
 
 	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "order")
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("fetch_order_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: resolve template: %w", err)
+	}
+	orientation, err := d.GetDocumentTemplateOrientation(order.OrganizationID, "order")
+	if err != nil {
+		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: resolve orientation: %w", err)
 	}
 
-	return order, lineItems, org, &client, templateBytes, nil
+	return order, lineItems, org, &client, templateBytes, orientation, nil
 }
 
 // buildOrderScalarPlaceholders is the fixed namespace->field allowlist for

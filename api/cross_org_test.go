@@ -454,6 +454,9 @@ var crossOrgProof = []struct {
 	{name: "list document templates", method: http.MethodGet, path: "/api/organizations/org-a/document-templates"},
 	{name: "get document template", method: http.MethodGet, path: "/api/organizations/org-a/document-templates/invoice"},
 	{name: "delete document template", method: http.MethodDelete, path: "/api/organizations/org-a/document-templates/invoice"},
+	{name: "get document template orientation", method: http.MethodGet, path: "/api/organizations/org-a/document-templates/invoice/orientation"},
+	{name: "update document template orientation", method: http.MethodPut, path: "/api/organizations/org-a/document-templates/invoice/orientation", body: []byte(`{"orientation":"landscape"}`)},
+	{name: "delete document template orientation", method: http.MethodDelete, path: "/api/organizations/org-a/document-templates/invoice/orientation"},
 
 	{name: "dashboard", method: http.MethodGet, path: "/api/organizations/org-a/dashboard"},
 	{name: "exchange rate prefill", method: http.MethodGet, path: "/api/organizations/org-a/exchange-rate"},

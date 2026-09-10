@@ -41,7 +41,7 @@ func TestFillOrderTemplateResolvesScalarPlaceholders(t *testing.T) {
 	order := testOrder()
 	lineItems := []OrderLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
 
-	out, unresolved, err := FillOrderTemplate(tmpl, order, lineItems, testOrg(), testClient())
+	out, unresolved, err := FillOrderTemplate(tmpl, order, lineItems, testOrg(), testClient(), "")
 	if err != nil {
 		t.Fatalf("FillOrderTemplate: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestFillOrderTemplateComputesTotalsFromLineItemsWithNoTax(t *testing.T) {
 		{Description: "Widget", Quantity: 2, UnitPrice: 1000},
 	}
 
-	out, _, err := FillOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testClient())
+	out, _, err := FillOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testClient(), "")
 	if err != nil {
 		t.Fatalf("FillOrderTemplate: %v", err)
 	}
