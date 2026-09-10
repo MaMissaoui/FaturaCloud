@@ -1,4 +1,6 @@
 import { atom } from "jotai";
+import type { Dayjs } from "dayjs";
+import type { InboundDelivery, InboundDeliveryLineItem } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -23,7 +25,7 @@ import {
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 import { organizationIdAtom } from "./organization";
 
-export const inboundDeliveriesAtom = atom<any[]>([]);
+export const inboundDeliveriesAtom = atom<InboundDelivery[]>([]);
 inboundDeliveriesAtom.debugLabel = "inboundDeliveriesAtom";
 
 export const setInboundDeliveriesAtom = atom(null, async (get, set) => {
@@ -49,6 +51,21 @@ export const nextInboundDeliveryNumberAtom = atom(async (get) => {
   }
 });
 
+// The goods-receipt form edits dates as dayjs objects and line item
+// unitCost in display currency units — not the wire shape either field is
+// stored as.
+type InboundDeliveryLineItemFormValues = Omit<Partial<InboundDeliveryLineItem>, "unitCost"> & {
+  unitCost?: number | null;
+};
+type InboundDeliveryFormValues = Omit<
+  Partial<InboundDelivery>,
+  "deliveryDate" | "exchangeRateDate"
+> & {
+  deliveryDate?: Dayjs | number;
+  exchangeRateDate?: Dayjs | number | null;
+  lineItems?: InboundDeliveryLineItemFormValues[];
+};
+
 export const inboundDeliveryIdAtom = atom<string | null>(null);
 
 export const inboundDeliveryAtom = atom(
@@ -65,7 +82,7 @@ export const inboundDeliveryAtom = atom(
         ...delivery,
         deliveryDate: dayjs(delivery.deliveryDate),
         exchangeRateDate: delivery.exchangeRateDate ? dayjs(delivery.exchangeRateDate) : null,
-        lineItems: (lineItems || []).map((item: any) => ({
+        lineItems: (lineItems || []).map((item) => ({
           ...item,
           unitCost: item.unitCost === null ? null : centsToUnits(item.unitCost),
         })),
@@ -76,14 +93,15 @@ export const inboundDeliveryAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: InboundDeliveryFormValues) => {
     const deliveryId = get(inboundDeliveryIdAtom);
     const delivery = omit(newValues, "lineItems");
     const lineItems = newValues.lineItems || [];
 
-    const toTimestamp = (v: any) => (v?.valueOf ? v.valueOf() : v);
-    const toPayloadLineItems = (items: any[]) =>
-      items.map((item: any) => ({
+    const toTimestamp = (v: Dayjs | number | null | undefined) =>
+      v && typeof v === "object" && "valueOf" in v ? v.valueOf() : v;
+    const toPayloadLineItems = (items: InboundDeliveryLineItemFormValues[]) =>
+      items.map((item) => ({
         // stockEnabled/currentStock/productName are read-only joins; sending
         // them back would just be noise.
         ...omit(item, ["id", "stockEnabled", "currentStock", "productName"]),
@@ -98,7 +116,7 @@ export const inboundDeliveryAtom = atom(
         const data = {
           ...delivery,
           id: nanoid(),
-          organizationId: get(organizationIdAtom),
+          organizationId: get(organizationIdAtom)!,
           deliveryDate: toTimestamp(delivery.deliveryDate),
           exchangeRateDate: delivery.exchangeRateDate
             ? toTimestamp(delivery.exchangeRateDate)
@@ -108,7 +126,7 @@ export const inboundDeliveryAtom = atom(
         const created = await CreateInboundDelivery(data);
         set(inboundDeliveryIdAtom, created.id);
         message.success(t`Goods receipt created`);
-        const list: any = get(inboundDeliveriesAtom);
+        const list = get(inboundDeliveriesAtom);
         set(inboundDeliveriesAtom, [created, ...list]);
       } else {
         const data = {
@@ -121,8 +139,8 @@ export const inboundDeliveryAtom = atom(
         };
         const updated = await UpdateInboundDelivery(deliveryId, data);
         message.success(t`Goods receipt saved`);
-        const list: any = get(inboundDeliveriesAtom);
-        const merged: any = keyBy([...list, updated], "id");
+        const list = get(inboundDeliveriesAtom);
+        const merged = keyBy([...list, updated], "id");
         set(inboundDeliveriesAtom, orderBy(map(merged), "deliveryDate", "desc"));
       }
     } catch (error) {
@@ -154,8 +172,8 @@ export const updateInboundDeliveryStatusAtom = atom(
     try {
       const updated = await UpdateInboundDeliveryStatus(deliveryId, status, serialNumbers);
       message.success(t`Goods receipt status updated`);
-      const list: any = get(inboundDeliveriesAtom);
-      const merged: any = keyBy([...list, updated], "id");
+      const list = get(inboundDeliveriesAtom);
+      const merged = keyBy([...list, updated], "id");
       set(inboundDeliveriesAtom, orderBy(map(merged), "deliveryDate", "desc"));
       return true;
     } catch (error) {
@@ -174,7 +192,7 @@ export const deleteInboundDeliveryAtom = atom(null, async (get, set, deliveryId:
   try {
     const success = await DeleteInboundDelivery(deliveryId);
     if (success) {
-      const list: any = reject(get(inboundDeliveriesAtom), (d: any) => isEqual(d.id, deliveryId));
+      const list = reject(get(inboundDeliveriesAtom), (d) => isEqual(d.id, deliveryId));
       set(inboundDeliveriesAtom, list);
       message.success(t`Goods receipt deleted`);
     } else {

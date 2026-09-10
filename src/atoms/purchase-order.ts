@@ -1,4 +1,6 @@
 import { atom } from "jotai";
+import type { Dayjs } from "dayjs";
+import type { PurchaseOrder, PurchaseOrderLineItem } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -24,7 +26,7 @@ import { centsToUnits, unitsToCents } from "src/utils/currency";
 import { organizationIdAtom } from "./organization";
 
 // Purchase orders list
-export const purchaseOrdersAtom = atom<any[]>([]);
+export const purchaseOrdersAtom = atom<PurchaseOrder[]>([]);
 purchaseOrdersAtom.debugLabel = "purchaseOrdersAtom";
 
 export const setPurchaseOrdersAtom = atom(null, async (get, set) => {
@@ -52,6 +54,22 @@ export const nextPurchaseOrderNumberAtom = atom(async (get) => {
   }
 });
 
+// The purchase order form edits dates as dayjs objects and line item
+// unitPrice in display currency units — not the wire shape either field is
+// stored as.
+type PurchaseOrderLineItemFormValues = Omit<Partial<PurchaseOrderLineItem>, "unitPrice"> & {
+  unitPrice?: number;
+};
+type PurchaseOrderFormValues = Omit<
+  Partial<PurchaseOrder>,
+  "orderDate" | "expectedDate" | "exchangeRateDate"
+> & {
+  orderDate?: Dayjs | number;
+  expectedDate?: Dayjs | number | null;
+  exchangeRateDate?: Dayjs | number | null;
+  lineItems?: PurchaseOrderLineItemFormValues[];
+};
+
 // Single purchase order (read+write)
 export const purchaseOrderIdAtom = atom<string | null>(null);
 
@@ -70,7 +88,7 @@ export const purchaseOrderAtom = atom(
         orderDate: dayjs(order.orderDate),
         expectedDate: order.expectedDate ? dayjs(order.expectedDate) : null,
         exchangeRateDate: order.exchangeRateDate ? dayjs(order.exchangeRateDate) : null,
-        lineItems: (lineItems || []).map((item: any) => ({
+        lineItems: (lineItems || []).map((item) => ({
           ...item,
           unitPrice: centsToUnits(item.unitPrice),
         })),
@@ -81,14 +99,15 @@ export const purchaseOrderAtom = atom(
       return null;
     }
   },
-  async (get, set, newValues: any) => {
+  async (get, set, newValues: PurchaseOrderFormValues) => {
     const orderId = get(purchaseOrderIdAtom);
     const order = omit(newValues, "lineItems");
     const lineItems = newValues.lineItems || [];
 
-    const toTimestamp = (v: any) => (v?.valueOf ? v.valueOf() : v);
-    const toPayloadLineItems = (items: any[]) =>
-      items.map((item: any) => ({
+    const toTimestamp = (v: Dayjs | number | null | undefined) =>
+      v && typeof v === "object" && "valueOf" in v ? v.valueOf() : v;
+    const toPayloadLineItems = (items: PurchaseOrderLineItemFormValues[]) =>
+      items.map((item) => ({
         ...omit(item, ["id"]),
         unitPrice: unitsToCents(item.unitPrice ?? 0),
       }));
@@ -98,7 +117,7 @@ export const purchaseOrderAtom = atom(
         const data = {
           ...order,
           id: nanoid(),
-          organizationId: get(organizationIdAtom),
+          organizationId: get(organizationIdAtom)!,
           status: order.status || "draft",
           orderDate: toTimestamp(order.orderDate),
           expectedDate: order.expectedDate ? toTimestamp(order.expectedDate) : null,
@@ -108,7 +127,7 @@ export const purchaseOrderAtom = atom(
         const created = await CreatePurchaseOrder(data);
         set(purchaseOrderIdAtom, created.id);
         message.success(t`Purchase order created`);
-        const orders: any = get(purchaseOrdersAtom);
+        const orders = get(purchaseOrdersAtom);
         set(purchaseOrdersAtom, [created, ...orders]);
       } else {
         const data = {
@@ -120,8 +139,8 @@ export const purchaseOrderAtom = atom(
         };
         const updated = await UpdatePurchaseOrder(orderId, data);
         message.success(t`Purchase order saved`);
-        const orders: any = get(purchaseOrdersAtom);
-        const merged: any = keyBy([...orders, updated], "id");
+        const orders = get(purchaseOrdersAtom);
+        const merged = keyBy([...orders, updated], "id");
         set(purchaseOrdersAtom, orderBy(map(merged), "orderDate", "desc"));
       }
     } catch (error) {
@@ -148,8 +167,8 @@ export const updatePurchaseOrderStatusAtom = atom(
     try {
       const updated = await UpdatePurchaseOrderStatus(orderId, status);
       message.success(t`Purchase order status updated`);
-      const orders: any = get(purchaseOrdersAtom);
-      const merged: any = keyBy([...orders, updated], "id");
+      const orders = get(purchaseOrdersAtom);
+      const merged = keyBy([...orders, updated], "id");
       set(purchaseOrdersAtom, orderBy(map(merged), "orderDate", "desc"));
       return true;
     } catch (error) {
@@ -180,7 +199,7 @@ export const updatePurchaseOrderStatusAtom = atom(
 export const setPurchaseOrderImportAtom = atom(
   null,
   async (get, set, { orderId, importId }: { orderId: string; importId: string | null }) => {
-    const orders: any[] = get(purchaseOrdersAtom);
+    const orders = get(purchaseOrdersAtom);
     const po = orders.find((o) => o.id === orderId);
     if (!po) return false;
     try {
@@ -195,7 +214,7 @@ export const setPurchaseOrderImportAtom = atom(
         notes: po.notes,
         importId,
       });
-      const merged: any = keyBy([...get(purchaseOrdersAtom), updated], "id");
+      const merged = keyBy([...get(purchaseOrdersAtom), updated], "id");
       set(purchaseOrdersAtom, orderBy(map(merged), "orderDate", "desc"));
       message.success(importId ? t`Purchase order linked` : t`Purchase order unlinked`);
       return true;
@@ -211,7 +230,7 @@ export const deletePurchaseOrderAtom = atom(null, async (get, set, orderId: stri
   try {
     const success = await DeletePurchaseOrder(orderId);
     if (success) {
-      const orders: any = reject(get(purchaseOrdersAtom), (o: any) => isEqual(o.id, orderId));
+      const orders = reject(get(purchaseOrdersAtom), (o) => isEqual(o.id, orderId));
       set(purchaseOrdersAtom, orders);
       message.success(t`Purchase order deleted`);
     } else {
