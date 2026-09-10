@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Popover, Space, Tag, Typography } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
+import { t } from "@lingui/core/macro";
 
 const { Text } = Typography;
 
@@ -49,6 +50,7 @@ function StatusFlowInner<S extends string>({
   return (
     <Popover
       title={<Trans>Status flow</Trans>}
+      trigger={["hover", "focus"]}
       content={
         <Space direction="vertical" size={4}>
           {rows.map((status) => {
@@ -91,7 +93,12 @@ function StatusFlowInner<S extends string>({
         </Space>
       }
     >
-      <QuestionCircleOutlined style={{ marginLeft: 8, color: "#999", cursor: "pointer" }} />
+      <QuestionCircleOutlined
+        style={{ marginLeft: 8, color: "#999", cursor: "pointer" }}
+        role="button"
+        tabIndex={0}
+        aria-label={t`Show status flow`}
+      />
     </Popover>
   );
 }

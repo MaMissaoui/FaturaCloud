@@ -235,7 +235,7 @@ const Invoices = () => {
           render={(invoice) => (
             <span onClick={(e) => e.stopPropagation()}>
               <Dropdown menu={{ items: getActionItems(invoice) }} trigger={["click"]}>
-                <Button type="text" icon={<MoreOutlined />} />
+                <Button type="text" icon={<MoreOutlined />} aria-label={t`More actions`} />
               </Dropdown>
             </span>
           )}
