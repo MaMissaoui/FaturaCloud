@@ -280,7 +280,7 @@ const ImportForm = () => {
                 xl={12}
               />
               {showExchangeRateFields(watchedCurrency, orgCurrency) && (
-                <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} />
+                <ExchangeRateFields currency={watchedCurrency} orgCurrency={orgCurrency} xl={12} />
               )}
               <Col xs={24}>
                 <Trans>
