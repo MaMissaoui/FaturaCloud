@@ -165,6 +165,14 @@ func (d *Database) CreateJournalEntry(req CreateJournalEntryRequest) (*JournalEn
 	if len(req.Lines) == 0 {
 		return nil, newValidationError("a journal entry needs at least one line")
 	}
+	journal, err := d.GetJournal(req.JournalID)
+	if err != nil {
+		return nil, newValidationError("journal not found")
+	}
+	if err := requireSameOrg(req.OrganizationID, journal.OrganizationID, "journal"); err != nil {
+		return nil, err
+	}
+
 	for i, line := range req.Lines {
 		if line.AccountID == "" {
 			return nil, newValidationError("line %d: an account is required", i+1)
@@ -174,6 +182,40 @@ func (d *Database) CreateJournalEntry(req CreateJournalEntryRequest) (*JournalEn
 		}
 		if (line.Debit == 0) == (line.Credit == 0) {
 			return nil, newValidationError("line %d: exactly one of debit or credit must be set", i+1)
+		}
+		account, err := d.GetAccount(line.AccountID)
+		if err != nil {
+			return nil, newValidationError("line %d: account not found", i+1)
+		}
+		if err := requireSameOrg(req.OrganizationID, account.OrganizationID, fmt.Sprintf("line %d: account", i+1)); err != nil {
+			return nil, err
+		}
+		if line.ClientID != nil && *line.ClientID != "" {
+			client, err := d.GetClient(*line.ClientID)
+			if err != nil {
+				return nil, newValidationError("line %d: client not found", i+1)
+			}
+			if err := requireSameOrg(req.OrganizationID, client.OrganizationID, fmt.Sprintf("line %d: client", i+1)); err != nil {
+				return nil, err
+			}
+		}
+		if line.VendorID != nil && *line.VendorID != "" {
+			vendor, err := d.GetVendor(*line.VendorID)
+			if err != nil {
+				return nil, newValidationError("line %d: vendor not found", i+1)
+			}
+			if err := requireSameOrg(req.OrganizationID, vendor.OrganizationID, fmt.Sprintf("line %d: vendor", i+1)); err != nil {
+				return nil, err
+			}
+		}
+		if line.TaxRateID != nil && *line.TaxRateID != "" {
+			taxRate, err := d.GetTaxRate(*line.TaxRateID)
+			if err != nil {
+				return nil, newValidationError("line %d: tax rate not found", i+1)
+			}
+			if err := requireSameOrg(req.OrganizationID, taxRate.OrganizationID, fmt.Sprintf("line %d: tax rate", i+1)); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if req.ID == "" {

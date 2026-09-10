@@ -159,6 +159,9 @@ func (d *Database) CreateFiscalPeriod(req CreateFiscalPeriodRequest) (*FiscalPer
 	if err != nil {
 		return nil, err
 	}
+	if err := requireSameOrg(req.OrganizationID, year.OrganizationID, "fiscal year"); err != nil {
+		return nil, err
+	}
 	if req.StartDate < year.StartDate || req.EndDate > year.EndDate {
 		return nil, newValidationError("fiscal period must fall entirely within its fiscal year's date range")
 	}
