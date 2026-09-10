@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.16.0] - 2026-09-10
+
+### Security
+- **Cross-organization foreign-key ownership validation** (issue #189, the
+  follow-up gap flagged in 3.15.0's route-membership work): every
+  create/update request body that references another organization's data
+  by id — a fiscal period's fiscal year, an invoice's client/product/tax
+  rate, a purchase order's vendor/import, a payment's document — is now
+  checked to actually belong to the caller's own organization, closing the
+  gap route-level membership gating alone didn't cover. Rolled out in 4
+  PRs (fiscal/journal entries, sales-side documents, purchasing-side
+  documents, master data + payments).
+
+### Added
+- Imports list now shows each import's linked purchase orders (clickable
+  order-number tags) and committed value (sortable), backed by a new batch
+  `GetImportSummaries` endpoint — one request per page load instead of one
+  per row.
+- `cmd/seed-demo`: a motorcycle-parts-assembler product catalog plus
+  `--country`/`--currency` flags for generating demo data in a different
+  locale.
+- A Vitest + Testing Library component-test harness (`renderWithProviders`,
+  `vitest.setup.ts`) with a first smoke test on `PaymentPanel` and on the
+  invoice detail page.
+- A batch endpoint for checking the caller's role across every organization
+  at once, replacing a per-organization request.
+
+### Changed
+- Settings moved from a sidebar group into a header gear icon — same items,
+  same visibility rules, one less permanently-expanded section in the
+  sidebar.
+- Document atoms (`clientsAtom`, `invoicesAtom`, etc.) are now typed against
+  their real wire shapes instead of `any[]`, closing out issue #143.
+- `PaymentPanel` and `StatusFlow` are now memoized — no more full re-render
+  of either on every unrelated keystroke elsewhere on the page.
+
+### Fixed
+- The Import drawer's "Rate date" field was visually truncated inside its
+  narrower layout — antd's `xl` column breakpoint sizes against the browser
+  viewport, not the containing element, which only showed up once the field
+  landed inside a Drawer rather than a full-width page.
+- A skip-navigation link and aria-labels across icon-only controls
+  (status-flow popover trigger, several form buttons) for basic screen
+  reader/keyboard support (issue #159).
+- A React 19 + Testing Library bug where a component suspending on a
+  promise inside a test never recovered unless the render and the awaited
+  promise were the exact same object inside one `act()` scope — root-caused
+  against the upstream `testing-library/react-testing-library#1375` issue
+  and fixed in this repo's own test harness.
+
 ## [3.15.0] - 2026-09-10
 
 The headline fix: any authenticated user could previously read and write
