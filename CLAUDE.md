@@ -448,7 +448,8 @@ The sidebar is grouped into collapsible submenus (click the group to expand/coll
 - **Master Data**: Clients → Vendors → Products → Organizations
 - **Accounting**: Chart of Accounts → Journals → Fiscal Periods → Journal Entries → Trial Balance → Profit & Loss → Balance Sheet → AR Aging → AP Aging → Inventory Valuation (no standalone Payments page — recording/voiding a payment happens from the invoice/incoming-invoice detail page's `PaymentPanel`)
 - **Reporting**: Revenue Trend → Sales by Client → Sales by Product → Purchases by Vendor → Tax Summary — document-derived sales/purchasing analytics (see `db/sales_reports.go`), a deliberately separate group from Accounting's GL-derived reports above
-- **Settings**: Invoice, Tax Rates, Document Templates, Backup (platform admin only), Users (platform admin only), Countries (platform admin only), GL Export (org admin only)
+
+Settings is **not** a sidebar group (issue #183, 2026-09-10) — it moved to a gear icon in the header's top-right icon cluster (next to the theme toggle), opening an antd `Dropdown` with the same items the sidebar group used to have: Invoice, Tax Rates, Payment terms, Document Templates, Backup (platform admin only), Users (platform admin only), Countries (platform admin only), GL Export (org admin only) — same conditional visibility, unchanged. The icon tints `colorPrimary` while any `/settings/*` route is active, replacing the sidebar's old selected-item highlight for that section. Moved to shrink the sidebar's total scroll height by one full group; the routes themselves (`/settings/*`) and their pages didn't change.
 
 ## Internationalization
 - Uses LinguiJS with macro-based extraction

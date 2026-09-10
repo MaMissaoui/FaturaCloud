@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Button, Divider, Layout, Menu, Select, Space, Row, Col, theme } from "antd";
+import { Button, Divider, Dropdown, Layout, Menu, Select, Space, Row, Col, theme } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   MenuFoldOutlined,
@@ -80,7 +80,7 @@ export default function BaseLayout() {
   const navigate = useNavigate();
 
   const {
-    token: { colorBgContainer, borderRadiusLG, colorBorderSecondary },
+    token: { colorBgContainer, borderRadiusLG, colorBorderSecondary, colorPrimary },
   } = theme.useToken();
 
   // Feedback modal state
@@ -180,9 +180,7 @@ export default function BaseLayout() {
       "incoming-invoices",
     ];
     const masterDataSections = ["clients", "vendors", "products", "organizations"];
-    if (section === "settings") {
-      openKeys = ["settings"];
-    } else if (salesSections.includes(section)) {
+    if (salesSections.includes(section)) {
       openKeys = ["group-sales"];
     } else if (purchasingSections.includes(section)) {
       openKeys = ["group-purchasing"];
@@ -213,6 +211,98 @@ export default function BaseLayout() {
   const closeMobileMenu = () => {
     if (isMobile) setMobileMenuOpen(false);
   };
+
+  // #183: Settings moved from a sidebar group into this header icon —
+  // isSettingsRoute just tints the icon while any /settings/* route is
+  // active, since it no longer has a sidebar entry to show as selected.
+  const isSettingsRoute = location.pathname.startsWith("/settings");
+  const settingsMenuItems = [
+    {
+      icon: <FileOutlined />,
+      label: (
+        <Link to="/settings/invoice">
+          <Trans>Invoice</Trans>
+        </Link>
+      ),
+      key: "settings.invoice",
+    },
+    {
+      icon: <CalculatorOutlined />,
+      label: (
+        <Link to="/settings/tax-rates">
+          <Trans>Tax rates</Trans>
+        </Link>
+      ),
+      key: "settings.tax-rates",
+    },
+    {
+      icon: <ScheduleOutlined />,
+      label: (
+        <Link to="/settings/payment-terms">
+          <Trans>Payment terms</Trans>
+        </Link>
+      ),
+      key: "settings.payment-terms",
+    },
+    {
+      icon: <FileExcelOutlined />,
+      label: (
+        <Link to="/settings/document-templates">
+          <Trans>Document Templates</Trans>
+        </Link>
+      ),
+      key: "settings.document-templates",
+    },
+    ...(isPlatformAdmin
+      ? [
+          {
+            icon: <DatabaseOutlined />,
+            label: (
+              <Link to="/settings/backup">
+                <Trans>Backup</Trans>
+              </Link>
+            ),
+            key: "settings.backup",
+          },
+          {
+            icon: <UserOutlined />,
+            label: (
+              <Link to="/settings/users">
+                <Trans>Users</Trans>
+              </Link>
+            ),
+            key: "settings.users",
+          },
+          {
+            icon: <GlobalOutlined />,
+            label: (
+              <Link to="/settings/countries">
+                <Trans>Countries</Trans>
+              </Link>
+            ),
+            key: "settings.countries",
+          },
+        ]
+      : []),
+    // GL Export is an org-scoped admin action, not a platform-wide one — an
+    // org admin sees it here even without being a platform admin, and a
+    // platform admin who isn't an admin of the currently selected
+    // organization doesn't. Same condition the sidebar used before this
+    // moved out of it.
+    ...(isOrgAdmin
+      ? [
+          {
+            icon: <ExportOutlined />,
+            label: (
+              <Link to="/settings/gl-export">
+                <Trans>GL Export</Trans>
+              </Link>
+            ),
+            key: "settings.gl-export",
+          },
+        ]
+      : []),
+  ];
 
   return (
     <Layout hasSider style={{ minHeight: "100vh", width: "100%" }}>
@@ -586,97 +676,6 @@ export default function BaseLayout() {
                 },
               ],
             },
-            {
-              icon: <SettingOutlined />,
-              label: <Trans>Settings</Trans>,
-              key: "settings",
-              children: [
-                {
-                  icon: <FileOutlined />,
-                  label: (
-                    <Link to="/settings/invoice">
-                      <Trans>Invoice</Trans>
-                    </Link>
-                  ),
-                  key: "settings.invoice",
-                },
-                {
-                  icon: <CalculatorOutlined />,
-                  label: (
-                    <Link to="/settings/tax-rates">
-                      <Trans>Tax rates</Trans>
-                    </Link>
-                  ),
-                  key: "settings.tax-rates",
-                },
-                {
-                  icon: <ScheduleOutlined />,
-                  label: (
-                    <Link to="/settings/payment-terms">
-                      <Trans>Payment terms</Trans>
-                    </Link>
-                  ),
-                  key: "settings.payment-terms",
-                },
-                {
-                  icon: <FileExcelOutlined />,
-                  label: (
-                    <Link to="/settings/document-templates">
-                      <Trans>Document Templates</Trans>
-                    </Link>
-                  ),
-                  key: "settings.document-templates",
-                },
-                ...(isPlatformAdmin
-                  ? [
-                      {
-                        icon: <DatabaseOutlined />,
-                        label: (
-                          <Link to="/settings/backup">
-                            <Trans>Backup</Trans>
-                          </Link>
-                        ),
-                        key: "settings.backup",
-                      },
-                      {
-                        icon: <UserOutlined />,
-                        label: (
-                          <Link to="/settings/users">
-                            <Trans>Users</Trans>
-                          </Link>
-                        ),
-                        key: "settings.users",
-                      },
-                      {
-                        icon: <GlobalOutlined />,
-                        label: (
-                          <Link to="/settings/countries">
-                            <Trans>Countries</Trans>
-                          </Link>
-                        ),
-                        key: "settings.countries",
-                      },
-                    ]
-                  : []),
-                // GL Export is an org-scoped admin action, not a platform-wide
-                // one — an org admin sees it here even without being a
-                // platform admin, and a platform admin who isn't an admin of
-                // the currently selected organization doesn't.
-                ...(isOrgAdmin
-                  ? [
-                      {
-                        icon: <ExportOutlined />,
-                        label: (
-                          <Link to="/settings/gl-export">
-                            <Trans>GL Export</Trans>
-                          </Link>
-                        ),
-                        key: "settings.gl-export",
-                      },
-                    ]
-                  : []),
-              ],
-            },
           ]}
         />
       </Sider>
@@ -777,6 +776,18 @@ export default function BaseLayout() {
                   onClick={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
                   title={themeMode === "dark" ? t`Switch to light mode` : t`Switch to dark mode`}
                 />
+                <Dropdown
+                  menu={{ items: settingsMenuItems }}
+                  trigger={["click"]}
+                  placement="bottomRight"
+                >
+                  <Button
+                    type="text"
+                    icon={<SettingOutlined />}
+                    style={isSettingsRoute ? { color: colorPrimary } : undefined}
+                    title={t`Settings`}
+                  />
+                </Dropdown>
                 <Select
                   variant="borderless"
                   popupMatchSelectWidth={false}
