@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { App, Button, Card, Space, Tag, Typography, Upload } from "antd";
+import { App, Button, Card, Select, Space, Tag, Typography, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -18,6 +18,8 @@ import {
   DownloadDocumentTemplate,
   UploadDocumentTemplate,
   DeleteDocumentTemplate,
+  GetDocumentTemplateOrientation,
+  UpdateDocumentTemplateOrientation,
 } from "src/api";
 
 const { Title, Text } = Typography;
@@ -42,6 +44,37 @@ function DocumentTemplateCard({
   const { message } = App.useApp();
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // "" (no override set yet) renders identically to "portrait" — every
+  // embedded default template has no <pageSetup> orientation of its own —
+  // so the Select just displays "portrait" for that case rather than
+  // needing a third "unset" option with no visible difference.
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [orientationSaving, setOrientationSaving] = useState(false);
+
+  useEffect(() => {
+    GetDocumentTemplateOrientation(orgId, documentType)
+      .then((res) => {
+        if (res.orientation === "landscape") setOrientation("landscape");
+      })
+      .catch((error) => {
+        message.error(error instanceof Error ? error.message : t`Failed to load page orientation`);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- message is stable from App.useApp()
+  }, [orgId, documentType]);
+
+  const handleOrientationChange = async (value: "portrait" | "landscape") => {
+    const previous = orientation;
+    setOrientation(value);
+    setOrientationSaving(true);
+    try {
+      await UpdateDocumentTemplateOrientation(orgId, documentType, value);
+    } catch (error) {
+      setOrientation(previous);
+      message.error(error instanceof Error ? error.message : t`Failed to save page orientation`);
+    } finally {
+      setOrientationSaving(false);
+    }
+  };
 
   const uploadProps: UploadProps = {
     accept: ".xlsx",
@@ -135,6 +168,24 @@ function DocumentTemplateCard({
               <Trans>Reset to default</Trans>
             </Button>
           )}
+        </Space>
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <Space align="center">
+          <Text type="secondary">
+            <Trans>Page orientation</Trans>
+          </Text>
+          <Select<"portrait" | "landscape">
+            value={orientation}
+            onChange={handleOrientationChange}
+            loading={orientationSaving}
+            disabled={orientationSaving}
+            style={{ width: 140 }}
+            options={[
+              { value: "portrait", label: t`Portrait` },
+              { value: "landscape", label: t`Landscape` },
+            ]}
+          />
         </Space>
       </div>
     </Card>
