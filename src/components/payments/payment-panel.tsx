@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   App,
   Button,
@@ -359,4 +359,7 @@ const ExchangeRateFieldsStack = ({
   </div>
 );
 
-export default PaymentPanel;
+// All props are primitives (no callback/object props), so a shallow-equal
+// memo is a real win here: this panel does its own fetching/state and
+// re-renders on every unrelated keystroke in the surrounding invoice form.
+export default memo(PaymentPanel);
