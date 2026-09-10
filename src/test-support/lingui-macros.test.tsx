@@ -18,8 +18,8 @@ const UsesLinguiMacros = () => (
 );
 
 describe("Lingui macros under Vitest", () => {
-  it("compiles Trans and t`` and renders their source-locale text", () => {
-    renderWithProviders(<UsesLinguiMacros />);
+  it("compiles Trans and t`` and renders their source-locale text", async () => {
+    await renderWithProviders(<UsesLinguiMacros />);
     expect(screen.getByText("hello")).toBeInTheDocument();
     expect(screen.getByText("world")).toBeInTheDocument();
   });
