@@ -145,3 +145,66 @@ func TestImportSummaryComputesLandedCostRate(t *testing.T) {
 		t.Fatalf("summary after cancelling the only PO = %+v, want zeroed", summary)
 	}
 }
+
+// TestGetImportSummariesMatchesPerImportSummary is the batch counterpart to
+// TestImportSummaryComputesLandedCostRate (issue: "show linked purchase
+// orders on the Imports list" — GetImportSummaries exists specifically so
+// that page doesn't call GetImportSummary once per row). Two imports in the
+// same organization — one with a linked, non-cancelled PO and one with
+// nothing linked — must both appear in the batch map with values identical
+// to what GetImportSummary computes for each individually.
+func TestGetImportSummariesMatchesPerImportSummary(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGRNITestFixture(t, d, "org-import-summaries-batch", 10, 250) // 10 * 250 = 2500 cents committed
+
+	linkedImport, err := d.CreateImport(CreateImportRequest{
+		OrganizationID: fx.orgID, ImportNumber: "IMP-0001", Date: fx.date,
+		FreightCost: 500, CustomsCost: 300, // 800 total
+	})
+	if err != nil {
+		t.Fatalf("CreateImport (linked): %v", err)
+	}
+	unlinkedImport, err := d.CreateImport(CreateImportRequest{
+		OrganizationID: fx.orgID, ImportNumber: "IMP-0002", Date: fx.date,
+	})
+	if err != nil {
+		t.Fatalf("CreateImport (unlinked): %v", err)
+	}
+
+	importID := linkedImport.ID
+	if _, err := d.UpdatePurchaseOrder(fx.poID, UpdatePurchaseOrderRequest{ImportID: &importID}); err != nil {
+		t.Fatalf("UpdatePurchaseOrder: %v", err)
+	}
+
+	summaries, err := d.GetImportSummaries(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetImportSummaries: %v", err)
+	}
+	if len(summaries) != 2 {
+		t.Fatalf("len(summaries) = %d, want 2", len(summaries))
+	}
+
+	linked, ok := summaries[linkedImport.ID]
+	if !ok {
+		t.Fatalf("summaries missing linked import %s", linkedImport.ID)
+	}
+	wantLinked, err := d.GetImportSummary(linkedImport.ID)
+	if err != nil {
+		t.Fatalf("GetImportSummary (linked, for comparison): %v", err)
+	}
+	if linked != *wantLinked {
+		t.Fatalf("batch summary for linked import = %+v, want %+v (matching GetImportSummary)", linked, *wantLinked)
+	}
+	if linked.TotalCommittedValue != 2500 || linked.PurchaseOrderCount != 1 {
+		t.Fatalf("linked summary = %+v, want TotalCommittedValue=2500 PurchaseOrderCount=1", linked)
+	}
+
+	unlinked, ok := summaries[unlinkedImport.ID]
+	if !ok {
+		t.Fatalf("summaries missing unlinked import %s", unlinkedImport.ID)
+	}
+	if unlinked.TotalCommittedValue != 0 || unlinked.PurchaseOrderCount != 0 || unlinked.LandedCostRate != 0 {
+		t.Fatalf("unlinked summary = %+v, want all zero", unlinked)
+	}
+}

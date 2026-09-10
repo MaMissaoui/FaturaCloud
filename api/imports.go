@@ -17,6 +17,16 @@ func (h *handler) listImports(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, imports)
 }
 
+func (h *handler) listImportSummaries(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	summaries, err := h.db.GetImportSummaries(orgID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, summaries)
+}
+
 func (h *handler) nextImportNumber(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	writeJSON(w, http.StatusOK, map[string]string{"number": h.db.NextImportNumber(orgID)})
