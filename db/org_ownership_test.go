@@ -342,3 +342,211 @@ func TestCreateDeliveryRejectsCrossOrgReferences(t *testing.T) {
 		t.Fatalf("expected a fully self-consistent org-b delivery to succeed, got: %v", err)
 	}
 }
+
+// TestCreatePurchaseOrderRejectsCrossOrgReferences covers CreatePurchaseOrder/
+// UpdatePurchaseOrder's vendorId, importId, and line-item productId/taxRate.
+func TestCreatePurchaseOrderRejectsCrossOrgReferences(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-po-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	vendorA, err := d.CreateVendor(CreateVendorRequest{OrganizationID: orgA.ID, Name: ptr("Org A Vendor")})
+	if err != nil {
+		t.Fatalf("CreateVendor org-a: %v", err)
+	}
+	vendorB, err := d.CreateVendor(CreateVendorRequest{OrganizationID: orgB.ID, Name: ptr("Org B Vendor")})
+	if err != nil {
+		t.Fatalf("CreateVendor org-b: %v", err)
+	}
+	importA, err := d.CreateImport(CreateImportRequest{OrganizationID: orgA.ID, ImportNumber: "IMP-A1", Date: 1700000000000})
+	if err != nil {
+		t.Fatalf("CreateImport org-a: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{OrganizationID: orgA.ID, Name: "Org A Product", Type: "product", Price: 1000})
+	if err != nil {
+		t.Fatalf("CreateProduct org-a: %v", err)
+	}
+	taxRateA, err := d.CreateTaxRate(CreateTaxRateRequest{OrganizationID: orgA.ID, Name: "Org A Rate", Percentage: 10})
+	if err != nil {
+		t.Fatalf("CreateTaxRate org-a: %v", err)
+	}
+
+	if _, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgB.ID, VendorID: &vendorA.ID, OrderNumber: "PO-X", Status: "draft", OrderDate: 1700000000000,
+	}); err == nil {
+		t.Fatal("expected an org-b purchase order pointing at org-a's vendor to be rejected")
+	}
+	if _, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgB.ID, VendorID: &vendorB.ID, ImportID: &importA.ID, OrderNumber: "PO-X", Status: "draft", OrderDate: 1700000000000,
+	}); err == nil {
+		t.Fatal("expected an org-b purchase order pointing at org-a's import to be rejected")
+	}
+	if _, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgB.ID, VendorID: &vendorB.ID, OrderNumber: "PO-X", Status: "draft", OrderDate: 1700000000000,
+		LineItems: []CreatePurchaseOrderLineItemRequest{{Description: "line", Quantity: 1, UnitPrice: 100, ProductID: &productA.ID}},
+	}); err == nil {
+		t.Fatal("expected an org-b purchase order line referencing org-a's product to be rejected")
+	}
+	if _, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgB.ID, VendorID: &vendorB.ID, OrderNumber: "PO-X", Status: "draft", OrderDate: 1700000000000,
+		LineItems: []CreatePurchaseOrderLineItemRequest{{Description: "line", Quantity: 1, UnitPrice: 100, TaxRate: &taxRateA.ID}},
+	}); err == nil {
+		t.Fatal("expected an org-b purchase order line referencing org-a's tax rate to be rejected")
+	}
+
+	poB, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgB.ID, VendorID: &vendorB.ID, OrderNumber: "PO-B1", Status: "draft", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("expected a fully self-consistent org-b purchase order to succeed, got: %v", err)
+	}
+	if _, err := d.UpdatePurchaseOrder(poB.ID, UpdatePurchaseOrderRequest{VendorID: &vendorA.ID}); err == nil {
+		t.Fatal("expected UpdatePurchaseOrder to reject switching to org-a's vendor")
+	}
+}
+
+// TestCreateInboundDeliveryRejectsCrossOrgReferences covers CreateInboundDelivery/
+// UpdateInboundDelivery's purchaseOrderId/vendorId and line-item
+// purchaseOrderLineItemId/productId.
+func TestCreateInboundDeliveryRejectsCrossOrgReferences(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-gr-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-gr-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	vendorA, err := d.CreateVendor(CreateVendorRequest{OrganizationID: orgA.ID, Name: ptr("Org A Vendor")})
+	if err != nil {
+		t.Fatalf("CreateVendor org-a: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{OrganizationID: orgA.ID, Name: "Org A Product", Type: "product", Price: 1000})
+	if err != nil {
+		t.Fatalf("CreateProduct org-a: %v", err)
+	}
+	poA, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgA.ID, VendorID: &vendorA.ID, OrderNumber: "PO-A1", Status: "draft", OrderDate: 1700000000000,
+		LineItems: []CreatePurchaseOrderLineItemRequest{{Description: "line", Quantity: 1, UnitPrice: 100, ProductID: &productA.ID}},
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder org-a: %v", err)
+	}
+	poLinesA, err := d.GetPurchaseOrderLineItems(poA.ID)
+	if err != nil || len(poLinesA) == 0 {
+		t.Fatalf("GetPurchaseOrderLineItems org-a: %v (lines=%d)", err, len(poLinesA))
+	}
+
+	if _, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: orgB.ID, DeliveryNumber: "GR-X", DeliveryDate: 1700000000000, PurchaseOrderID: &poA.ID,
+	}); err == nil {
+		t.Fatal("expected an org-b receipt pointing at org-a's purchase order to be rejected")
+	}
+	if _, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: orgB.ID, DeliveryNumber: "GR-X", DeliveryDate: 1700000000000, VendorID: &vendorA.ID,
+	}); err == nil {
+		t.Fatal("expected an org-b receipt pointing at org-a's vendor to be rejected")
+	}
+	if _, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: orgB.ID, DeliveryNumber: "GR-X", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{{Description: "line", Quantity: 1, ProductID: &productA.ID}},
+	}); err == nil {
+		t.Fatal("expected an org-b receipt line referencing org-a's product to be rejected")
+	}
+	if _, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: orgB.ID, DeliveryNumber: "GR-X", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{{Description: "line", Quantity: 1, PurchaseOrderLineItemID: &poLinesA[0].ID}},
+	}); err == nil {
+		t.Fatal("expected an org-b receipt line referencing org-a's purchase order line item to be rejected")
+	}
+
+	if _, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: orgB.ID, DeliveryNumber: "GR-B1", DeliveryDate: 1700000000000,
+	}); err != nil {
+		t.Fatalf("expected a fully self-consistent org-b receipt to succeed, got: %v", err)
+	}
+}
+
+// TestCreateIncomingInvoiceRejectsCrossOrgReferences covers CreateIncomingInvoice/
+// UpdateIncomingInvoice's vendorId, purchaseOrderId, and line-item
+// purchaseOrderLineItemId/productId/taxRate.
+func TestCreateIncomingInvoiceRejectsCrossOrgReferences(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-bill-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-bill-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	vendorA, err := d.CreateVendor(CreateVendorRequest{OrganizationID: orgA.ID, Name: ptr("Org A Vendor")})
+	if err != nil {
+		t.Fatalf("CreateVendor org-a: %v", err)
+	}
+	vendorB, err := d.CreateVendor(CreateVendorRequest{OrganizationID: orgB.ID, Name: ptr("Org B Vendor")})
+	if err != nil {
+		t.Fatalf("CreateVendor org-b: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{OrganizationID: orgA.ID, Name: "Org A Product", Type: "product", Price: 1000})
+	if err != nil {
+		t.Fatalf("CreateProduct org-a: %v", err)
+	}
+	taxRateA, err := d.CreateTaxRate(CreateTaxRateRequest{OrganizationID: orgA.ID, Name: "Org A Rate", Percentage: 10})
+	if err != nil {
+		t.Fatalf("CreateTaxRate org-a: %v", err)
+	}
+	poA, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: orgA.ID, VendorID: &vendorA.ID, OrderNumber: "PO-A1", Status: "draft", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder org-a: %v", err)
+	}
+
+	if _, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: orgB.ID, VendorID: vendorA.ID, VendorInvoiceNumber: "BILL-X",
+		State: "draft", Date: 1700000000000, Currency: "EUR",
+	}); err == nil {
+		t.Fatal("expected an org-b bill pointing at org-a's vendor to be rejected")
+	}
+	if _, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: orgB.ID, VendorID: vendorB.ID, PurchaseOrderID: &poA.ID, VendorInvoiceNumber: "BILL-X",
+		State: "draft", Date: 1700000000000, Currency: "EUR",
+	}); err == nil {
+		t.Fatal("expected an org-b bill pointing at org-a's purchase order to be rejected")
+	}
+	if _, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: orgB.ID, VendorID: vendorB.ID, VendorInvoiceNumber: "BILL-X",
+		State: "draft", Date: 1700000000000, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 100, ProductID: &productA.ID}},
+	}); err == nil {
+		t.Fatal("expected an org-b bill line referencing org-a's product to be rejected")
+	}
+	if _, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: orgB.ID, VendorID: vendorB.ID, VendorInvoiceNumber: "BILL-X",
+		State: "draft", Date: 1700000000000, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 100, TaxRate: &taxRateA.ID}},
+	}); err == nil {
+		t.Fatal("expected an org-b bill line referencing org-a's tax rate to be rejected")
+	}
+
+	billB, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+		OrganizationID: orgB.ID, VendorID: vendorB.ID, VendorInvoiceNumber: "BILL-B1",
+		State: "draft", Date: 1700000000000, Currency: "EUR",
+	})
+	if err != nil {
+		t.Fatalf("expected a fully self-consistent org-b bill to succeed, got: %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoice(billB.ID, UpdateIncomingInvoiceRequest{VendorID: &vendorA.ID}); err == nil {
+		t.Fatal("expected UpdateIncomingInvoice to reject switching to org-a's vendor")
+	}
+}

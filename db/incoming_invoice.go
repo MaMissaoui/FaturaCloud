@@ -175,6 +175,22 @@ func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*Inc
 	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, 0); err != nil {
 		return nil, err
 	}
+	vendor, err := d.GetVendor(req.VendorID)
+	if err != nil {
+		return nil, newValidationError("vendor not found")
+	}
+	if err := requireSameOrg(req.OrganizationID, vendor.OrganizationID, "vendor"); err != nil {
+		return nil, err
+	}
+	if req.PurchaseOrderID != nil && *req.PurchaseOrderID != "" {
+		po, err := d.GetPurchaseOrder(*req.PurchaseOrderID)
+		if err != nil {
+			return nil, newValidationError("purchase order not found")
+		}
+		if err := requireSameOrg(req.OrganizationID, po.OrganizationID, "purchase order"); err != nil {
+			return nil, err
+		}
+	}
 	org, err := d.GetOrganization(req.OrganizationID)
 	if err != nil {
 		return nil, fmt.Errorf("create_incoming_invoice organization: %w", err)
@@ -209,7 +225,7 @@ func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*Inc
 		}
 		return nil, fmt.Errorf("create_incoming_invoice insert: %w", err)
 	}
-	if err := replaceIncomingInvoiceLineItemsTx(tx, req.ID, req.LineItems); err != nil {
+	if err := replaceIncomingInvoiceLineItemsTx(tx, req.OrganizationID, req.ID, req.LineItems); err != nil {
 		return nil, err
 	}
 
@@ -228,6 +244,36 @@ func incomingInvoiceUpdateTouchesGLFields(updates UpdateIncomingInvoiceRequest) 
 }
 
 func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoiceRequest) (*IncomingInvoice, error) {
+	// Cross-org FK-ownership check (issue #189): a vendorId/purchaseOrderId/
+	// productId/taxRate this request is actually setting must belong to the
+	// SAME organization as the bill being updated, not just exist.
+	var incomingInvoiceOrgID string
+	if updates.VendorID != nil || updates.PurchaseOrderID != nil || updates.LineItems != nil {
+		current, err := d.GetIncomingInvoice(id)
+		if err != nil {
+			return nil, fmt.Errorf("update_incoming_invoice fetch current for ownership check: %w", err)
+		}
+		incomingInvoiceOrgID = current.OrganizationID
+		if updates.VendorID != nil {
+			vendor, err := d.GetVendor(*updates.VendorID)
+			if err != nil {
+				return nil, newValidationError("vendor not found")
+			}
+			if err := requireSameOrg(incomingInvoiceOrgID, vendor.OrganizationID, "vendor"); err != nil {
+				return nil, err
+			}
+		}
+		if updates.PurchaseOrderID != nil && *updates.PurchaseOrderID != "" {
+			po, err := d.GetPurchaseOrder(*updates.PurchaseOrderID)
+			if err != nil {
+				return nil, newValidationError("purchase order not found")
+			}
+			if err := requireSameOrg(incomingInvoiceOrgID, po.OrganizationID, "purchase order"); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// See UpdateInvoice's identical guard: a posted GL entry was built from
 	// these fields, and PUT never re-triggers a re-post, so editing them out
 	// from under a posted entry would leave it silently stale.
@@ -391,7 +437,7 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 	}
 
 	if updates.LineItems != nil {
-		if err := replaceIncomingInvoiceLineItemsTx(tx, id, *updates.LineItems); err != nil {
+		if err := replaceIncomingInvoiceLineItemsTx(tx, incomingInvoiceOrgID, id, *updates.LineItems); err != nil {
 			return nil, err
 		}
 	}
@@ -548,8 +594,14 @@ func (d *Database) DeleteIncomingInvoice(id string) (bool, error) {
 	return n > 0, nil
 }
 
+// replaceIncomingInvoiceLineItemsTx also enforces issue #189's ownership
+// rule for this table's cross-org-referenceable fields:
+// purchaseOrderLineItemId (via its parent purchase order), productId, and
+// taxRate — checked with the same tx-capable exec used for every other
+// read/write here, the identical reasoning as outbound/inbound delivery's
+// line-item replace functions.
 func replaceIncomingInvoiceLineItemsTx(
-	exec sqlGetExecer, invoiceID string, items []CreateInvoiceLineItemRequest,
+	exec sqlGetExecer, organizationID, invoiceID string, items []CreateInvoiceLineItemRequest,
 ) error {
 	if _, err := exec.Exec(
 		`DELETE FROM incoming_invoice_line_items WHERE incomingInvoiceId = ?`, invoiceID,
@@ -564,15 +616,44 @@ func replaceIncomingInvoiceLineItemsTx(
 			description = *item.Description
 		}
 		productID := item.ProductID
-		// A line linked to a purchase order inherits that line's product when
-		// it doesn't name one, so matching and stock reporting agree.
-		if productID == nil && item.PurchaseOrderLineItemID != nil {
-			var resolved sql.NullString
-			if err := exec.Get(&resolved,
-				`SELECT productId FROM purchase_order_line_items WHERE id = ?`,
-				*item.PurchaseOrderLineItemID,
-			); err == nil && resolved.Valid {
-				productID = &resolved.String
+		if item.PurchaseOrderLineItemID != nil {
+			var resolved struct {
+				ProductID      sql.NullString `db:"productId"`
+				OrganizationID string         `db:"organizationId"`
+			}
+			if err := exec.Get(&resolved, `
+				SELECT pol.productId AS productId, po.organizationId AS organizationId
+				FROM purchase_order_line_items pol
+				JOIN purchase_orders po ON po.id = pol.purchaseOrderId
+				WHERE pol.id = ?`, *item.PurchaseOrderLineItemID,
+			); err != nil {
+				return newValidationError("line %d: purchase order line item not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, resolved.OrganizationID, fmt.Sprintf("line %d: purchase order line item", i+1)); err != nil {
+				return err
+			}
+			// A line linked to a purchase order inherits that line's product
+			// when it doesn't name one, so matching and stock reporting agree.
+			if productID == nil && resolved.ProductID.Valid {
+				productID = &resolved.ProductID.String
+			}
+		}
+		if productID != nil && *productID != "" {
+			var productOrgID string
+			if err := exec.Get(&productOrgID, `SELECT organizationId FROM products WHERE id = ?`, *productID); err != nil {
+				return newValidationError("line %d: product not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, productOrgID, fmt.Sprintf("line %d: product", i+1)); err != nil {
+				return err
+			}
+		}
+		if item.TaxRate != nil && *item.TaxRate != "" {
+			var taxRateOrgID string
+			if err := exec.Get(&taxRateOrgID, `SELECT organizationId FROM taxRates WHERE id = ?`, *item.TaxRate); err != nil {
+				return newValidationError("line %d: tax rate not found", i+1)
+			}
+			if err := requireSameOrg(organizationID, taxRateOrgID, fmt.Sprintf("line %d: tax rate", i+1)); err != nil {
+				return err
 			}
 		}
 
