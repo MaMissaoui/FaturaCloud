@@ -19,18 +19,10 @@ import type { Payment, PaymentApplication } from "src/types/models";
 // typed functions. MSW would earn its keep once a test needs to assert on
 // request shape/headers, not for a smoke test.
 //
-// Also mocking `src/utils/date` (see the KNOWN LIMITATION note in
-// render-with-providers.tsx): `useDatePickerFormat` reads `organizationAtom`,
-// an async Jotai atom, and in this test environment a component suspending
-// on it never recovers even though the atom itself resolves in under a
-// millisecond via the imperative store API. Not a PaymentPanel bug —
-// investigated, not yet root-caused, filed as a follow-up rather than
-// blocking this PR on it.
-vi.mock("src/utils/date", () => ({
-  useDatePickerFormat: () => "MM/DD/YYYY",
-  useDateTimePickerFormat: () => "MM/DD/YYYY HH:mm",
-}));
-
+// No mock needed for src/utils/date's useDatePickerFormat (which reads
+// organizationAtom, an async Jotai atom) — renderWithProviders now flushes
+// organizationAtom's Suspense correctly (see its ASYNC ATOM SUSPENSE FIX
+// comment, issue #202).
 vi.mock("src/api", () => ({
   GetInvoicePayments: vi.fn(),
   GetIncomingInvoicePayments: vi.fn(),
@@ -84,7 +76,7 @@ describe("PaymentPanel", () => {
     vi.mocked(GetPayment).mockResolvedValue(payment);
     vi.mocked(GetAccounts).mockResolvedValue([]);
 
-    renderWithProviders(
+    await renderWithProviders(
       <PaymentPanel
         organizationId="org_1"
         documentType="invoice"
@@ -109,7 +101,7 @@ describe("PaymentPanel", () => {
     vi.mocked(GetInvoicePayments).mockResolvedValue([]);
     vi.mocked(GetAccounts).mockResolvedValue([]);
 
-    renderWithProviders(
+    await renderWithProviders(
       <PaymentPanel
         organizationId="org_1"
         documentType="invoice"
