@@ -168,6 +168,12 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// exception — any authenticated user may ask their own role, which is
 	// how the frontend decides whether to show org-admin-only UI at all.
 	protected("GET", "/api/organizations/{orgId}/my-role", h.getMyOrganizationRole)
+	// Batch counterpart to my-role (issue #147) — every organization the
+	// caller belongs to, in one request, instead of one my-role call per row
+	// on the Organizations list page. A different path shape than the
+	// {orgId}/my-role route above (one fewer segment), so there's no route
+	// collision to worry about.
+	protected("GET", "/api/organizations/my-roles", h.getMyOrganizationRoles)
 	orgAdminProtected("GET", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.listOrganizationMembers)
 	orgAdminProtected("POST", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.addOrganizationMember)
 	orgAdminProtected("PUT", "/api/organizations/{orgId}/members/{userId}", pathOrgID("orgId"), h.updateOrganizationMemberRole)

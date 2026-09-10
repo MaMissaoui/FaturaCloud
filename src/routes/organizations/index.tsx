@@ -23,7 +23,7 @@ import {
   GetOrganizationUsageCount,
   ResetOrganizationData,
   GetAccounts,
-  GetMyOrganizationRole,
+  GetMyOrganizationRoles,
   GetOrganizationMembers,
   AddOrganizationMember,
   UpdateOrganizationMemberRole,
@@ -88,14 +88,12 @@ export default function Organizations() {
     try {
       const list = await GetOrganizations();
       setOrgs(list);
-      const roles = await Promise.all(
-        list.map((org) =>
-          GetMyOrganizationRole(org.id)
-            .then(({ role }) => (role === "admin" ? org.id : null))
-            .catch(() => null),
-        ),
+      // One request for every organization's role (issue #147), replacing
+      // the old one-GetMyOrganizationRole-call-per-row N+1 pattern.
+      const roles = await GetMyOrganizationRoles().catch(
+        () => ({}) as Record<string, "admin" | "user">,
       );
-      setMyOrgAdminIds(new Set(roles.filter((id): id is string => id !== null)));
+      setMyOrgAdminIds(new Set(Object.keys(roles).filter((orgId) => roles[orgId] === "admin")));
     } finally {
       setLoading(false);
     }

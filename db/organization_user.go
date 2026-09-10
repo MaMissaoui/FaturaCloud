@@ -90,6 +90,31 @@ func (d *Database) GetOrganizationRole(organizationID, userID string) (role stri
 	return role, true, nil
 }
 
+// GetUserOrganizationRoles is the batch counterpart to GetOrganizationRole —
+// every organization userID belongs to, in one query, instead of one round
+// trip per organization (issue #147: the Organizations list page was calling
+// GetOrganizationRole/my-role once per row). An organization absent from the
+// map means "not a member" (mirrors GetOrganizationRole's isMember=false),
+// same as GetUserOrganizations already means "the caller's own memberships."
+func (d *Database) GetUserOrganizationRoles(userID string) (map[string]string, error) {
+	rows := []struct {
+		OrganizationID string `db:"organizationId"`
+		Role           string `db:"role"`
+	}{}
+	err := d.DB.Select(&rows,
+		`SELECT organizationId, role FROM organization_users WHERE userId = ?`,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_user_organization_roles: %w", err)
+	}
+	roles := make(map[string]string, len(rows))
+	for _, row := range rows {
+		roles[row.OrganizationID] = row.Role
+	}
+	return roles, nil
+}
+
 // AddOrganizationUser grants userID a role on organizationID. Re-adding an
 // existing member (e.g. changing their role via re-invite) upserts rather
 // than erroring, since the org_user_org_user unique index would otherwise
