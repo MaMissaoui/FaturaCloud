@@ -102,12 +102,21 @@ func buildInvoiceTemplate() {
 	footerRow := totalsRow + 5
 	set("A"+strconv.Itoa(footerRow), "Payment terms: {{invoice.paymentTerms}}")
 	set("A"+strconv.Itoa(footerRow+1), "IBAN: {{organization.iban}} | Bank: {{organization.bankName}}")
-	// Tunisia invoice support: shown unconditionally, blank/zero value and all,
-	// the same convention as VAT/buyer reference above — this is now the ONLY
-	// place a fiscal-stamp org's stamp duty and withholding tax reach the PDF
-	// (pdf-tunisia.tsx no longer renders once PDF always follows this template).
+	// Tunisia invoice support: fiscalStampAmount is shown unconditionally,
+	// blank/zero value and all, the same convention as VAT/buyer reference
+	// above — this is now the ONLY place a fiscal-stamp org's stamp duty
+	// reaches the PDF (pdf-tunisia.tsx no longer renders once PDF always
+	// follows this template). Withholding tax is different: unlike the
+	// stamp (NOT NULL DEFAULT 0, always a real amount), rate/amount are
+	// nullable and blank for every organization that doesn't use the
+	// feature — virtually all of them — so building "Withholding tax (…): …"
+	// as static template text around two placeholders left a broken-looking
+	// "Withholding tax (): " on every invoice PDF this app generates. The
+	// whole line is one Go-computed placeholder instead (buildScalarPlaceholders
+	// in db/xlsx_export.go), blank entirely when unset rather than a label
+	// with nothing after it.
 	set("A"+strconv.Itoa(footerRow+2), "Fiscal stamp: {{invoice.fiscalStampAmount}}")
-	set("A"+strconv.Itoa(footerRow+3), "Withholding tax ({{invoice.withholdingTaxRate}}): {{invoice.withholdingTaxAmount}}")
+	set("A"+strconv.Itoa(footerRow+3), "{{invoice.withholdingTaxLine}}")
 
 	f.SetColWidth(sheet, "A", "A", 28)
 	f.SetColWidth(sheet, "B", "B", 28)
@@ -165,8 +174,7 @@ var invoiceFieldRefs = []fieldRef{
 	{"Footer", "{{invoice.total}}", "Grand total"},
 	{"Footer", "{{invoice.paymentTerms}}", "Payment terms text"},
 	{"Footer", "{{invoice.fiscalStampAmount}}", "Tunisia timbre fiscal — flat duty, formatted with currency (0 if unused)"},
-	{"Footer", "{{invoice.withholdingTaxRate}}", "Withholding tax rate percentage, blank if unset"},
-	{"Footer", "{{invoice.withholdingTaxAmount}}", "Withholding tax amount, formatted with currency, blank if unset"},
+	{"Footer", "{{invoice.withholdingTaxLine}}", "Full \"Withholding tax (12%): 40.00 EUR\" line, entirely blank (not just the rate/amount) if unset"},
 	{"Footer", "{{organization.iban}}", "Seller IBAN"},
 	{"Footer", "{{organization.bankName}}", "Seller bank name"},
 

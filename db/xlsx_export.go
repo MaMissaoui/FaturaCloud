@@ -285,13 +285,17 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 		currency = *org.Currency
 	}
 
-	withholdingTaxRate := ""
-	if invoice.WithholdingTaxRate != nil {
-		withholdingTaxRate = strconv.FormatFloat(*invoice.WithholdingTaxRate, 'f', -1, 64) + "%"
-	}
-	withholdingTaxAmount := ""
-	if invoice.WithholdingTaxAmount != nil {
-		withholdingTaxAmount = formatMoneyCents(*invoice.WithholdingTaxAmount, currency, org.MinimumFractionDigits)
+	// One Go-computed line rather than two placeholders embedded in static
+	// template text ("Withholding tax ({{rate}}): {{amount}}") — rate/amount
+	// are nullable and blank for every organization that doesn't use this
+	// Tunisia-specific feature (virtually all of them), which left a
+	// broken-looking "Withholding tax (): " on every invoice PDF. Blank
+	// entirely, not just the values, when unset.
+	withholdingTaxLine := ""
+	if invoice.WithholdingTaxRate != nil && invoice.WithholdingTaxAmount != nil {
+		rate := strconv.FormatFloat(*invoice.WithholdingTaxRate, 'f', -1, 64)
+		amount := formatMoneyCents(*invoice.WithholdingTaxAmount, currency, org.MinimumFractionDigits)
+		withholdingTaxLine = fmt.Sprintf("Withholding tax (%s%%): %s", rate, amount)
 	}
 
 	return map[string]string{
@@ -308,9 +312,8 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 		// three fields) — fiscalStampAmount is NOT NULL DEFAULT 0, so this is
 		// always a real amount, "0.00 EUR" for an organization that doesn't
 		// use it, same as every other always-present label on this template.
-		"invoice.fiscalStampAmount":    formatMoneyCents(invoice.FiscalStampAmount, currency, org.MinimumFractionDigits),
-		"invoice.withholdingTaxRate":   withholdingTaxRate,
-		"invoice.withholdingTaxAmount": withholdingTaxAmount,
+		"invoice.fiscalStampAmount":  formatMoneyCents(invoice.FiscalStampAmount, currency, org.MinimumFractionDigits),
+		"invoice.withholdingTaxLine": withholdingTaxLine,
 
 		"organization.name":        derefString(org.Name),
 		"organization.vatin":       derefString(org.Vatin),
