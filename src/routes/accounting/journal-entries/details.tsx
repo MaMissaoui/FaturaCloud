@@ -266,7 +266,8 @@ const JournalEntryDetails = () => {
                         <InputNumber
                           min={0}
                           precision={2}
-                          style={{ width: "100%", textAlign: "right" }}
+                          style={{ width: "100%" }}
+                          styles={{ input: { textAlign: "right" } }}
                           onChange={(v) => {
                             if (v) form.setFieldValue(["lines", field.name, "credit"], undefined);
                           }}
@@ -284,7 +285,8 @@ const JournalEntryDetails = () => {
                         <InputNumber
                           min={0}
                           precision={2}
-                          style={{ width: "100%", textAlign: "right" }}
+                          style={{ width: "100%" }}
+                          styles={{ input: { textAlign: "right" } }}
                           onChange={(v) => {
                             if (v) form.setFieldValue(["lines", field.name, "debit"], undefined);
                           }}
