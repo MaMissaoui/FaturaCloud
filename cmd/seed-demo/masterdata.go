@@ -362,6 +362,7 @@ func (s *Seeder) setupProducts() error {
 			id: p.ID, name: entry.name, unit: entry.unit, stockEnabled: entry.stockEnabled,
 			priceCents: price, costCents: cost, taxRateID: taxID,
 			qtyLo: entry.qtyLo, qtyHi: entry.qtyHi, category: entry.category,
+			displacement: entry.displacement,
 		})
 		s.stats.Products++
 		return nil

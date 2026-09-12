@@ -185,6 +185,12 @@ type productCatalogEntry struct {
 	// finished/component split the real frontend product pickers apply
 	// (CLAUDE.md's "products.category" note).
 	category string
+	// displacement is the displacementClass.label this entry was generated
+	// at ("50cc".."650cc"), set only for "finished"/"component" entries —
+	// production.go's assembly step groups both sides by this value, since
+	// a component is only ever fit for a motorcycle of its own displacement
+	// class (a "125cc" engine block doesn't go into a "650cc" frame).
+	displacement string
 }
 
 var serviceCatalog = []productCatalogEntry{
@@ -240,7 +246,8 @@ func buildFinishedMotorcycleCatalog() []productCatalogEntry {
 				priceCentsHi: int64(float64(baseHi) * c.multiplier),
 				costFactorLo: 0.65, costFactorHi: 0.8,
 				qtyLo: 1, qtyHi: 3,
-				category: "finished",
+				category:     "finished",
+				displacement: c.label,
 			})
 		}
 	}
@@ -355,7 +362,8 @@ func buildComponentCatalog() []productCatalogEntry {
 				priceCentsHi: int64(float64(t.tier.priceCentsHi) * c.multiplier),
 				costFactorLo: t.tier.costFactorLo, costFactorHi: t.tier.costFactorHi,
 				qtyLo: t.tier.qtyLo, qtyHi: t.tier.qtyHi,
-				category: "component",
+				category:     "component",
+				displacement: c.label,
 			})
 		}
 	}
