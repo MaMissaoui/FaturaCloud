@@ -289,7 +289,8 @@ const LineItemsTable = ({
                                 rules={[{ required: true, message: t`Required` }]}
                               >
                                 <InputNumber
-                                  style={{ width: "100%", textAlign: "right" }}
+                                  style={{ width: "100%" }}
+                                  styles={{ input: { textAlign: "right" } }}
                                   min={0}
                                   precision={precision}
                                   disabled={disabled}
@@ -327,7 +328,8 @@ const LineItemsTable = ({
                       render={(field) => (
                         <Form.Item name={[field.name, col.name ?? "unitPrice"]} noStyle>
                           <InputNumber
-                            style={{ width: "100%", textAlign: "right" }}
+                            style={{ width: "100%" }}
+                            styles={{ input: { textAlign: "right" } }}
                             min={0}
                             precision={2}
                             step={0.01}
