@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.0] - 2026-09-12
+
+### Added
+- Products can now define a Bill of Materials: a "finished" product's
+  recipe of which "component" products, and how many of each, build one
+  unit of it — editable from the product's edit drawer.
+
+### Fixed
+- `cmd/seed-demo` (internal demo-data tool, not part of the served
+  application): finished-goods products can now actually be produced and
+  shipped in seeded data via a simulated assembly step, so a seeded
+  organization's Profit & Loss shows real Cost of Goods Sold instead of
+  permanently empty expenses; and the tool's HTTP client timeout was raised
+  so a `--reset` against a full-sized organization no longer times out
+  mid-delete.
+
 ## [3.18.0] - 2026-09-12
 
 ### Fixed
