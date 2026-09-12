@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.0] - 2026-09-12
+
+### Fixed
+- The Product column on every document's line items — invoices, orders,
+  purchase orders, outbound/inbound deliveries, both the web app and the
+  printed Excel/PDF exports — now shows the product's SKU instead of its
+  name, since Description already carries the name; the two columns no
+  longer show the same value twice.
+- Product SKUs are now uppercased and trimmed on save, so two SKUs
+  differing only by case can no longer coexist for the same organization.
+- Inventory's "Filter by product" control is now positioned next to the
+  "Recent movements" table it actually filters, instead of sitting far
+  away from it next to an unrelated table.
+
+### Changed
+- Table columns across the app — and the printed document templates —
+  now consistently right-align numeric/currency/quantity values and
+  left-align text, identifiers, dates, and status, matching standard
+  data-table conventions; a few existing columns that had drifted from
+  this (a status column, a couple of action-menu columns) were corrected
+  to match.
+- The release Docker build's layer cache moved from GitHub Actions cache
+  to the GHCR registry, fixing a permanent 0%-hit-rate cache leak that
+  had been silently filling the repository's Actions cache quota on every
+  tagged release.
+
 ## [3.17.0] - 2026-09-10
 
 ### Added
