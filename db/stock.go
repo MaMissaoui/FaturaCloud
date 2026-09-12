@@ -106,9 +106,23 @@ type CreateStockMovementRequest struct {
 // StockMovementListOptions filters/pages/sorts GetStockMovements. Limit == 0
 // means "no limit", ProductID == "" means unfiltered — both preserve the
 // original full-fetch behavior. SortField == "" keeps the original default
-// order (createdAt descending).
+// order (createdAt descending). ProductCategory/MovementType/Reference == ""
+// are likewise unfiltered.
 type StockMovementListOptions struct {
 	ProductID string
+	// "finished" | "component" — matches products.category exactly (not a
+	// LIKE search), the same categorical filter Inventory's Stock levels
+	// table already displays as a column. "" (unfiltered) also still
+	// includes an unclassified (NULL category) product's movements.
+	ProductCategory string
+	// "in" | "out" | "count_addition" | "count_subtraction" | "adjustment"
+	// — matches stockMovements.type exactly, same set movementTypeTag
+	// (frontend) renders.
+	MovementType string
+	// Free-text, matched via LIKE — a movement's reference is often an
+	// invoice/PO/delivery number a user only remembers part of, same
+	// substring-match convention as GetProducts' Search.
+	Reference string
 	Limit     int
 	Offset    int
 	SortField string
@@ -137,6 +151,18 @@ func (d *Database) GetStockMovements(organizationID string, opts StockMovementLi
 	if opts.ProductID != "" {
 		where += " AND sm.productId = ?"
 		args = append(args, opts.ProductID)
+	}
+	if opts.ProductCategory != "" {
+		where += " AND p.category = ?"
+		args = append(args, opts.ProductCategory)
+	}
+	if opts.MovementType != "" {
+		where += " AND sm.type = ?"
+		args = append(args, opts.MovementType)
+	}
+	if opts.Reference != "" {
+		where += " AND sm.reference LIKE ?"
+		args = append(args, "%"+opts.Reference+"%")
 	}
 
 	var total int

@@ -9,11 +9,14 @@ import (
 func (h *handler) listStockMovements(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	opts := db.StockMovementListOptions{
-		ProductID: r.URL.Query().Get("productId"),
-		Limit:     parseIntParam(r, "limit"),
-		Offset:    parseIntParam(r, "offset"),
-		SortField: r.URL.Query().Get("sort"),
-		SortDesc:  r.URL.Query().Get("order") == "desc",
+		ProductID:       r.URL.Query().Get("productId"),
+		ProductCategory: r.URL.Query().Get("category"),
+		MovementType:    r.URL.Query().Get("type"),
+		Reference:       r.URL.Query().Get("reference"),
+		Limit:           parseIntParam(r, "limit"),
+		Offset:          parseIntParam(r, "offset"),
+		SortField:       r.URL.Query().Get("sort"),
+		SortDesc:        r.URL.Query().Get("order") == "desc",
 	}
 	movements, total, err := h.db.GetStockMovements(orgID, opts)
 	if err != nil {
