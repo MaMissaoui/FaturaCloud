@@ -612,6 +612,9 @@ export const GetStockMovements = (
   organizationId: string,
   params?: {
     productId?: string;
+    category?: string;
+    type?: string;
+    reference?: string;
     limit?: number;
     offset?: number;
     sort?: string;
@@ -620,6 +623,9 @@ export const GetStockMovements = (
 ) => {
   const qs = new URLSearchParams();
   if (params?.productId) qs.set("productId", params.productId);
+  if (params?.category) qs.set("category", params.category);
+  if (params?.type) qs.set("type", params.type);
+  if (params?.reference) qs.set("reference", params.reference);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   if (params?.sort) qs.set("sort", params.sort);

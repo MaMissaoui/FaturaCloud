@@ -984,6 +984,89 @@ func TestGetStockMovementsPagination(t *testing.T) {
 	}
 }
 
+// TestGetStockMovementsCategoryTypeReferenceFilters covers the three
+// Inventory screen filters added alongside ProductID: ProductCategory (an
+// exact match against the joined product's category), MovementType (an
+// exact match against the movement's own type), and Reference (a LIKE
+// substring match, same convention as GetProducts' Search) — each combining
+// with ProductID rather than replacing it.
+func TestGetStockMovementsCategoryTypeReferenceFilters(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	finished := "finished"
+	component := "component"
+	finishedProduct, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Atlas Scooter", Type: "product", StockEnabled: 1, Category: &finished,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct (finished): %v", err)
+	}
+	componentProduct, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Air filter", Type: "product", StockEnabled: 1, Category: &component,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct (component): %v", err)
+	}
+
+	poRef := "PO-0042"
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: componentProduct.ID, Type: "in", Quantity: 10, Reference: &poRef,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (component, in, PO-0042): %v", err)
+	}
+	deliveryRef := "DN-0007"
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: finishedProduct.ID, Type: "out", Quantity: 2, Reference: &deliveryRef,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (finished, out, DN-0007): %v", err)
+	}
+	// Positive (inflow) quantity with no UnitCost — an uncosted inflow
+	// posts no GL line at all (unlike an outflow, which would need an
+	// existing average cost to resolve against and a fiscal year to post
+	// into), so this stays a plain list-only fixture.
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: finishedProduct.ID, Type: "adjustment", Quantity: 1,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (finished, adjustment): %v", err)
+	}
+
+	// Category: only the component product's movement.
+	byCategory, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{ProductCategory: "component"})
+	if err != nil || len(byCategory) != 1 || total != 1 || byCategory[0].ProductID != componentProduct.ID {
+		t.Fatalf("GetStockMovements (category=component): err=%v len=%d total=%d, want 1/1 for componentProduct", err, len(byCategory), total)
+	}
+
+	// Movement type: only the "out" movement.
+	byType, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{MovementType: "out"})
+	if err != nil || len(byType) != 1 || total != 1 || byType[0].Type != "out" {
+		t.Fatalf("GetStockMovements (type=out): err=%v len=%d total=%d, want 1/1 out", err, len(byType), total)
+	}
+
+	// Reference: substring match, case-insensitive-by-default SQLite LIKE.
+	byReference, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{Reference: "po-"})
+	if err != nil || len(byReference) != 1 || total != 1 || byReference[0].Reference == nil || *byReference[0].Reference != "PO-0042" {
+		t.Fatalf("GetStockMovements (reference=po-): err=%v len=%d total=%d, want 1/1 PO-0042", err, len(byReference), total)
+	}
+
+	// A movement with no reference at all is correctly excluded from any
+	// non-empty Reference filter, not matched as an empty substring.
+	byReferenceNone, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{Reference: "nonexistent"})
+	if err != nil || len(byReferenceNone) != 0 || total != 0 {
+		t.Fatalf("GetStockMovements (reference=nonexistent): err=%v len=%d total=%d, want 0/0", err, len(byReferenceNone), total)
+	}
+
+	// Category and type combine (AND, not OR): the finished product's "out"
+	// movement only, not its "adjustment" movement too.
+	combined, total, err := d.GetStockMovements(org.ID, StockMovementListOptions{ProductCategory: "finished", MovementType: "out"})
+	if err != nil || len(combined) != 1 || total != 1 || combined[0].Type != "out" {
+		t.Fatalf("GetStockMovements (category=finished, type=out): err=%v len=%d total=%d, want 1/1 out", err, len(combined), total)
+	}
+}
+
 // TestGetProductsSort covers server-side sorting: the default (name
 // ascending, unchanged from before pagination existed), an explicit
 // descending sort on a plain column, and — the case that actually needs a

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, StockMovement } from "src/types/models";
 import { Link, useLocation } from "react-router";
 import {
@@ -8,6 +8,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Space,
   Table,
   Tag,
   theme,
@@ -21,6 +22,7 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { InboxOutlined, DeleteOutlined } from "@ant-design/icons";
 import find from "lodash/find";
+import debounce from "lodash/debounce";
 
 import { organizationIdAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
@@ -82,6 +84,14 @@ const Inventory = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [productFilter, setProductFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [movementTypeFilter, setMovementTypeFilter] = useState<string | null>(null);
+  // referenceInput updates on every keystroke (what the box shows);
+  // referenceFilter is debounced and is what actually drives the server
+  // query — same split as products.tsx's search/searchInput pair, so a
+  // fast typist doesn't fire a request per character.
+  const [referenceInput, setReferenceInput] = useState("");
+  const [referenceFilter, setReferenceFilter] = useState("");
   const [stockSearch, setStockSearch] = useState("");
   const [sortField, setSortField] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
@@ -89,12 +99,25 @@ const Inventory = () => {
   // Guards against an in-flight earlier request overwriting a newer one.
   const requestIdRef = useRef(0);
 
+  const debouncedSetReferenceFilter = useMemo(
+    () =>
+      debounce((value: string) => {
+        setReferenceFilter(value);
+        setPage(1);
+      }, 300),
+    [],
+  );
+  useEffect(() => () => debouncedSetReferenceFilter.cancel(), [debouncedSetReferenceFilter]);
+
   const fetchMovements = useCallback(() => {
     if (!organizationId) return;
     const requestId = ++requestIdRef.current;
     setLoading(true);
     GetStockMovements(organizationId, {
       productId: productFilter ?? undefined,
+      category: categoryFilter ?? undefined,
+      type: movementTypeFilter ?? undefined,
+      reference: referenceFilter || undefined,
       limit: pageSize,
       offset: (page - 1) * pageSize,
       sort: sortField,
@@ -108,7 +131,17 @@ const Inventory = () => {
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false);
       });
-  }, [organizationId, page, pageSize, productFilter, sortField, sortOrder]);
+  }, [
+    organizationId,
+    page,
+    pageSize,
+    productFilter,
+    categoryFilter,
+    movementTypeFilter,
+    referenceFilter,
+    sortField,
+    sortOrder,
+  ]);
 
   useEffect(() => {
     if (location.pathname === "/inventory") {
@@ -270,25 +303,74 @@ const Inventory = () => {
           {/* Filters this table only — it was previously in the page header,
               next to the Stock levels table above, where selecting a
               product had no visible effect at all and looked broken. */}
-          <Select
-            allowClear
-            placeholder={t`Filter by product`}
-            style={{ width: 240 }}
-            showSearch
-            optionFilterProp="label"
-            onChange={(val) => {
-              setProductFilter(val ?? null);
-              setPage(1);
-            }}
-            value={productFilter}
-          >
-            {trackedProducts.map((p: Product) => (
-              <Select.Option key={p.id} value={p.id} label={p.name}>
-                {p.name}
-                {p.sku ? ` (${p.sku})` : ""}
+          <Space wrap>
+            <Select
+              allowClear
+              placeholder={t`Filter by product`}
+              style={{ width: 220 }}
+              showSearch
+              optionFilterProp="label"
+              onChange={(val) => {
+                setProductFilter(val ?? null);
+                setPage(1);
+              }}
+              value={productFilter}
+            >
+              {trackedProducts.map((p: Product) => (
+                <Select.Option key={p.id} value={p.id} label={p.name}>
+                  {p.name}
+                  {p.sku ? ` (${p.sku})` : ""}
+                </Select.Option>
+              ))}
+            </Select>
+            <Select
+              allowClear
+              placeholder={t`Filter by product type`}
+              style={{ width: 180 }}
+              onChange={(val) => {
+                setCategoryFilter(val ?? null);
+                setPage(1);
+              }}
+              value={categoryFilter}
+            >
+              <Select.Option value="finished">
+                <Trans>Finished good</Trans>
               </Select.Option>
-            ))}
-          </Select>
+              <Select.Option value="component">
+                <Trans>Component</Trans>
+              </Select.Option>
+            </Select>
+            <Select
+              allowClear
+              placeholder={t`Filter by movement type`}
+              style={{ width: 200 }}
+              onChange={(val) => {
+                setMovementTypeFilter(val ?? null);
+                setPage(1);
+              }}
+              value={movementTypeFilter}
+            >
+              <Select.Option value="in">{movementTypeTag("in")}</Select.Option>
+              <Select.Option value="out">{movementTypeTag("out")}</Select.Option>
+              <Select.Option value="count_addition">
+                {movementTypeTag("count_addition")}
+              </Select.Option>
+              <Select.Option value="count_subtraction">
+                {movementTypeTag("count_subtraction")}
+              </Select.Option>
+              <Select.Option value="adjustment">{movementTypeTag("adjustment")}</Select.Option>
+            </Select>
+            <Input.Search
+              allowClear
+              placeholder={t`Filter by reference`}
+              style={{ width: 200 }}
+              value={referenceInput}
+              onChange={(e) => {
+                setReferenceInput(e.target.value);
+                debouncedSetReferenceFilter(e.target.value);
+              }}
+            />
+          </Space>
         </Col>
       </Row>
       <Row style={{ marginTop: 12 }}>
