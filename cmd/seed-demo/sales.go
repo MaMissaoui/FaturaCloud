@@ -90,7 +90,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		// due date (some early, most on time, some late) — a realistic AR
 		// aging spread rather than everything paying exactly on day 14.
 		payDay := businessDaysLater(day, s.rng.IntRange(3, 40))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice")
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
 
 	case s.rng.Chance(0.13 / (0.97 - 0.80)):
 		// Two partial payments — exercises partial-payment/aging display.
@@ -98,8 +98,8 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		second := total - first
 		firstDay := businessDaysLater(day, s.rng.IntRange(5, 20))
 		secondDay := businessDaysLater(firstDay, s.rng.IntRange(5, 25))
-		s.schedulePayment(firstDay, inv.ID, first, client.id, "invoice")
-		s.schedulePayment(secondDay, inv.ID, second, client.id, "invoice")
+		s.schedulePayment(firstDay, inv.ID, first, client.id, "invoice", s.cfg.Currency, nil)
+		s.schedulePayment(secondDay, inv.ID, second, client.id, "invoice", s.cfg.Currency, nil)
 
 	case s.rng.Chance(0.80):
 		// A slow-paying client — genuinely collected eventually, just well
@@ -108,7 +108,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		// without it accumulating forever the way the permanent-bad-debt
 		// default case below does.
 		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice")
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
 
 	default:
 		// Genuinely never paid — permanent bad debt/write-off, ~0.8% of all
@@ -120,8 +120,15 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 // schedulePayment queues a CreatePayment call for payDay if payDay is still
 // within the simulated range — a payment that would fall after --end-date
 // is simply never made, leaving the document genuinely outstanding as of
-// "today" rather than back-dating a payment into the future.
-func (s *Seeder) schedulePayment(payDay time.Time, documentID string, amount int64, partnerID, documentType string) {
+// "today" rather than back-dating a payment into the future. currency must
+// match the document being settled exactly — CreatePayment 409s otherwise
+// (a payment has no per-application FX of its own) — so every call site
+// passes the same currency the document itself was created with, not
+// always the organization's own; exchangeRate is nil for an
+// organization-currency payment (the common case) and required whenever
+// currency differs, reusing the same rate the document itself was frozen
+// at (see purchasing.go's billPurchaseOrder for a foreign-currency bill).
+func (s *Seeder) schedulePayment(payDay time.Time, documentID string, amount int64, partnerID, documentType, currency string, exchangeRate *float64) {
 	if payDay.After(s.cfg.EndDate) {
 		return
 	}
@@ -137,7 +144,8 @@ func (s *Seeder) schedulePayment(payDay time.Time, documentID string, amount int
 			VendorID:       vendorID,
 			BankAccountID:  s.cashAccountID,
 			Amount:         amount,
-			Currency:       s.cfg.Currency,
+			Currency:       currency,
+			ExchangeRate:   exchangeRate,
 			Date:           midnightUTC(payDay),
 			Method:         Pick(s.rng, paymentMethods),
 			Applications: []db.CreatePaymentApplicationRequest{
@@ -384,12 +392,12 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 	switch {
 	case s.rng.Chance(0.95):
 		payDay := businessDaysLater(day, s.rng.IntRange(5, 35))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice")
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
 	case s.rng.Chance(0.8):
 		// Slow-paying client, eventually collected — see createDirectInvoice's
 		// comment on why this bucket exists instead of a flat never-paid share.
 		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice")
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
 	default:
 		// Genuinely never paid (~1% of shipped-order invoices).
 	}

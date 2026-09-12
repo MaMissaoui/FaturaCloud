@@ -128,8 +128,8 @@ type Seeder struct {
 	sched *Scheduler
 
 	// currentImport is the most recently created consolidated shipment
-	// (F114) still open for new purchase orders to link to — see
-	// imports.go's maybeStartImport/maybeLinkToImport.
+	// (F114) still open for new foreign-vendor purchase orders to be
+	// placed against — see imports.go's maybeStartImport/maybeCreateImportLinkedPO.
 	currentImport *importRef
 
 	invoiceNum, orderNum, deliveryNum, poNum, inboundNum, incomingNum, importNum *numberer
@@ -227,12 +227,15 @@ func (s *Seeder) Run() error {
 			if err := s.maybeStartOrder(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("order: %w", err))
 			}
-			// maybeStartImport runs before maybeStartPurchaseOrder so a
+			// maybeStartImport runs before maybeCreateImportLinkedPO so a
 			// newly opened import is already s.currentImport by the time
-			// this same day's purchase orders decide whether to link to
-			// it (see purchasing.go's createPurchaseOrder).
+			// this same day's foreign-vendor purchase orders are placed
+			// against it (see purchasing.go's createImportLinkedPurchaseOrder).
 			if err := s.maybeStartImport(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("import: %w", err))
+			}
+			if err := s.maybeCreateImportLinkedPO(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("import-linked purchase order: %w", err))
 			}
 			if err := s.maybeStartPurchaseOrder(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("purchase order: %w", err))

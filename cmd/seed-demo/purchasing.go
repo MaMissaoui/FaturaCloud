@@ -217,6 +217,16 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 	subTotal, taxTotal, total := computeTotals(items)
 	dueDate := midnightUTC(day.AddDate(0, 0, int(s.orgProfile.dueDays)))
 
+	// Same currency/rate the PO was placed in (see purchaseLine's comment) —
+	// a bill for goods bought in USD is itself a USD bill, never silently
+	// repriced into the organization's own currency.
+	currency := s.cfg.Currency
+	var exchangeRate *float64
+	if len(lines) > 0 && lines[0].currency != "" {
+		currency = lines[0].currency
+		exchangeRate = float64Ptr(lines[0].exchangeRate)
+	}
+
 	req := db.CreateIncomingInvoiceRequest{
 		OrganizationID:      s.orgID,
 		VendorID:            vendor.id,
@@ -225,7 +235,8 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 		State:               "draft",
 		Date:                midnightUTC(day),
 		DueDate:             &dueDate,
-		Currency:            s.cfg.Currency,
+		Currency:            currency,
+		ExchangeRate:        exchangeRate,
 		Total:               total,
 		TaxTotal:            taxTotal,
 		SubTotal:            subTotal,
@@ -266,21 +277,123 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 		second := total - first
 		firstDay := businessDaysLater(day, s.rng.IntRange(5, 20))
 		secondDay := businessDaysLater(firstDay, s.rng.IntRange(10, 30))
-		s.schedulePayment(firstDay, bill.ID, first, vendor.id, "incoming_invoice")
-		s.schedulePayment(secondDay, bill.ID, second, vendor.id, "incoming_invoice")
+		s.schedulePayment(firstDay, bill.ID, first, vendor.id, "incoming_invoice", currency, exchangeRate)
+		s.schedulePayment(secondDay, bill.ID, second, vendor.id, "incoming_invoice", currency, exchangeRate)
 
 	case s.rng.Chance(0.85 / 0.90):
 		payDay := businessDaysLater(day, s.rng.IntRange(5, 30))
-		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice")
+		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice", currency, exchangeRate)
 
 	case s.rng.Chance(0.80):
 		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
-		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice")
+		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice", currency, exchangeRate)
 
 	default:
 		// Left outstanding — permanent AP bad debt/write-off, ~1% of bills.
 	}
 	return nil
+}
+
+// createImportLinkedPurchaseOrder is the only path that ever creates a PO
+// against an Import (see maybeCreateImportLinkedPO, imports.go) — always
+// from one of the fixed overseas vendors (setupForeignVendors), always
+// priced in that vendor's own currency (its DefaultCurrency, USD today),
+// and always explicitly linked via importID. Otherwise structured exactly
+// like createPurchaseOrder (same confirm/read-back-line-ids/schedule-receipt
+// shape), which is deliberately untouched and keeps drawing only from
+// s.vendors (local) with no Currency/ImportID of its own.
+func (s *Seeder) createImportLinkedPurchaseOrder(day time.Time, imp *importRef) error {
+	if len(s.foreignVendors) == 0 {
+		return nil
+	}
+	vendor := Pick(s.rng, s.foreignVendors)
+	stockProducts := s.stockProducts()
+	if len(stockProducts) == 0 {
+		return nil
+	}
+	rate := s.usdExchangeRateForOrgCurrency()
+
+	n := s.rng.IntRange(1, 4)
+	var reqLines []db.CreatePurchaseOrderLineItemRequest
+	var localLines []purchaseLine
+	var poValueCents int64
+	for i := 0; i < n; i++ {
+		p := Pick(s.rng, stockProducts)
+		qty := float64(s.rng.IntRange(20, 150))
+		reqLines = append(reqLines, db.CreatePurchaseOrderLineItemRequest{
+			ProductID:   strPtr(p.id),
+			Description: p.name,
+			Quantity:    qty,
+			UnitPrice:   float64(p.costCents),
+			Unit:        strPtr(p.unit),
+		})
+		localLines = append(localLines, purchaseLine{
+			productID: p.id, productName: p.name, unit: p.unit, quantity: qty, unitCost: p.costCents,
+			currency: vendor.currency, exchangeRate: rate,
+		})
+		poValueCents += int64(qty * float64(p.costCents))
+	}
+
+	req := db.CreatePurchaseOrderRequest{
+		OrganizationID: s.orgID,
+		VendorID:       &vendor.id,
+		OrderNumber:    s.poNum.next(day.Year()),
+		Status:         "draft",
+		OrderDate:      midnightUTC(day),
+		LineItems:      reqLines,
+		Currency:       strPtr(vendor.currency),
+		ExchangeRate:   float64Ptr(rate),
+		ImportID:       &imp.id,
+	}
+	var po db.PurchaseOrder
+	if err := s.c.Post("/api/purchase-orders", req, &po); err != nil {
+		return fmt.Errorf("create import-linked PO for %s: %w", vendor.name, err)
+	}
+	s.stats.PurchaseOrders++
+	imp.committedValueCents += poValueCents
+	if err := s.c.Patch("/api/purchase-orders/"+po.ID+"/status", map[string]string{"status": "confirmed"}, nil); err != nil {
+		return fmt.Errorf("confirm import-linked PO %s: %w", po.OrderNumber, err)
+	}
+
+	var serverLines []db.PurchaseOrderLineItem
+	if err := s.c.Get("/api/purchase-orders/"+po.ID+"/line-items", &serverLines); err != nil {
+		return fmt.Errorf("read back import-linked PO %s line items: %w", po.OrderNumber, err)
+	}
+	if len(serverLines) != len(localLines) {
+		return fmt.Errorf("import-linked PO %s: expected %d line items back, got %d", po.OrderNumber, len(localLines), len(serverLines))
+	}
+	for i := range localLines {
+		localLines[i].poLineID = serverLines[i].ID
+	}
+
+	// A shipment from overseas realistically takes longer to arrive than a
+	// domestic restock (createPurchaseOrder's 3-14 business days) — 15-35
+	// business days covers ocean freight plus customs clearance.
+	receiveDay := businessDaysLater(day, s.rng.IntRange(15, 35))
+	if receiveDay.After(s.cfg.EndDate) {
+		return nil
+	}
+	s.sched.Schedule(receiveDay, func() error { return s.receivePurchaseOrder(receiveDay, po, vendor, localLines) })
+	return nil
+}
+
+// usdExchangeRateForOrgCurrency returns a plausible number of
+// organization-currency units per 1 USD (the direction db/exchange_rate.go's
+// exchangeRate column requires) for the handful of currencies this tool's
+// --currency flag realistically sees. This tool has no live FX source and
+// doesn't need real-world accuracy, only a believable order of magnitude —
+// same spirit as catalog.go's plausible-not-authoritative VATIN generators.
+func (s *Seeder) usdExchangeRateForOrgCurrency() float64 {
+	switch s.cfg.Currency {
+	case "USD":
+		return 1
+	case "TND":
+		return s.rng.Float64Range(3.0, 3.2)
+	case "EUR":
+		return s.rng.Float64Range(0.90, 0.96)
+	default:
+		return 1
+	}
 }
 
 // stockProducts excludes "finished" goods (catalog.go) — assembled, not
