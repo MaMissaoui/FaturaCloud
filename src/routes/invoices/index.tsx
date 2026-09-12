@@ -216,7 +216,6 @@ const Invoices = () => {
         <Table.Column
           title={<Trans>State</Trans>}
           key="state"
-          align="right"
           sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
             (a.state ?? "").localeCompare(b.state ?? "")
           }
@@ -230,7 +229,7 @@ const Invoices = () => {
         />
         <Table.Column
           key="actions"
-          align="right"
+          align="center"
           width={60}
           render={(invoice) => (
             <span onClick={(e) => e.stopPropagation()}>

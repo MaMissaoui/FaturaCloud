@@ -363,6 +363,7 @@ function SettingsBackup() {
               dataIndex="size"
               key="size"
               width={90}
+              align="right"
               render={(size) => formatSize(size)}
             />
             <Table.Column<BackupEntry>

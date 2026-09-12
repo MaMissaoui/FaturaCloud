@@ -80,6 +80,7 @@ export default function OrganizationMembersPanel({
             title=""
             key="actions"
             width={60}
+            align="center"
             render={(_: unknown, record: OrganizationMember) => (
               <Popconfirm
                 title={t`Remove this member?`}

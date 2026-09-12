@@ -380,6 +380,7 @@ const LineItemsTable = ({
               <Table.Column<LineItemField>
                 key="remove"
                 width={40}
+                align="center"
                 render={(field) => (
                   <Button
                     type="text"

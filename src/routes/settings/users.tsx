@@ -206,6 +206,7 @@ export default function SettingsUsers() {
           title={<Trans>Active</Trans>}
           dataIndex="isActive"
           key="isActive"
+          align="center"
           sorter={(a, b) => a.isActive - b.isActive}
           render={(v, record) => (
             <Switch

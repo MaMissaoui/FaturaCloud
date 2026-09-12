@@ -816,6 +816,7 @@ const InvoiceDetails: React.FC = () => {
                         key: "quantity",
                         title: t`Qty.`,
                         width: 80,
+                        align: "right",
                         render: (field) => (
                           <Form.Item
                             name={[field.name, "quantity"]}
@@ -823,7 +824,7 @@ const InvoiceDetails: React.FC = () => {
                             noStyle
                           >
                             <InputNumber
-                              style={{ width: "100%" }}
+                              style={{ width: "100%", textAlign: "right" }}
                               onChange={(value) => {
                                 const total = form.getFieldValue(["lineItems", field.key, "total"]);
                                 const unitPrice = form.getFieldValue([
@@ -856,6 +857,7 @@ const InvoiceDetails: React.FC = () => {
                         key: "unitPrice",
                         title: t`Price`,
                         width: 120,
+                        align: "right",
                         render: (field) => (
                           <Form.Item
                             name={[field.name, "unitPrice"]}
@@ -863,7 +865,7 @@ const InvoiceDetails: React.FC = () => {
                             noStyle
                           >
                             <InputNumber
-                              style={{ width: "100%" }}
+                              style={{ width: "100%", textAlign: "right" }}
                               onChange={(value) => {
                                 const total = form.getFieldValue(["lineItems", field.key, "total"]);
                                 const quantity = form.getFieldValue([
@@ -917,6 +919,7 @@ const InvoiceDetails: React.FC = () => {
                         key: "total",
                         title: t`Total`,
                         width: 120,
+                        align: "right",
                         render: (field) => (
                           <Form.Item
                             name={[field.name, "total"]}
@@ -924,7 +927,7 @@ const InvoiceDetails: React.FC = () => {
                             noStyle
                           >
                             <InputNumber
-                              style={{ width: "100%" }}
+                              style={{ width: "100%", textAlign: "right" }}
                               onChange={(value) => {
                                 const unitPrice = form.getFieldValue([
                                   "lineItems",

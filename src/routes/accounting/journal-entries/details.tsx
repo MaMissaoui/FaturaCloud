@@ -260,12 +260,13 @@ const JournalEntryDetails = () => {
                     title={<Trans>Debit</Trans>}
                     key="debit"
                     width={140}
+                    align="right"
                     render={(field) => (
                       <Form.Item name={[field.name, "debit"]} style={{ marginBottom: 0 }}>
                         <InputNumber
                           min={0}
                           precision={2}
-                          style={{ width: "100%" }}
+                          style={{ width: "100%", textAlign: "right" }}
                           onChange={(v) => {
                             if (v) form.setFieldValue(["lines", field.name, "credit"], undefined);
                           }}
@@ -277,12 +278,13 @@ const JournalEntryDetails = () => {
                     title={<Trans>Credit</Trans>}
                     key="credit"
                     width={140}
+                    align="right"
                     render={(field) => (
                       <Form.Item name={[field.name, "credit"]} style={{ marginBottom: 0 }}>
                         <InputNumber
                           min={0}
                           precision={2}
-                          style={{ width: "100%" }}
+                          style={{ width: "100%", textAlign: "right" }}
                           onChange={(v) => {
                             if (v) form.setFieldValue(["lines", field.name, "debit"], undefined);
                           }}
@@ -293,6 +295,7 @@ const JournalEntryDetails = () => {
                   <Table.Column
                     key="actions"
                     width={50}
+                    align="center"
                     render={(field) => (
                       <Button
                         type="text"
