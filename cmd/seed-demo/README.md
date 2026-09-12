@@ -130,16 +130,18 @@ documents, and a short `--months` value while iterating on the tool itself.
     empty expenses: `sales.go`'s stock-fulfilment path only ever shipped a
     finished good when it had on-hand stock, and nothing ever gave it any.
   - **Imports** (F114, `imports.go`) — roughly once a month, a consolidated
-    shipment is created with a freight/customs cost in the organization's
-    own currency (`Currency`/`ExchangeRate` left unset — this tool still
-    has no multi-currency documents, see below). For the following ~3
-    weeks, newly placed purchase orders for stock-tracked components have
-    a chance to link to it (up to 5 POs per import), the same way a real
-    consolidated shipment collects several vendors' orders before it
-    ships. Linking is what makes a receipt against that PO spread the
-    import's landed cost across it (`db/gl_posting.go`'s `applyLandedCost`)
-    and what the Imports list's "Purchase orders"/"Committed value"
-    columns have something to show.
+    shipment is created (freight/customs cost in the organization's own
+    currency, per the real F114 design — see CLAUDE.md). For the following
+    ~3 weeks, 1-2 purchase orders a week are placed directly against it
+    (up to 5 POs per import), each from one of the fixed overseas (China)
+    vendors `setupForeignVendors` seeds and priced in that vendor's own
+    currency (USD) — see "What this deliberately doesn't do" below for the
+    multi-currency scope this narrowly exercises. A domestic restock never
+    links to an import; an import-linked PO is never from a local vendor.
+    Linking is what makes a receipt against that PO spread the import's
+    landed cost across it (`db/gl_posting.go`'s `applyLandedCost`) and what
+    the Imports list's "Purchase orders"/"Committed value" columns have
+    something to show.
 
 Everything multi-step is coordinated by `scheduler.go`'s day-keyed task
 queue — see its doc comment for the mechanism every generator uses to say
@@ -181,8 +183,16 @@ missing feature is a bug:
   `serialNumbers` map for a serialized line, which this tool never builds.
   A natural extension: add a serialized entry to `catalog.go` and generate
   serial numbers in `purchasing.go`/`sales.go` at receive/ship time.
-- **No multi-currency documents.** Every document is EUR, the organization's
-  own currency — no `exchangeRate`/foreign-currency path is exercised.
+- **Multi-currency documents are exercised narrowly, not generally.** Every
+  ordinary document (direct invoices, local-vendor purchase orders/bills,
+  their payments) is still in the organization's own currency. The one
+  exception: `setupForeignVendors` seeds 5-7 fixed overseas (China) vendors
+  with `DefaultCurrency: "USD"`, and `createImportLinkedPurchaseOrder`
+  (purchasing.go) is the only path that ever creates a PO against an Import
+  — always from one of those vendors, always in USD, with a plausible
+  (not real-world-accurate) exchange rate that's captured once and reused
+  through the receipt, bill, and payment. Every other product/vendor/
+  document combination in this tool stays single-currency.
 - **No OIDC users, backups, or organization membership beyond the creating
   admin.** Out of scope for a "day-to-day trading activity" demo dataset;
   add a generator file for any of these the same way `purchasing.go`/
