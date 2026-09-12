@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.2] - 2026-09-12
+
+### Changed
+- Inventory's "Filter by product type" control moved from the Recent
+  movements section to Stock levels, where it now also narrows that
+  table (previously it had no effect there at all). Both tables share
+  the same filter, and the Recent movements product picker now only
+  offers products the current filter would actually match.
+
 ## [3.19.1] - 2026-09-12
 
 ### Added
