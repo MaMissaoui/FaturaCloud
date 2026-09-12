@@ -21,19 +21,31 @@ type TrialBalanceRow struct {
 }
 
 // GetTrialBalance sums debit and credit per account for an organization,
-// optionally scoped to a single fiscal period. Includes both 'posted' and
-// 'reversed' entries — a reversed entry's lines are real history that
-// actually happened and were posted to the ledger; the reversal is a
-// separate entry with flipped lines that offsets it. Excluding 'reversed'
-// entries here (counting only their reversal) would report the exact
-// negation of what was originally posted instead of a net zero. Draft
-// entries are always excluded — they were never posted at all.
-func (d *Database) GetTrialBalance(organizationID, fiscalPeriodID string) ([]TrialBalanceRow, error) {
+// optionally scoped to a fiscal year and/or a single fiscal period within
+// it. Includes both 'posted' and 'reversed' entries — a reversed entry's
+// lines are real history that actually happened and were posted to the
+// ledger; the reversal is a separate entry with flipped lines that offsets
+// it. Excluding 'reversed' entries here (counting only their reversal)
+// would report the exact negation of what was originally posted instead of
+// a net zero. Draft entries are always excluded — they were never posted
+// at all.
+//
+// fiscalPeriodID takes precedence when both are set (a period already
+// implies its year) — the frontend never sends both, but scoping to the
+// more specific filter is the correct behavior either way. Before this,
+// picking a fiscal year with no period selected silently filtered nothing:
+// the year Select only existed to populate the period dropdown's options,
+// so "All periods" under a chosen year looked identical to no year chosen
+// at all.
+func (d *Database) GetTrialBalance(organizationID, fiscalYearID, fiscalPeriodID string) ([]TrialBalanceRow, error) {
 	where := "WHERE je.organizationId = ? AND je.status IN ('posted', 'reversed')"
 	args := []any{organizationID}
 	if fiscalPeriodID != "" {
 		where += " AND je.fiscalPeriodId = ?"
 		args = append(args, fiscalPeriodID)
+	} else if fiscalYearID != "" {
+		where += " AND je.fiscalYearId = ?"
+		args = append(args, fiscalYearID)
 	}
 
 	rows := []TrialBalanceRow{}

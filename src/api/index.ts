@@ -946,12 +946,17 @@ export const GetIncomingInvoicePayments = (id: string) =>
 
 // ---- Accounting: Reports ----
 
-export const GetTrialBalance = (organizationId: string, fiscalPeriodId?: string) =>
-  get<TrialBalanceRow[]>(
-    `/organizations/${organizationId}/reports/trial-balance${
-      fiscalPeriodId ? `?fiscalPeriodId=${encodeURIComponent(fiscalPeriodId)}` : ""
-    }`,
-  );
+export const GetTrialBalance = (
+  organizationId: string,
+  fiscalYearId?: string,
+  fiscalPeriodId?: string,
+) => {
+  const qs = new URLSearchParams();
+  if (fiscalYearId) qs.set("fiscalYearId", fiscalYearId);
+  if (fiscalPeriodId) qs.set("fiscalPeriodId", fiscalPeriodId);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return get<TrialBalanceRow[]>(`/organizations/${organizationId}/reports/trial-balance${suffix}`);
+};
 
 export const GetProfitAndLoss = (organizationId: string, startDate: number, endDate: number) =>
   get<ProfitAndLoss>(

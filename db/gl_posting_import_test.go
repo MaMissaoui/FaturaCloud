@@ -116,7 +116,7 @@ func TestBillAfterImportReceiptClearsGRNIVendorOnlyLeavingMarkupUntouched(t *tes
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
 
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestCancelReceiptWithImportReversesLandedCostEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOrganization: %v", err)
 	}
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}

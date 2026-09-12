@@ -33,7 +33,7 @@ func TestCloseFiscalYearZeroesRevenueAndExpenseIntoRetainedEarnings(t *testing.T
 		t.Fatalf("expected a posted closing entry, err=%v entry=%v", err, entry)
 	}
 
-	tb, err := d.GetTrialBalance(fx.orgID, "")
+	tb, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}

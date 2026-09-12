@@ -52,11 +52,11 @@ const TrialBalance = () => {
   useEffect(() => {
     if (!organizationId) return;
     setLoading(true);
-    GetTrialBalance(organizationId, fiscalPeriodId || undefined)
+    GetTrialBalance(organizationId, fiscalYearId || undefined, fiscalPeriodId || undefined)
       .then(setRows)
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
-  }, [organizationId, fiscalPeriodId]);
+  }, [organizationId, fiscalYearId, fiscalPeriodId]);
 
   const periods = fiscalYearId ? (fiscalPeriodsByYear[fiscalYearId] ?? []) : [];
   const totalDebit = sum(rows.map((r) => r.debit)) / 100;
