@@ -113,7 +113,7 @@ func TestEmbeddedDefaultOrderTemplatePlaceholdersAllResolve(t *testing.T) {
 
 	scalars := buildOrderScalarPlaceholders(testOrder(), testOrg(), testClient(), "EUR", 0, 0, 0)
 	lineItemKeys := map[string]bool{
-		"lineItems.description": true, "lineItems.quantity": true,
+		"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
 		"lineItems.unitPrice": true, "lineItems.lineTotal": true,
 	}
 

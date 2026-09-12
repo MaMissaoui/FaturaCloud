@@ -71,6 +71,9 @@ type InvoiceLineItem struct {
 	ProductID   *string `db:"productId"   json:"productId"`
 	Position    int     `db:"position"    json:"position"`
 	CreatedAt   *string `db:"createdAt"   json:"createdAt"`
+	// Joined from products via productId; nil on a free-text line or an
+	// unset SKU — same convention as OutboundDeliveryLineItem.SKU.
+	SKU *string `db:"sku" json:"sku"`
 }
 
 // CreateInvoiceLineItemRequest is a single line item within a create/update
@@ -177,7 +180,10 @@ func (d *Database) GetInvoice(invoiceID string) (*Invoice, error) {
 func (d *Database) GetInvoiceLineItems(invoiceID string) ([]InvoiceLineItem, error) {
 	items := []InvoiceLineItem{}
 	err := d.DB.Select(&items,
-		`SELECT * FROM invoiceLineItems WHERE invoiceId = ? ORDER BY position ASC, createdAt ASC`,
+		`SELECT ili.*, p.sku AS sku
+		 FROM invoiceLineItems ili
+		 LEFT JOIN products p ON ili.productId = p.id
+		 WHERE ili.invoiceId = ? ORDER BY ili.position ASC, ili.createdAt ASC`,
 		invoiceID,
 	)
 	if err != nil {

@@ -42,6 +42,9 @@ type PurchaseOrderLineItem struct {
 	Unit            *string `db:"unit"            json:"unit"`
 	TaxRate         *string `db:"taxRate"         json:"taxRate"`
 	Position        int     `db:"position"        json:"position"`
+	// Joined from products via productId; nil on a free-text line or an
+	// unset SKU — same convention as OutboundDeliveryLineItem.SKU.
+	SKU *string `db:"sku" json:"sku"`
 }
 
 type CreatePurchaseOrderLineItemRequest struct {
@@ -160,7 +163,10 @@ func (d *Database) GetPurchaseOrder(orderID string) (*PurchaseOrder, error) {
 func (d *Database) GetPurchaseOrderLineItems(orderID string) ([]PurchaseOrderLineItem, error) {
 	items := []PurchaseOrderLineItem{}
 	err := d.DB.Select(&items,
-		`SELECT * FROM purchase_order_line_items WHERE purchaseOrderId = ? ORDER BY position ASC`,
+		`SELECT poli.*, p.sku AS sku
+		 FROM purchase_order_line_items poli
+		 LEFT JOIN products p ON poli.productId = p.id
+		 WHERE poli.purchaseOrderId = ? ORDER BY poli.position ASC`,
 		orderID,
 	)
 	if err != nil {
