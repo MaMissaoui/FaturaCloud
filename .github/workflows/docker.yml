@@ -90,13 +90,29 @@ jobs:
           # behavior either way.
           secrets: ${{ secrets.SENTRY_AUTH_TOKEN != '' && format('sentry_auth_token={0}', secrets.SENTRY_AUTH_TOKEN) || '' }}
           outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
-          # Scoped per platform now that each builds on its own runner —
-          # sharing one scope across two architectures' layer caches would
-          # mean every push evicts the other platform's cache instead of
-          # reusing it. Still capped and namespaced away from CI's Go build
-          # cache, same reasoning as before.
-          cache-from: type=gha,scope=docker-release-${{ env.PLATFORM_PAIR }}
-          cache-to: type=gha,scope=docker-release-${{ env.PLATFORM_PAIR }},mode=max,size-limit=8g
+          # type=registry, not type=gha: this workflow only ever runs on a
+          # tag push (see the `on:` trigger above), and GitHub's Actions
+          # cache is scoped per git ref — a cache written while building tag
+          # v3.17.0 can only ever be read back by another build on that same
+          # ref, which never happens again once a tag is pushed. Every
+          # release was therefore a 100% cache miss that still wrote a fresh
+          # multi-GB cache blob on every single release, permanently, with
+          # no possible reuse — found by querying
+          # `gh api repos/{owner}/{repo}/actions/cache/usage` and seeing
+          # 12+GB / 400+ caches (over the fixed 10GB per-repo quota) almost
+          # entirely under `docker-release-*` scopes, one full set per
+          # release tag ever pushed. A registry-backed cache instead lives
+          # as a plain image tag in GHCR — not ref-scoped, not subject to
+          # the Actions cache quota at all, and actually reused release to
+          # release (most layers here, e.g. `apt-get install
+          # libreoffice-calc`, don't change build to build). image-manifest
+          # + oci-mediatypes are needed for GHCR specifically to store this
+          # as a normal-looking image rather than a format some registries
+          # (GHCR included, historically) mishandle. The `merge` job's GHCR
+          # prune step below excludes `buildcache-*` so it doesn't get swept
+          # as an "old version."
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.PLATFORM_PAIR }}
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.PLATFORM_PAIR }},mode=max,image-manifest=true,oci-mediatypes=true
 
       - name: Export digest
         run: |
@@ -178,6 +194,16 @@ jobs:
           keep-n-tagged: 15
           delete-untagged: true
           delete-partial-images: true
+          # buildcache-linux-amd64/buildcache-linux-arm64 are the registry
+          # cache images the build job above pushes on every run (see its
+          # cache-to comment) — they're the whole point of the registry
+          # cache switch and must survive every prune, not just win a
+          # keep-n-tagged race by being recently touched. Untagged/partial
+          # cache blobs underneath a still-tagged buildcache-* image are
+          # never touched either way, since delete-untagged/
+          # delete-partial-images only ever act on images with no
+          # surviving tag pointing at them.
+          exclude-tags: buildcache-*
           # ghcr.io/mamissaoui/fatura-cloud is a user-owned package (personal
           # account, not an org) — the default GITHUB_TOKEN cannot delete
           # versions of a user-owned package via the packages API regardless
