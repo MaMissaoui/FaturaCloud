@@ -18,12 +18,14 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
+import { GetProductBOM, ReplaceProductBOM } from "src/api";
+import { message } from "src/utils/message";
 import ScrollShadow from "src/components/scroll-shadow";
 import { UNIT_OPTIONS, unitLabel } from "src/utils/units";
 
@@ -74,6 +76,35 @@ const ProductForm = () => {
     if (!productId) return null;
     return products.find((p: any) => p.id === productId) ?? null;
   }, [products, productId]);
+
+  const componentOptions = useMemo(
+    () =>
+      products
+        .filter((p: any) => p.category === "component")
+        .map((p: any) => ({ value: p.id, label: p.sku ? `${p.name} (${p.sku})` : p.name })),
+    [products],
+  );
+
+  // Bill of materials is a separate resource server-side (PUT
+  // /api/products/{id}/bom), not a field on the product itself — loaded
+  // into the same antd Form via Form.List("bom") once we know which
+  // existing "finished" product is open, same "load, then let the Form
+  // own it" shape as every other field here.
+  useEffect(() => {
+    if (isVisible && productId && product?.category === "finished") {
+      GetProductBOM(productId).then((lines) => {
+        form.setFieldValue(
+          "bom",
+          lines.map((l) => ({
+            componentProductId: l.componentProductId,
+            quantityPerUnit: l.quantityPerUnit,
+          })),
+        );
+      });
+    } else {
+      form.setFieldValue("bom", []);
+    }
+  }, [isVisible, productId, product?.category, form]);
 
   useEffect(() => {
     if (isVisible) {
@@ -137,10 +168,26 @@ const ProductForm = () => {
         stockEnabled,
         serialized: stockEnabled && values.serialized ? 1 : 0,
       });
+      // The bill of materials is its own resource (PUT /api/products/{id}/bom)
+      // — only meaningful for an existing "finished" product, since the card
+      // itself doesn't render (and values.bom is never edited) otherwise.
+      // ReplaceProductBOM is a raw API call, not atom-wrapped, so it needs
+      // its own toast on failure — setProduct's atom already has one built in.
+      if (productId && values.category === "finished") {
+        try {
+          await ReplaceProductBOM(productId, values.bom ?? []);
+        } catch (error) {
+          message.error(
+            error instanceof Error ? error.message : t`Failed to save bill of materials`,
+          );
+          throw error;
+        }
+      }
       handleClose();
     } catch {
-      // setProduct already toasted the error — keep the drawer open with
-      // the user's input intact rather than closing on a failed save.
+      // setProduct/ReplaceProductBOM already toasted the error — keep the
+      // drawer open with the user's input intact rather than closing on a
+      // failed save.
     } finally {
       setSubmitting(false);
     }
@@ -195,7 +242,7 @@ const ProductForm = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={{ type: "service", stockEnabled: false, serialized: false }}
+          initialValues={{ type: "service", stockEnabled: false, serialized: false, bom: [] }}
         >
           <Card size="small" title={<Trans>Details</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
@@ -401,6 +448,69 @@ const ProductForm = () => {
               </Col>
             </Row>
           </Card>
+
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.category !== cur.category}>
+            {({ getFieldValue }) =>
+              productId && getFieldValue("category") === "finished" ? (
+                <Card
+                  size="small"
+                  title={<Trans>Bill of Materials</Trans>}
+                  style={{ marginBottom: 12 }}
+                >
+                  <Form.List name="bom">
+                    {(fields, { add, remove }) => (
+                      <>
+                        {fields.map(({ key, name, ...restField }) => (
+                          <Row key={key} gutter={[8, 0]} align="middle" style={{ marginBottom: 8 }}>
+                            <Col flex="auto">
+                              <Form.Item
+                                {...restField}
+                                name={[name, "componentProductId"]}
+                                rules={[{ required: true, message: t`Component is required` }]}
+                                style={{ marginBottom: 0 }}
+                              >
+                                <Select
+                                  showSearch
+                                  placeholder={t`Select component`}
+                                  optionFilterProp="label"
+                                  options={componentOptions}
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col flex="140px">
+                              <Form.Item
+                                {...restField}
+                                name={[name, "quantityPerUnit"]}
+                                rules={[{ required: true, message: t`Quantity is required` }]}
+                                style={{ marginBottom: 0 }}
+                              >
+                                <InputNumber
+                                  min={0.001}
+                                  style={{ width: "100%" }}
+                                  placeholder={t`Qty per unit`}
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col flex="32px">
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => remove(name)}
+                              />
+                            </Col>
+                          </Row>
+                        ))}
+                        <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add()}>
+                          <Trans>Add component</Trans>
+                        </Button>
+                      </>
+                    )}
+                  </Form.List>
+                </Card>
+              ) : null
+            }
+          </Form.Item>
 
           <Card size="small" title={<Trans>Accounting</Trans>}>
             <Row gutter={[16, 0]}>
