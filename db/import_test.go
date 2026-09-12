@@ -45,6 +45,70 @@ func TestImportCRUDAndNumbering(t *testing.T) {
 	}
 }
 
+func TestImportSerialNumberRange(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-import-range", Name: ptr("Import Range Org")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	// Start without end (and vice versa) is rejected.
+	if _, err := d.CreateImport(CreateImportRequest{
+		OrganizationID: org.ID, ImportNumber: "IMP-0001", Date: 1738368000000,
+		SerialNumberRangeStart: ptr(int64(1001)),
+	}); err == nil {
+		t.Fatal("expected error for a range start with no end, got nil")
+	}
+
+	// End before start is rejected.
+	if _, err := d.CreateImport(CreateImportRequest{
+		OrganizationID: org.ID, ImportNumber: "IMP-0002", Date: 1738368000000,
+		SerialNumberRangeStart: ptr(int64(1050)), SerialNumberRangeEnd: ptr(int64(1001)),
+	}); err == nil {
+		t.Fatal("expected error for a range end before its start, got nil")
+	}
+
+	// A valid range is stored and round-trips.
+	imp, err := d.CreateImport(CreateImportRequest{
+		OrganizationID: org.ID, ImportNumber: "IMP-0003", Date: 1738368000000,
+		SerialNumberPrefix: ptr("SN-"), SerialNumberRangeStart: ptr(int64(1001)), SerialNumberRangeEnd: ptr(int64(1050)),
+	})
+	if err != nil {
+		t.Fatalf("CreateImport with a valid range: %v", err)
+	}
+	if imp.SerialNumberPrefix == nil || *imp.SerialNumberPrefix != "SN-" {
+		t.Errorf("SerialNumberPrefix = %v, want \"SN-\"", imp.SerialNumberPrefix)
+	}
+	if imp.SerialNumberRangeStart == nil || *imp.SerialNumberRangeStart != 1001 {
+		t.Errorf("SerialNumberRangeStart = %v, want 1001", imp.SerialNumberRangeStart)
+	}
+	if imp.SerialNumberRangeEnd == nil || *imp.SerialNumberRangeEnd != 1050 {
+		t.Errorf("SerialNumberRangeEnd = %v, want 1050", imp.SerialNumberRangeEnd)
+	}
+
+	// An unrelated field update (notes) doesn't disturb the stored range.
+	updated, err := d.UpdateImport(imp.ID, UpdateImportRequest{Notes: ptr("unrelated update")})
+	if err != nil {
+		t.Fatalf("UpdateImport unrelated field: %v", err)
+	}
+	if updated.SerialNumberRangeStart == nil || *updated.SerialNumberRangeStart != 1001 {
+		t.Errorf("SerialNumberRangeStart after unrelated update = %v, want unchanged 1001", updated.SerialNumberRangeStart)
+	}
+
+	// An update sending none of the three range fields is a true no-op for
+	// them (merge-with-current, not a wipe) — the same guarantee the
+	// "unrelated field update" case above already covers, exercised here
+	// explicitly against an update with nothing at all set.
+	untouched, err := d.UpdateImport(imp.ID, UpdateImportRequest{})
+	if err != nil {
+		t.Fatalf("UpdateImport with nothing set: %v", err)
+	}
+	if untouched.SerialNumberRangeStart == nil || *untouched.SerialNumberRangeStart != 1001 {
+		t.Errorf("SerialNumberRangeStart after empty update = %v, want unchanged 1001", untouched.SerialNumberRangeStart)
+	}
+}
+
 func TestDeleteImportBlockedWhilePOLinked(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
