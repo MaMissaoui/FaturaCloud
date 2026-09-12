@@ -41,7 +41,15 @@ func NewClient(baseURL string) (*Client, error) {
 	}
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
-		http:    &http.Client{Jar: jar, Timeout: 60 * time.Second},
+		// 60s was too tight for one specific request: --reset's DELETE
+		// /api/organizations/{id} cascades across an 18-month organization's
+		// full history (clients/invoices/orders/deliveries, ...) and can run
+		// past 60s server-side even though it does eventually complete —
+		// found by a real --reset against a full PROD-sized organization
+		// timing out client-side while the server carried on and finished
+		// the delete anyway, leaving the tool believing the step had failed
+		// when it had actually succeeded.
+		http: &http.Client{Jar: jar, Timeout: 5 * time.Minute},
 	}, nil
 }
 
