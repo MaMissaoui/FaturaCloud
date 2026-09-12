@@ -402,7 +402,7 @@ const ImportForm = () => {
                 <Table.Column
                   key="actions"
                   width={40}
-                  align="right"
+                  align="center"
                   render={(o: any) => (
                     <Popconfirm
                       title={<Trans>Unlink this purchase order from the shipment?</Trans>}

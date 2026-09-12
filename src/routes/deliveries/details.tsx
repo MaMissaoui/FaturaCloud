@@ -419,6 +419,7 @@ const DeliveryDetails = () => {
               key: "availableStock",
               title: <Trans>Available stock</Trans>,
               width: 120,
+              align: "right",
               render: (field) => (
                 <Form.Item shouldUpdate noStyle>
                   {() => {

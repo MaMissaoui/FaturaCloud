@@ -486,6 +486,7 @@ const PurchaseOrderDetails = () => {
                     key: "received",
                     title: <Trans>Received</Trans>,
                     width: 100,
+                    align: "right" as const,
                     render: (field: { name: number }) => (
                       <Form.Item shouldUpdate noStyle>
                         {() => {
