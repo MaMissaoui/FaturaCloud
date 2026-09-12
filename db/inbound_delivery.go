@@ -49,6 +49,7 @@ type InboundDeliveryLineItem struct {
 	CurrentStock *float64 `db:"currentStock"  json:"currentStock"`
 	ProductName  *string  `db:"productName"   json:"productName"`
 	Serialized   *int     `db:"serialized"    json:"serialized"`
+	SKU          *string  `db:"sku"           json:"sku"`
 }
 
 type CreateInboundDeliveryLineItemRequest struct {
@@ -137,7 +138,8 @@ func (d *Database) GetInboundDeliveryLineItems(deliveryID string) ([]InboundDeli
 		       p.stockEnabled AS stockEnabled,
 		       p.stockQuantity AS currentStock,
 		       p.name AS productName,
-		       p.serialized AS serialized
+		       p.serialized AS serialized,
+		       p.sku AS sku
 		FROM inbound_delivery_line_items dli
 		LEFT JOIN products p ON dli.productId = p.id
 		WHERE dli.deliveryId = ?

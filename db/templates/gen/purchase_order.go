@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/xuri/excelize/v2"
@@ -48,30 +47,25 @@ func buildPurchaseOrderTemplate() {
 	set("A10", "{{vendor.postalCode}} {{vendor.city}}")
 	set("A11", "VAT: {{vendor.vatin}}")
 
-	// Line item table header. Description spans A:B (merged), same reasoning
-	// as the invoice template; the marker lives in column H, off to the
-	// right of the visible 6-column table (db.findMarkerRow scans every
-	// cell, not just column A).
+	// Line item table header. Product (SKU) and Description (name) are two
+	// separate columns, mirroring the web app's line-items table — see
+	// invoice.go's matching comment for why. The marker lives in column H,
+	// off to the right of the visible 7-column table (db.findMarkerRow
+	// scans every cell, not just column A).
 	headerRow := 13
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow)); err != nil {
-		log.Fatal(err)
-	}
-	cols := []string{"A", "C", "D", "E", "F", "G"}
-	labels := []string{"Description", "Quantity", "Unit", "Unit Price", "Tax Rate", "Line Total"}
+	cols := []string{"A", "B", "C", "D", "E", "F", "G"}
+	labels := []string{"Product", "Description", "Quantity", "Unit", "Unit Price", "Tax Rate", "Line Total"}
 	for i, col := range cols {
 		cell := col + strconv.Itoa(headerRow)
 		set(cell, labels[i])
 		f.SetCellStyle(sheet, cell, cell, styles.header)
 	}
-	f.SetCellStyle(sheet, "B"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow), styles.header)
 
-	// Repeat row: A:B merged carries the description, C-G the rest of the
+	// Repeat row: A the SKU, B the description, C-G the rest of the
 	// per-item placeholders, H the marker.
 	repeatRow := headerRow + 1
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(repeatRow), "B"+strconv.Itoa(repeatRow)); err != nil {
-		log.Fatal(err)
-	}
-	set("A"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
+	set("A"+strconv.Itoa(repeatRow), "{{lineItems.sku}}")
+	set("B"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
 	set("C"+strconv.Itoa(repeatRow), "{{lineItems.quantity}}")
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.unit}}")
 	set("E"+strconv.Itoa(repeatRow), "{{lineItems.unitPrice}}")
@@ -105,8 +99,8 @@ func buildPurchaseOrderTemplate() {
 	footerRow := totalsRow + 5
 	set("A"+strconv.Itoa(footerRow), "Notes: {{purchaseOrder.notes}}")
 
-	f.SetColWidth(sheet, "A", "A", 28)
-	f.SetColWidth(sheet, "B", "B", 28)
+	f.SetColWidth(sheet, "A", "A", 16)
+	f.SetColWidth(sheet, "B", "B", 32)
 	f.SetColWidth(sheet, "C", "F", 13)
 	f.SetColWidth(sheet, "G", "G", 16)
 
@@ -148,6 +142,7 @@ var purchaseOrderFieldRefs = []fieldRef{
 
 	// Item lines — only meaningful inside the repeated {{#lineItems}} row.
 	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in any one cell of the row to repeat once per line item; that whole cell is blanked in the output"},
+	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU, blank on a free-text line or an unset SKU"},
 	{"Item lines", "{{lineItems.description}}", "Line item description"},
 	{"Item lines", "{{lineItems.quantity}}", "Quantity"},
 	{"Item lines", "{{lineItems.unit}}", "Unit of measure (e.g. pcs, kg), blank if unset"},

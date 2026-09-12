@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/xuri/excelize/v2"
@@ -49,27 +48,23 @@ func buildInboundDeliveryTemplate() {
 	set("A10", "{{organization.postalCode}} {{organization.city}}")
 	set("A11", "VAT: {{organization.vatin}}")
 
-	// Line item table header. Description spans A:B (merged); the marker
-	// lives in column F, off to the right of the visible 5-column table.
+	// Line item table header. Product (SKU) and Description (name) are two
+	// separate columns, mirroring the web app's line-items table — see
+	// invoice.go's matching comment for why. The marker lives in column F,
+	// off to the right of the visible 6-column table.
 	headerRow := 13
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow)); err != nil {
-		log.Fatal(err)
-	}
-	cols := []string{"A", "C", "D", "E"}
-	labels := []string{"Description", "Quantity", "Unit Cost", "Line Total"}
+	cols := []string{"A", "B", "C", "D", "E"}
+	labels := []string{"Product", "Description", "Quantity", "Unit Cost", "Line Total"}
 	for i, col := range cols {
 		cell := col + strconv.Itoa(headerRow)
 		set(cell, labels[i])
 		f.SetCellStyle(sheet, cell, cell, styles.header)
 	}
-	f.SetCellStyle(sheet, "B"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow), styles.header)
 
-	// Repeat row: A:B merged carries the description, C-E the rest.
+	// Repeat row: A the SKU, B the description, C-E the rest.
 	repeatRow := headerRow + 1
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(repeatRow), "B"+strconv.Itoa(repeatRow)); err != nil {
-		log.Fatal(err)
-	}
-	set("A"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
+	set("A"+strconv.Itoa(repeatRow), "{{lineItems.sku}}")
+	set("B"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
 	set("C"+strconv.Itoa(repeatRow), "{{lineItems.quantity}} {{lineItems.unit}}")
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.unitCost}}")
 	set("E"+strconv.Itoa(repeatRow), "{{lineItems.lineTotal}}")
@@ -84,8 +79,8 @@ func buildInboundDeliveryTemplate() {
 	footerRow := repeatRow + 4
 	set("A"+strconv.Itoa(footerRow), "Notes: {{inboundDelivery.notes}}")
 
-	f.SetColWidth(sheet, "A", "A", 28)
-	f.SetColWidth(sheet, "B", "B", 28)
+	f.SetColWidth(sheet, "A", "A", 16)
+	f.SetColWidth(sheet, "B", "B", 40)
 	f.SetColWidth(sheet, "C", "E", 14)
 
 	applyFitToPageWidth(f, sheet)
@@ -124,6 +119,7 @@ var inboundDeliveryFieldRefs = []fieldRef{
 	{"Header", "{{organization.city}}", "Buyer city"},
 
 	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in any one cell of the row to repeat once per line item; that whole cell is blanked in the output"},
+	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU, blank on a free-text line or an unset SKU"},
 	{"Item lines", "{{lineItems.description}}", "Line item description"},
 	{"Item lines", "{{lineItems.quantity}}", "Quantity received"},
 	{"Item lines", "{{lineItems.unit}}", "Unit of measure (e.g. pcs, kg), blank if unset"},

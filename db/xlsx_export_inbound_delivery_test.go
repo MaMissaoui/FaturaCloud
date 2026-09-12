@@ -107,7 +107,7 @@ func TestEmbeddedDefaultInboundDeliveryTemplatePlaceholdersAllResolve(t *testing
 
 	scalars := buildInboundDeliveryScalarPlaceholders(testInboundDelivery(), testOrg(), testVendor(), "EUR")
 	lineItemKeys := map[string]bool{
-		"lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
+		"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
 		"lineItems.unitCost": true, "lineItems.lineTotal": true,
 	}
 

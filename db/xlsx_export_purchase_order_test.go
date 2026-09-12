@@ -118,7 +118,7 @@ func TestEmbeddedDefaultPurchaseOrderTemplatePlaceholdersAllResolve(t *testing.T
 
 	scalars := buildPurchaseOrderScalarPlaceholders(testPurchaseOrder(), testOrg(), testVendor(), "EUR", 0, 0, 0)
 	lineItemKeys := map[string]bool{
-		"lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
+		"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
 		"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
 	}
 

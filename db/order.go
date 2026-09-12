@@ -37,6 +37,9 @@ type OrderLineItem struct {
 	Quantity    float64 `db:"quantity"    json:"quantity"`
 	UnitPrice   int64   `db:"unitPrice"   json:"unitPrice"`
 	Position    int     `db:"position"    json:"position"`
+	// Joined from products via productId; nil on a free-text line or an
+	// unset SKU — same convention as OutboundDeliveryLineItem.SKU.
+	SKU *string `db:"sku" json:"sku"`
 }
 
 type CreateOrderLineItemRequest struct {
@@ -133,7 +136,10 @@ func (d *Database) GetOrder(orderID string) (*Order, error) {
 func (d *Database) GetOrderLineItems(orderID string) ([]OrderLineItem, error) {
 	items := []OrderLineItem{}
 	err := d.DB.Select(&items,
-		`SELECT * FROM orderLineItems WHERE orderId = ? ORDER BY position ASC`,
+		`SELECT oli.*, p.sku AS sku
+		 FROM orderLineItems oli
+		 LEFT JOIN products p ON oli.productId = p.id
+		 WHERE oli.orderId = ? ORDER BY oli.position ASC`,
 		orderID,
 	)
 	if err != nil {

@@ -343,7 +343,7 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 
 	scalars := buildScalarPlaceholders(testInvoice(), testOrg(), testClient())
 	lineItemKeys := map[string]bool{
-		"lineItems.description": true, "lineItems.quantity": true,
+		"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
 		"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
 	}
 
@@ -377,12 +377,13 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 }
 
 // TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData guards
-// against the header row (e.g. "Description", "Quantity", ...) drifting out
-// of alignment with the data row again. The {{#lineItems}} marker lives off
-// in its own column (not one of the visible A-F content columns — see
-// db.findMarkerRow), so "Description" gets the full merged A:B cell in both
-// the header and data rows, with C-F carrying Quantity/Unit Price/Tax
-// Rate/Line Total in both — column-for-column, not shifted by one.
+// against the header row (e.g. "Product", "Description", "Quantity", ...)
+// drifting out of alignment with the data row again. The {{#lineItems}}
+// marker lives off in its own column (not one of the visible A-F content
+// columns — see db.findMarkerRow), so Product/Description are two
+// independent columns (A/B, not merged) in both the header and data rows,
+// with C-F carrying Quantity/Unit Price/Tax Rate/Line Total in both —
+// column-for-column, not shifted by one.
 func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T) {
 	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(invoiceDefaultTemplate))
@@ -405,30 +406,25 @@ func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T
 	headerRow := rows[headerRowNum-1]
 	dataRow := rows[markerRow-1]
 
-	if len(headerRow) < 1 || strings.TrimSpace(headerRow[0]) != "Description" {
-		t.Fatalf("header row column A should be \"Description\", got %v", headerRow)
+	if len(headerRow) < 2 || strings.TrimSpace(headerRow[0]) != "Product" || strings.TrimSpace(headerRow[1]) != "Description" {
+		t.Fatalf("header row columns A/B should be \"Product\"/\"Description\", got %v", headerRow)
 	}
-	if len(dataRow) < 1 || !strings.Contains(dataRow[0], "{{lineItems.description}}") {
-		t.Fatalf("data row column A should carry {{lineItems.description}}, got %v", dataRow)
+	if len(dataRow) < 2 || !strings.Contains(dataRow[0], "{{lineItems.sku}}") || !strings.Contains(dataRow[1], "{{lineItems.description}}") {
+		t.Fatalf("data row columns A/B should carry {{lineItems.sku}}/{{lineItems.description}}, got %v", dataRow)
 	}
 
 	merges, err := f.GetMergeCells(sheet)
 	if err != nil {
 		t.Fatalf("get merge cells: %v", err)
 	}
-	wantMerged := map[string]bool{
-		fmt.Sprintf("A%d:B%d", headerRowNum, headerRowNum): false,
-		fmt.Sprintf("A%d:B%d", markerRow, markerRow):       false,
+	dontWantMerged := map[string]bool{
+		fmt.Sprintf("A%d:B%d", headerRowNum, headerRowNum): true,
+		fmt.Sprintf("A%d:B%d", markerRow, markerRow):       true,
 	}
 	for _, m := range merges {
 		key := m.GetStartAxis() + ":" + m.GetEndAxis()
-		if _, ok := wantMerged[key]; ok {
-			wantMerged[key] = true
-		}
-	}
-	for want, found := range wantMerged {
-		if !found {
-			t.Errorf("expected merged range %s (description spanning A:B), got merges %v", want, merges)
+		if dontWantMerged[key] {
+			t.Errorf("expected Product/Description to be independent columns, but found merged range %s", key)
 		}
 	}
 }

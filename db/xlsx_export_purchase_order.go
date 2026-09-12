@@ -143,6 +143,7 @@ func buildPurchaseOrderScalarPlaceholders(order PurchaseOrder, org Organization,
 func buildPurchaseOrderLineItemPlaceholders(li PurchaseOrderLineItem, currency string, minimumFractionDigits *int64, taxRatePercent string) map[string]string {
 	lineTotal := lineTotalCents(li.Quantity, li.UnitPrice)
 	return map[string]string{
+		"lineItems.sku":         derefString(li.SKU),
 		"lineItems.description": li.Description,
 		"lineItems.quantity":    formatQuantity(li.Quantity),
 		"lineItems.unit":        derefString(li.Unit),

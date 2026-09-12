@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/xuri/excelize/v2"
@@ -50,33 +49,28 @@ func buildInvoiceTemplate() {
 	set("A10", "{{client.postalCode}} {{client.city}}")
 	set("A11", "VAT: {{client.vatin}}")
 
-	// Line item table header. Description spans A:B (merged) for extra room —
-	// a description is the one field on this row long enough to need it.
-	// The {{#lineItems}} marker on the repeat row below lives in column G,
-	// off to the right of the visible table: db.findMarkerRow scans every
-	// cell for it, not just column A, specifically so the marker never has
-	// to consume a real content column the way it used to.
+	// Line item table header. Product (the SKU) and Description (the name)
+	// are two separate columns, mirroring the web app's line-items table —
+	// a document's "Description" field is filled with the product's name at
+	// selection time, so a single merged column here would just duplicate
+	// what the app itself keeps apart. The {{#lineItems}} marker on the
+	// repeat row below lives in column G, off to the right of the visible
+	// table: db.findMarkerRow scans every cell for it, not just column A,
+	// specifically so the marker never has to consume a real content column.
 	headerRow := 13
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow)); err != nil {
-		log.Fatal(err)
-	}
-	cols := []string{"A", "C", "D", "E", "F"}
-	labels := []string{"Description", "Quantity", "Unit Price", "Tax Rate", "Line Total"}
+	cols := []string{"A", "B", "C", "D", "E", "F"}
+	labels := []string{"Product", "Description", "Quantity", "Unit Price", "Tax Rate", "Line Total"}
 	for i, col := range cols {
 		cell := col + strconv.Itoa(headerRow)
 		set(cell, labels[i])
 		f.SetCellStyle(sheet, cell, cell, styles.header)
 	}
-	f.SetCellStyle(sheet, "B"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow), styles.header)
 
-	// Repeat row: A:B merged carries the description, C-F the rest of the
-	// per-item placeholders, G the marker (DuplicateRowTo preserves both the
-	// merge and the marker across every expanded line item row).
+	// Repeat row: A the SKU, B the description, C-F the rest of the
+	// per-item placeholders, G the marker.
 	repeatRow := headerRow + 1
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(repeatRow), "B"+strconv.Itoa(repeatRow)); err != nil {
-		log.Fatal(err)
-	}
-	set("A"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
+	set("A"+strconv.Itoa(repeatRow), "{{lineItems.sku}}")
+	set("B"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
 	set("C"+strconv.Itoa(repeatRow), "{{lineItems.quantity}}")
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.unitPrice}}")
 	set("E"+strconv.Itoa(repeatRow), "{{lineItems.taxRate}}")
@@ -85,7 +79,7 @@ func buildInvoiceTemplate() {
 	// Quantity/Unit Price/Tax Rate/Line Total are numeric, so the repeat row
 	// itself carries the right-align style — DuplicateRowTo (db/xlsx_export.go)
 	// preserves it across every expanded line-item row, the same precedent
-	// the totals block below already uses. Description stays left (text).
+	// the totals block below already uses. Product/Description stay left (text).
 	for _, col := range []string{"C", "D", "E", "F"} {
 		cell := col + strconv.Itoa(repeatRow)
 		f.SetCellStyle(sheet, cell, cell, styles.right)
@@ -126,8 +120,8 @@ func buildInvoiceTemplate() {
 	set("A"+strconv.Itoa(footerRow+2), "Fiscal stamp: {{invoice.fiscalStampAmount}}")
 	set("A"+strconv.Itoa(footerRow+3), "{{invoice.withholdingTaxLine}}")
 
-	f.SetColWidth(sheet, "A", "A", 28)
-	f.SetColWidth(sheet, "B", "B", 28)
+	f.SetColWidth(sheet, "A", "A", 16)
+	f.SetColWidth(sheet, "B", "B", 40)
 	f.SetColWidth(sheet, "C", "E", 14)
 	f.SetColWidth(sheet, "F", "F", 16)
 
@@ -170,6 +164,7 @@ var invoiceFieldRefs = []fieldRef{
 
 	// Item lines — only meaningful inside the repeated {{#lineItems}} row.
 	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in any one cell of the row to repeat once per line item; that whole cell is blanked in the output"},
+	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU, blank on a free-text line or an unset SKU"},
 	{"Item lines", "{{lineItems.description}}", "Line item description"},
 	{"Item lines", "{{lineItems.quantity}}", "Quantity"},
 	{"Item lines", "{{lineItems.unitPrice}}", "Unit price, formatted with currency"},

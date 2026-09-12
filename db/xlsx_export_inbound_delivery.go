@@ -122,6 +122,7 @@ func buildInboundDeliveryLineItemPlaceholders(li InboundDeliveryLineItem, curren
 	}
 	lineTotal := lineTotalCents(li.Quantity, unitCost)
 	return map[string]string{
+		"lineItems.sku":         derefString(li.SKU),
 		"lineItems.description": li.Description,
 		"lineItems.quantity":    formatQuantity(li.Quantity),
 		"lineItems.unit":        derefString(li.Unit),

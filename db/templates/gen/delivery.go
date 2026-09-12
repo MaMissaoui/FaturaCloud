@@ -54,7 +54,7 @@ func buildDeliveryTemplate() {
 		log.Fatal(err)
 	}
 	cols := []string{"A", "C", "D"}
-	labels := []string{"Description", "SKU", "Quantity"}
+	labels := []string{"Description", "Product", "Quantity"}
 	for i, col := range cols {
 		cell := col + strconv.Itoa(headerRow)
 		set(cell, labels[i])
