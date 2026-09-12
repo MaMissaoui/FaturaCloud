@@ -205,15 +205,15 @@ const LineItemsTable = ({
                             showSearch
                             style={{ width: "100%" }}
                             placeholder={t`Select product`}
-                            // Filters on SKU too even though it isn't shown
-                            // in the option below — every catalog entry here
-                            // is already uniquely named, so rendering the
-                            // SKU alongside the name was pure clutter (and,
-                            // at a few hundred products, actively pushed the
-                            // Description column below off screen — see the
-                            // "description" case's width comment). A real
-                            // catalog with colliding names still benefits
-                            // from being able to type a SKU to disambiguate.
+                            // Shows the SKU, not the name, once a product is
+                            // picked — the Description column right next to
+                            // it is auto-filled with the name (every
+                            // onSelect handler across the document pages
+                            // does this), so showing the name here too just
+                            // duplicated it verbatim in both columns. SKU is
+                            // the one thing Description doesn't already
+                            // carry. Search still matches on name (what
+                            // someone actually remembers) as well as SKU.
                             filterOption={(input, option) => {
                               const p = find(col.products, { id: option?.value });
                               const needle = input.toLowerCase();
@@ -230,7 +230,7 @@ const LineItemsTable = ({
                           >
                             {map(col.products, (p: any) => (
                               <Option key={p.id} value={p.id}>
-                                {p.name}
+                                {p.sku || p.name}
                               </Option>
                             ))}
                           </Select>

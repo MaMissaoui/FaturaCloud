@@ -766,11 +766,11 @@ const InvoiceDetails: React.FC = () => {
                               showSearch
                               style={{ width: "100%" }}
                               placeholder={t`Select product`}
-                              // Filters on SKU too even though the option
-                              // below only renders the name — see the
-                              // matching comment in
+                              // Shows the SKU, not the name, once picked —
+                              // see the matching comment in
                               // src/components/line-items/table.tsx's
-                              // "product" case for why.
+                              // "product" case for why (Description right
+                              // next to it already carries the name).
                               filterOption={(input, option) => {
                                 const p = find(sellableProducts, { id: option?.value });
                                 const needle = input.toLowerCase();
@@ -803,7 +803,7 @@ const InvoiceDetails: React.FC = () => {
                             >
                               {map(sellableProducts, (p: any) => (
                                 <Option key={p.id} value={p.id}>
-                                  {p.name}
+                                  {p.sku || p.name}
                                 </Option>
                               ))}
                             </Select>

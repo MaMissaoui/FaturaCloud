@@ -208,6 +208,24 @@ func (d *Database) checkProductFKOwnership(organizationID string, taxRateID, rev
 	return nil
 }
 
+// normalizeSKU uppercases and trims a product code so "air-filt-9180" and
+// "AIR-FILT-9180" can't coexist as visually-different-but-logically-same
+// values under the same (organizationId, sku) unique index — every SKU a
+// user or the seed-demo tool ever types lands in one consistent case. A
+// blank result (all whitespace, or already empty) normalizes to nil, the
+// same "no SKU" convention every other optional product field uses, rather
+// than storing a meaningless empty string.
+func normalizeSKU(sku *string) *string {
+	if sku == nil {
+		return nil
+	}
+	trimmed := strings.ToUpper(strings.TrimSpace(*sku))
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
 func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
@@ -215,6 +233,7 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if req.Type == "" {
 		req.Type = "service"
 	}
+	req.SKU = normalizeSKU(req.SKU)
 	if req.StockEnabled == 0 {
 		req.Serialized = 0
 	}
@@ -251,6 +270,7 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 	if updates.Type == "" {
 		updates.Type = "service"
 	}
+	updates.SKU = normalizeSKU(updates.SKU)
 	if updates.StockEnabled == 0 {
 		updates.Serialized = 0
 	}
