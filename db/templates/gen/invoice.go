@@ -82,6 +82,14 @@ func buildInvoiceTemplate() {
 	set("E"+strconv.Itoa(repeatRow), "{{lineItems.taxRate}}")
 	set("F"+strconv.Itoa(repeatRow), "{{lineItems.lineTotal}}")
 	set("G"+strconv.Itoa(repeatRow), "{{#lineItems}}")
+	// Quantity/Unit Price/Tax Rate/Line Total are numeric, so the repeat row
+	// itself carries the right-align style — DuplicateRowTo (db/xlsx_export.go)
+	// preserves it across every expanded line-item row, the same precedent
+	// the totals block below already uses. Description stays left (text).
+	for _, col := range []string{"C", "D", "E", "F"} {
+		cell := col + strconv.Itoa(repeatRow)
+		f.SetCellStyle(sheet, cell, cell, styles.right)
+	}
 
 	// Totals block, a few rows below the repeat row — located by the fill
 	// engine via placeholder scan after row expansion, never a cached index.
