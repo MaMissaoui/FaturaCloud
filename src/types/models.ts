@@ -36,6 +36,19 @@ export interface Product {
   createdAt: string | null;
 }
 
+export interface BillOfMaterialsLine {
+  id: string;
+  organizationId: string;
+  finishedProductId: string;
+  componentProductId: string;
+  quantityPerUnit: number;
+  createdAt: string | null;
+  // Joined for display — resolved from componentProductId server-side.
+  componentName: string;
+  componentSku: string | null;
+  componentUnit: string | null;
+}
+
 export interface SerialNumber {
   id: string;
   organizationId: string;

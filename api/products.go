@@ -89,3 +89,29 @@ func (h *handler) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})
 }
+
+func (h *handler) getProductBOM(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	lines, err := h.db.GetBillOfMaterials(id)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, lines)
+}
+
+func (h *handler) replaceProductBOM(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var body struct {
+		Lines []db.CreateBillOfMaterialsLineRequest `json:"lines"`
+	}
+	if err := decodeJSON(w, r, &body); err != nil {
+		return
+	}
+	lines, err := h.db.ReplaceBillOfMaterials(id, body.Lines)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, lines)
+}

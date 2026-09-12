@@ -26,6 +26,7 @@ import type {
   DeliveryLineItem,
   StockMovement,
   SerialNumber,
+  BillOfMaterialsLine,
   Account,
   Journal,
   FiscalYear,
@@ -605,6 +606,11 @@ export const GetProductStockMovements = (id: string) =>
   get<StockMovement[]>(`/products/${id}/stock-movements`);
 export const GetProductSerialNumbers = (id: string) =>
   get<SerialNumber[]>(`/products/${id}/serial-numbers`);
+export const GetProductBOM = (id: string) => get<BillOfMaterialsLine[]>(`/products/${id}/bom`);
+export const ReplaceProductBOM = (
+  id: string,
+  lines: { componentProductId: string; quantityPerUnit: number }[],
+) => put<BillOfMaterialsLine[]>(`/products/${id}/bom`, { lines });
 
 // ---- Stock Movements ----
 

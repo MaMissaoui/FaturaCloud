@@ -85,6 +85,11 @@ var masterDataTables = []string{
 	// payment_terms (the maintained Payment terms list) is reference data
 	// with no FK from invoices, same category as taxRates above.
 	"payment_terms",
+	// bill_of_materials (a finished product's recipe) is reference data
+	// tied to products, the same category as taxRates/payment_terms —
+	// not transactional, since it's a standing definition a Production
+	// Order snapshots from rather than a document with its own history.
+	"bill_of_materials",
 }
 
 // ResetOrganizationData deletes the selected record collections for an
