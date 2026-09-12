@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.1] - 2026-09-12
+
+### Added
+- Imports can now define a serial-number range (prefix, start, end) —
+  intended for a future production/assembly step that will validate
+  produced units' serial numbers against the shipment they came from.
+
+### Fixed
+- A tab left open across a deploy could fail to switch UI language (or
+  fail to load any other lazily-loaded chunk) with no way to recover
+  short of a manual refresh, since its in-memory JavaScript still pointed
+  at the previous build's now-gone chunk files. The app now detects this
+  failure and reloads automatically.
+- `cmd/seed-demo` (internal demo-data tool, not part of the served
+  application): the demo organization's import-linked purchase orders now
+  use foreign (China-based) vendors and USD, matching how import-sourced
+  goods are actually modelled, instead of the same local vendors and
+  currency as domestic purchasing.
+
 ## [3.19.0] - 2026-09-12
 
 ### Added
