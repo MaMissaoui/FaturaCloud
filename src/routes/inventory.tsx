@@ -109,6 +109,36 @@ const Inventory = () => {
   );
   useEffect(() => () => debouncedSetReferenceFilter.cancel(), [debouncedSetReferenceFilter]);
 
+  const trackedProducts = products.filter((p) => p.stockEnabled);
+  // Drives both the Stock levels table below and — via categoryFilter,
+  // shared with fetchMovements' `category` param — the Recent movements
+  // table too, so the two sections can't disagree about what "filtered by
+  // product type" means. The Recent movements product picker also draws
+  // its options from this list rather than the unfiltered trackedProducts,
+  // so it can never offer a product the current category/search filter
+  // excludes — see the reconciling effect right below for what happens
+  // when a change here would otherwise strand a stale selection there.
+  const filteredTrackedProducts = trackedProducts.filter((p) => {
+    if (categoryFilter && p.category !== categoryFilter) return false;
+    if (!stockSearch) return true;
+    const needle = stockSearch.toLowerCase();
+    return p.name.toLowerCase().includes(needle) || (p.sku ?? "").toLowerCase().includes(needle);
+  });
+
+  // Keeps the Recent movements product picker's selection consistent with
+  // whichever product it's now drawing its options from: if a category or
+  // search change (in Stock levels) excludes the currently-selected
+  // product, clear the selection instead of leaving a query that combines
+  // a stale productId with the new category/search and silently returns
+  // nothing.
+  useEffect(() => {
+    if (productFilter && !filteredTrackedProducts.some((p) => p.id === productFilter)) {
+      setProductFilter(null);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryFilter, stockSearch]);
+
   const fetchMovements = useCallback(() => {
     if (!organizationId) return;
     const requestId = ++requestIdRef.current;
@@ -152,13 +182,6 @@ const Inventory = () => {
       fetchMovements();
     }
   }, [location, fetchMovements, setProducts]);
-
-  const trackedProducts = products.filter((p) => p.stockEnabled);
-  const filteredTrackedProducts = trackedProducts.filter((p) => {
-    if (!stockSearch) return true;
-    const needle = stockSearch.toLowerCase();
-    return p.name.toLowerCase().includes(needle) || (p.sku ?? "").toLowerCase().includes(needle);
-  });
 
   const handleDelete = async (movement: StockMovement) => {
     const success = await deleteMovement({
@@ -217,13 +240,32 @@ const Inventory = () => {
               </Typography.Title>
             </Col>
             <Col>
-              <Input.Search
-                allowClear
-                placeholder={t`Search products`}
-                style={{ width: 260 }}
-                value={stockSearch}
-                onChange={(e) => setStockSearch(e.target.value)}
-              />
+              <Space wrap>
+                <Select
+                  allowClear
+                  placeholder={t`Filter by product type`}
+                  style={{ width: 180 }}
+                  onChange={(val) => {
+                    setCategoryFilter(val ?? null);
+                    setPage(1);
+                  }}
+                  value={categoryFilter}
+                >
+                  <Select.Option value="finished">
+                    <Trans>Finished good</Trans>
+                  </Select.Option>
+                  <Select.Option value="component">
+                    <Trans>Component</Trans>
+                  </Select.Option>
+                </Select>
+                <Input.Search
+                  allowClear
+                  placeholder={t`Search products`}
+                  style={{ width: 260 }}
+                  value={stockSearch}
+                  onChange={(e) => setStockSearch(e.target.value)}
+                />
+              </Space>
             </Col>
           </Row>
           <Row style={{ marginTop: 12 }}>
@@ -232,7 +274,7 @@ const Inventory = () => {
                 dataSource={filteredTrackedProducts}
                 rowKey="id"
                 pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
-                locale={{ emptyText: t`No products match your search` }}
+                locale={{ emptyText: t`No products match your filters` }}
               >
                 <Table.Column
                   title={<Trans>Product</Trans>}
@@ -300,9 +342,19 @@ const Inventory = () => {
           </Typography.Title>
         </Col>
         <Col>
-          {/* Filters this table only — it was previously in the page header,
-              next to the Stock levels table above, where selecting a
-              product had no visible effect at all and looked broken. */}
+          {/* Product/movement-type/reference filter this table only. Product
+              type is deliberately not here — it lives in the Stock levels
+              header above and reaches this table through the shared
+              categoryFilter state (passed to GetStockMovements as
+              `category`), so narrowing by product type visibly narrows both
+              tables from one control instead of two that could disagree.
+              The product picker below draws from filteredTrackedProducts
+              (already scoped to that shared filter), not the raw
+              trackedProducts list, so it can't offer a product the current
+              product-type filter would exclude — the exact "selecting a
+              filter had no visible effect and looked broken" trap this
+              page's filters have hit before, just from the other
+              direction. */}
           <Space wrap>
             <Select
               allowClear
@@ -316,29 +368,12 @@ const Inventory = () => {
               }}
               value={productFilter}
             >
-              {trackedProducts.map((p: Product) => (
+              {filteredTrackedProducts.map((p: Product) => (
                 <Select.Option key={p.id} value={p.id} label={p.name}>
                   {p.name}
                   {p.sku ? ` (${p.sku})` : ""}
                 </Select.Option>
               ))}
-            </Select>
-            <Select
-              allowClear
-              placeholder={t`Filter by product type`}
-              style={{ width: 180 }}
-              onChange={(val) => {
-                setCategoryFilter(val ?? null);
-                setPage(1);
-              }}
-              value={categoryFilter}
-            >
-              <Select.Option value="finished">
-                <Trans>Finished good</Trans>
-              </Select.Option>
-              <Select.Option value="component">
-                <Trans>Component</Trans>
-              </Select.Option>
             </Select>
             <Select
               allowClear
