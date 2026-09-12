@@ -136,7 +136,7 @@ func TestJournalEntryPostReverseRepostAllocatesSequentialNumbers(t *testing.T) {
 	// Trial balance after A+reversal+B must reflect only B: A and its
 	// reversal must net to exactly zero per account, not double-count or
 	// sign-flip (see GetTrialBalance's status IN ('posted','reversed') note).
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}

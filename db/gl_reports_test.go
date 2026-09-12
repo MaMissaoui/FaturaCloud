@@ -46,6 +46,85 @@ func TestGetProfitAndLoss(t *testing.T) {
 	}
 }
 
+// TestGetTrialBalanceScopedToFiscalYear is the regression test for a bug
+// caught live: the Trial Balance page's "fiscal year" Select only ever
+// existed to populate the fiscal-period dropdown's options — picking a
+// year with no specific period selected silently filtered nothing, so
+// "All periods" under a chosen year looked identical to no year chosen at
+// all. GetTrialBalance now accepts fiscalYearID as its own filter.
+func TestGetTrialBalanceScopedToFiscalYear(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-tb-year")
+
+	years, err := d.GetFiscalYears(fx.orgID)
+	if err != nil || len(years) != 1 {
+		t.Fatalf("GetFiscalYears: err=%v len=%d, want the fixture's one year", err, len(years))
+	}
+	fixtureYearID := years[0].ID
+
+	inv1 := fx.createInvoice(t, d, "inv-y1", 1, 1000)
+	if _, err := d.UpdateInvoiceState(inv1.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(inv1): %v", err)
+	}
+	inv2 := fx.createInvoice(t, d, "inv-y2", 1, 500)
+	if _, err := d.UpdateInvoiceState(inv2.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(inv2): %v", err)
+	}
+
+	// Move inv2's posted entry into a second, distinct fiscal year — this
+	// is the simplest way to get two years' worth of activity to prove
+	// scoping actually happens; GetTrialBalance only ever reads
+	// journal_entries.fiscalYearId, so it doesn't matter how that column
+	// came to hold a different value.
+	otherYear, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: fx.orgID, Name: "2024", StartDate: 1704067200000, EndDate: 1735689599000,
+	})
+	if err != nil {
+		t.Fatalf("CreateFiscalYear (other): %v", err)
+	}
+	entry2, err := d.FindPostedEntryForSourceDocument("invoice", inv2.ID)
+	if err != nil || entry2 == nil {
+		t.Fatalf("FindPostedEntryForSourceDocument(inv2): entry=%v err=%v", entry2, err)
+	}
+	if _, err := d.DB.Exec(`UPDATE journal_entries SET fiscalYearId = ? WHERE id = ?`, otherYear.ID, entry2.ID); err != nil {
+		t.Fatalf("move inv2's entry to the other fiscal year: %v", err)
+	}
+
+	// Unfiltered: both invoices' revenue.
+	all, err := d.GetTrialBalance(fx.orgID, "", "")
+	if err != nil {
+		t.Fatalf("GetTrialBalance (unfiltered): %v", err)
+	}
+	var allRevenueCredit int64
+	for _, r := range all {
+		if r.AccountID == fx.revenueAccountID {
+			allRevenueCredit = r.Credit
+		}
+	}
+	if allRevenueCredit != 1500 {
+		t.Fatalf("unfiltered revenue credit = %d, want 1500 (1000+500)", allRevenueCredit)
+	}
+
+	// Scoped to the fixture's original year: only inv1's 1000, not inv2's
+	// 500 — this is the assertion that would have passed even with the
+	// bug (fiscalYearID was silently ignored) if it only checked "some
+	// rows came back"; it must be exactly 1000, not 1500.
+	scoped, err := d.GetTrialBalance(fx.orgID, fixtureYearID, "")
+	if err != nil {
+		t.Fatalf("GetTrialBalance (scoped to fixture year): %v", err)
+	}
+	var scopedRevenueCredit int64
+	for _, r := range scoped {
+		if r.AccountID == fx.revenueAccountID {
+			scopedRevenueCredit = r.Credit
+		}
+	}
+	if scopedRevenueCredit != 1000 {
+		t.Fatalf("scoped revenue credit = %d, want 1000 (inv1 only, not inv2's 500)", scopedRevenueCredit)
+	}
+}
+
 // TestGetProfitAndLossAndBalanceSheetNeverReturnNilSlices is the regression
 // test for a bug caught live in the browser: an org/date range with no
 // equity activity left BalanceSheet.Equity as a nil Go slice, which

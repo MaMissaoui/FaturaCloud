@@ -176,7 +176,7 @@ func TestGoodsReceiptPostsGRNIAccrual(t *testing.T) {
 		t.Fatalf("GRNI line = debit %d credit %d, want debit 0 credit 2500", grniDebit, grniCredit)
 	}
 
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestCancelReceivedReceiptReversesGRNIAccrual(t *testing.T) {
 		t.Fatalf("original entry status = %q, want reversed", reversedOriginal.Status)
 	}
 
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}
@@ -574,7 +574,7 @@ func TestPartialBillingAcrossTwoBillsClearsGRNIProportionally(t *testing.T) {
 	}
 
 	// Together, both bills fully clear the 2500 accrued — GRNI nets to zero.
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}
@@ -849,7 +849,7 @@ func TestCancelShippedDeliveryReversesCOGS(t *testing.T) {
 		t.Fatalf("original entry status = %q, want reversed", reversedOriginal.Status)
 	}
 
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}

@@ -262,7 +262,7 @@ func TestGenerateDATEVProducesExpectedRows(t *testing.T) {
 		}
 	}
 
-	tb, err := d.GetTrialBalance(fx.orgID, "")
+	tb, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}

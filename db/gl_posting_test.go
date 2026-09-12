@@ -178,7 +178,7 @@ func TestInvoiceSentPostsBalancedGLEntry(t *testing.T) {
 		t.Fatalf("output tax line = debit %d credit %d, want debit 0 credit 400", taxDebit, taxCredit)
 	}
 
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}
@@ -232,7 +232,7 @@ func TestInvoiceStateBounceBackReversesGLEntry(t *testing.T) {
 		t.Fatalf("original entry status = %q, want reversed", reversedOriginal.Status)
 	}
 
-	rows, err := d.GetTrialBalance(fx.orgID, "")
+	rows, err := d.GetTrialBalance(fx.orgID, "", "")
 	if err != nil {
 		t.Fatalf("GetTrialBalance: %v", err)
 	}
