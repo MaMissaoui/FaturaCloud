@@ -1,0 +1,24 @@
+name: One-off GHCR stray version cleanup
+
+# Throwaway, manually-triggered workflow to delete specific stray
+# ghcr.io/mamissaoui/fatura-cloud image versions left behind by throwaway
+# release-workflow test tags (v0.0.0-ci-warnings-test, v0.0.0-matrix-test,
+# v0.0.0-registry-cache-test-1/2) — none of these are real releases, and
+# the version-id-scoped delete-tags list below only ever targets those four
+# tags, never a real vX.Y.Z release. Deleted right after use; not part of
+# the regular release pipeline (that's docker.yml's own prune step).
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete stray test-tag versions
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          package: fatura-cloud
+          delete-tags: 0.0.0-ci-warnings-test,0.0.0-matrix-test,0.0.0-registry-cache-test-1,0.0.0-registry-cache-test-2
+          token: ${{ secrets.GHCR_CLEANUP_TOKEN }}
