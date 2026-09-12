@@ -377,6 +377,50 @@ func buildComponentCatalog() []productCatalogEntry {
 // a generator is allowed to pick each one for.
 var productCatalog = append(buildFinishedMotorcycleCatalog(), buildComponentCatalog()...)
 
+// foreignVendorEntry is one of the fixed overseas suppliers Imports (F114)
+// bring components in from — deliberately not generated from countryLocale
+// the way local vendors are (that abstraction is keyed to the
+// *organization's* --country, e.g. Tunisia, and has no notion of "a foreign
+// counterparty regardless of the org's own country"). A short, explicit
+// list is simpler and clearer here than stretching that abstraction to fit.
+type foreignVendorEntry struct {
+	name, city, postalCode string
+}
+
+// foreignVendorCatalog names real Chinese manufacturing/export hubs and
+// plausible trading-company names — setupForeignVendors (masterdata.go)
+// picks --vendors from this list (see maybeStartImport/purchasing.go's
+// createImportLinkedPurchaseOrder for how these are the only vendors ever
+// used for an Import-linked purchase order, never ordinary restocking).
+var foreignVendorCatalog = []foreignVendorEntry{
+	{"Shenzhen Hongda Motorcycle Parts Co., Ltd.", "Shenzhen", "518000"},
+	{"Guangzhou Feilong Auto Parts Manufacturing Co., Ltd.", "Guangzhou", "510000"},
+	{"Ningbo Zhongce Precision Components Co., Ltd.", "Ningbo", "315000"},
+	{"Yiwu Xinyuan Trading Co., Ltd.", "Yiwu", "322000"},
+	{"Dongguan Junhe Metal Products Co., Ltd.", "Dongguan", "523000"},
+	{"Wuxi Taihu Machinery Manufacturing Co., Ltd.", "Wuxi", "214000"},
+	{"Chongqing Jialing Powertrain Co., Ltd.", "Chongqing", "400000"},
+	{"Tianjin Bohai Electrical Components Co., Ltd.", "Tianjin", "300000"},
+}
+
+// foreignVendorPhone/foreignVendorVATIN are a minimal, self-contained
+// format for the two identifier fields every vendor needs — a +86 mobile
+// pattern and a plausible 18-digit Chinese Unified Social Credit Code
+// shape, neither validated against any real registry (same "plausible, not
+// authoritative" spirit as countryLocale's own vatin generators).
+func (rr *Rand) foreignVendorPhone() string {
+	return fmt.Sprintf("+86 1%d %d", rr.IntRange(30, 89), rr.IntRange(10000000, 99999999))
+}
+
+func (rr *Rand) foreignVendorVATIN() string {
+	const alnum = "0123456789ABCDEFGHJKLMNPQRTUWXY"
+	b := make([]byte, 18)
+	for i := range b {
+		b[i] = alnum[rr.r.IntN(len(alnum))]
+	}
+	return string(b)
+}
+
 // Rand wraps math/rand/v2's PCG source seeded deterministically, plus the
 // small helpers every generator in this tool needs (weighted picks, business
 // names, money ranges). Everything in cmd/seed-demo goes through one *Rand

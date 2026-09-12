@@ -306,6 +306,12 @@ export interface Import {
   customsCost: number;
   notes: string | null;
   createdAt: number;
+  // The serial-number range this import reserves for whatever gets
+  // produced from its components — all null unless this import is used
+  // for production. See CLAUDE.md's db/import.go note.
+  serialNumberPrefix: string | null;
+  serialNumberRangeStart: number | null;
+  serialNumberRangeEnd: number | null;
 }
 
 export interface ImportSummary {

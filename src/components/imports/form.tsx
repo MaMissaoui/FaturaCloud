@@ -291,6 +291,42 @@ const ImportForm = () => {
             </Row>
           </Card>
 
+          <Card
+            size="small"
+            title={<Trans>Serial Numbers</Trans>}
+            style={{ marginBottom: 12 }}
+            extra={<Trans>Optional</Trans>}
+          >
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={8}>
+                <Form.Item name="serialNumberPrefix" label={<Trans>Prefix</Trans>}>
+                  <Input placeholder="SN-" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} md={8}>
+                <Form.Item name="serialNumberRangeStart" label={<Trans>Range start</Trans>}>
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="1001" />
+                </Form.Item>
+              </Col>
+              <Col xs={12} md={8}>
+                <Form.Item
+                  name="serialNumberRangeEnd"
+                  label={<Trans>Range end</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
+                  <InputNumber min={0} style={{ width: "100%" }} placeholder="1050" />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Trans>
+                  Reserves a serial-number range for whatever gets produced from this shipment's
+                  components — a Production Order linked to this import can only register serials
+                  inside it.
+                </Trans>
+              </Col>
+            </Row>
+          </Card>
+
           <Card size="small" title={<Trans>Landed cost</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>

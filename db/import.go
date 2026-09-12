@@ -32,30 +32,47 @@ type Import struct {
 	CustomsCost int64   `db:"customsCost" json:"customsCost"`
 	Notes       *string `db:"notes"       json:"notes"`
 	CreatedAt   int64   `db:"createdAt"   json:"createdAt"`
+	// The serial-number range this import reserves for whatever gets
+	// produced from its components (migration 0073) — all nullable, unset
+	// unless this import is actually used for production. A Production
+	// Order linked to this import (db/production_order.go) validates its
+	// serial numbers against [SerialNumberPrefix+RangeStart,
+	// SerialNumberPrefix+RangeEnd]; nothing here tracks how much of the
+	// range has already been used — product_serial_numbers' own
+	// per-product uniqueness constraint already rejects a real re-use.
+	SerialNumberPrefix     *string `db:"serialNumberPrefix"     json:"serialNumberPrefix"`
+	SerialNumberRangeStart *int64  `db:"serialNumberRangeStart" json:"serialNumberRangeStart"`
+	SerialNumberRangeEnd   *int64  `db:"serialNumberRangeEnd"   json:"serialNumberRangeEnd"`
 }
 
 type CreateImportRequest struct {
-	ID               string   `json:"id"`
-	OrganizationID   string   `json:"organizationId"`
-	ImportNumber     string   `json:"importNumber"`
-	Date             int64    `json:"date"`
-	Currency         *string  `json:"currency"`
-	ExchangeRate     *float64 `json:"exchangeRate"`
-	ExchangeRateDate *int64   `json:"exchangeRateDate"`
-	FreightCost      float64  `json:"freightCost"` // cents sent from frontend
-	CustomsCost      float64  `json:"customsCost"` // cents sent from frontend
-	Notes            *string  `json:"notes"`
+	ID                     string   `json:"id"`
+	OrganizationID         string   `json:"organizationId"`
+	ImportNumber           string   `json:"importNumber"`
+	Date                   int64    `json:"date"`
+	Currency               *string  `json:"currency"`
+	ExchangeRate           *float64 `json:"exchangeRate"`
+	ExchangeRateDate       *int64   `json:"exchangeRateDate"`
+	FreightCost            float64  `json:"freightCost"` // cents sent from frontend
+	CustomsCost            float64  `json:"customsCost"` // cents sent from frontend
+	Notes                  *string  `json:"notes"`
+	SerialNumberPrefix     *string  `json:"serialNumberPrefix"`
+	SerialNumberRangeStart *int64   `json:"serialNumberRangeStart"`
+	SerialNumberRangeEnd   *int64   `json:"serialNumberRangeEnd"`
 }
 
 type UpdateImportRequest struct {
-	ImportNumber     *string  `json:"importNumber"`
-	Date             *int64   `json:"date"`
-	Currency         *string  `json:"currency"`
-	ExchangeRate     *float64 `json:"exchangeRate"`
-	ExchangeRateDate *int64   `json:"exchangeRateDate"`
-	FreightCost      *float64 `json:"freightCost"`
-	CustomsCost      *float64 `json:"customsCost"`
-	Notes            *string  `json:"notes"`
+	ImportNumber           *string  `json:"importNumber"`
+	Date                   *int64   `json:"date"`
+	Currency               *string  `json:"currency"`
+	ExchangeRate           *float64 `json:"exchangeRate"`
+	ExchangeRateDate       *int64   `json:"exchangeRateDate"`
+	FreightCost            *float64 `json:"freightCost"`
+	CustomsCost            *float64 `json:"customsCost"`
+	Notes                  *string  `json:"notes"`
+	SerialNumberPrefix     *string  `json:"serialNumberPrefix"`
+	SerialNumberRangeStart *int64   `json:"serialNumberRangeStart"`
+	SerialNumberRangeEnd   *int64   `json:"serialNumberRangeEnd"`
 }
 
 func (d *Database) GetImports(organizationID string) ([]Import, error) {
@@ -94,9 +111,32 @@ func (d *Database) NextImportNumber(organizationID string) string {
 	return fmt.Sprintf("IMP-%04d", maxNumber.Int64+1)
 }
 
+// validateSerialNumberRange requires a start and end to be set together (not
+// one without the other) and end >= start — prefix alone (with no
+// start/end) is meaningless but not itself rejected here, since a caller
+// clearing the range sends all three as nil.
+func validateSerialNumberRange(start, end *int64) error {
+	if start == nil && end == nil {
+		return nil
+	}
+	if start == nil || end == nil {
+		return newValidationError("a serial number range requires both a start and an end")
+	}
+	if *start < 0 {
+		return newValidationError("serial number range start must be zero or greater")
+	}
+	if *end < *start {
+		return newValidationError("serial number range end must not be before its start")
+	}
+	return nil
+}
+
 func (d *Database) CreateImport(req CreateImportRequest) (*Import, error) {
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
+	}
+	if err := validateSerialNumberRange(req.SerialNumberRangeStart, req.SerialNumberRangeEnd); err != nil {
+		return nil, err
 	}
 	org, err := d.GetOrganization(req.OrganizationID)
 	if err != nil {
@@ -111,10 +151,12 @@ func (d *Database) CreateImport(req CreateImportRequest) (*Import, error) {
 
 	_, err = d.DB.Exec(`
 		INSERT INTO imports (id, organizationId, importNumber, date, currency, exchangeRate,
-		                      exchangeRateDate, freightCost, customsCost, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                      exchangeRateDate, freightCost, customsCost, notes,
+		                      serialNumberPrefix, serialNumberRangeStart, serialNumberRangeEnd)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.ImportNumber, req.Date, req.Currency, exchangeRate,
 		req.ExchangeRateDate, roundCents(req.FreightCost), roundCents(req.CustomsCost), req.Notes,
+		req.SerialNumberPrefix, req.SerialNumberRangeStart, req.SerialNumberRangeEnd,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_import: %w", err)
@@ -153,19 +195,48 @@ func (d *Database) UpdateImport(id string, updates UpdateImportRequest) (*Import
 		customsCost = &v
 	}
 
+	// Merged with the current row first, then written unconditionally —
+	// unlike a bare COALESCE, this means a request touching only one of
+	// the three fields still means "leave the others as they are" (no
+	// accidental wipe of a range you weren't editing), while validation
+	// runs against the resulting merged state rather than the update's own
+	// fields in isolation. There's no way to explicitly clear an
+	// already-set range back to "none" via this endpoint (only to replace
+	// it with a different valid one) — a narrow, acceptable v1 limitation
+	// given how rarely a configured range would need removing outright.
+	serialNumberPrefix := current.SerialNumberPrefix
+	if updates.SerialNumberPrefix != nil {
+		serialNumberPrefix = updates.SerialNumberPrefix
+	}
+	serialNumberRangeStart := current.SerialNumberRangeStart
+	if updates.SerialNumberRangeStart != nil {
+		serialNumberRangeStart = updates.SerialNumberRangeStart
+	}
+	serialNumberRangeEnd := current.SerialNumberRangeEnd
+	if updates.SerialNumberRangeEnd != nil {
+		serialNumberRangeEnd = updates.SerialNumberRangeEnd
+	}
+	if err := validateSerialNumberRange(serialNumberRangeStart, serialNumberRangeEnd); err != nil {
+		return nil, err
+	}
+
 	_, err = d.DB.Exec(`
 		UPDATE imports
-		SET importNumber     = COALESCE(?, importNumber),
-		    date             = COALESCE(?, date),
-		    currency         = ?,
-		    exchangeRate     = ?,
-		    exchangeRateDate = ?,
-		    freightCost      = COALESCE(?, freightCost),
-		    customsCost      = COALESCE(?, customsCost),
-		    notes            = COALESCE(?, notes)
+		SET importNumber           = COALESCE(?, importNumber),
+		    date                   = COALESCE(?, date),
+		    currency               = ?,
+		    exchangeRate           = ?,
+		    exchangeRateDate       = ?,
+		    freightCost            = COALESCE(?, freightCost),
+		    customsCost            = COALESCE(?, customsCost),
+		    notes                  = COALESCE(?, notes),
+		    serialNumberPrefix     = ?,
+		    serialNumberRangeStart = ?,
+		    serialNumberRangeEnd   = ?
 		WHERE id = ?`,
 		updates.ImportNumber, updates.Date, updates.Currency, exchangeRate, updates.ExchangeRateDate,
 		freightCost, customsCost, updates.Notes,
+		serialNumberPrefix, serialNumberRangeStart, serialNumberRangeEnd,
 		id,
 	)
 	if err != nil {

@@ -8,11 +8,11 @@ import (
 )
 
 // importRef is this tool's own record of a created Import (F114 — a
-// consolidated China shipment carrying several vendors' purchase orders,
-// see db/import.go), kept for the whole linking window so
-// maybeLinkToImport can decide whether a freshly created purchase order
-// should attach to it, and finalizeImportCosts can later set a realistic
-// freight/customs cost once every PO that's going to link to it has.
+// consolidated China shipment carrying several foreign vendors' purchase
+// orders, see db/import.go), kept for the whole linking window so
+// maybeCreateImportLinkedPO knows whether to place another PO against it,
+// and finalizeImportCosts can later set a realistic freight/customs cost
+// once every PO going into it has been placed.
 type importRef struct {
 	id, number string
 	createdOn  time.Time
@@ -38,11 +38,13 @@ const (
 // maybeStartImport opens a new consolidated shipment roughly once a month
 // (checked every Monday alongside maybeStartOrder/maybeStartPurchaseOrder
 // in seeder.go's Run — ~23% chance per Monday averages one import every
-// ~4.3 weeks) and makes it the "current" one purchase orders can link to.
-// Freight/customs start as a small placeholder — the real cost is set once
-// the linking window closes, see finalizeImportCosts. Currency/ExchangeRate
-// are left nil, matching this tool's existing "no multi-currency
-// documents" scope boundary (README.md) rather than expanding it.
+// ~4.3 weeks) and makes it the "current" one for maybeCreateImportLinkedPO
+// to place foreign-vendor purchase orders against. Freight/customs start
+// as a small placeholder — the real cost is set once the linking window
+// closes, see finalizeImportCosts. The shipment itself carries no
+// Currency/ExchangeRate of its own — those are prefill-only fields on
+// Import (db/import.go) for the linked POs to optionally copy, and each PO
+// still freezes its own, per the F114 design.
 func (s *Seeder) maybeStartImport(day time.Time) error {
 	if day.Weekday() != time.Monday || !s.rng.Chance(0.23) {
 		return nil
@@ -74,31 +76,36 @@ func (s *Seeder) maybeStartImport(day time.Time) error {
 	return nil
 }
 
-// maybeLinkToImport is called by createPurchaseOrder (purchasing.go) for
-// every newly placed purchase order of stock-tracked components — the only
-// kind of PO this demo's imports ever carry, since stockProducts already
-// excludes "finished" goods (purchasing.go). poValueCents is that PO's own
-// Σ(quantity × unitCost), accumulated into the import's committedValueCents
-// so finalizeImportCosts has something real to base freight/customs on.
-// Returns nil when there's no current, still-open import to attach to,
-// which is the common case — most purchase orders are ordinary domestic
-// restocking, not part of a consolidated shipment. A linked import is what
-// lets db/gl_posting.go's applyLandedCost spread freight/customs across the
-// receipt once this PO is actually received.
-func (s *Seeder) maybeLinkToImport(day time.Time, poValueCents int64) *string {
+// maybeCreateImportLinkedPO places 1-2 foreign-vendor purchase orders a
+// week against the currently open import, while its linking window is
+// still open and it hasn't already hit importLinkMaxPOs — the only path
+// that ever creates a PO against an import now: a consolidated shipment
+// realistically carries goods from overseas manufacturers (see
+// setupForeignVendors), never a domestic restocking order, so linking is
+// no longer a coin-flip on an otherwise-ordinary local PO (createPurchaseOrder,
+// purchasing.go, draws only from the local vendor pool and never sets
+// ImportID at all).
+func (s *Seeder) maybeCreateImportLinkedPO(day time.Time) error {
 	imp := s.currentImport
-	if imp == nil || imp.linkedPOs >= importLinkMaxPOs {
+	if imp == nil || day.Weekday() != time.Monday {
+		return nil
+	}
+	if imp.linkedPOs >= importLinkMaxPOs {
 		return nil
 	}
 	if day.Sub(imp.createdOn) > importLinkWindowDays*24*time.Hour {
 		return nil
 	}
-	if !s.rng.Chance(0.45) {
-		return nil
+	n := s.rng.IntRange(1, 2)
+	for i := 0; i < n && imp.linkedPOs < importLinkMaxPOs; i++ {
+		placeDay := businessDaysLater(day, s.rng.IntRange(0, 4))
+		if placeDay.After(s.cfg.EndDate) {
+			continue
+		}
+		imp.linkedPOs++
+		s.sched.Schedule(placeDay, func() error { return s.createImportLinkedPurchaseOrder(placeDay, imp) })
 	}
-	imp.linkedPOs++
-	imp.committedValueCents += poValueCents
-	return &imp.id
+	return nil
 }
 
 // finalizeImportCosts sets the shipment's real freight/customs cost once

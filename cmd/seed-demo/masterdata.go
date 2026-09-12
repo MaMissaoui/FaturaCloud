@@ -156,14 +156,17 @@ func (s *Seeder) setupMasterData() error {
 	if err := s.setupVendors(); err != nil {
 		return fmt.Errorf("vendors: %w", err)
 	}
+	if err := s.setupForeignVendors(); err != nil {
+		return fmt.Errorf("foreign vendors: %w", err)
+	}
 	if err := s.setupClients(); err != nil {
 		return fmt.Errorf("clients: %w", err)
 	}
 	if err := s.setupProducts(); err != nil {
 		return fmt.Errorf("products: %w", err)
 	}
-	s.log.Printf("seed-demo: master data ready — %d vendors, %d clients, %d products",
-		len(s.vendors), len(s.clients), len(s.products))
+	s.log.Printf("seed-demo: master data ready — %d vendors (+%d foreign), %d clients, %d products",
+		len(s.vendors), len(s.foreignVendors), len(s.clients), len(s.products))
 	return nil
 }
 
@@ -255,6 +258,45 @@ func (s *Seeder) setupVendors() error {
 			return fmt.Errorf("vendor %q: %w", name, err)
 		}
 		s.vendors = append(s.vendors, vendorRef{id: v.ID, name: name})
+		s.stats.Vendors++
+	}
+	return nil
+}
+
+// setupForeignVendors creates the fixed handful of overseas suppliers
+// (catalog.go's foreignVendorCatalog) an Import (F114) sources components
+// from — 5-7 of them, picked without replacement so a run never duplicates
+// one. Their documents are priced in USD (DefaultCurrency, a prefill the
+// real app's purchase-order form already reads — see CLAUDE.md's imports.go
+// note) and never selected for ordinary local restocking (purchasing.go's
+// createPurchaseOrder draws only from s.vendors); see
+// createImportLinkedPurchaseOrder for the only path that uses them.
+func (s *Seeder) setupForeignVendors() error {
+	pool := append([]foreignVendorEntry(nil), foreignVendorCatalog...)
+	Shuffle(s.rng, pool)
+	n := s.rng.IntRange(5, 7)
+	if n > len(pool) {
+		n = len(pool)
+	}
+	for _, entry := range pool[:n] {
+		req := db.CreateVendorRequest{
+			OrganizationID:  s.orgID,
+			Name:            strPtr(entry.name),
+			Vatin:           strPtr(s.rng.foreignVendorVATIN()),
+			Emails:          strPtr(fmt.Sprintf(`["%s"]`, s.rng.Email(entry.name))),
+			Phone:           strPtr(s.rng.foreignVendorPhone()),
+			Street:          strPtr(s.rng.Street()),
+			HouseNumber:     strPtr(fmt.Sprintf("%d", s.rng.IntRange(1, 200))),
+			PostalCode:      strPtr(entry.postalCode),
+			City:            strPtr(entry.city),
+			CountryCode:     strPtr("CN"),
+			DefaultCurrency: strPtr("USD"),
+		}
+		var v db.Vendor
+		if err := s.c.Post("/api/vendors", req, &v); err != nil {
+			return fmt.Errorf("foreign vendor %q: %w", entry.name, err)
+		}
+		s.foreignVendors = append(s.foreignVendors, vendorRef{id: v.ID, name: entry.name, currency: "USD"})
 		s.stats.Vendors++
 	}
 	return nil
