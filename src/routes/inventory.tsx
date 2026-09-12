@@ -158,25 +158,6 @@ const Inventory = () => {
       <PageHeader
         icon={<InboxOutlined />}
         title={<Trans>Inventory</Trans>}
-        extra={
-          <Select
-            allowClear
-            placeholder={t`Filter by product`}
-            style={{ width: 200 }}
-            onChange={(val) => {
-              setProductFilter(val ?? null);
-              setPage(1);
-            }}
-            value={productFilter}
-          >
-            {trackedProducts.map((p: Product) => (
-              <Select.Option key={p.id} value={p.id}>
-                {p.name}
-                {p.sku ? ` (${p.sku})` : ""}
-              </Select.Option>
-            ))}
-          </Select>
-        }
         actions={
           <Link to="/inventory" state={{ movementModal: true }}>
             <Button type="primary">
@@ -193,8 +174,7 @@ const Inventory = () => {
           unnavigable at that scale, and gives no way to answer "what's
           actually low or out of stock" without scanning every card. Search
           is client-side over the already-loaded productsAtom (the same data
-          the old card grid and the "Filter by product" Select above both
-          already relied on) — no new endpoint needed. */}
+          the old card grid already relied on) — no new endpoint needed. */}
       {trackedProducts.length > 0 && (
         <>
           <Row style={{ marginTop: 24 }} align="middle" justify="space-between">
@@ -280,11 +260,39 @@ const Inventory = () => {
         </>
       )}
 
-      <Row style={{ marginTop: 24 }}>
-        <Col span={24}>
-          <Typography.Title level={5} style={{ marginBottom: 12 }}>
+      <Row style={{ marginTop: 24 }} align="middle" justify="space-between">
+        <Col>
+          <Typography.Title level={5} style={{ margin: 0 }}>
             <Trans>Recent movements</Trans>
           </Typography.Title>
+        </Col>
+        <Col>
+          {/* Filters this table only — it was previously in the page header,
+              next to the Stock levels table above, where selecting a
+              product had no visible effect at all and looked broken. */}
+          <Select
+            allowClear
+            placeholder={t`Filter by product`}
+            style={{ width: 240 }}
+            showSearch
+            optionFilterProp="label"
+            onChange={(val) => {
+              setProductFilter(val ?? null);
+              setPage(1);
+            }}
+            value={productFilter}
+          >
+            {trackedProducts.map((p: Product) => (
+              <Select.Option key={p.id} value={p.id} label={p.name}>
+                {p.name}
+                {p.sku ? ` (${p.sku})` : ""}
+              </Select.Option>
+            ))}
+          </Select>
+        </Col>
+      </Row>
+      <Row style={{ marginTop: 12 }}>
+        <Col span={24}>
           <Table
             dataSource={movements}
             pagination={{ current: page, pageSize, total, showSizeChanger: true }}
