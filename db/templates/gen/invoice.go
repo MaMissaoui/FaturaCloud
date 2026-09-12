@@ -120,7 +120,11 @@ func buildInvoiceTemplate() {
 	set("A"+strconv.Itoa(footerRow+2), "Fiscal stamp: {{invoice.fiscalStampAmount}}")
 	set("A"+strconv.Itoa(footerRow+3), "{{invoice.withholdingTaxLine}}")
 
-	f.SetColWidth(sheet, "A", "A", 16)
+	// A (Product/SKU) is 22, not the original 16 -- a longer SKU (e.g.
+	// "WIDGET-XL-DELUXE") overflowed visibly into Description at 16, found
+	// by actually rendering a PDF with a long SKU rather than the short
+	// ones every other manual check happened to use.
+	f.SetColWidth(sheet, "A", "A", 22)
 	f.SetColWidth(sheet, "B", "B", 40)
 	f.SetColWidth(sheet, "C", "E", 14)
 	f.SetColWidth(sheet, "F", "F", 16)

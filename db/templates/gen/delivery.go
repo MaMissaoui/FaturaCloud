@@ -81,7 +81,9 @@ func buildDeliveryTemplate() {
 
 	f.SetColWidth(sheet, "A", "A", 24)
 	f.SetColWidth(sheet, "B", "B", 16)
-	f.SetColWidth(sheet, "C", "C", 16)
+	// C (Product/SKU) is 22, not the original 16 -- see invoice.go's
+	// matching comment for why.
+	f.SetColWidth(sheet, "C", "C", 22)
 	f.SetColWidth(sheet, "D", "D", 16)
 
 	applyFitToPageWidth(f, sheet)

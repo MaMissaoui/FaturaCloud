@@ -99,7 +99,11 @@ func buildPurchaseOrderTemplate() {
 	footerRow := totalsRow + 5
 	set("A"+strconv.Itoa(footerRow), "Notes: {{purchaseOrder.notes}}")
 
-	f.SetColWidth(sheet, "A", "A", 16)
+	// A (Product/SKU) is 22, not the original 16 -- a longer SKU (e.g.
+	// "WIDGET-XL-DELUXE") overflowed visibly into Description at 16, found
+	// by actually rendering a PDF with a long SKU rather than the short
+	// ones every other manual check happened to use.
+	f.SetColWidth(sheet, "A", "A", 22)
 	f.SetColWidth(sheet, "B", "B", 32)
 	f.SetColWidth(sheet, "C", "F", 13)
 	f.SetColWidth(sheet, "G", "G", 16)
