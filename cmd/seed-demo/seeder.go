@@ -66,6 +66,7 @@ type productRef struct {
 	onHand       float64
 	qtyLo, qtyHi int    // plausible line-item quantity range, from catalog.go
 	category     string // "finished" | "component" | "" — see catalog.go's productCatalogEntry
+	displacement string // "50cc".."650cc" for "finished"/"component", "" otherwise — see catalog.go's productCatalogEntry
 }
 
 // Stats tallies what actually got created, printed as a summary at the end
@@ -77,7 +78,12 @@ type Stats struct {
 	PurchaseOrders, InboundDeliveries, IncomingInvoices int
 	Imports                                             int
 	Payments                                            int
-	Errors                                              int
+	// AssemblyBatches counts production.go's maybeAssembleFinishedGoods runs
+	// that actually built something (skipped attempts with insufficient
+	// component stock don't count); AssembledUnits is the total finished
+	// goods produced across every batch.
+	AssemblyBatches, AssembledUnits int
+	Errors                          int
 }
 
 // Seeder holds every piece of shared state a generator (sales.go,
@@ -200,6 +206,11 @@ func (s *Seeder) Run() error {
 			s.onTaskError(day, fmt.Errorf("sales: %w", err))
 		}
 		if !weekend {
+			// Assembly runs before orders so a batch produced today is
+			// already on hand for orderableLines to pick from the same day.
+			if err := s.maybeAssembleFinishedGoods(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("assembly: %w", err))
+			}
 			if err := s.maybeStartOrder(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("order: %w", err))
 			}
@@ -213,14 +224,17 @@ func (s *Seeder) Run() error {
 			if err := s.maybeStartPurchaseOrder(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("purchase order: %w", err))
 			}
+			if err := s.maybeRestockAssemblyComponents(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("assembly restock: %w", err))
+			}
 		}
 
 		if s.cfg.ProgressEvery > 0 && dayNum%s.cfg.ProgressEvery == 0 {
-			s.log.Printf("seed-demo: %s (%d/%d days) — invoices=%d orders=%d deliveries=%d POs=%d receipts=%d bills=%d imports=%d payments=%d errors=%d",
+			s.log.Printf("seed-demo: %s (%d/%d days) — invoices=%d orders=%d deliveries=%d POs=%d receipts=%d bills=%d imports=%d assembled=%d payments=%d errors=%d",
 				day.Format("2006-01-02"), dayNum, totalDays,
 				s.stats.Invoices, s.stats.Orders, s.stats.Deliveries,
 				s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices,
-				s.stats.Imports, s.stats.Payments, s.stats.Errors)
+				s.stats.Imports, s.stats.AssembledUnits, s.stats.Payments, s.stats.Errors)
 		}
 	}
 
@@ -233,6 +247,7 @@ func (s *Seeder) Run() error {
 	s.log.Printf("seed-demo: clients=%d vendors=%d products=%d", s.stats.Clients, s.stats.Vendors, s.stats.Products)
 	s.log.Printf("seed-demo: invoices=%d orders=%d deliveries=%d", s.stats.Invoices, s.stats.Orders, s.stats.Deliveries)
 	s.log.Printf("seed-demo: purchase_orders=%d inbound_deliveries=%d incoming_invoices=%d imports=%d", s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices, s.stats.Imports)
+	s.log.Printf("seed-demo: assembly_batches=%d assembled_units=%d", s.stats.AssemblyBatches, s.stats.AssembledUnits)
 	s.log.Printf("seed-demo: payments=%d errors=%d", s.stats.Payments, s.stats.Errors)
 	if s.stats.Errors > 0 {
 		s.log.Printf("seed-demo: WARNING — %d step(s) failed; see the log above for which day/kind. The rest of the run continued.", s.stats.Errors)

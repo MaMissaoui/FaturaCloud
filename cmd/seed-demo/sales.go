@@ -324,13 +324,9 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 	if err := s.c.Patch("/api/deliveries/"+delivery.ID+"/status", map[string]string{"status": "shipped"}, nil); err != nil {
 		return fmt.Errorf("ship delivery %s: %w", delivery.DeliveryNumber, err)
 	}
-	// Reflect the shipment in our own stock estimate (see productRef.onHand).
-	for _, ol := range orderLines {
-		if ol.ProductID == nil {
-			continue
-		}
-		s.adjustOnHand(*ol.ProductID, -ol.Quantity)
-	}
+	// Stock was already reserved in our own estimate at order creation
+	// (orderableLines) — not decremented again here, or a stock-enabled
+	// line would be double-counted against onHand.
 
 	// Close the loop financially: bill the client for what was just shipped.
 	// There's no structural order->invoice link in this schema (sales
@@ -437,6 +433,17 @@ func (s *Seeder) orderableLines(n int) orderLineSet {
 			if qty > max {
 				qty = max
 			}
+			// Reserve now, at order creation, not at shipOrder's eventual
+			// ship day — two orders placed on the same or nearby days
+			// against the same low-stock finished good (see production.go)
+			// would otherwise both see the same pre-reservation onHand and
+			// both get confirmed for it, and only the first to actually
+			// ship would succeed; the real server has no reservation
+			// concept either (an order can be confirmed for more than is
+			// in stock — only shipping enforces it), so this is this
+			// tool's own bookkeeping catching a race the real app doesn't
+			// prevent, not a mismatch with how orders actually behave.
+			s.adjustOnHand(p.id, -qty)
 		}
 		out.items = append(out.items, db.CreateOrderLineItemRequest{
 			ProductID:   strPtr(p.id),
