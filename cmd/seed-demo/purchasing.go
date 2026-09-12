@@ -19,7 +19,16 @@ type purchaseLine struct {
 	productName string
 	unit        string
 	quantity    float64
-	unitCost    int64 // cents, what the vendor charges
+	unitCost    int64 // cents, what the vendor charges — in currency, not the org's own, when currency != ""
+	// currency/exchangeRate are "" and 0 for an ordinary local-vendor PO
+	// (the organization's own currency applies, unchanged) — non-empty only
+	// for a foreign-vendor PO created by createImportLinkedPurchaseOrder,
+	// carried through receivePurchaseOrder/billPurchaseOrder so every
+	// document in the chain (PO, receipt, bill, payment) freezes and
+	// reuses the exact same rate, the same "captured once, frozen" contract
+	// db/exchange_rate.go documents for the real app.
+	currency     string
+	exchangeRate float64
 }
 
 // maybeStartPurchaseOrder mirrors maybeStartOrder's shape exactly: decide
@@ -54,7 +63,6 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 	n := s.rng.IntRange(1, 4)
 	var reqLines []db.CreatePurchaseOrderLineItemRequest
 	var localLines []purchaseLine
-	var poValueCents int64
 	for i := 0; i < n; i++ {
 		p := Pick(s.rng, stockProducts)
 		qty := float64(s.rng.IntRange(20, 150)) // restocking bulk, not a single-unit sale
@@ -66,7 +74,6 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 			Unit:        strPtr(p.unit),
 		})
 		localLines = append(localLines, purchaseLine{productID: p.id, productName: p.name, unit: p.unit, quantity: qty, unitCost: p.costCents})
-		poValueCents += int64(qty * float64(p.costCents))
 	}
 
 	req := db.CreatePurchaseOrderRequest{
@@ -76,7 +83,6 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 		Status:         "draft",
 		OrderDate:      midnightUTC(day),
 		LineItems:      reqLines,
-		ImportID:       s.maybeLinkToImport(day, poValueCents),
 	}
 	var po db.PurchaseOrder
 	if err := s.c.Post("/api/purchase-orders", req, &po); err != nil {
@@ -148,6 +154,14 @@ func (s *Seeder) receivePurchaseOrder(day time.Time, po db.PurchaseOrder, vendor
 		DeliveryNumber:  s.inboundNum.next(day.Year()),
 		DeliveryDate:    midnightUTC(day),
 		LineItems:       reqLines,
+	}
+	// Every line of one PO shares the same currency/rate (set once, frozen,
+	// at PO creation — see purchaseLine's own comment), so reading it off
+	// the first line covers the whole receipt. Left nil (the organization's
+	// own currency) for an ordinary local-vendor PO.
+	if len(lines) > 0 && lines[0].currency != "" {
+		req.Currency = strPtr(lines[0].currency)
+		req.ExchangeRate = float64Ptr(lines[0].exchangeRate)
 	}
 	var delivery db.InboundDelivery
 	if err := s.c.Post("/api/inbound-deliveries", req, &delivery); err != nil {

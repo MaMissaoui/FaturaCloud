@@ -48,6 +48,12 @@ type clientRef struct {
 
 type vendorRef struct {
 	id, name string
+	// currency is "" for a local vendor (documents use the organization's
+	// own currency, the pre-existing default) or a foreign vendor's own
+	// currency (e.g. "USD" for a China vendor an Import brings in) — see
+	// catalog.go's foreignVendorCatalog and purchasing.go's
+	// createImportLinkedPurchaseOrder.
+	currency string
 }
 
 // productRef is a catalog entry plus the id the server assigned it and,
@@ -111,6 +117,13 @@ type Seeder struct {
 	clients  []clientRef
 	vendors  []vendorRef
 	products []productRef
+	// foreignVendors are the handful of overseas (China) suppliers whose
+	// goods only ever arrive via a consolidated Import (F114) — kept
+	// separate from vendors (the local supplier pool ordinary restocking
+	// draws from) since an Import shipment realistically comes from a
+	// foreign manufacturer, not a domestic one. See catalog.go's
+	// foreignVendorCatalog and purchasing.go's createImportLinkedPurchaseOrder.
+	foreignVendors []vendorRef
 
 	sched *Scheduler
 
