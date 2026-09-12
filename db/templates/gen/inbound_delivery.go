@@ -74,6 +74,12 @@ func buildInboundDeliveryTemplate() {
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.unitCost}}")
 	set("E"+strconv.Itoa(repeatRow), "{{lineItems.lineTotal}}")
 	set("F"+strconv.Itoa(repeatRow), "{{#lineItems}}")
+	// Quantity/Unit Cost/Line Total are numeric — right-align on the repeat
+	// row so DuplicateRowTo carries it to every expanded row.
+	for _, col := range []string{"C", "D", "E"} {
+		cell := col + strconv.Itoa(repeatRow)
+		f.SetCellStyle(sheet, cell, cell, styles.right)
+	}
 
 	footerRow := repeatRow + 4
 	set("A"+strconv.Itoa(footerRow), "Notes: {{inboundDelivery.notes}}")

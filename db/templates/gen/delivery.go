@@ -72,6 +72,9 @@ func buildDeliveryTemplate() {
 	set("C"+strconv.Itoa(repeatRow), "{{lineItems.sku}}")
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.quantity}} {{lineItems.unit}}")
 	set("E"+strconv.Itoa(repeatRow), "{{#lineItems}}")
+	// Quantity is numeric — right-align on the repeat row so DuplicateRowTo
+	// carries it to every expanded row. SKU stays left (an identifier/text).
+	f.SetCellStyle(sheet, "D"+strconv.Itoa(repeatRow), "D"+strconv.Itoa(repeatRow), styles.right)
 
 	footerRow := repeatRow + 4
 	set("A"+strconv.Itoa(footerRow), "Notes: {{delivery.notes}}")

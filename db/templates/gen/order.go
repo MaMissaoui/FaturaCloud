@@ -74,6 +74,12 @@ func buildOrderTemplate() {
 	set("D"+strconv.Itoa(repeatRow), "{{lineItems.unitPrice}}")
 	set("E"+strconv.Itoa(repeatRow), "{{lineItems.lineTotal}}")
 	set("F"+strconv.Itoa(repeatRow), "{{#lineItems}}")
+	// Quantity/Unit Price/Line Total are numeric — right-align on the repeat
+	// row so DuplicateRowTo carries it to every expanded row.
+	for _, col := range []string{"C", "D", "E"} {
+		cell := col + strconv.Itoa(repeatRow)
+		f.SetCellStyle(sheet, cell, cell, styles.right)
+	}
 
 	// Totals block, a few rows below the repeat row — located by the fill
 	// engine via placeholder scan after row expansion, never a cached index.
