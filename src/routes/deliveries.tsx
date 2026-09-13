@@ -7,13 +7,13 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { SendOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
 import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
 import { deliveryStatusColor, deliveryStatusLabel, type DeliveryStatus } from "src/types/delivery";
 import PageHeader from "src/components/page-header";
+import { useDateFormatter } from "src/utils/date";
 
 const searchAtom = atom<string>("");
 
@@ -28,6 +28,7 @@ const Deliveries = () => {
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
   const [search, setSearch] = useAtom(searchAtom);
+  const formatDate = useDateFormatter();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -101,7 +102,7 @@ const Deliveries = () => {
           title={<Trans>Delivery date</Trans>}
           dataIndex="deliveryDate"
           key="deliveryDate"
-          render={(v: number) => (v ? dayjs(v).format("L") : "—")}
+          render={(v: number) => (v ? formatDate(v) : "—")}
           sorter={(a: Delivery, b: Delivery) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
         />
         <Table.Column

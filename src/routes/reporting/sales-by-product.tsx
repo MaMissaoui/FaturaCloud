@@ -75,7 +75,10 @@ const SalesByProduct = () => {
           xField="name"
           yField="revenue"
           theme={themeMode === "dark" ? "classicDark" : "classic"}
-          height={280}
+          // Fixed height regardless of row count made G2Plot auto-hide
+          // overlapping category-axis labels once this list neared 20 items —
+          // scale with the actual number of bars instead.
+          height={Math.max(280, Math.min(rows.length, 20) * 32)}
           axis={{ y: { labelFormatter: (v: number) => money(v) } }}
           tooltip={{
             items: [

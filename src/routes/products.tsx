@@ -22,21 +22,33 @@ import { unitLabel } from "src/utils/units";
 // db/exchange_rate.go's decimals note) — so this takes the organization's
 // configured precision rather than hardcoding 2, matching every other money
 // formatter in the app (getFormattedNumber, invoice/PDF totals, …).
-const formatPrice = (cents: number, fractionDigits: number) =>
-  (cents / 100).toLocaleString(undefined, {
+//
+// `locale` must be the app's own selected locale (i18n.locale), not
+// `undefined` — passing `undefined` to toLocaleString/Intl.NumberFormat
+// resolves to the *browser's* locale, which varies per viewer's OS/browser
+// settings independently of the language the app is actually showing (this
+// page previously did exactly that, producing "8.409,53"-style separators
+// on an English-language screen for anyone with a European system locale).
+// This also switches to currency style so the organization's currency code
+// shows here the same way it does on every other money display in the app.
+const formatPrice = (cents: number, currency: string, locale: string, fractionDigits: number) =>
+  new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  });
+  }).format(cents / 100);
 
 const DEFAULT_PAGE_SIZE = 25;
 
 const Products = () => {
-  useLingui();
+  const { i18n } = useLingui();
   const location = useLocation();
   const navigate = useNavigate();
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
   const fractionDigits = organization?.minimum_fraction_digits ?? 2;
+  const currency = organization?.currency ?? "EUR";
   // The table itself no longer reads the shared productsAtom — it fetches
   // its own paginated page below — but ProductForm still does, both to look
   // up the product being edited and to derive a collision-free SKU proposal
@@ -210,7 +222,7 @@ const Products = () => {
               align="right"
               sorter
               render={(price: number, p: Product) =>
-                `${formatPrice(price, fractionDigits)}${p.unit ? ` / ${unitLabel(p.unit)}` : ""}`
+                `${formatPrice(price, currency, i18n.locale, fractionDigits)}${p.unit ? ` / ${unitLabel(p.unit)}` : ""}`
               }
             />
             <Table.Column
@@ -220,7 +232,7 @@ const Products = () => {
               align="right"
               sorter
               render={(cost: number | null) =>
-                cost != null ? formatPrice(cost, fractionDigits) : "—"
+                cost != null ? formatPrice(cost, currency, i18n.locale, fractionDigits) : "—"
               }
             />
             <Table.Column

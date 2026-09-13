@@ -213,9 +213,16 @@ const InboundDeliveryDetails = () => {
   useEffect(() => {
     if (!isNew && delivery && typeof delivery === "object" && !("then" in delivery)) {
       form.resetFields();
-      form.setFieldsValue(delivery);
+      // Currency can be null at the DB layer — left as null here it renders
+      // the Currency Select blank instead of falling back to the
+      // organization's own currency, same fix as
+      // purchase-orders/details.tsx.
+      form.setFieldsValue({
+        ...delivery,
+        currency: (delivery as any).currency ?? organization?.currency ?? "EUR",
+      });
     }
-  }, [delivery, isNew, form]);
+  }, [delivery, isNew, form, organization]);
 
   // Read the whole form store rather than onFinish's values — see the same
   // note on the purchase order page: under StrictMode the Form can remount

@@ -1131,6 +1131,7 @@ const InvoiceDetails: React.FC = () => {
               orgCurrency={orgCurrency}
               total={unitsToCents((invoice as any).total ?? 0)}
               hasPostedEntry={currentInvoiceState === "sent" || currentInvoiceState === "paid"}
+              minimumFractionDigits={organization.minimum_fraction_digits ?? undefined}
             />
           </Col>
         </Row>

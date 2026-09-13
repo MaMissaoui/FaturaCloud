@@ -36,7 +36,7 @@ import {
   paymentStatusLabel,
 } from "src/types/payment";
 import { useDatePickerFormat } from "src/utils/date";
-import { formatCents, unitsToCents, centsToUnits } from "src/utils/currency";
+import { unitsToCents, centsToUnits } from "src/utils/currency";
 import { showExchangeRateFields } from "src/components/currency/currency-fields";
 
 const { Option } = Select;
@@ -58,6 +58,13 @@ interface PaymentPanelProps {
   orgCurrency: string;
   total: number; // cents
   hasPostedEntry: boolean;
+  // Organization's configured "Decimal places" (Settings → Invoice), the
+  // same value every other money display in the app (getFormattedNumber,
+  // invoice/PO/order totals, the accounting reports) formats with. Without
+  // it, Intl.NumberFormat falls back to the currency's ISO 4217 minor unit —
+  // 3 for TND — which is correct by the standard but disagrees with every
+  // other TND amount on the page, which is 2dp by the org's own setting.
+  minimumFractionDigits?: number;
 }
 
 const PaymentPanel: React.FC<PaymentPanelProps> = ({
@@ -71,6 +78,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   orgCurrency,
   total,
   hasPostedEntry,
+  minimumFractionDigits,
 }) => {
   const { i18n } = useLingui();
   const { message } = App.useApp();
@@ -112,6 +120,25 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Same blank/invalid-currency guard as formatCents (src/utils/currency.ts),
+  // plus the organization's own decimal-places setting — see the prop's
+  // comment for why the two disagree for a 3-decimal currency like TND.
+  const money = useCallback(
+    (cents: number) => {
+      const units = centsToUnits(cents);
+      try {
+        return new Intl.NumberFormat(i18n.locale, {
+          style: "currency",
+          currency,
+          minimumFractionDigits,
+        }).format(units);
+      } catch {
+        return new Intl.NumberFormat(i18n.locale, { minimumFractionDigits }).format(units);
+      }
+    },
+    [currency, i18n.locale, minimumFractionDigits],
+  );
 
   useEffect(() => {
     GetAccounts(organizationId)
@@ -180,14 +207,10 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   return (
     <Card size="small" title={<Trans>Payments</Trans>} style={{ marginTop: 24 }}>
       <Descriptions column={3} size="small" style={{ marginBottom: 8 }}>
-        <Descriptions.Item label={<Trans>Total</Trans>}>
-          {formatCents(total, currency, i18n.locale)}
-        </Descriptions.Item>
-        <Descriptions.Item label={<Trans>Paid</Trans>}>
-          {formatCents(paidCents, currency, i18n.locale)}
-        </Descriptions.Item>
+        <Descriptions.Item label={<Trans>Total</Trans>}>{money(total)}</Descriptions.Item>
+        <Descriptions.Item label={<Trans>Paid</Trans>}>{money(paidCents)}</Descriptions.Item>
         <Descriptions.Item label={<Trans>Balance due</Trans>}>
-          <strong>{formatCents(balanceDue, currency, i18n.locale)}</strong>
+          <strong>{money(balanceDue)}</strong>
         </Descriptions.Item>
       </Descriptions>
 
@@ -214,7 +237,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
           title={<Trans>Amount</Trans>}
           key="amount"
           align="right"
-          render={(row: PaymentRow) => formatCents(row.application.amount, currency, i18n.locale)}
+          render={(row: PaymentRow) => money(row.application.amount)}
         />
         <Table.Column
           title={<Trans>Reference</Trans>}
