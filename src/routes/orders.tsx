@@ -13,6 +13,7 @@ import includes from "lodash/includes";
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { orderStatusColor, orderStatusLabel, type OrderStatus } from "src/types/order";
 import PageHeader from "src/components/page-header";
+import { useDateFormatter } from "src/utils/date";
 
 const searchAtom = atom<string>("");
 
@@ -28,6 +29,7 @@ const Orders = () => {
   const setOrders = useSetAtom(setOrdersAtom);
   const [search, setSearch] = useAtom(searchAtom);
   const [loading, setLoading] = useState(false);
+  const formatDate = useDateFormatter();
 
   useEffect(() => {
     if (location.pathname === "/orders") {
@@ -103,14 +105,14 @@ const Orders = () => {
               dataIndex="orderDate"
               key="orderDate"
               sorter={(a: Order, b: Order) => (a.orderDate ?? 0) - (b.orderDate ?? 0)}
-              render={(v: number) => (v ? new Date(v).toLocaleDateString() : "—")}
+              render={(v: number) => (v ? formatDate(v) : "—")}
             />
             <Table.Column
               title={<Trans>Delivery date</Trans>}
               dataIndex="deliveryDate"
               key="deliveryDate"
               sorter={(a: Order, b: Order) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
-              render={(v: number | null) => (v ? new Date(v).toLocaleDateString() : "—")}
+              render={(v: number | null) => (v ? formatDate(v) : "—")}
             />
             <Table.Column
               title={<Trans>Tracking</Trans>}
