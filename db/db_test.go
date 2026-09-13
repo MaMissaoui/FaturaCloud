@@ -582,6 +582,183 @@ func TestDeliveryShipReducesStockAndCancelRestores(t *testing.T) {
 	}
 }
 
+// TestOrderStatusAdvancesOnDeliveryShippedAndDelivered covers the
+// confirmed->shipped->delivered cascade a linked delivery's own status
+// change drives on its order: shipping the delivery advances the order to
+// "shipped", and marking that same (single, fully-covering) delivery
+// "delivered" then advances the order to "delivered".
+func TestOrderStatusAdvancesOnDeliveryShippedAndDelivered(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	product, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-1", OrganizationID: org.ID, Name: "Widget", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (initial stock): %v", err)
+	}
+	order, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-1", OrganizationID: org.ID, OrderNumber: "ORD-0001", Status: "confirmed",
+		OrderDate: 1700000000000,
+		LineItems: []CreateOrderLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: 5, UnitPrice: 1000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder: %v", err)
+	}
+	orderLineItems, err := d.GetOrderLineItems(order.ID)
+	if err != nil || len(orderLineItems) != 1 {
+		t.Fatalf("GetOrderLineItems: err=%v, len=%d", err, len(orderLineItems))
+	}
+	orderLineItemID := orderLineItems[0].ID
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, OrderID: &order.ID, DeliveryNumber: "DEL-0001",
+		DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{OrderLineItemID: &orderLineItemID, Description: "Widget", Quantity: 5},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "shipped", nil); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
+	}
+	afterShip, err := d.GetOrder(order.ID)
+	if err != nil || afterShip.Status != "shipped" {
+		t.Fatalf("order after delivery shipped: err=%v, status=%q, want shipped", err, afterShip.Status)
+	}
+
+	if _, err := d.UpdateDeliveryStatus(delivery.ID, "delivered", nil); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(delivered): %v", err)
+	}
+	afterDeliver, err := d.GetOrder(order.ID)
+	if err != nil || afterDeliver.Status != "delivered" {
+		t.Fatalf("order after delivery delivered: err=%v, status=%q, want delivered", err, afterDeliver.Status)
+	}
+}
+
+// TestOrderStatusWaitsForEveryDeliveryAndDoesNotRevertOnCancel covers two
+// deliveries against the same order's two line items: the order must stay
+// "shipped" (not jump to "delivered") until BOTH deliveries have reached
+// "delivered", and cancelling an already-shipped delivery must not revert
+// the order's status backward — that reversal is a distinct, more
+// consequential decision this cascade deliberately doesn't make.
+func TestOrderStatusWaitsForEveryDeliveryAndDoesNotRevertOnCancel(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-a", OrganizationID: org.ID, Name: "Widget A", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct A: %v", err)
+	}
+	productB, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-b", OrganizationID: org.ID, Name: "Widget B", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct B: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "2023-2099", StartDate: 1672531200000, EndDate: 4102444799000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	for _, p := range []*Product{productA, productB} {
+		if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+			OrganizationID: org.ID, ProductID: p.ID, Type: "in", Quantity: 10, UnitCost: ptr(int64(500)),
+		}); err != nil {
+			t.Fatalf("CreateStockMovement (%s): %v", p.Name, err)
+		}
+	}
+	order, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-1", OrganizationID: org.ID, OrderNumber: "ORD-0001", Status: "confirmed",
+		OrderDate: 1700000000000,
+		LineItems: []CreateOrderLineItemRequest{
+			{ProductID: &productA.ID, Description: "Widget A", Quantity: 5, UnitPrice: 1000},
+			{ProductID: &productB.ID, Description: "Widget B", Quantity: 3, UnitPrice: 1000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder: %v", err)
+	}
+	orderLineItems, err := d.GetOrderLineItems(order.ID)
+	if err != nil || len(orderLineItems) != 2 {
+		t.Fatalf("GetOrderLineItems: err=%v, len=%d", err, len(orderLineItems))
+	}
+	lineA, lineB := orderLineItems[0], orderLineItems[1]
+	if lineA.ProductID == nil || *lineA.ProductID != productA.ID {
+		lineA, lineB = orderLineItems[1], orderLineItems[0]
+	}
+
+	deliveryA, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-a", OrganizationID: org.ID, OrderID: &order.ID, DeliveryNumber: "DEL-A",
+		DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{OrderLineItemID: &lineA.ID, Description: "Widget A", Quantity: 5},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery A: %v", err)
+	}
+	deliveryB, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-b", OrganizationID: org.ID, OrderID: &order.ID, DeliveryNumber: "DEL-B",
+		DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{OrderLineItemID: &lineB.ID, Description: "Widget B", Quantity: 3},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery B: %v", err)
+	}
+
+	// Ship + deliver A only — order should reach "shipped" but not
+	// "delivered" while B's line is still uncovered.
+	if _, err := d.UpdateDeliveryStatus(deliveryA.ID, "shipped", nil); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(A, shipped): %v", err)
+	}
+	if _, err := d.UpdateDeliveryStatus(deliveryA.ID, "delivered", nil); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(A, delivered): %v", err)
+	}
+	afterA, err := d.GetOrder(order.ID)
+	if err != nil || afterA.Status != "shipped" {
+		t.Fatalf("order after only A delivered: err=%v, status=%q, want shipped", err, afterA.Status)
+	}
+
+	// Cancelling B after it's shipped must not revert the order backward
+	// from "shipped" to "confirmed".
+	if _, err := d.UpdateDeliveryStatus(deliveryB.ID, "shipped", nil); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(B, shipped): %v", err)
+	}
+	if _, err := d.UpdateDeliveryStatus(deliveryB.ID, "cancelled", nil); err != nil {
+		t.Fatalf("UpdateDeliveryStatus(B, cancelled): %v", err)
+	}
+	afterCancel, err := d.GetOrder(order.ID)
+	if err != nil || afterCancel.Status != "shipped" {
+		t.Fatalf("order after B cancelled: err=%v, status=%q, want still shipped (no reversion)", err, afterCancel.Status)
+	}
+}
+
 // Deleting the movement a shipped delivery generated must be blocked the same
 // way deleting the delivery itself is — otherwise stockQuantity desyncs from
 // a delivery that still claims to have shipped it.

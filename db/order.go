@@ -175,6 +175,95 @@ func (d *Database) GetOrderDeliveredQuantities(orderID string) (map[string]float
 	return result, nil
 }
 
+// advanceOrderStatusToShippedTx bumps a linked order from "confirmed" to
+// "shipped" the moment the first of its outbound deliveries actually ships —
+// called from UpdateDeliveryStatus inside its own transaction (never a
+// separate one; SetMaxOpenConns(1) forbids a second connection while one is
+// already open). The `WHERE status = 'confirmed'` guard makes this
+// deliberately best-effort: an order already shipped/delivered, one a user
+// left in draft, or one that was cancelled has nothing to advance, and that
+// is not an error — this is a convenience cascade automating what the
+// "Mark as shipped" button already does manually, never a hard requirement
+// the delivery's own status change should fail over.
+func advanceOrderStatusToShippedTx(tx sqlExecer, orderID string) error {
+	if _, err := tx.Exec(
+		`UPDATE orders SET status = 'shipped' WHERE id = ? AND status = 'confirmed'`, orderID,
+	); err != nil {
+		return fmt.Errorf("advance_order_status_shipped: %w", err)
+	}
+	return nil
+}
+
+// orderFullyDeliveredTx reports whether every line item on the order is
+// covered by outbound deliveries that have actually reached "delivered" —
+// deliberately stricter than GetOrderDeliveredQuantities above (which also
+// counts draft/shipped deliveries, the right definition for the order page's
+// in-progress "x / y delivered" badge, the wrong one for deciding the order
+// itself is complete). An order with no line items is never "fully
+// delivered" — there is nothing to deliver, and treating that as complete
+// would auto-advance an order nobody has finished building yet.
+func orderFullyDeliveredTx(tx sqlSelectExecer, orderID string) (bool, error) {
+	var lines []struct {
+		ID       string  `db:"id"`
+		Quantity float64 `db:"quantity"`
+	}
+	if err := tx.Select(&lines, `SELECT id, quantity FROM orderLineItems WHERE orderId = ?`, orderID); err != nil {
+		return false, fmt.Errorf("order_fully_delivered lines: %w", err)
+	}
+	if len(lines) == 0 {
+		return false, nil
+	}
+
+	rows := []struct {
+		OrderLineItemID string  `db:"orderLineItemId"`
+		Delivered       float64 `db:"delivered"`
+	}{}
+	if err := tx.Select(&rows, `
+		SELECT dli.orderLineItemId AS orderLineItemId, SUM(dli.quantity) AS delivered
+		FROM outbound_delivery_line_items dli
+		JOIN outbound_deliveries od ON dli.deliveryId = od.id
+		WHERE od.orderId = ? AND od.status = 'delivered' AND dli.orderLineItemId IS NOT NULL
+		GROUP BY dli.orderLineItemId`,
+		orderID,
+	); err != nil {
+		return false, fmt.Errorf("order_fully_delivered delivered: %w", err)
+	}
+	delivered := make(map[string]float64, len(rows))
+	for _, r := range rows {
+		delivered[r.OrderLineItemID] = r.Delivered
+	}
+
+	// Same REAL-column tolerance precedent as products.stockQuantity
+	// elsewhere in this codebase.
+	const epsilon = 1e-9
+	for _, line := range lines {
+		if delivered[line.ID]+epsilon < line.Quantity {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// advanceOrderStatusToDeliveredTx bumps a linked order from "shipped" to
+// "delivered" once every one of its lines is fully covered by delivered (not
+// merely shipped) deliveries — same best-effort convention as
+// advanceOrderStatusToShippedTx above.
+func advanceOrderStatusToDeliveredTx(tx sqlSelectExecer, orderID string) error {
+	fullyDelivered, err := orderFullyDeliveredTx(tx, orderID)
+	if err != nil {
+		return err
+	}
+	if !fullyDelivered {
+		return nil
+	}
+	if _, err := tx.Exec(
+		`UPDATE orders SET status = 'delivered' WHERE id = ? AND status = 'shipped'`, orderID,
+	); err != nil {
+		return fmt.Errorf("advance_order_status_delivered: %w", err)
+	}
+	return nil
+}
+
 // checkOrderFKOwnership validates that clientId (if set) and each line
 // item's productId belong to the SAME organization as the order (issue
 // #189) — Phase C's route-level membership check only proves the caller

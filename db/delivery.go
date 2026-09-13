@@ -622,6 +622,25 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 		return nil, fmt.Errorf("update_delivery_status: %w", err)
 	}
 
+	// Cascade the order's own status along with its deliveries' — a
+	// standalone delivery (current.OrderID == nil) has no order to
+	// advance. Both helpers are best-effort/no-ops outside their expected
+	// prior order status (see their own comments), so neither can fail
+	// this delivery status change over an order that's already moved on
+	// its own.
+	if current.OrderID != nil {
+		switch status {
+		case "shipped":
+			if err := advanceOrderStatusToShippedTx(tx, *current.OrderID); err != nil {
+				return nil, err
+			}
+		case "delivered":
+			if err := advanceOrderStatusToDeliveredTx(tx, *current.OrderID); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("update_delivery_status commit: %w", err)
 	}
