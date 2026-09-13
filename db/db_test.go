@@ -930,6 +930,65 @@ func TestGetProductsSearch(t *testing.T) {
 	}
 }
 
+// TestGetProductsTypeAndCategoryFilter covers the Products list page's Type
+// and Category filters — including "unclassified", the special Category
+// value that means "products.category IS NULL" (there's no NULL a query
+// param can carry directly).
+func TestGetProductsTypeAndCategoryFilter(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Motorcycle", Type: "product", Category: ptr("finished"),
+	}); err != nil {
+		t.Fatalf("CreateProduct (finished): %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Wheel", Type: "product", Category: ptr("component"),
+	}); err != nil {
+		t.Fatalf("CreateProduct (component): %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Spare bolt", Type: "product",
+	}); err != nil {
+		t.Fatalf("CreateProduct (unclassified): %v", err)
+	}
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Consulting Hour", Type: "service",
+	}); err != nil {
+		t.Fatalf("CreateProduct (service): %v", err)
+	}
+
+	if got, total, err := d.GetProducts(org.ID, ProductListOptions{Type: "service"}); err != nil || total != 1 || len(got) != 1 || got[0].Name != "Consulting Hour" {
+		t.Fatalf("Type=service: err=%v total=%d results=%+v", err, total, got)
+	}
+	if got, total, err := d.GetProducts(org.ID, ProductListOptions{Category: "finished"}); err != nil || total != 1 || len(got) != 1 || got[0].Name != "Motorcycle" {
+		t.Fatalf("Category=finished: err=%v total=%d results=%+v", err, total, got)
+	}
+	if got, total, err := d.GetProducts(org.ID, ProductListOptions{Category: "component"}); err != nil || total != 1 || len(got) != 1 || got[0].Name != "Wheel" {
+		t.Fatalf("Category=component: err=%v total=%d results=%+v", err, total, got)
+	}
+	// "Consulting Hour" is also unclassified (a service never gets a
+	// category), so a bare Category=unclassified filter matches both it
+	// and "Spare bolt" — Type narrows it down to just the latter below.
+	if got, total, err := d.GetProducts(org.ID, ProductListOptions{Category: "unclassified"}); err != nil || total != 2 {
+		t.Fatalf("Category=unclassified: err=%v total=%d results=%+v", err, total, got)
+	}
+	// Combined: Type + Category narrow together (AND, not OR).
+	if got, total, err := d.GetProducts(org.ID, ProductListOptions{Type: "product", Category: "finished"}); err != nil || total != 1 || len(got) != 1 || got[0].Name != "Motorcycle" {
+		t.Fatalf("Type=product&Category=finished: err=%v total=%d results=%+v", err, total, got)
+	}
+	if got, total, err := d.GetProducts(org.ID, ProductListOptions{Type: "product", Category: "unclassified"}); err != nil || total != 1 || len(got) != 1 || got[0].Name != "Spare bolt" {
+		t.Fatalf("Type=product&Category=unclassified: err=%v total=%d results=%+v", err, total, got)
+	}
+	if _, total, err := d.GetProducts(org.ID, ProductListOptions{Type: "service", Category: "finished"}); err != nil || total != 0 {
+		t.Fatalf("Type=service&Category=finished: err=%v total=%d, want 0", err, total)
+	}
+}
+
 // TestGetStockMovementsPagination covers the same Limit/Offset contract as
 // GetProducts, plus the ProductID filter that replaced Inventory's
 // client-side filtering.

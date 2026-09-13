@@ -581,6 +581,8 @@ export const GetProducts = (
   organizationId: string,
   params?: {
     search?: string;
+    type?: string;
+    category?: string;
     limit?: number;
     offset?: number;
     sort?: string;
@@ -589,6 +591,8 @@ export const GetProducts = (
 ) => {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
+  if (params?.type) qs.set("type", params.type);
+  if (params?.category) qs.set("category", params.category);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   if (params?.sort) qs.set("sort", params.sort);

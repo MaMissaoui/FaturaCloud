@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, TaxRate } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Badge, Button, Col, Row, Table, Tag, Tooltip } from "antd";
+import { Badge, Button, Col, Row, Select, Table, Tag, Tooltip } from "antd";
 import type { TableProps } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -64,6 +64,8 @@ const Products = () => {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
   const [sortField, setSortField] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
 
@@ -87,6 +89,8 @@ const Products = () => {
     setLoading(true);
     GetProducts(organizationId, {
       search: search || undefined,
+      type: typeFilter,
+      category: categoryFilter,
       limit: pageSize,
       offset: (page - 1) * pageSize,
       sort: sortField,
@@ -100,7 +104,7 @@ const Products = () => {
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false);
       });
-  }, [organizationId, page, pageSize, search, sortField, sortOrder]);
+  }, [organizationId, page, pageSize, search, typeFilter, categoryFilter, sortField, sortOrder]);
 
   useEffect(() => {
     if (location.pathname === "/products") {
@@ -131,6 +135,39 @@ const Products = () => {
       <PageHeader
         icon={<AppstoreOutlined />}
         title={<Trans>Products</Trans>}
+        extra={
+          <>
+            <Select
+              allowClear
+              placeholder={t`All types`}
+              style={{ width: 140 }}
+              value={typeFilter}
+              onChange={(value) => {
+                setTypeFilter(value);
+                setPage(1);
+              }}
+              options={[
+                { value: "product", label: t`Product` },
+                { value: "service", label: t`Service` },
+              ]}
+            />
+            <Select
+              allowClear
+              placeholder={t`All categories`}
+              style={{ width: 160 }}
+              value={categoryFilter}
+              onChange={(value) => {
+                setCategoryFilter(value);
+                setPage(1);
+              }}
+              options={[
+                { value: "finished", label: t`Finished good` },
+                { value: "component", label: t`Component / intermediate` },
+                { value: "unclassified", label: t`Unclassified` },
+              ]}
+            />
+          </>
+        }
         search={{
           placeholder: t`Search`,
           value: searchInput,
