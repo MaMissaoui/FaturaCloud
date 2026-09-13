@@ -483,7 +483,7 @@ msgstr "Annuler la livraison"
 #~ msgid "Cancel invoice"
 #~ msgstr "Annuler la facture"
 
-#: src/routes/orders/details.tsx:507
+#: src/routes/orders/details.tsx:552
 #: src/routes/purchase-orders/details.tsx:601
 msgid "Cancel order"
 msgstr "Annuler la commande"
@@ -504,7 +504,7 @@ msgstr "Annuler cette réception de marchandises ?"
 #~ msgid "Cancel this invoice?"
 #~ msgstr "Annuler cette facture ?"
 
-#: src/routes/orders/details.tsx:501
+#: src/routes/orders/details.tsx:546
 msgid "Cancel this order?"
 msgstr "Annuler cette commande ?"
 
@@ -582,7 +582,7 @@ msgstr "Ville"
 #: src/routes/deliveries/details.tsx:314
 #: src/routes/invoices/index.tsx:171
 #: src/routes/orders.tsx:88
-#: src/routes/orders/details.tsx:258
+#: src/routes/orders/details.tsx:273
 #: src/routes/reporting/sales-by-client.tsx:99
 msgid "Client"
 msgstr "Client"
@@ -608,7 +608,7 @@ msgstr "Client supprimé"
 msgid "Client deletion failed"
 msgstr "Échec de la suppression du client"
 
-#: src/routes/orders/details.tsx:260
+#: src/routes/orders/details.tsx:275
 msgid "Client is required"
 msgstr "Le client est obligatoire"
 
@@ -854,6 +854,7 @@ msgstr "Base de données restaurée — actualisez pour voir les changements"
 #: src/routes/inventory.tsx:421
 #: src/routes/invoices/details.tsx:618
 #: src/routes/invoices/index.tsx:179
+#: src/routes/orders/details.tsx:485
 #: src/routes/settings/backup.tsx:370
 msgid "Date"
 msgstr "Date"
@@ -1020,7 +1021,7 @@ msgstr "Valeurs par défaut"
 #: src/routes/incoming-invoices/details.tsx:618
 #: src/routes/invoices/details.tsx:1069
 #: src/routes/invoices/index.tsx:123
-#: src/routes/orders/details.tsx:479
+#: src/routes/orders/details.tsx:524
 #: src/routes/purchase-orders/details.tsx:574
 #: src/routes/settings/users.tsx:248
 #: src/routes/settings/users.tsx:273
@@ -1060,7 +1061,7 @@ msgstr "Supprimer cette facture fournisseur ?"
 msgid "Delete this invoice?"
 msgstr "Supprimer cette facture ?"
 
-#: src/routes/orders/details.tsx:473
+#: src/routes/orders/details.tsx:518
 msgid "Delete this order?"
 msgstr "Supprimer cette commande ?"
 
@@ -1090,11 +1091,15 @@ msgstr "{total} enregistrement(s) supprimé(s)"
 #~ msgid "Deliver To"
 #~ msgstr "Livrer à"
 
-#: src/routes/orders/details.tsx:401
+#: src/routes/orders/details.tsx:416
 #: src/types/delivery.ts:27
 #: src/types/order.ts:35
 msgid "Delivered"
 msgstr "Livré"
+
+#: src/routes/orders/details.tsx:475
+msgid "Deliveries"
+msgstr "Livraisons"
 
 #: src/routes/purchase-orders/details.tsx:453
 msgid "Delivery address"
@@ -1111,7 +1116,7 @@ msgstr "Échec de la création de la livraison"
 #: src/routes/deliveries.tsx:102
 #: src/routes/deliveries/details.tsx:341
 #: src/routes/orders.tsx:111
-#: src/routes/orders/details.tsx:332
+#: src/routes/orders/details.tsx:347
 msgid "Delivery date"
 msgstr "Date de livraison"
 
@@ -1443,7 +1448,7 @@ msgstr "Capitaux propres"
 #: src/routes/inbound-deliveries/details.tsx:601
 #: src/routes/incoming-invoices/details.tsx:648
 #: src/routes/invoices/details.tsx:348
-#: src/routes/orders/details.tsx:534
+#: src/routes/orders/details.tsx:579
 #: src/routes/purchase-orders/details.tsx:628
 msgid "Excel"
 msgstr ""
@@ -1500,7 +1505,7 @@ msgstr "Exporter DATEV"
 #: src/routes/inbound-deliveries/details.tsx:252
 #: src/routes/incoming-invoices/details.tsx:281
 #: src/routes/invoices/details.tsx:317
-#: src/routes/orders/details.tsx:211
+#: src/routes/orders/details.tsx:226
 #: src/routes/purchase-orders/details.tsx:273
 msgid "Export failed"
 msgstr ""
@@ -2296,7 +2301,7 @@ msgstr "Dernière connexion"
 msgid "Last year ({year})"
 msgstr "Année dernière ({year})"
 
-#: src/routes/orders/details.tsx:362
+#: src/routes/orders/details.tsx:377
 msgid "Leave blank to use client address"
 msgstr "Laisser vide pour utiliser l'adresse du client"
 
@@ -2353,7 +2358,7 @@ msgstr "Échec de la suppression du logo"
 msgid "Logo upload failed"
 msgstr "Échec du téléchargement du logo"
 
-#: src/routes/orders/details.tsx:300
+#: src/routes/orders/details.tsx:315
 msgid "Manage clients"
 msgstr "Gérer les clients"
 
@@ -2523,7 +2528,7 @@ msgid "New client"
 msgstr "Nouveau client"
 
 #: src/routes/deliveries.tsx:60
-#: src/routes/orders/details.tsx:540
+#: src/routes/orders/details.tsx:585
 msgid "New delivery"
 msgstr "Nouvelle livraison"
 
@@ -2652,8 +2657,8 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 #: src/routes/inventory.tsx:490
 #: src/routes/invoices/details.tsx:1066
 #: src/routes/invoices/index.tsx:120
-#: src/routes/orders/details.tsx:476
-#: src/routes/orders/details.tsx:504
+#: src/routes/orders/details.tsx:521
+#: src/routes/orders/details.tsx:549
 #: src/routes/purchase-orders/details.tsx:571
 #: src/routes/purchase-orders/details.tsx:598
 #: src/routes/settings/users.tsx:269
@@ -2774,7 +2779,7 @@ msgstr "Note"
 #: src/routes/imports.tsx:183
 #: src/routes/inbound-deliveries/details.tsx:463
 #: src/routes/incoming-invoices/details.tsx:421
-#: src/routes/orders/details.tsx:366
+#: src/routes/orders/details.tsx:381
 #: src/routes/purchase-orders/details.tsx:458
 #: src/routes/settings/invoice.tsx:135
 msgid "Notes"
@@ -2790,6 +2795,7 @@ msgstr "Rien à supprimer — cette organisation était vide"
 
 #: src/routes/deliveries.tsx:76
 #: src/routes/imports.tsx:111
+#: src/routes/orders/details.tsx:478
 msgid "Number"
 msgstr "Numéro"
 
@@ -2846,7 +2852,7 @@ msgid "or"
 msgstr "ou"
 
 #: src/routes/deliveries.tsx:86
-#: src/routes/orders/details.tsx:245
+#: src/routes/orders/details.tsx:260
 #: src/routes/settings/document-templates.tsx:253
 msgid "Order"
 msgstr "Commande"
@@ -2874,7 +2880,7 @@ msgid "Order creation failed"
 msgstr "Échec de la création de la commande"
 
 #: src/routes/orders.tsx:104
-#: src/routes/orders/details.tsx:324
+#: src/routes/orders/details.tsx:339
 #: src/routes/purchase-orders.tsx:138
 #: src/routes/purchase-orders/details.tsx:416
 msgid "Order date"
@@ -2885,7 +2891,7 @@ msgstr "Date de commande"
 #~ msgid "Order Date"
 #~ msgstr "Date de commande"
 
-#: src/routes/orders/details.tsx:326
+#: src/routes/orders/details.tsx:341
 #: src/routes/purchase-orders/details.tsx:418
 msgid "Order date is required"
 msgstr "La date de commande est obligatoire"
@@ -2899,12 +2905,12 @@ msgstr "Commande supprimée"
 msgid "Order deletion failed"
 msgstr "Échec de la suppression de la commande"
 
-#: src/routes/orders/details.tsx:315
+#: src/routes/orders/details.tsx:330
 #: src/routes/purchase-orders/details.tsx:407
 msgid "Order number"
 msgstr "Numéro de commande"
 
-#: src/routes/orders/details.tsx:317
+#: src/routes/orders/details.tsx:332
 #: src/routes/purchase-orders/details.tsx:409
 msgid "Order number is required"
 msgstr "Le numéro de commande est obligatoire"
@@ -3839,7 +3845,7 @@ msgstr "Ventes par produit"
 #: src/routes/inbound-deliveries/details.tsx:606
 #: src/routes/incoming-invoices/details.tsx:664
 #: src/routes/invoices/details.tsx:382
-#: src/routes/orders/details.tsx:544
+#: src/routes/orders/details.tsx:589
 #: src/routes/purchase-orders/details.tsx:640
 #: src/routes/settings/backup.tsx:237
 #: src/routes/settings/invoice.tsx:305
@@ -3859,8 +3865,8 @@ msgstr "Enregistrer comme brouillon"
 #: src/routes/incoming-invoices/details.tsx:642
 #: src/routes/invoices/details.tsx:334
 #: src/routes/invoices/details.tsx:342
-#: src/routes/orders/details.tsx:512
-#: src/routes/orders/details.tsx:528
+#: src/routes/orders/details.tsx:557
+#: src/routes/orders/details.tsx:573
 #: src/routes/purchase-orders/details.tsx:606
 #: src/routes/purchase-orders/details.tsx:622
 msgid "Save your changes before exporting"
@@ -4031,7 +4037,7 @@ msgid "Shipped"
 msgstr "Expédiée"
 
 #: src/routes/deliveries/details.tsx:374
-#: src/routes/orders/details.tsx:361
+#: src/routes/orders/details.tsx:376
 msgid "Shipping address"
 msgstr "Adresse de livraison"
 
@@ -4128,7 +4134,8 @@ msgstr "État"
 #: src/routes/inbound-deliveries/details.tsx:420
 #: src/routes/incoming-invoices/details.tsx:522
 #: src/routes/orders.tsx:97
-#: src/routes/orders/details.tsx:342
+#: src/routes/orders/details.tsx:357
+#: src/routes/orders/details.tsx:490
 #: src/routes/purchase-orders.tsx:118
 #: src/routes/purchase-orders/details.tsx:429
 msgid "Status"
@@ -4199,7 +4206,7 @@ msgstr "Rue"
 #: src/components/invoices/pdf.tsx:349
 #: src/routes/incoming-invoices/details.tsx:466
 #: src/routes/invoices/details.tsx:982
-#: src/routes/orders/details.tsx:445
+#: src/routes/orders/details.tsx:460
 #: src/routes/purchase-orders/details.tsx:540
 msgid "Subtotal"
 msgstr "Sous-total"
@@ -4469,7 +4476,7 @@ msgstr "Suivi"
 
 #: src/routes/deliveries/details.tsx:349
 #: src/routes/inbound-deliveries/details.tsx:458
-#: src/routes/orders/details.tsx:337
+#: src/routes/orders/details.tsx:352
 msgid "Tracking number"
 msgstr "Numéro de suivi"
 
@@ -4803,8 +4810,8 @@ msgstr ""
 #: src/routes/inventory.tsx:489
 #: src/routes/invoices/details.tsx:1065
 #: src/routes/invoices/index.tsx:119
-#: src/routes/orders/details.tsx:475
-#: src/routes/orders/details.tsx:503
+#: src/routes/orders/details.tsx:520
+#: src/routes/orders/details.tsx:548
 #: src/routes/purchase-orders/details.tsx:570
 #: src/routes/purchase-orders/details.tsx:597
 #: src/routes/settings/users.tsx:268

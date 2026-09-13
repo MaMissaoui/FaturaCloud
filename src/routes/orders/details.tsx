@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   Button,
+  Card,
   Col,
   DatePicker,
   Descriptions,
@@ -15,6 +16,7 @@ import {
   Row,
   Select,
   Space,
+  Table,
   Tag,
   theme,
   Tooltip,
@@ -43,7 +45,7 @@ import map from "lodash/map";
 import sum from "lodash/sum";
 import { ExportOrderDocument, GetOrderDeliveredQuantities } from "src/api";
 import PageHeader from "src/components/page-header";
-import { useDatePickerFormat } from "src/utils/date";
+import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import ExchangeRateFields, {
   CurrencySelect,
@@ -59,6 +61,7 @@ import {
   updateOrderStatusAtom,
   deleteOrderAtom,
 } from "src/atoms/order";
+import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
 import LineItemsTable from "src/components/line-items/table";
 import StatusFlow from "src/components/status-flow";
 import {
@@ -69,6 +72,7 @@ import {
   orderTransitions,
   type OrderStatus,
 } from "src/types/order";
+import { deliveryStatusColor, deliveryStatusLabel, type DeliveryStatus } from "src/types/delivery";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -94,6 +98,7 @@ const OrderDetails = () => {
     token: { colorBgContainer },
   } = theme.useToken();
   const dateFormat = useDatePickerFormat();
+  const formatDate = useDateFormatter();
 
   const isNew = id === "new";
 
@@ -109,6 +114,15 @@ const OrderDetails = () => {
   );
   const setProducts = useSetAtom(setProductsAtom);
   const nextNumber = useAtomValue(nextOrderNumberAtom);
+  // Client-side filter of the already-fetched org-wide deliveries list —
+  // same "no extra request" pattern as imports.tsx's linked-purchase-orders
+  // column — rather than a dedicated by-order endpoint.
+  const deliveries = useAtomValue(deliveriesAtom);
+  const setDeliveries = useSetAtom(setDeliveriesAtom);
+  const linkedDeliveries = useMemo(
+    () => deliveries.filter((dv: any) => dv.orderId === id),
+    [deliveries, id],
+  );
 
   const [orderId, setOrderId] = useAtom(orderIdAtom);
   const orderLoadable = useAtomValue(loadableOrderAtom);
@@ -128,11 +142,12 @@ const OrderDetails = () => {
     setProducts();
     if (!isNew) {
       setOrderId(id ?? null);
+      setDeliveries();
     }
     return () => {
       setOrderId(null);
     };
-  }, [id, isNew, setClients, setProducts, setOrderId]);
+  }, [id, isNew, setClients, setProducts, setOrderId, setDeliveries]);
 
   // Track how much of each line item has already been delivered, so partial
   // fulfillment is visible without opening every delivery for this order.
@@ -452,6 +467,36 @@ const OrderDetails = () => {
               </Descriptions>
             </Col>
           </Row>
+        )}
+
+        {/* Deliveries already created against this order — the actual
+            documents behind the line items' "Delivered" tags above. */}
+        {!isNew && linkedDeliveries.length > 0 && (
+          <Card size="small" title={<Trans>Deliveries</Trans>} style={{ marginTop: 16 }}>
+            <Table dataSource={linkedDeliveries} rowKey="id" size="small" pagination={false}>
+              <Table.Column
+                title={<Trans>Number</Trans>}
+                key="deliveryNumber"
+                render={(delivery: any) => (
+                  <Link to={`/deliveries/${delivery.id}`}>{delivery.deliveryNumber}</Link>
+                )}
+              />
+              <Table.Column
+                title={<Trans>Date</Trans>}
+                key="deliveryDate"
+                render={(delivery: any) => formatDate(delivery.deliveryDate)}
+              />
+              <Table.Column
+                title={<Trans>Status</Trans>}
+                key="status"
+                render={(delivery: any) => (
+                  <Tag color={deliveryStatusColor[delivery.status as DeliveryStatus]}>
+                    {deliveryStatusLabel(delivery.status)}
+                  </Tag>
+                )}
+              />
+            </Table>
+          </Card>
         )}
 
         {/* Footer bar */}
