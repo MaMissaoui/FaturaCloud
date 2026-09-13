@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.4] - 2026-09-13
+
+### Added
+- Products list: filter by Type (Product/Service) and Category
+  (Finished good/Component/Unclassified), alongside the existing
+  search box — server-side, so it composes correctly with
+  search/sort/pagination.
+- Dashboard: filter by calendar year (Current year, Last year, or a
+  few years further back), alongside the existing rolling "Last N
+  months" window.
+
+### Removed
+- The invoice detail page's "View" toggle, which had done nothing
+  since the 2026-09-08 PDF/Excel unification removed the client-side
+  preview it used to show — it only hid the form and displayed a
+  static "export to see the result" message. PDF/Excel export are one
+  click away via the buttons already next to it.
+
 ## [3.19.3] - 2026-09-13
 
 ### Fixed
