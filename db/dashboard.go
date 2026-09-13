@@ -73,13 +73,14 @@ const topN = 10
 
 // GetDashboardData composes the Dashboard widget page from the same
 // range-based report functions db/sales_reports.go exposes under the
-// Reporting menu — a rolling "last N months" cutoff as startDate, endDate=0
-// (unbounded), and topN as the ranked-list limit. This keeps the widget and
-// the full reports as one source of truth instead of two copies of "revenue
-// by month" that could drift.
-func (d *Database) GetDashboardData(organizationID string, months int) (DashboardData, error) {
-	startDate := dashboardCutoff(months)
-	revenueByMonth, err := d.GetRevenueByMonth(organizationID, startDate, 0)
+// Reporting menu — startDate/endDate (either a rolling "last N months"
+// cutoff with endDate=0/unbounded, via DashboardCutoff, or a calendar
+// year's bounds, via DashboardYearRange — api/dashboard.go decides which)
+// and topN as the ranked-list limit. This keeps the widget and the full
+// reports as one source of truth instead of two copies of "revenue by
+// month" that could drift.
+func (d *Database) GetDashboardData(organizationID string, startDate, endDate int64) (DashboardData, error) {
+	revenueByMonth, err := d.GetRevenueByMonth(organizationID, startDate, endDate)
 	if err != nil {
 		return DashboardData{}, err
 	}
@@ -91,11 +92,11 @@ func (d *Database) GetDashboardData(organizationID string, months int) (Dashboar
 	if err != nil {
 		return DashboardData{}, err
 	}
-	topClients, err := d.GetSalesByClient(organizationID, startDate, 0, topN)
+	topClients, err := d.GetSalesByClient(organizationID, startDate, endDate, topN)
 	if err != nil {
 		return DashboardData{}, err
 	}
-	topProducts, err := d.GetSalesByProduct(organizationID, startDate, 0, topN)
+	topProducts, err := d.GetSalesByProduct(organizationID, startDate, endDate, topN)
 	if err != nil {
 		return DashboardData{}, err
 	}

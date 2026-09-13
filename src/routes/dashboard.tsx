@@ -19,7 +19,22 @@ import type {
 } from "src/api";
 import PageHeader from "src/components/page-header";
 
-const PERIOD_OPTIONS = [3, 6, 12, 24];
+const MONTH_OPTIONS = [3, 6, 12, 24];
+
+// A rolling window ("m12") or a calendar year ("y2026") in one Select —
+// years are generated at render time (not a fixed list) so "current
+// year"/"last year" never go stale, and a handful of further-back years
+// stay reachable without the list growing unbounded.
+const CALENDAR_YEARS_BACK = 4;
+
+type Period = { kind: "months"; months: number } | { kind: "year"; year: number };
+
+const periodToValue = (p: Period) => (p.kind === "months" ? `m${p.months}` : `y${p.year}`);
+
+const periodFromValue = (v: string): Period =>
+  v[0] === "y"
+    ? { kind: "year", year: Number(v.slice(1)) }
+    : { kind: "months", months: Number(v.slice(1)) };
 
 const Dashboard = () => {
   useLingui();
@@ -29,17 +44,20 @@ const Dashboard = () => {
   const organization = useAtomValue(organizationAtom);
   const themeMode = useAtomValue(themeAtom);
 
-  const [months, setMonths] = useState(12);
+  const [period, setPeriod] = useState<Period>({ kind: "months", months: 12 });
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchDashboard = useCallback(() => {
     if (!organizationId) return;
     setLoading(true);
-    GetDashboard(organizationId, months)
+    GetDashboard(
+      organizationId,
+      period.kind === "year" ? { year: period.year } : { months: period.months },
+    )
       .then(setData)
       .finally(() => setLoading(false));
-  }, [organizationId, months]);
+  }, [organizationId, period]);
 
   useEffect(() => {
     fetchDashboard();
@@ -61,13 +79,33 @@ const Dashboard = () => {
         title={<Trans>Dashboard</Trans>}
         actions={
           <Select
-            value={months}
-            onChange={setMonths}
-            style={{ width: 160 }}
-            options={PERIOD_OPTIONS.map((m) => ({
-              value: m,
-              label: <Trans>Last {m} months</Trans>,
-            }))}
+            value={periodToValue(period)}
+            onChange={(v) => setPeriod(periodFromValue(v))}
+            style={{ width: 180 }}
+            options={[
+              {
+                label: t`Rolling window`,
+                options: MONTH_OPTIONS.map((m) => ({
+                  value: `m${m}`,
+                  label: <Trans>Last {m} months</Trans>,
+                })),
+              },
+              {
+                label: t`Calendar year`,
+                options: Array.from({ length: CALENDAR_YEARS_BACK + 1 }, (_, i) => {
+                  const year = new Date().getFullYear() - i;
+                  const label =
+                    i === 0 ? (
+                      <Trans>Current year ({year})</Trans>
+                    ) : i === 1 ? (
+                      <Trans>Last year ({year})</Trans>
+                    ) : (
+                      String(year)
+                    );
+                  return { value: `y${year}`, label };
+                }),
+              },
+            ]}
           />
         }
       />
