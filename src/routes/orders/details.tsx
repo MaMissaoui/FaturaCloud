@@ -157,9 +157,16 @@ const OrderDetails = () => {
   useEffect(() => {
     if (!isNew && order && typeof order === "object" && !("then" in order)) {
       form.resetFields();
-      form.setFieldsValue(order);
+      // A domestic order's currency can be null at the DB layer — left as
+      // null here it renders the Currency Select blank instead of falling
+      // back to the organization's own currency, same fix as
+      // purchase-orders/details.tsx.
+      form.setFieldsValue({
+        ...order,
+        currency: (order as any).currency ?? organization?.currency ?? "EUR",
+      });
     }
-  }, [order, isNew, form]);
+  }, [order, isNew, form, organization]);
 
   const lineItems = Form.useWatch("lineItems", form) ?? [];
   const subTotal = sum(

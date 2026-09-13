@@ -177,9 +177,18 @@ const PurchaseOrderDetails = () => {
   useEffect(() => {
     if (!isNew && order && typeof order === "object" && !("then" in order)) {
       form.resetFields();
-      form.setFieldsValue(order);
+      // A domestic (non-import-linked) purchase order's currency is null at
+      // the DB layer — the normal case, not bad data (see cmd/seed-demo's
+      // createPurchaseOrder vs createImportLinkedPurchaseOrder). Left as
+      // null here, it renders the Currency Select completely blank instead
+      // of falling back to the organization's own currency the way this
+      // page's other currency fallbacks already do.
+      form.setFieldsValue({
+        ...order,
+        currency: (order as any).currency ?? organization?.currency ?? "EUR",
+      });
     }
-  }, [order, isNew, form]);
+  }, [order, isNew, form, organization]);
 
   // Same cascade as the Import Select's onChange below, run once for a
   // pre-linked new order — `imports` may still be loading on first render
