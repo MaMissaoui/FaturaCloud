@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.3] - 2026-09-13
+
+### Fixed
+- A domestic (non-import-linked) purchase order, order, or inbound
+  delivery has a `null` currency at the DB layer — the normal case, not
+  bad data — but loading one rendered the Currency field completely
+  blank instead of falling back to the organization's own currency, the
+  way every other currency fallback on those pages already does.
+- Trial Balance was the one accounting report still rendering raw
+  numbers (`1234.56`) instead of formatted currency (`TND 1,234.56`),
+  and ignoring the organization's configured decimal places.
+- PaymentPanel showed amounts with 3 decimal places for TND (its ISO
+  4217 minor unit) instead of the 2 decimal places the organization has
+  configured — every other amount on the same invoice page already
+  respected that setting.
+- Products page formatted prices via the *browser's* locale rather
+  than the app's own selected language, producing separator styles
+  (e.g. "8.409,53") that depended on each viewer's OS settings; it also
+  displayed no currency code, unlike every other money display in the
+  app.
+- Outbound Deliveries and Orders list pages ignored the organization's
+  configured date format, unlike every other list page.
+- The "Top 20" ranked bar charts (Sales by Client, Sales by Product,
+  Purchases by Vendor) used a fixed height regardless of how many rows
+  were shown, causing the charting library to silently hide overlapping
+  category labels once a report neared 20 rows.
+
 ## [3.19.2] - 2026-09-12
 
 ### Changed
