@@ -296,10 +296,24 @@ func (d *Database) getInputTaxSummary(organizationID string, startDate, endDate 
 	return rows, nil
 }
 
-// dashboardCutoff turns a rolling "months" window into a startDate for the
+// DashboardCutoff turns a rolling "months" window into a startDate for the
 // range-based functions above — the shape GetDashboardData's `months`
 // parameter has always had, kept here so it isn't duplicated at each call
-// site.
-func dashboardCutoff(months int) int64 {
+// site. Exported so api/dashboard.go can compute it directly now that
+// GetDashboardData itself takes an explicit startDate/endDate range instead
+// of deciding "months vs calendar year" on its own.
+func DashboardCutoff(months int) int64 {
 	return time.Now().AddDate(0, -months, 0).UnixMilli()
+}
+
+// DashboardYearRange returns the [startDate, endDate] bounds (both
+// inclusive, matching dateRangeFilter's `<=` on the end) of the given
+// calendar year in the server's local time zone — the same zone
+// time.Now() (and therefore DashboardCutoff above) already uses, so a
+// "this year" selection and a rolling "last 12 months" selection agree on
+// what day a given invoice's `date` timestamp falls on.
+func DashboardYearRange(year int) (startDate, endDate int64) {
+	start := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
+	end := start.AddDate(1, 0, 0).Add(-time.Millisecond)
+	return start.UnixMilli(), end.UnixMilli()
 }

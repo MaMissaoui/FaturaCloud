@@ -75,6 +75,60 @@ func TestGetRevenueByMonth(t *testing.T) {
 	}
 }
 
+// TestDashboardYearRange pins the calendar-year boundary DashboardYearRange
+// hands to dateRangeFilter: the last millisecond of Dec 31 must be included
+// (endDate is `<=`, not `<`) and the first millisecond of the next Jan 1
+// must not be.
+func TestDashboardYearRange(t *testing.T) {
+	t.Parallel()
+	start, end := DashboardYearRange(2025)
+
+	wantStart := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local).UnixMilli()
+	if start != wantStart {
+		t.Fatalf("start = %d, want %d", start, wantStart)
+	}
+	lastMomentOf2025 := time.Date(2025, time.December, 31, 23, 59, 59, 999_000_000, time.Local).UnixMilli()
+	if end != lastMomentOf2025 {
+		t.Fatalf("end = %d, want %d (2025-12-31 23:59:59.999)", end, lastMomentOf2025)
+	}
+	firstMomentOf2026 := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local).UnixMilli()
+	if end >= firstMomentOf2026 {
+		t.Fatalf("end %d must fall strictly before 2026-01-01 (%d)", end, firstMomentOf2026)
+	}
+
+	// Exercised through the real range-filtered query, the same path
+	// api/dashboard.go's ?year= param drives GetDashboardData through.
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	mkInvoice := func(id string, date int64, total int64) {
+		if _, err := d.CreateInvoice(CreateInvoiceRequest{
+			ID: id, OrganizationID: org.ID, Number: id, State: "sent", ClientID: client.ID,
+			Date: date, Currency: "EUR",
+			Total: total, TaxTotal: 0, SubTotal: total,
+			LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: float64(total)}},
+		}); err != nil {
+			t.Fatalf("CreateInvoice(%s): %v", id, err)
+		}
+	}
+	mkInvoice("inv-2025-dec31", lastMomentOf2025, 1000)
+	mkInvoice("inv-2026-jan1", firstMomentOf2026, 999999) // must not count in 2025
+
+	rows, err := d.GetRevenueByMonth(org.ID, start, end)
+	if err != nil {
+		t.Fatalf("GetRevenueByMonth: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Revenue != 1000 {
+		t.Fatalf("got %+v, want a single 2025-12 row with revenue=1000", rows)
+	}
+}
+
 // TestGetSalesByClientAndProduct covers ranking order, revenue summation
 // across multiple invoices for the same client/product, exclusion of
 // draft/cancelled invoices, that a line item with no productId (e.g. a

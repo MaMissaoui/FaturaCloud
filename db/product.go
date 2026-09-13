@@ -101,7 +101,16 @@ var productCategories = map[string]bool{
 // inbound-deliveries) still relies on. SortField == "" keeps the original
 // default order (name ascending).
 type ProductListOptions struct {
-	Search    string
+	Search string
+	// Type filters on the exact products.type value ("product"/"service")
+	// when set; empty means no filter.
+	Type string
+	// Category filters on the exact products.category value ("finished"/
+	// "component") when set; the special value "unclassified" matches
+	// NULL — the app-level name productCategories/the frontend already use
+	// for that state — since NULL can't be passed as a query param value.
+	// Empty means no filter.
+	Category  string
 	Limit     int
 	Offset    int
 	SortField string
@@ -132,6 +141,16 @@ func (d *Database) GetProducts(organizationID string, opts ProductListOptions) (
 		where += " AND (p.name LIKE ? OR p.sku LIKE ? OR p.description LIKE ? OR p.unit LIKE ? OR p.type LIKE ?)"
 		like := "%" + opts.Search + "%"
 		args = append(args, like, like, like, like, like)
+	}
+	if opts.Type != "" {
+		where += " AND p.type = ?"
+		args = append(args, opts.Type)
+	}
+	if opts.Category == "unclassified" {
+		where += " AND p.category IS NULL"
+	} else if opts.Category != "" {
+		where += " AND p.category = ?"
+		args = append(args, opts.Category)
 	}
 
 	var total int

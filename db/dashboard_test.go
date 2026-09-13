@@ -194,7 +194,7 @@ func TestGetDashboardData(t *testing.T) {
 		t.Fatalf("CreateOrganization: %v", err)
 	}
 
-	data, err := d.GetDashboardData(org.ID, 12)
+	data, err := d.GetDashboardData(org.ID, DashboardCutoff(12), 0)
 	if err != nil {
 		t.Fatalf("GetDashboardData: %v", err)
 	}

@@ -581,6 +581,8 @@ export const GetProducts = (
   organizationId: string,
   params?: {
     search?: string;
+    type?: string;
+    category?: string;
     limit?: number;
     offset?: number;
     sort?: string;
@@ -589,6 +591,8 @@ export const GetProducts = (
 ) => {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
+  if (params?.type) qs.set("type", params.type);
+  if (params?.category) qs.set("category", params.category);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   if (params?.sort) qs.set("sort", params.sort);
@@ -715,8 +719,17 @@ export interface DashboardData {
   topProducts: ProductRevenue[];
 }
 
-export const GetDashboard = (organizationId: string, months?: number) => {
-  const suffix = months ? `?months=${months}` : "";
+// Exactly one of `months` (a rolling window ending today) or `year` (a full
+// calendar year, Jan 1 - Dec 31) should be passed — `year` wins server-side
+// if both are (see api/dashboard.go).
+export const GetDashboard = (
+  organizationId: string,
+  params?: { months?: number; year?: number },
+) => {
+  const qs = new URLSearchParams();
+  if (params?.year) qs.set("year", String(params.year));
+  else if (params?.months) qs.set("months", String(params.months));
+  const suffix = qs.toString() ? `?${qs}` : "";
   return get<DashboardData>(`/organizations/${organizationId}/dashboard${suffix}`);
 };
 

@@ -11,6 +11,8 @@ func (h *handler) listProducts(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	opts := db.ProductListOptions{
 		Search:    r.URL.Query().Get("search"),
+		Type:      r.URL.Query().Get("type"),
+		Category:  r.URL.Query().Get("category"),
 		Limit:     parseIntParam(r, "limit"),
 		Offset:    parseIntParam(r, "offset"),
 		SortField: r.URL.Query().Get("sort"),

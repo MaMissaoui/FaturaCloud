@@ -29,8 +29,6 @@ import { useLingui } from "@lingui/react";
 import {
   CopyOutlined,
   DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
   FileTextOutlined,
@@ -128,7 +126,6 @@ const InvoiceDetails: React.FC = () => {
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
-  const [previewMode, setPreviewMode] = useState(false);
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -332,22 +329,6 @@ const InvoiceDetails: React.FC = () => {
   // to <Space split>, so a group that's conditionally empty (e.g. every
   // button here needs !isNew) never becomes a stray leading/doubled
   // separator the way a raw conditional child of <Space split> would.
-  const viewActions = !isNew
-    ? [
-        <Button key="view" type="dashed" onClick={() => setPreviewMode(!previewMode)}>
-          {previewMode ? (
-            <>
-              <EditOutlined /> <Trans>Edit</Trans>
-            </>
-          ) : (
-            <>
-              <EyeOutlined /> <Trans>View</Trans>
-            </>
-          )}
-        </Button>,
-      ]
-    : [];
-
   const exportActions = !isNew
     ? [
         <Tooltip key="pdf" title={isDirty ? t`Save your changes before exporting` : undefined}>
@@ -402,9 +383,7 @@ const InvoiceDetails: React.FC = () => {
     </Button>,
   ];
 
-  const footerActionGroups = [viewActions, exportActions, stateActions].filter(
-    (group) => group.length > 0,
-  );
+  const footerActionGroups = [exportActions, stateActions].filter((group) => group.length > 0);
 
   if (!organization) return null;
   if (!isNew && !invoice) return null;
@@ -424,7 +403,6 @@ const InvoiceDetails: React.FC = () => {
             onValuesChange={() => setIsDirty(true)}
             layout="vertical"
             initialValues={initialValues}
-            style={{ display: previewMode ? "none" : "block" }}
           >
             <Card
               size="small"
@@ -1107,14 +1085,6 @@ const InvoiceDetails: React.FC = () => {
                 document.getElementById("footer"),
               )}
           </Form>
-          {previewMode && (
-            // Both PDF and Excel are generated server-side from the same
-            // filled template (db/xlsx_export.go) — there's no client-side
-            // rendering left to preview in-page, only a real export.
-            <div style={{ padding: 24, textAlign: "center" }}>
-              <Trans>Preview isn't available — export to PDF or Excel to see the result.</Trans>
-            </div>
-          )}
         </Col>
       </Row>
 
