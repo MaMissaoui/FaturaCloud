@@ -11,7 +11,7 @@ import { TableOutlined } from "@ant-design/icons";
 import sum from "lodash/sum";
 
 import { GetTrialBalance } from "src/api";
-import { organizationIdAtom } from "src/atoms/organization";
+import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import {
   fiscalYearsAtom,
   setFiscalYearsAtom,
@@ -24,9 +24,10 @@ const fiscalYearFilterAtom = atom<string>("");
 const fiscalPeriodFilterAtom = atom<string>("");
 
 const TrialBalance = () => {
-  useLingui();
+  const { i18n } = useLingui();
   const location = useLocation();
   const organizationId = useAtomValue(organizationIdAtom);
+  const organization = useAtomValue(organizationAtom);
 
   const fiscalYears = useAtomValue(fiscalYearsAtom);
   const setFiscalYears = useSetAtom(setFiscalYearsAtom);
@@ -59,8 +60,20 @@ const TrialBalance = () => {
   }, [organizationId, fiscalYearId, fiscalPeriodId]);
 
   const periods = fiscalYearId ? (fiscalPeriodsByYear[fiscalYearId] ?? []) : [];
-  const totalDebit = sum(rows.map((r) => r.debit)) / 100;
-  const totalCredit = sum(rows.map((r) => r.credit)) / 100;
+  const totalDebit = sum(rows.map((r) => r.debit));
+  const totalCredit = sum(rows.map((r) => r.credit));
+
+  // Same canonical formatter every other accounting report page uses
+  // (ap-aging.tsx, inventory-valuation.tsx, …) — this page previously did a
+  // bare `(v / 100).toFixed(2)`, the only report with no currency symbol,
+  // no thousands separator, and no respect for the organization's
+  // configured decimal places.
+  const money = (cents: number) =>
+    Intl.NumberFormat(i18n.locale, {
+      style: "currency",
+      currency: organization?.currency ?? "EUR",
+      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
+    }).format(cents / 100);
 
   return (
     <>
@@ -107,10 +120,10 @@ const TrialBalance = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Typography.Text strong>{totalDebit.toFixed(2)}</Typography.Text>
+                  <Typography.Text strong>{money(totalDebit)}</Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="right">
-                  <Typography.Text strong>{totalCredit.toFixed(2)}</Typography.Text>
+                  <Typography.Text strong>{money(totalCredit)}</Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}
@@ -129,14 +142,14 @@ const TrialBalance = () => {
               dataIndex="debit"
               key="debit"
               align="right"
-              render={(v: number) => (v / 100).toFixed(2)}
+              render={(v: number) => money(v)}
             />
             <Table.Column
               title={<Trans>Credit</Trans>}
               dataIndex="credit"
               key="credit"
               align="right"
-              render={(v: number) => (v / 100).toFixed(2)}
+              render={(v: number) => money(v)}
             />
           </Table>
         </Col>
