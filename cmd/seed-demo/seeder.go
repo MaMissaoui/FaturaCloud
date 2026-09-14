@@ -84,6 +84,11 @@ type Stats struct {
 	PurchaseOrders, InboundDeliveries, IncomingInvoices int
 	Imports                                             int
 	Payments                                            int
+	// BillsOfMaterialsDefined counts the real db/product_bom.go recipes
+	// setupBillsOfMaterials (production.go) defines, once, for every
+	// finished-good product — what assembleBatch below then actually reads
+	// back at each batch instead of assuming a hardcoded component list.
+	BillsOfMaterialsDefined int
 	// AssemblyBatches counts production.go's maybeAssembleFinishedGoods runs
 	// that actually built something (skipped attempts with insufficient
 	// component stock don't count); AssembledUnits is the total finished
@@ -193,6 +198,9 @@ func (s *Seeder) Run() error {
 	if err := s.setupMasterData(); err != nil {
 		return fmt.Errorf("master data: %w", err)
 	}
+	if err := s.setupBillsOfMaterials(); err != nil {
+		return fmt.Errorf("bills of materials: %w", err)
+	}
 	if err := s.setupFiscalCoverage(startDate, s.cfg.EndDate); err != nil {
 		return fmt.Errorf("fiscal years/periods: %w", err)
 	}
@@ -260,7 +268,7 @@ func (s *Seeder) Run() error {
 
 	elapsed := time.Since(runStart)
 	s.log.Printf("seed-demo: done in %s", elapsed.Round(time.Second))
-	s.log.Printf("seed-demo: clients=%d vendors=%d products=%d", s.stats.Clients, s.stats.Vendors, s.stats.Products)
+	s.log.Printf("seed-demo: clients=%d vendors=%d products=%d bills_of_materials=%d", s.stats.Clients, s.stats.Vendors, s.stats.Products, s.stats.BillsOfMaterialsDefined)
 	s.log.Printf("seed-demo: invoices=%d orders=%d deliveries=%d", s.stats.Invoices, s.stats.Orders, s.stats.Deliveries)
 	s.log.Printf("seed-demo: purchase_orders=%d inbound_deliveries=%d incoming_invoices=%d imports=%d", s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices, s.stats.Imports)
 	s.log.Printf("seed-demo: assembly_batches=%d assembled_units=%d", s.stats.AssemblyBatches, s.stats.AssembledUnits)

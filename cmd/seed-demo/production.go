@@ -70,6 +70,51 @@ const assemblyBOM = 1
 // orders back up to.
 const maxAssemblyBatch = 15
 
+// setupBillsOfMaterials defines a real Bill of Materials (db/product_bom.go,
+// PUT /api/products/{id}/bom) for every finished-good product, once, right
+// after setupProducts (masterdata.go) has created them — the same curated
+// per-displacement-class component set assemblyBOMComponentNames already
+// names, now actually stored via the app's own BOM feature instead of only
+// ever living as this tool's local assumption. assembleBatch below reads it
+// back at consumption time (one GET per batch), so a seeded organization's
+// Products page shows real, populated recipes, and the simulation is
+// genuinely driven by that stored data rather than a parallel hardcoded
+// list nothing else in the app can see.
+func (s *Seeder) setupBillsOfMaterials() error {
+	for _, finished := range s.products {
+		if finished.category != "finished" {
+			continue
+		}
+		components := s.bomComponentsByDisplacement(finished.displacement)
+		if len(components) == 0 {
+			continue
+		}
+		lines := make([]db.CreateBillOfMaterialsLineRequest, len(components))
+		for i, c := range components {
+			lines[i] = db.CreateBillOfMaterialsLineRequest{
+				ComponentProductID: c.id,
+				QuantityPerUnit:    assemblyBOM, // flat 1 per component — see assemblyBOM's own comment
+			}
+		}
+		if err := s.c.Put("/api/products/"+finished.id+"/bom", map[string]any{"lines": lines}, nil); err != nil {
+			return fmt.Errorf("bill of materials for %q: %w", finished.name, err)
+		}
+		s.stats.BillsOfMaterialsDefined++
+	}
+	return nil
+}
+
+// getProductBOM reads back a finished product's stored recipe — the real
+// source assembleBatch consumes against, instead of re-deriving it locally
+// the way this tool did before setupBillsOfMaterials existed.
+func (s *Seeder) getProductBOM(productID string) ([]db.BillOfMaterialsLine, error) {
+	var lines []db.BillOfMaterialsLine
+	if err := s.c.Get("/api/products/"+productID+"/bom", &lines); err != nil {
+		return nil, err
+	}
+	return lines, nil
+}
+
 // maybeRestockAssemblyComponents runs once a week (Monday, alongside every
 // other weekly-cadence decision in this tool) and tops up each
 // displacement class's BOM components back up to maxAssemblyBatch — a
@@ -193,53 +238,72 @@ func (s *Seeder) maybeAssembleFinishedGoods(day time.Time) error {
 // variety comes from many batches over the run rather than splitting one
 // batch across several SKUs.
 func (s *Seeder) assembleBatch(day time.Time, class string) error {
-	components := s.bomComponentsByDisplacement(class)
 	finished := s.finishedByDisplacement(class)
-	if len(components) == 0 || len(finished) == 0 {
+	if len(finished) == 0 {
 		return nil
+	}
+	product := Pick(s.rng, finished)
+
+	// Read this specific product's real BOM back (setupBillsOfMaterials
+	// defined it once, at startup) instead of assuming every finished good
+	// in the class shares the same local, hardcoded component list — this
+	// is the one HTTP round trip assembleBatch adds per call, cheap next to
+	// the up-to-13 stock-movement POSTs a batch that actually clears makes.
+	bom, err := s.getProductBOM(product.id)
+	if err != nil {
+		return fmt.Errorf("assembly %s: read BOM for %s: %w", class, product.name, err)
+	}
+	if len(bom) == 0 {
+		return nil // no BOM defined for this product — nothing to build against
 	}
 
 	buildable := math.Inf(1)
-	for _, c := range components {
-		if h := s.onHand(c.id); h < buildable {
-			buildable = h
+	for _, line := range bom {
+		if b := s.onHand(line.ComponentProductID) / line.QuantityPerUnit; b < buildable {
+			buildable = b
 		}
 	}
-	batch := int(math.Floor(buildable / assemblyBOM))
+	batch := int(math.Floor(buildable))
 	if batch < 1 {
-		return nil // some BOM component in this class isn't stocked yet — nothing to build
+		return nil // some BOM component isn't stocked yet — nothing to build
 	}
 	if batch > maxAssemblyBatch {
 		batch = maxAssemblyBatch
 	}
 
-	product := Pick(s.rng, finished)
 	ref := fmt.Sprintf("ASM-%s-%s", class, day.Format("20060102"))
 
-	// Consume assemblyBOM units of every BOM component. Each is a plain
+	// Consume each BOM line's quantityPerUnit × batch. Each is a plain
 	// "out" adjustment — no UnitCost is sent, since a negative-quantity
 	// movement is always costed from the product's own average
 	// (db/gl_posting.go's buildStockAdjustmentGLLines), which is exactly
-	// componentRef.costCents here (every receipt for a given component
-	// always uses that same fixed catalog cost — see
+	// component.costCents here (every receipt for a given component always
+	// uses that same fixed catalog cost — see
 	// restockAssemblyComponentsForClass/purchasing.go's createPurchaseOrder
-	// — so its weighted average never actually varies).
+	// — so its weighted average never actually varies). Every seeded BOM
+	// line is a whole-number quantity (setupBillsOfMaterials always seeds
+	// assemblyBOM, currently 1), so int64(line.QuantityPerUnit) below never
+	// truncates a fraction.
 	var partsCostPerUnit int64
-	for _, c := range components {
-		qty := float64(batch * assemblyBOM)
+	for _, line := range bom {
+		component, ok := s.productByID(line.ComponentProductID)
+		if !ok {
+			return fmt.Errorf("assembly %s: BOM component %s (%s) not found in local catalog", ref, line.ComponentName, line.ComponentProductID)
+		}
+		qty := float64(batch) * line.QuantityPerUnit
 		req := db.CreateStockMovementRequest{
 			OrganizationID: s.orgID,
-			ProductID:      c.id,
+			ProductID:      line.ComponentProductID,
 			Type:           "adjustment",
 			Quantity:       -qty,
 			Note:           strPtr(fmt.Sprintf("Assembly: consumed for %d x %s (%s)", batch, product.name, class)),
 			Reference:      strPtr(ref),
 		}
 		if err := s.c.Post("/api/stock-movements", req, nil); err != nil {
-			return fmt.Errorf("assembly %s: consume %s: %w", ref, c.name, err)
+			return fmt.Errorf("assembly %s: consume %s: %w", ref, line.ComponentName, err)
 		}
-		s.adjustOnHand(c.id, -qty)
-		partsCostPerUnit += c.costCents * assemblyBOM
+		s.adjustOnHand(line.ComponentProductID, -qty)
+		partsCostPerUnit += component.costCents * int64(line.QuantityPerUnit)
 	}
 
 	// Produce the finished good at exactly the parts cost just consumed —
