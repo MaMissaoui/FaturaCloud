@@ -20,6 +20,7 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
+import find from "lodash/find";
 
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
@@ -142,6 +143,16 @@ const ProductForm = () => {
     form.setFieldValue("sku", deriveProductCode(nameValue, existingCodes));
   }, [nameValue, productId, codeTouched, products, form]);
 
+  // Prefill a new product's Base unit of measure from the org's default —
+  // otherwise Settings' "Default for new products" checkbox has no effect
+  // anywhere, since units of measure are fetched async and can't go in
+  // initialValues.
+  useEffect(() => {
+    if (!isVisible || productId || !unitsOfMeasure.length) return;
+    const defaultUnit = find(unitsOfMeasure, { isDefault: 1 });
+    if (defaultUnit) form.setFieldValue("unitOfMeasureId", defaultUnit.id);
+  }, [isVisible, productId, unitsOfMeasure, form]);
+
   useEffect(() => {
     if (product) {
       form.setFieldsValue({
@@ -165,9 +176,15 @@ const ProductForm = () => {
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
     const stockEnabled = values.type === "product" && values.stockEnabled ? 1 : 0;
+    // The hidden "unit" field exists to round-trip a *legacy* free-text unit
+    // through this full-replace update untouched (see its comment below) —
+    // it must not resurrect a value the user just cleared on a product that
+    // did have a Base unit of measure selected.
+    const clearedUnitOfMeasure = !!product?.unitOfMeasureId && !values.unitOfMeasureId;
     try {
       await setProduct({
         ...values,
+        unit: clearedUnitOfMeasure ? null : values.unit,
         price: Math.round((values.price ?? 0) * 100),
         unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
         stockEnabled,
