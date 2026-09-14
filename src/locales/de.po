@@ -153,7 +153,7 @@ msgstr ""
 msgid "Add a new organization to your account"
 msgstr "Fügen Sie Ihrem Konto eine neue Organisation hinzu"
 
-#: src/components/products/bom-fields.tsx:56
+#: src/components/products/bom-fields.tsx:64
 msgid "Add component"
 msgstr ""
 
@@ -390,6 +390,10 @@ msgstr "Bankverbindung"
 msgid "Base"
 msgstr "Basis"
 
+#: src/components/products/bom-editor-drawer.tsx:362
+msgid "Batch size"
+msgstr "Losgröße"
+
 #: src/routes/accounting/reports/ap-aging.tsx:97
 msgid "Bill"
 msgstr "Rechnung"
@@ -398,7 +402,7 @@ msgstr "Rechnung"
 msgid "Bill From"
 msgstr "Rechnung von"
 
-#: src/components/products/bom-editor-drawer.tsx:118
+#: src/components/products/bom-editor-drawer.tsx:244
 #: src/components/products/form.tsx:458
 #: src/layouts/base.tsx:541
 #: src/routes/bill-of-materials.tsx:72
@@ -406,11 +410,11 @@ msgid "Bill of Materials"
 msgstr "Stückliste"
 
 #. placeholder {0}: product.name
-#: src/components/products/bom-editor-drawer.tsx:116
+#: src/components/products/bom-editor-drawer.tsx:242
 msgid "Bill of Materials — {0}"
 msgstr "Stückliste — {0}"
 
-#: src/components/products/bom-editor-drawer.tsx:102
+#: src/components/products/bom-editor-drawer.tsx:198
 msgid "Bill of materials saved"
 msgstr "Stückliste gespeichert"
 
@@ -473,7 +477,8 @@ msgstr "Allgemeine indirekte Steuer der Kanarischen Inseln"
 #: src/components/organizations/organization-edit-drawer.tsx:120
 #: src/components/payment-terms/form.tsx:107
 #: src/components/payments/payment-panel.tsx:289
-#: src/components/products/bom-editor-drawer.tsx:128
+#: src/components/products/bom-editor-drawer.tsx:254
+#: src/components/products/bom-editor-drawer.tsx:266
 #: src/components/products/form.tsx:232
 #: src/components/stock/movement-form.tsx:119
 #: src/components/stock/serial-capture-modal.tsx:96
@@ -696,6 +701,7 @@ msgstr "Seitenleiste einklappen"
 msgid "Committed value"
 msgstr ""
 
+#: src/components/products/bom-editor-drawer.tsx:347
 #: src/routes/inventory.tsx:258
 #: src/routes/inventory.tsx:303
 #: src/routes/products.tsx:249
@@ -707,7 +713,7 @@ msgstr "Komponente"
 msgid "Component / intermediate"
 msgstr ""
 
-#: src/components/products/bom-fields.tsx:29
+#: src/components/products/bom-fields.tsx:36
 msgid "Component is required"
 msgstr ""
 
@@ -806,6 +812,7 @@ msgstr ""
 msgid "Currency"
 msgstr "Währung"
 
+#: src/components/products/bom-editor-drawer.tsx:316
 #: src/routes/accounting/reports/ap-aging.tsx:55
 #: src/routes/accounting/reports/ar-aging.tsx:55
 #: src/routes/dashboard.tsx:184
@@ -1720,11 +1727,15 @@ msgstr "Lagerbewegung konnte nicht erfasst werden"
 msgid "Failed to remove member"
 msgstr ""
 
+#: src/components/products/bom-editor-drawer.tsx:229
+msgid "Failed to restore version"
+msgstr "Version konnte nicht wiederhergestellt werden"
+
 #: src/atoms/journal-entry.ts:147
 msgid "Failed to reverse journal entry"
 msgstr "Buchung konnte nicht storniert werden"
 
-#: src/components/products/bom-editor-drawer.tsx:106
+#: src/components/products/bom-editor-drawer.tsx:202
 #: src/components/products/form.tsx:182
 msgid "Failed to save bill of materials"
 msgstr ""
@@ -1825,7 +1836,7 @@ msgstr "Nach Referenz filtern"
 msgid "Finished good"
 msgstr "Fertigware"
 
-#: src/components/products/bom-editor-drawer.tsx:145
+#: src/components/products/bom-editor-drawer.tsx:290
 msgid "Finished product"
 msgstr "Fertigware"
 
@@ -2855,7 +2866,7 @@ msgstr "Bestand"
 msgid "On this invoice"
 msgstr "Auf dieser Rechnung"
 
-#: src/components/products/bom-editor-drawer.tsx:163
+#: src/components/products/bom-editor-drawer.tsx:332
 msgid "Only a \"Finished good\" product can have a bill of materials — change this product's category first."
 msgstr "Nur ein Produkt der Kategorie „Fertigware“ kann eine Stückliste haben — ändern Sie zuerst die Kategorie dieses Produkts."
 
@@ -3212,7 +3223,7 @@ msgstr "Löscht die Daten dieser Organisation dauerhaft, ohne die Organisation s
 msgid "Phone"
 msgstr "Telefon"
 
-#: src/components/products/bom-editor-drawer.tsx:159
+#: src/components/products/bom-editor-drawer.tsx:328
 msgid "Pick a finished product above to define its recipe."
 msgstr "Wählen Sie oben eine Fertigware aus, um deren Stückliste zu definieren."
 
@@ -3543,7 +3554,8 @@ msgstr "Einkauf"
 msgid "Qty"
 msgstr "Menge"
 
-#: src/components/products/bom-fields.tsx:47
+#: src/components/products/bom-editor-drawer.tsx:354
+#: src/components/products/bom-fields.tsx:55
 msgid "Qty per unit"
 msgstr ""
 
@@ -3557,6 +3569,14 @@ msgstr "Menge erhalten"
 msgid "Qty."
 msgstr "Menge"
 
+#: src/components/products/bom-editor-drawer.tsx:375
+msgid "Quantities below are for a batch of {batchSize} units."
+msgstr "Die Mengen unten gelten für ein Los von {batchSize} Einheiten."
+
+#: src/components/products/bom-editor-drawer.tsx:373
+msgid "Quantities below are per single unit."
+msgstr "Die Mengen unten gelten pro Einheit."
+
 #: src/routes/accounting/reports/inventory-valuation.tsx:86
 #: src/routes/dashboard.tsx:260
 #: src/routes/inventory.tsx:451
@@ -3567,7 +3587,7 @@ msgstr "Menge"
 msgid "Quantity consumed / sold"
 msgstr "Verbrauchte / verkaufte Menge"
 
-#: src/components/products/bom-fields.tsx:44
+#: src/components/products/bom-fields.tsx:52
 #: src/components/stock/movement-form.tsx:223
 msgid "Quantity is required"
 msgstr "Menge ist erforderlich"
@@ -3748,6 +3768,7 @@ msgstr "Daten dieser Organisation zurücksetzen?"
 msgid "Reset to default"
 msgstr ""
 
+#: src/components/products/bom-editor-drawer.tsx:265
 #: src/routes/settings/backup.tsx:128
 #: src/routes/settings/backup.tsx:152
 #: src/routes/settings/backup.tsx:299
@@ -3771,6 +3792,14 @@ msgstr "Wiederherstellung fehlgeschlagen: {0}"
 #: src/routes/settings/backup.tsx:318
 msgid "Restore from file"
 msgstr "Aus Datei wiederherstellen"
+
+#: src/components/products/bom-editor-drawer.tsx:270
+msgid "Restore this version"
+msgstr "Diese Version wiederherstellen"
+
+#: src/components/products/bom-editor-drawer.tsx:258
+msgid "Restore this version?"
+msgstr "Diese Version wiederherstellen?"
 
 #: src/types/order.ts:66
 #: src/types/purchase-order.ts:63
@@ -3889,7 +3918,7 @@ msgstr "Umsatz nach Produkt"
 #: src/components/imports/form.tsx:243
 #: src/components/organizations/organization-edit-drawer.tsx:123
 #: src/components/payment-terms/form.tsx:110
-#: src/components/products/bom-editor-drawer.tsx:136
+#: src/components/products/bom-editor-drawer.tsx:280
 #: src/components/products/form.tsx:235
 #: src/components/stock/movement-form.tsx:122
 #: src/components/tax-rates/form.tsx:165
@@ -3969,7 +3998,7 @@ msgstr "Suchtext"
 msgid "Select a country"
 msgstr "Land auswählen"
 
-#: src/components/products/bom-editor-drawer.tsx:150
+#: src/components/products/bom-editor-drawer.tsx:295
 msgid "Select a finished product"
 msgstr "Fertigware auswählen"
 
@@ -3991,7 +4020,7 @@ msgstr "Produkt auswählen"
 msgid "Select an account"
 msgstr "Konto auswählen"
 
-#: src/components/products/bom-fields.tsx:34
+#: src/components/products/bom-fields.tsx:42
 msgid "Select component"
 msgstr ""
 
@@ -4435,6 +4464,11 @@ msgstr "Diese Rechnung stimmt nicht mit Bestellung und Wareneingang überein"
 msgid "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
 msgstr "Dies bucht einen Abschlussbeleg, der den Nettoumsatz und -aufwand in die Gewinnrücklagen überträgt, und blockiert danach dauerhaft jede neue Buchung mit einem Datum innerhalb dieses Geschäftsjahres. Dies kann nicht rückgängig gemacht werden — ein abgeschlossenes Geschäftsjahr kann nicht wieder geöffnet werden."
 
+#. placeholder {0}: viewedVersion?.versionNumber
+#: src/components/products/bom-editor-drawer.tsx:260
+msgid "This replaces the current recipe with v{0}'s components and quantities."
+msgstr "Dadurch wird das aktuelle Rezept durch die Komponenten und Mengen von v{0} ersetzt."
+
 #: src/components/payments/payment-panel.tsx:262
 msgid "This reverses its journal entry and restores the balance due."
 msgstr "Dies storniert den zugehörigen Buchungssatz und stellt den offenen Betrag wieder her."
@@ -4782,6 +4816,10 @@ msgstr "Lieferant(en)"
 #: src/routes/vendors.tsx:59
 msgid "Vendors"
 msgstr "Lieferanten"
+
+#: src/components/products/bom-editor-drawer.tsx:213
+msgid "Version restored"
+msgstr "Version wiederhergestellt"
 
 #: src/routes/invoices/details.tsx:344
 #~ msgid "View"

@@ -90,6 +90,17 @@ var masterDataTables = []string{
 	// not transactional, since it's a standing definition a Production
 	// Order snapshots from rather than a document with its own history.
 	"bill_of_materials",
+	// bill_of_materials_versions (the recipe's own append-only change
+	// history — db/product_bom.go) follows immediately after for the same
+	// reason: a reset clears an org's recipes and their history together,
+	// not one without the other. Already cascades automatically via
+	// finishedProductId's ON DELETE CASCADE once products is wiped above,
+	// so this entry is here for the row-count/tripwire contract, not
+	// because the DELETE does real work by the time it runs.
+	// bill_of_materials_version_lines has no organizationId column of its
+	// own (cascades from bill_of_materials_versions), so it needs no entry
+	// here — same shape as journal_lines/payment_applications above.
+	"bill_of_materials_versions",
 }
 
 // ResetOrganizationData deletes the selected record collections for an

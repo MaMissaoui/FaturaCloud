@@ -425,6 +425,9 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/products/{id}/serial-numbers", productOrgID, h.listProductSerialNumbers)
 	orgMemberProtected("GET", "/api/products/{id}/bom", productOrgID, h.getProductBOM)
 	orgMemberProtected("PUT", "/api/products/{id}/bom", productOrgID, h.replaceProductBOM)
+	orgMemberProtected("GET", "/api/products/{id}/bom/versions", productOrgID, h.listProductBOMVersions)
+	orgMemberProtected("GET", "/api/products/{id}/bom/versions/{versionId}", productOrgID, h.getProductBOMVersion)
+	orgMemberProtected("POST", "/api/products/{id}/bom/versions/{versionId}/restore", productOrgID, h.restoreProductBOMVersion)
 
 	// Stock movements
 	// stockMovementOrgID resolves a stock-movement route's {id} to its

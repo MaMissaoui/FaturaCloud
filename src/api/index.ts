@@ -28,6 +28,8 @@ import type {
   SerialNumber,
   BillOfMaterialsLine,
   BOMSummary,
+  BOMVersion,
+  BOMVersionDetail,
   Account,
   Journal,
   FiscalYear,
@@ -612,12 +614,24 @@ export const GetProductStockMovements = (id: string) =>
 export const GetProductSerialNumbers = (id: string) =>
   get<SerialNumber[]>(`/products/${id}/serial-numbers`);
 export const GetProductBOM = (id: string) => get<BillOfMaterialsLine[]>(`/products/${id}/bom`);
+// batchSize is optional — omit it (as the product form's embedded BOM card
+// does, since it has no batch-size UI of its own) to let the server inherit
+// whatever batchSize the latest version was saved at, rather than resetting
+// it to 1 on every unrelated product-field edit. The dedicated BOM drawer
+// always passes its own explicit value.
 export const ReplaceProductBOM = (
   id: string,
   lines: { componentProductId: string; quantityPerUnit: number }[],
-) => put<BillOfMaterialsLine[]>(`/products/${id}/bom`, { lines });
+  batchSize?: number,
+) => put<BillOfMaterialsLine[]>(`/products/${id}/bom`, { lines, batchSize });
 export const GetBOMSummaries = (organizationId: string) =>
   get<BOMSummary[]>(`/organizations/${organizationId}/products/bom-summaries`);
+export const GetBOMVersions = (productId: string) =>
+  get<BOMVersion[]>(`/products/${productId}/bom/versions`);
+export const GetBOMVersion = (productId: string, versionId: string) =>
+  get<BOMVersionDetail>(`/products/${productId}/bom/versions/${versionId}`);
+export const RestoreBOMVersion = (productId: string, versionId: string) =>
+  post<BillOfMaterialsLine[]>(`/products/${productId}/bom/versions/${versionId}/restore`, {});
 
 // ---- Stock Movements ----
 
