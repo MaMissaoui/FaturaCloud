@@ -522,6 +522,7 @@ const ProductionOrderDetails = () => {
                             onConfirm={() => handleStatusChange(transition.next)}
                             okText={t`Yes`}
                             cancelText={t`No`}
+                            placement="topRight"
                           >
                             <Button type={transition.type ?? "default"}>{transition.label}</Button>
                           </Popconfirm>
@@ -536,6 +537,7 @@ const ProductionOrderDetails = () => {
                             onConfirm={() => handleStatusChange("cancelled")}
                             okText={t`Yes`}
                             cancelText={t`No`}
+                            placement="topRight"
                           >
                             <Button type="dashed" danger>
                               <Trans>Cancel order</Trans>
