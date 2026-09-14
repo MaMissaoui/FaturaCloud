@@ -91,10 +91,12 @@ type Stats struct {
 	BillsOfMaterialsDefined int
 	// AssemblyBatches counts production.go's maybeAssembleFinishedGoods runs
 	// that actually built something (skipped attempts with insufficient
-	// component stock don't count); AssembledUnits is the total finished
-	// goods produced across every batch.
-	AssemblyBatches, AssembledUnits int
-	Errors                          int
+	// component stock, or a 409 against the server's own stock check, don't
+	// count); AssembledUnits is the total finished goods produced across
+	// every batch. ProductionOrders counts the real Production Order
+	// documents created along the way (one per successful batch).
+	AssemblyBatches, AssembledUnits, ProductionOrders int
+	Errors                                            int
 }
 
 // Seeder holds every piece of shared state a generator (sales.go,
@@ -137,7 +139,7 @@ type Seeder struct {
 	// placed against — see imports.go's maybeStartImport/maybeCreateImportLinkedPO.
 	currentImport *importRef
 
-	invoiceNum, orderNum, deliveryNum, poNum, inboundNum, incomingNum, importNum *numberer
+	invoiceNum, orderNum, deliveryNum, poNum, inboundNum, incomingNum, importNum, productionOrderNum *numberer
 
 	start time.Time
 	stats Stats
@@ -176,6 +178,8 @@ func NewSeeder(c *Client, cfg Config) *Seeder {
 		inboundNum:  newNumberer("GR"),
 		incomingNum: newNumberer("BILL"),
 		importNum:   newNumberer("IMP"),
+
+		productionOrderNum: newNumberer("PRO"),
 	}
 }
 
@@ -271,7 +275,7 @@ func (s *Seeder) Run() error {
 	s.log.Printf("seed-demo: clients=%d vendors=%d products=%d bills_of_materials=%d", s.stats.Clients, s.stats.Vendors, s.stats.Products, s.stats.BillsOfMaterialsDefined)
 	s.log.Printf("seed-demo: invoices=%d orders=%d deliveries=%d", s.stats.Invoices, s.stats.Orders, s.stats.Deliveries)
 	s.log.Printf("seed-demo: purchase_orders=%d inbound_deliveries=%d incoming_invoices=%d imports=%d", s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices, s.stats.Imports)
-	s.log.Printf("seed-demo: assembly_batches=%d assembled_units=%d", s.stats.AssemblyBatches, s.stats.AssembledUnits)
+	s.log.Printf("seed-demo: production_orders=%d assembly_batches=%d assembled_units=%d", s.stats.ProductionOrders, s.stats.AssemblyBatches, s.stats.AssembledUnits)
 	s.log.Printf("seed-demo: payments=%d errors=%d", s.stats.Payments, s.stats.Errors)
 	if s.stats.Errors > 0 {
 		s.log.Printf("seed-demo: WARNING — %d step(s) failed; see the log above for which day/kind. The rest of the run continued.", s.stats.Errors)
