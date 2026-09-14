@@ -66,6 +66,7 @@ const InvoiceDetails = lazy(() => import("src/routes/invoices/details.tsx"));
 const SettingsInvoice = lazy(() => import("src/routes/settings/invoice"));
 const SettingsTaxRates = lazy(() => import("src/routes/settings/tax-rates"));
 const SettingsPaymentTerms = lazy(() => import("src/routes/settings/payment-terms"));
+const SettingsUnitsOfMeasure = lazy(() => import("src/routes/settings/units-of-measure"));
 const OrganizationsList = lazy(() => import("src/routes/organizations/index"));
 const SettingsBackup = lazy(() => import("src/routes/settings/backup"));
 const SettingsUsers = lazy(() => import("src/routes/settings/users"));
@@ -336,6 +337,7 @@ const AppContent = () => {
                       <Route path=":id" element={<TaxRateForm />} />
                     </Route>
                     <Route path="payment-terms" element={<SettingsPaymentTerms />} />
+                    <Route path="units-of-measure" element={<SettingsUnitsOfMeasure />} />
                     <Route path="document-templates" element={<SettingsDocumentTemplates />} />
                     <Route path="backup" element={<SettingsBackup />} />
                     <Route path="users" element={<SettingsUsers />} />

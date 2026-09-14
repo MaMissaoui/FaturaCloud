@@ -12,6 +12,7 @@ import type {
   Product,
   TaxRate,
   PaymentTerm,
+  UnitOfMeasure,
   Organization,
   PurchaseOrder,
   PurchaseOrderLineItem,
@@ -563,6 +564,17 @@ export const UpdatePaymentTerm = (id: string, req: Partial<PaymentTerm>) =>
   put<PaymentTerm>(`/payment-terms/${id}`, req);
 export const DeletePaymentTerm = (id: string) =>
   del<{ deleted: boolean }>(`/payment-terms/${id}`).then((r) => r.deleted);
+
+// ---- Units of Measure ----
+
+export const GetUnitsOfMeasure = (organizationId: string) =>
+  get<UnitOfMeasure[]>(`/organizations/${organizationId}/units-of-measure`);
+export const CreateUnitOfMeasure = (req: Partial<UnitOfMeasure>) =>
+  post<UnitOfMeasure>("/units-of-measure", req);
+export const UpdateUnitOfMeasure = (id: string, req: Partial<UnitOfMeasure>) =>
+  put<UnitOfMeasure>(`/units-of-measure/${id}`, req);
+export const DeleteUnitOfMeasure = (id: string) =>
+  del<{ deleted: boolean }>(`/units-of-measure/${id}`).then((r) => r.deleted);
 
 // ---- Countries ----
 

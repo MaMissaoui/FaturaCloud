@@ -1,22 +1,13 @@
 import { t } from "@lingui/core/macro";
 
-export const UNIT_OPTIONS = [
-  "hour",
-  "day",
-  "week",
-  "month",
-  "piece",
-  "kg",
-  "g",
-  "lb",
-  "oz",
-  "l",
-  "ml",
-  "m",
-  "km",
-];
-
-// unitLabel must be called during render (not hoisted to module scope) so the
+// unitLabel formats a product's legacy free-text unit column for display
+// (Inventory, Products list, BOM component display) — the product form
+// itself now sources its "Base unit of measure" options from the
+// units_of_measure list (src/atoms/unit-of-measure.ts) instead of the fixed
+// set this used to offer, but the org's seeded defaults reuse the same
+// names, so this still translates the common cases correctly.
+//
+// Must be called during render (not hoisted to module scope) so the
 // returned label follows the currently-active locale — a module-scope `t`
 // result would freeze at import-time locale and go stale on language switch.
 // Metric/imperial symbols (kg, g, lb, oz, l, ml, m, km) are identical across
