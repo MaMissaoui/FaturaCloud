@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { Badge, Col, Row, Table, Tooltip } from "antd";
+import { Badge, Button, Col, Row, Table, Tooltip } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { BuildOutlined } from "@ant-design/icons";
+import { BuildOutlined, PlusOutlined } from "@ant-design/icons";
 
 import type { Product } from "src/types/models";
 import { organizationIdAtom } from "src/atoms/organization";
@@ -31,11 +31,25 @@ const BillOfMaterials = () => {
 
   const [summaries, setSummaries] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   const finishedProducts = useMemo(
     () => products.filter((p) => p.category === "finished"),
     [products],
   );
+
+  // Client-side filter — the full finished-product list is already loaded
+  // via productsAtom (same source the "New recipe" picker and the Products
+  // page's component/finished pickers already rely on), so a search box
+  // here doesn't need its own server round trip the way Products' paginated
+  // list does.
+  const filteredProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return finishedProducts;
+    return finishedProducts.filter(
+      (p) => p.name.toLowerCase().includes(term) || (p.sku ?? "").toLowerCase().includes(term),
+    );
+  }, [finishedProducts, search]);
 
   const refresh = useCallback(() => {
     if (!organizationId) return;
@@ -53,16 +67,36 @@ const BillOfMaterials = () => {
 
   return (
     <>
-      <PageHeader icon={<BuildOutlined />} title={<Trans>Bill of Materials</Trans>} />
+      <PageHeader
+        icon={<BuildOutlined />}
+        title={<Trans>Bill of Materials</Trans>}
+        search={{
+          placeholder: t`Search by name or SKU`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+        }}
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate("/bill-of-materials", { state: { bomModal: true } })}
+          >
+            <Trans>New recipe</Trans>
+          </Button>
+        }
+      />
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
-            dataSource={finishedProducts}
+            dataSource={filteredProducts}
             rowKey="id"
             loading={loading}
             pagination={{ pageSize: 25, hideOnSinglePage: true }}
             locale={{
-              emptyText: (
+              emptyText: search ? (
+                <Trans>No finished-good products match "{search}"</Trans>
+              ) : (
                 <Trans>
                   No finished-good products yet — set a product's category to "Finished good" to
                   define a recipe for it.

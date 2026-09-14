@@ -398,19 +398,19 @@ msgstr "Bill"
 msgid "Bill From"
 msgstr "Bill From"
 
-#: src/components/products/bom-editor-drawer.tsx:95
+#: src/components/products/bom-editor-drawer.tsx:118
 #: src/components/products/form.tsx:458
 #: src/layouts/base.tsx:541
-#: src/routes/bill-of-materials.tsx:54
+#: src/routes/bill-of-materials.tsx:72
 msgid "Bill of Materials"
 msgstr "Bill of Materials"
 
 #. placeholder {0}: product.name
-#: src/components/products/bom-editor-drawer.tsx:93
+#: src/components/products/bom-editor-drawer.tsx:116
 msgid "Bill of Materials — {0}"
 msgstr "Bill of Materials — {0}"
 
-#: src/components/products/bom-editor-drawer.tsx:79
+#: src/components/products/bom-editor-drawer.tsx:102
 msgid "Bill of materials saved"
 msgstr "Bill of materials saved"
 
@@ -473,7 +473,7 @@ msgstr "Canary Islands general indirect tax"
 #: src/components/organizations/organization-edit-drawer.tsx:120
 #: src/components/payment-terms/form.tsx:107
 #: src/components/payments/payment-panel.tsx:289
-#: src/components/products/bom-editor-drawer.tsx:105
+#: src/components/products/bom-editor-drawer.tsx:128
 #: src/components/products/form.tsx:232
 #: src/components/stock/movement-form.tsx:119
 #: src/components/stock/serial-capture-modal.tsx:96
@@ -711,7 +711,7 @@ msgstr "Component / intermediate"
 msgid "Component is required"
 msgstr "Component is required"
 
-#: src/routes/bill-of-materials.tsx:85
+#: src/routes/bill-of-materials.tsx:121
 msgid "Components"
 msgstr "Components"
 
@@ -1724,7 +1724,7 @@ msgstr "Failed to remove member"
 msgid "Failed to reverse journal entry"
 msgstr "Failed to reverse journal entry"
 
-#: src/components/products/bom-editor-drawer.tsx:83
+#: src/components/products/bom-editor-drawer.tsx:106
 #: src/components/products/form.tsx:182
 msgid "Failed to save bill of materials"
 msgstr "Failed to save bill of materials"
@@ -1824,6 +1824,10 @@ msgstr "Filter by reference"
 #: src/routes/products.tsx:245
 msgid "Finished good"
 msgstr "Finished good"
+
+#: src/components/products/bom-editor-drawer.tsx:145
+msgid "Finished product"
+msgstr "Finished product"
 
 #: src/atoms/fiscal-period.ts:79
 msgid "Fiscal period created"
@@ -2508,7 +2512,7 @@ msgstr "Movement"
 #: src/routes/accounting/fiscal-periods.tsx:326
 #: src/routes/accounting/journals.tsx:84
 #: src/routes/accounting/trial-balance.tsx:139
-#: src/routes/bill-of-materials.tsx:76
+#: src/routes/bill-of-materials.tsx:112
 #: src/routes/clients.tsx:83
 #: src/routes/organizations/new.tsx:63
 #: src/routes/products.tsx:208
@@ -2626,6 +2630,10 @@ msgstr "New product"
 msgid "New purchase order"
 msgstr "New purchase order"
 
+#: src/routes/bill-of-materials.tsx:85
+msgid "New recipe"
+msgstr "New recipe"
+
 #: src/components/stock/movement-form.tsx:211
 msgid "New stock count"
 msgstr "New stock count"
@@ -2684,7 +2692,11 @@ msgstr "Next run: {nextRunLabel}"
 msgid "No"
 msgstr "No"
 
-#: src/routes/bill-of-materials.tsx:64
+#: src/routes/bill-of-materials.tsx:98
+msgid "No finished-good products match \"{search}\""
+msgstr "No finished-good products match \"{search}\""
+
+#: src/routes/bill-of-materials.tsx:100
 msgid "No finished-good products yet — set a product's category to \"Finished good\" to define a recipe for it."
 msgstr "No finished-good products yet — set a product's category to \"Finished good\" to define a recipe for it."
 
@@ -2729,7 +2741,7 @@ msgstr "No purchase orders linked to this shipment yet."
 msgid "No purchases in this period"
 msgstr "No purchases in this period"
 
-#: src/routes/bill-of-materials.tsx:93
+#: src/routes/bill-of-materials.tsx:129
 msgid "No recipe defined yet"
 msgstr "No recipe defined yet"
 
@@ -2773,7 +2785,7 @@ msgstr "No vendor"
 #: src/components/organizations/organization-edit-drawer.tsx:714
 #: src/components/tax-rates/form.tsx:262
 #: src/components/tax-rates/form.tsx:281
-#: src/routes/bill-of-materials.tsx:94
+#: src/routes/bill-of-materials.tsx:130
 #: src/routes/purchase-orders/details.tsx:378
 msgid "None"
 msgstr "None"
@@ -2843,7 +2855,7 @@ msgstr "On hand"
 msgid "On this invoice"
 msgstr "On this invoice"
 
-#: src/components/products/bom-editor-drawer.tsx:117
+#: src/components/products/bom-editor-drawer.tsx:163
 msgid "Only a \"Finished good\" product can have a bill of materials — change this product's category first."
 msgstr "Only a \"Finished good\" product can have a bill of materials — change this product's category first."
 
@@ -3199,6 +3211,10 @@ msgstr "Permanently delete this organization's data without deleting the organiz
 #: src/routes/vendors.tsx:121
 msgid "Phone"
 msgstr "Phone"
+
+#: src/components/products/bom-editor-drawer.tsx:159
+msgid "Pick a finished product above to define its recipe."
+msgstr "Pick a finished product above to define its recipe."
 
 #: src/utils/units.ts:36
 msgid "piece"
@@ -3873,7 +3889,7 @@ msgstr "Sales by Product"
 #: src/components/imports/form.tsx:243
 #: src/components/organizations/organization-edit-drawer.tsx:123
 #: src/components/payment-terms/form.tsx:110
-#: src/components/products/bom-editor-drawer.tsx:108
+#: src/components/products/bom-editor-drawer.tsx:136
 #: src/components/products/form.tsx:235
 #: src/components/stock/movement-form.tsx:122
 #: src/components/tax-rates/form.tsx:165
@@ -3931,6 +3947,10 @@ msgstr "Schedule saved"
 msgid "Search"
 msgstr "Search"
 
+#: src/routes/bill-of-materials.tsx:74
+msgid "Search by name or SKU"
+msgstr "Search by name or SKU"
+
 #: src/routes/inventory.tsx:263
 msgid "Search products"
 msgstr "Search products"
@@ -3948,6 +3968,10 @@ msgstr "Search text"
 #: src/components/vendors/form.tsx:238
 msgid "Select a country"
 msgstr "Select a country"
+
+#: src/components/products/bom-editor-drawer.tsx:150
+msgid "Select a finished product"
+msgstr "Select a finished product"
 
 #: src/routes/accounting/reports/profit-and-loss.tsx:81
 #: src/routes/settings/gl-export.tsx:80
@@ -4127,7 +4151,7 @@ msgstr "Skip to main content"
 msgid "SKR03/SKR04-style numeric account code for the DATEV export's \"Konto\" column. Required on every account referenced by a posted entry before a DATEV export can be generated."
 msgstr "SKR03/SKR04-style numeric account code for the DATEV export's \"Konto\" column. Required on every account referenced by a posted entry before a DATEV export can be generated."
 
-#: src/routes/bill-of-materials.tsx:77
+#: src/routes/bill-of-materials.tsx:113
 #: src/routes/inventory.tsx:291
 #: src/routes/products.tsx:254
 msgid "SKU"
@@ -4554,7 +4578,7 @@ msgstr "Unclassified"
 
 #: src/components/line-items/table.tsx:308
 #: src/components/products/form.tsx:429
-#: src/routes/bill-of-materials.tsx:79
+#: src/routes/bill-of-materials.tsx:115
 msgid "Unit"
 msgstr "Unit"
 

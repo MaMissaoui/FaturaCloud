@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Button, Drawer, Empty, Form, Space } from "antd";
+import { Button, Drawer, Empty, Form, Select, Space } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -19,17 +19,24 @@ import BOMFields from "src/components/products/bom-fields";
 // PUT /products/{id}/bom, rather than bundled into a product-wide save —
 // this is the one place a bill of materials is actually maintained now;
 // see BOMFields' own comment for why the row UI itself isn't duplicated.
+//
+// The list page's "New recipe" button opens this same drawer with no
+// `productId` in state — `pickedProductId` covers that case with an
+// in-drawer product picker, so there's no separate "create" component or
+// route, just this drawer's edit flow one step earlier.
 const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [pickedProductId, setPickedProductId] = useState<string | null>(null);
 
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
 
   const isVisible = get(location.state, "bomModal", false);
-  const productId: string | null = get(location.state, "productId", null);
+  const routeProductId: string | null = get(location.state, "productId", null);
+  const productId = routeProductId ?? pickedProductId;
 
   const product = useMemo(
     () => (productId ? (products.find((p) => p.id === productId) ?? null) : null),
@@ -44,9 +51,24 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
     [products],
   );
 
+  const finishedProductOptions = useMemo(
+    () =>
+      products
+        .filter((p) => p.category === "finished")
+        .map((p) => ({ value: p.id, label: p.sku ? `${p.name} (${p.sku})` : p.name })),
+    [products],
+  );
+
   useEffect(() => {
     if (isVisible) setProducts();
   }, [isVisible, setProducts]);
+
+  // Reset the picker each time the drawer opens fresh (routeProductId only
+  // set once, on the navigate() call that opened it) so a previous "New
+  // recipe" pick doesn't leak into the next time it's opened that way.
+  useEffect(() => {
+    if (isVisible && !routeProductId) setPickedProductId(null);
+  }, [isVisible, routeProductId]);
 
   useEffect(() => {
     if (isVisible && productId) {
@@ -66,6 +88,7 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
 
   const handleClose = () => {
     form.resetFields();
+    setPickedProductId(null);
     navigate(location.pathname, { state: { bomModal: false } });
   };
 
@@ -107,7 +130,7 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
           <Button
             type="primary"
             loading={submitting}
-            disabled={!!product && product.category !== "finished"}
+            disabled={!productId || (!!product && product.category !== "finished")}
             onClick={() => form.submit()}
           >
             <Trans>Save</Trans>
@@ -116,7 +139,25 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
       }
     >
       <ScrollShadow>
-        {product && product.category !== "finished" ? (
+        {!routeProductId && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>
+              <Trans>Finished product</Trans>
+            </div>
+            <Select
+              showSearch
+              style={{ width: "100%" }}
+              placeholder={t`Select a finished product`}
+              optionFilterProp="label"
+              options={finishedProductOptions}
+              value={pickedProductId ?? undefined}
+              onChange={setPickedProductId}
+            />
+          </div>
+        )}
+        {!productId ? (
+          <Empty description={<Trans>Pick a finished product above to define its recipe.</Trans>} />
+        ) : product && product.category !== "finished" ? (
           <Empty
             description={
               <Trans>
