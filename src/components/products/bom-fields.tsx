@@ -21,8 +21,15 @@ const BOMFields = ({
     {(fields, { add, remove }) => (
       <>
         {fields.map(({ key, name, ...restField }) => (
-          <Row key={key} gutter={[8, 0]} align="middle" style={{ marginBottom: 8 }}>
-            <Col flex="auto">
+          // wrap={false} + the Select column's minWidth: 0 are both load-bearing:
+          // a long component label (name + SKU, worse once translated — German
+          // routinely runs longer than English) sizes the Select's intrinsic
+          // content wider than the row, and a flex column's default min-width is
+          // its content size, not 0 — without minWidth: 0 the row silently wraps,
+          // orphaning the delete button onto its own line below the qty input
+          // instead of letting the Select itself truncate with an ellipsis.
+          <Row key={key} gutter={[8, 0]} align="middle" wrap={false} style={{ marginBottom: 8 }}>
+            <Col flex="auto" style={{ minWidth: 0 }}>
               <Form.Item
                 {...restField}
                 name={[name, "componentProductId"]}
@@ -31,6 +38,7 @@ const BOMFields = ({
               >
                 <Select
                   showSearch
+                  style={{ width: "100%" }}
                   placeholder={t`Select component`}
                   optionFilterProp="label"
                   options={componentOptions}
