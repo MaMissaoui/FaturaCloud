@@ -1,0 +1,109 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { Badge, Col, Row, Table, Tooltip } from "antd";
+import { useAtomValue, useSetAtom } from "jotai";
+import { Trans } from "@lingui/react/macro";
+import { t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react";
+import { BuildOutlined } from "@ant-design/icons";
+
+import type { Product } from "src/types/models";
+import { organizationIdAtom } from "src/atoms/organization";
+import { productsAtom, setProductsAtom } from "src/atoms/product";
+import { GetBOMSummaries } from "src/api";
+import BOMEditorDrawer from "src/components/products/bom-editor-drawer";
+import PageHeader from "src/components/page-header";
+import { unitLabel } from "src/utils/units";
+
+// A focused surface for maintaining a finished product's recipe — the
+// product edit drawer (src/components/products/form.tsx) still has the
+// same "Bill of Materials" card for editing one while already in that
+// record, but this is the one place to see every finished product's
+// recipe status at a glance (which ones still have none defined, most
+// useful right after a batch of new finished goods is created) and jump
+// straight into editing without opening the full product form first.
+const BillOfMaterials = () => {
+  useLingui();
+  const navigate = useNavigate();
+  const organizationId = useAtomValue(organizationIdAtom);
+  const products = useAtomValue(productsAtom);
+  const setProducts = useSetAtom(setProductsAtom);
+
+  const [summaries, setSummaries] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+
+  const finishedProducts = useMemo(
+    () => products.filter((p) => p.category === "finished"),
+    [products],
+  );
+
+  const refresh = useCallback(() => {
+    if (!organizationId) return;
+    setLoading(true);
+    Promise.all([setProducts(), GetBOMSummaries(organizationId)])
+      .then(([, rows]) => {
+        setSummaries(Object.fromEntries(rows.map((r) => [r.finishedProductId, r.componentCount])));
+      })
+      .finally(() => setLoading(false));
+  }, [organizationId, setProducts]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return (
+    <>
+      <PageHeader icon={<BuildOutlined />} title={<Trans>Bill of Materials</Trans>} />
+      <Row style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Table
+            dataSource={finishedProducts}
+            rowKey="id"
+            loading={loading}
+            pagination={{ pageSize: 25, hideOnSinglePage: true }}
+            locale={{
+              emptyText: (
+                <Trans>
+                  No finished-good products yet — set a product's category to "Finished good" to
+                  define a recipe for it.
+                </Trans>
+              ),
+            }}
+            onRow={(record: Product) => ({
+              onClick: () =>
+                navigate("/bill-of-materials", { state: { bomModal: true, productId: record.id } }),
+              style: { cursor: "pointer" },
+            })}
+          >
+            <Table.Column title={<Trans>Name</Trans>} dataIndex="name" key="name" />
+            <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" />
+            <Table.Column
+              title={<Trans>Unit</Trans>}
+              dataIndex="unit"
+              key="unit"
+              render={(unit: string | null) => (unit ? unitLabel(unit) : "—")}
+            />
+            <Table.Column
+              title={<Trans>Components</Trans>}
+              key="components"
+              align="center"
+              render={(p: Product) => {
+                const count = summaries[p.id] ?? 0;
+                return count > 0 ? (
+                  <Badge status="success" text={count} />
+                ) : (
+                  <Tooltip title={t`No recipe defined yet`}>
+                    <Badge status="warning" text={t`None`} />
+                  </Tooltip>
+                );
+              }}
+            />
+          </Table>
+        </Col>
+      </Row>
+      <BOMEditorDrawer onSaved={refresh} />
+    </>
+  );
+};
+
+export default BillOfMaterials;

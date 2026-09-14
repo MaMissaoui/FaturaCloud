@@ -401,6 +401,7 @@ var crossOrgProof = []struct {
 	{name: "delete payment term by id", method: http.MethodDelete, path: "/api/payment-terms/org-a-payment-term"},
 
 	{name: "list products by org path", method: http.MethodGet, path: "/api/organizations/org-a/products"},
+	{name: "bom summaries by org path", method: http.MethodGet, path: "/api/organizations/org-a/products/bom-summaries"},
 	{name: "get product by id", method: http.MethodGet, path: "/api/products/org-a-product"},
 	{name: "product stock movements", method: http.MethodGet, path: "/api/products/org-a-product/stock-movements"},
 	{name: "product serial numbers", method: http.MethodGet, path: "/api/products/org-a-product/serial-numbers"},

@@ -28,6 +28,7 @@ import {
   LogoutOutlined,
   UserOutlined,
   ApartmentOutlined,
+  BuildOutlined,
   SunOutlined,
   MoonOutlined,
   GlobalOutlined,
@@ -179,7 +180,13 @@ export default function BaseLayout() {
       "inbound-deliveries",
       "incoming-invoices",
     ];
-    const masterDataSections = ["clients", "vendors", "products", "organizations"];
+    const masterDataSections = [
+      "clients",
+      "vendors",
+      "products",
+      "bill-of-materials",
+      "organizations",
+    ];
     if (salesSections.includes(section)) {
       openKeys = ["group-sales"];
     } else if (purchasingSections.includes(section)) {
@@ -526,6 +533,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "products",
+                },
+                {
+                  icon: <BuildOutlined />,
+                  label: (
+                    <Link to="/bill-of-materials">
+                      <Trans>Bill of Materials</Trans>
+                    </Link>
+                  ),
+                  key: "bill-of-materials",
                 },
                 {
                   icon: <ApartmentOutlined />,

@@ -416,6 +416,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		return product.OrganizationID, nil
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products", pathOrgID("orgId"), h.listProducts)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/products/bom-summaries", pathOrgID("orgId"), h.listBOMSummaries)
 	protected("POST", "/api/products", h.createProduct)
 	orgMemberProtected("GET", "/api/products/{id}", productOrgID, h.getProduct)
 	orgMemberProtected("PUT", "/api/products/{id}", productOrgID, h.updateProduct)

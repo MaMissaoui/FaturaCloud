@@ -148,6 +148,38 @@ func TestReplaceBillOfMaterialsRejectsCrossOrgComponent(t *testing.T) {
 	}
 }
 
+func TestGetBillOfMaterialsSummaries(t *testing.T) {
+	t.Parallel()
+	d, orgID, finished, componentA, componentB := newBOMTestFixture(t)
+
+	// A second "finished" product with no BOM defined yet — proves it gets
+	// no entry in the summary rather than a spurious zero-count row.
+	finishedCategory := "finished"
+	if _, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: orgID, Name: "Scooter", Type: "product", Price: 50000, Category: &finishedCategory,
+	}); err != nil {
+		t.Fatalf("CreateProduct secondFinished: %v", err)
+	}
+
+	if _, err := d.ReplaceBillOfMaterials(finished.ID, []CreateBillOfMaterialsLineRequest{
+		{ComponentProductID: componentA.ID, QuantityPerUnit: 1},
+		{ComponentProductID: componentB.ID, QuantityPerUnit: 2},
+	}); err != nil {
+		t.Fatalf("ReplaceBillOfMaterials finished: %v", err)
+	}
+
+	summaries, err := d.GetBillOfMaterialsSummaries(orgID)
+	if err != nil {
+		t.Fatalf("GetBillOfMaterialsSummaries: %v", err)
+	}
+	if len(summaries) != 1 {
+		t.Fatalf("expected 1 summary (secondFinished has no BOM), got %d: %+v", len(summaries), summaries)
+	}
+	if summaries[0].FinishedProductID != finished.ID || summaries[0].ComponentCount != 2 {
+		t.Errorf("summary = %+v, want finishedProductId=%q componentCount=2", summaries[0], finished.ID)
+	}
+}
+
 func TestReplaceBillOfMaterialsRejectsDuplicateOrInvalidQuantity(t *testing.T) {
 	t.Parallel()
 	d, _, finished, componentA, _ := newBOMTestFixture(t)
