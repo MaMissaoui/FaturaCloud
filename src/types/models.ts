@@ -96,6 +96,43 @@ export interface BOMVersionDetail extends BOMVersion {
   lines: BOMVersionLine[];
 }
 
+// Consumes a finished product's BOM (snapshotted into componentLines at
+// creation) and produces finished units — see db/production_order.go.
+export interface ProductionOrder {
+  id: string;
+  organizationId: string;
+  orderNumber: string;
+  status: string;
+  // Nullable — see BillOfMaterialsLine's identical convention: deleting a
+  // product never fails elsewhere in this app, so this order stays readable
+  // (via finishedProductName) even after its product is gone.
+  finishedProductId: string | null;
+  finishedProductName: string;
+  quantity: number;
+  date: number;
+  importId: string | null;
+  notes: string | null;
+  createdAt: number;
+  // Joined — the finished product's current serialized flag (0/1/null), and
+  // the linked import's number for display.
+  serialized: number | null;
+  importNumber: string | null;
+}
+
+// One snapshotted BOM line — the recipe as it stood when the order was
+// created, not a live reference to the product's current BOM.
+export interface ProductionOrderComponentLine {
+  id: string;
+  productionOrderId: string;
+  componentProductId: string | null;
+  componentName: string;
+  quantityPerUnit: number;
+  totalQuantity: number;
+  createdAt: string | null;
+  componentSku: string | null;
+  componentUnit: string | null;
+}
+
 export interface SerialNumber {
   id: string;
   organizationId: string;

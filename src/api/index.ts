@@ -31,6 +31,8 @@ import type {
   BOMSummary,
   BOMVersion,
   BOMVersionDetail,
+  ProductionOrder,
+  ProductionOrderComponentLine,
   Account,
   Journal,
   FiscalYear,
@@ -896,6 +898,27 @@ export const UpdateInboundDeliveryStatus = (
 ) => patch<InboundDelivery>(`/inbound-deliveries/${id}/status`, { status, serialNumbers });
 export const DeleteInboundDelivery = (id: string) =>
   del<{ deleted: boolean }>(`/inbound-deliveries/${id}`).then((r) => r.deleted);
+
+// ---- Production Orders (consume a finished product's BOM, produce finished units) ----
+
+export const GetProductionOrders = (organizationId: string) =>
+  get<ProductionOrder[]>(`/organizations/${organizationId}/production-orders`);
+export const GetNextProductionOrderNumber = (organizationId: string) =>
+  get<{ number: string }>(`/organizations/${organizationId}/production-orders/next-number`).then(
+    (r) => r.number,
+  );
+export const GetProductionOrder = (id: string) => get<ProductionOrder>(`/production-orders/${id}`);
+export const GetProductionOrderComponentLines = (id: string) =>
+  get<ProductionOrderComponentLine[]>(`/production-orders/${id}/component-lines`);
+export const CreateProductionOrder = (req: unknown) =>
+  post<ProductionOrder>("/production-orders", req);
+// serialNumbers is required (exactly matching quantity, no duplicates) when
+// the finished product is serialized and this transitions draft->completed;
+// ignored otherwise.
+export const UpdateProductionOrderStatus = (id: string, status: string, serialNumbers?: string[]) =>
+  patch<ProductionOrder>(`/production-orders/${id}/status`, { status, serialNumbers });
+export const DeleteProductionOrder = (id: string) =>
+  del<{ deleted: boolean }>(`/production-orders/${id}`).then((r) => r.deleted);
 
 // ---- Incoming Invoices (vendor bills) ----
 
