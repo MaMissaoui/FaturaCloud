@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { Card, Col, Row, Select, Statistic, Table, theme } from "antd";
 import { Column } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
@@ -20,6 +21,18 @@ import type {
 import PageHeader from "src/components/page-header";
 
 const MONTH_OPTIONS = [3, 6, 12, 24];
+
+// The "Outstanding invoices" card packs 5 Statistics into a half-width
+// column — antd's Statistic value has no wrap/overflow handling of its own,
+// so a large organization's real total (e.g. "TND 4,515,363.83") overflowed
+// horizontally straight into the next column's value instead of wrapping.
+// Module-level (not inline) so the object is referentially stable across
+// renders, same reasoning as orders/details.tsx's getOrderStatusColor.
+const outstandingStatisticStyle: CSSProperties = {
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  fontSize: 18,
+};
 
 // A rolling window ("m12") or a calendar year ("y2026") in one Select —
 // years are generated at render time (not a fixed list) so "current
@@ -165,37 +178,42 @@ const Dashboard = () => {
       <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} xl={12}>
           <Card size="small" title={<Trans>Outstanding invoices</Trans>} loading={loading}>
-            <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
-              <Col span={8}>
+            <Row gutter={[8, 12]} style={{ marginBottom: 12 }}>
+              <Col xs={12} sm={8}>
                 <Statistic
                   title={<Trans>Current</Trans>}
                   value={money(data?.outstanding.current ?? 0)}
+                  styles={{ content: outstandingStatisticStyle }}
                 />
               </Col>
-              <Col span={8}>
+              <Col xs={12} sm={8}>
                 <Statistic
                   title={<Trans>1-30 days</Trans>}
                   value={money(data?.outstanding.days1To30 ?? 0)}
+                  styles={{ content: outstandingStatisticStyle }}
                 />
               </Col>
-              <Col span={8}>
+              <Col xs={12} sm={8}>
                 <Statistic
                   title={<Trans>31-60 days</Trans>}
                   value={money(data?.outstanding.days31To60 ?? 0)}
+                  styles={{ content: outstandingStatisticStyle }}
                 />
               </Col>
-              <Col span={8}>
+              <Col xs={12} sm={8}>
                 <Statistic
                   title={<Trans>61-90 days</Trans>}
                   value={money(data?.outstanding.days61To90 ?? 0)}
+                  styles={{ content: outstandingStatisticStyle }}
                 />
               </Col>
-              <Col span={8}>
+              <Col xs={12} sm={8}>
                 <Statistic
                   title={<Trans>90+ days</Trans>}
                   value={money(data?.outstanding.days90Plus ?? 0)}
                   styles={{
                     content: {
+                      ...outstandingStatisticStyle,
                       color: (data?.outstanding.days90Plus ?? 0) > 0 ? token.colorError : undefined,
                     },
                   }}
