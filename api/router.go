@@ -302,6 +302,24 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// point orgAdminProtected/the invoice export route already use.
 	mux.Handle("GET /api/inbound-deliveries/{id}/export", auth(h.orgMember(inboundDeliveryOrgID)(csrf(limitBody(defaultMaxBody, h.exportInboundDeliveryDocument)))))
 
+	// Production orders — consume a finished product's Bill of Materials
+	// (see api/products.go's BOM sub-routes below) and produce finished
+	// units (db/production_order.go).
+	productionOrderOrgID := func(r *http.Request) (string, error) {
+		order, err := h.db.GetProductionOrder(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return order.OrganizationID, nil
+	}
+	orgMemberProtected("GET", "/api/organizations/{orgId}/production-orders", pathOrgID("orgId"), h.listProductionOrders)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/production-orders/next-number", pathOrgID("orgId"), h.nextProductionOrderNumber)
+	protected("POST", "/api/production-orders", h.createProductionOrder)
+	orgMemberProtected("GET", "/api/production-orders/{id}", productionOrderOrgID, h.getProductionOrder)
+	orgMemberProtected("GET", "/api/production-orders/{id}/component-lines", productionOrderOrgID, h.getProductionOrderComponentLines)
+	orgMemberProtected("PATCH", "/api/production-orders/{id}/status", productionOrderOrgID, h.updateProductionOrderStatus)
+	orgMemberProtected("DELETE", "/api/production-orders/{id}", productionOrderOrgID, h.deleteProductionOrder)
+
 	// Incoming invoices (vendor bills)
 	// incomingInvoiceOrgID resolves an incoming-invoice route's {id} to its
 	// owning organization by reusing GetIncomingInvoice — same shape as

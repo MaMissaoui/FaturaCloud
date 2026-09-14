@@ -1158,3 +1158,62 @@ func buildStockAdjustmentGLLines(
 		{AccountID: *org.DefaultInventoryAccountID, Credit: -netCents},
 	}, journal, nil
 }
+
+// buildProductionOrderGLLines posts the rounding residual, if any, between
+// what a production order's consumed components cost (componentsCostTotal)
+// and what its produced finished units are actually valued at in the stock
+// ledger (producedValueCents — the finished product's per-unit
+// stockMovements.unitCost, itself rounded to the nearest cent, times the
+// quantity produced).
+//
+// In the exact-division case (componentsCostTotal divides evenly by
+// quantity) the two are equal and this posts nothing at all: Dr Inventory
+// (finished good in) and Cr Inventory (components out) are the *same*
+// account, so a value-neutral transformation nets to zero and, per the
+// journal_lines CHECK and this file's "a zero-amount group emits no row"
+// rule (see buildInvoiceGLLines), no entry is created — the normal case for
+// most production orders. When the division isn't exact,
+// stockMovements.unitCost (an integer-cents-per-unit column) can't carry
+// the full precision of componentsCostTotal/quantity, so the value that
+// actually enters the ledger for the finished good differs from
+// componentsCostTotal by a few cents. That residual still has to be posted
+// somewhere, or the GL would silently disagree with what
+// GetInventoryValuation independently recomputes from stockMovements —
+// posted here against defaultInventoryAdjustmentAccountId, the exact same
+// signed-net shape buildStockAdjustmentGLLines already uses (positive = net
+// debit to Inventory, negative = net credit).
+func buildProductionOrderGLLines(d *Database, order *ProductionOrder, componentsCostTotal, producedValueCents int64) ([]CreateJournalLineRequest, *Journal, error) {
+	netCents := producedValueCents - componentsCostTotal
+	if netCents == 0 {
+		return nil, nil, nil
+	}
+
+	org, err := d.GetOrganization(order.OrganizationID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("build_production_order_gl_lines organization: %w", err)
+	}
+	if org.DefaultInventoryAccountID == nil {
+		return nil, nil, newValidationError("cannot complete production order: organization has no default Inventory account configured")
+	}
+	if org.DefaultInventoryAdjustmentAccountID == nil {
+		return nil, nil, newValidationError("cannot complete production order: organization has no default Inventory Adjustment account configured")
+	}
+
+	// Mirrors buildStockAdjustmentGLLines' use of the miscellaneous journal
+	// — a production order has no natural sales/purchases counterpart.
+	journal, err := getJournalByTypeTx(d.DB, order.OrganizationID, "miscellaneous")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if netCents > 0 {
+		return []CreateJournalLineRequest{
+			{AccountID: *org.DefaultInventoryAccountID, Debit: netCents},
+			{AccountID: *org.DefaultInventoryAdjustmentAccountID, Credit: netCents},
+		}, journal, nil
+	}
+	return []CreateJournalLineRequest{
+		{AccountID: *org.DefaultInventoryAdjustmentAccountID, Debit: -netCents},
+		{AccountID: *org.DefaultInventoryAccountID, Credit: -netCents},
+	}, journal, nil
+}

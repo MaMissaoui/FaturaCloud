@@ -246,9 +246,12 @@ func (d *Database) UpdateImport(id string, updates UpdateImportRequest) (*Import
 }
 
 // ErrImportInUse is returned by DeleteImport when the import is still
-// referenced by a purchase order. Deleting it anyway would either fail on a
-// foreign key or orphan that order's landed cost allocation.
-var ErrImportInUse = errors.New("import is still referenced by one or more purchase orders")
+// referenced by a purchase order or a production order. Deleting it anyway
+// would either fail on a foreign key (purchase orders) or orphan a
+// completed order's landed cost allocation / serial-range provenance
+// (production orders — db/production_order.go, importId has the identical
+// no-ON-DELETE-clause precedent as purchase_orders.importId).
+var ErrImportInUse = errors.New("import is still referenced by one or more purchase orders or production orders")
 
 func (d *Database) GetImportPurchaseOrderCount(importID string) (int64, error) {
 	var count int64
@@ -260,12 +263,28 @@ func (d *Database) GetImportPurchaseOrderCount(importID string) (int64, error) {
 	return count, nil
 }
 
+// GetImportProductionOrderCount is GetImportPurchaseOrderCount's production-order
+// counterpart — see ErrImportInUse.
+func (d *Database) GetImportProductionOrderCount(importID string) (int64, error) {
+	var count int64
+	if err := d.DB.Get(&count,
+		`SELECT COUNT(*) FROM production_orders WHERE importId = ?`, importID,
+	); err != nil {
+		return 0, fmt.Errorf("get_import_production_order_count: %w", err)
+	}
+	return count, nil
+}
+
 func (d *Database) DeleteImport(id string) (bool, error) {
-	count, err := d.GetImportPurchaseOrderCount(id)
+	poCount, err := d.GetImportPurchaseOrderCount(id)
 	if err != nil {
 		return false, err
 	}
-	if count > 0 {
+	productionCount, err := d.GetImportProductionOrderCount(id)
+	if err != nil {
+		return false, err
+	}
+	if poCount > 0 || productionCount > 0 {
 		return false, ErrImportInUse
 	}
 
