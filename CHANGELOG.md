@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.6] - 2026-09-14
+
+### Added
+- A dedicated "Bill of Materials" screen (Master Data, next to Products)
+  listing every finished-good product with its component count, flagged
+  when a recipe is still missing — click through to a focused drawer to
+  define or edit just that recipe, without opening the full product
+  form. The product edit drawer keeps its own "Bill of Materials" card
+  too, now with a link over to this screen.
+
+### Fixed
+- Dashboard "Outstanding invoices" card: the five summary figures
+  (Current, 1-30/31-60/61-90/90+ days) could overflow horizontally into
+  each other for a large organization's totals instead of wrapping.
+
 ## [3.19.5] - 2026-09-14
 
 ### Added
