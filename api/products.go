@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 
@@ -115,13 +116,50 @@ func (h *handler) getProductBOM(w http.ResponseWriter, r *http.Request) {
 func (h *handler) replaceProductBOM(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var body struct {
-		Lines []db.CreateBillOfMaterialsLineRequest `json:"lines"`
+		Lines     []db.CreateBillOfMaterialsLineRequest `json:"lines"`
+		BatchSize int                                   `json:"batchSize"`
 	}
 	if err := decodeJSON(w, r, &body); err != nil {
 		return
 	}
-	lines, err := h.db.ReplaceBillOfMaterials(id, body.Lines)
+	lines, err := h.db.ReplaceBillOfMaterials(id, body.Lines, body.BatchSize)
 	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, lines)
+}
+
+func (h *handler) listProductBOMVersions(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	versions, err := h.db.GetBillOfMaterialsVersions(id)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, versions)
+}
+
+func (h *handler) getProductBOMVersion(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	versionID := r.PathValue("versionId")
+	detail, err := h.db.GetBillOfMaterialsVersionDetail(id, versionID)
+	if err != nil {
+		writeDBError(w, err, "bill of materials version not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, detail)
+}
+
+func (h *handler) restoreProductBOMVersion(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	versionID := r.PathValue("versionId")
+	lines, err := h.db.RestoreBillOfMaterialsVersion(id, versionID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "bill of materials version not found")
+			return
+		}
 		writeMutationError(w, err)
 		return
 	}

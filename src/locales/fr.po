@@ -153,7 +153,7 @@ msgstr ""
 msgid "Add a new organization to your account"
 msgstr "Ajouter une nouvelle organisation à votre compte"
 
-#: src/components/products/bom-fields.tsx:56
+#: src/components/products/bom-fields.tsx:64
 msgid "Add component"
 msgstr ""
 
@@ -390,6 +390,10 @@ msgstr "Coordonnées bancaires"
 msgid "Base"
 msgstr "Base"
 
+#: src/components/products/bom-editor-drawer.tsx:362
+msgid "Batch size"
+msgstr "Taille du lot"
+
 #: src/routes/accounting/reports/ap-aging.tsx:97
 msgid "Bill"
 msgstr "Facture"
@@ -398,7 +402,7 @@ msgstr "Facture"
 msgid "Bill From"
 msgstr "Facturé par"
 
-#: src/components/products/bom-editor-drawer.tsx:118
+#: src/components/products/bom-editor-drawer.tsx:244
 #: src/components/products/form.tsx:458
 #: src/layouts/base.tsx:541
 #: src/routes/bill-of-materials.tsx:72
@@ -406,11 +410,11 @@ msgid "Bill of Materials"
 msgstr "Nomenclature"
 
 #. placeholder {0}: product.name
-#: src/components/products/bom-editor-drawer.tsx:116
+#: src/components/products/bom-editor-drawer.tsx:242
 msgid "Bill of Materials — {0}"
 msgstr "Nomenclature — {0}"
 
-#: src/components/products/bom-editor-drawer.tsx:102
+#: src/components/products/bom-editor-drawer.tsx:198
 msgid "Bill of materials saved"
 msgstr "Nomenclature enregistrée"
 
@@ -473,7 +477,8 @@ msgstr "Taxe générale indirecte des îles Canaries"
 #: src/components/organizations/organization-edit-drawer.tsx:120
 #: src/components/payment-terms/form.tsx:107
 #: src/components/payments/payment-panel.tsx:289
-#: src/components/products/bom-editor-drawer.tsx:128
+#: src/components/products/bom-editor-drawer.tsx:254
+#: src/components/products/bom-editor-drawer.tsx:266
 #: src/components/products/form.tsx:232
 #: src/components/stock/movement-form.tsx:119
 #: src/components/stock/serial-capture-modal.tsx:96
@@ -696,6 +701,7 @@ msgstr "Réduire la barre latérale"
 msgid "Committed value"
 msgstr ""
 
+#: src/components/products/bom-editor-drawer.tsx:347
 #: src/routes/inventory.tsx:258
 #: src/routes/inventory.tsx:303
 #: src/routes/products.tsx:249
@@ -707,7 +713,7 @@ msgstr "Composant"
 msgid "Component / intermediate"
 msgstr ""
 
-#: src/components/products/bom-fields.tsx:29
+#: src/components/products/bom-fields.tsx:36
 msgid "Component is required"
 msgstr ""
 
@@ -806,6 +812,7 @@ msgstr ""
 msgid "Currency"
 msgstr "Devise"
 
+#: src/components/products/bom-editor-drawer.tsx:316
 #: src/routes/accounting/reports/ap-aging.tsx:55
 #: src/routes/accounting/reports/ar-aging.tsx:55
 #: src/routes/dashboard.tsx:184
@@ -1720,11 +1727,15 @@ msgstr "Échec de l'enregistrement du mouvement de stock"
 msgid "Failed to remove member"
 msgstr ""
 
+#: src/components/products/bom-editor-drawer.tsx:229
+msgid "Failed to restore version"
+msgstr "Échec de la restauration de la version"
+
 #: src/atoms/journal-entry.ts:147
 msgid "Failed to reverse journal entry"
 msgstr "Échec de l'extourne de l'écriture"
 
-#: src/components/products/bom-editor-drawer.tsx:106
+#: src/components/products/bom-editor-drawer.tsx:202
 #: src/components/products/form.tsx:182
 msgid "Failed to save bill of materials"
 msgstr ""
@@ -1825,7 +1836,7 @@ msgstr "Filtrer par référence"
 msgid "Finished good"
 msgstr "Produit fini"
 
-#: src/components/products/bom-editor-drawer.tsx:145
+#: src/components/products/bom-editor-drawer.tsx:290
 msgid "Finished product"
 msgstr "Produit fini"
 
@@ -2855,7 +2866,7 @@ msgstr "En stock"
 msgid "On this invoice"
 msgstr "Sur cette facture"
 
-#: src/components/products/bom-editor-drawer.tsx:163
+#: src/components/products/bom-editor-drawer.tsx:332
 msgid "Only a \"Finished good\" product can have a bill of materials — change this product's category first."
 msgstr "Seul un produit « Produit fini » peut avoir une nomenclature — modifiez d'abord la catégorie de ce produit."
 
@@ -3212,7 +3223,7 @@ msgstr "Supprime définitivement les données de cette organisation sans supprim
 msgid "Phone"
 msgstr "Téléphone"
 
-#: src/components/products/bom-editor-drawer.tsx:159
+#: src/components/products/bom-editor-drawer.tsx:328
 msgid "Pick a finished product above to define its recipe."
 msgstr "Sélectionnez un produit fini ci-dessus pour définir sa nomenclature."
 
@@ -3543,7 +3554,8 @@ msgstr "Achats"
 msgid "Qty"
 msgstr "Qté"
 
-#: src/components/products/bom-fields.tsx:47
+#: src/components/products/bom-editor-drawer.tsx:354
+#: src/components/products/bom-fields.tsx:55
 msgid "Qty per unit"
 msgstr ""
 
@@ -3557,6 +3569,14 @@ msgstr "Qté reçue"
 msgid "Qty."
 msgstr "Qté"
 
+#: src/components/products/bom-editor-drawer.tsx:375
+msgid "Quantities below are for a batch of {batchSize} units."
+msgstr "Les quantités ci-dessous s'entendent pour un lot de {batchSize} unités."
+
+#: src/components/products/bom-editor-drawer.tsx:373
+msgid "Quantities below are per single unit."
+msgstr "Les quantités ci-dessous s'entendent par unité."
+
 #: src/routes/accounting/reports/inventory-valuation.tsx:86
 #: src/routes/dashboard.tsx:260
 #: src/routes/inventory.tsx:451
@@ -3567,7 +3587,7 @@ msgstr "Quantité"
 msgid "Quantity consumed / sold"
 msgstr "Quantité consommée / vendue"
 
-#: src/components/products/bom-fields.tsx:44
+#: src/components/products/bom-fields.tsx:52
 #: src/components/stock/movement-form.tsx:223
 msgid "Quantity is required"
 msgstr "La quantité est obligatoire"
@@ -3748,6 +3768,7 @@ msgstr "Réinitialiser les données de cette organisation ?"
 msgid "Reset to default"
 msgstr ""
 
+#: src/components/products/bom-editor-drawer.tsx:265
 #: src/routes/settings/backup.tsx:128
 #: src/routes/settings/backup.tsx:152
 #: src/routes/settings/backup.tsx:299
@@ -3771,6 +3792,14 @@ msgstr "Échec de la restauration : {0}"
 #: src/routes/settings/backup.tsx:318
 msgid "Restore from file"
 msgstr "Restaurer à partir d'un fichier"
+
+#: src/components/products/bom-editor-drawer.tsx:270
+msgid "Restore this version"
+msgstr "Restaurer cette version"
+
+#: src/components/products/bom-editor-drawer.tsx:258
+msgid "Restore this version?"
+msgstr "Restaurer cette version ?"
 
 #: src/types/order.ts:66
 #: src/types/purchase-order.ts:63
@@ -3889,7 +3918,7 @@ msgstr "Ventes par produit"
 #: src/components/imports/form.tsx:243
 #: src/components/organizations/organization-edit-drawer.tsx:123
 #: src/components/payment-terms/form.tsx:110
-#: src/components/products/bom-editor-drawer.tsx:136
+#: src/components/products/bom-editor-drawer.tsx:280
 #: src/components/products/form.tsx:235
 #: src/components/stock/movement-form.tsx:122
 #: src/components/tax-rates/form.tsx:165
@@ -3969,7 +3998,7 @@ msgstr "Rechercher du texte"
 msgid "Select a country"
 msgstr "Sélectionner un pays"
 
-#: src/components/products/bom-editor-drawer.tsx:150
+#: src/components/products/bom-editor-drawer.tsx:295
 msgid "Select a finished product"
 msgstr "Sélectionner un produit fini"
 
@@ -3991,7 +4020,7 @@ msgstr "Sélectionner un produit"
 msgid "Select an account"
 msgstr "Sélectionner un compte"
 
-#: src/components/products/bom-fields.tsx:34
+#: src/components/products/bom-fields.tsx:42
 msgid "Select component"
 msgstr ""
 
@@ -4435,6 +4464,11 @@ msgstr "Cette facture ne concorde pas avec la commande d'achat et les marchandis
 msgid "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
 msgstr "Ceci comptabilise une écriture de clôture qui transfère le résultat net (produits moins charges) vers les réserves, puis bloque définitivement toute nouvelle écriture datée dans cet exercice. Cette action est irréversible — un exercice clôturé ne peut pas être rouvert."
 
+#. placeholder {0}: viewedVersion?.versionNumber
+#: src/components/products/bom-editor-drawer.tsx:260
+msgid "This replaces the current recipe with v{0}'s components and quantities."
+msgstr "Cela remplace la recette actuelle par les composants et quantités de la v{0}."
+
 #: src/components/payments/payment-panel.tsx:262
 msgid "This reverses its journal entry and restores the balance due."
 msgstr "Cela annule son écriture comptable et rétablit le solde dû."
@@ -4782,6 +4816,10 @@ msgstr "fournisseur(s)"
 #: src/routes/vendors.tsx:59
 msgid "Vendors"
 msgstr "Fournisseurs"
+
+#: src/components/products/bom-editor-drawer.tsx:213
+msgid "Version restored"
+msgstr "Version restaurée"
 
 #: src/routes/invoices/details.tsx:344
 #~ msgid "View"

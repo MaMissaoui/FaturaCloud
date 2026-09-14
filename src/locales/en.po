@@ -153,7 +153,7 @@ msgstr "Add"
 msgid "Add a new organization to your account"
 msgstr "Add a new organization to your account"
 
-#: src/components/products/bom-fields.tsx:56
+#: src/components/products/bom-fields.tsx:64
 msgid "Add component"
 msgstr "Add component"
 
@@ -390,6 +390,10 @@ msgstr "Banking"
 msgid "Base"
 msgstr "Base"
 
+#: src/components/products/bom-editor-drawer.tsx:362
+msgid "Batch size"
+msgstr "Batch size"
+
 #: src/routes/accounting/reports/ap-aging.tsx:97
 msgid "Bill"
 msgstr "Bill"
@@ -398,7 +402,7 @@ msgstr "Bill"
 msgid "Bill From"
 msgstr "Bill From"
 
-#: src/components/products/bom-editor-drawer.tsx:118
+#: src/components/products/bom-editor-drawer.tsx:244
 #: src/components/products/form.tsx:458
 #: src/layouts/base.tsx:541
 #: src/routes/bill-of-materials.tsx:72
@@ -406,11 +410,11 @@ msgid "Bill of Materials"
 msgstr "Bill of Materials"
 
 #. placeholder {0}: product.name
-#: src/components/products/bom-editor-drawer.tsx:116
+#: src/components/products/bom-editor-drawer.tsx:242
 msgid "Bill of Materials — {0}"
 msgstr "Bill of Materials — {0}"
 
-#: src/components/products/bom-editor-drawer.tsx:102
+#: src/components/products/bom-editor-drawer.tsx:198
 msgid "Bill of materials saved"
 msgstr "Bill of materials saved"
 
@@ -473,7 +477,8 @@ msgstr "Canary Islands general indirect tax"
 #: src/components/organizations/organization-edit-drawer.tsx:120
 #: src/components/payment-terms/form.tsx:107
 #: src/components/payments/payment-panel.tsx:289
-#: src/components/products/bom-editor-drawer.tsx:128
+#: src/components/products/bom-editor-drawer.tsx:254
+#: src/components/products/bom-editor-drawer.tsx:266
 #: src/components/products/form.tsx:232
 #: src/components/stock/movement-form.tsx:119
 #: src/components/stock/serial-capture-modal.tsx:96
@@ -696,6 +701,7 @@ msgstr "Collapse sidebar"
 msgid "Committed value"
 msgstr "Committed value"
 
+#: src/components/products/bom-editor-drawer.tsx:347
 #: src/routes/inventory.tsx:258
 #: src/routes/inventory.tsx:303
 #: src/routes/products.tsx:249
@@ -707,7 +713,7 @@ msgstr "Component"
 msgid "Component / intermediate"
 msgstr "Component / intermediate"
 
-#: src/components/products/bom-fields.tsx:29
+#: src/components/products/bom-fields.tsx:36
 msgid "Component is required"
 msgstr "Component is required"
 
@@ -806,6 +812,7 @@ msgstr "Credited for the freight/customs allocated to a receipt whose purchase o
 msgid "Currency"
 msgstr "Currency"
 
+#: src/components/products/bom-editor-drawer.tsx:316
 #: src/routes/accounting/reports/ap-aging.tsx:55
 #: src/routes/accounting/reports/ar-aging.tsx:55
 #: src/routes/dashboard.tsx:184
@@ -1720,11 +1727,15 @@ msgstr "Failed to record stock movement"
 msgid "Failed to remove member"
 msgstr "Failed to remove member"
 
+#: src/components/products/bom-editor-drawer.tsx:229
+msgid "Failed to restore version"
+msgstr "Failed to restore version"
+
 #: src/atoms/journal-entry.ts:147
 msgid "Failed to reverse journal entry"
 msgstr "Failed to reverse journal entry"
 
-#: src/components/products/bom-editor-drawer.tsx:106
+#: src/components/products/bom-editor-drawer.tsx:202
 #: src/components/products/form.tsx:182
 msgid "Failed to save bill of materials"
 msgstr "Failed to save bill of materials"
@@ -1825,7 +1836,7 @@ msgstr "Filter by reference"
 msgid "Finished good"
 msgstr "Finished good"
 
-#: src/components/products/bom-editor-drawer.tsx:145
+#: src/components/products/bom-editor-drawer.tsx:290
 msgid "Finished product"
 msgstr "Finished product"
 
@@ -2855,7 +2866,7 @@ msgstr "On hand"
 msgid "On this invoice"
 msgstr "On this invoice"
 
-#: src/components/products/bom-editor-drawer.tsx:163
+#: src/components/products/bom-editor-drawer.tsx:332
 msgid "Only a \"Finished good\" product can have a bill of materials — change this product's category first."
 msgstr "Only a \"Finished good\" product can have a bill of materials — change this product's category first."
 
@@ -3212,7 +3223,7 @@ msgstr "Permanently delete this organization's data without deleting the organiz
 msgid "Phone"
 msgstr "Phone"
 
-#: src/components/products/bom-editor-drawer.tsx:159
+#: src/components/products/bom-editor-drawer.tsx:328
 msgid "Pick a finished product above to define its recipe."
 msgstr "Pick a finished product above to define its recipe."
 
@@ -3543,7 +3554,8 @@ msgstr "Purchasing"
 msgid "Qty"
 msgstr "Qty"
 
-#: src/components/products/bom-fields.tsx:47
+#: src/components/products/bom-editor-drawer.tsx:354
+#: src/components/products/bom-fields.tsx:55
 msgid "Qty per unit"
 msgstr "Qty per unit"
 
@@ -3557,6 +3569,14 @@ msgstr "Qty received"
 msgid "Qty."
 msgstr "Qty."
 
+#: src/components/products/bom-editor-drawer.tsx:375
+msgid "Quantities below are for a batch of {batchSize} units."
+msgstr "Quantities below are for a batch of {batchSize} units."
+
+#: src/components/products/bom-editor-drawer.tsx:373
+msgid "Quantities below are per single unit."
+msgstr "Quantities below are per single unit."
+
 #: src/routes/accounting/reports/inventory-valuation.tsx:86
 #: src/routes/dashboard.tsx:260
 #: src/routes/inventory.tsx:451
@@ -3567,7 +3587,7 @@ msgstr "Quantity"
 msgid "Quantity consumed / sold"
 msgstr "Quantity consumed / sold"
 
-#: src/components/products/bom-fields.tsx:44
+#: src/components/products/bom-fields.tsx:52
 #: src/components/stock/movement-form.tsx:223
 msgid "Quantity is required"
 msgstr "Quantity is required"
@@ -3748,6 +3768,7 @@ msgstr "Reset this organization's data?"
 msgid "Reset to default"
 msgstr "Reset to default"
 
+#: src/components/products/bom-editor-drawer.tsx:265
 #: src/routes/settings/backup.tsx:128
 #: src/routes/settings/backup.tsx:152
 #: src/routes/settings/backup.tsx:299
@@ -3771,6 +3792,14 @@ msgstr "Restore failed: {0}"
 #: src/routes/settings/backup.tsx:318
 msgid "Restore from file"
 msgstr "Restore from file"
+
+#: src/components/products/bom-editor-drawer.tsx:270
+msgid "Restore this version"
+msgstr "Restore this version"
+
+#: src/components/products/bom-editor-drawer.tsx:258
+msgid "Restore this version?"
+msgstr "Restore this version?"
 
 #: src/types/order.ts:66
 #: src/types/purchase-order.ts:63
@@ -3889,7 +3918,7 @@ msgstr "Sales by Product"
 #: src/components/imports/form.tsx:243
 #: src/components/organizations/organization-edit-drawer.tsx:123
 #: src/components/payment-terms/form.tsx:110
-#: src/components/products/bom-editor-drawer.tsx:136
+#: src/components/products/bom-editor-drawer.tsx:280
 #: src/components/products/form.tsx:235
 #: src/components/stock/movement-form.tsx:122
 #: src/components/tax-rates/form.tsx:165
@@ -3969,7 +3998,7 @@ msgstr "Search text"
 msgid "Select a country"
 msgstr "Select a country"
 
-#: src/components/products/bom-editor-drawer.tsx:150
+#: src/components/products/bom-editor-drawer.tsx:295
 msgid "Select a finished product"
 msgstr "Select a finished product"
 
@@ -3991,7 +4020,7 @@ msgstr "Select a product"
 msgid "Select an account"
 msgstr "Select an account"
 
-#: src/components/products/bom-fields.tsx:34
+#: src/components/products/bom-fields.tsx:42
 msgid "Select component"
 msgstr "Select component"
 
@@ -4435,6 +4464,11 @@ msgstr "This invoice does not match the purchase order and goods received"
 msgid "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
 msgstr "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
 
+#. placeholder {0}: viewedVersion?.versionNumber
+#: src/components/products/bom-editor-drawer.tsx:260
+msgid "This replaces the current recipe with v{0}'s components and quantities."
+msgstr "This replaces the current recipe with v{0}'s components and quantities."
+
 #: src/components/payments/payment-panel.tsx:262
 msgid "This reverses its journal entry and restores the balance due."
 msgstr "This reverses its journal entry and restores the balance due."
@@ -4782,6 +4816,10 @@ msgstr "vendor(s)"
 #: src/routes/vendors.tsx:59
 msgid "Vendors"
 msgstr "Vendors"
+
+#: src/components/products/bom-editor-drawer.tsx:213
+msgid "Version restored"
+msgstr "Version restored"
 
 #: src/routes/invoices/details.tsx:344
 #~ msgid "View"

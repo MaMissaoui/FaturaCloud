@@ -57,6 +57,38 @@ export interface BOMSummary {
   componentCount: number;
 }
 
+// One historical snapshot header of a finished product's recipe — the list
+// shape for browsing version history (see db/product_bom.go's BOMVersion).
+export interface BOMVersion {
+  id: string;
+  finishedProductId: string;
+  versionNumber: number;
+  // The batch size this version's quantities were entered against — reused
+  // to reload the editor's batch-size helper at the same scale it was last
+  // saved at, rather than always resetting to 1.
+  batchSize: number;
+  componentCount: number;
+  createdAt: string | null;
+}
+
+// One denormalized component/quantity line of a historical version.
+// componentName/Sku/Unit are captured at snapshot time, not live-joined, so
+// a version still reads correctly after the component product is renamed or
+// deleted — componentProductId is null in exactly that deleted case.
+export interface BOMVersionLine {
+  id: string;
+  versionId: string;
+  componentProductId: string | null;
+  componentName: string;
+  componentSku: string | null;
+  componentUnit: string | null;
+  quantityPerUnit: number;
+}
+
+export interface BOMVersionDetail extends BOMVersion {
+  lines: BOMVersionLine[];
+}
+
 export interface SerialNumber {
   id: string;
   organizationId: string;
