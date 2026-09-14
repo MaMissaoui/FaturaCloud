@@ -22,11 +22,22 @@ type Product struct {
 	SKU            *string `db:"sku"            json:"sku"`
 	Price          int64   `db:"price"          json:"price"`
 	UnitCost       *int64  `db:"unitCost"       json:"unitCost"`
-	Unit           *string `db:"unit"           json:"unit"`
-	Type           string  `db:"type"           json:"type"`
-	TaxRateID      *string `db:"taxRateId"      json:"taxRateId"`
-	StockEnabled   int     `db:"stockEnabled"   json:"stockEnabled"`
-	StockQuantity  float64 `db:"stockQuantity"  json:"stockQuantity"`
+	// Unit is a legacy free-text label, kept for backward compatibility with
+	// any caller that never adopted UnitOfMeasureID (cmd/seed-demo, a direct
+	// API client) and as the display value every existing reader of this
+	// column (Inventory, Products list, BOM component display) still shows
+	// with no changes of its own — see resolveProductUnit's comment. Once
+	// UnitOfMeasureID is set, this column is server-derived from it, not
+	// independently editable.
+	Unit *string `db:"unit" json:"unit"`
+	// UnitOfMeasureID is the structured Base Unit of Measure (units_of_measure,
+	// migration 0076) — nil means the product still uses free-text Unit only
+	// (legacy data, or a caller that hasn't adopted the structured list).
+	UnitOfMeasureID *string `db:"unitOfMeasureId" json:"unitOfMeasureId"`
+	Type            string  `db:"type"           json:"type"`
+	TaxRateID       *string `db:"taxRateId"      json:"taxRateId"`
+	StockEnabled    int     `db:"stockEnabled"   json:"stockEnabled"`
+	StockQuantity   float64 `db:"stockQuantity"  json:"stockQuantity"`
 	// Serialized products track individual physical units (product_serial_numbers)
 	// rather than a fungible quantity; only meaningful when StockEnabled == 1.
 	// Toggling it is blocked (see UpdateProduct) while StockQuantity is non-zero
@@ -62,6 +73,7 @@ type CreateProductRequest struct {
 	Price            int64   `json:"price"`
 	UnitCost         *int64  `json:"unitCost"`
 	Unit             *string `json:"unit"`
+	UnitOfMeasureID  *string `json:"unitOfMeasureId"`
 	Type             string  `json:"type"`
 	Category         *string `json:"category"`
 	TaxRateID        *string `json:"taxRateId"`
@@ -78,6 +90,7 @@ type UpdateProductRequest struct {
 	Price            int64   `json:"price"`
 	UnitCost         *int64  `json:"unitCost"`
 	Unit             *string `json:"unit"`
+	UnitOfMeasureID  *string `json:"unitOfMeasureId"`
 	Type             string  `json:"type"`
 	Category         *string `json:"category"`
 	TaxRateID        *string `json:"taxRateId"`
@@ -227,6 +240,30 @@ func (d *Database) checkProductFKOwnership(organizationID string, taxRateID, rev
 	return nil
 }
 
+// resolveProductUnit validates unitOfMeasureId belongs to the same
+// organization (issue #189) and, when set, returns the selected unit of
+// measure's name as the authoritative value for the legacy free-text Unit
+// column — the same "denormalize once at the write boundary" shape BOM
+// version lines already use for componentName/Sku/Unit (db/product_bom.go).
+// This keeps every existing reader of products.unit (Inventory, Products
+// list, BOM component display) correct with no changes of their own. A
+// nil/empty unitOfMeasureId leaves fallbackUnit untouched, preserving plain
+// free-text unit entry for any caller that doesn't use the structured list
+// (cmd/seed-demo, a direct API client).
+func (d *Database) resolveProductUnit(organizationID string, unitOfMeasureID, fallbackUnit *string) (*string, error) {
+	if unitOfMeasureID == nil || *unitOfMeasureID == "" {
+		return fallbackUnit, nil
+	}
+	uom, err := d.GetUnitOfMeasure(*unitOfMeasureID)
+	if err != nil {
+		return nil, newValidationError("unit of measure not found")
+	}
+	if err := requireSameOrg(organizationID, uom.OrganizationID, "unit of measure"); err != nil {
+		return nil, err
+	}
+	return &uom.Name, nil
+}
+
 // normalizeSKU uppercases and trims a product code so "air-filt-9180" and
 // "AIR-FILT-9180" can't coexist as visually-different-but-logically-same
 // values under the same (organizationId, sku) unique index — every SKU a
@@ -267,13 +304,18 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if err := d.checkProductFKOwnership(req.OrganizationID, req.TaxRateID, req.RevenueAccountID, req.ExpenseAccountID); err != nil {
 		return nil, err
 	}
+	unit, err := d.resolveProductUnit(req.OrganizationID, req.UnitOfMeasureID, req.Unit)
+	if err != nil {
+		return nil, err
+	}
+	req.Unit = unit
 	// A brand-new product always has zero stock, so the toggle guard
 	// UpdateProduct enforces has nothing to check here.
-	_, err := d.DB.Exec(
-		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, type, category, taxRateId, stockEnabled, serialized, revenueAccountId, expenseAccountId)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	_, err = d.DB.Exec(
+		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, unitOfMeasureId, type, category, taxRateId, stockEnabled, serialized, revenueAccountId, expenseAccountId)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Description, req.SKU,
-		req.Price, req.UnitCost, req.Unit, req.Type, req.Category, req.TaxRateID, req.StockEnabled, req.Serialized,
+		req.Price, req.UnitCost, req.Unit, req.UnitOfMeasureID, req.Type, req.Category, req.TaxRateID, req.StockEnabled, req.Serialized,
 		req.RevenueAccountID, req.ExpenseAccountID,
 	)
 	if err != nil {
@@ -320,14 +362,19 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 	if err := d.checkProductFKOwnership(current.OrganizationID, updates.TaxRateID, updates.RevenueAccountID, updates.ExpenseAccountID); err != nil {
 		return nil, err
 	}
+	unit, err := d.resolveProductUnit(current.OrganizationID, updates.UnitOfMeasureID, updates.Unit)
+	if err != nil {
+		return nil, err
+	}
+	updates.Unit = unit
 
 	_, err = d.DB.Exec(
 		`UPDATE products
-		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, type = ?, category = ?, taxRateId = ?,
+		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, unitOfMeasureId = ?, type = ?, category = ?, taxRateId = ?,
 		     stockEnabled = ?, serialized = ?, revenueAccountId = ?, expenseAccountId = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Description, updates.SKU, updates.Price,
-		updates.UnitCost, updates.Unit, updates.Type, updates.Category, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
+		updates.UnitCost, updates.Unit, updates.UnitOfMeasureID, updates.Type, updates.Category, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
 		updates.RevenueAccountID, updates.ExpenseAccountID,
 		productID,
 	)

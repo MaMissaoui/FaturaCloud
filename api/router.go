@@ -416,6 +416,22 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("PUT", "/api/payment-terms/{id}", paymentTermOrgID, h.updatePaymentTerm)
 	orgMemberProtected("DELETE", "/api/payment-terms/{id}", paymentTermOrgID, h.deletePaymentTerm)
 
+	// unitOfMeasureOrgID resolves a unit-of-measure route's {id} to its
+	// owning organization — same shape as paymentTermOrgID above, including
+	// the "no GET by id" route shape (the list is always small enough that
+	// the frontend Settings drawer looks the record up client-side).
+	unitOfMeasureOrgID := func(r *http.Request) (string, error) {
+		unit, err := h.db.GetUnitOfMeasure(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return unit.OrganizationID, nil
+	}
+	orgMemberProtected("GET", "/api/organizations/{orgId}/units-of-measure", pathOrgID("orgId"), h.listUnitsOfMeasure)
+	protected("POST", "/api/units-of-measure", h.createUnitOfMeasure)
+	orgMemberProtected("PUT", "/api/units-of-measure/{id}", unitOfMeasureOrgID, h.updateUnitOfMeasure)
+	orgMemberProtected("DELETE", "/api/units-of-measure/{id}", unitOfMeasureOrgID, h.deleteUnitOfMeasure)
+
 	// Countries — global picklist activation, not per-organization (the
 	// new-organization form has no organization yet). Read is available to
 	// any authenticated user since every org/vendor/client form needs it;

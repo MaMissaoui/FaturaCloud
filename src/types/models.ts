@@ -19,7 +19,14 @@ export interface Product {
   sku: string | null;
   price: number;
   unitCost: number | null;
+  // Legacy free-text label — server-derived from unitOfMeasureId whenever
+  // one is selected (see db/product.go's resolveProductUnit), so this
+  // stays correct for every existing display site with no changes of its
+  // own. Still directly settable when unitOfMeasureId is null.
   unit: string | null;
+  // The structured Base Unit of Measure (see UnitOfMeasure) — null means
+  // this product still only has the legacy free-text unit, if anything.
+  unitOfMeasureId: string | null;
   type: "product" | "service";
   // Distinguishes a purchasable component/intermediate from a sellable
   // finished good — orthogonal to type (the server clears it whenever type
@@ -126,6 +133,14 @@ export interface TaxRate {
 // invoices.paymentTerms stays a plain string, so deleting a term here never
 // touches an invoice that already stored its name.
 export interface PaymentTerm {
+  id: string;
+  organizationId: string;
+  name: string;
+  isDefault: number | null;
+  createdAt: string;
+}
+
+export interface UnitOfMeasure {
   id: string;
   organizationId: string;
   name: string;

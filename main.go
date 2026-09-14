@@ -104,6 +104,9 @@ func main() {
 	if err := database.SeedDefaultPaymentTermsForAllOrganizations(); err != nil {
 		log.Printf("SeedDefaultPaymentTermsForAllOrganizations: %v", err)
 	}
+	if err := database.SeedDefaultUnitsOfMeasureForAllOrganizations(); err != nil {
+		log.Printf("SeedDefaultUnitsOfMeasureForAllOrganizations: %v", err)
+	}
 
 	// Serve embedded frontend from dist/ with SPA fallback to index.html.
 	distFS, err := fs.Sub(assets, "dist")

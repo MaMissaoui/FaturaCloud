@@ -192,6 +192,7 @@ var createRouteOrgChecks = map[routeKey]struct{ file, fn string }{
 	{"POST", "/api/incoming-invoices"}:  {"incoming_invoices.go", "createIncomingInvoice"},
 	{"POST", "/api/tax-rates"}:          {"tax_rates.go", "createTaxRate"},
 	{"POST", "/api/payment-terms"}:      {"payment_terms.go", "createPaymentTerm"},
+	{"POST", "/api/units-of-measure"}:   {"units_of_measure.go", "createUnitOfMeasure"},
 	{"POST", "/api/products"}:           {"products.go", "createProduct"},
 	{"POST", "/api/stock-movements"}:    {"stock.go", "createStockMovement"},
 	{"POST", "/api/accounts"}:           {"accounts.go", "createAccount"},

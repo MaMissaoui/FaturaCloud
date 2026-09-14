@@ -24,11 +24,11 @@ import get from "lodash/get";
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
+import { unitsOfMeasureAtom, setUnitsOfMeasureAtom } from "src/atoms/unit-of-measure";
 import { GetProductBOM, ReplaceProductBOM } from "src/api";
 import { message } from "src/utils/message";
 import ScrollShadow from "src/components/scroll-shadow";
 import BOMFields from "src/components/products/bom-fields";
-import { UNIT_OPTIONS, unitLabel } from "src/utils/units";
 
 // Derives a product code from its name (e.g. "Steel Bracket" -> "STEEL-BRACKET"),
 // appending "-2", "-3", ... if that code is already used by another product.
@@ -60,6 +60,9 @@ const ProductForm = () => {
 
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
+
+  const unitsOfMeasure = useAtomValue(unitsOfMeasureAtom);
+  const setUnitsOfMeasure = useSetAtom(setUnitsOfMeasureAtom);
 
   const accounts = useAtomValue(accountsAtom);
   const setAccounts = useSetAtom(setAccountsAtom);
@@ -111,8 +114,9 @@ const ProductForm = () => {
     if (isVisible) {
       setTaxRates();
       setAccounts();
+      setUnitsOfMeasure();
     }
-  }, [isVisible, setTaxRates, setAccounts]);
+  }, [isVisible, setTaxRates, setAccounts, setUnitsOfMeasure]);
 
   useEffect(() => {
     const navProductId = get(location.state, "productId");
@@ -425,15 +429,38 @@ const ProductForm = () => {
                   />
                 </Form.Item>
               </Col>
+              {/* Carries the legacy free-text unit value through unedited —
+                  UpdateProduct is a full replace, not a partial update, so
+                  without this a resave of an old product (unit set, no
+                  unitOfMeasureId) would silently wipe it to null. The
+                  server overwrites this with the selected unit of measure's
+                  name whenever unitOfMeasureId is set (resolveProductUnit),
+                  so this only matters for legacy data with no selection. */}
+              <Form.Item name="unit" hidden>
+                <Input />
+              </Form.Item>
               <Col xs={24} md={12}>
-                <Form.Item name="unit" label={<Trans>Unit</Trans>}>
-                  <Select allowClear showSearch placeholder={t`Select or type a unit`}>
-                    {UNIT_OPTIONS.map((u) => (
-                      <Select.Option key={u} value={u}>
-                        {unitLabel(u)}
-                      </Select.Option>
-                    ))}
-                  </Select>
+                <Form.Item name="unitOfMeasureId" label={<Trans>Base unit of measure</Trans>}>
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder={t`Select a unit of measure`}
+                    optionFilterProp="label"
+                    options={unitsOfMeasure.map((u) => ({ value: u.id, label: u.name }))}
+                    popupRender={(menu) => (
+                      <>
+                        {menu}
+                        <div style={{ borderTop: "1px solid #f0f0f0", padding: 8 }}>
+                          <Link
+                            to="/settings/units-of-measure"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trans>Manage units of measure</Trans>
+                          </Link>
+                        </div>
+                      </>
+                    )}
+                  />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>

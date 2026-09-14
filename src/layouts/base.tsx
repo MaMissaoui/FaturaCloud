@@ -16,6 +16,7 @@ import {
   FileOutlined,
   CalculatorOutlined,
   ScheduleOutlined,
+  ColumnWidthOutlined,
   PlusOutlined,
   DatabaseOutlined,
   AppstoreOutlined,
@@ -250,6 +251,15 @@ export default function BaseLayout() {
         </Link>
       ),
       key: "settings.payment-terms",
+    },
+    {
+      icon: <ColumnWidthOutlined />,
+      label: (
+        <Link to="/settings/units-of-measure">
+          <Trans>Units of measure</Trans>
+        </Link>
+      ),
+      key: "settings.units-of-measure",
     },
     {
       icon: <FileExcelOutlined />,
