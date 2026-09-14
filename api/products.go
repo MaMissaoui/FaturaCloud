@@ -92,6 +92,16 @@ func (h *handler) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})
 }
 
+func (h *handler) listBOMSummaries(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	summaries, err := h.db.GetBillOfMaterialsSummaries(orgID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, summaries)
+}
+
 func (h *handler) getProductBOM(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lines, err := h.db.GetBillOfMaterials(id)

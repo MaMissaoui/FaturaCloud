@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import {
   Button,
   Card,
@@ -18,7 +18,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 
 import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
@@ -27,6 +27,7 @@ import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { GetProductBOM, ReplaceProductBOM } from "src/api";
 import { message } from "src/utils/message";
 import ScrollShadow from "src/components/scroll-shadow";
+import BOMFields from "src/components/products/bom-fields";
 import { UNIT_OPTIONS, unitLabel } from "src/utils/units";
 
 // Derives a product code from its name (e.g. "Steel Bracket" -> "STEEL-BRACKET"),
@@ -455,58 +456,18 @@ const ProductForm = () => {
                 <Card
                   size="small"
                   title={<Trans>Bill of Materials</Trans>}
+                  extra={
+                    <Link
+                      to="/bill-of-materials"
+                      state={{ bomModal: true, productId }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Trans>Open in Bill of Materials screen</Trans>
+                    </Link>
+                  }
                   style={{ marginBottom: 12 }}
                 >
-                  <Form.List name="bom">
-                    {(fields, { add, remove }) => (
-                      <>
-                        {fields.map(({ key, name, ...restField }) => (
-                          <Row key={key} gutter={[8, 0]} align="middle" style={{ marginBottom: 8 }}>
-                            <Col flex="auto">
-                              <Form.Item
-                                {...restField}
-                                name={[name, "componentProductId"]}
-                                rules={[{ required: true, message: t`Component is required` }]}
-                                style={{ marginBottom: 0 }}
-                              >
-                                <Select
-                                  showSearch
-                                  placeholder={t`Select component`}
-                                  optionFilterProp="label"
-                                  options={componentOptions}
-                                />
-                              </Form.Item>
-                            </Col>
-                            <Col flex="140px">
-                              <Form.Item
-                                {...restField}
-                                name={[name, "quantityPerUnit"]}
-                                rules={[{ required: true, message: t`Quantity is required` }]}
-                                style={{ marginBottom: 0 }}
-                              >
-                                <InputNumber
-                                  min={0.001}
-                                  style={{ width: "100%" }}
-                                  placeholder={t`Qty per unit`}
-                                />
-                              </Form.Item>
-                            </Col>
-                            <Col flex="32px">
-                              <Button
-                                type="text"
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={() => remove(name)}
-                              />
-                            </Col>
-                          </Row>
-                        ))}
-                        <Button type="dashed" block icon={<PlusOutlined />} onClick={() => add()}>
-                          <Trans>Add component</Trans>
-                        </Button>
-                      </>
-                    )}
-                  </Form.List>
+                  <BOMFields fieldName="bom" componentOptions={componentOptions} />
                 </Card>
               ) : null
             }

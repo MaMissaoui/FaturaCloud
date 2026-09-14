@@ -49,6 +49,14 @@ export interface BillOfMaterialsLine {
   componentUnit: string | null;
 }
 
+// The batch counterpart to BillOfMaterialsLine — one entry per finished
+// product that has a BOM defined at all (see db/product_bom.go's
+// GetBillOfMaterialsSummaries), not one per finished product in the org.
+export interface BOMSummary {
+  finishedProductId: string;
+  componentCount: number;
+}
+
 export interface SerialNumber {
   id: string;
   organizationId: string;

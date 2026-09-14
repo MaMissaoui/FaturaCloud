@@ -27,6 +27,7 @@ import type {
   StockMovement,
   SerialNumber,
   BillOfMaterialsLine,
+  BOMSummary,
   Account,
   Journal,
   FiscalYear,
@@ -615,6 +616,8 @@ export const ReplaceProductBOM = (
   id: string,
   lines: { componentProductId: string; quantityPerUnit: number }[],
 ) => put<BillOfMaterialsLine[]>(`/products/${id}/bom`, { lines });
+export const GetBOMSummaries = (organizationId: string) =>
+  get<BOMSummary[]>(`/organizations/${organizationId}/products/bom-summaries`);
 
 // ---- Stock Movements ----
 

@@ -30,6 +30,37 @@ type CreateBillOfMaterialsLineRequest struct {
 	QuantityPerUnit    float64 `json:"quantityPerUnit"`
 }
 
+// BOMSummary is one finished product's component-line count — the batch
+// counterpart to GetBillOfMaterials, same "one request for every row"
+// shape GetImportSummaries already established for imports (issue #147's
+// N+1 fix), so the BOM maintenance screen's list page doesn't fire one
+// GetBillOfMaterials call per finished product. A finished product with no
+// BOM defined yet simply has no entry in the returned slice — unlike
+// GetImportSummaries, which backfills a zero-value row for every import,
+// callers here already have the full finished-product list from
+// productsAtom and can default a missing id to zero themselves.
+type BOMSummary struct {
+	FinishedProductID string `db:"finishedProductId" json:"finishedProductId"`
+	ComponentCount    int    `db:"componentCount"     json:"componentCount"`
+}
+
+// GetBillOfMaterialsSummaries returns every finished product's component
+// count for an organization in one query.
+func (d *Database) GetBillOfMaterialsSummaries(organizationID string) ([]BOMSummary, error) {
+	summaries := []BOMSummary{}
+	err := d.DB.Select(&summaries, `
+		SELECT finishedProductId, COUNT(*) AS componentCount
+		FROM bill_of_materials
+		WHERE organizationId = ?
+		GROUP BY finishedProductId`,
+		organizationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_bill_of_materials_summaries: %w", err)
+	}
+	return summaries, nil
+}
+
 // GetBillOfMaterials returns a finished product's recipe, ordered by when
 // each line was added — stable, human-predictable ordering for a list with
 // no other natural sort key (mirrors line-item position ordering elsewhere,
