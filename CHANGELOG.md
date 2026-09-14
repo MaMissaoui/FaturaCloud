@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.5] - 2026-09-14
+
+### Added
+- Order detail page: a "Deliveries" card lists every outbound delivery
+  already linked to the order (number, date, status), each linking
+  through to the actual document — previously only reachable by
+  searching the Deliveries list separately.
+- Orders now automatically advance status as their linked deliveries
+  ship and deliver: confirmed → shipped the moment the first delivery
+  ships, shipped → delivered once every line item is fully covered by
+  deliveries that have themselves reached "delivered." Cancelling a
+  delivery deliberately does not revert the order's status backward.
+
 ## [3.19.4] - 2026-09-13
 
 ### Added
