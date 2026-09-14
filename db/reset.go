@@ -33,9 +33,17 @@ var transactionalDataTables = []string{
 	"incoming_invoices",
 	"inbound_deliveries",
 	"purchase_orders",
-	// imports after purchase_orders: purchase_orders.importId has no
-	// ON DELETE clause (same precedent as vendorId — see db/import.go's
-	// DeleteImport), so a referencing row must be gone before its import is.
+	// production_orders before imports, same reason as purchase_orders
+	// immediately above: production_orders.importId also has no ON DELETE
+	// clause (db/production_order.go, db/import.go's DeleteImport).
+	// production_order_component_lines has no organizationId column of its
+	// own (cascades from production_orders via ON DELETE CASCADE), so it
+	// needs no entry here — same shape as bill_of_materials_version_lines.
+	"production_orders",
+	// imports after purchase_orders/production_orders: both reference it
+	// with no ON DELETE clause (same precedent as vendorId — see
+	// db/import.go's DeleteImport), so a referencing row must be gone
+	// before its import is.
 	"imports",
 	"outbound_deliveries",
 	"orders",
