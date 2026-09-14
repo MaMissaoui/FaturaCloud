@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.20.0] - 2026-09-14
+
+### Added
+- Production Orders: a new document type (Inventory → Production
+  Orders) that consumes a finished product's Bill of Materials and
+  produces finished units — real stock/cost validation, GL posting,
+  and serialized-output support that validates produced serials
+  against a linked Import's reserved range.
+- Products can now define a structured "Base unit of measure" — a
+  maintained, per-organization list (mirroring Payment Terms) — instead
+  of only a free-text field with a frontend-only suggestion list.
+- Bill of Materials: a searchable "New recipe" button starts a recipe
+  without first finding the product in the table, and every save is
+  now kept as browsable, restorable version history.
+
+### Fixed
+- Bill of Materials screen: a long component label could wrap the
+  delete button onto its own line below the quantity input instead of
+  letting the picker truncate.
+- Production order detail page: the "Mark as completed"/"Cancel order"
+  confirmation popups could render off the right edge of the viewport,
+  unclickable.
+- `cmd/seed-demo` (internal demo-data tool, not part of the served
+  application): assembly simulation now drives the real Production
+  Order API instead of raw manual stock movements, gaining a real
+  stock-availability check the old simulation never had.
+
 ## [3.19.6] - 2026-09-14
 
 ### Added
