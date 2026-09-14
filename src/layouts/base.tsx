@@ -21,6 +21,7 @@ import {
   DatabaseOutlined,
   AppstoreOutlined,
   InboxOutlined,
+  DeploymentUnitOutlined,
   ShoppingOutlined,
   ShopOutlined,
   FolderOutlined,
@@ -192,7 +193,7 @@ export default function BaseLayout() {
       openKeys = ["group-sales"];
     } else if (purchasingSections.includes(section)) {
       openKeys = ["group-purchasing"];
-    } else if (section === "inventory") {
+    } else if (section === "inventory" || section === "production-orders") {
       openKeys = ["group-inventory"];
     } else if (masterDataSections.includes(section)) {
       openKeys = ["group-masterdata"];
@@ -509,6 +510,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "inventory",
+                },
+                {
+                  icon: <DeploymentUnitOutlined />,
+                  label: (
+                    <Link to="/production-orders">
+                      <Trans>Production Orders</Trans>
+                    </Link>
+                  ),
+                  key: "production-orders",
                 },
               ],
             },

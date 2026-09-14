@@ -57,6 +57,8 @@ const IncomingInvoiceDetails = lazy(() => import("src/routes/incoming-invoices/d
 const Products = lazy(() => import("src/routes/products"));
 const BillOfMaterials = lazy(() => import("src/routes/bill-of-materials"));
 const Inventory = lazy(() => import("src/routes/inventory"));
+const ProductionOrders = lazy(() => import("src/routes/production-orders"));
+const ProductionOrderDetails = lazy(() => import("src/routes/production-orders/details"));
 const Orders = lazy(() => import("src/routes/orders"));
 const OrderDetails = lazy(() => import("src/routes/orders/details"));
 const Deliveries = lazy(() => import("src/routes/deliveries"));
@@ -299,6 +301,10 @@ const AppContent = () => {
                   </Route>
                   <Route path="/inventory" element={<BaseLayout />}>
                     <Route index element={<Inventory />} />
+                  </Route>
+                  <Route path="/production-orders" element={<BaseLayout />}>
+                    <Route index element={<ProductionOrders />} />
+                    <Route path=":id" element={<ProductionOrderDetails />} />
                   </Route>
                   <Route path="/orders" element={<BaseLayout />}>
                     <Route index element={<Orders />} />

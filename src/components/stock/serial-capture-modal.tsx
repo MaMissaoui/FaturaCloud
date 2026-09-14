@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Modal, Select, Space, Typography } from "antd";
+import { Alert, InputNumber, Input, Modal, Segmented, Select, Space, Typography } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -17,17 +17,40 @@ export interface SerialCaptureLine {
   quantity: number;
 }
 
+// The reserved range a Production Order's linked Import may carry (see
+// CLAUDE.md's db/import.go note) — used only to prefill and hint the
+// "produce" mode's range generator; the server is the actual authority on
+// whether a generated serial falls inside it.
+export interface SerialCaptureImportRange {
+  prefix: string;
+  start: number;
+  end: number;
+  importNumber: string;
+}
+
 interface SerialCaptureModalProps {
   open: boolean;
   // "receive": free-text entry for new/returning units (inbound delivery).
   // "ship": pick from this product's currently in-stock units (outbound
   // delivery) — the server enforces both independently either way.
-  mode: "receive" | "ship";
+  // "produce": free-text entry for units a production order just made,
+  // same as "receive" plus an optional range generator (see below).
+  mode: "receive" | "ship" | "produce";
   lines: SerialCaptureLine[];
   onCancel: () => void;
   onConfirm: (serialNumbers: Record<string, string[]>) => void;
   confirming?: boolean;
+  // "produce" only — prefills the range generator and shows a hint. Null/
+  // undefined when the order has no linked import or that import has no
+  // range configured.
+  importRange?: SerialCaptureImportRange | null;
 }
+
+// Generates `count` consecutive serials from `start`, unpadded — matches
+// the plain-integer convention shown by the Import form's own range fields
+// (e.g. prefix "SN-", range 1001-1050 -> "SN-1001", "SN-1002", ...).
+const generateRangeSerials = (prefix: string, start: number, count: number): string[] =>
+  Array.from({ length: Math.max(count, 0) }, (_, i) => `${prefix}${start + i}`);
 
 // Serial capture reads from a document's already-persisted line items (the
 // caller passes `lines` resolved from GetDeliveryLineItems/
@@ -41,6 +64,7 @@ const SerialCaptureModal = ({
   onCancel,
   onConfirm,
   confirming,
+  importRange,
 }: SerialCaptureModalProps) => {
   // Read-only cache access via useAtomValue and a plain useSetAtom write
   // trigger — never useAtom on the async write atom inside a Modal, or the
@@ -49,10 +73,18 @@ const SerialCaptureModal = ({
   const serialNumbersByProduct = useAtomValue(productSerialNumbersAtom);
   const loadSerialNumbers = useSetAtom(loadProductSerialNumbersAtom);
   const [selection, setSelection] = useState<Record<string, string[]>>({});
+  // "produce" only — per-line toggle between typing serials and generating
+  // them from a prefix+start range, and the range inputs' own values.
+  const [entryMode, setEntryMode] = useState<Record<string, "type" | "range">>({});
+  const [rangeValues, setRangeValues] = useState<
+    Record<string, { prefix: string; start: number | null }>
+  >({});
 
   useEffect(() => {
     if (!open) return;
     setSelection({});
+    setEntryMode({});
+    setRangeValues({});
     if (mode === "ship") {
       uniq(lines.map((l) => l.productId)).forEach((productId) => loadSerialNumbers(productId));
     }
@@ -60,6 +92,35 @@ const SerialCaptureModal = ({
 
   const handleChange = (lineItemId: string, values: string[]) => {
     setSelection((prev) => ({ ...prev, [lineItemId]: values }));
+  };
+
+  // Recomputes a line's selection from its current range inputs — called on
+  // every prefix/start edit so the count always tracks the line's quantity
+  // with no separate "generate" step.
+  const applyRange = (
+    lineItemId: string,
+    quantity: number,
+    prefix: string,
+    start: number | null,
+  ) => {
+    setRangeValues((prev) => ({ ...prev, [lineItemId]: { prefix, start } }));
+    if (start === null) {
+      handleChange(lineItemId, []);
+      return;
+    }
+    handleChange(lineItemId, generateRangeSerials(prefix, start, quantity));
+  };
+
+  const switchEntryMode = (line: SerialCaptureLine, next: "type" | "range") => {
+    setEntryMode((prev) => ({ ...prev, [line.lineItemId]: next }));
+    if (next === "range") {
+      const existing = rangeValues[line.lineItemId];
+      const prefix = existing?.prefix ?? importRange?.prefix ?? "";
+      const start = existing?.start ?? importRange?.start ?? null;
+      applyRange(line.lineItemId, line.quantity, prefix, start);
+    } else {
+      handleChange(line.lineItemId, []);
+    }
   };
 
   // A serial picked for one line of a product is removed from the pool
@@ -83,6 +144,8 @@ const SerialCaptureModal = ({
       title={
         mode === "receive" ? (
           <Trans>Enter received serial numbers</Trans>
+        ) : mode === "produce" ? (
+          <Trans>Enter produced serial numbers</Trans>
         ) : (
           <Trans>Select serial numbers to ship</Trans>
         )
@@ -104,11 +167,26 @@ const SerialCaptureModal = ({
           message={
             mode === "receive" ? (
               <Trans>Enter exactly one serial number per unit received.</Trans>
+            ) : mode === "produce" ? (
+              <Trans>Enter exactly one serial number per unit produced.</Trans>
             ) : (
               <Trans>Select exactly one serial number per unit shipped.</Trans>
             )
           }
         />
+        {mode === "produce" && importRange && (
+          <Alert
+            type="info"
+            showIcon
+            message={
+              <Trans>
+                Import {importRange.importNumber} reserves {importRange.prefix}
+                {importRange.start} to {importRange.prefix}
+                {importRange.end}.
+              </Trans>
+            }
+          />
+        )}
         {lines.map((line) => {
           const picked = selection[line.lineItemId] ?? [];
           const excluded = pickedElsewhere(line.productId, line.lineItemId);
@@ -116,14 +194,53 @@ const SerialCaptureModal = ({
             serialNumbersByProduct[line.productId] ?? [],
             (s: any) => s.inStock && !excluded.has(s.serialNumber),
           ).map((s: any) => ({ value: s.serialNumber, label: s.serialNumber }));
+          const lineEntryMode = entryMode[line.lineItemId] ?? "type";
+          const lineRange = rangeValues[line.lineItemId];
 
           return (
             <div key={line.lineItemId}>
               <Text strong>
                 {line.productName} — {picked.length} / {line.quantity}
               </Text>
+              {mode === "produce" && (
+                <div style={{ marginTop: 4 }}>
+                  <Segmented
+                    size="small"
+                    value={lineEntryMode}
+                    onChange={(value) => switchEntryMode(line, value as "type" | "range")}
+                    options={[
+                      { label: t`Type manually`, value: "type" },
+                      { label: t`Generate range`, value: "range" },
+                    ]}
+                  />
+                </div>
+              )}
               <div style={{ marginTop: 4 }}>
-                {mode === "receive" ? (
+                {mode === "produce" && lineEntryMode === "range" ? (
+                  <Space.Compact style={{ width: "100%" }}>
+                    <Input
+                      style={{ width: "40%" }}
+                      placeholder={t`Prefix`}
+                      value={lineRange?.prefix ?? ""}
+                      onChange={(e) =>
+                        applyRange(
+                          line.lineItemId,
+                          line.quantity,
+                          e.target.value,
+                          lineRange?.start ?? null,
+                        )
+                      }
+                    />
+                    <InputNumber
+                      style={{ width: "60%" }}
+                      placeholder={t`Range start`}
+                      value={lineRange?.start ?? null}
+                      onChange={(value) =>
+                        applyRange(line.lineItemId, line.quantity, lineRange?.prefix ?? "", value)
+                      }
+                    />
+                  </Space.Compact>
+                ) : mode === "receive" || mode === "produce" ? (
                   <Select
                     mode="tags"
                     open={false}
@@ -146,6 +263,12 @@ const SerialCaptureModal = ({
                   />
                 )}
               </div>
+              {mode === "produce" && lineEntryMode === "range" && picked.length > 0 && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {picked[0]}
+                  {picked.length > 1 ? ` … ${picked[picked.length - 1]}` : ""}
+                </Text>
+              )}
             </div>
           );
         })}
