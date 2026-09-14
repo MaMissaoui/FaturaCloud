@@ -110,25 +110,29 @@ documents, and a short `--months` value while iterating on the tool itself.
     the AR side (paid in full, paid via two partials, or left outstanding
     for AP aging — same small ~5% never-paid share as AR).
   - **Assembly** (`production.go`) — the piece that makes the "finished"
-    motorcycles actually sellable, not just priced-and-catalogued. The app
-    itself has no production/BOM feature, so this simulates one the same
-    way a real user would have to today: two manual stock movements per
-    batch (`POST /api/stock-movements`), one consuming a curated,
-    representative subset of one displacement class's "component" products
-    (an "Engine block", "Frame chassis", "Tire", ... — not all 55 per
-    class, see `production.go`'s own comment for why that turned out
-    unworkable) and one producing the finished good at exactly the summed
-    cost of what was consumed — no invented assembly-labor markup, so the
-    transformation's net effect on the organization's Inventory Adjustment
-    account stays ~zero. A dedicated weekly procurement pass
+    motorcycles actually sellable, not just priced-and-catalogued. Drives
+    the app's real Production Order feature: `assembleBatch` creates a
+    draft order for a batch (against a curated, representative subset of
+    one displacement class's "component" products — an "Engine block",
+    "Frame chassis", "Tire", ... — not all 55 per class, see
+    `production.go`'s own comment for why that turned out unworkable) then
+    marks it `completed` (`POST /api/production-orders` +
+    `PATCH .../status`), the same two-call flow the frontend's
+    Create/"Mark as completed" buttons drive. The server snapshots the
+    product's own BOM into the order and resolves the produced cost from
+    what was actually consumed — no invented assembly-labor markup — and
+    enforces a real stock-availability check at completion; a 409 there (this
+    tool's own on-hand estimate having drifted from server truth) skips that
+    batch rather than failing the run. A dedicated weekly procurement pass
     (`maybeRestockAssemblyComponents`) keeps those specific components
     supplied on a short, predictable lead time, independent of ordinary
     purchasing's random restocking of the same products — without it,
     getting all of even a small BOM in stock at once via uniform random
-    purchasing alone was too unreliable to depend on. Before this, every
-    seeded organization's Profit & Loss showed real revenue but permanently
-    empty expenses: `sales.go`'s stock-fulfilment path only ever shipped a
-    finished good when it had on-hand stock, and nothing ever gave it any.
+    purchasing alone was too unreliable to depend on. Before this feature
+    existed, every seeded organization's Profit & Loss showed real revenue
+    but permanently empty expenses: `sales.go`'s stock-fulfilment path only
+    ever shipped a finished good when it had on-hand stock, and nothing ever
+    gave it any.
   - **Imports** (F114, `imports.go`) — roughly once a month, a consolidated
     shipment is created (freight/customs cost in the organization's own
     currency, per the real F114 design — see CLAUDE.md). For the following

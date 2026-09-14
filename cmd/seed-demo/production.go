@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strings"
 	"time"
 
@@ -21,11 +23,13 @@ import (
 // That's why every seeded organization's Profit & Loss showed real revenue
 // but permanently empty expenses.
 //
-// The app itself has no production/assembly/BOM feature (CLAUDE.md's
-// cmd/seed-demo entry: no such module exists), so this can't call a
-// dedicated endpoint — it simulates assembly the same way a real user would
-// have to today: a pair of manual stock movements (POST /api/stock-movements)
-// per batch, one consuming components and one producing the finished good.
+// assembleBatch (below) drives the real Production Order feature
+// (db/production_order.go, PR #238/#240/#241) — create a draft order for
+// the batch, then mark it completed, the same two-call flow the frontend's
+// "Create" + "Mark as completed" buttons drive. Before Production Orders
+// existed, this file simulated assembly with a pair of raw manual stock
+// movements (POST /api/stock-movements) instead; that's gone now that
+// there's a dedicated endpoint to call.
 
 // assemblyBOMComponentNames is a curated, representative subset of
 // catalog.go's 55 componentTemplates — not all of them. Requiring every
@@ -247,8 +251,8 @@ func (s *Seeder) assembleBatch(day time.Time, class string) error {
 	// Read this specific product's real BOM back (setupBillsOfMaterials
 	// defined it once, at startup) instead of assuming every finished good
 	// in the class shares the same local, hardcoded component list — this
-	// is the one HTTP round trip assembleBatch adds per call, cheap next to
-	// the up-to-13 stock-movement POSTs a batch that actually clears makes.
+	// tells us `buildable` below, even though the server independently
+	// snapshots the same BOM into the order it creates a moment later.
 	bom, err := s.getProductBOM(product.id)
 	if err != nil {
 		return fmt.Errorf("assembly %s: read BOM for %s: %w", class, product.name, err)
@@ -271,68 +275,45 @@ func (s *Seeder) assembleBatch(day time.Time, class string) error {
 		batch = maxAssemblyBatch
 	}
 
-	ref := fmt.Sprintf("ASM-%s-%s", class, day.Format("20060102"))
+	// Create the draft order, then complete it in the same call — mirrors
+	// the frontend's "Create" followed by "Mark as completed" (there's no
+	// reason for this tool to leave a batch sitting in draft). The server
+	// snapshots product's own BOM (already read above just to compute
+	// `batch`) into the order's component lines itself; this doesn't send
+	// them.
+	createReq := db.CreateProductionOrderRequest{
+		OrganizationID:    s.orgID,
+		OrderNumber:       s.productionOrderNum.next(day.Year()),
+		FinishedProductID: product.id,
+		Quantity:          float64(batch),
+		Date:              midnightUTC(day),
+	}
+	var order db.ProductionOrder
+	if err := s.c.Post("/api/production-orders", createReq, &order); err != nil {
+		return fmt.Errorf("assembly %s: create production order for %s: %w", class, product.name, err)
+	}
+	s.stats.ProductionOrders++
 
-	// Consume each BOM line's quantityPerUnit × batch. Each is a plain
-	// "out" adjustment — no UnitCost is sent, since a negative-quantity
-	// movement is always costed from the product's own average
-	// (db/gl_posting.go's buildStockAdjustmentGLLines), which is exactly
-	// component.costCents here (every receipt for a given component always
-	// uses that same fixed catalog cost — see
-	// restockAssemblyComponentsForClass/purchasing.go's createPurchaseOrder
-	// — so its weighted average never actually varies). Every seeded BOM
-	// line is a whole-number quantity (setupBillsOfMaterials always seeds
-	// assemblyBOM, currently 1), so int64(line.QuantityPerUnit) below never
-	// truncates a fraction.
-	var partsCostPerUnit int64
+	// Completing enforces a real availability check (line.TotalQuantity >
+	// component.StockQuantity, db/production_order.go), unlike the old raw
+	// "adjustment" movements this replaced, which had none. s.onHand is
+	// only a local estimate (see stock.go) — a 409 here means it's drifted
+	// from server truth, not that anything is actually broken, so this
+	// batch is skipped (the draft order is left behind as a harmless
+	// trace) rather than failing the whole run.
+	if err := s.c.Patch("/api/production-orders/"+order.ID+"/status", map[string]string{"status": "completed"}, nil); err != nil {
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusConflict {
+			s.log.Printf("assembly %s: skipped completing %s for %s (on-hand estimate drifted from server stock): %v", class, order.OrderNumber, product.name, err)
+			return nil
+		}
+		return fmt.Errorf("assembly %s: complete production order %s: %w", class, order.OrderNumber, err)
+	}
+
 	for _, line := range bom {
-		component, ok := s.productByID(line.ComponentProductID)
-		if !ok {
-			return fmt.Errorf("assembly %s: BOM component %s (%s) not found in local catalog", ref, line.ComponentName, line.ComponentProductID)
-		}
-		qty := float64(batch) * line.QuantityPerUnit
-		req := db.CreateStockMovementRequest{
-			OrganizationID: s.orgID,
-			ProductID:      line.ComponentProductID,
-			Type:           "adjustment",
-			Quantity:       -qty,
-			Note:           strPtr(fmt.Sprintf("Assembly: consumed for %d x %s (%s)", batch, product.name, class)),
-			Reference:      strPtr(ref),
-		}
-		if err := s.c.Post("/api/stock-movements", req, nil); err != nil {
-			return fmt.Errorf("assembly %s: consume %s: %w", ref, line.ComponentName, err)
-		}
-		s.adjustOnHand(line.ComponentProductID, -qty)
-		partsCostPerUnit += component.costCents * int64(line.QuantityPerUnit)
+		s.adjustOnHand(line.ComponentProductID, -line.QuantityPerUnit*float64(batch))
 	}
-
-	// Produce the finished good at exactly the parts cost just consumed —
-	// no assembly-labor markup invented on top of it. That keeps this
-	// transformation's net effect on the organization's Inventory
-	// Adjustment account at ~zero (the only account a manual movement can
-	// target — see db/gl_posting.go): the credit side from consuming
-	// components and the debit side from producing the finished good are
-	// the same total value, just moved between SKUs, not a fabricated gain.
-	// This also supersedes the finished good's initial catalog-random
-	// UnitCost (masterdata.go) with a real, components-based cost the
-	// first time any batch for its displacement class runs —
-	// db/product_cost.go's recomputeAverageCostTx only ever averages a
-	// product's own costed inflows, and before this, a finished good had
-	// none.
-	produceQty := float64(batch)
-	produceReq := db.CreateStockMovementRequest{
-		OrganizationID: s.orgID,
-		ProductID:      product.id,
-		Type:           "adjustment",
-		Quantity:       produceQty,
-		UnitCost:       int64Ptr(partsCostPerUnit),
-		Note:           strPtr(fmt.Sprintf("Assembly: %d unit(s) produced from %s components", batch, class)),
-		Reference:      strPtr(ref),
-	}
-	if err := s.c.Post("/api/stock-movements", produceReq, nil); err != nil {
-		return fmt.Errorf("assembly %s: produce %s: %w", ref, product.name, err)
-	}
-	s.adjustOnHand(product.id, produceQty)
+	s.adjustOnHand(product.id, float64(batch))
 
 	s.stats.AssemblyBatches++
 	s.stats.AssembledUnits += batch
