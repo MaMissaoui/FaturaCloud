@@ -1,0 +1,2 @@
+ALTER TABLE production_order_component_lines DROP COLUMN componentUnit;
+ALTER TABLE production_order_component_lines DROP COLUMN componentSku;

@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ProductionOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Row, Table, Tag } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { DeploymentUnitOutlined } from "@ant-design/icons";
-import filter from "lodash/filter";
-import includes from "lodash/includes";
 
 import { useDateFormatter } from "src/utils/date";
 import {
@@ -20,8 +18,6 @@ import {
 import { productionOrdersAtom, setProductionOrdersAtom } from "src/atoms/production-order";
 import PageHeader from "src/components/page-header";
 
-const searchAtom = atom<string>("");
-
 const ProductionOrders = () => {
   useLingui();
   const location = useLocation();
@@ -29,7 +25,7 @@ const ProductionOrders = () => {
   const formatDate = useDateFormatter();
   const orders = useAtomValue(productionOrdersAtom);
   const setOrders = useSetAtom(setProductionOrdersAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -39,14 +35,20 @@ const ProductionOrders = () => {
     }
   }, [location, setOrders]);
 
-  const filtered = search
-    ? filter(
-        orders,
-        (o: ProductionOrder) =>
-          includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((o.finishedProductName ?? "").toLowerCase(), search.toLowerCase()),
-      )
-    : orders;
+  // useState + useMemo, matching bill-of-materials.tsx rather than the older
+  // module-level searchAtom + unmemoized filter this used to share with the
+  // settings pages: that combination wrote a global atom and rebuilt
+  // dataSource on every keystroke, re-rendering every visible row (audit
+  // 2026-09-14 F91).
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return orders;
+    return orders.filter(
+      (o: ProductionOrder) =>
+        (o.orderNumber ?? "").toLowerCase().includes(term) ||
+        (o.finishedProductName ?? "").toLowerCase().includes(term),
+    );
+  }, [orders, search]);
 
   return (
     <>

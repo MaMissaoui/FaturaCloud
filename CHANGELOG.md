@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A purchase order's line items are now locked once goods have actually
+  been received against it. Those lines are what the receipt's GRNI
+  accrual, the bill's GRNI clearing and 3-way matching are all computed
+  from, so changing a quantity or price after the fact silently rewrote
+  the basis of entries that had already posted. Header fields (notes,
+  delivery address, expected date, the linked import) stay editable, and
+  cancelling the goods receipt unlocks the line items again. Note this
+  is all-or-nothing: a partially received order can't have its
+  outstanding lines adjusted without cancelling the receipt first.
+
 ### Changed
+- The Production Orders list and the Units of Measure settings page now
+  filter without re-rendering every row on each keystroke, matching the Bill
+  of Materials screen.
 - German and French are fully translated again: the 77 messages left
   untranslated in both catalogs (most of the Imports and Document
   Templates features, plus a handful that render on the new Production
@@ -15,10 +29,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   screens no longer show English text to a de/fr user.
 
 ### Fixed
+- Saving a shipped outbound delivery's tracking number or notes failed
+  with "cannot edit line items of a shipped delivery". Header-only edits
+  on a shipped delivery were always meant to work — the check rejected
+  any save that carried line items at all, and the page always sends
+  them. Only a genuine line-item change is refused now.
+- Editing a purchase order no longer breaks its goods receipts and vendor
+  bills. Saving an order used to replace its line items wholesale, which
+  silently detached every receipt and bill linked to it — so a receipt that
+  had already been billed could then be cancelled, leaving the accrued
+  goods-received liability stranded on the books, and 3-way matching stopped
+  flagging anything. Line items now keep their identity across an edit.
+- Editing a sales order no longer resets its delivered quantities to zero.
+  The "Delivered" column stayed correct only until the first save; afterwards
+  a new delivery created from that order offered the full quantity again,
+  including what had already shipped, and the order could never advance to
+  "Delivered" on its own.
+- Renaming a unit of measure now updates every product using it. Previously
+  the old name stayed on screen in Inventory, the Products list and Bill of
+  Materials until each product happened to be saved again.
+- Clearing a product's base unit of measure now clears the unit text with it
+  instead of leaving the old value behind.
+- Editing a product or a tax rate now shows why a save was rejected — an
+  invalid category, or switching serial number tracking while stock is
+  non-zero — instead of a generic "internal error".
+- Production orders can no longer be created for a finished product that has
+  stock tracking switched off, which used to produce stock movements and an
+  inventory posting for a product otherwise outside inventory.
+- Deleting a production order or a goods receipt can no longer race a
+  concurrent status change and remove a completed or received document.
+- The Bill of Materials editor no longer shows an empty recipe when it fails
+  to load one. It now says so and disables Save, so a failed load can't
+  overwrite a real recipe with nothing, and offers a Retry.
+- Selecting a past Bill of Materials version that fails to load no longer
+  leaves the drawer spinning forever with no way out but closing.
+- The Production Order screen no longer reports a failed Bill of Materials
+  fetch as "this product has no Bill of Materials". It distinguishes the two
+  and offers a Retry.
+- Confirming serial numbers when completing a production order can no longer
+  be submitted twice, which produced an error message on top of a success.
+- Opening a production order that is still loading, or that fails to load,
+  now shows a placeholder or an error instead of a completely blank page.
+- Saving a unit of measure or a payment term as the new default no longer
+  leaves two rows marked "Default" until the next refresh — which could also
+  prefill a new product with the old default.
+- "Manage units of measure" now asks before navigating away from a product
+  with unsaved changes, instead of silently discarding them.
+- A production order's component lines now keep the component's code and
+  unit after that component product is deleted, instead of showing only its
+  name.
+- Completing a production order now checks the organization's Inventory
+  accounts consistently. It used to check them only on the rare batch whose
+  cost didn't divide evenly, so an organization missing that setup worked
+  for months and then failed on one batch with no obvious cause.
+- Restoring a Bill of Materials version now always records the restore in
+  the version history, including when the restored recipe happens to match
+  the current one.
+- Two people saving a Bill of Materials at the same time no longer fails one
+  of them with an internal error.
 - CI now fails a pull request whose translation catalogs are stale,
   whose Go files are not `gofmt`'d, or whose frontend sources are not
   `oxfmt`'d — missing catalog entries have been this repository's own
   recurring regression.
+
 
 ## [3.20.0] - 2026-09-14
 

@@ -110,10 +110,12 @@ func (d *Database) GetProductionOrder(id string) (*ProductionOrder, error) {
 
 func (d *Database) GetProductionOrderComponentLines(productionOrderID string) ([]ProductionOrderComponentLine, error) {
 	lines := []ProductionOrderComponentLine{}
+	// Reads the snapshot columns directly — no LEFT JOIN on products, which
+	// is what used to make componentSku/componentUnit vanish for a deleted
+	// component while componentName survived (F75).
 	err := d.DB.Select(&lines, `
-		SELECT pcl.*, p.sku AS componentSku, p.unit AS componentUnit
+		SELECT pcl.*
 		FROM production_order_component_lines pcl
-		LEFT JOIN products p ON pcl.componentProductId = p.id
 		WHERE pcl.productionOrderId = ?
 		ORDER BY pcl.createdAt ASC, pcl.rowid ASC`,
 		productionOrderID,
@@ -169,6 +171,18 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 	if finished.Category == nil || *finished.Category != "finished" {
 		return nil, newValidationError("a production order can only be created for a %q product", "finished")
 	}
+	// Every other stock-moving path in this app gates on stockEnabled at the
+	// SQL level (getShippableStockLines, getReceivableStockLines). Production
+	// orders did not, so a finished product with stock tracking switched off
+	// still got real stockMovements rows, a non-zero stockQuantity and — on a
+	// non-exact division — an Inventory GL entry, for a product the rest of
+	// the app treats as outside inventory entirely (F73).
+	if finished.StockEnabled != 1 {
+		return nil, newValidationError(
+			"%q does not have stock tracking enabled — a production order would have nothing to produce into",
+			finished.Name,
+		)
+	}
 	if finished.Serialized == 1 && req.Quantity != math.Trunc(req.Quantity) {
 		return nil, newValidationError("%q is serialized — quantity must be a whole number", finished.Name)
 	}
@@ -191,10 +205,18 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 		return nil, newValidationError("%q has no bill of materials defined", finished.Name)
 	}
 
+	// componentSku/componentUnit are snapshotted alongside componentName
+	// (audit 2026-09-14 F75) rather than joined at read time — otherwise two
+	// of the four columns silently went NULL once the component product was
+	// deleted while the name survived, a half-frozen snapshot. This matches
+	// bill_of_materials_version_lines, which migration 0075's own comment
+	// already claimed to follow.
 	type resolvedLine struct {
 		id                 string
 		componentProductID string
 		componentName      string
+		componentSKU       *string
+		componentUnit      *string
 		quantityPerUnit    float64
 		totalQuantity      float64
 	}
@@ -215,6 +237,8 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 			id:                 id,
 			componentProductID: l.ComponentProductID,
 			componentName:      component.Name,
+			componentSKU:       component.SKU,
+			componentUnit:      component.Unit,
 			quantityPerUnit:    l.QuantityPerUnit,
 			totalQuantity:      roundBOMQuantity(l.QuantityPerUnit * req.Quantity),
 		})
@@ -238,9 +262,10 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 	for _, line := range lines {
 		if _, err := tx.Exec(`
 			INSERT INTO production_order_component_lines
-			  (id, productionOrderId, componentProductId, componentName, quantityPerUnit, totalQuantity)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			line.id, req.ID, line.componentProductID, line.componentName, line.quantityPerUnit, line.totalQuantity,
+			  (id, productionOrderId, componentProductId, componentName, componentSku, componentUnit, quantityPerUnit, totalQuantity)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			line.id, req.ID, line.componentProductID, line.componentName,
+			line.componentSKU, line.componentUnit, line.quantityPerUnit, line.totalQuantity,
 		); err != nil {
 			return nil, fmt.Errorf("insert_production_order_component_line: %w", err)
 		}
@@ -671,13 +696,39 @@ func (d *Database) DeleteProductionOrder(id string) (bool, error) {
 		return false, fmt.Errorf("delete_production_order lookup: %w", err)
 	}
 	if current.Status != "draft" {
-		return false, newValidationError("cannot delete a %s production order — cancel it instead", current.Status)
+		// Named per status rather than "a %s ... — cancel it instead", which
+		// rendered for an already-cancelled order as "cannot delete a
+		// cancelled production order — cancel it instead" (F74).
+		if current.Status == "cancelled" {
+			return false, newValidationError("cannot delete a cancelled production order")
+		}
+		return false, newValidationError(
+			"cannot delete a %s production order — cancel it instead", current.Status,
+		)
 	}
 
-	res, err := d.DB.Exec(`DELETE FROM production_orders WHERE id = ?`, id)
+	// AND status = 'draft' with a RowsAffected check, not just the pre-check
+	// read above: a delete racing a concurrent draft -> completed would
+	// otherwise destroy a completed order, cascading away its component lines
+	// while leaving the consume/produce stockMovements pointing at a
+	// sourceDocumentId that no longer exists and any posted rounding-residual
+	// entry orphaned and unreversible. Same guard shape as DeleteJournalEntry
+	// (F48, F74).
+	res, err := d.DB.Exec(`DELETE FROM production_orders WHERE id = ? AND status = 'draft'`, id)
 	if err != nil {
 		return false, fmt.Errorf("delete_production_order: %w", err)
 	}
 	n, _ := res.RowsAffected()
-	return n > 0, nil
+	if n == 0 {
+		// Either it was already gone, or it left draft between the read and
+		// the delete. Re-read to tell those apart rather than reporting a
+		// concurrent completion as a plain "not found".
+		if latest, lookupErr := d.GetProductionOrder(id); lookupErr == nil && latest.Status != "draft" {
+			return false, newValidationError(
+				"cannot delete a %s production order — cancel it instead", latest.Status,
+			)
+		}
+		return false, nil
+	}
+	return true, nil
 }

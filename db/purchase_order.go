@@ -48,6 +48,14 @@ type PurchaseOrderLineItem struct {
 }
 
 type CreatePurchaseOrderLineItemRequest struct {
+	// ID is the existing purchase_order_line_items row this line should
+	// keep, echoed back by the client from a previous read. Empty/absent
+	// means a newly added line. Preserving it is what keeps
+	// inbound_delivery_line_items.purchaseOrderLineItemId and
+	// incoming_invoice_line_items.purchaseOrderLineItemId intact across an
+	// edit — and with them the billed-receipt cancel guard, GRNI clearing
+	// and 3-way matching. See db/line_item_reconcile.go (F93).
+	ID          *string `json:"id"`
 	ProductID   *string `json:"productId"`
 	Description string  `json:"description"`
 	Quantity    float64 `json:"quantity"`
@@ -327,6 +335,17 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// Line items are frozen once goods have actually been received against
+	// this order — see db/purchase_order_freeze.go. Checked inside the
+	// transaction, and only against a request that would genuinely change
+	// them, since the frontend always sends the full line-item array even
+	// for a header-only save.
+	if updates.LineItems != nil {
+		if err := checkPurchaseOrderLineItemFreezeTx(tx, orderID, *updates.LineItems); err != nil {
+			return nil, err
+		}
+	}
+
 	// Required columns use COALESCE so an omitted field keeps its value;
 	// genuinely optional ones are set unconditionally so they can be cleared.
 	//
@@ -370,25 +389,57 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 	return d.GetPurchaseOrder(orderID)
 }
 
-// replacePurchaseOrderLineItemsTx clears and reinserts a purchase order's line
-// items, renumbering position from the slice order.
-func replacePurchaseOrderLineItemsTx(exec sqlExecer, orderID string, items []CreatePurchaseOrderLineItemRequest) error {
-	if _, err := exec.Exec(
-		`DELETE FROM purchase_order_line_items WHERE purchaseOrderId = ?`, orderID,
+// replacePurchaseOrderLineItemsTx writes a purchase order's line items,
+// renumbering position from the slice order and **reusing the row id of
+// every line the request still carries**.
+//
+// The id reuse is load-bearing, not tidiness. purchase_order_line_items.id
+// is the join key for four independent subsystems — the billed-receipt
+// cancel guard (db/inbound_delivery.go), GRNI accrual/clearing
+// (db/gl_posting.go), 3-way matching (db/incoming_invoice_match.go) and the
+// receipt outstanding-quantity prefill — and both referencing columns are
+// ON DELETE SET NULL. Deleting and reinserting with fresh nanoids, as this
+// did before, nulled them on every save of an already-received order, which
+// made a billed receipt cancellable and left GRNI permanently accrued
+// (F93). See db/line_item_reconcile.go.
+func replacePurchaseOrderLineItemsTx(exec sqlSelectExecer, orderID string, items []CreatePurchaseOrderLineItemRequest) error {
+	requested := make([]*string, len(items))
+	for i, item := range items {
+		requested[i] = item.ID
+	}
+	slots, obsolete, err := reconcileLineItemIDs(
+		exec, "purchase_order_line_items", "purchaseOrderId", orderID, requested,
+	)
+	if err != nil {
+		return err
+	}
+	if err := deleteLineItemsByID(
+		exec, "purchase_order_line_items", "purchaseOrderId", orderID, obsolete,
 	); err != nil {
-		return fmt.Errorf("delete_purchase_order_line_items: %w", err)
+		return err
 	}
 
 	for i, item := range items {
-		itemID, _ := gonanoid.New()
-		_, err := exec.Exec(`
+		if slots[i].Existing {
+			if _, err := exec.Exec(`
+				UPDATE purchase_order_line_items
+				SET productId = ?, description = ?, quantity = ?, unitPrice = ?,
+				    unit = ?, taxRate = ?, position = ?
+				WHERE id = ? AND purchaseOrderId = ?`,
+				item.ProductID, item.Description, item.Quantity, roundCents(item.UnitPrice),
+				item.Unit, item.TaxRate, i, slots[i].ID, orderID,
+			); err != nil {
+				return fmt.Errorf("update_purchase_order_line_item: %w", err)
+			}
+			continue
+		}
+		if _, err := exec.Exec(`
 			INSERT INTO purchase_order_line_items
 			  (id, purchaseOrderId, productId, description, quantity, unitPrice, unit, taxRate, position)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			itemID, orderID, item.ProductID, item.Description, item.Quantity,
+			slots[i].ID, orderID, item.ProductID, item.Description, item.Quantity,
 			roundCents(item.UnitPrice), item.Unit, item.TaxRate, i,
-		)
-		if err != nil {
+		); err != nil {
 			return fmt.Errorf("insert_purchase_order_line_item: %w", err)
 		}
 	}

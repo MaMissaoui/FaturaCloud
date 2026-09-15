@@ -14,6 +14,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Table,
   Tag,
@@ -25,11 +26,19 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined, DeploymentUnitOutlined, SaveOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import find from "lodash/find";
 import PageHeader from "src/components/page-header";
+import { message } from "src/utils/message";
 
 import { GetProductBOM } from "src/api";
-import type { BillOfMaterialsLine, Import, Product, ProductionOrder } from "src/types/models";
+import type {
+  BillOfMaterialsLine,
+  Import,
+  Product,
+  ProductionOrder,
+  ProductionOrderComponentLine,
+} from "src/types/models";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import SerialCaptureModal from "src/components/stock/serial-capture-modal";
 import StatusFlow from "src/components/status-flow";
@@ -100,10 +109,16 @@ const CreateProductionOrderForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [bomLines, setBomLines] = useState<BillOfMaterialsLine[]>([]);
   const [bomLoading, setBomLoading] = useState(false);
+  // A failed fetch used to be swallowed into an empty list, which the Alert
+  // below then reported as "this product has no Bill of Materials" — telling
+  // the user to fix data that is already correct, with Create disabled and
+  // no way to retry (F85).
+  const [bomLoadFailed, setBomLoadFailed] = useState(false);
+  const [bomReloadToken, setBomReloadToken] = useState(0);
 
   const watchedProductId = Form.useWatch("finishedProductId", form);
   const watchedQuantity = Form.useWatch("quantity", form) ?? 1;
-  const selectedProduct: any = find(finishedProducts, { id: watchedProductId });
+  const selectedProduct = find(finishedProducts, { id: watchedProductId });
 
   // Preview the recipe scaled by the entered quantity, before creating —
   // GetBillOfMaterials' quantityPerUnit is always per one finished unit
@@ -116,12 +131,16 @@ const CreateProductionOrderForm = ({
     }
     let cancelled = false;
     setBomLoading(true);
+    setBomLoadFailed(false);
     GetProductBOM(watchedProductId)
       .then((lines) => {
         if (!cancelled) setBomLines(lines ?? []);
       })
-      .catch(() => {
-        if (!cancelled) setBomLines([]);
+      .catch((error) => {
+        if (cancelled) return;
+        setBomLines([]);
+        setBomLoadFailed(true);
+        message.error(error instanceof Error ? error.message : t`Failed to load bill of materials`);
       })
       .finally(() => {
         if (!cancelled) setBomLoading(false);
@@ -129,9 +148,21 @@ const CreateProductionOrderForm = ({
     return () => {
       cancelled = true;
     };
-  }, [watchedProductId]);
+  }, [watchedProductId, bomReloadToken]);
 
-  const handleCreate = async (values: any) => {
+  // The create form's raw values: date is a Dayjs until submitted, and the
+  // two optional fields arrive as "" from an untouched Select rather than
+  // null, which is why they're normalized below.
+  type CreateFormValues = {
+    orderNumber: string;
+    finishedProductId: string;
+    quantity: number;
+    date: Dayjs;
+    importId?: string | null;
+    notes?: string | null;
+  };
+
+  const handleCreate = async (values: CreateFormValues) => {
     setSubmitting(true);
     try {
       await createOrder({
@@ -165,7 +196,7 @@ const CreateProductionOrderForm = ({
             rules={[{ required: true, message: t`Finished product is required` }]}
           >
             <Select showSearch allowClear optionFilterProp="children" placeholder={t`Select…`}>
-              {finishedProducts.map((p: any) => (
+              {finishedProducts.map((p) => (
                 <Option key={p.id} value={p.id}>
                   {p.name}
                 </Option>
@@ -211,7 +242,7 @@ const CreateProductionOrderForm = ({
             tooltip={t`Optional — links the produced units to a shipment's reserved serial-number range.`}
           >
             <Select allowClear showSearch optionFilterProp="children" placeholder={t`None`}>
-              {imports.map((imp: any) => (
+              {imports.map((imp) => (
                 <Option key={imp.id} value={imp.id}>
                   {imp.importNumber}
                 </Option>
@@ -228,7 +259,21 @@ const CreateProductionOrderForm = ({
         </Col>
       </Row>
 
-      {watchedProductId && !bomLoading && bomLines.length === 0 && (
+      {watchedProductId && !bomLoading && bomLoadFailed && (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={<Trans>Couldn't load this product's Bill of Materials</Trans>}
+          action={
+            <Button size="small" onClick={() => setBomReloadToken((n) => n + 1)}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
+      {watchedProductId && !bomLoading && !bomLoadFailed && bomLines.length === 0 && (
         <Alert
           type="warning"
           showIcon
@@ -319,7 +364,7 @@ const ProductionOrderDetails = () => {
   // Only a "finished" good has a BOM to consume — component/unclassified
   // products aren't produced by a production order.
   const finishedProducts = useMemo(
-    () => products.filter((p: any) => p.category === "finished"),
+    () => products.filter((p) => p.category === "finished"),
     [products],
   );
   const imports = useAtomValue(importsAtom);
@@ -335,6 +380,11 @@ const ProductionOrderDetails = () => {
 
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
   const [serialCapture, setSerialCapture] = useState(false);
+  // Without this the modal's OK stayed enabled through the await below, so a
+  // second click fired a second PATCH — and since draft -> completed has
+  // already consumed stock by then, the retry 409s and toasts an error on
+  // top of the success (F86).
+  const [confirmingSerials, setConfirmingSerials] = useState(false);
 
   useEffect(() => {
     setProducts();
@@ -363,7 +413,7 @@ const ProductionOrderDetails = () => {
     if (ok) setStatusOverride(next);
   };
 
-  const isSerialized = !!order && !(order as any).then && (order as any).serialized === 1;
+  const isSerialized = order?.serialized === 1;
 
   const handleStatusChange = async (next: string) => {
     if (!id || isNew) return;
@@ -375,16 +425,25 @@ const ProductionOrderDetails = () => {
   };
 
   const handleSerialCaptureConfirm = async (serialNumbers: Record<string, string[]>) => {
-    await applyStatusChange("completed", serialNumbers.finished ?? []);
-    setSerialCapture(false);
+    if (confirmingSerials) return;
+    setConfirmingSerials(true);
+    try {
+      await applyStatusChange("completed", serialNumbers.finished ?? []);
+      setSerialCapture(false);
+    } finally {
+      setConfirmingSerials(false);
+    }
   };
 
-  const currentOrder = order && !(order as any).then ? (order as any) : undefined;
+  // No `.then` guard here any more: loadable() already unwraps the promise,
+  // so those checks were vestigial copy-paste from the pre-loadable sibling
+  // and could never be true (audit 2026-09-14 F90).
+  const currentOrder = order ?? undefined;
   const currentStatus = statusOverride ?? currentOrder?.status ?? "draft";
   const transitions = isNew ? [] : productionOrderTransitions(currentStatus);
 
-  const linkedImport: any = currentOrder?.importId
-    ? find(imports, { id: currentOrder.importId })
+  const linkedImport = currentOrder?.importId
+    ? (find(imports, { id: currentOrder.importId }) ?? null)
     : null;
   const importRange =
     linkedImport &&
@@ -398,7 +457,31 @@ const ProductionOrderDetails = () => {
         }
       : null;
 
-  if (!isNew && !order) return null;
+  // Loading and failure used to share `return null`, so both rendered a
+  // completely empty page — no header, no retry (F89).
+  if (!isNew && !order) {
+    return (
+      <>
+        <PageHeader title={<Trans>Production order</Trans>} icon={<DeploymentUnitOutlined />} />
+        <div style={{ padding: 24 }}>
+          {orderLoadable.state === "loading" ? (
+            <Skeleton active paragraph={{ rows: 6 }} />
+          ) : (
+            <Alert
+              type="error"
+              showIcon
+              message={<Trans>Couldn't load this production order</Trans>}
+              action={
+                <Button size="small" onClick={() => navigate("/production-orders")}>
+                  <Trans>Back to list</Trans>
+                </Button>
+              }
+            />
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -464,7 +547,7 @@ const ProductionOrderDetails = () => {
               <Table.Column
                 title={<Trans>Component</Trans>}
                 key="componentName"
-                render={(l: any) =>
+                render={(_: unknown, l: ProductionOrderComponentLine) =>
                   l.componentSku ? `${l.componentName} (${l.componentSku})` : l.componentName
                 }
               />
@@ -551,18 +634,23 @@ const ProductionOrderDetails = () => {
                 footerNode() as HTMLElement,
               )}
 
+            {/* finishedProductId is nullable (ON DELETE SET NULL), which the
+                removed `any` was hiding. A deleted finished product has no
+                serial registry to capture into, and completing such an order
+                409s server-side anyway, so there is nothing to show. */}
             <SerialCaptureModal
-              open={serialCapture}
+              open={serialCapture && !!currentOrder.finishedProductId}
               mode="produce"
               lines={[
                 {
                   lineItemId: "finished",
-                  productId: currentOrder.finishedProductId,
+                  productId: currentOrder.finishedProductId ?? "",
                   productName: currentOrder.finishedProductName,
                   quantity: currentOrder.quantity,
                 },
               ]}
               importRange={importRange}
+              confirming={confirmingSerials}
               onCancel={() => setSerialCapture(false)}
               onConfirm={handleSerialCaptureConfirm}
             />

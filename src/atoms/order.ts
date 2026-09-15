@@ -53,6 +53,12 @@ export const nextOrderNumberAtom = atom((get) => {
 // The order form edits dates as dayjs objects (converted to unix-ms on
 // save) and line item unitPrice in display currency units (converted to
 // cents on save) — not the wire shape either field is stored as.
+// `id` deliberately travels to the server on save. It is what lets
+// db/line_item_reconcile.go reuse the existing orderLineItems row instead of
+// deleting and reinserting it, which used to null
+// outbound_delivery_line_items.orderLineItemId on every edit (F70). The
+// server only honours an id that already belongs to this order, so sending
+// it on the create path is harmless too.
 type OrderLineItemFormValues = Omit<Partial<OrderLineItem>, "unitPrice"> & {
   unitPrice?: number;
 };
@@ -107,7 +113,7 @@ export const orderAtom = atom(
           deliveryDate: order.deliveryDate ? toTimestamp(order.deliveryDate) : null,
           exchangeRateDate: order.exchangeRateDate ? toTimestamp(order.exchangeRateDate) : null,
           lineItems: lineItems.map((item) => ({
-            ...omit(item, ["id"]),
+            ...item,
             unitPrice: unitsToCents(item.unitPrice ?? 0),
           })),
         };
@@ -123,7 +129,7 @@ export const orderAtom = atom(
           deliveryDate: order.deliveryDate ? toTimestamp(order.deliveryDate) : null,
           exchangeRateDate: order.exchangeRateDate ? toTimestamp(order.exchangeRateDate) : null,
           lineItems: lineItems.map((item) => ({
-            ...omit(item, ["id"]),
+            ...item,
             unitPrice: unitsToCents(item.unitPrice ?? 0),
           })),
         };
