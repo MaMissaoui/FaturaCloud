@@ -49,12 +49,16 @@ const (
 	// fkServerSet: never client-supplied. Written by posting//fan-out code
 	// with a real id or nil, so "" was never reachable.
 	fkServerSet
-	// fkCoalesceKeep: client-supplied, but deliberately NOT normalized —
-	// the column's UPDATE uses COALESCE(?, column), where nil already means
-	// "field omitted, don't touch it". Normalizing "" to nil there would
-	// turn a loud failure into a silent no-op and remove the only spelling
-	// that could ever mean "clear this". See F95.
-	fkCoalesceKeep
+	// fkExplicitClear: client-supplied, and deliberately NOT normalized —
+	// "" is this column's *clear* signal, not a malformed id. Normalizing
+	// it to nil would mean "don't touch" and silently swallow the clear.
+	//
+	// These columns are not written through COALESCE at all; their SET
+	// assignments are emitted in Go so the three-way convention every other
+	// nullable organization field already has (omitted = keep, "" = clear,
+	// value = set) can hold for a column with a foreign key too. See F95
+	// and db/organization.go's UpdateOrganization.
+	fkExplicitClear
 )
 
 var nullableFKClassification = map[string]fkDisposition{
@@ -107,22 +111,22 @@ var nullableFKClassification = map[string]fkDisposition{
 	"projects.clientId":    fkServerSet,
 	"timeEntries.clientId": fkServerSet,
 
-	// --- deliberately not normalized: nil already means "don't touch" ---
-	"organizations.datevClearingAccountId":              fkCoalesceKeep,
-	"organizations.defaultApAccountId":                  fkCoalesceKeep,
-	"organizations.defaultArAccountId":                  fkCoalesceKeep,
-	"organizations.defaultCOGSAccountId":                fkCoalesceKeep,
-	"organizations.defaultCashAccountId":                fkCoalesceKeep,
-	"organizations.defaultExpenseAccountId":             fkCoalesceKeep,
-	"organizations.defaultGRNIAccountId":                fkCoalesceKeep,
-	"organizations.defaultImportCostsPayableAccountId":  fkCoalesceKeep,
-	"organizations.defaultInventoryAccountId":           fkCoalesceKeep,
-	"organizations.defaultInventoryAdjustmentAccountId": fkCoalesceKeep,
-	"organizations.defaultRevenueAccountId":             fkCoalesceKeep,
-	"organizations.defaultStampDutyAccountId":           fkCoalesceKeep,
-	"organizations.fxGainAccountId":                     fkCoalesceKeep,
-	"organizations.fxLossAccountId":                     fkCoalesceKeep,
-	"organizations.retainedEarningsAccountId":           fkCoalesceKeep,
+	// --- deliberately not normalized: "" is the clear signal (F95) ---
+	"organizations.datevClearingAccountId":              fkExplicitClear,
+	"organizations.defaultApAccountId":                  fkExplicitClear,
+	"organizations.defaultArAccountId":                  fkExplicitClear,
+	"organizations.defaultCOGSAccountId":                fkExplicitClear,
+	"organizations.defaultCashAccountId":                fkExplicitClear,
+	"organizations.defaultExpenseAccountId":             fkExplicitClear,
+	"organizations.defaultGRNIAccountId":                fkExplicitClear,
+	"organizations.defaultImportCostsPayableAccountId":  fkExplicitClear,
+	"organizations.defaultInventoryAccountId":           fkExplicitClear,
+	"organizations.defaultInventoryAdjustmentAccountId": fkExplicitClear,
+	"organizations.defaultRevenueAccountId":             fkExplicitClear,
+	"organizations.defaultStampDutyAccountId":           fkExplicitClear,
+	"organizations.fxGainAccountId":                     fkExplicitClear,
+	"organizations.fxLossAccountId":                     fkExplicitClear,
+	"organizations.retainedEarningsAccountId":           fkExplicitClear,
 }
 
 // Per-line-item normalization. Each document type has its own line-item

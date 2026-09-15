@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- An organization's default accounting accounts can now be cleared.
+  Clearing one in the edit drawer previously did nothing at all — the
+  field silently kept its old value, with a direct database edit as the
+  only way to remove it.
 - Sending an empty string for an optional link — a purchase order's
   vendor or import, a line's product or tax rate, a product's unit of
   measure, and so on — now means "not set", the same as leaving it out.
