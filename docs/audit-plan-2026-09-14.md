@@ -56,17 +56,37 @@ backfill — see section 6.
 | — | #249 | the F93 follow-up: purchase-order line-item freeze | merged |
 | 4b — test backfill remainder | #250 | F80 (the rest) | see below |
 
-**F83 is the one finding deliberately left undone.** `v3.20.0` on `origin` is still a
-lightweight tag while `v3.19.0`–`v3.19.6`, `v3.9.0`, `v3.8.0` and `v3.2.0` are annotated.
-Fixing it means force-replacing a published release tag, which re-triggers the Docker
-build and republishes that version's GHCR image — outward-facing and hard to reverse, so
-it needs an explicit decision rather than being folded into a docs PR. The two commands,
-if taken:
+**F83 was taken, with the cost accepted knowingly.** `v3.20.0` is now an annotated tag
+(`9eeafc9`, dereferencing to the unchanged commit `fc2a151`), matching every other release
+tag. What made this a decision rather than a cleanup is that the repository has no way to
+change a tag's *type* without re-pushing it, and `.github/workflows/docker.yml` triggers
+on `push: tags: v*` — so the only route to a cosmetic git-object change runs through a
+full image rebuild and republish. Measured consequences, all as predicted and all
+confirmed after the fact:
 
-```
-git tag -f -a v3.20.0 fc2a151 -m "v3.20.0"
-git push --force origin refs/tags/v3.20.0
-```
+- **The published image was replaced, not re-pointed.** The Dockerfile builds from
+  `debian:bookworm-slim` with an unpinned `apt-get install libreoffice-calc`, so a rebuild
+  of the *same commit* is not byte-identical. Digest went `sha256:d0117d02…` →
+  `sha256:677ac25c…`.
+- **All four registry tags moved**, including `latest`: `latest`, `3.20`, `3.20.0` and
+  `sha-fc2a151` all now resolve to the new digest. `latest` is the one that matters —
+  `homelab-deploy/apps/fatura-cloud/docker-compose.yml` pulls
+  `ghcr.io/mamissaoui/fatura-cloud:${VERSION:-latest}`. Nothing redeployed on its own; the
+  running container keeps the image it already pulled until someone redeploys.
+- **The original image is gone.** The `merge` job's own prune step deleted the
+  now-untagged `d0117d02` version (`deleting package id: 1248364675`), so the artifact
+  that originally shipped as v3.20.0 is no longer pullable by digest either. There was no
+  digest pin anywhere to break, but the rollback-to-the-exact-original path is closed.
+- **The `release` job failed**, as it must: it runs `gh release create` unconditionally,
+  and the v3.20.0 GitHub Release already existed, so it exited 1 with
+  `Release.tag_name already exists`. The release itself is untouched — the failure is the
+  redundant create, not a broken release. The run therefore shows build + merge green and
+  release red.
+
+**Follow-up worth doing, not done here:** make that `release` step idempotent
+(`gh release create … || gh release edit …`, or a `gh release view` guard), so re-pushing
+any tag doesn't leave a red run behind. It is a latent trap for every future retag, not
+just this one.
 
 **F80 took two PRs.** #247 closed the two items this document flagged as regressing a
 standing requirement — the missing F48 concurrency test for production orders and the
@@ -130,7 +150,7 @@ can no longer have its outstanding lines adjusted without cancelling the receipt
 | F81 | CLAUDE.md drift: the entire Units-of-Measure frontend is undocumented, the Settings-dropdown list omits it, and two stated guarantees are false | Docs | Low | 5.1 | Fixed #248 |
 | F92 | 79 msgids are untranslated in de/fr; 15 of them now render on screens this release touches, 3 directly on the new Production Order pages | i18n | Low | 5.2 | Fixed #248 |
 | F82 | CI has no i18n catalog-drift check and no `gofmt` / `format:check` gate | CI | Low | 5.3 | Fixed #248 |
-| F83 | `v3.20.0` was pushed as a lightweight tag; every prior release tag is annotated | Ops | Low | 5.4 | **Open — needs a decision** |
+| F83 | `v3.20.0` was pushed as a lightweight tag; every prior release tag is annotated | Ops | Low | 5.4 | Fixed — retagged, image republished |
 | F94 | An empty-string value in a nullable foreign-key field passes every `!= ""` validation guard, then reaches the INSERT and fails as a raw FK violation — a 500 where a clean "unset" was meant | Correctness | Low | 6.1 | **Open — not fixed** |
 
 ---
@@ -643,10 +663,13 @@ it recurring.
 
 ### 5.4 — F83: Release-tag hygiene
 
-`v3.20.0` on `origin` is a **lightweight** tag pointing directly at `fc2a151`;
+`v3.20.0` on `origin` was a **lightweight** tag pointing directly at `fc2a151`;
 `v3.19.0`–`v3.19.6`, `v3.9.0`, `v3.8.0` and `v3.2.0` are all annotated (`git cat-file -t`
-returns `commit` vs `tag`). The Docker build triggered regardless, so this is cosmetic —
-retag annotated, or record the convention change.
+returns `commit` vs `tag`). The Docker build triggered regardless, so the defect itself is
+cosmetic — the *fix* is not, since the only way to change a tag's type is to re-push it,
+and that re-runs the release pipeline. **Resolved:** retagged annotated, with the rebuild
+and its consequences recorded in the status section at the top of this document rather
+than discovered later.
 
 ---
 
