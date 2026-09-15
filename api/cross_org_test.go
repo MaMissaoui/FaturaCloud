@@ -398,6 +398,21 @@ var crossOrgProof = []struct {
 	{name: "tax rate usage count", method: http.MethodGet, path: "/api/tax-rates/org-a-tax-rate/usage-count"},
 	{name: "delete tax rate by id", method: http.MethodDelete, path: "/api/tax-rates/org-a-tax-rate"},
 
+	// Production orders and units of measure (audit 2026-09-14 F80): both
+	// route families are orgMemberProtected with by-id resolvers, so
+	// TestPhaseCRouteCoverage already accepts them as gated — but the deny
+	// path itself was never exercised, which is what this list is for.
+	{name: "list production orders by org path", method: http.MethodGet, path: "/api/organizations/org-a/production-orders"},
+	{name: "next production order number by org path", method: http.MethodGet, path: "/api/organizations/org-a/production-orders/next-number"},
+	{name: "get production order by id", method: http.MethodGet, path: "/api/production-orders/org-a-production-order"},
+	{name: "production order component lines", method: http.MethodGet, path: "/api/production-orders/org-a-production-order/component-lines"},
+	{name: "update production order status", method: http.MethodPatch, path: "/api/production-orders/org-a-production-order/status", body: []byte(`{"status":"cancelled"}`)},
+	{name: "delete production order by id", method: http.MethodDelete, path: "/api/production-orders/org-a-production-order"},
+
+	{name: "list units of measure by org path", method: http.MethodGet, path: "/api/organizations/org-a/units-of-measure"},
+	{name: "update unit of measure by id", method: http.MethodPut, path: "/api/units-of-measure/org-a-unit-of-measure", body: []byte(`{"name":"hijacked"}`)},
+	{name: "delete unit of measure by id", method: http.MethodDelete, path: "/api/units-of-measure/org-a-unit-of-measure"},
+
 	{name: "list payment terms by org path", method: http.MethodGet, path: "/api/organizations/org-a/payment-terms"},
 	{name: "update payment term by id", method: http.MethodPut, path: "/api/payment-terms/org-a-payment-term", body: []byte(`{"name":"hijacked"}`)},
 	{name: "delete payment term by id", method: http.MethodDelete, path: "/api/payment-terms/org-a-payment-term"},
@@ -584,6 +599,15 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed CreatePaymentTerm: %v", err)
 	}
+	// "unit-of-measure-a" rather than a seeded default's name: creating an
+	// organization already installs the default list (db/unit_of_measure.go's
+	// SeedDefaultUnitsOfMeasure), so a common name like "kg" would collide
+	// with the (organizationId, name) unique index.
+	if _, err := database.CreateUnitOfMeasure(db.CreateUnitOfMeasureRequest{
+		ID: "org-a-unit-of-measure", OrganizationID: "org-a", Name: "unit-of-measure-a",
+	}); err != nil {
+		t.Fatalf("seed CreateUnitOfMeasure: %v", err)
+	}
 	product, err := database.CreateProduct(db.CreateProductRequest{
 		ID: "org-a-product", OrganizationID: "org-a", Name: "Test Product", Type: "product", Price: 1000,
 	})
@@ -594,6 +618,36 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 		ID: "org-a-stock-movement", OrganizationID: "org-a", ProductID: product.ID, Type: "in", Quantity: 1,
 	}); err != nil {
 		t.Fatalf("seed CreateStockMovement: %v", err)
+	}
+	// A real production order for org-a to prove the deny path against.
+	// Needs a finished product with a non-empty BOM, so it carries its own
+	// component/finished pair rather than reusing org-a-product above (which
+	// is deliberately uncategorized, and is what the product routes target).
+	componentCategory, finishedCategory := "component", "finished"
+	poComponent, err := database.CreateProduct(db.CreateProductRequest{
+		ID: "org-a-bom-component", OrganizationID: "org-a", Name: "Bolt", SKU: strPtr("X-BLT-1"),
+		Type: "product", StockEnabled: 1, Category: &componentCategory,
+	})
+	if err != nil {
+		t.Fatalf("seed CreateProduct(component): %v", err)
+	}
+	poFinished, err := database.CreateProduct(db.CreateProductRequest{
+		ID: "org-a-bom-finished", OrganizationID: "org-a", Name: "Frame", SKU: strPtr("X-FRM-1"),
+		Type: "product", StockEnabled: 1, Category: &finishedCategory,
+	})
+	if err != nil {
+		t.Fatalf("seed CreateProduct(finished): %v", err)
+	}
+	if _, err := database.ReplaceBillOfMaterials(poFinished.ID, []db.CreateBillOfMaterialsLineRequest{
+		{ComponentProductID: poComponent.ID, QuantityPerUnit: 1},
+	}, 1); err != nil {
+		t.Fatalf("seed ReplaceBillOfMaterials: %v", err)
+	}
+	if _, err := database.CreateProductionOrder(db.CreateProductionOrderRequest{
+		ID: "org-a-production-order", OrganizationID: "org-a", OrderNumber: "PRO-001",
+		FinishedProductID: poFinished.ID, Quantity: 1, Date: 1700000000000,
+	}); err != nil {
+		t.Fatalf("seed CreateProductionOrder: %v", err)
 	}
 	// A fresh code well outside every seeded chart template's own numbering
 	// (SKR04/PCG/generic — see db/account.go) to avoid colliding with the
@@ -686,5 +740,34 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 	}
 	if got.ID != client.ID {
 		t.Fatalf("expected client %q, got %q", client.ID, got.ID)
+	}
+
+	// Positive control for the route families added in the 2026-09-14 audit
+	// (F80). The deny loop above accepts 404, which a *typo'd* path also
+	// returns — for every caller, making the entry pass vacuously. These
+	// assert org-a's own admin really can reach the same paths, so a 404 in
+	// the loop above means "denied", not "no such route".
+	//
+	// Read-only routes only: the loop's destructive entries can't be
+	// positively exercised without destroying the fixture the other subtests
+	// share.
+	for _, path := range []string{
+		"/api/organizations/org-a/production-orders",
+		"/api/organizations/org-a/production-orders/next-number",
+		"/api/production-orders/org-a-production-order",
+		"/api/production-orders/org-a-production-order/component-lines",
+		"/api/organizations/org-a/units-of-measure",
+	} {
+		t.Run("reachable by its own org: "+path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, bytes.NewBuffer(nil))
+			req.Header.Set("Content-Type", "application/json")
+			authRequest(req, orgAToken)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("org-a-admin GET %s: expected 200, got %d: %s — the deny-path entry for this route would be passing vacuously",
+					path, rec.Code, rec.Body.String())
+			}
+		})
 	}
 }
