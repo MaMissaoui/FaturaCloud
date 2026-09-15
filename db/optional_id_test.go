@@ -91,7 +91,7 @@ func TestNullableForeignKeysAreClassified(t *testing.T) {
 	for _, col := range missing {
 		t.Errorf("nullable foreign key %s is not in nullableFKClassification — decide whether its "+
 			"Create/Update normalizes an empty-string id (fkNormalized), whether it is server-set "+
-			"(fkServerSet), or whether nil already means \"don't touch\" (fkCoalesceKeep). See F94.", col)
+			"(fkServerSet), or whether nil already means \"don't touch\" (fkExplicitClear). See F94.", col)
 	}
 	for _, col := range stale {
 		t.Errorf("nullableFKClassification lists %s, which is no longer a nullable foreign key — "+

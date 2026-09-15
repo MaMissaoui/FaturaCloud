@@ -396,8 +396,62 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 	}
 	updates.BrandColor = normalizedBrandColor
 
-	_, err = d.DB.Exec(
-		`UPDATE organizations
+	// The GL-default account columns are set separately from the COALESCE
+	// block below, because COALESCE cannot express what this request needs
+	// to say about them (F95, audit 2026-09-14).
+	//
+	// Every other nullable field here follows one convention: a JSON null
+	// (or an omitted key) means "don't touch", and an explicit "" clears
+	// the field — brandColor, email, phone and the other 24 plain-text
+	// columns all work that way today, because "" is a legal value for a
+	// column with no foreign key.
+	//
+	// These 15 are the exception, and were the exception by accident rather
+	// than by decision: "" is NOT a legal value for a column with a foreign
+	// key, so it failed with a raw constraint violation, while nil meant
+	// "keep". Neither spelling could unset one — an organization could
+	// never remove a GL default once set, and the Select allowClear in the
+	// UI offered a clear that did nothing.
+	//
+	// Emitting the assignments in Go rather than via COALESCE lets the same
+	// three-way convention hold for them too: omitted -> not in the SET
+	// clause at all, "" -> `col = NULL`, a value -> `col = ?`. Column names
+	// come from the Go literal below, never from the request.
+	accountDefaults := []struct {
+		column string
+		value  *string
+	}{
+		{"defaultArAccountId", updates.DefaultArAccountID},
+		{"defaultApAccountId", updates.DefaultApAccountID},
+		{"defaultRevenueAccountId", updates.DefaultRevenueAccountID},
+		{"defaultExpenseAccountId", updates.DefaultExpenseAccountID},
+		{"defaultCashAccountId", updates.DefaultCashAccountID},
+		{"fxGainAccountId", updates.FxGainAccountID},
+		{"fxLossAccountId", updates.FxLossAccountID},
+		{"retainedEarningsAccountId", updates.RetainedEarningsAccountID},
+		{"datevClearingAccountId", updates.DatevClearingAccountID},
+		{"defaultInventoryAccountId", updates.DefaultInventoryAccountID},
+		{"defaultGRNIAccountId", updates.DefaultGRNIAccountID},
+		{"defaultCOGSAccountId", updates.DefaultCOGSAccountID},
+		{"defaultInventoryAdjustmentAccountId", updates.DefaultInventoryAdjustmentAccountID},
+		{"defaultImportCostsPayableAccountId", updates.DefaultImportCostsPayableAccountID},
+		{"defaultStampDutyAccountId", updates.DefaultStampDutyAccountID},
+	}
+	var accountSet strings.Builder
+	accountArgs := []any{}
+	for _, f := range accountDefaults {
+		switch {
+		case f.value == nil:
+			// Omitted: leave the column out of the statement entirely.
+		case *f.value == "":
+			accountSet.WriteString(",\n\t\t     " + f.column + " = NULL")
+		default:
+			accountSet.WriteString(",\n\t\t     " + f.column + " = ?")
+			accountArgs = append(accountArgs, *f.value)
+		}
+	}
+
+	query := `UPDATE organizations
 		 SET code                   = COALESCE(?, code),
 		     name                   = COALESCE(?, name),
 		     country                = COALESCE(?, country),
@@ -426,28 +480,16 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     postal_code            = COALESCE(?, postal_code),
 		     city                   = COALESCE(?, city),
 		     country_code           = COALESCE(?, country_code),
-		     defaultArAccountId        = COALESCE(?, defaultArAccountId),
-		     defaultApAccountId        = COALESCE(?, defaultApAccountId),
-		     defaultRevenueAccountId   = COALESCE(?, defaultRevenueAccountId),
-		     defaultExpenseAccountId   = COALESCE(?, defaultExpenseAccountId),
-		     defaultCashAccountId      = COALESCE(?, defaultCashAccountId),
-		     fxGainAccountId           = COALESCE(?, fxGainAccountId),
-		     fxLossAccountId           = COALESCE(?, fxLossAccountId),
-		     retainedEarningsAccountId = COALESCE(?, retainedEarningsAccountId),
-		     datevClearingAccountId    = COALESCE(?, datevClearingAccountId),
 		     datev_consultant_number   = COALESCE(?, datev_consultant_number),
 		     datev_client_number       = COALESCE(?, datev_client_number),
-		     defaultInventoryAccountId           = COALESCE(?, defaultInventoryAccountId),
-		     defaultGRNIAccountId                = COALESCE(?, defaultGRNIAccountId),
-		     defaultCOGSAccountId                = COALESCE(?, defaultCOGSAccountId),
-		     defaultInventoryAdjustmentAccountId = COALESCE(?, defaultInventoryAdjustmentAccountId),
-		     defaultImportCostsPayableAccountId  = COALESCE(?, defaultImportCostsPayableAccountId),
 		     defaultFiscalStampAmount  = COALESCE(?, defaultFiscalStampAmount),
-		     defaultStampDutyAccountId = COALESCE(?, defaultStampDutyAccountId),
 		     invoiceLayout             = COALESCE(?, invoiceLayout),
 		     fiscalStampEnabled        = COALESCE(?, fiscalStampEnabled),
-		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled)
-		 WHERE id = ?`,
+		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled)` +
+		accountSet.String() + `
+		 WHERE id = ?`
+
+	args := []any{
 		updates.Code, updates.Name, updates.Country, updates.Email, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.BankName,
 		updates.IBAN, updates.Currency, updates.MinimumFractionDigits, updates.DueDays,
@@ -457,18 +499,16 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.MatchPriceTolerancePercent, updates.MatchQuantityTolerancePercent,
 		updates.BIC, updates.TaxNumber, updates.Street, updates.HouseNumber,
 		updates.PostalCode, updates.City, updates.CountryCode,
-		updates.DefaultArAccountID, updates.DefaultApAccountID, updates.DefaultRevenueAccountID,
-		updates.DefaultExpenseAccountID, updates.DefaultCashAccountID,
-		updates.FxGainAccountID, updates.FxLossAccountID, updates.RetainedEarningsAccountID,
-		updates.DatevClearingAccountID, updates.DatevConsultantNumber, updates.DatevClientNumber,
-		updates.DefaultInventoryAccountID, updates.DefaultGRNIAccountID,
-		updates.DefaultCOGSAccountID, updates.DefaultInventoryAdjustmentAccountID,
-		updates.DefaultImportCostsPayableAccountID,
-		updates.DefaultFiscalStampAmount, updates.DefaultStampDutyAccountID, updates.InvoiceLayout,
+		updates.DatevConsultantNumber, updates.DatevClientNumber,
+		updates.DefaultFiscalStampAmount, updates.InvoiceLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
-		organizationID,
-	)
-	if err != nil {
+	}
+	// accountSet's placeholders sit between the COALESCE block and WHERE,
+	// so its args do too.
+	args = append(args, accountArgs...)
+	args = append(args, organizationID)
+
+	if _, err = d.DB.Exec(query, args...); err != nil {
 		return nil, fmt.Errorf("update_organization: %w", err)
 	}
 	return d.GetOrganization(organizationID)

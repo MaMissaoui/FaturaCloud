@@ -41,6 +41,35 @@ import OrganizationsTable from "src/components/organizations/organizations-table
 import OrganizationEditDrawer from "src/components/organizations/organization-edit-drawer";
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 
+// The GL-default account Selects the edit drawer renders. A cleared one has
+// to be sent as "" rather than dropped, or the server cannot tell "cleared"
+// from "not edited" — see the note in handleSubmit (audit 2026-09-14 F95).
+const ACCOUNT_DEFAULT_FIELDS = [
+  "defaultArAccountId",
+  "defaultApAccountId",
+  "defaultRevenueAccountId",
+  "defaultExpenseAccountId",
+  "defaultCashAccountId",
+  "defaultInventoryAccountId",
+  "defaultGRNIAccountId",
+  "defaultCOGSAccountId",
+  "defaultInventoryAdjustmentAccountId",
+  "defaultImportCostsPayableAccountId",
+  "datevClearingAccountId",
+  "defaultStampDutyAccountId",
+] as const;
+
+const clearedAccountDefaults = (values: Record<string, unknown>): Record<string, string> => {
+  const cleared: Record<string, string> = {};
+  for (const field of ACCOUNT_DEFAULT_FIELDS) {
+    // `in` matters: a field the drawer never rendered (the stamp-duty
+    // account while fiscal stamps are switched off) is absent rather than
+    // undefined, and must stay absent so the server keeps what it holds.
+    if (field in values && values[field] == null) cleared[field] = "";
+  }
+  return cleared;
+};
+
 export default function Organizations() {
   useLingui();
   const { message } = App.useApp();
@@ -257,6 +286,16 @@ export default function Organizations() {
       if (editingId) {
         await UpdateOrganization(editingId, {
           ...values,
+          // antd's `Select allowClear` sets the form value to `undefined`
+          // on clear, and JSON.stringify drops undefined keys entirely — so
+          // a cleared GL default reached the server indistinguishable from
+          // a field the user never touched, and nothing was cleared.
+          //
+          // The server's convention (db/organization.go's
+          // UpdateOrganization, audit 2026-09-14 F95) is the one every other
+          // nullable organization field already uses: omitted means keep,
+          // "" means clear. Send "" for any account Select the user emptied.
+          ...clearedAccountDefaults(values),
           defaultFiscalStampAmount:
             values.defaultFiscalStampAmount != null
               ? unitsToCents(values.defaultFiscalStampAmount)

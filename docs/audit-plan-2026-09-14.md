@@ -152,7 +152,7 @@ can no longer have its outstanding lines adjusted without cancelling the receipt
 | F82 | CI has no i18n catalog-drift check and no `gofmt` / `format:check` gate | CI | Low | 5.3 | Fixed #248 |
 | F83 | `v3.20.0` was pushed as a lightweight tag; every prior release tag is annotated | Ops | Low | 5.4 | Fixed — retagged, image republished |
 | F94 | An empty-string value in a nullable foreign-key field passes every `!= ""` validation guard, then reaches the INSERT and fails as a raw FK violation — a 500 where a clean "unset" was meant | Correctness | Low | 6.1 | Fixed #251 |
-| F95 | An organization's `default*AccountId` fields can never be cleared once set — `nil` means "don't touch" through `COALESCE`, `""` fails the foreign key, and the UI's `allowClear` sends neither | Correctness | Low-Medium | 6.2 | **Open — needs a decision** |
+| F95 | An organization's `default*AccountId` fields can never be cleared once set — `nil` means "don't touch" through `COALESCE`, `""` fails the foreign key, and the UI's `allowClear` sends neither | Correctness | Low-Medium | 6.2 | Fixed #252 |
 
 ---
 
@@ -753,16 +753,45 @@ The UI offers the clear that does nothing: `src/routes/organizations/index.tsx` 
 these as `Select allowClear`, and antd emits `undefined` on clear, which `JSON.stringify`
 drops from the body entirely — indistinguishable from "not edited".
 
-This is why normalizing `""` to `nil` for these 15 would be actively wrong: it converts a
-loud failure into a silent no-op and removes the only spelling that could ever carry the
-intent. **Not fixed here** — the fix is a real decision about the `COALESCE` convention
-(a sentinel value, a `clearFields []string`, or splitting these columns out of it), it
-changes documented behaviour, and it is worth doing on its own rather than inside a
-normalization sweep.
+This is why normalizing `""` to `nil` for these 15 would have been actively wrong: it
+converts a loud failure into a silent no-op and removes the only spelling that could ever
+carry the intent. Which points at the fix.
 
-**Severity: Low-Medium.** Nothing is corrupted and no posting path is affected — an
-organization simply keeps a GL default it wanted to remove, and the only recourse is a
-direct database `UPDATE`.
+**Fixed** (PR #252) by making the FK columns able to express the convention the rest of
+the request already has, rather than by inventing a second one. Three options were
+weighed:
+
+- **A — extend `""` to the FK columns.** Chosen.
+- **B — an explicit `clearFields []string`.** A real design position: it replaces an
+  in-band sentinel with an out-of-band signal and can distinguish "set to the empty
+  string" from "clear to NULL". Rejected on cost, not on principle — `""` is *already*
+  the clear spelling for all 25 plain-text organization fields (`email`, `phone`,
+  `brandColor`, …), verified directly, so B only yields one convention if all 40 fields
+  migrate. Applied to a subset it produces two conventions, which is worse than the
+  status quo. And for those 25 it buys nothing observable: `app.tsx` reads
+  `brandColor || undefined`, so NULL and `""` are indistinguishable to every consumer.
+- **C — a separate account-defaults endpoint** with plain full-replace semantics.
+  Coherent, and closest to `UpdateProduct`'s documented model, but the largest change for
+  the smallest problem.
+
+The implementation emits those 15 SET assignments in Go instead of through `COALESCE`:
+omitted leaves the column out of the statement entirely, `""` writes `col = NULL`, a
+value writes `col = ?`. Column names come from a Go literal, never from the request. A
+SQL-only form was tried first and rejected: `COALESCE(NULLIF(?, ''), col)` *looks* right
+and is exactly the bug (`NULLIF('','')` → NULL → falls back to the column), and the
+`CASE WHEN ? = '' THEN NULL ELSE COALESCE(?, col) END` that does work doubles 15
+parameters inside a ~45-parameter positional list.
+
+The frontend half is not optional. antd's `Select allowClear` sets the form value to
+`undefined`, and `JSON.stringify` drops undefined keys, so before this the clear never
+reached the server in any spelling — a server-only fix would have changed nothing the
+user could see. `src/routes/organizations/index.tsx` now sends `""` for any account
+Select the user emptied. Verified end to end by driving the real drawer and capturing the
+request body: populated fields send their id, emptied ones send `""`.
+
+`fkCoalesceKeep` in `db/optional_id.go` was renamed `fkExplicitClear` to match what these
+columns now mean — still deliberately excluded from F94's `nilIfEmptyID`, but because
+`""` is their *clear* signal, not because they have no way to express one.
 
 ---
 

@@ -642,7 +642,7 @@ msgid "Client updated successfully"
 msgstr "Client mis à jour avec succès"
 
 #: src/components/organizations/organizations-table.tsx:89
-#: src/routes/organizations/index.tsx:376
+#: src/routes/organizations/index.tsx:415
 msgid "client(s)"
 msgstr "client(s)"
 
@@ -1138,7 +1138,7 @@ msgstr "Supprimer ce mouvement de stock ? Le niveau de stock sera recalculé."
 msgid "Delete this user?"
 msgstr "Supprimer cet utilisateur ?"
 
-#: src/routes/organizations/index.tsx:345
+#: src/routes/organizations/index.tsx:384
 msgid "Deleted {total} record(s)"
 msgstr "{total} enregistrement(s) supprimé(s)"
 
@@ -1201,7 +1201,7 @@ msgid "Delivery update failed"
 msgstr "Échec de la mise à jour de la livraison"
 
 #: src/components/organizations/organizations-table.tsx:97
-#: src/routes/organizations/index.tsx:386
+#: src/routes/organizations/index.tsx:425
 msgid "delivery(ies)"
 msgstr "livraison(s)"
 
@@ -1574,7 +1574,7 @@ msgstr "Exporte chaque ligne d'écriture comptabilisée de l'exercice sélection
 msgid "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 msgstr "Exporte chaque ligne d'écriture validée de l'exercice sélectionné sous forme de fichier SirenFECAAAAMMJJ.txt, conformément au format imposé par l'administration fiscale française. Nécessite un SIREN à 9 chiffres dans le numéro d'immatriculation de l'organisation."
 
-#: src/routes/organizations/index.tsx:195
+#: src/routes/organizations/index.tsx:224
 msgid "Failed to add member"
 msgstr "Échec de l'ajout du membre"
 
@@ -1772,7 +1772,7 @@ msgstr "Échec de l'enregistrement du paiement"
 msgid "Failed to record stock movement"
 msgstr "Échec de l'enregistrement du mouvement de stock"
 
-#: src/routes/organizations/index.tsx:220
+#: src/routes/organizations/index.tsx:249
 msgid "Failed to remove member"
 msgstr "Échec de la suppression du membre"
 
@@ -1825,7 +1825,7 @@ msgstr "Échec de la mise à jour du statut de la facture fournisseur"
 msgid "Failed to update invoice state"
 msgstr "Échec de la mise à jour de l'état de la facture"
 
-#: src/routes/organizations/index.tsx:207
+#: src/routes/organizations/index.tsx:236
 msgid "Failed to update member role"
 msgstr "Échec de la mise à jour du rôle du membre"
 
@@ -2011,7 +2011,7 @@ msgid "Goods receipt update failed"
 msgstr "Échec de la mise à jour de la réception"
 
 #: src/components/organizations/organizations-table.tsx:95
-#: src/routes/organizations/index.tsx:388
+#: src/routes/organizations/index.tsx:427
 msgid "goods receipt(s)"
 msgstr "réception(s) de marchandises"
 
@@ -2168,7 +2168,7 @@ msgid "Incoming invoice update failed"
 msgstr "Échec de la mise à jour de la facture fournisseur"
 
 #: src/components/organizations/organizations-table.tsx:96
-#: src/routes/organizations/index.tsx:389
+#: src/routes/organizations/index.tsx:428
 msgid "incoming invoice(s)"
 msgstr "facture(s) fournisseur"
 
@@ -2284,7 +2284,7 @@ msgid "Invoice updated successfully"
 msgstr "Facture mise à jour avec succès"
 
 #: src/components/organizations/organizations-table.tsx:91
-#: src/routes/organizations/index.tsx:384
+#: src/routes/organizations/index.tsx:423
 msgid "invoice(s)"
 msgstr "facture(s)"
 
@@ -2450,11 +2450,11 @@ msgstr "Échec de la connexion"
 msgid "Logo"
 msgstr "Logo"
 
-#: src/routes/organizations/index.tsx:248
+#: src/routes/organizations/index.tsx:277
 msgid "Logo removal failed"
 msgstr "Échec de la suppression du logo"
 
-#: src/routes/organizations/index.tsx:448
+#: src/routes/organizations/index.tsx:487
 msgid "Logo upload failed"
 msgstr "Échec du téléchargement du logo"
 
@@ -2530,11 +2530,11 @@ msgstr "Concordante"
 msgid "Matricule Fiscal (MF)"
 msgstr "Matricule Fiscal (MF)"
 
-#: src/routes/organizations/index.tsx:190
+#: src/routes/organizations/index.tsx:219
 msgid "Member added"
 msgstr "Membre ajouté"
 
-#: src/routes/organizations/index.tsx:217
+#: src/routes/organizations/index.tsx:246
 msgid "Member removed"
 msgstr "Membre supprimé"
 
@@ -2690,7 +2690,7 @@ msgstr "Nouvelle commande"
 
 #: src/components/organizations/organization-edit-drawer.tsx:112
 #: src/layouts/base.tsx:792
-#: src/routes/organizations/index.tsx:418
+#: src/routes/organizations/index.tsx:457
 msgid "New organization"
 msgstr "Nouvelle organisation"
 
@@ -2929,7 +2929,7 @@ msgstr "Notes"
 msgid "Nothing matches the current selection."
 msgstr "Rien ne correspond à la sélection actuelle."
 
-#: src/routes/organizations/index.tsx:346
+#: src/routes/organizations/index.tsx:385
 msgid "Nothing to delete — this organization was empty"
 msgstr "Rien à supprimer — cette organisation était vide"
 
@@ -3071,7 +3071,7 @@ msgid "Order update failed"
 msgstr "Échec de la mise à jour de la commande"
 
 #: src/components/organizations/organizations-table.tsx:93
-#: src/routes/organizations/index.tsx:385
+#: src/routes/organizations/index.tsx:424
 msgid "order(s)"
 msgstr "commande(s)"
 
@@ -3097,11 +3097,11 @@ msgstr "Échec de la création de l'organisation"
 msgid "Organization default"
 msgstr "Valeur par défaut de l'organisation"
 
-#: src/routes/organizations/index.tsx:318
+#: src/routes/organizations/index.tsx:357
 msgid "Organization deleted"
 msgstr "Organisation supprimée"
 
-#: src/routes/organizations/index.tsx:321
+#: src/routes/organizations/index.tsx:360
 msgid "Organization deletion failed"
 msgstr "Échec de la suppression de l'organisation"
 
@@ -3114,7 +3114,7 @@ msgid "Organization updated successfully"
 msgstr "Organisation mise à jour avec succès"
 
 #: src/layouts/base.tsx:570
-#: src/routes/organizations/index.tsx:408
+#: src/routes/organizations/index.tsx:447
 msgid "Organizations"
 msgstr "Organisations"
 
@@ -3503,7 +3503,7 @@ msgid "Product updated"
 msgstr "Produit mis à jour"
 
 #: src/components/organizations/organizations-table.tsx:92
-#: src/routes/organizations/index.tsx:378
+#: src/routes/organizations/index.tsx:417
 msgid "product(s)"
 msgstr "produit(s)"
 
@@ -3601,7 +3601,7 @@ msgid "Purchase order update failed"
 msgstr "Échec de la mise à jour de la commande d'achat"
 
 #: src/components/organizations/organizations-table.tsx:94
-#: src/routes/organizations/index.tsx:387
+#: src/routes/organizations/index.tsx:426
 msgid "purchase order(s)"
 msgstr "commande(s) d'achat"
 
@@ -3838,7 +3838,7 @@ msgstr "Requis pour générer un export DATEV (1001–9999999)."
 msgid "Reserves a serial-number range for whatever gets produced from this shipment's components — a Production Order linked to this import can only register serials inside it."
 msgstr "Réserve une plage de numéros de série pour tout ce qui est fabriqué à partir des composants de cet envoi — un ordre de fabrication lié à cet import ne peut enregistrer que des numéros de série compris dans cette plage."
 
-#: src/routes/organizations/index.tsx:362
+#: src/routes/organizations/index.tsx:401
 msgid "Reset failed"
 msgstr "Échec de la réinitialisation"
 
@@ -4062,7 +4062,7 @@ msgstr "Planification enregistrée"
 #: src/routes/inbound-deliveries.tsx:57
 #: src/routes/incoming-invoices.tsx:61
 #: src/routes/orders.tsx:55
-#: src/routes/organizations/index.tsx:410
+#: src/routes/organizations/index.tsx:449
 #: src/routes/production-orders.tsx:58
 #: src/routes/products.tsx:172
 #: src/routes/purchase-orders.tsx:56
@@ -4379,7 +4379,7 @@ msgstr "Mouvement de stock supprimé"
 msgid "Stock movement recorded"
 msgstr "Mouvement de stock enregistré"
 
-#: src/routes/organizations/index.tsx:390
+#: src/routes/organizations/index.tsx:429
 msgid "stock movement(s)"
 msgstr "mouvement(s) de stock"
 
@@ -4491,7 +4491,7 @@ msgid "Tax rate updated successfully"
 msgstr "Taux de taxe mis à jour avec succès"
 
 #: src/components/organizations/organizations-table.tsx:98
-#: src/routes/organizations/index.tsx:379
+#: src/routes/organizations/index.tsx:418
 msgid "tax rate(s)"
 msgstr "taux de taxe"
 
@@ -4952,7 +4952,7 @@ msgid "Vendor updated successfully"
 msgstr "Fournisseur mis à jour avec succès"
 
 #: src/components/organizations/organizations-table.tsx:90
-#: src/routes/organizations/index.tsx:377
+#: src/routes/organizations/index.tsx:416
 msgid "vendor(s)"
 msgstr "fournisseur(s)"
 
