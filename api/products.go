@@ -77,7 +77,13 @@ func (h *handler) updateProduct(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusConflict, err.Error())
 			return
 		}
-		writeInternalError(w, err)
+		// writeMutationError, not writeInternalError: UpdateProduct returns
+		// *db.ValidationError for a rejected category, a serialized toggle
+		// against non-zero stock, and a cross-org unitOfMeasureId — all
+		// user-reachable, all of which used to reach the user as a bare 500
+		// "internal error" while createProduct above returned the real
+		// message as a 409 (F72).
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, product)

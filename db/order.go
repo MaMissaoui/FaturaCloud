@@ -43,6 +43,12 @@ type OrderLineItem struct {
 }
 
 type CreateOrderLineItemRequest struct {
+	// ID is the existing orderLineItems row this line should keep, echoed
+	// back by the client from a previous read. Empty/absent means a newly
+	// added line. Preserving it is what keeps
+	// outbound_delivery_line_items.orderLineItemId intact across an edit —
+	// see db/line_item_reconcile.go (F70).
+	ID          *string `json:"id"`
 	ProductID   *string `json:"productId"`
 	Description string  `json:"description"`
 	Quantity    float64 `json:"quantity"`
@@ -336,16 +342,8 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 		return nil, fmt.Errorf("create_order insert: %w", err)
 	}
 
-	for i, item := range req.LineItems {
-		itemID, _ := gonanoid.New()
-		_, err = tx.Exec(`
-			INSERT INTO orderLineItems (id, orderId, productId, description, quantity, unitPrice, position)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			itemID, req.ID, item.ProductID, item.Description, item.Quantity, roundCents(item.UnitPrice), i,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("create_order line_item: %w", err)
-		}
+	if err := replaceOrderLineItemsTx(tx, req.ID, req.LineItems); err != nil {
+		return nil, fmt.Errorf("create_order line_items: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -413,19 +411,8 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 	}
 
 	if updates.LineItems != nil {
-		if _, err = tx.Exec(`DELETE FROM orderLineItems WHERE orderId = ?`, orderID); err != nil {
-			return nil, fmt.Errorf("update_order delete_items: %w", err)
-		}
-		for i, item := range *updates.LineItems {
-			itemID, _ := gonanoid.New()
-			_, err = tx.Exec(`
-				INSERT INTO orderLineItems (id, orderId, productId, description, quantity, unitPrice, position)
-				VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				itemID, orderID, item.ProductID, item.Description, item.Quantity, roundCents(item.UnitPrice), i,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("update_order line_item: %w", err)
-			}
+		if err := replaceOrderLineItemsTx(tx, orderID, *updates.LineItems); err != nil {
+			return nil, fmt.Errorf("update_order line_items: %w", err)
 		}
 	}
 
@@ -511,4 +498,47 @@ func (d *Database) DeleteOrder(orderID string) (bool, error) {
 
 	n, _ := res.RowsAffected()
 	return n > 0, nil
+}
+
+// replaceOrderLineItemsTx writes an order's line items, reusing the row id
+// of every line the request still carries so
+// outbound_delivery_line_items.orderLineItemId survives the edit. See
+// db/line_item_reconcile.go for why (F70) and for what the other,
+// deliberately untouched, line-item tables do instead.
+func replaceOrderLineItemsTx(exec sqlSelectExecer, orderID string, items []CreateOrderLineItemRequest) error {
+	requested := make([]*string, len(items))
+	for i, item := range items {
+		requested[i] = item.ID
+	}
+	slots, obsolete, err := reconcileLineItemIDs(exec, "orderLineItems", "orderId", orderID, requested)
+	if err != nil {
+		return err
+	}
+	if err := deleteLineItemsByID(exec, "orderLineItems", "orderId", orderID, obsolete); err != nil {
+		return err
+	}
+
+	for i, item := range items {
+		if slots[i].Existing {
+			if _, err := exec.Exec(`
+				UPDATE orderLineItems
+				SET productId = ?, description = ?, quantity = ?, unitPrice = ?, position = ?
+				WHERE id = ? AND orderId = ?`,
+				item.ProductID, item.Description, item.Quantity, roundCents(item.UnitPrice), i,
+				slots[i].ID, orderID,
+			); err != nil {
+				return fmt.Errorf("update_order_line_item: %w", err)
+			}
+			continue
+		}
+		if _, err := exec.Exec(`
+			INSERT INTO orderLineItems (id, orderId, productId, description, quantity, unitPrice, position)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			slots[i].ID, orderID, item.ProductID, item.Description, item.Quantity,
+			roundCents(item.UnitPrice), i,
+		); err != nil {
+			return fmt.Errorf("insert_order_line_item: %w", err)
+		}
+	}
+	return nil
 }
