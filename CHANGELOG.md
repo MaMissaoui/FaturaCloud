@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- German and French are fully translated again: the 77 messages left
+  untranslated in both catalogs (most of the Imports and Document
+  Templates features, plus a handful that render on the new Production
+  Order and Bill of Materials screens) now have translations, so those
+  screens no longer show English text to a de/fr user.
+
+### Fixed
+- CI now fails a pull request whose translation catalogs are stale,
+  whose Go files are not `gofmt`'d, or whose frontend sources are not
+  `oxfmt`'d — missing catalog entries have been this repository's own
+  recurring regression.
+
 ## [3.20.0] - 2026-09-14
 
 ### Added
