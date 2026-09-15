@@ -39,9 +39,25 @@ than merely producing a wrong number.
 - The "Explicitly excluded" section at the end is binding: those were checked and
   dismissed with a reason. Do not re-raise them.
 
-**Status:** All 24 findings open. No remediation PRs yet. F93 was appended after the
-initial 23 — Phase 1.1's precondition enumeration is what found it, which is the
-argument for keeping that precondition rather than treating it as ceremony.
+**Status:** 24 findings. F93 was appended after the initial 23 — Phase 1.1's precondition
+enumeration is what found it, which is the argument for keeping that precondition rather
+than treating it as ceremony.
+
+Remediation in flight:
+
+| Phase | PR | Findings | State |
+|---|---|---|---|
+| 1 — backend correctness | #244 | F70, F71, F72, F73, F74, F93 | CI green, open |
+| 2 — frontend reliability | #245 | F84, F85, F86, F87, F88, F89 | CI green, open |
+| 3 — design & consistency | #246 | F75, F76, F77, F78, F79, F90, F91 | open |
+| 4 — test backfill | — | F80 | not started |
+| 5 — docs, i18n, CI, ops | — | F81, F82, F83, F92 | not started |
+
+Both decisions this document left open are now settled in place: **F76 → hoist** (3.2),
+**F79 → reviewed, not changed** (3.5). One question raised by F93 stays open — whether
+purchase-order line items should additionally be *frozen* once a receipt exists. Id reuse
+stops the severing, but it does not stop a quantity moving underneath an already-posted
+GRNI accrual.
 
 ---
 
@@ -358,11 +374,16 @@ algebraically — so an organization with no inventory GL accounts configured co
 production orders fine for months, then 409s on one odd batch. Every other Phase 7
 posting path fails deterministically when unconfigured.
 
-**This is a decision, not a cleanup.** Hoisting those checks above the `netCents == 0`
-return makes *every* production order require inventory accounts — a behavior change
-that breaks organizations completing orders fine today. Either hoist (and add a
-CHANGELOG line), or document the conditional check as deliberate in CLAUDE.md. Pick one
-and record it here; do not leave it undecided.
+**Decision: hoist** — implemented in Phase 3 (PR #246), with a CHANGELOG line. Three
+reasons. It matches the documented Phase 7 contract that *every* posting path refuses
+until these are configured — shipping a delivery already 409s unconditionally, so
+production orders failing only sometimes was the inconsistency. A deterministic failure
+at setup time beats a mystery 409 on one batch in a hundred. And the blast radius is
+small, which is what settled it: `main.go` runs
+`SeedInventoryAccountingDefaultsForAllOrganizations` on **every startup**, backfilling any
+organization with any of the four columns NULL (`db/account.go:732`), so the unconfigured
+state is only reachable by deliberately clearing the field and not restarting — and such
+an organization is already blocked at its next shipment anyway.
 
 ### 3.3 — F77: Restore can record no version
 
@@ -396,12 +417,24 @@ UX and error class are wrong. Low probability, real.
 
 ### 3.5 — F79: An org can end up with zero default units of measure
 
+**Decision: reviewed, left unchanged — not a defect.** (Same disposition as the
+2026-08-13 audit's F63: recorded as a decision rather than a fix, so it isn't re-raised.)
+
 `db/unit_of_measure.go:132-137` applies `isDefault = COALESCE(?, isDefault)`, so an
 explicit `0` unsets the organization's only default and promotes nothing.
-`DeleteUnitOfMeasure` (`db/unit_of_measure.go:164-171`) has the same hole. The
-new-product prefill that `47e1e0c` existed to make work then silently stops prefilling.
+`DeleteUnitOfMeasure` (`db/unit_of_measure.go:164-171`) has the same hole.
 
-Consistent with the `taxRates` / `payment_terms` precedent, so: fix all three or none.
+But both paths are reachable only through an explicit user action:
+`src/components/units-of-measure/form.tsx:130` exposes `isDefault` as a plain Checkbox
+labelled "Default for new products", and deleting the row is a `Popconfirm`. Unchecking
+that box, or deleting that row, means "I don't want a default any more" — the prefill
+stopping is the requested outcome, not silent data loss, so this finding's original
+"silently stops prefilling" framing overstates it.
+
+The alternatives are both worse: refusing to unset or delete the last default makes a
+reasonable action impossible, and auto-promoting an arbitrary sibling installs a default
+the user never chose. The same reasoning applies to `taxRates` and `payment_terms`, which
+share the shape.
 
 ### 3.6 — F90: `any` regression against issue #143
 
