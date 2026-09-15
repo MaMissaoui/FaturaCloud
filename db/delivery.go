@@ -225,9 +225,6 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 	if err != nil {
 		return nil, fmt.Errorf("update_delivery lookup: %w", err)
 	}
-	if req.LineItems != nil && (current.Status == "shipped" || current.Status == "delivered") {
-		return nil, newValidationError("cannot edit line items of a %s delivery", current.Status)
-	}
 	if err := d.checkDeliveryHeaderFKOwnership(current.OrganizationID, req.OrderID, req.ClientID); err != nil {
 		return nil, err
 	}
@@ -237,6 +234,36 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 		return nil, fmt.Errorf("update_delivery begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Line items are frozen once a delivery is shipped — but only a request
+	// that would genuinely change them is refused, not one that merely
+	// carries them. src/atoms/delivery.ts always sends the full line-item
+	// array, so testing presence made the documented header-only edit
+	// (tracking number, notes) unreachable. See db/delivery_freeze.go.
+	//
+	// Checked inside the transaction: db.SetMaxOpenConns(1) means holding it
+	// holds the only connection, so a concurrent PATCH .../status cannot
+	// ship this delivery between the check and the write it guards.
+	if req.LineItems != nil {
+		// Status is re-read under tx, never taken from the pre-tx GetDelivery
+		// above (the F48 shape): a concurrent PATCH .../status could have
+		// shipped this delivery in the gap, and the stale read would then
+		// wave through an edit to lines that have already moved stock and
+		// posted COGS.
+		var status string
+		if err := tx.Get(&status, `SELECT status FROM outbound_deliveries WHERE id = ?`, id); err != nil {
+			return nil, fmt.Errorf("update_delivery status recheck: %w", err)
+		}
+		if status == "shipped" || status == "delivered" {
+			unchanged, err := deliveryLineItemsUnchangedTx(tx, id, *req.LineItems)
+			if err != nil {
+				return nil, err
+			}
+			if !unchanged {
+				return nil, newValidationError("cannot edit line items of a %s delivery", status)
+			}
+		}
+	}
 
 	_, err = tx.Exec(`
 		UPDATE outbound_deliveries SET
