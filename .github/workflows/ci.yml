@@ -33,6 +33,19 @@ jobs:
       - name: Stub embedded frontend directory
         run: mkdir -p dist && touch dist/index.html
 
+      - name: Check formatting
+        # Passes today, so gating it costs nothing and stops unformatted Go
+        # reaching main (audit 2026-09-14 F82). gofmt -l prints offending
+        # files and exits 0, so the file list itself has to be the failure
+        # signal.
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt'd:" >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
+
       - name: Vet
         run: go vet ./...
 
@@ -121,6 +134,27 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      # Catalog drift is this repo's own recurring failure mode: issue #216
+      # found 80 messages missing from the catalogs because `pnpm extract`
+      # had not been re-run, 12 of them missing from English too. Extracting
+      # in CI and failing on a dirty tree means a new string can't reach main
+      # without its catalog entry (audit 2026-09-14 F82).
+      #
+      # This checks only that the catalogs are *complete and current*, not
+      # that every entry is translated — an untranslated msgstr falls back to
+      # the source text, which is a product decision, not a build break.
+      - name: Check translation catalogs are up to date
+        run: |
+          pnpm extract
+          if ! git diff --quiet -- src/locales/; then
+            echo "Translation catalogs are stale. Run 'pnpm extract' and commit the result:" >&2
+            git --no-pager diff --stat -- src/locales/ >&2
+            exit 1
+          fi
 
       - name: Test
         run: pnpm test

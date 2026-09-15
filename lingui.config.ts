@@ -10,6 +10,13 @@ const config: LinguiConfig = {
     {
       path: "<rootDir>/src/locales/{locale}",
       include: ["src"],
+      // Test files use the Lingui macros to assert the macros themselves
+      // work (src/test-support/lingui-macros.test.tsx), so without this
+      // their fixture strings ("hello", "world") land in every catalog as
+      // untranslated UI text (audit 2026-09-14 F92). Excluding them also
+      // keeps the CI catalog-drift gate from flagging churn nobody can
+      // meaningfully translate.
+      exclude: ["**/*.test.ts", "**/*.test.tsx", "**/test-support/**"],
     },
   ],
 };
