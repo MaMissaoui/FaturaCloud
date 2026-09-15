@@ -26,12 +26,19 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined, DeploymentUnitOutlined, SaveOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import find from "lodash/find";
 import PageHeader from "src/components/page-header";
 import { message } from "src/utils/message";
 
 import { GetProductBOM } from "src/api";
-import type { BillOfMaterialsLine, Import, Product, ProductionOrder } from "src/types/models";
+import type {
+  BillOfMaterialsLine,
+  Import,
+  Product,
+  ProductionOrder,
+  ProductionOrderComponentLine,
+} from "src/types/models";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import SerialCaptureModal from "src/components/stock/serial-capture-modal";
 import StatusFlow from "src/components/status-flow";
@@ -111,7 +118,7 @@ const CreateProductionOrderForm = ({
 
   const watchedProductId = Form.useWatch("finishedProductId", form);
   const watchedQuantity = Form.useWatch("quantity", form) ?? 1;
-  const selectedProduct: any = find(finishedProducts, { id: watchedProductId });
+  const selectedProduct = find(finishedProducts, { id: watchedProductId });
 
   // Preview the recipe scaled by the entered quantity, before creating —
   // GetBillOfMaterials' quantityPerUnit is always per one finished unit
@@ -143,7 +150,19 @@ const CreateProductionOrderForm = ({
     };
   }, [watchedProductId, bomReloadToken]);
 
-  const handleCreate = async (values: any) => {
+  // The create form's raw values: date is a Dayjs until submitted, and the
+  // two optional fields arrive as "" from an untouched Select rather than
+  // null, which is why they're normalized below.
+  type CreateFormValues = {
+    orderNumber: string;
+    finishedProductId: string;
+    quantity: number;
+    date: Dayjs;
+    importId?: string | null;
+    notes?: string | null;
+  };
+
+  const handleCreate = async (values: CreateFormValues) => {
     setSubmitting(true);
     try {
       await createOrder({
@@ -177,7 +196,7 @@ const CreateProductionOrderForm = ({
             rules={[{ required: true, message: t`Finished product is required` }]}
           >
             <Select showSearch allowClear optionFilterProp="children" placeholder={t`Select…`}>
-              {finishedProducts.map((p: any) => (
+              {finishedProducts.map((p) => (
                 <Option key={p.id} value={p.id}>
                   {p.name}
                 </Option>
@@ -223,7 +242,7 @@ const CreateProductionOrderForm = ({
             tooltip={t`Optional — links the produced units to a shipment's reserved serial-number range.`}
           >
             <Select allowClear showSearch optionFilterProp="children" placeholder={t`None`}>
-              {imports.map((imp: any) => (
+              {imports.map((imp) => (
                 <Option key={imp.id} value={imp.id}>
                   {imp.importNumber}
                 </Option>
@@ -345,7 +364,7 @@ const ProductionOrderDetails = () => {
   // Only a "finished" good has a BOM to consume — component/unclassified
   // products aren't produced by a production order.
   const finishedProducts = useMemo(
-    () => products.filter((p: any) => p.category === "finished"),
+    () => products.filter((p) => p.category === "finished"),
     [products],
   );
   const imports = useAtomValue(importsAtom);
@@ -394,7 +413,7 @@ const ProductionOrderDetails = () => {
     if (ok) setStatusOverride(next);
   };
 
-  const isSerialized = !!order && !(order as any).then && (order as any).serialized === 1;
+  const isSerialized = order?.serialized === 1;
 
   const handleStatusChange = async (next: string) => {
     if (!id || isNew) return;
@@ -416,12 +435,15 @@ const ProductionOrderDetails = () => {
     }
   };
 
-  const currentOrder = order && !(order as any).then ? (order as any) : undefined;
+  // No `.then` guard here any more: loadable() already unwraps the promise,
+  // so those checks were vestigial copy-paste from the pre-loadable sibling
+  // and could never be true (audit 2026-09-14 F90).
+  const currentOrder = order ?? undefined;
   const currentStatus = statusOverride ?? currentOrder?.status ?? "draft";
   const transitions = isNew ? [] : productionOrderTransitions(currentStatus);
 
-  const linkedImport: any = currentOrder?.importId
-    ? find(imports, { id: currentOrder.importId })
+  const linkedImport = currentOrder?.importId
+    ? (find(imports, { id: currentOrder.importId }) ?? null)
     : null;
   const importRange =
     linkedImport &&
@@ -525,7 +547,7 @@ const ProductionOrderDetails = () => {
               <Table.Column
                 title={<Trans>Component</Trans>}
                 key="componentName"
-                render={(l: any) =>
+                render={(_: unknown, l: ProductionOrderComponentLine) =>
                   l.componentSku ? `${l.componentName} (${l.componentSku})` : l.componentName
                 }
               />
@@ -612,13 +634,17 @@ const ProductionOrderDetails = () => {
                 footerNode() as HTMLElement,
               )}
 
+            {/* finishedProductId is nullable (ON DELETE SET NULL), which the
+                removed `any` was hiding. A deleted finished product has no
+                serial registry to capture into, and completing such an order
+                409s server-side anyway, so there is nothing to show. */}
             <SerialCaptureModal
-              open={serialCapture}
+              open={serialCapture && !!currentOrder.finishedProductId}
               mode="produce"
               lines={[
                 {
                   lineItemId: "finished",
-                  productId: currentOrder.finishedProductId,
+                  productId: currentOrder.finishedProductId ?? "",
                   productName: currentOrder.finishedProductName,
                   quantity: currentOrder.quantity,
                 },

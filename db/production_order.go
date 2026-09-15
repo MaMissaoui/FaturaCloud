@@ -110,10 +110,12 @@ func (d *Database) GetProductionOrder(id string) (*ProductionOrder, error) {
 
 func (d *Database) GetProductionOrderComponentLines(productionOrderID string) ([]ProductionOrderComponentLine, error) {
 	lines := []ProductionOrderComponentLine{}
+	// Reads the snapshot columns directly — no LEFT JOIN on products, which
+	// is what used to make componentSku/componentUnit vanish for a deleted
+	// component while componentName survived (F75).
 	err := d.DB.Select(&lines, `
-		SELECT pcl.*, p.sku AS componentSku, p.unit AS componentUnit
+		SELECT pcl.*
 		FROM production_order_component_lines pcl
-		LEFT JOIN products p ON pcl.componentProductId = p.id
 		WHERE pcl.productionOrderId = ?
 		ORDER BY pcl.createdAt ASC, pcl.rowid ASC`,
 		productionOrderID,
@@ -203,10 +205,18 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 		return nil, newValidationError("%q has no bill of materials defined", finished.Name)
 	}
 
+	// componentSku/componentUnit are snapshotted alongside componentName
+	// (audit 2026-09-14 F75) rather than joined at read time — otherwise two
+	// of the four columns silently went NULL once the component product was
+	// deleted while the name survived, a half-frozen snapshot. This matches
+	// bill_of_materials_version_lines, which migration 0075's own comment
+	// already claimed to follow.
 	type resolvedLine struct {
 		id                 string
 		componentProductID string
 		componentName      string
+		componentSKU       *string
+		componentUnit      *string
 		quantityPerUnit    float64
 		totalQuantity      float64
 	}
@@ -227,6 +237,8 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 			id:                 id,
 			componentProductID: l.ComponentProductID,
 			componentName:      component.Name,
+			componentSKU:       component.SKU,
+			componentUnit:      component.Unit,
 			quantityPerUnit:    l.QuantityPerUnit,
 			totalQuantity:      roundBOMQuantity(l.QuantityPerUnit * req.Quantity),
 		})
@@ -250,9 +262,10 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 	for _, line := range lines {
 		if _, err := tx.Exec(`
 			INSERT INTO production_order_component_lines
-			  (id, productionOrderId, componentProductId, componentName, quantityPerUnit, totalQuantity)
-			VALUES (?, ?, ?, ?, ?, ?)`,
-			line.id, req.ID, line.componentProductID, line.componentName, line.quantityPerUnit, line.totalQuantity,
+			  (id, productionOrderId, componentProductId, componentName, componentSku, componentUnit, quantityPerUnit, totalQuantity)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			line.id, req.ID, line.componentProductID, line.componentName,
+			line.componentSKU, line.componentUnit, line.quantityPerUnit, line.totalQuantity,
 		); err != nil {
 			return nil, fmt.Errorf("insert_production_order_component_line: %w", err)
 		}
