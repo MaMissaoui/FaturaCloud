@@ -106,9 +106,17 @@ export const purchaseOrderAtom = atom(
 
     const toTimestamp = (v: Dayjs | number | null | undefined) =>
       v && typeof v === "object" && "valueOf" in v ? v.valueOf() : v;
+    // `id` deliberately travels to the server. It is what lets
+    // db/line_item_reconcile.go reuse the existing purchase_order_line_items
+    // row instead of deleting and reinserting it — which used to null both
+    // inbound_delivery_line_items.purchaseOrderLineItemId and
+    // incoming_invoice_line_items.purchaseOrderLineItemId on every save,
+    // defeating the billed-receipt cancel guard and stranding GRNI (F93).
+    // The server only honours an id that already belongs to this order, so
+    // sending it on the create path is harmless too.
     const toPayloadLineItems = (items: PurchaseOrderLineItemFormValues[]) =>
       items.map((item) => ({
-        ...omit(item, ["id"]),
+        ...item,
         unitPrice: unitsToCents(item.unitPrice ?? 0),
       }));
 
