@@ -18,12 +18,15 @@ Baseline health is good: `go vet ./...`, `gofmt -l .`, `tsc --noEmit`, `oxlint s
 `go test ./...` (all packages), `pnpm test` (22 tests) and every CI and Docker run on
 `main` are green. There are **zero open GitHub issues**, so this document is the backlog.
 
-This plan continues the numbering at **F70** (the 2026-08-13 fix-review ends at F69).
-Note that `F114` / `F116` / `F151` as they appear in CLAUDE.md are *GitHub issue*
-numbers — a separate namespace, not findings.
+This plan continues the numbering at **F70** (the 2026-08-13 fix-review ends at F69) and
+runs through **F93**. Note that `F114` / `F116` / `F151` as they appear in CLAUDE.md are
+*GitHub issue* numbers — a separate namespace, not findings.
 
-**Severity calibration:** nothing here reaches this repo's own "High" bar, which prior
-audits reserved for the double-posting class (F48). The honest top tier is Medium.
+**Severity calibration:** the original sweep produced nothing above Medium. **F93 —
+added after the fact, when F70's mandated precondition enumeration surfaced it — is
+High**, and is the only finding here reaching the bar prior audits reserved for F48's
+double-posting class: it disables a guard purpose-built to protect GL integrity rather
+than merely producing a wrong number.
 
 **Instructions for the executing model:**
 - This document is an audit, not a remediation — no code was changed while producing it.
@@ -36,7 +39,9 @@ audits reserved for the double-posting class (F48). The honest top tier is Mediu
 - The "Explicitly excluded" section at the end is binding: those were checked and
   dismissed with a reason. Do not re-raise them.
 
-**Status:** All 23 findings open. No remediation PRs yet.
+**Status:** All 24 findings open. No remediation PRs yet. F93 was appended after the
+initial 23 — Phase 1.1's precondition enumeration is what found it, which is the
+argument for keeping that precondition rather than treating it as ceremony.
 
 ---
 
@@ -44,6 +49,7 @@ audits reserved for the double-posting class (F48). The honest top tier is Mediu
 
 | # | Finding | Area | Severity | Phase | Status |
 |---|---------|------|----------|-------|--------|
+| F93 | `UpdatePurchaseOrder` severs `purchase_order_line_items` ids with no status gate — the billed-receipt cancel guard is skipped entirely, GRNI never clears, and 3-way matching silently passes | Ledger integrity | **High** | 1.1b | Open |
 | F70 | `UpdateOrder` deletes + reinserts `orderLineItems` with fresh ids, permanently nulling `outbound_delivery_line_items.orderLineItemId` — the outstanding-quantity prefill then re-offers already-shipped quantity | Data integrity | Medium-High | 1.1 | Open |
 | F71 | `products.unit` is derived only at product-write time — renaming a unit of measure never re-derives it, and clearing `unitOfMeasureId` is handled only in the frontend | Correctness | Medium | 1.2 | Open |
 | F72 | `updateProduct` / `updateTaxRate` map `*ValidationError` to 500 "internal error" instead of 409 with the real message | Correctness / UX | Medium | 1.3 | Open |
@@ -101,17 +107,76 @@ not, and #232 shipped a feature on top of it.
 (match on incoming `id`; insert only genuinely new lines, delete only genuinely removed
 ones) instead of a blanket delete-and-reinsert.
 
-**Precondition with a decision point, before writing any code:** enumerate every
-line-item replace helper — `db/order.go`, `db/purchase_order.go`, `db/delivery.go`'s
-`replaceDeliveryLineItemsTx`, `db/inbound_delivery.go`'s
-`replaceInboundDeliveryLineItemsTx`, `db/invoice.go`, `db/incoming_invoice.go` — and
-record which share the delete-and-reinsert-with-fresh-ids shape. The id-reuse rewrite
-changes line-item *identity* semantics, and the delivery helpers resolve `productId`
-from `orderLineItemId` at write time, so this is not a local change. Then choose
-explicitly: (a) scope this phase to `orders` alone and record here why the others are
-left (naming their equivalent downstream key, or that they have none), or (b) split F70
-into its own PR covering every affected helper. Do not let Phase 1 grow into (b)
-silently.
+#### Precondition — resolved
+
+The plan required enumerating every line-item replace helper before writing code,
+because the id-reuse rewrite changes line-item *identity* semantics. Done. Six helpers
+delete-and-reinsert with fresh `gonanoid`s (`db/order.go:416,499`,
+`db/purchase_order.go:377,463`, `db/invoice.go:452,615`, `db/delivery.go:684`,
+`db/inbound_delivery.go:818`, `db/incoming_invoice.go:607`), but only **three** foreign
+keys in the whole schema reference a line-item table's `id`:
+
+| Referencing column | Target | Severed by |
+|---|---|---|
+| `outbound_delivery_line_items.orderLineItemId` | `orderLineItems(id)` | `UpdateOrder` — **F70** |
+| `inbound_delivery_line_items.purchaseOrderLineItemId` | `purchase_order_line_items(id)` | `UpdatePurchaseOrder` — **F93** |
+| `incoming_invoice_line_items.purchaseOrderLineItemId` | `purchase_order_line_items(id)` | `UpdatePurchaseOrder` — **F93** |
+
+All three are `ON DELETE SET NULL`.
+
+**Decision: option (b) — the fix must cover both `orderLineItems` and
+`purchase_order_line_items`.** The enumeration surfaced F93 (below), which is a strictly
+worse instance of the same class and cannot be left behind while F70 is fixed. The
+remaining four helpers — invoices, outbound deliveries, inbound deliveries, incoming
+invoices — have **no** inbound FK to their line-item ids at all, so their
+delete-and-reinsert is genuinely harmless and is deliberately left alone. Record that
+here so a later audit does not re-raise them.
+
+### 1.1b — F93: Editing a purchase order silently defeats the GRNI cancel guard
+
+Found by 1.1's enumeration, not by the original sweep. Same mechanism as F70, materially
+worse consequences.
+
+`replacePurchaseOrderLineItemsTx` (`db/purchase_order.go:375-395`) deletes every
+`purchase_order_line_items` row and reinserts with fresh `gonanoid`s. `UpdatePurchaseOrder`
+(`db/purchase_order.go:~340`) applies it with **no status gate whatsoever** — neither the
+DB layer nor `src/routes/purchase-orders/details.tsx` prevents editing a `received`
+purchase order. `purchase_order_line_items.id` is the join key for four independent
+subsystems:
+
+1. **The GRNI cancel guard is skipped, not merely weakened.**
+   `db/inbound_delivery.go:645-659` iterates the receipt's lines and does
+   `if line.PurchaseOrderLineItemID == nil { continue }` before calling
+   `grniClearedQtyForPOLine`. Once the FK is nulled, every line hits that `continue`, so
+   the guard never runs and a **billed receipt becomes cancellable** — reversing the
+   receipt's Dr GRNI / Cr Inventory entry while the bill's AP obligation and cost
+   recognition both still stand. That is verbatim the outcome the guard's own comment
+   (`:640-644`) says it exists to prevent, and the "Finding B" scenario
+   `docs/inventory-cogs-integration.md` records as fixed in Phase 7.
+2. **GRNI never clears.** `grniClearedQtyForPOLine` (`db/gl_posting.go:836`) and
+   `grniAccrualForPOLine` (`:785`) both key on `purchaseOrderLineItemId`. A bill posted
+   after the edit capitalizes its full amount to Inventory and nets nothing against the
+   accrual, leaving GRNI permanently overstated.
+3. **3-way matching silently passes.** `db/incoming_invoice_match.go:110,133` key on the
+   same column, so every line reports `unlinked` — informational, never blocking — and
+   `PreviouslyInvoiced` counts zero, dissolving the double-billing guard.
+4. **Receipt prefill re-offers received quantity.** `GetPurchaseOrderReceivedQuantities`
+   (`db/inbound_delivery.go:171-182`) returns empty, so a new receipt from that order
+   offers the full quantity again — double stock receipt, the purchasing-side twin of
+   F70's consequence 2.
+
+**Severity: High.** This is the one finding in this audit that reaches the bar prior
+audits reserved for F48's double-posting class — it does not merely produce a wrong
+number, it disables a guard purpose-built to protect GL integrity, and the resulting
+GRNI imbalance is silent and not self-correcting.
+
+**Fix direction:** the same id-reuse rewrite as F70, applied to
+`replacePurchaseOrderLineItemsTx`. Additionally consider — and record the decision —
+whether `UpdatePurchaseOrder` should refuse line-item edits once any receipt exists
+against the order, the way `outbound_deliveries` freezes line items at `shipped`
+(CLAUDE.md's `outbound_deliveries.status` note). Id reuse fixes the severing; a freeze
+would additionally stop quantities moving underneath an already-posted GRNI accrual,
+which id reuse alone does not address.
 
 ### 1.2 — F71: `products.unit` denormalization is write-time only
 
@@ -616,8 +681,10 @@ Each of these was checked during this audit and dismissed with a reason.
 
 ## Remediation phases
 
-**Phase 1 — backend correctness (1.1–1.5).** F70 is the largest and should be its own
-commit within the PR, gated on the replace-helper enumeration in 1.1.
+**Phase 1 — backend correctness (1.1–1.5).** F70 and F93 are one fix applied to two
+helpers and belong in a single commit — the enumeration in 1.1 established that leaving
+either behind leaves the class half-fixed. Do F93's optional receipt-freeze question as
+a separate, explicitly recorded decision; id reuse alone does not cover it.
 
 **Phase 2 — frontend reliability (2.1–2.6).** The error/loading-state cluster. F84's
 "save wipes a real BOM" is the one with data-loss potential.
@@ -644,6 +711,13 @@ Beyond the mandatory per-phase gates (`go vet ./... && go test -race ./...`,
   `orderFullyDeliveredTx` still reasons correctly. Then in the running app: create a
   delivery from the edited order and confirm the prefilled quantity is the *outstanding*
   one, not the full one.
+- **F93** — DB-layer test, and it must assert the guard, not just the link: create a
+  purchase order, receive it, bill it, `UpdatePurchaseOrder`, then attempt to cancel the
+  receipt and assert it is **refused** with "has already been billed against this
+  receipt". A test that only checks `purchaseOrderLineItemId` survived would pass against
+  a fix that restored the id but broke the guard some other way. Also assert
+  `grniClearedQtyForPOLine` still returns the billed quantity and that the 3-way match
+  still reports the line `matched` rather than `unlinked`.
 - **F71** — rename a unit of measure through Settings and confirm the Products list,
   Inventory and the BOM drawer's component unit all show the new name without re-saving
   any product.
