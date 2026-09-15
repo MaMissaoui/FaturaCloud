@@ -14,6 +14,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Table,
   Tag,
@@ -28,6 +29,7 @@ import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import find from "lodash/find";
 import PageHeader from "src/components/page-header";
+import { message } from "src/utils/message";
 
 import { GetProductBOM } from "src/api";
 import type {
@@ -107,6 +109,12 @@ const CreateProductionOrderForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [bomLines, setBomLines] = useState<BillOfMaterialsLine[]>([]);
   const [bomLoading, setBomLoading] = useState(false);
+  // A failed fetch used to be swallowed into an empty list, which the Alert
+  // below then reported as "this product has no Bill of Materials" — telling
+  // the user to fix data that is already correct, with Create disabled and
+  // no way to retry (F85).
+  const [bomLoadFailed, setBomLoadFailed] = useState(false);
+  const [bomReloadToken, setBomReloadToken] = useState(0);
 
   const watchedProductId = Form.useWatch("finishedProductId", form);
   const watchedQuantity = Form.useWatch("quantity", form) ?? 1;
@@ -123,12 +131,16 @@ const CreateProductionOrderForm = ({
     }
     let cancelled = false;
     setBomLoading(true);
+    setBomLoadFailed(false);
     GetProductBOM(watchedProductId)
       .then((lines) => {
         if (!cancelled) setBomLines(lines ?? []);
       })
-      .catch(() => {
-        if (!cancelled) setBomLines([]);
+      .catch((error) => {
+        if (cancelled) return;
+        setBomLines([]);
+        setBomLoadFailed(true);
+        message.error(error instanceof Error ? error.message : t`Failed to load bill of materials`);
       })
       .finally(() => {
         if (!cancelled) setBomLoading(false);
@@ -136,7 +148,7 @@ const CreateProductionOrderForm = ({
     return () => {
       cancelled = true;
     };
-  }, [watchedProductId]);
+  }, [watchedProductId, bomReloadToken]);
 
   // The create form's raw values: date is a Dayjs until submitted, and the
   // two optional fields arrive as "" from an untouched Select rather than
@@ -247,7 +259,21 @@ const CreateProductionOrderForm = ({
         </Col>
       </Row>
 
-      {watchedProductId && !bomLoading && bomLines.length === 0 && (
+      {watchedProductId && !bomLoading && bomLoadFailed && (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={<Trans>Couldn't load this product's Bill of Materials</Trans>}
+          action={
+            <Button size="small" onClick={() => setBomReloadToken((n) => n + 1)}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
+      {watchedProductId && !bomLoading && !bomLoadFailed && bomLines.length === 0 && (
         <Alert
           type="warning"
           showIcon
@@ -354,6 +380,11 @@ const ProductionOrderDetails = () => {
 
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
   const [serialCapture, setSerialCapture] = useState(false);
+  // Without this the modal's OK stayed enabled through the await below, so a
+  // second click fired a second PATCH — and since draft -> completed has
+  // already consumed stock by then, the retry 409s and toasts an error on
+  // top of the success (F86).
+  const [confirmingSerials, setConfirmingSerials] = useState(false);
 
   useEffect(() => {
     setProducts();
@@ -394,8 +425,14 @@ const ProductionOrderDetails = () => {
   };
 
   const handleSerialCaptureConfirm = async (serialNumbers: Record<string, string[]>) => {
-    await applyStatusChange("completed", serialNumbers.finished ?? []);
-    setSerialCapture(false);
+    if (confirmingSerials) return;
+    setConfirmingSerials(true);
+    try {
+      await applyStatusChange("completed", serialNumbers.finished ?? []);
+      setSerialCapture(false);
+    } finally {
+      setConfirmingSerials(false);
+    }
   };
 
   // No `.then` guard here any more: loadable() already unwraps the promise,
@@ -420,7 +457,31 @@ const ProductionOrderDetails = () => {
         }
       : null;
 
-  if (!isNew && !order) return null;
+  // Loading and failure used to share `return null`, so both rendered a
+  // completely empty page — no header, no retry (F89).
+  if (!isNew && !order) {
+    return (
+      <>
+        <PageHeader title={<Trans>Production order</Trans>} icon={<DeploymentUnitOutlined />} />
+        <div style={{ padding: 24 }}>
+          {orderLoadable.state === "loading" ? (
+            <Skeleton active paragraph={{ rows: 6 }} />
+          ) : (
+            <Alert
+              type="error"
+              showIcon
+              message={<Trans>Couldn't load this production order</Trans>}
+              action={
+                <Button size="small" onClick={() => navigate("/production-orders")}>
+                  <Trans>Back to list</Trans>
+                </Button>
+              }
+            />
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -589,6 +650,7 @@ const ProductionOrderDetails = () => {
                 },
               ]}
               importRange={importRange}
+              confirming={confirmingSerials}
               onCancel={() => setSerialCapture(false)}
               onConfirm={handleSerialCaptureConfirm}
             />

@@ -249,9 +249,19 @@ func (d *Database) checkProductFKOwnership(organizationID string, taxRateID, rev
 // list, BOM component display) correct with no changes of their own. A
 // nil/empty unitOfMeasureId leaves fallbackUnit untouched, preserving plain
 // free-text unit entry for any caller that doesn't use the structured list
-// (cmd/seed-demo, a direct API client).
-func (d *Database) resolveProductUnit(organizationID string, unitOfMeasureID, fallbackUnit *string) (*string, error) {
+// (cmd/seed-demo, a direct API client) — *unless* the product currently has
+// one, in which case the stored Unit is a derived copy of that unit of
+// measure's name and clearing the link must clear the copy too. Otherwise a
+// caller that echoes the old Unit back while nulling unitOfMeasureId leaves
+// a ghost value behind that nothing owns (F71). currentUnitOfMeasureID is
+// nil on the create path, where there is no previous value to reason about.
+func (d *Database) resolveProductUnit(
+	organizationID string, unitOfMeasureID, fallbackUnit, currentUnitOfMeasureID *string,
+) (*string, error) {
 	if unitOfMeasureID == nil || *unitOfMeasureID == "" {
+		if currentUnitOfMeasureID != nil && *currentUnitOfMeasureID != "" {
+			return nil, nil
+		}
 		return fallbackUnit, nil
 	}
 	uom, err := d.GetUnitOfMeasure(*unitOfMeasureID)
@@ -304,7 +314,7 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if err := d.checkProductFKOwnership(req.OrganizationID, req.TaxRateID, req.RevenueAccountID, req.ExpenseAccountID); err != nil {
 		return nil, err
 	}
-	unit, err := d.resolveProductUnit(req.OrganizationID, req.UnitOfMeasureID, req.Unit)
+	unit, err := d.resolveProductUnit(req.OrganizationID, req.UnitOfMeasureID, req.Unit, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +372,7 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 	if err := d.checkProductFKOwnership(current.OrganizationID, updates.TaxRateID, updates.RevenueAccountID, updates.ExpenseAccountID); err != nil {
 		return nil, err
 	}
-	unit, err := d.resolveProductUnit(current.OrganizationID, updates.UnitOfMeasureID, updates.Unit)
+	unit, err := d.resolveProductUnit(current.OrganizationID, updates.UnitOfMeasureID, updates.Unit, current.UnitOfMeasureID)
 	if err != nil {
 		return nil, err
 	}

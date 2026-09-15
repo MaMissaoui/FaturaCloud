@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
+  Alert,
   Button,
   Drawer,
   Empty,
@@ -69,6 +70,12 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   const [form] = Form.useForm();
   const formatDate = useDateFormatter();
   const [submitting, setSubmitting] = useState(false);
+  // loadFailed gates Save: an empty form after a failed fetch looks exactly
+  // like "no components yet", and saving from it would wipe a real recipe
+  // (F84). reloadToken is what the Retry button bumps to re-run the loader.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
   const [pickedProductId, setPickedProductId] = useState<string | null>(null);
   const [batchSize, setBatchSize] = useState(1);
   const [versions, setVersions] = useState<BOMVersion[]>([]);
@@ -121,28 +128,56 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   // Promise.all rather than two independent effects, so the batch-size
   // scaling below always has both the lines and the latest version's
   // batchSize by the time it runs instead of racing on load order.
+  //
+  // A failure here must be visible and must block Save (F84): an empty form
+  // is indistinguishable from "this product has no components yet", and
+  // saving from that state would replace a real recipe with nothing.
   useEffect(() => {
     setSelectedVersionId(null);
     setViewedVersion(null);
     if (isVisible && productId) {
-      Promise.all([GetProductBOM(productId), GetBOMVersions(productId)]).then(([lines, v]) => {
-        setVersions(v);
-        const latestBatchSize = v[0]?.batchSize ?? 1;
-        setBatchSize(latestBatchSize);
-        form.setFieldValue(
-          "bom",
-          lines.map((l) => ({
-            componentProductId: l.componentProductId,
-            quantityPerUnit: roundDisplay(l.quantityPerUnit * latestBatchSize),
-          })),
-        );
-      });
-    } else {
-      form.setFieldValue("bom", []);
-      setVersions([]);
-      setBatchSize(1);
+      let cancelled = false;
+      setLoadFailed(false);
+      setLoading(true);
+      Promise.all([GetProductBOM(productId), GetBOMVersions(productId)])
+        .then(([lines, v]) => {
+          if (cancelled) return;
+          setVersions(v);
+          const latestBatchSize = v[0]?.batchSize ?? 1;
+          setBatchSize(latestBatchSize);
+          form.setFieldValue(
+            "bom",
+            lines.map((l) => ({
+              componentProductId: l.componentProductId,
+              quantityPerUnit: roundDisplay(l.quantityPerUnit * latestBatchSize),
+            })),
+          );
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          setLoadFailed(true);
+          form.setFieldValue("bom", []);
+          setVersions([]);
+          setBatchSize(1);
+          message.error(
+            error instanceof Error ? error.message : t`Failed to load bill of materials`,
+          );
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+      // Switching product in the picker mid-flight must not let the previous
+      // product's recipe land in the form.
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [isVisible, productId, form]);
+    setLoadFailed(false);
+    setLoading(false);
+    form.setFieldValue("bom", []);
+    setVersions([]);
+    setBatchSize(1);
+  }, [isVisible, productId, form, reloadToken]);
 
   const handleClose = () => {
     form.resetFields();
@@ -180,7 +215,14 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
     setSelectedVersionId(versionId);
     setViewedVersion(null);
     if (versionId && productId) {
-      GetBOMVersion(productId, versionId).then(setViewedVersion);
+      GetBOMVersion(productId, versionId)
+        .then(setViewedVersion)
+        .catch((error) => {
+          // Without this the drawer sat on loading={!viewedVersion} forever
+          // with Restore disabled and no way out but closing (F84).
+          message.error(error instanceof Error ? error.message : t`Failed to load version`);
+          setSelectedVersionId(null);
+        });
     }
   };
 
@@ -274,7 +316,12 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
             <Button
               type="primary"
               loading={submitting}
-              disabled={!productId || (!!product && product.category !== "finished")}
+              disabled={
+                !productId ||
+                (!!product && product.category !== "finished") ||
+                loadFailed ||
+                loading
+              }
               onClick={() => form.submit()}
             >
               <Trans>Save</Trans>
@@ -284,6 +331,25 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
       }
     >
       <ScrollShadow>
+        {loadFailed && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={<Trans>Couldn't load this bill of materials</Trans>}
+            description={
+              <Trans>
+                Saving is disabled until it loads, so an empty form can't overwrite the saved
+                recipe.
+              </Trans>
+            }
+            action={
+              <Button size="small" onClick={() => setReloadToken((n) => n + 1)}>
+                <Trans>Retry</Trans>
+              </Button>
+            }
+          />
+        )}
         {!routeProductId && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ marginBottom: 8, fontWeight: 500 }}>
