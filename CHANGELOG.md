@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Sending an empty string for an optional link — a purchase order's
+  vendor or import, a line's product or tax rate, a product's unit of
+  measure, and so on — now means "not set", the same as leaving it out.
+  It previously got as far as the database and came back as a generic
+  "internal error". Only reachable through the API directly; the app's
+  own forms were never affected.
+
 ### Added
 - A purchase order's line items are now locked once goods have actually
   been received against it. Those lines are what the receipt's GRNI

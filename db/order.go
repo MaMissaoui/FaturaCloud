@@ -301,6 +301,11 @@ func (d *Database) checkOrderFKOwnership(organizationID string, clientID *string
 }
 
 func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.ClientID = nilIfEmptyID(req.ClientID)
+	normalizeOrderLineItemIDs(req.LineItems)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
@@ -354,6 +359,13 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 }
 
 func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Order, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	updates.ClientID = nilIfEmptyID(updates.ClientID)
+	if updates.LineItems != nil {
+		normalizeOrderLineItemIDs(*updates.LineItems)
+	}
+
 	current, err := d.GetOrder(orderID)
 	if err != nil {
 		return nil, fmt.Errorf("update_order fetch current: %w", err)

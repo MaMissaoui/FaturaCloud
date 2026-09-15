@@ -249,6 +249,12 @@ func (d *Database) checkPurchaseOrderFKOwnership(organizationID string, vendorID
 }
 
 func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*PurchaseOrder, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.VendorID = nilIfEmptyID(req.VendorID)
+	req.ImportID = nilIfEmptyID(req.ImportID)
+	normalizePurchaseOrderLineItemIDs(req.LineItems)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
@@ -302,6 +308,14 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 }
 
 func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrderRequest) (*PurchaseOrder, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	updates.VendorID = nilIfEmptyID(updates.VendorID)
+	updates.ImportID = nilIfEmptyID(updates.ImportID)
+	if updates.LineItems != nil {
+		normalizePurchaseOrderLineItemIDs(*updates.LineItems)
+	}
+
 	current, err := d.GetPurchaseOrder(orderID)
 	if err != nil {
 		return nil, fmt.Errorf("update_purchase_order fetch current: %w", err)

@@ -187,6 +187,12 @@ func (d *Database) checkDeliveryHeaderFKOwnership(organizationID string, orderID
 }
 
 func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.OrderID = nilIfEmptyID(req.OrderID)
+	req.ClientID = nilIfEmptyID(req.ClientID)
+	normalizeDeliveryLineItemIDs(req.LineItems)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
@@ -221,6 +227,14 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 }
 
 func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*OutboundDelivery, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.OrderID = nilIfEmptyID(req.OrderID)
+	req.ClientID = nilIfEmptyID(req.ClientID)
+	if req.LineItems != nil {
+		normalizeDeliveryLineItemIDs(*req.LineItems)
+	}
+
 	current, err := d.GetDelivery(id)
 	if err != nil {
 		return nil, fmt.Errorf("update_delivery lookup: %w", err)
