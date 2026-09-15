@@ -657,6 +657,10 @@ msgstr "Kunde-Aktualisierung fehlgeschlagen"
 msgid "Client updated successfully"
 msgstr "Kunde erfolgreich aktualisiert"
 
+#: src/routes/purchase-orders/details.tsx:471
+msgid "Line items are locked because goods have already been received against this order. Cancel the goods receipt to change them — header fields can still be edited."
+msgstr "Die Positionen sind gesperrt, weil für diese Bestellung bereits Ware eingegangen ist. Stornieren Sie den Wareneingang, um sie zu ändern — Kopfdaten können weiterhin bearbeitet werden."
+
 #: src/components/organizations/organizations-table.tsx:89
 #: src/routes/organizations/index.tsx:376
 msgid "client(s)"

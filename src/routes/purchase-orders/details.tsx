@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
+  Alert,
   Button,
   Col,
   DatePicker,
@@ -164,6 +165,19 @@ const PurchaseOrderDetails = () => {
       .then(setReceivedQuantities)
       .catch(() => setReceivedQuantities({}));
   }, [id, isNew]);
+
+  // Mirrors the server-side guard in db/purchase_order_freeze.go: once goods
+  // have actually been received against this order, its line items are the
+  // basis of a posted GRNI accrual and of 3-way matching, so they're frozen.
+  // Header fields stay editable.
+  //
+  // This is a deliberately conservative approximation of the server's rule.
+  // GetPurchaseOrderReceivedQuantities only counts receipts linked to this
+  // order by header *and* carrying per-line links, while the server also
+  // freezes on a line-level link alone — so this can under-freeze, never
+  // over-freeze, and the server is the authority either way (it answers a
+  // changed payload with a 409 naming the receipt).
+  const lineItemsFrozen = !isNew && Object.keys(receivedQuantities).length > 0;
 
   // After create, navigate to the new purchase order
   useEffect(() => {
@@ -462,7 +476,21 @@ const PurchaseOrderDetails = () => {
         </Row>
 
         {/* Line items */}
+        {lineItemsFrozen && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={
+              <Trans>
+                Line items are locked because goods have already been received against this order.
+                Cancel the goods receipt to change them — header fields can still be edited.
+              </Trans>
+            }
+          />
+        )}
         <LineItemsTable
+          disabled={lineItemsFrozen}
           columns={[
             { kind: "index" },
             {
