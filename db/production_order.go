@@ -169,6 +169,18 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 	if finished.Category == nil || *finished.Category != "finished" {
 		return nil, newValidationError("a production order can only be created for a %q product", "finished")
 	}
+	// Every other stock-moving path in this app gates on stockEnabled at the
+	// SQL level (getShippableStockLines, getReceivableStockLines). Production
+	// orders did not, so a finished product with stock tracking switched off
+	// still got real stockMovements rows, a non-zero stockQuantity and — on a
+	// non-exact division — an Inventory GL entry, for a product the rest of
+	// the app treats as outside inventory entirely (F73).
+	if finished.StockEnabled != 1 {
+		return nil, newValidationError(
+			"%q does not have stock tracking enabled — a production order would have nothing to produce into",
+			finished.Name,
+		)
+	}
 	if finished.Serialized == 1 && req.Quantity != math.Trunc(req.Quantity) {
 		return nil, newValidationError("%q is serialized — quantity must be a whole number", finished.Name)
 	}
@@ -671,13 +683,39 @@ func (d *Database) DeleteProductionOrder(id string) (bool, error) {
 		return false, fmt.Errorf("delete_production_order lookup: %w", err)
 	}
 	if current.Status != "draft" {
-		return false, newValidationError("cannot delete a %s production order — cancel it instead", current.Status)
+		// Named per status rather than "a %s ... — cancel it instead", which
+		// rendered for an already-cancelled order as "cannot delete a
+		// cancelled production order — cancel it instead" (F74).
+		if current.Status == "cancelled" {
+			return false, newValidationError("cannot delete a cancelled production order")
+		}
+		return false, newValidationError(
+			"cannot delete a %s production order — cancel it instead", current.Status,
+		)
 	}
 
-	res, err := d.DB.Exec(`DELETE FROM production_orders WHERE id = ?`, id)
+	// AND status = 'draft' with a RowsAffected check, not just the pre-check
+	// read above: a delete racing a concurrent draft -> completed would
+	// otherwise destroy a completed order, cascading away its component lines
+	// while leaving the consume/produce stockMovements pointing at a
+	// sourceDocumentId that no longer exists and any posted rounding-residual
+	// entry orphaned and unreversible. Same guard shape as DeleteJournalEntry
+	// (F48, F74).
+	res, err := d.DB.Exec(`DELETE FROM production_orders WHERE id = ? AND status = 'draft'`, id)
 	if err != nil {
 		return false, fmt.Errorf("delete_production_order: %w", err)
 	}
 	n, _ := res.RowsAffected()
-	return n > 0, nil
+	if n == 0 {
+		// Either it was already gone, or it left draft between the read and
+		// the delete. Re-read to tell those apart rather than reporting a
+		// concurrent completion as a plain "not found".
+		if latest, lookupErr := d.GetProductionOrder(id); lookupErr == nil && latest.Status != "draft" {
+			return false, newValidationError(
+				"cannot delete a %s production order — cancel it instead", latest.Status,
+			)
+		}
+		return false, nil
+	}
+	return true, nil
 }

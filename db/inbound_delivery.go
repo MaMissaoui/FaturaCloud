@@ -790,12 +790,25 @@ func (d *Database) DeleteInboundDelivery(id string) (bool, error) {
 		return false, newValidationError("cannot delete a received goods receipt — cancel it instead")
 	}
 
-	res, err := d.DB.Exec(`DELETE FROM inbound_deliveries WHERE id = ?`, id)
+	// AND status != 'received' with a RowsAffected check, not just the
+	// pre-check read above: a delete racing a concurrent draft -> received
+	// would otherwise destroy a receipt that has already moved stock and
+	// posted a GRNI accrual, leaving both orphaned. Same guard shape as
+	// DeleteJournalEntry (F48, F74).
+	res, err := d.DB.Exec(
+		`DELETE FROM inbound_deliveries WHERE id = ? AND status != 'received'`, id,
+	)
 	if err != nil {
 		return false, fmt.Errorf("delete_inbound_delivery: %w", err)
 	}
 	n, _ := res.RowsAffected()
-	return n > 0, nil
+	if n == 0 {
+		if latest, lookupErr := d.GetInboundDelivery(id); lookupErr == nil && latest.Status == "received" {
+			return false, newValidationError("cannot delete a received goods receipt — cancel it instead")
+		}
+		return false, nil
+	}
+	return true, nil
 }
 
 // replaceInboundDeliveryLineItemsTx clears and reinserts a receipt's line items,
