@@ -39,10 +39,10 @@ than merely producing a wrong number.
 - The "Explicitly excluded" section at the end is binding: those were checked and
   dismissed with a reason. Do not re-raise them.
 
-**Status:** 25 findings. F93 was appended after the initial 23 — Phase 1.1's precondition
+**Status:** 26 findings. F93 was appended after the initial 23 — Phase 1.1's precondition
 enumeration is what found it, which is the argument for keeping that precondition rather
-than treating it as ceremony. F94 was appended later still, during Phase 4b's test
-backfill — see section 6.
+than treating it as ceremony. F94 and F95 were appended later still, during Phase 4b's test backfill
+and F94's own remediation respectively — see section 6.
 
 **Remediation: complete.** All seven PRs are merged; `main` is at `278d3bb`.
 
@@ -151,7 +151,8 @@ can no longer have its outstanding lines adjusted without cancelling the receipt
 | F92 | 79 msgids are untranslated in de/fr; 15 of them now render on screens this release touches, 3 directly on the new Production Order pages | i18n | Low | 5.2 | Fixed #248 |
 | F82 | CI has no i18n catalog-drift check and no `gofmt` / `format:check` gate | CI | Low | 5.3 | Fixed #248 |
 | F83 | `v3.20.0` was pushed as a lightweight tag; every prior release tag is annotated | Ops | Low | 5.4 | Fixed — retagged, image republished |
-| F94 | An empty-string value in a nullable foreign-key field passes every `!= ""` validation guard, then reaches the INSERT and fails as a raw FK violation — a 500 where a clean "unset" was meant | Correctness | Low | 6.1 | **Open — not fixed** |
+| F94 | An empty-string value in a nullable foreign-key field passes every `!= ""` validation guard, then reaches the INSERT and fails as a raw FK violation — a 500 where a clean "unset" was meant | Correctness | Low | 6.1 | Fixed #251 |
+| F95 | An organization's `default*AccountId` fields can never be cleared once set — `nil` means "don't touch" through `COALESCE`, `""` fails the foreign key, and the UI's `allowClear` sends neither | Correctness | Low-Medium | 6.2 | **Open — needs a decision** |
 
 ---
 
@@ -706,17 +707,62 @@ emitted an empty string, and the failure mode is the wrong class: a **500 "inter
 error"** for what is really "you sent an unset optional field in a slightly different
 spelling". That is the same 409-vs-500 asymmetry F72 fixed for products and tax rates.
 
-**Not fixed here, deliberately.** The fix is a one-line normalization (`if x != nil &&
-*x == "" { x = nil }`) but it belongs at the write boundary of *every* nullable FK on
-*every* Create/Update path, not just the two sites proven above — doing two and leaving
-the rest is exactly the half-fixed class this audit's 1.1 enumeration exists to prevent.
-Scoping that sweep is its own piece of work: enumerate every nullable FK column, decide
-whether normalization lives in each `Create*`/`Update*` or in one shared helper, and
-carry a test per document type.
+**Fixed** (PR #251), scoped by first counting the real surface rather than the field
+count. 59 nullable foreign-key columns exist in the live schema; the fix reaches 32 of
+them, and the other 27 are classified rather than ignored:
 
-**Deliberately not tested either.** #250 originally carried a case pinning the current
-behaviour; it was removed rather than committed, because a test that asserts a 500 bakes
-the bug in and would have to be deleted by whoever fixes it, not flipped.
+- **32 normalized.** `nilIfEmptyID` (`db/optional_id.go`) is applied at the top of each
+  `Create*`/`Update*`, *before* the ownership guard — the guards take their arguments by
+  value, so normalizing inside one would never reach the request struct the INSERT later
+  reads. Line items get one small loop per document type rather than a reflective walk,
+  the same "a plain map, not reflection" preference `db/xlsx_export.go` states: an
+  unhandled field should be a visible omission, not a silent miss.
+- **12 server-set.** Written by posting/fan-out code with a real id or nil
+  (`journal_lines.clientId`, `payments.journalEntryId`/`voidingEntryId`,
+  `stockMovements.serialNumberId`, …), so `""` was never reachable.
+- **15 deliberately not normalized** — see F95 immediately below.
+
+`decodeJSON` was considered as a single choke point and rejected: `taxRate` doesn't match
+an `Id`-suffix heuristic so it would need an exception list anyway, line items are nested
+slices needing a recursive walk, `organizations.brandColor` is documented proof that
+`""` vs `null` is load-bearing for non-FK strings here, and it would leave the `db` layer
+still accepting `""` for its direct callers.
+
+`TestNullableForeignKeysAreClassified` reads the schema and fails when a nullable FK
+column is missing from `nullableFKClassification` — the `vendorReferencingTables` /
+`taxRateReferencingTables` idiom, so a new nullable FK forces a decision instead of
+silently inheriting this bug.
+
+### 6.2 — F95: an organization's default accounts cannot be cleared once set
+
+Surfaced while scoping F94, and the reason 15 columns are excluded from it.
+
+`UpdateOrganization` writes every one of its `default*AccountId` columns as
+`COALESCE(?, column)`, and CLAUDE.md states the convention plainly: a JSON `null` there
+means "field omitted, don't touch it". So `nil` cannot clear. And `""` reaches the column
+and fails the foreign key. **Neither spelling can unset one.** Verified directly rather
+than reasoned about:
+
+```
+seeded defaultArAccountId = "6G2_A-DmY8f5-ytXRnBBq"
+nil -> kept "6G2_A-DmY8f5-ytXRnBBq"   (COALESCE: cannot clear)
+""  -> ERROR: update_organization: constraint failed: FOREIGN KEY constraint failed (787)
+```
+
+The UI offers the clear that does nothing: `src/routes/organizations/index.tsx` renders
+these as `Select allowClear`, and antd emits `undefined` on clear, which `JSON.stringify`
+drops from the body entirely — indistinguishable from "not edited".
+
+This is why normalizing `""` to `nil` for these 15 would be actively wrong: it converts a
+loud failure into a silent no-op and removes the only spelling that could ever carry the
+intent. **Not fixed here** — the fix is a real decision about the `COALESCE` convention
+(a sentinel value, a `clearFields []string`, or splitting these columns out of it), it
+changes documented behaviour, and it is worth doing on its own rather than inside a
+normalization sweep.
+
+**Severity: Low-Medium.** Nothing is corrupted and no posting path is affected — an
+organization simply keeps a GL default it wanted to remove, and the only recourse is a
+direct database `UPDATE`.
 
 ---
 

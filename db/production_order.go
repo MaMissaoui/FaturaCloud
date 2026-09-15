@@ -154,6 +154,10 @@ func (d *Database) NextProductionOrderNumber(organizationID string) string {
 // product is one +-1 movement row per physical unit. Per-component serial
 // capture on the consuming side is a real follow-up, not implemented here.
 func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*ProductionOrder, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.ImportID = nilIfEmptyID(req.ImportID)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}

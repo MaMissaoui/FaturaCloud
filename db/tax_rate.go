@@ -137,6 +137,11 @@ func (d *Database) checkTaxRateAccountFKOwnership(organizationID string, outputA
 }
 
 func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.OutputTaxAccountID = nilIfEmptyID(req.OutputTaxAccountID)
+	req.InputTaxAccountID = nilIfEmptyID(req.InputTaxAccountID)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
@@ -182,6 +187,11 @@ func (d *Database) CreateTaxRate(req CreateTaxRateRequest) (*TaxRate, error) {
 }
 
 func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest) (*TaxRate, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	updates.OutputTaxAccountID = nilIfEmptyID(updates.OutputTaxAccountID)
+	updates.InputTaxAccountID = nilIfEmptyID(updates.InputTaxAccountID)
+
 	if updates.CategoryCode != nil && !taxRateCategoryCodes[*updates.CategoryCode] {
 		return nil, newValidationError("invalid tax rate category code %q", *updates.CategoryCode)
 	}

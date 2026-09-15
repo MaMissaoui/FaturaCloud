@@ -104,6 +104,10 @@ func (d *Database) GetAccount(accountID string) (*Account, error) {
 }
 
 func (d *Database) CreateAccount(req CreateAccountRequest) (*Account, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.ParentID = nilIfEmptyID(req.ParentID)
+
 	if !accountTypes[req.Type] {
 		return nil, newValidationError("invalid account type %q", req.Type)
 	}
@@ -149,6 +153,10 @@ func (d *Database) CreateAccount(req CreateAccountRequest) (*Account, error) {
 // existing child accounts back into a leaf, which would leave those
 // children pointing at a parent that's no longer structurally a group.
 func (d *Database) UpdateAccount(accountID string, updates UpdateAccountRequest) (*Account, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	updates.ParentID = nilIfEmptyID(updates.ParentID)
+
 	if !accountTypes[updates.Type] {
 		return nil, newValidationError("invalid account type %q", updates.Type)
 	}

@@ -158,6 +158,11 @@ func validateOverride(override int, reason *string) error {
 }
 
 func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*IncomingInvoice, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.PurchaseOrderID = nilIfEmptyID(req.PurchaseOrderID)
+	normalizeInvoiceLineItemIDs(req.LineItems)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
@@ -244,6 +249,13 @@ func incomingInvoiceUpdateTouchesGLFields(updates UpdateIncomingInvoiceRequest) 
 }
 
 func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoiceRequest) (*IncomingInvoice, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	updates.PurchaseOrderID = nilIfEmptyID(updates.PurchaseOrderID)
+	if updates.LineItems != nil {
+		normalizeInvoiceLineItemIDs(*updates.LineItems)
+	}
+
 	// Cross-org FK-ownership check (issue #189): a vendorId/purchaseOrderId/
 	// productId/taxRate this request is actually setting must belong to the
 	// SAME organization as the bill being updated, not just exist.

@@ -197,6 +197,11 @@ type settlementLine struct {
 // mutating a previously posted journal_lines row, so it's deferred until the
 // exporter's exact needs are known rather than guessed at now.
 func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.ClientID = nilIfEmptyID(req.ClientID)
+	req.VendorID = nilIfEmptyID(req.VendorID)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}

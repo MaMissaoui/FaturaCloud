@@ -293,6 +293,13 @@ func normalizeSKU(sku *string) *string {
 }
 
 func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	req.TaxRateID = nilIfEmptyID(req.TaxRateID)
+	req.RevenueAccountID = nilIfEmptyID(req.RevenueAccountID)
+	req.ExpenseAccountID = nilIfEmptyID(req.ExpenseAccountID)
+	req.UnitOfMeasureID = nilIfEmptyID(req.UnitOfMeasureID)
+
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
 	}
@@ -338,6 +345,13 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 }
 
 func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest) (*Product, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	updates.TaxRateID = nilIfEmptyID(updates.TaxRateID)
+	updates.RevenueAccountID = nilIfEmptyID(updates.RevenueAccountID)
+	updates.ExpenseAccountID = nilIfEmptyID(updates.ExpenseAccountID)
+	updates.UnitOfMeasureID = nilIfEmptyID(updates.UnitOfMeasureID)
+
 	if updates.Type == "" {
 		updates.Type = "service"
 	}

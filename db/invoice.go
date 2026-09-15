@@ -193,6 +193,10 @@ func (d *Database) GetInvoiceLineItems(invoiceID string) ([]InvoiceLineItem, err
 }
 
 func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	normalizeInvoiceLineItemIDs(req.LineItems)
+
 	// F61 (2026-08-13 audit): every other create path guards against a
 	// client-supplied empty ID; this one didn't, so {"id": ""} would insert
 	// an invoice with an empty-string primary key and a second such request
@@ -289,6 +293,13 @@ func invoiceUpdateTouchesGLFields(updates UpdateInvoiceRequest) bool {
 }
 
 func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest) (*Invoice, error) {
+	// F94: an empty-string optional FK id means "unset"; normalize it to
+	// nil before the guard and the INSERT both see it (db/optional_id.go).
+	updates.ClientID = nilIfEmptyID(updates.ClientID)
+	if updates.LineItems != nil {
+		normalizeInvoiceLineItemIDs(*updates.LineItems)
+	}
+
 	// Cross-org FK-ownership check (issue #189): a clientId/productId/taxRate
 	// this request is actually setting must belong to the SAME organization
 	// as the invoice being updated, not just exist.
