@@ -642,7 +642,7 @@ msgid "Client updated successfully"
 msgstr "Client updated successfully"
 
 #: src/components/organizations/organizations-table.tsx:89
-#: src/routes/organizations/index.tsx:376
+#: src/routes/organizations/index.tsx:415
 msgid "client(s)"
 msgstr "client(s)"
 
@@ -1138,7 +1138,7 @@ msgstr "Delete this stock movement? The stock level will be recalculated."
 msgid "Delete this user?"
 msgstr "Delete this user?"
 
-#: src/routes/organizations/index.tsx:345
+#: src/routes/organizations/index.tsx:384
 msgid "Deleted {total} record(s)"
 msgstr "Deleted {total} record(s)"
 
@@ -1201,7 +1201,7 @@ msgid "Delivery update failed"
 msgstr "Delivery update failed"
 
 #: src/components/organizations/organizations-table.tsx:97
-#: src/routes/organizations/index.tsx:386
+#: src/routes/organizations/index.tsx:425
 msgid "delivery(ies)"
 msgstr "delivery(ies)"
 
@@ -1574,7 +1574,7 @@ msgstr "Exports every posted journal line for the selected fiscal year as a DATE
 msgid "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 msgstr "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 
-#: src/routes/organizations/index.tsx:195
+#: src/routes/organizations/index.tsx:224
 msgid "Failed to add member"
 msgstr "Failed to add member"
 
@@ -1772,7 +1772,7 @@ msgstr "Failed to record payment"
 msgid "Failed to record stock movement"
 msgstr "Failed to record stock movement"
 
-#: src/routes/organizations/index.tsx:220
+#: src/routes/organizations/index.tsx:249
 msgid "Failed to remove member"
 msgstr "Failed to remove member"
 
@@ -1825,7 +1825,7 @@ msgstr "Failed to update incoming invoice state"
 msgid "Failed to update invoice state"
 msgstr "Failed to update invoice state"
 
-#: src/routes/organizations/index.tsx:207
+#: src/routes/organizations/index.tsx:236
 msgid "Failed to update member role"
 msgstr "Failed to update member role"
 
@@ -2011,7 +2011,7 @@ msgid "Goods receipt update failed"
 msgstr "Goods receipt update failed"
 
 #: src/components/organizations/organizations-table.tsx:95
-#: src/routes/organizations/index.tsx:388
+#: src/routes/organizations/index.tsx:427
 msgid "goods receipt(s)"
 msgstr "goods receipt(s)"
 
@@ -2168,7 +2168,7 @@ msgid "Incoming invoice update failed"
 msgstr "Incoming invoice update failed"
 
 #: src/components/organizations/organizations-table.tsx:96
-#: src/routes/organizations/index.tsx:389
+#: src/routes/organizations/index.tsx:428
 msgid "incoming invoice(s)"
 msgstr "incoming invoice(s)"
 
@@ -2284,7 +2284,7 @@ msgid "Invoice updated successfully"
 msgstr "Invoice updated successfully"
 
 #: src/components/organizations/organizations-table.tsx:91
-#: src/routes/organizations/index.tsx:384
+#: src/routes/organizations/index.tsx:423
 msgid "invoice(s)"
 msgstr "invoice(s)"
 
@@ -2450,11 +2450,11 @@ msgstr "Login failed"
 msgid "Logo"
 msgstr "Logo"
 
-#: src/routes/organizations/index.tsx:248
+#: src/routes/organizations/index.tsx:277
 msgid "Logo removal failed"
 msgstr "Logo removal failed"
 
-#: src/routes/organizations/index.tsx:448
+#: src/routes/organizations/index.tsx:487
 msgid "Logo upload failed"
 msgstr "Logo upload failed"
 
@@ -2530,11 +2530,11 @@ msgstr "Matched"
 msgid "Matricule Fiscal (MF)"
 msgstr "Matricule Fiscal (MF)"
 
-#: src/routes/organizations/index.tsx:190
+#: src/routes/organizations/index.tsx:219
 msgid "Member added"
 msgstr "Member added"
 
-#: src/routes/organizations/index.tsx:217
+#: src/routes/organizations/index.tsx:246
 msgid "Member removed"
 msgstr "Member removed"
 
@@ -2690,7 +2690,7 @@ msgstr "New order"
 
 #: src/components/organizations/organization-edit-drawer.tsx:112
 #: src/layouts/base.tsx:792
-#: src/routes/organizations/index.tsx:418
+#: src/routes/organizations/index.tsx:457
 msgid "New organization"
 msgstr "New organization"
 
@@ -2929,7 +2929,7 @@ msgstr "Notes"
 msgid "Nothing matches the current selection."
 msgstr "Nothing matches the current selection."
 
-#: src/routes/organizations/index.tsx:346
+#: src/routes/organizations/index.tsx:385
 msgid "Nothing to delete — this organization was empty"
 msgstr "Nothing to delete — this organization was empty"
 
@@ -3071,7 +3071,7 @@ msgid "Order update failed"
 msgstr "Order update failed"
 
 #: src/components/organizations/organizations-table.tsx:93
-#: src/routes/organizations/index.tsx:385
+#: src/routes/organizations/index.tsx:424
 msgid "order(s)"
 msgstr "order(s)"
 
@@ -3097,11 +3097,11 @@ msgstr "Organization creation failed"
 msgid "Organization default"
 msgstr "Organization default"
 
-#: src/routes/organizations/index.tsx:318
+#: src/routes/organizations/index.tsx:357
 msgid "Organization deleted"
 msgstr "Organization deleted"
 
-#: src/routes/organizations/index.tsx:321
+#: src/routes/organizations/index.tsx:360
 msgid "Organization deletion failed"
 msgstr "Organization deletion failed"
 
@@ -3114,7 +3114,7 @@ msgid "Organization updated successfully"
 msgstr "Organization updated successfully"
 
 #: src/layouts/base.tsx:570
-#: src/routes/organizations/index.tsx:408
+#: src/routes/organizations/index.tsx:447
 msgid "Organizations"
 msgstr "Organizations"
 
@@ -3503,7 +3503,7 @@ msgid "Product updated"
 msgstr "Product updated"
 
 #: src/components/organizations/organizations-table.tsx:92
-#: src/routes/organizations/index.tsx:378
+#: src/routes/organizations/index.tsx:417
 msgid "product(s)"
 msgstr "product(s)"
 
@@ -3601,7 +3601,7 @@ msgid "Purchase order update failed"
 msgstr "Purchase order update failed"
 
 #: src/components/organizations/organizations-table.tsx:94
-#: src/routes/organizations/index.tsx:387
+#: src/routes/organizations/index.tsx:426
 msgid "purchase order(s)"
 msgstr "purchase order(s)"
 
@@ -3838,7 +3838,7 @@ msgstr "Required to generate a DATEV export (1001–9999999)."
 msgid "Reserves a serial-number range for whatever gets produced from this shipment's components — a Production Order linked to this import can only register serials inside it."
 msgstr "Reserves a serial-number range for whatever gets produced from this shipment's components — a Production Order linked to this import can only register serials inside it."
 
-#: src/routes/organizations/index.tsx:362
+#: src/routes/organizations/index.tsx:401
 msgid "Reset failed"
 msgstr "Reset failed"
 
@@ -4062,7 +4062,7 @@ msgstr "Schedule saved"
 #: src/routes/inbound-deliveries.tsx:57
 #: src/routes/incoming-invoices.tsx:61
 #: src/routes/orders.tsx:55
-#: src/routes/organizations/index.tsx:410
+#: src/routes/organizations/index.tsx:449
 #: src/routes/production-orders.tsx:58
 #: src/routes/products.tsx:172
 #: src/routes/purchase-orders.tsx:56
@@ -4379,7 +4379,7 @@ msgstr "Stock movement deleted"
 msgid "Stock movement recorded"
 msgstr "Stock movement recorded"
 
-#: src/routes/organizations/index.tsx:390
+#: src/routes/organizations/index.tsx:429
 msgid "stock movement(s)"
 msgstr "stock movement(s)"
 
@@ -4491,7 +4491,7 @@ msgid "Tax rate updated successfully"
 msgstr "Tax rate updated successfully"
 
 #: src/components/organizations/organizations-table.tsx:98
-#: src/routes/organizations/index.tsx:379
+#: src/routes/organizations/index.tsx:418
 msgid "tax rate(s)"
 msgstr "tax rate(s)"
 
@@ -4952,7 +4952,7 @@ msgid "Vendor updated successfully"
 msgstr "Vendor updated successfully"
 
 #: src/components/organizations/organizations-table.tsx:90
-#: src/routes/organizations/index.tsx:377
+#: src/routes/organizations/index.tsx:416
 msgid "vendor(s)"
 msgstr "vendor(s)"
 
