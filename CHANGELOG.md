@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A purchase order's line items are now locked once goods have actually
+  been received against it. Those lines are what the receipt's GRNI
+  accrual, the bill's GRNI clearing and 3-way matching are all computed
+  from, so changing a quantity or price after the fact silently rewrote
+  the basis of entries that had already posted. Header fields (notes,
+  delivery address, expected date, the linked import) stay editable, and
+  cancelling the goods receipt unlocks the line items again. Note this
+  is all-or-nothing: a partially received order can't have its
+  outstanding lines adjusted without cancelling the receipt first.
+
+### Fixed
+- Saving a shipped outbound delivery's tracking number or notes failed
+  with "cannot edit line items of a shipped delivery". Header-only edits
+  on a shipped delivery were always meant to work — the check rejected
+  any save that carried line items at all, and the page always sends
+  them. Only a genuine line-item change is refused now.
+
 ### Fixed
 - Editing a purchase order no longer breaks its goods receipts and vendor
   bills. Saving an order used to replace its line items wholesale, which

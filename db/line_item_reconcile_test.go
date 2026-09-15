@@ -15,31 +15,47 @@ import (
 
 // TestUpdatePurchaseOrderPreservesLineItemIDsAndGRNIGuard is the F93
 // regression. Before the fix, replacePurchaseOrderLineItemsTx deleted every
-// line and reinserted with fresh nanoids, so editing an already-received,
-// already-billed purchase order nulled
-// inbound_delivery_line_items.purchaseOrderLineItemId. The billed-receipt
-// cancel guard (db/inbound_delivery.go) skips any line whose id is nil, so
-// it stopped running entirely and the receipt became cancellable — reversing
-// its Dr GRNI / Cr Inventory entry while the approved bill's AP obligation
-// still stood.
+// line and reinserted with fresh nanoids, so editing a purchase order nulled
+// inbound_delivery_line_items.purchaseOrderLineItemId on every receipt
+// already pointing at it. The billed-receipt cancel guard
+// (db/inbound_delivery.go) skips any line whose id is nil, so it stopped
+// running entirely and the receipt became cancellable — reversing its
+// Dr GRNI / Cr Inventory entry while the approved bill's AP obligation still
+// stood.
+//
+// The edit is made while the receipt is still a **draft**, which is now the
+// only state in which a linked purchase order's lines can be edited at all:
+// db/purchase_order_freeze.go refuses a line-item change once a receipt has
+// actually been received. That freeze is the stronger of the two defences,
+// but it does not replace this one — a draft receipt already carries the
+// link, so an edit that severed it here would leave the guard unable to run
+// after that same receipt is received and billed. This test walks exactly
+// that sequence.
 func TestUpdatePurchaseOrderPreservesLineItemIDsAndGRNIGuard(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
-	f := seedMatch(t, d, "org-f93-guard", 10, 250, 10)
-
-	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
-	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
-		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
-	}
+	f := seedMatch(t, d, "org-f93-guard", 10, 250, 0) // no receipt yet
 
 	before, err := d.GetPurchaseOrderLineItems(f.OrderID)
 	if err != nil || len(before) != 1 {
 		t.Fatalf("GetPurchaseOrderLineItems: err=%v len=%d", err, len(before))
 	}
 
-	// The edit a user would actually make: change the description on an
-	// already-received order, echoing the line's id back the way the client
-	// now does.
+	// A draft receipt, linked to the order line that is about to be edited.
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: f.OrgID, PurchaseOrderID: &f.OrderID, VendorID: &f.VendorID,
+		DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{PurchaseOrderLineItemID: &before[0].ID, Description: "Widget", Quantity: 10},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+
+	// The edit a user would actually make, echoing the line's id back the
+	// way the client now does. Allowed: the receipt is still a draft, so it
+	// has moved no stock and accrued no GRNI.
 	edited := []CreatePurchaseOrderLineItemRequest{{
 		ID:          &before[0].ID,
 		ProductID:   before[0].ProductID,
@@ -64,7 +80,16 @@ func TestUpdatePurchaseOrderPreservesLineItemIDsAndGRNIGuard(t *testing.T) {
 		t.Fatalf("edit did not apply: description = %q", after[0].Description)
 	}
 
-	// The receipt's link must have survived — that is what the guard reads.
+	// Now receive and bill it — the guard reads the link the edit had to
+	// preserve.
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
+		t.Fatalf("UpdateInboundDeliveryStatus(received): %v", err)
+	}
+	inv := createIncomingInvoice(t, d, f, "V-001", 10, 250)
+	if _, err := d.UpdateIncomingInvoiceState(inv.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+
 	receipts, err := d.GetInboundDeliveries(f.OrgID)
 	if err != nil || len(receipts) != 1 {
 		t.Fatalf("GetInboundDeliveries: %v, %+v", err, receipts)

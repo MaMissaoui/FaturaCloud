@@ -335,6 +335,17 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// Line items are frozen once goods have actually been received against
+	// this order — see db/purchase_order_freeze.go. Checked inside the
+	// transaction, and only against a request that would genuinely change
+	// them, since the frontend always sends the full line-item array even
+	// for a header-only save.
+	if updates.LineItems != nil {
+		if err := checkPurchaseOrderLineItemFreezeTx(tx, orderID, *updates.LineItems); err != nil {
+			return nil, err
+		}
+	}
+
 	// Required columns use COALESCE so an omitted field keeps its value;
 	// genuinely optional ones are set unconditionally so they can be cleared.
 	//
