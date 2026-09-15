@@ -49,9 +49,26 @@ Remediation in flight:
 |---|---|---|---|
 | 1 — backend correctness | #244 | F70, F71, F72, F73, F74, F93 | CI green, open |
 | 2 — frontend reliability | #245 | F84, F85, F86, F87, F88, F89 | CI green, open |
-| 3 — design & consistency | #246 | F75, F76, F77, F78, F79, F90, F91 | open |
-| 4 — test backfill | — | F80 | not started |
-| 5 — docs, i18n, CI, ops | — | F81, F82, F83, F92 | not started |
+| 3 — design & consistency | #246 | F75, F76, F77, F78, F79, F90, F91 | CI green, open |
+| 4 — test backfill | #247 | F80 | CI green, open |
+| 5 — docs, i18n, CI, ops | #248 | F81, F82, F92 (**not** F83) | CI pending, open |
+
+Every finding except **F83** now has a fix in an open PR. F83 (the lightweight `v3.20.0`
+tag) is deliberately left undone: fixing it means force-replacing a published release tag,
+which re-triggers the Docker build and republishes that version's GHCR image — an
+outward-facing, hard-to-reverse action that needs an explicit decision rather than being
+folded into a docs PR. The two commands, if taken:
+
+```
+git tag -f -a v3.20.0 fc2a151 -m "v3.20.0"
+git push --force origin refs/tags/v3.20.0
+```
+
+**Merge order matters.** #248 must land last: it rewrites the translation catalogs, and
+both #245 (which adds and translates 13 strings) and #246 (which moves line numbers the
+`#:` source references point at) touch the same files. Out of order, the resolution is to
+re-run `pnpm extract` on the merged result — no translations are lost, only source
+references move.
 
 Both decisions this document left open are now settled in place: **F76 → hoist** (3.2),
 **F79 → reviewed, not changed** (3.5). One question raised by F93 stays open — whether
