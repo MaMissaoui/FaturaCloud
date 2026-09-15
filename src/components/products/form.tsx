@@ -8,6 +8,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Popconfirm,
   Row,
   Select,
@@ -468,12 +469,30 @@ const ProductForm = () => {
                       <>
                         {menu}
                         <div style={{ borderTop: "1px solid #f0f0f0", padding: 8 }}>
-                          <Link
-                            to="/settings/units-of-measure"
-                            onClick={(e) => e.stopPropagation()}
+                          {/* Not a plain <Link>: this drawer's visibility is
+                              router state, so navigating away unmounts it and
+                              silently discards everything typed so far. Ask
+                              first when there is something to lose (F88). */}
+                          <a
+                            href="/settings/units-of-measure"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              if (!form.isFieldsTouched()) {
+                                navigate("/settings/units-of-measure");
+                                return;
+                              }
+                              Modal.confirm({
+                                title: t`Leave without saving?`,
+                                content: t`Managing units of measure closes this product and discards your unsaved changes.`,
+                                okText: t`Discard and continue`,
+                                cancelText: t`Stay here`,
+                                onOk: () => navigate("/settings/units-of-measure"),
+                              });
+                            }}
                           >
                             <Trans>Manage units of measure</Trans>
-                          </Link>
+                          </a>
                         </div>
                       </>
                     )}

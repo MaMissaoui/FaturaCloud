@@ -37,6 +37,17 @@ type PaymentTermFormValues = Omit<Partial<PaymentTerm>, "isDefault"> & {
   isDefault?: boolean | number | null;
 };
 
+// Same single-default invariant the server enforces in its own transaction,
+// applied locally so the list can't briefly show two defaults after a save
+// (F87 — fixed here too, since unit-of-measure.ts inherited this shape from
+// this file and the two should not diverge).
+const applySingleDefault = <T extends { id: string; isDefault?: number | null }>(
+  rows: T[],
+  savedID: string,
+  savedIsDefault: number,
+): T[] =>
+  savedIsDefault === 1 ? rows.map((r) => (r.id === savedID ? r : { ...r, isDefault: 0 })) : rows;
+
 export const paymentTermAtom = atom(
   (get) => {
     const id = get(paymentTermIdAtom);
@@ -57,14 +68,24 @@ export const paymentTermAtom = atom(
         set(paymentTermIdAtom, created.id);
         message.success(t`Payment term created`);
         const terms = get(paymentTermsAtom);
-        set(paymentTermsAtom, orderBy([...terms, created], "name", "asc"));
+        set(
+          paymentTermsAtom,
+          applySingleDefault(
+            orderBy([...terms, created], "name", "asc"),
+            created.id,
+            data.isDefault,
+          ),
+        );
       } else {
         const data = { ...newValues, isDefault: newValues.isDefault ? 1 : 0 };
         const updated = await UpdatePaymentTerm(id, data);
         message.success(t`Payment term updated`);
         const terms = get(paymentTermsAtom);
         const merged = keyBy([...terms, updated], "id");
-        set(paymentTermsAtom, orderBy(map(merged), "name", "asc"));
+        set(
+          paymentTermsAtom,
+          applySingleDefault(orderBy(map(merged), "name", "asc"), updated.id, data.isDefault),
+        );
       }
     } catch (error) {
       console.error("Payment term operation failed:", error);

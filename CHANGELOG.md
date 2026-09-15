@@ -50,6 +50,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inventory posting for a product otherwise outside inventory.
 - Deleting a production order or a goods receipt can no longer race a
   concurrent status change and remove a completed or received document.
+- The Bill of Materials editor no longer shows an empty recipe when it fails
+  to load one. It now says so and disables Save, so a failed load can't
+  overwrite a real recipe with nothing, and offers a Retry.
+- Selecting a past Bill of Materials version that fails to load no longer
+  leaves the drawer spinning forever with no way out but closing.
+- The Production Order screen no longer reports a failed Bill of Materials
+  fetch as "this product has no Bill of Materials". It distinguishes the two
+  and offers a Retry.
+- Confirming serial numbers when completing a production order can no longer
+  be submitted twice, which produced an error message on top of a success.
+- Opening a production order that is still loading, or that fails to load,
+  now shows a placeholder or an error instead of a completely blank page.
+- Saving a unit of measure or a payment term as the new default no longer
+  leaves two rows marked "Default" until the next refresh — which could also
+  prefill a new product with the old default.
+- "Manage units of measure" now asks before navigating away from a product
+  with unsaved changes, instead of silently discarding them.
+- A production order's component lines now keep the component's code and
+  unit after that component product is deleted, instead of showing only its
+  name.
+- Completing a production order now checks the organization's Inventory
+  accounts consistently. It used to check them only on the rare batch whose
+  cost didn't divide evenly, so an organization missing that setup worked
+  for months and then failed on one batch with no obvious cause.
+- Restoring a Bill of Materials version now always records the restore in
+  the version history, including when the restored recipe happens to match
+  the current one.
+- Two people saving a Bill of Materials at the same time no longer fails one
+  of them with an internal error.
+
+### Changed
+- The Production Orders list and the Units of Measure settings page now
+  filter without re-rendering every row on each keystroke, matching the Bill
+  of Materials screen.
 
 ## [3.20.0] - 2026-09-14
 

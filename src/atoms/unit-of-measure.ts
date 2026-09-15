@@ -31,6 +31,18 @@ export const setUnitsOfMeasureAtom = atom(null, async (get, set) => {
   }
 });
 
+// The server clears the previous default inside the same transaction when a
+// row is saved with isDefault = 1, but the client only ever merges back the
+// row it saved — so without this two rows render as "Default" until the next
+// fetch, and a consumer doing find(list, {isDefault: 1}) can pick the stale
+// one (F87). Mirrors the server's own single-default invariant locally.
+const applySingleDefault = <T extends { id: string; isDefault?: number | null }>(
+  rows: T[],
+  savedID: string,
+  savedIsDefault: number,
+): T[] =>
+  savedIsDefault === 1 ? rows.map((r) => (r.id === savedID ? r : { ...r, isDefault: 0 })) : rows;
+
 // Single unit of measure (read+write), for the Settings drawer form. There's
 // no GET /units-of-measure/{id} endpoint — the list is always small enough
 // that the drawer just looks the record up from the already-loaded list.
@@ -62,14 +74,24 @@ export const unitOfMeasureAtom = atom(
         set(unitOfMeasureIdAtom, created.id);
         message.success(t`Unit of measure created`);
         const units = get(unitsOfMeasureAtom);
-        set(unitsOfMeasureAtom, orderBy([...units, created], "name", "asc"));
+        set(
+          unitsOfMeasureAtom,
+          applySingleDefault(
+            orderBy([...units, created], "name", "asc"),
+            created.id,
+            data.isDefault,
+          ),
+        );
       } else {
         const data = { ...newValues, isDefault: newValues.isDefault ? 1 : 0 };
         const updated = await UpdateUnitOfMeasure(id, data);
         message.success(t`Unit of measure updated`);
         const units = get(unitsOfMeasureAtom);
         const merged = keyBy([...units, updated], "id");
-        set(unitsOfMeasureAtom, orderBy(map(merged), "name", "asc"));
+        set(
+          unitsOfMeasureAtom,
+          applySingleDefault(orderBy(map(merged), "name", "asc"), updated.id, data.isDefault),
+        );
       }
     } catch (error) {
       console.error("Unit of measure operation failed:", error);

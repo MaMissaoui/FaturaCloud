@@ -3,7 +3,6 @@ import { Alert, InputNumber, Input, Modal, Segmented, Select, Space, Typography 
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import filter from "lodash/filter";
 import uniq from "lodash/uniq";
 
 import { productSerialNumbersAtom, loadProductSerialNumbersAtom } from "src/atoms/serial-number";
@@ -190,10 +189,12 @@ const SerialCaptureModal = ({
         {lines.map((line) => {
           const picked = selection[line.lineItemId] ?? [];
           const excluded = pickedElsewhere(line.productId, line.lineItemId);
-          const options = filter(
-            serialNumbersByProduct[line.productId] ?? [],
-            (s: any) => s.inStock && !excluded.has(s.serialNumber),
-          ).map((s: any) => ({ value: s.serialNumber, label: s.serialNumber }));
+          // Native filter rather than lodash's: with an explicitly typed
+          // predicate lodash's overloads widen the element type and lose
+          // SerialNumber (audit 2026-09-14 F90).
+          const options = (serialNumbersByProduct[line.productId] ?? [])
+            .filter((s) => s.inStock && !excluded.has(s.serialNumber))
+            .map((s) => ({ value: s.serialNumber, label: s.serialNumber }));
           const lineEntryMode = entryMode[line.lineItemId] ?? "type";
           const lineRange = rangeValues[line.lineItemId];
 

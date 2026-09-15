@@ -458,3 +458,97 @@ func TestConcurrentUpdateDeliveryStatusDoesNotDoubleMoveStock(t *testing.T) {
 		)
 	}
 }
+
+// TestConcurrentUpdateProductionOrderStatusDoesNotDoubleConsumeStock closes
+// the gap F69 (docs/audit-plan-2026-08-13-fix-review.md:48) made a standing
+// requirement and F80 (docs/audit-plan-2026-09-14.md) found reopened: every
+// other F48-guarded status path in this package has a dedicated concurrency
+// test, and Production Orders shipped without one.
+//
+// UpdateProductionOrderStatus re-reads status via tx immediately after
+// Beginx() (db/production_order.go) and aborts if it no longer matches the
+// pre-tx read the consume/produce decisions were made against. As with the
+// receipt and delivery tests above, more than one racing call can
+// legitimately report success — a same-status request matches no switch case
+// and flips nothing. What must hold regardless is that the components are
+// consumed exactly once and the finished units produced exactly once.
+func TestConcurrentUpdateProductionOrderStatusDoesNotDoubleConsumeStock(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := seedProductionOrderFixture(t, d, false)
+
+	componentBefore, err := d.GetProduct(fx.componentA.ID)
+	if err != nil {
+		t.Fatalf("GetProduct(component): %v", err)
+	}
+
+	order, err := d.CreateProductionOrder(CreateProductionOrderRequest{
+		OrganizationID: fx.orgID, OrderNumber: "PRO-CONCURRENT",
+		FinishedProductID: fx.finished.ID, Quantity: 2, Date: fx.date,
+	})
+	if err != nil {
+		t.Fatalf("CreateProductionOrder: %v", err)
+	}
+	lines, err := d.GetProductionOrderComponentLines(order.ID)
+	if err != nil || len(lines) == 0 {
+		t.Fatalf("GetProductionOrderComponentLines: err=%v len=%d", err, len(lines))
+	}
+	var consumedA float64
+	for _, l := range lines {
+		if l.ComponentProductID != nil && *l.ComponentProductID == fx.componentA.ID {
+			consumedA = l.TotalQuantity
+		}
+	}
+	if consumedA == 0 {
+		t.Fatal("fixture BOM does not consume componentA — test would prove nothing")
+	}
+
+	const n = 8
+	errs := concurrentlyRun(n, func(i int) error {
+		_, err := d.UpdateProductionOrderStatus(order.ID, "completed", nil)
+		return err
+	})
+	successes := 0
+	for _, err := range errs {
+		if err == nil {
+			successes++
+		}
+	}
+	if successes < 1 {
+		t.Fatalf("successes = %d, want at least 1 — every racing call was rejected", successes)
+	}
+
+	componentAfter, err := d.GetProduct(fx.componentA.ID)
+	if err != nil {
+		t.Fatalf("GetProduct(component) after: %v", err)
+	}
+	if want := componentBefore.StockQuantity - consumedA; componentAfter.StockQuantity != want {
+		t.Fatalf(
+			"component stockQuantity = %v, want %v — components consumed more than once",
+			componentAfter.StockQuantity, want,
+		)
+	}
+
+	finished, err := d.GetProduct(fx.finished.ID)
+	if err != nil {
+		t.Fatalf("GetProduct(finished): %v", err)
+	}
+	if finished.StockQuantity != 2 {
+		t.Fatalf("finished stockQuantity = %v, want 2 — output produced more than once", finished.StockQuantity)
+	}
+
+	// Whatever GL entry the completion did or didn't post (an exact division
+	// posts none), it must not have posted twice.
+	var count int
+	if err := d.DB.Get(&count, `
+		SELECT COUNT(*) FROM journal_entries
+		WHERE sourceDocumentType = 'production_order' AND sourceDocumentId = ?
+		      AND status = 'posted' AND reversalOfEntryId IS NULL`,
+		order.ID,
+	); err != nil {
+		t.Fatalf("count posted entries: %v", err)
+	}
+	if count > 1 {
+		t.Fatalf("posted production order entry count = %d, want at most 1", count)
+	}
+}

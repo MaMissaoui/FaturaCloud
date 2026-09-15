@@ -1183,11 +1183,18 @@ func buildStockAdjustmentGLLines(
 // signed-net shape buildStockAdjustmentGLLines already uses (positive = net
 // debit to Inventory, negative = net credit).
 func buildProductionOrderGLLines(d *Database, order *ProductionOrder, componentsCostTotal, producedValueCents int64) ([]CreateJournalLineRequest, *Journal, error) {
-	netCents := producedValueCents - componentsCostTotal
-	if netCents == 0 {
-		return nil, nil, nil
-	}
-
+	// The account checks run *before* the netCents == 0 early return, not
+	// after (audit 2026-09-14 F76). They used to be reachable only when a
+	// residual existed, and since exact division is the common case — always
+	// true for a BOM of whole-number quantityPerUnits — an organization with
+	// no inventory accounts configured completed production orders fine for
+	// months and then failed on one odd batch. Every other Phase 7 posting
+	// path refuses deterministically until these are wired up, and this now
+	// matches. The practical blast radius is small: main.go runs
+	// SeedInventoryAccountingDefaultsForAllOrganizations on every startup,
+	// backfilling any organization with any of the four columns NULL, so the
+	// unconfigured state is only reachable by deliberately clearing the field
+	// and not restarting.
 	org, err := d.GetOrganization(order.OrganizationID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build_production_order_gl_lines organization: %w", err)
@@ -1197,6 +1204,14 @@ func buildProductionOrderGLLines(d *Database, order *ProductionOrder, components
 	}
 	if org.DefaultInventoryAdjustmentAccountID == nil {
 		return nil, nil, newValidationError("cannot complete production order: organization has no default Inventory Adjustment account configured")
+	}
+
+	// Dr Inventory (finished good in) and Cr Inventory (components out) are
+	// the same account, so a value-neutral transformation nets to zero and
+	// emits no entry at all — the normal case.
+	netCents := producedValueCents - componentsCostTotal
+	if netCents == 0 {
+		return nil, nil, nil
 	}
 
 	// Mirrors buildStockAdjustmentGLLines' use of the miscellaneous journal

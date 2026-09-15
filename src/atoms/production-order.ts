@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import type { ProductionOrder } from "src/types/models";
+import type { ProductionOrder, ProductionOrderComponentLine } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
@@ -48,12 +48,20 @@ export const nextProductionOrderNumberAtom = atom(async (get) => {
 
 export const productionOrderIdAtom = atom<string | null>(null);
 
+// The detail page's view model: the order plus its snapshotted component
+// lines. Exported and named rather than left as an inline object literal so
+// the page doesn't have to fall back to `any` to read it (audit 2026-09-14
+// F90) — issue #143's typed-atom pass is the standing convention here.
+export type ProductionOrderWithLines = ProductionOrder & {
+  componentLines: ProductionOrderComponentLine[];
+};
+
 // Read-only — there is no PUT /production-orders/{id} (see
 // db/production_order.go's comment: every document owns its line items,
 // snapshotted from the BOM at creation, so there is nothing left to edit on
 // a draft order besides its status). Creation goes through
 // createProductionOrderAtom below instead.
-export const productionOrderAtom = atom(async (get) => {
+export const productionOrderAtom = atom<Promise<ProductionOrderWithLines | null>>(async (get) => {
   const orderId = get(productionOrderIdAtom);
   if (!orderId) return null;
   try {
