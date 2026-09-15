@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A production order's component lines now keep the component's code and
+  unit after that component product is deleted, instead of showing only its
+  name.
+- Completing a production order now checks the organization's Inventory
+  accounts consistently. It used to check them only on the rare batch whose
+  cost didn't divide evenly, so an organization missing that setup worked
+  for months and then failed on one batch with no obvious cause.
+- Restoring a Bill of Materials version now always records the restore in
+  the version history, including when the restored recipe happens to match
+  the current one.
+- Two people saving a Bill of Materials at the same time no longer fails one
+  of them with an internal error.
+
+### Changed
+- The Production Orders list and the Units of Measure settings page now
+  filter without re-rendering every row on each keystroke, matching the Bill
+  of Materials screen.
+
 ## [3.20.0] - 2026-09-14
 
 ### Added

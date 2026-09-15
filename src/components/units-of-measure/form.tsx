@@ -29,7 +29,7 @@ const UnitOfMeasureForm = () => {
 
   const unitOfMeasure = useMemo(() => {
     if (!unitOfMeasureId) return null;
-    return unitsOfMeasure.find((u: any) => u.id === unitOfMeasureId) ?? null;
+    return unitsOfMeasure.find((u) => u.id === unitOfMeasureId) ?? null;
   }, [unitsOfMeasure, unitOfMeasureId]);
 
   const handleClose = () => {
@@ -38,7 +38,11 @@ const UnitOfMeasureForm = () => {
     navigate(location.pathname, { state: { unitOfMeasureModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  // isDefault is a Checkbox here (boolean); the atom converts it to the
+  // stored 0/1 — the same split payment-terms/form.tsx uses.
+  type UnitOfMeasureFormValues = { name: string; isDefault?: boolean };
+
+  const handleSubmit = async (values: UnitOfMeasureFormValues) => {
     setSubmitting(true);
     try {
       await setUnitOfMeasure(values);

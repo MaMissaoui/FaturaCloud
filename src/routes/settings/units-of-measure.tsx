@@ -1,20 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { UnitOfMeasure } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Row, Table } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { CheckSquareOutlined, ColumnWidthOutlined } from "@ant-design/icons";
-import filter from "lodash/filter";
-import includes from "lodash/includes";
 
 import { unitsOfMeasureAtom, setUnitsOfMeasureAtom } from "src/atoms/unit-of-measure";
 import UnitOfMeasureForm from "src/components/units-of-measure/form";
 import PageHeader from "src/components/page-header";
-
-const searchAtom = atom<string>("");
 
 function SettingsUnitsOfMeasure() {
   useLingui();
@@ -23,7 +19,7 @@ function SettingsUnitsOfMeasure() {
 
   const unitsOfMeasure = useAtomValue(unitsOfMeasureAtom);
   const setUnitsOfMeasure = useSetAtom(setUnitsOfMeasureAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,11 +29,13 @@ function SettingsUnitsOfMeasure() {
     }
   }, [location, setUnitsOfMeasure]);
 
-  const filtered = search
-    ? filter(unitsOfMeasure, (u: UnitOfMeasure) =>
-        includes(u.name.toLowerCase(), search.toLowerCase()),
-      )
-    : unitsOfMeasure;
+  // useState + useMemo, matching bill-of-materials.tsx — see the same note
+  // in production-orders.tsx (audit 2026-09-14 F91).
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return unitsOfMeasure;
+    return unitsOfMeasure.filter((u: UnitOfMeasure) => u.name.toLowerCase().includes(term));
+  }, [unitsOfMeasure, search]);
 
   return (
     <>

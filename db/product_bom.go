@@ -222,6 +222,17 @@ func (d *Database) GetBillOfMaterialsVersionDetail(finishedProductID, versionID 
 // editor unchanged doesn't pad every product's history with identical
 // entries.
 func (d *Database) ReplaceBillOfMaterials(finishedProductID string, lines []CreateBillOfMaterialsLineRequest, batchSize int) ([]BillOfMaterialsLine, error) {
+	return d.replaceBillOfMaterials(finishedProductID, lines, batchSize, false)
+}
+
+// replaceBillOfMaterials is the shared implementation. forceVersion makes it
+// record a version row even when the resulting recipe is identical to the
+// latest one — which is what the restore path needs (audit 2026-09-14 F77):
+// restoring an older version whose content happens to equal the current one
+// used to return 200, report "Version restored", and record nothing at all,
+// contradicting this file's own doc comment and CLAUDE.md. An ordinary save
+// still skips the no-op, which is the whole point of the comparison.
+func (d *Database) replaceBillOfMaterials(finishedProductID string, lines []CreateBillOfMaterialsLineRequest, batchSize int, forceVersion bool) ([]BillOfMaterialsLine, error) {
 	finished, err := d.GetProduct(finishedProductID)
 	if err != nil {
 		return nil, newValidationError("finished product not found")
@@ -360,6 +371,10 @@ func (d *Database) ReplaceBillOfMaterials(finishedProductID string, lines []Crea
 		changed = false
 	}
 
+	if forceVersion {
+		changed = true
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("replace_bill_of_materials begin: %w", err)
@@ -380,6 +395,22 @@ func (d *Database) ReplaceBillOfMaterials(finishedProductID string, lines []Crea
 	}
 
 	if changed {
+		// Re-derive the number inside the transaction (audit 2026-09-14 F78).
+		// The pre-tx read above is needed for the no-op comparison, but using
+		// its number here let two concurrent saves both compute N+1 — withDB
+		// holds only a read lock — and the loser hit the unique index and got
+		// a 500 with the whole save rolled back. db.SetMaxOpenConns(1)
+		// serializes writers through one connection, so this read is the
+		// authoritative one.
+		var maxVersion int
+		if err := tx.Get(&maxVersion, `
+			SELECT COALESCE(MAX(versionNumber), 0) FROM bill_of_materials_versions
+			WHERE finishedProductId = ?`, finishedProductID,
+		); err != nil {
+			return nil, fmt.Errorf("replace_bill_of_materials next_version: %w", err)
+		}
+		nextVersionNumber = maxVersion + 1
+
 		versionID, _ := gonanoid.New()
 		if _, err := tx.Exec(`
 			INSERT INTO bill_of_materials_versions (id, organizationId, finishedProductId, versionNumber, batchSize)
@@ -412,7 +443,9 @@ func (d *Database) ReplaceBillOfMaterials(finishedProductID string, lines []Crea
 // using that version's lines, so it goes through the exact same
 // validation (component still exists, still category "component", same
 // org) and itself creates a new version recording the restore, rather
-// than rewriting history. Fails with a 409 naming the line, not a silent
+// than rewriting history — unconditionally, even when the restored content
+// equals the current recipe, which an ordinary save would skip as a no-op
+// (audit 2026-09-14 F77). Fails with a 409 naming the line, not a silent
 // partial restore, if any of the version's components no longer exists
 // (componentProductId went NULL via the migration's ON DELETE SET NULL) —
 // a smaller-than-recorded recipe restored silently would be a worse
@@ -437,5 +470,5 @@ func (d *Database) RestoreBillOfMaterialsVersion(finishedProductID, versionID st
 		})
 	}
 
-	return d.ReplaceBillOfMaterials(finishedProductID, lines, detail.BatchSize)
+	return d.replaceBillOfMaterials(finishedProductID, lines, detail.BatchSize, true)
 }
