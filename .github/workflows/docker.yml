@@ -245,16 +245,33 @@ jobs:
             echo "has_notes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create GitHub Release
+      # `create` on an existing release exits 1 with "Release.tag_name
+      # already exists", which is a real failure the first time a tag is
+      # pushed and pure noise every time one is re-pushed. Re-pushing a tag
+      # is rare but legitimate — retagging v3.20.0 from lightweight to
+      # annotated (audit 2026-09-14 F83) did exactly that, and left a red
+      # run behind even though the build, the manifest and the release
+      # itself were all fine. Edit the release when it already exists so
+      # the run reflects whether the *release* is correct, not whether this
+      # happens to be the tag's first push.
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
-          if [ "${{ steps.notes.outputs.has_notes }}" = "true" ]; then
-            gh release create "${{ github.ref_name }}" \
-              --title "${{ github.ref_name }}" \
-              --notes-file release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            action=edit
+            echo "Release $TAG already exists — updating it in place."
           else
-            gh release create "${{ github.ref_name }}" \
-              --title "${{ github.ref_name }}" \
-              --generate-notes
+            action=create
+          fi
+          if [ "${{ steps.notes.outputs.has_notes }}" = "true" ]; then
+            gh release "$action" "$TAG" --title "$TAG" --notes-file release-notes.md
+          elif [ "$action" = "create" ]; then
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          else
+            # `gh release edit` has no --generate-notes; with no changelog
+            # section to supply, leave the existing notes alone rather than
+            # blanking them.
+            gh release edit "$TAG" --title "$TAG"
           fi

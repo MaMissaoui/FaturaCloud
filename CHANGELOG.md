@@ -7,17 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- An organization's default accounting accounts can now be cleared.
-  Clearing one in the edit drawer previously did nothing at all — the
-  field silently kept its old value, with a direct database edit as the
-  only way to remove it.
-- Sending an empty string for an optional link — a purchase order's
-  vendor or import, a line's product or tax rate, a product's unit of
-  measure, and so on — now means "not set", the same as leaving it out.
-  It previously got as far as the database and came back as a generic
-  "internal error". Only reachable through the API directly; the app's
-  own forms were never affected.
+## [3.21.0] - 2026-09-15
 
 ### Added
 - A purchase order's line items are now locked once goods have actually
@@ -41,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   screens no longer show English text to a de/fr user.
 
 ### Fixed
+- An organization's default accounting accounts can now be cleared.
+  Clearing one in the edit drawer previously did nothing at all — the
+  field silently kept its old value, with a direct database edit as the
+  only way to remove it.
+- Sending an empty string for an optional link — a purchase order's
+  vendor or import, a line's product or tax rate, a product's unit of
+  measure, and so on — now means "not set", the same as leaving it out.
+  It previously got as far as the database and came back as a generic
+  "internal error". Only reachable through the API directly; the app's
+  own forms were never affected.
 - Saving a shipped outbound delivery's tracking number or notes failed
   with "cannot edit line items of a shipped delivery". Header-only edits
   on a shipped delivery were always meant to work — the check rejected
@@ -103,7 +103,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whose Go files are not `gofmt`'d, or whose frontend sources are not
   `oxfmt`'d — missing catalog entries have been this repository's own
   recurring regression.
-
 
 ## [3.20.0] - 2026-09-14
 
