@@ -39,42 +39,87 @@ than merely producing a wrong number.
 - The "Explicitly excluded" section at the end is binding: those were checked and
   dismissed with a reason. Do not re-raise them.
 
-**Status:** 24 findings. F93 was appended after the initial 23 — Phase 1.1's precondition
+**Status:** 25 findings. F93 was appended after the initial 23 — Phase 1.1's precondition
 enumeration is what found it, which is the argument for keeping that precondition rather
-than treating it as ceremony.
+than treating it as ceremony. F94 was appended later still, during Phase 4b's test
+backfill — see section 6.
 
-Remediation in flight:
+**Remediation: complete.** All seven PRs are merged; `main` is at `278d3bb`.
 
 | Phase | PR | Findings | State |
 |---|---|---|---|
-| 1 — backend correctness | #244 | F70, F71, F72, F73, F74, F93 | CI green, open |
-| 2 — frontend reliability | #245 | F84, F85, F86, F87, F88, F89 | CI green, open |
-| 3 — design & consistency | #246 | F75, F76, F77, F78, F79, F90, F91 | CI green, open |
-| 4 — test backfill | #247 | F80 | CI green, open |
-| 5 — docs, i18n, CI, ops | #248 | F81, F82, F92 (**not** F83) | CI pending, open |
+| 1 — backend correctness | #244 | F70, F71, F72, F73, F74, F93 | merged |
+| 2 — frontend reliability | #245 | F84, F85, F86, F87, F88, F89 | merged |
+| 3 — design & consistency | #246 | F75, F76, F77, F78, F79, F90, F91 | merged |
+| 4 — test backfill | #247 | F80 (first pass) | merged |
+| 5 — docs, i18n, CI, ops | #248 | F81, F82, F92 | merged |
+| — | #249 | the F93 follow-up: purchase-order line-item freeze | merged |
+| 4b — test backfill remainder | #250 | F80 (the rest) | see below |
 
-Every finding except **F83** now has a fix in an open PR. F83 (the lightweight `v3.20.0`
-tag) is deliberately left undone: fixing it means force-replacing a published release tag,
-which re-triggers the Docker build and republishes that version's GHCR image — an
-outward-facing, hard-to-reverse action that needs an explicit decision rather than being
-folded into a docs PR. The two commands, if taken:
+**F83 was taken, with the cost accepted knowingly.** `v3.20.0` is now an annotated tag
+(`9eeafc9`, dereferencing to the unchanged commit `fc2a151`), matching every other release
+tag. What made this a decision rather than a cleanup is that the repository has no way to
+change a tag's *type* without re-pushing it, and `.github/workflows/docker.yml` triggers
+on `push: tags: v*` — so the only route to a cosmetic git-object change runs through a
+full image rebuild and republish. Measured consequences, all as predicted and all
+confirmed after the fact:
 
-```
-git tag -f -a v3.20.0 fc2a151 -m "v3.20.0"
-git push --force origin refs/tags/v3.20.0
-```
+- **The published image was replaced, not re-pointed.** The Dockerfile builds from
+  `debian:bookworm-slim` with an unpinned `apt-get install libreoffice-calc`, so a rebuild
+  of the *same commit* is not byte-identical. Digest went `sha256:d0117d02…` →
+  `sha256:677ac25c…`.
+- **All four registry tags moved**, including `latest`: `latest`, `3.20`, `3.20.0` and
+  `sha-fc2a151` all now resolve to the new digest. `latest` is the one that matters —
+  `homelab-deploy/apps/fatura-cloud/docker-compose.yml` pulls
+  `ghcr.io/mamissaoui/fatura-cloud:${VERSION:-latest}`. Nothing redeployed on its own; the
+  running container keeps the image it already pulled until someone redeploys.
+- **The original image is gone.** The `merge` job's own prune step deleted the
+  now-untagged `d0117d02` version (`deleting package id: 1248364675`), so the artifact
+  that originally shipped as v3.20.0 is no longer pullable by digest either. There was no
+  digest pin anywhere to break, but the rollback-to-the-exact-original path is closed.
+- **The `release` job failed**, as it must: it runs `gh release create` unconditionally,
+  and the v3.20.0 GitHub Release already existed, so it exited 1 with
+  `Release.tag_name already exists`. The release itself is untouched — the failure is the
+  redundant create, not a broken release. The run therefore shows build + merge green and
+  release red.
 
-**Merge order matters.** #248 must land last: it rewrites the translation catalogs, and
-both #245 (which adds and translates 13 strings) and #246 (which moves line numbers the
-`#:` source references point at) touch the same files. Out of order, the resolution is to
-re-run `pnpm extract` on the merged result — no translations are lost, only source
-references move.
+**Follow-up worth doing, not done here:** make that `release` step idempotent
+(`gh release create … || gh release edit …`, or a `gh release view` guard), so re-pushing
+any tag doesn't leave a red run behind. It is a latent trap for every future retag, not
+just this one.
 
-Both decisions this document left open are now settled in place: **F76 → hoist** (3.2),
-**F79 → reviewed, not changed** (3.5). One question raised by F93 stays open — whether
-purchase-order line items should additionally be *frozen* once a receipt exists. Id reuse
-stops the severing, but it does not stop a quantity moving underneath an already-posted
-GRNI accrual.
+**F80 took two PRs.** #247 closed the two items this document flagged as regressing a
+standing requirement — the missing F48 concurrency test for production orders and the
+eight absent `crossOrgProof` entries (plus a positive control, since the deny loop
+accepts 404 and a typo'd path returns 404 for everyone) — along with the dead
+serialized-cancel and GL-reversal branches. #250 covers the rest of the enumeration:
+`validateSerialAgainstImportRange`'s prefix / non-numeric-suffix / no-range-configured
+branches, the production-order validation edges (`Quantity <= 0`, fractional quantity on
+a serialized finished product, unknown import, the defensive serialized-component
+re-check at completion, the `resolveMovementCost` 409), the units-of-measure gaps
+(`isDefault` nil-defaulting, blank name, delete-on-missing-id, unsetting the only
+default, the case-insensitive backfill matching) and the bill-of-materials gaps (first-save
+`batchSize <= 0 → 1` versus inheritance on a product with history, restore carrying the
+*restored* batch size, clearing a recipe, line reordering).
+
+Two items from F80's enumeration are deliberately **not** covered by either PR:
+
+- **Api-level tests for the nine new endpoints.** This document already stated the point
+  narrowly — 0% `api/` handler coverage is the repo-wide norm across 17 handler files and
+  is not claimed as a regression, only that the new endpoints inherit it. Closing it is a
+  repo-wide decision, not a production-orders one.
+- **Line reordering as a *detected* change.** #250 pins the current behaviour (reordering
+  is not recorded as a new version) rather than changing it, so a future decision to make
+  ordering significant has to flip that test deliberately.
+
+**Both decisions this document left open are settled**: **F76 → hoist** (3.2), **F79 →
+reviewed, not changed** (3.5). The question F93 raised — whether purchase-order line items
+should additionally be *frozen* once a receipt exists — is also settled and shipped in
+#249. The freeze is computed from receipt status rather than stored, so cancelling a
+receipt lifts it by construction and deleting one needs no handling at all
+(`DeleteInboundDelivery` already refuses to delete a received receipt). It carries one
+consequence worth restating: it is all-or-nothing, so a **partially** received order
+can no longer have its outstanding lines adjusted without cancelling the receipt first.
 
 ---
 
@@ -82,30 +127,31 @@ GRNI accrual.
 
 | # | Finding | Area | Severity | Phase | Status |
 |---|---------|------|----------|-------|--------|
-| F93 | `UpdatePurchaseOrder` severs `purchase_order_line_items` ids with no status gate — the billed-receipt cancel guard is skipped entirely, GRNI never clears, and 3-way matching silently passes | Ledger integrity | **High** | 1.1b | Open |
-| F70 | `UpdateOrder` deletes + reinserts `orderLineItems` with fresh ids, permanently nulling `outbound_delivery_line_items.orderLineItemId` — the outstanding-quantity prefill then re-offers already-shipped quantity | Data integrity | Medium-High | 1.1 | Open |
-| F71 | `products.unit` is derived only at product-write time — renaming a unit of measure never re-derives it, and clearing `unitOfMeasureId` is handled only in the frontend | Correctness | Medium | 1.2 | Open |
-| F72 | `updateProduct` / `updateTaxRate` map `*ValidationError` to 500 "internal error" instead of 409 with the real message | Correctness / UX | Medium | 1.3 | Open |
-| F73 | Production orders write real `stockMovements` for a `stockEnabled = 0` product — the only stock-moving path in the repo with no such gate | Correctness | Medium | 1.4 | Open |
-| F74 | `DeleteProductionOrder`'s `DELETE` lacks `AND status = 'draft'` — a delete racing a completion destroys a completed order, orphaning its stock movements and posted entry | Concurrency | Low-Medium | 1.5 | Open |
-| F84 | A BOM editor fetch failure renders as an empty recipe; saving from that state silently wipes a real BOM | Frontend / data loss | Medium | 2.1 | Open |
-| F85 | A failed BOM fetch on the Production Order page is reported as "this product has no Bill of Materials", with Create permanently disabled and no retry | Frontend | Medium | 2.2 | Open |
-| F86 | Serial-capture confirm is double-submittable on production orders — the second `PATCH` 409s and toasts an error on top of the success | Frontend | Medium | 2.3 | Open |
-| F87 | After saving a unit of measure, two rows render as "Default" and the product prefill can pick the stale one | Frontend | Low-Medium | 2.4 | Open |
-| F88 | "Manage units of measure" navigates away and silently discards an in-progress product, no confirmation | Frontend | Low-Medium | 2.5 | Open |
-| F89 | Production Order detail renders a fully blank page (not even the header) while loading and on fetch failure | Frontend | Low | 2.6 | Open |
-| F75 | `production_order_component_lines` joins `componentSku`/`componentUnit` instead of snapshotting them, contradicting migration `0075`'s own comment | Correctness | Low | 3.1 | Open |
-| F76 | `buildProductionOrderGLLines` validates the org's Inventory accounts *only* when a rounding residual exists — an unconfigured org fails randomly, not deterministically | Accounting | Low (decision) | 3.2 | Open |
-| F77 | `RestoreBillOfMaterialsVersion` records no version when the restored content equals the latest, contradicting CLAUDE.md and its own doc comment | Audit trail | Low | 3.3 | Open |
-| F78 | BOM version number is allocated on `d.DB` before `Beginx()` — concurrent saves collide on the unique index and 500 | Concurrency | Low | 3.4 | Open |
-| F79 | `UpdateUnitOfMeasure` / `DeleteUnitOfMeasure` can leave an org with zero default unit of measure, silently killing the new-product prefill | Correctness | Low | 3.5 | Open |
-| F90 | `any` reaches the whole Production Order detail view — 13 sites, regressing issue #143's completed typed-atom pass | Type safety | Low-Medium | 3.6 | Open |
-| F91 | Two different list-search implementations shipped in the same release; one re-renders every row on each keystroke | Frontend consistency | Low | 3.7 | Open |
-| F80 | Test-coverage cluster: the new F48 guard has no concurrency test (regressing F69's standing requirement), `crossOrgProof` omits 8 new routes, and the serialized-cancel + GL-reversal branches are dead code in CI | Test coverage | Low | 4.1 | Open |
-| F81 | CLAUDE.md drift: the entire Units-of-Measure frontend is undocumented, the Settings-dropdown list omits it, and two stated guarantees are false | Docs | Low | 5.1 | Open |
-| F92 | 79 msgids are untranslated in de/fr; 15 of them now render on screens this release touches, 3 directly on the new Production Order pages | i18n | Low | 5.2 | Open |
-| F82 | CI has no i18n catalog-drift check and no `gofmt` / `format:check` gate | CI | Low | 5.3 | Open |
-| F83 | `v3.20.0` was pushed as a lightweight tag; every prior release tag is annotated | Ops | Low | 5.4 | Open |
+| F93 | `UpdatePurchaseOrder` severs `purchase_order_line_items` ids with no status gate — the billed-receipt cancel guard is skipped entirely, GRNI never clears, and 3-way matching silently passes | Ledger integrity | **High** | 1.1b | Fixed #244 |
+| F70 | `UpdateOrder` deletes + reinserts `orderLineItems` with fresh ids, permanently nulling `outbound_delivery_line_items.orderLineItemId` — the outstanding-quantity prefill then re-offers already-shipped quantity | Data integrity | Medium-High | 1.1 | Fixed #244 |
+| F71 | `products.unit` is derived only at product-write time — renaming a unit of measure never re-derives it, and clearing `unitOfMeasureId` is handled only in the frontend | Correctness | Medium | 1.2 | Fixed #244 |
+| F72 | `updateProduct` / `updateTaxRate` map `*ValidationError` to 500 "internal error" instead of 409 with the real message | Correctness / UX | Medium | 1.3 | Fixed #244 |
+| F73 | Production orders write real `stockMovements` for a `stockEnabled = 0` product — the only stock-moving path in the repo with no such gate | Correctness | Medium | 1.4 | Fixed #244 |
+| F74 | `DeleteProductionOrder`'s `DELETE` lacks `AND status = 'draft'` — a delete racing a completion destroys a completed order, orphaning its stock movements and posted entry | Concurrency | Low-Medium | 1.5 | Fixed #244 |
+| F84 | A BOM editor fetch failure renders as an empty recipe; saving from that state silently wipes a real BOM | Frontend / data loss | Medium | 2.1 | Fixed #245 |
+| F85 | A failed BOM fetch on the Production Order page is reported as "this product has no Bill of Materials", with Create permanently disabled and no retry | Frontend | Medium | 2.2 | Fixed #245 |
+| F86 | Serial-capture confirm is double-submittable on production orders — the second `PATCH` 409s and toasts an error on top of the success | Frontend | Medium | 2.3 | Fixed #245 |
+| F87 | After saving a unit of measure, two rows render as "Default" and the product prefill can pick the stale one | Frontend | Low-Medium | 2.4 | Fixed #245 |
+| F88 | "Manage units of measure" navigates away and silently discards an in-progress product, no confirmation | Frontend | Low-Medium | 2.5 | Fixed #245 |
+| F89 | Production Order detail renders a fully blank page (not even the header) while loading and on fetch failure | Frontend | Low | 2.6 | Fixed #245 |
+| F75 | `production_order_component_lines` joins `componentSku`/`componentUnit` instead of snapshotting them, contradicting migration `0075`'s own comment | Correctness | Low | 3.1 | Fixed #246 |
+| F76 | `buildProductionOrderGLLines` validates the org's Inventory accounts *only* when a rounding residual exists — an unconfigured org fails randomly, not deterministically | Accounting | Low (decision) | 3.2 | Fixed #246 |
+| F77 | `RestoreBillOfMaterialsVersion` records no version when the restored content equals the latest, contradicting CLAUDE.md and its own doc comment | Audit trail | Low | 3.3 | Fixed #246 |
+| F78 | BOM version number is allocated on `d.DB` before `Beginx()` — concurrent saves collide on the unique index and 500 | Concurrency | Low | 3.4 | Fixed #246 |
+| F79 | `UpdateUnitOfMeasure` / `DeleteUnitOfMeasure` can leave an org with zero default unit of measure, silently killing the new-product prefill | Correctness | Low | 3.5 | Fixed #246 |
+| F90 | `any` reaches the whole Production Order detail view — 13 sites, regressing issue #143's completed typed-atom pass | Type safety | Low-Medium | 3.6 | Fixed #246 |
+| F91 | Two different list-search implementations shipped in the same release; one re-renders every row on each keystroke | Frontend consistency | Low | 3.7 | Fixed #246 |
+| F80 | Test-coverage cluster: the new F48 guard has no concurrency test (regressing F69's standing requirement), `crossOrgProof` omits 8 new routes, and the serialized-cancel + GL-reversal branches are dead code in CI | Test coverage | Low | 4.1 | Fixed #247 + #250 |
+| F81 | CLAUDE.md drift: the entire Units-of-Measure frontend is undocumented, the Settings-dropdown list omits it, and two stated guarantees are false | Docs | Low | 5.1 | Fixed #248 |
+| F92 | 79 msgids are untranslated in de/fr; 15 of them now render on screens this release touches, 3 directly on the new Production Order pages | i18n | Low | 5.2 | Fixed #248 |
+| F82 | CI has no i18n catalog-drift check and no `gofmt` / `format:check` gate | CI | Low | 5.3 | Fixed #248 |
+| F83 | `v3.20.0` was pushed as a lightweight tag; every prior release tag is annotated | Ops | Low | 5.4 | Fixed — retagged, image republished |
+| F94 | An empty-string value in a nullable foreign-key field passes every `!= ""` validation guard, then reaches the INSERT and fails as a raw FK violation — a 500 where a clean "unset" was meant | Correctness | Low | 6.1 | **Open — not fixed** |
 
 ---
 
@@ -617,10 +663,60 @@ it recurring.
 
 ### 5.4 — F83: Release-tag hygiene
 
-`v3.20.0` on `origin` is a **lightweight** tag pointing directly at `fc2a151`;
+`v3.20.0` on `origin` was a **lightweight** tag pointing directly at `fc2a151`;
 `v3.19.0`–`v3.19.6`, `v3.9.0`, `v3.8.0` and `v3.2.0` are all annotated (`git cat-file -t`
-returns `commit` vs `tag`). The Docker build triggered regardless, so this is cosmetic —
-retag annotated, or record the convention change.
+returns `commit` vs `tag`). The Docker build triggered regardless, so the defect itself is
+cosmetic — the *fix* is not, since the only way to change a tag's type is to re-push it,
+and that re-runs the release pipeline. **Resolved:** retagged annotated, with the rebuild
+and its consequences recorded in the status section at the top of this document rather
+than discovered later.
+
+---
+
+## 6. Found during remediation
+
+### 6.1 — F94: an empty-string foreign key id reaches the INSERT and 500s
+
+Found while writing the F80 remainder tests (#250), not by the original sweep.
+
+Every nullable foreign-key guard in this codebase spells its presence test
+`if x != nil && *x != ""` — `checkPurchaseOrderFKOwnership` (`db/purchase_order.go:210`,
+`:219`, `:229`), `CreateProductionOrder`'s import check (`db/production_order.go:189`),
+and their equivalents elsewhere. That is correct as a *validation* rule: an empty string
+means "unset", so there is nothing to look up or ownership-check.
+
+The `INSERT` that follows does **not** apply the same normalization. It passes the
+`*string` through unchanged, so a literal `""` is written into a column with a foreign
+key, SQLite rejects it, and the caller gets a wrapped raw driver error:
+
+```
+create_production_order: constraint failed: FOREIGN KEY constraint failed (787)
+```
+
+Verified against both document types, so this is a class, not a site:
+
+- `CreateProductionOrder` with `importId: ""` → FK violation.
+- `CreatePurchaseOrder` with `importId: ""` → FK violation
+  (`create_purchase_order insert: constraint failed: FOREIGN KEY constraint failed (787)`).
+
+**Severity: Low.** Not reachable from the app today — the frontend's `Select allowClear`
+writes `null`, not `""`, on every one of these fields, which is why it has never been
+seen. It is reachable by any direct API client, `cmd/seed-demo` included if it ever
+emitted an empty string, and the failure mode is the wrong class: a **500 "internal
+error"** for what is really "you sent an unset optional field in a slightly different
+spelling". That is the same 409-vs-500 asymmetry F72 fixed for products and tax rates.
+
+**Not fixed here, deliberately.** The fix is a one-line normalization (`if x != nil &&
+*x == "" { x = nil }`) but it belongs at the write boundary of *every* nullable FK on
+*every* Create/Update path, not just the two sites proven above — doing two and leaving
+the rest is exactly the half-fixed class this audit's 1.1 enumeration exists to prevent.
+Scoping that sweep is its own piece of work: enumerate every nullable FK column, decide
+whether normalization lives in each `Create*`/`Update*` or in one shared helper, and
+carry a test per document type.
+
+**Deliberately not tested either.** #250 originally carried a case pinning the current
+behaviour; it was removed rather than committed, because a test that asserts a 500 bakes
+the bug in and would have to be deleted by whoever fixes it, not flipped.
 
 ---
 
