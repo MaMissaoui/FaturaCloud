@@ -115,12 +115,15 @@ func (d *Database) UpdateUnitOfMeasure(id string, updates UpdateUnitOfMeasureReq
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// Read once, unconditionally: both the promote-to-default branch below
+	// and the rename propagation further down need the pre-update row.
+	var existing UnitOfMeasure
+	if err = tx.Get(&existing, `SELECT * FROM units_of_measure WHERE id = ? LIMIT 1`, id); err != nil {
+		return nil, fmt.Errorf("update_unit_of_measure fetch_existing: %w", err)
+	}
+
 	isOne := updates.IsDefault != nil && *updates.IsDefault == 1
 	if isOne {
-		var existing UnitOfMeasure
-		if err = tx.Get(&existing, `SELECT * FROM units_of_measure WHERE id = ? LIMIT 1`, id); err != nil {
-			return nil, fmt.Errorf("update_unit_of_measure fetch_existing: %w", err)
-		}
 		if _, err = tx.Exec(
 			`UPDATE units_of_measure SET isDefault = 0 WHERE organizationId = ? AND id != ? AND isDefault = 1`,
 			existing.OrganizationID, id,
@@ -140,6 +143,21 @@ func (d *Database) UpdateUnitOfMeasure(id string, updates UpdateUnitOfMeasureReq
 			return nil, newValidationError("a unit of measure named %q already exists", *updates.Name)
 		}
 		return nil, fmt.Errorf("update_unit_of_measure exec: %w", err)
+	}
+
+	// products.unit is a derived copy of this name (db/product.go's
+	// resolveProductUnit), written at product-save time. Nothing else ever
+	// re-derives it, so without this a rename left every linked product
+	// displaying the old text indefinitely — in Inventory, the Products list
+	// and db/product_bom.go's componentUnit join — until someone happened to
+	// re-save each product (F71). Same transaction as the rename itself: the
+	// copy must never be able to disagree with its source.
+	if updates.Name != nil && *updates.Name != existing.Name {
+		if _, err := tx.Exec(
+			`UPDATE products SET unit = ? WHERE unitOfMeasureId = ?`, *updates.Name, id,
+		); err != nil {
+			return nil, fmt.Errorf("update_unit_of_measure propagate_unit: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

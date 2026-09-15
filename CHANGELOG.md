@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Editing a purchase order no longer breaks its goods receipts and vendor
+  bills. Saving an order used to replace its line items wholesale, which
+  silently detached every receipt and bill linked to it — so a receipt that
+  had already been billed could then be cancelled, leaving the accrued
+  goods-received liability stranded on the books, and 3-way matching stopped
+  flagging anything. Line items now keep their identity across an edit.
+- Editing a sales order no longer resets its delivered quantities to zero.
+  The "Delivered" column stayed correct only until the first save; afterwards
+  a new delivery created from that order offered the full quantity again,
+  including what had already shipped, and the order could never advance to
+  "Delivered" on its own.
+- Renaming a unit of measure now updates every product using it. Previously
+  the old name stayed on screen in Inventory, the Products list and Bill of
+  Materials until each product happened to be saved again.
+- Clearing a product's base unit of measure now clears the unit text with it
+  instead of leaving the old value behind.
+- Editing a product or a tax rate now shows why a save was rejected — an
+  invalid category, or switching serial number tracking while stock is
+  non-zero — instead of a generic "internal error".
+- Production orders can no longer be created for a finished product that has
+  stock tracking switched off, which used to produce stock movements and an
+  inventory posting for a product otherwise outside inventory.
+- Deleting a production order or a goods receipt can no longer race a
+  concurrent status change and remove a completed or received document.
+
 ## [3.20.0] - 2026-09-14
 
 ### Added
