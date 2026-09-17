@@ -38,7 +38,8 @@ func (s *Seeder) maybeStartPurchaseOrder(day time.Time) error {
 	if day.Weekday() != time.Monday {
 		return nil
 	}
-	count := s.rng.IntRange(s.profile.PurchaseOrdersPerWeek[0], s.profile.PurchaseOrdersPerWeek[1])
+	poRange := s.purchaseOrdersPerWeekRange()
+	count := s.rng.IntRange(poRange[0], poRange[1])
 	for i := 0; i < count; i++ {
 		placeDay := businessDaysLater(day, s.rng.IntRange(0, 4))
 		if placeDay.After(s.cfg.EndDate) {
@@ -277,16 +278,16 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 		second := total - first
 		firstDay := businessDaysLater(day, s.rng.IntRange(5, 20))
 		secondDay := businessDaysLater(firstDay, s.rng.IntRange(10, 30))
-		s.schedulePayment(firstDay, bill.ID, first, vendor.id, "incoming_invoice", currency, exchangeRate)
-		s.schedulePayment(secondDay, bill.ID, second, vendor.id, "incoming_invoice", currency, exchangeRate)
+		s.schedulePayment(firstDay, bill.ID, first, vendor.id, "incoming_invoice", currency, exchangeRate, s.cashAccountID)
+		s.schedulePayment(secondDay, bill.ID, second, vendor.id, "incoming_invoice", currency, exchangeRate, s.cashAccountID)
 
 	case s.rng.Chance(0.85 / 0.90):
 		payDay := businessDaysLater(day, s.rng.IntRange(5, 30))
-		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice", currency, exchangeRate)
+		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice", currency, exchangeRate, s.cashAccountID)
 
 	case s.rng.Chance(0.80):
 		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
-		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice", currency, exchangeRate)
+		s.schedulePayment(payDay, bill.ID, total, vendor.id, "incoming_invoice", currency, exchangeRate, s.cashAccountID)
 
 	default:
 		// Left outstanding — permanent AP bad debt/write-off, ~1% of bills.

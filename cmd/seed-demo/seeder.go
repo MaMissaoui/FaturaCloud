@@ -84,6 +84,11 @@ type Stats struct {
 	PurchaseOrders, InboundDeliveries, IncomingInvoices int
 	Imports                                             int
 	Payments                                            int
+	// CashWithdrawals counts cash_movements_retail.go's CreateCashMovement
+	// calls (both the weekly bank deposit and the occasional petty-cash
+	// expense) — the retail scenario's proof that Cash Register withdrawals
+	// are actually exercised, not just Cash Book sales.
+	CashWithdrawals int
 	// BillsOfMaterialsDefined counts the real db/product_bom.go recipes
 	// setupBillsOfMaterials (production.go) defines, once, for every
 	// finished-good product — what assembleBatch below then actually reads
@@ -110,10 +115,34 @@ type Seeder struct {
 	cfg Config
 	log *log.Logger
 
-	profile volumeProfile
+	profile  volumeProfile
+	scenario scenario
 
 	orgID         string
 	cashAccountID string
+	// registerAccountID is set only for scenarios with hasCashBookSales —
+	// the till account resolved and wired as defaultCashRegisterAccountId
+	// in setupOrganization's retail-only branch (masterdata.go). Every
+	// CreateCashSale/CreateCashMovement call in cash_book_sales.go/
+	// cash_movements_retail.go passes this explicitly rather than relying
+	// on server-side defaulting, regardless of which default the server
+	// falls back to.
+	registerAccountID string
+	// expenseAccountID (organizations.defaultExpenseAccountId) is where
+	// cash_movements_retail.go's petty-cash withdrawal posts its
+	// undocumented spend — set alongside registerAccountID, only for
+	// hasCashBookSales scenarios.
+	expenseAccountID string
+	// targetClientCount is picked once (IntRange(400, 450)) for a
+	// hasCashBookSales scenario, whose client base grows organically via
+	// inline NewClient creation rather than a batch setupClients call —
+	// see cash_book_sales.go's client-growth model.
+	targetClientCount int
+	// usedCustomerPhones dedupes Cash Book's inline-created customer phone
+	// numbers against products.sku-style collisions — CreateCashSale 409s a
+	// duplicate phone within the org (see cash_book_sales.go's
+	// newRetailCustomer).
+	usedCustomerPhones map[string]bool
 	// orgProfile is resolved once in setupOrganization from cfg.Country and
 	// reused by setupTaxRates (VAT account codes) and setupVendors/
 	// setupClients (CountryCode) — see masterdata.go's orgProfiles.
@@ -163,13 +192,16 @@ func (n *numberer) next(year int) string {
 }
 
 func NewSeeder(c *Client, cfg Config) *Seeder {
-	return &Seeder{
-		c:       c,
-		rng:     NewRand(cfg.Seed, cfg.Country),
-		cfg:     cfg,
-		log:     log.New(log.Writer(), "", log.LstdFlags),
-		profile: volumeProfiles[cfg.Volume],
-		sched:   NewScheduler(),
+	rng := NewRand(cfg.Seed, cfg.Country)
+	scn := resolveScenario(cfg.Scenario)
+	s := &Seeder{
+		c:        c,
+		rng:      rng,
+		cfg:      cfg,
+		log:      log.New(log.Writer(), "", log.LstdFlags),
+		profile:  volumeProfiles[cfg.Volume],
+		scenario: scn,
+		sched:    NewScheduler(),
 
 		invoiceNum:  newNumberer("INV"),
 		orderNum:    newNumberer("SO"),
@@ -181,6 +213,11 @@ func NewSeeder(c *Client, cfg Config) *Seeder {
 
 		productionOrderNum: newNumberer("PRO"),
 	}
+	if scn.hasCashBookSales {
+		s.targetClientCount = rng.IntRange(400, 450)
+		s.usedCustomerPhones = make(map[string]bool)
+	}
+	return s
 }
 
 // Run is the whole pipeline: master data, fiscal coverage, then one pass a
@@ -202,8 +239,10 @@ func (s *Seeder) Run() error {
 	if err := s.setupMasterData(); err != nil {
 		return fmt.Errorf("master data: %w", err)
 	}
-	if err := s.setupBillsOfMaterials(); err != nil {
-		return fmt.Errorf("bills of materials: %w", err)
+	if s.scenario.hasProduction {
+		if err := s.setupBillsOfMaterials(); err != nil {
+			return fmt.Errorf("bills of materials: %w", err)
+		}
 	}
 	if err := s.setupFiscalCoverage(startDate, s.cfg.EndDate); err != nil {
 		return fmt.Errorf("fiscal years/periods: %w", err)
@@ -227,33 +266,58 @@ func (s *Seeder) Run() error {
 		s.sched.RunDue(day, func(err error) { s.onTaskError(day, err) })
 
 		weekend := day.Weekday() == time.Saturday || day.Weekday() == time.Sunday
-		if err := s.generateSalesForDay(day, weekend); err != nil {
-			s.onTaskError(day, fmt.Errorf("sales: %w", err))
+		if s.scenario.hasDirectInvoiceSales {
+			if err := s.generateSalesForDay(day, weekend); err != nil {
+				s.onTaskError(day, fmt.Errorf("sales: %w", err))
+			}
+		}
+		if s.scenario.hasCashBookSales {
+			// Unlike the B2B channel above, a retail counter is open (and
+			// busiest) on weekends — see generateCashBookSalesForDay's own
+			// day-of-week weighting, not the weekday/weekend split used
+			// everywhere else in this file.
+			if err := s.generateCashBookSalesForDay(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("cash book sales: %w", err))
+			}
+			if err := s.maybeWithdrawFromRegister(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("cash withdrawal: %w", err))
+			}
+			if err := s.maybeRecordPettyCashExpense(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("petty cash expense: %w", err))
+			}
 		}
 		if !weekend {
-			// Assembly runs before orders so a batch produced today is
-			// already on hand for orderableLines to pick from the same day.
-			if err := s.maybeAssembleFinishedGoods(day); err != nil {
-				s.onTaskError(day, fmt.Errorf("assembly: %w", err))
+			if s.scenario.hasProduction {
+				// Assembly runs before orders so a batch produced today is
+				// already on hand for orderableLines to pick from the same day.
+				if err := s.maybeAssembleFinishedGoods(day); err != nil {
+					s.onTaskError(day, fmt.Errorf("assembly: %w", err))
+				}
 			}
-			if err := s.maybeStartOrder(day); err != nil {
-				s.onTaskError(day, fmt.Errorf("order: %w", err))
+			if s.scenario.hasOrderSales {
+				if err := s.maybeStartOrder(day); err != nil {
+					s.onTaskError(day, fmt.Errorf("order: %w", err))
+				}
 			}
-			// maybeStartImport runs before maybeCreateImportLinkedPO so a
-			// newly opened import is already s.currentImport by the time
-			// this same day's foreign-vendor purchase orders are placed
-			// against it (see purchasing.go's createImportLinkedPurchaseOrder).
-			if err := s.maybeStartImport(day); err != nil {
-				s.onTaskError(day, fmt.Errorf("import: %w", err))
-			}
-			if err := s.maybeCreateImportLinkedPO(day); err != nil {
-				s.onTaskError(day, fmt.Errorf("import-linked purchase order: %w", err))
+			if s.scenario.hasImports {
+				// maybeStartImport runs before maybeCreateImportLinkedPO so a
+				// newly opened import is already s.currentImport by the time
+				// this same day's foreign-vendor purchase orders are placed
+				// against it (see purchasing.go's createImportLinkedPurchaseOrder).
+				if err := s.maybeStartImport(day); err != nil {
+					s.onTaskError(day, fmt.Errorf("import: %w", err))
+				}
+				if err := s.maybeCreateImportLinkedPO(day); err != nil {
+					s.onTaskError(day, fmt.Errorf("import-linked purchase order: %w", err))
+				}
 			}
 			if err := s.maybeStartPurchaseOrder(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("purchase order: %w", err))
 			}
-			if err := s.maybeRestockAssemblyComponents(day); err != nil {
-				s.onTaskError(day, fmt.Errorf("assembly restock: %w", err))
+			if s.scenario.hasProduction {
+				if err := s.maybeRestockAssemblyComponents(day); err != nil {
+					s.onTaskError(day, fmt.Errorf("assembly restock: %w", err))
+				}
 			}
 		}
 
