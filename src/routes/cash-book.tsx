@@ -22,7 +22,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { UserAddOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, UserAddOutlined, WalletOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import get from "lodash/get";
 import find from "lodash/find";
@@ -345,6 +345,7 @@ const CashBook = () => {
   return (
     <div style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
       <Typography.Title level={3}>
+        <WalletOutlined style={{ marginRight: 8 }} />
         <Trans>Cash Book</Trans>
       </Typography.Title>
 
@@ -353,8 +354,15 @@ const CashBook = () => {
           <Input.Search
             placeholder={t`Search by name, mobile number, IBAN, or identity number`}
             allowClear
+            autoFocus
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onSearch={() => {
+              // Enter is the natural motion after typing a phone number at a
+              // counter — auto-select when the search has narrowed to one
+              // customer instead of making the cashier reach for the mouse.
+              if (searchResults.length === 1) selectClient(searchResults[0]);
+            }}
             style={{ marginBottom: 16 }}
           />
           {needle && (
@@ -400,8 +408,8 @@ const CashBook = () => {
       {inSale && (
         <>
           <Space style={{ marginBottom: 16 }}>
-            <Button onClick={backToSearch}>
-              <Trans>← Back to search</Trans>
+            <Button icon={<ArrowLeftOutlined />} onClick={backToSearch}>
+              <Trans>Back to search</Trans>
             </Button>
             <Typography.Text strong>
               {clientName}
@@ -632,7 +640,7 @@ const CashBook = () => {
             name="name"
             rules={[{ required: true, message: t`This field is required!` }]}
           >
-            <Input />
+            <Input autoFocus />
           </Form.Item>
           <Form.Item label={t`Mobile number`} name="phone">
             <Input />
@@ -660,6 +668,8 @@ const CashBook = () => {
           embedded
           onClose={closePayment}
           onSettled={handleSettled}
+          defaultMethod="cash"
+          defaultBankAccountId={organization?.defaultCashAccountId ?? undefined}
           minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
         />
       )}

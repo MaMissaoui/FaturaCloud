@@ -34,6 +34,7 @@ import {
   paymentMethodLabel,
   paymentStatusColor,
   paymentStatusLabel,
+  type PaymentMethod,
 } from "src/types/payment";
 import { useDatePickerFormat } from "src/utils/date";
 import { unitsToCents, centsToUnits } from "src/utils/currency";
@@ -82,6 +83,13 @@ interface PaymentPanelProps {
   // lets the caller (Cash Book) collapse its own "payment in progress" state,
   // since there's no longer an outer Modal of the caller's own to do that.
   onClose?: () => void;
+  // Cash Book reuse: the form's default Method/Bank-cash-account, prefilled
+  // instead of this component's own "bank_transfer"/blank defaults, which
+  // suit an accountant reconciling a wire transfer far better than a
+  // physical counter collecting an installment payment. Only Cash Book
+  // passes these; every other embedding keeps its original defaults.
+  defaultMethod?: PaymentMethod;
+  defaultBankAccountId?: string;
   // Organization's configured "Decimal places" (Settings → Invoice), the
   // same value every other money display in the app (getFormattedNumber,
   // invoice/PO/order totals, the accounting reports) formats with. Without
@@ -106,6 +114,8 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   onSettled,
   embedded = false,
   onClose,
+  defaultMethod,
+  defaultBankAccountId,
   minimumFractionDigits,
 }) => {
   const { i18n } = useLingui();
@@ -185,7 +195,8 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     form.resetFields();
     form.setFieldsValue({
       date: dayjs(),
-      method: "bank_transfer",
+      method: defaultMethod ?? "bank_transfer",
+      bankAccountId: defaultBankAccountId,
       amount: centsToUnits(balanceDue),
     });
     setModalOpen(true);
