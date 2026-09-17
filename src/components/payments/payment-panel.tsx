@@ -58,6 +58,18 @@ interface PaymentPanelProps {
   orgCurrency: string;
   total: number; // cents
   hasPostedEntry: boolean;
+  // Cash Book reuse (src/routes/cash-book.tsx): hides the payment-history
+  // table, keeping only the balance summary and the record-payment action —
+  // that screen shows one open invoice at a time and has no use for its
+  // full history. Defaults to false so every existing embedding (invoice/
+  // incoming-invoice detail pages) is unaffected.
+  hideHistory?: boolean;
+  // Cash Book reuse: called after a payment is recorded that brings the
+  // balance to exactly zero, so the caller can follow up by moving the
+  // invoice to "paid" — see db/cash_sale.go's CreateCashSale doc comment for
+  // why that auto-progression is scoped to the Cash Book screen rather than
+  // built into this shared component's own behavior.
+  onSettled?: () => void;
   // Organization's configured "Decimal places" (Settings → Invoice), the
   // same value every other money display in the app (getFormattedNumber,
   // invoice/PO/order totals, the accounting reports) formats with. Without
@@ -78,6 +90,8 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   orgCurrency,
   total,
   hasPostedEntry,
+  hideHistory = false,
+  onSettled,
   minimumFractionDigits,
 }) => {
   const { i18n } = useLingui();
@@ -194,6 +208,9 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       message.success(t`Payment recorded`);
       setModalOpen(false);
       await refresh();
+      if (balanceDue - unitsToCents(values.amount) <= 0) {
+        onSettled?.();
+      }
     } catch (error) {
       console.error("Failed to record payment:", error);
       message.error(error instanceof Error ? error.message : t`Failed to record payment`);
@@ -214,64 +231,66 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         </Descriptions.Item>
       </Descriptions>
 
-      <Table
-        dataSource={rows}
-        rowKey={(r) => r.application.id}
-        pagination={false}
-        size="small"
-        loading={loading}
-        style={{ marginBottom: 8 }}
-        locale={{ emptyText: <Trans>No payments recorded yet</Trans> }}
-      >
-        <Table.Column
-          title={<Trans>Date</Trans>}
-          key="date"
-          render={(row: PaymentRow) => dayjs(row.payment.date).format(dateFormat)}
-        />
-        <Table.Column
-          title={<Trans>Method</Trans>}
-          key="method"
-          render={(row: PaymentRow) => paymentMethodLabel(row.payment.method)}
-        />
-        <Table.Column
-          title={<Trans>Amount</Trans>}
-          key="amount"
-          align="right"
-          render={(row: PaymentRow) => money(row.application.amount)}
-        />
-        <Table.Column
-          title={<Trans>Reference</Trans>}
-          key="reference"
-          render={(row: PaymentRow) => row.payment.reference || "—"}
-        />
-        <Table.Column
-          title={<Trans>Status</Trans>}
-          key="status"
-          render={(row: PaymentRow) => (
-            <Tag color={paymentStatusColor[row.payment.status]}>
-              {paymentStatusLabel(row.payment.status)}
-            </Tag>
-          )}
-        />
-        <Table.Column
-          key="actions"
-          render={(row: PaymentRow) =>
-            row.payment.status === "posted" ? (
-              <Popconfirm
-                title={t`Void this payment?`}
-                description={t`This reverses its journal entry and restores the balance due.`}
-                onConfirm={() => handleVoid(row.payment.id)}
-                okText={t`Yes`}
-                cancelText={t`No`}
-              >
-                <Button type="link" danger size="small">
-                  <Trans>Void</Trans>
-                </Button>
-              </Popconfirm>
-            ) : null
-          }
-        />
-      </Table>
+      {!hideHistory && (
+        <Table
+          dataSource={rows}
+          rowKey={(r) => r.application.id}
+          pagination={false}
+          size="small"
+          loading={loading}
+          style={{ marginBottom: 8 }}
+          locale={{ emptyText: <Trans>No payments recorded yet</Trans> }}
+        >
+          <Table.Column
+            title={<Trans>Date</Trans>}
+            key="date"
+            render={(row: PaymentRow) => dayjs(row.payment.date).format(dateFormat)}
+          />
+          <Table.Column
+            title={<Trans>Method</Trans>}
+            key="method"
+            render={(row: PaymentRow) => paymentMethodLabel(row.payment.method)}
+          />
+          <Table.Column
+            title={<Trans>Amount</Trans>}
+            key="amount"
+            align="right"
+            render={(row: PaymentRow) => money(row.application.amount)}
+          />
+          <Table.Column
+            title={<Trans>Reference</Trans>}
+            key="reference"
+            render={(row: PaymentRow) => row.payment.reference || "—"}
+          />
+          <Table.Column
+            title={<Trans>Status</Trans>}
+            key="status"
+            render={(row: PaymentRow) => (
+              <Tag color={paymentStatusColor[row.payment.status]}>
+                {paymentStatusLabel(row.payment.status)}
+              </Tag>
+            )}
+          />
+          <Table.Column
+            key="actions"
+            render={(row: PaymentRow) =>
+              row.payment.status === "posted" ? (
+                <Popconfirm
+                  title={t`Void this payment?`}
+                  description={t`This reverses its journal entry and restores the balance due.`}
+                  onConfirm={() => handleVoid(row.payment.id)}
+                  okText={t`Yes`}
+                  cancelText={t`No`}
+                >
+                  <Button type="link" danger size="small">
+                    <Trans>Void</Trans>
+                  </Button>
+                </Popconfirm>
+              ) : null
+            }
+          />
+        </Table>
+      )}
 
       {hasPostedEntry && balanceDue > 0 && (
         <Button onClick={openModal} style={{ marginBottom: 16 }}>

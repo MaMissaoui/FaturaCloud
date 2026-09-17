@@ -24,4 +24,9 @@ export interface Client {
   // Convenience default (e.g. a Leitweg-ID) copied into Invoice.buyerReference
   // at invoice-creation time; not re-derived on every read.
   default_buyer_reference?: string | null;
+  // Cash Book search fields. identity_number is a personal ID/CIN card
+  // number, deliberately separate from vatin/tax_number (tax IDs, not
+  // identity documents). iban is search/reference only.
+  identity_number?: string | null;
+  iban?: string | null;
 }

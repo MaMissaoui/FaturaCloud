@@ -1015,6 +1015,42 @@ export const GetInvoicePayments = (id: string) =>
 export const GetIncomingInvoicePayments = (id: string) =>
   get<PaymentApplication[]>(`/incoming-invoices/${id}/payments`);
 
+// ---- Cash Book ----
+// Cash/loan sales: create-or-reuse a client, create an invoice, and (unless
+// amountReceived is 0 — a pure loan sale) record a payment against it, all
+// atomically server-side. See db/cash_sale.go's CreateCashSale doc comment
+// for why this is one endpoint rather than three chained calls.
+
+export interface CreateCashSaleRequest {
+  organizationId: string;
+  // Exactly one of clientId (existing client) or newClient (inline
+  // creation) must be set.
+  clientId?: string;
+  newClient?: Partial<Client>;
+  date: number;
+  currency: string;
+  lineItems: unknown[]; // same loose shape CreateInvoice's lineItems takes
+  subTotal: number;
+  taxTotal: number;
+  total: number;
+  amountReceived: number; // 0 for a pure loan sale
+  paymentMethod?: string; // defaults "cash"
+  bankAccountId?: string; // defaults to organization.defaultCashAccountId
+  reference?: string;
+  notes?: string;
+}
+
+export interface CashSaleResult {
+  client: Client;
+  invoice: Invoice;
+  payment: Payment | null;
+}
+
+export const CreateCashSale = (req: CreateCashSaleRequest) =>
+  post<CashSaleResult>("/cash-sales", req);
+export const GetClientOpenInvoices = (clientId: string) =>
+  get<OutstandingInvoiceSummary[]>(`/clients/${clientId}/open-invoices`);
+
 // ---- Accounting: Reports ----
 
 export const GetTrialBalance = (

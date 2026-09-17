@@ -6,6 +6,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   DashboardOutlined,
+  WalletOutlined,
   FileTextOutlined,
   TeamOutlined,
   SolutionOutlined,
@@ -419,6 +420,15 @@ export default function BaseLayout() {
                 </Link>
               ),
               key: "dashboard",
+            },
+            {
+              icon: <WalletOutlined />,
+              label: (
+                <Link to="/cash-book">
+                  <Trans>Cash Book</Trans>
+                </Link>
+              ),
+              key: "cash-book",
             },
             {
               icon: <ShopOutlined />,
