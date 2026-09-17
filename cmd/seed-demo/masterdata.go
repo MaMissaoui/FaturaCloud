@@ -120,7 +120,11 @@ func (s *Seeder) setupOrganization() error {
 		Vatin:                 nonEmptyStrPtr(p.vatin),
 		BankName:              nonEmptyStrPtr(p.bankName),
 		IBAN:                  nonEmptyStrPtr(p.iban),
-		InvoiceNumberFormat:   strPtr("INV-{YYYY}-{NNNN}"),
+		// {year}/{number} are the real generator's tokens (src/utils/invoice.ts,
+		// db/cash_sale.go's Go port) — {YYYY}/{NNNN} aren't recognized and
+		// used to render as a literal, unsubstituted invoice number on every
+		// document this tool created.
+		InvoiceNumberFormat: strPtr("INV-{year}-{number}"),
 	}
 
 	var org db.Organization

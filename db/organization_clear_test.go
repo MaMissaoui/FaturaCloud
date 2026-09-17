@@ -205,3 +205,45 @@ func TestUpdateOrganizationEmptyStringClearsPlainTextFieldsToo(t *testing.T) {
 		t.Errorf("an off-palette brand color should still be a *ValidationError, got %T", err)
 	}
 }
+
+// The exact regression this guards: cmd/seed-demo stored
+// "INV-{YYYY}-{NNNN}" (uppercase tokens the generator doesn't recognize)
+// directly via the API, bypassing the frontend's own validateInvoiceFormat
+// check — every invoice it created rendered that literal, unsubstituted
+// string as its "number". Both CreateOrganization and UpdateOrganization
+// must reject an unrecognized {...} token the same way the frontend does.
+func TestInvoiceNumberFormatRejectsUnrecognizedToken(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+
+	var verr *ValidationError
+	if _, err := d.CreateOrganization(CreateOrganizationRequest{
+		ID: "org-badformat-create", InvoiceNumberFormat: ptr("INV-{YYYY}-{NNNN}"),
+	}); !errors.As(err, &verr) {
+		t.Fatalf("CreateOrganization with an unrecognized token should be a *ValidationError, got %T (%v)", err, err)
+	}
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-badformat-update"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.UpdateOrganization(org.ID, UpdateOrganizationRequest{
+		InvoiceNumberFormat: ptr("INV-{YYYY}-{NNNN}"),
+	}); !errors.As(err, &verr) {
+		t.Fatalf("UpdateOrganization with an unrecognized token should be a *ValidationError, got %T (%v)", err, err)
+	}
+
+	// A recognized-token format must still be accepted, and an explicit ""
+	// (clear, same three-way convention as every other plain-text column)
+	// must not be treated as containing an unrecognized token.
+	if _, err := d.UpdateOrganization(org.ID, UpdateOrganizationRequest{
+		InvoiceNumberFormat: ptr("INV-{year}-{number}"),
+	}); err != nil {
+		t.Fatalf("a valid format should be accepted: %v", err)
+	}
+	if _, err := d.UpdateOrganization(org.ID, UpdateOrganizationRequest{
+		InvoiceNumberFormat: ptr(""),
+	}); err != nil {
+		t.Fatalf("clearing to an empty string should be accepted: %v", err)
+	}
+}
