@@ -45,6 +45,7 @@ import Loading from "src/components/loading";
 // as the shell/first-paint set. Each lazy chunk loads on first navigation to
 // its route, behind the <Suspense> fallback below.
 const Dashboard = lazy(() => import("src/routes/dashboard"));
+const CashBook = lazy(() => import("src/routes/cash-book"));
 const Clients = lazy(() => import("src/routes/clients"));
 const Vendors = lazy(() => import("src/routes/vendors"));
 const Imports = lazy(() => import("src/routes/imports"));
@@ -292,6 +293,9 @@ const AppContent = () => {
                   </Route>
                   <Route path="/dashboard" element={<BaseLayout />}>
                     <Route index element={<Dashboard />} />
+                  </Route>
+                  <Route path="/cash-book" element={<BaseLayout />}>
+                    <Route index element={<CashBook />} />
                   </Route>
                   <Route path="/products" element={<BaseLayout />}>
                     <Route index element={<Products />} />

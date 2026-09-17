@@ -44,6 +44,13 @@ type Client struct {
 	CountryCode           *string `db:"country_code"             json:"country_code"`
 	TaxNumber             *string `db:"tax_number"               json:"tax_number"`
 	DefaultBuyerReference *string `db:"default_buyer_reference"  json:"default_buyer_reference"`
+
+	// Cash Book search fields (migration 0078). IdentityNumber is a
+	// personal ID/CIN card number — deliberately separate from Vatin/
+	// TaxNumber, which are tax IDs, not identity documents. Iban is
+	// search/reference only, no payment-rail behavior attached.
+	IdentityNumber *string `db:"identity_number" json:"identity_number"`
+	Iban           *string `db:"iban"            json:"iban"`
 }
 
 // CreateClientRequest is the payload for creating a client.
@@ -66,6 +73,9 @@ type CreateClientRequest struct {
 	CountryCode           *string `json:"country_code"`
 	TaxNumber             *string `json:"tax_number"`
 	DefaultBuyerReference *string `json:"default_buyer_reference"`
+
+	IdentityNumber *string `json:"identity_number"`
+	Iban           *string `json:"iban"`
 }
 
 // UpdateClientRequest is the payload for updating a client.
@@ -86,6 +96,9 @@ type UpdateClientRequest struct {
 	CountryCode           *string `json:"country_code"`
 	TaxNumber             *string `json:"tax_number"`
 	DefaultBuyerReference *string `json:"default_buyer_reference"`
+
+	IdentityNumber *string `json:"identity_number"`
+	Iban           *string `json:"iban"`
 }
 
 func (d *Database) GetClients(organizationID string) ([]Client, error) {
@@ -120,12 +133,12 @@ func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
 		`INSERT INTO clients (
 			id, organizationId, name, code, emails, phone, website,
 			registration_number, vatin, defaultCurrency, street, house_number, postal_code, city,
-			country_code, tax_number, default_buyer_reference
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			country_code, tax_number, default_buyer_reference, identity_number, iban
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Code,
 		req.Emails, req.Phone, req.Website, req.RegistrationNumber, req.Vatin, req.DefaultCurrency,
 		req.Street, req.HouseNumber, req.PostalCode, req.City,
-		req.CountryCode, req.TaxNumber, req.DefaultBuyerReference,
+		req.CountryCode, req.TaxNumber, req.DefaultBuyerReference, req.IdentityNumber, req.Iban,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_client: %w", err)
@@ -139,12 +152,14 @@ func (d *Database) UpdateClient(clientID string, updates UpdateClientRequest) (*
 		 SET name = ?, code = ?, emails = ?, phone = ?,
 		     website = ?, registration_number = ?, vatin = ?, defaultCurrency = ?,
 		     street = ?, house_number = ?, postal_code = ?, city = ?,
-		     country_code = ?, tax_number = ?, default_buyer_reference = ?
+		     country_code = ?, tax_number = ?, default_buyer_reference = ?,
+		     identity_number = ?, iban = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Code, updates.Emails, updates.Phone,
 		updates.Website, updates.RegistrationNumber, updates.Vatin, updates.DefaultCurrency,
 		updates.Street, updates.HouseNumber, updates.PostalCode, updates.City,
 		updates.CountryCode, updates.TaxNumber, updates.DefaultBuyerReference,
+		updates.IdentityNumber, updates.Iban,
 		clientID,
 	)
 	if err != nil {

@@ -164,6 +164,12 @@ const LineItemsTable = ({
             rowKey={(r) => r.index.toString()}
             style={{ marginTop: 8 }}
             components={reorderable ? { body: { row: SortableRow } } : undefined}
+            // Column widths sum well past a phone-width viewport — without
+            // this, antd lets the table force the whole page wider instead
+            // of scrolling within itself, taking the surrounding form's
+            // totals/submit button out of reach without horizontal scrolling
+            // the entire document.
+            scroll={{ x: "max-content" }}
           >
             {columns.map((col) => {
               switch (col.kind) {
