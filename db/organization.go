@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"regexp"
 	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -43,6 +44,38 @@ func normalizeBrandColor(p *string) (*string, error) {
 		}
 	}
 	return nil, newValidationError("brand color %q is not one of the supported presets", *p)
+}
+
+// invoiceNumberFormatTokens mirrors src/utils/invoice.ts's validVariables —
+// generateDocumentNumber (db/cash_sale.go) and generateInvoiceNumber (the
+// frontend) both only substitute these; anything else in a {...} placeholder
+// is left in the output literally, unsubstituted. The Settings → Invoice
+// form already rejects an unrecognized token client-side, but nothing
+// stopped an API-only caller (cmd/seed-demo among them, which shipped with
+// exactly this bug — {YYYY}/{NNNN} instead of {year}/{number}) from storing
+// one directly and silently producing invoice numbers like the literal
+// string "INV-{YYYY}-{NNNN}" on every document.
+var invoiceNumberFormatTokenPattern = regexp.MustCompile(`\{[^}]+\}`)
+
+var invoiceNumberFormatTokens = map[string]bool{
+	"{number}": true, "{year}": true, "{y}": true,
+	"{month}": true, "{m}": true, "{day}": true, "{clientCode}": true,
+}
+
+// validateInvoiceNumberFormat rejects an unrecognized {...} token. A nil
+// pointer (field omitted) passes through unchanged, same convention as
+// normalizeBrandColor above — this only validates a value the caller is
+// actually trying to set.
+func validateInvoiceNumberFormat(p *string) error {
+	if p == nil {
+		return nil
+	}
+	for _, tok := range invoiceNumberFormatTokenPattern.FindAllString(*p, -1) {
+		if !invoiceNumberFormatTokens[tok] {
+			return newValidationError("invoice number format %q has an unrecognized variable %q", *p, tok)
+		}
+	}
+	return nil
 }
 
 // Organization mirrors the organizations table.
@@ -350,6 +383,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		return nil, err
 	}
 	req.BrandColor = normalizedBrandColor
+	if err := validateInvoiceNumberFormat(req.InvoiceNumberFormat); err != nil {
+		return nil, err
+	}
 
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -406,6 +442,9 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		return nil, err
 	}
 	updates.BrandColor = normalizedBrandColor
+	if err := validateInvoiceNumberFormat(updates.InvoiceNumberFormat); err != nil {
+		return nil, err
+	}
 
 	// The GL-default account columns are set separately from the COALESCE
 	// block below, because COALESCE cannot express what this request needs

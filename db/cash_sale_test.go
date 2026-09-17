@@ -600,3 +600,28 @@ func TestCreateCashSaleGetClientOpenInvoicesExcludesDrafts(t *testing.T) {
 		}
 	}
 }
+
+// A cash sale has no invoicing due-date concept (it's paid or settled via
+// its own loan mechanism, not chased on terms) — dueDate must default to
+// the sale's own date rather than staying nil, which the Invoices list
+// otherwise renders as a bare, unexplained "-".
+func TestCreateCashSaleDueDateDefaultsToSaleDate(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-sale-due-date")
+
+	result, err := d.CreateCashSale(CreateCashSaleRequest{
+		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+		SubTotal: 1000, TaxTotal: 200, Total: 1200,
+		AmountReceived: 1200, PaymentMethod: "cash",
+	})
+	if err != nil {
+		t.Fatalf("CreateCashSale: %v", err)
+	}
+	if result.Invoice.DueDate == nil || *result.Invoice.DueDate != fx.date {
+		t.Fatalf("invoice DueDate = %v, want %d (the sale's own date)", result.Invoice.DueDate, fx.date)
+	}
+}

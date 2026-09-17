@@ -343,13 +343,18 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	}
 	number := generateDocumentNumber(format, counter, time.UnixMilli(req.Date), clientCode)
 
+	// dueDate defaults to the sale's own date, not organizations.due_days —
+	// a counter sale (cash or a loan settled later via CreatePayment, not a
+	// term the invoice itself tracks) has no invoicing due-date concept, and
+	// leaving it nil rendered as a bare "-" in the Invoices list with no
+	// explanation.
 	_, err = tx.Exec(`
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
 			currency, exchangeRate, exchangeRateDate, customerNotes, overdueCharge, total, taxTotal, subTotal,
 			buyerReference, paymentTerms, fiscalStampAmount, withholdingTaxRate, withholdingTaxAmount
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		invoiceID, req.OrganizationID, number, state, client.ID, req.Date, nil,
+		invoiceID, req.OrganizationID, number, state, client.ID, req.Date, req.Date,
 		req.Currency, exchangeRate, nil, nil, nil, req.Total, req.TaxTotal, req.SubTotal,
 		nil, nil, 0, nil, nil,
 	)
