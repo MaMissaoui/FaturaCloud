@@ -50,8 +50,13 @@ type CashSaleResult struct {
 }
 
 // generateDocumentNumber ports src/utils/invoice.ts's generateInvoiceNumber
-// token-replace logic to Go. CreateCashSale derives the invoice number
-// itself, inside its own transaction, instead of trusting a
+// token-replace logic to Go, close but not byte-exact: this uses
+// strings.NewReplacer, which substitutes every occurrence of each token,
+// while the frontend's sequential .replace(string, string) calls only
+// replace the first occurrence of each — the two diverge only for a format
+// that repeats a token (e.g. "{year}-{number}-{year}"), which no format in
+// this app's Settings UI does today. CreateCashSale derives the invoice
+// number itself, inside its own transaction, instead of trusting a
 // frontend-computed one the way every other document-creation path does —
 // see CreateCashSale's doc comment for why that convention doesn't hold up
 // on this particular screen.
@@ -193,11 +198,22 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		return nil, err
 	}
 
-	exchangeRate, err := resolveExchangeRateForSave(orgCurrencyOrDefault(org), "", nil, &req.Currency, nil)
-	if err != nil {
-		return nil, err
+	// This screen only ever sends the organization's own currency (see
+	// src/routes/cash-book.tsx) and CreateCashSaleRequest has no field to
+	// supply a rate for anything else, so a foreign currency is rejected
+	// outright with a clear reason rather than falling through to
+	// resolveExchangeRateForSave's generic "exchange rate is required" —
+	// that message reads as if the caller could supply one here, and can't.
+	orgCurrency := orgCurrencyOrDefault(org)
+	if req.Currency != "" && req.Currency != orgCurrency {
+		return nil, newValidationError(
+			"cash sales must be recorded in the organization's currency (%s) — foreign-currency sales aren't supported on this screen",
+			orgCurrency,
+		)
 	}
-	foreign := exchangeRate != nil
+	req.Currency = orgCurrency
+	var exchangeRate *string
+	foreign := false
 
 	invoiceID, err := gonanoid.New()
 	if err != nil {

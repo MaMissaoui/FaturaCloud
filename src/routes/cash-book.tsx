@@ -330,6 +330,9 @@ const CashBook = () => {
         await UpdateInvoiceState(payingInvoice.id, "paid");
       } catch (error) {
         console.error("Failed to mark invoice paid:", error);
+        message.error(
+          t`Payment recorded, but the invoice status couldn't be updated to Paid — update it manually from the invoice page`,
+        );
       }
     }
     await closePayment();

@@ -156,7 +156,10 @@ func (d *Database) GetReceivableAging(organizationID string) (OutstandingSummary
 // getOutstandingInvoices above: that query filters state = 'sent' only,
 // which would drop a loan sale someone manually marked 'paid' while a
 // balance still remains (invoices.state has no transition matrix — see
-// db/CLAUDE.md). This filters on the actual balance instead.
+// db/CLAUDE.md). This filters on the actual balance instead, but still
+// restricts to state IN ('sent', 'paid') — a 'draft' invoice has no posted
+// GL entry yet (needsInvoiceGLPresence), so it can't accept a payment
+// through this screen's PaymentPanel and must not be offered a "Pay" button.
 func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice, error) {
 	invoices := []OutstandingInvoice{}
 	err := d.DB.Select(&invoices, `
@@ -172,7 +175,7 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 			WHERE pa.documentType = 'invoice' AND p.status != 'voided'
 			GROUP BY pa.documentId
 		) paid ON paid.documentId = i.id
-		WHERE i.clientId = ? AND i.state != 'cancelled'
+		WHERE i.clientId = ? AND i.state IN ('sent', 'paid')
 		      AND (i.total - COALESCE(paid.amount, 0)) > 0
 		ORDER BY i.date ASC`,
 		clientID,

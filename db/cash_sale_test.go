@@ -318,3 +318,36 @@ func TestCreateCashSaleZeroTotalSkipsGLPosting(t *testing.T) {
 		t.Fatal("expected no GL entry to be posted for a zero-total sale")
 	}
 }
+
+// A client can already have a draft invoice from the ordinary Invoices
+// screen (CreateInvoice defaults to state "draft") with a nonzero balance.
+// GetClientOpenInvoices must not surface it: a draft has no posted GL entry
+// (needsInvoiceGLPresence requires sent/paid), so Cash Book's "Pay" button
+// would otherwise open PaymentPanel against a document CreatePayment always
+// rejects.
+func TestCreateCashSaleGetClientOpenInvoicesExcludesDrafts(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-sale-drafts")
+
+	draft, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: fx.orgID, State: "draft", ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+		SubTotal: 1000, TaxTotal: 200, Total: 1200,
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	open, err := d.GetClientOpenInvoices(fx.clientID)
+	if err != nil {
+		t.Fatalf("GetClientOpenInvoices: %v", err)
+	}
+	for _, inv := range open {
+		if inv.ID == draft.ID {
+			t.Fatal("a draft invoice with no posted GL entry must not appear as payable in Cash Book")
+		}
+	}
+}
