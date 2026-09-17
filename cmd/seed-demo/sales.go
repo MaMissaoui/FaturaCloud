@@ -90,7 +90,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		// due date (some early, most on time, some late) — a realistic AR
 		// aging spread rather than everything paying exactly on day 14.
 		payDay := businessDaysLater(day, s.rng.IntRange(3, 40))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil, s.cashAccountID)
 
 	case s.rng.Chance(0.13 / (0.97 - 0.80)):
 		// Two partial payments — exercises partial-payment/aging display.
@@ -98,8 +98,8 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		second := total - first
 		firstDay := businessDaysLater(day, s.rng.IntRange(5, 20))
 		secondDay := businessDaysLater(firstDay, s.rng.IntRange(5, 25))
-		s.schedulePayment(firstDay, inv.ID, first, client.id, "invoice", s.cfg.Currency, nil)
-		s.schedulePayment(secondDay, inv.ID, second, client.id, "invoice", s.cfg.Currency, nil)
+		s.schedulePayment(firstDay, inv.ID, first, client.id, "invoice", s.cfg.Currency, nil, s.cashAccountID)
+		s.schedulePayment(secondDay, inv.ID, second, client.id, "invoice", s.cfg.Currency, nil, s.cashAccountID)
 
 	case s.rng.Chance(0.80):
 		// A slow-paying client — genuinely collected eventually, just well
@@ -108,7 +108,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		// without it accumulating forever the way the permanent-bad-debt
 		// default case below does.
 		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil, s.cashAccountID)
 
 	default:
 		// Genuinely never paid — permanent bad debt/write-off, ~0.8% of all
@@ -128,7 +128,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 // organization-currency payment (the common case) and required whenever
 // currency differs, reusing the same rate the document itself was frozen
 // at (see purchasing.go's billPurchaseOrder for a foreign-currency bill).
-func (s *Seeder) schedulePayment(payDay time.Time, documentID string, amount int64, partnerID, documentType, currency string, exchangeRate *float64) {
+func (s *Seeder) schedulePayment(payDay time.Time, documentID string, amount int64, partnerID, documentType, currency string, exchangeRate *float64, bankAccountID string) {
 	if payDay.After(s.cfg.EndDate) {
 		return
 	}
@@ -142,7 +142,7 @@ func (s *Seeder) schedulePayment(payDay time.Time, documentID string, amount int
 			Direction:      direction,
 			ClientID:       clientID,
 			VendorID:       vendorID,
-			BankAccountID:  s.cashAccountID,
+			BankAccountID:  bankAccountID,
 			Amount:         amount,
 			Currency:       currency,
 			ExchangeRate:   exchangeRate,
@@ -392,12 +392,12 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 	switch {
 	case s.rng.Chance(0.95):
 		payDay := businessDaysLater(day, s.rng.IntRange(5, 35))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil, s.cashAccountID)
 	case s.rng.Chance(0.8):
 		// Slow-paying client, eventually collected — see createDirectInvoice's
 		// comment on why this bucket exists instead of a flat never-paid share.
 		payDay := businessDaysLater(day, s.rng.IntRange(60, 150))
-		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil)
+		s.schedulePayment(payDay, inv.ID, total, client.id, "invoice", s.cfg.Currency, nil, s.cashAccountID)
 	default:
 		// Genuinely never paid (~1% of shipped-order invoices).
 	}

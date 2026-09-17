@@ -482,6 +482,18 @@ func (rr *Rand) ClientName() string {
 	return Pick(rr, rr.locale.personFirstNames) + " " + Pick(rr, rr.locale.personLastNames)
 }
 
+// RetailCustomerName is ClientName's inverse ratio — a home-appliance
+// retail counter's walk-in customers are mostly individuals/households,
+// with only an occasional small-business account (a hotel, a corner shop)
+// buying in bulk. Used only by cash_book_sales.go's newRetailCustomer;
+// ClientName itself stays B2B-biased for the moto scenario.
+func (rr *Rand) RetailCustomerName() string {
+	if rr.Chance(0.88) {
+		return Pick(rr, rr.locale.personFirstNames) + " " + Pick(rr, rr.locale.personLastNames)
+	}
+	return rr.CompanyName()
+}
+
 func (rr *Rand) City() (name, plz string) {
 	c := Pick(rr, rr.locale.cities)
 	return c.name, c.plz
