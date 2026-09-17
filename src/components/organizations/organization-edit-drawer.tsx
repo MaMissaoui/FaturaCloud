@@ -504,6 +504,28 @@ export default function OrganizationEditDrawer({
                       </Col>
                       <Col xs={24} md={12}>
                         <Form.Item
+                          name="defaultCashRegisterAccountId"
+                          label={<Trans>Cash register account</Trans>}
+                          tooltip={
+                            <Trans>
+                              The physical till the Cash Book screen's balance and daily movements
+                              report read — deliberately separate from "Default cash account" above,
+                              which this organization's chart of accounts uses as a payment default,
+                              not the register itself.
+                            </Trans>
+                          }
+                        >
+                          <Select
+                            allowClear
+                            showSearch
+                            placeholder={t`None`}
+                            options={leafAccountOptions}
+                            optionFilterProp="label"
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={12}>
+                        <Form.Item
                           name="defaultInventoryAccountId"
                           label={<Trans>Default inventory account</Trans>}
                           tooltip={

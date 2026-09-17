@@ -244,6 +244,16 @@ const ClientForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
+                <Form.Item name="identity_number" label={<Trans>Identity number</Trans>}>
+                  <Input placeholder={t`Identity number`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="iban" label={<Trans>IBAN</Trans>}>
+                  <Input placeholder={t`IBAN`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
                 <Form.Item
                   name="defaultCurrency"
                   label={<Trans>Default currency</Trans>}

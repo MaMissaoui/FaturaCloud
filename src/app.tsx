@@ -45,6 +45,7 @@ import Loading from "src/components/loading";
 // as the shell/first-paint set. Each lazy chunk loads on first navigation to
 // its route, behind the <Suspense> fallback below.
 const Dashboard = lazy(() => import("src/routes/dashboard"));
+const CashBook = lazy(() => import("src/routes/cash-book"));
 const Clients = lazy(() => import("src/routes/clients"));
 const Vendors = lazy(() => import("src/routes/vendors"));
 const Imports = lazy(() => import("src/routes/imports"));
@@ -90,6 +91,7 @@ const APAging = lazy(() => import("src/routes/accounting/reports/ap-aging"));
 const InventoryValuationReport = lazy(
   () => import("src/routes/accounting/reports/inventory-valuation"),
 );
+const DailyCashMovements = lazy(() => import("src/routes/accounting/reports/daily-cash-movements"));
 const RevenueTrend = lazy(() => import("src/routes/reporting/revenue-trend"));
 const SalesByClient = lazy(() => import("src/routes/reporting/sales-by-client"));
 const SalesByProduct = lazy(() => import("src/routes/reporting/sales-by-product"));
@@ -293,6 +295,9 @@ const AppContent = () => {
                   <Route path="/dashboard" element={<BaseLayout />}>
                     <Route index element={<Dashboard />} />
                   </Route>
+                  <Route path="/cash-book" element={<BaseLayout />}>
+                    <Route index element={<CashBook />} />
+                  </Route>
                   <Route path="/products" element={<BaseLayout />}>
                     <Route index element={<Products />} />
                   </Route>
@@ -326,6 +331,7 @@ const AppContent = () => {
                     <Route path="ar-aging" element={<ARAging />} />
                     <Route path="ap-aging" element={<APAging />} />
                     <Route path="inventory-valuation" element={<InventoryValuationReport />} />
+                    <Route path="daily-cash-movements" element={<DailyCashMovements />} />
                   </Route>
                   <Route path="/reporting" element={<BaseLayout />}>
                     <Route path="revenue-trend" element={<RevenueTrend />} />

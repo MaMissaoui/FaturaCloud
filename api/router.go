@@ -212,6 +212,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("PUT", "/api/clients/{id}", clientOrgID, h.updateClient)
 	orgMemberProtected("DELETE", "/api/clients/{id}", clientOrgID, h.deleteClient)
 	orgMemberProtected("GET", "/api/clients/{id}/invoice-count", clientOrgID, h.getClientInvoiceCount)
+	orgMemberProtected("GET", "/api/clients/{id}/open-invoices", clientOrgID, h.getClientOpenInvoices)
 
 	// Vendors
 	// vendorOrgID resolves a vendor route's {id} to its owning organization
@@ -623,6 +624,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Payments
 	orgMemberProtected("GET", "/api/organizations/{orgId}/payments", pathOrgID("orgId"), h.listPayments)
 	protected("POST", "/api/payments", h.createPayment)
+	protected("POST", "/api/cash-sales", h.createCashSale)
+	protected("POST", "/api/cash-movements", h.createCashMovement)
 	orgMemberProtected("GET", "/api/payments/{id}", paymentOrgID, h.getPayment)
 	orgMemberProtected("GET", "/api/payments/{id}/applications", paymentOrgID, h.getPaymentApplications)
 	orgMemberProtected("POST", "/api/payments/{id}/void", paymentOrgID, h.voidPayment)
@@ -636,6 +639,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/ar-aging", pathOrgID("orgId"), h.getReceivableAging)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/ap-aging", pathOrgID("orgId"), h.getPayableAging)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/inventory-valuation", pathOrgID("orgId"), h.getInventoryValuation)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/account-balance", pathOrgID("orgId"), h.getAccountBalance)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/daily-cash-movements", pathOrgID("orgId"), h.getDailyCashMovements)
 
 	// Reporting — document-derived sales/purchasing analytics, a distinct
 	// tier from the GL-derived Reports above (see db/sales_reports.go).

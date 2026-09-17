@@ -123,6 +123,16 @@ type Organization struct {
 	// vendor-invoiceable goods value.
 	DefaultImportCostsPayableAccountID *string `db:"defaultImportCostsPayableAccountId" json:"defaultImportCostsPayableAccountId"`
 
+	// The Cash Book screen's register balance/daily-movements report/cash
+	// withdrawal feature all need to know which account is the physical
+	// till — DefaultCashAccountID above cannot be reused for this: every
+	// chart-of-accounts template wires it to the Bank account, never the
+	// literal Cash/Kasse/Caisse leaf account (db/account.go's
+	// defaultChartOfAccounts/skr04ChartOfAccounts/pcgChartOfAccounts, all
+	// three chart templates). Nullable like every other default account;
+	// unconfigured refuses with a 409, not a 500.
+	DefaultCashRegisterAccountID *string `db:"defaultCashRegisterAccountId" json:"defaultCashRegisterAccountId"`
+
 	// Invoice feature toggles (fiscal stamp / withholding tax, first added
 	// for Tunisia invoice support) and the invoice PDF layout this
 	// organization's invoices render with — three independent settings, not
@@ -229,6 +239,7 @@ type UpdateOrganizationRequest struct {
 	DefaultCOGSAccountID                *string `json:"defaultCOGSAccountId"`
 	DefaultInventoryAdjustmentAccountID *string `json:"defaultInventoryAdjustmentAccountId"`
 	DefaultImportCostsPayableAccountID  *string `json:"defaultImportCostsPayableAccountId"`
+	DefaultCashRegisterAccountID        *string `json:"defaultCashRegisterAccountId"`
 
 	FiscalStampEnabled        *int64  `json:"fiscalStampEnabled"`
 	WithholdingTaxEnabled     *int64  `json:"withholdingTaxEnabled"`
@@ -254,7 +265,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       datev_consultant_number, datev_client_number,
 	       defaultInventoryAccountId, defaultGRNIAccountId,
 	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId,
-	       defaultImportCostsPayableAccountId,
+	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, invoiceLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled`
 
@@ -436,6 +447,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		{"defaultInventoryAdjustmentAccountId", updates.DefaultInventoryAdjustmentAccountID},
 		{"defaultImportCostsPayableAccountId", updates.DefaultImportCostsPayableAccountID},
 		{"defaultStampDutyAccountId", updates.DefaultStampDutyAccountID},
+		{"defaultCashRegisterAccountId", updates.DefaultCashRegisterAccountID},
 	}
 	var accountSet strings.Builder
 	accountArgs := []any{}

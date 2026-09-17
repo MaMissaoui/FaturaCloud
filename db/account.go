@@ -235,6 +235,7 @@ var accountReferencingOrganizationColumns = []string{
 	"defaultInventoryAccountId", "defaultGRNIAccountId",
 	"defaultCOGSAccountId", "defaultInventoryAdjustmentAccountId",
 	"defaultStampDutyAccountId", "defaultImportCostsPayableAccountId",
+	"defaultCashRegisterAccountId",
 }
 
 // GetAccountUsageCount returns how many rows reference this account, so
@@ -248,8 +249,9 @@ func (d *Database) GetAccountUsageCount(accountID string) (int64, error) {
 		"(SELECT COUNT(*) FROM taxRates WHERE outputTaxAccountId = ? OR inputTaxAccountId = ?)",
 		"(SELECT COUNT(*) FROM products WHERE revenueAccountId = ? OR expenseAccountId = ?)",
 		"(SELECT COUNT(*) FROM payments WHERE bankAccountId = ?)",
+		"(SELECT COUNT(*) FROM cash_movements WHERE accountId = ? OR counterAccountId = ?)",
 	}
-	args := []any{accountID, accountID, accountID, accountID, accountID, accountID}
+	args := []any{accountID, accountID, accountID, accountID, accountID, accountID, accountID, accountID}
 	for _, col := range accountReferencingOrganizationColumns {
 		subqueries = append(subqueries, fmt.Sprintf("(SELECT COUNT(*) FROM organizations WHERE %s = ?)", col))
 		args = append(args, accountID)

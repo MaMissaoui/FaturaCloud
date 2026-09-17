@@ -1015,6 +1015,42 @@ export const GetInvoicePayments = (id: string) =>
 export const GetIncomingInvoicePayments = (id: string) =>
   get<PaymentApplication[]>(`/incoming-invoices/${id}/payments`);
 
+// ---- Cash Book ----
+// Cash/loan sales: create-or-reuse a client, create an invoice, and (unless
+// amountReceived is 0 — a pure loan sale) record a payment against it, all
+// atomically server-side. See db/cash_sale.go's CreateCashSale doc comment
+// for why this is one endpoint rather than three chained calls.
+
+export interface CreateCashSaleRequest {
+  organizationId: string;
+  // Exactly one of clientId (existing client) or newClient (inline
+  // creation) must be set.
+  clientId?: string;
+  newClient?: Partial<Client>;
+  date: number;
+  currency: string;
+  lineItems: unknown[]; // same loose shape CreateInvoice's lineItems takes
+  subTotal: number;
+  taxTotal: number;
+  total: number;
+  amountReceived: number; // 0 for a pure loan sale
+  paymentMethod?: string; // defaults "cash"
+  bankAccountId?: string; // defaults to organization.defaultCashAccountId
+  reference?: string;
+  notes?: string;
+}
+
+export interface CashSaleResult {
+  client: Client;
+  invoice: Invoice;
+  payment: Payment | null;
+}
+
+export const CreateCashSale = (req: CreateCashSaleRequest) =>
+  post<CashSaleResult>("/cash-sales", req);
+export const GetClientOpenInvoices = (clientId: string) =>
+  get<OutstandingInvoiceSummary[]>(`/clients/${clientId}/open-invoices`);
+
 // ---- Accounting: Reports ----
 
 export const GetTrialBalance = (
@@ -1081,6 +1117,70 @@ export interface InventoryValuation {
 
 export const GetInventoryValuation = (organizationId: string) =>
   get<InventoryValuation>(`/organizations/${organizationId}/reports/inventory-valuation`);
+
+export const GetAccountBalance = (organizationId: string, accountId: string, asOfDate?: number) => {
+  const qs = new URLSearchParams({ accountId });
+  if (asOfDate) qs.set("asOfDate", String(asOfDate));
+  return get<{ balance: number }>(`/organizations/${organizationId}/reports/account-balance?${qs}`);
+};
+
+// One row per UTC calendar day — see db/gl_reports.go's DailyCashMovementRow
+// doc comment for why day boundaries are UTC (this app stores no per-
+// organization timezone, and journal_entries.date carries real time-of-day).
+export interface DailyCashMovementRow {
+  date: string; // YYYY-MM-DD, UTC
+  opening: number;
+  in: number;
+  out: number;
+  closing: number;
+}
+
+export const GetDailyCashMovements = (
+  organizationId: string,
+  accountId: string,
+  startDate: number,
+  endDate: number,
+) =>
+  get<DailyCashMovementRow[]>(
+    `/organizations/${organizationId}/reports/daily-cash-movements?accountId=${accountId}&startDate=${startDate}&endDate=${endDate}`,
+  );
+
+// ---- Cash Book: withdrawals ----
+// Money leaving a cash register with no vendor bill to attach a payment
+// to — deposited to the bank, or spent as an undocumented (petty-cash)
+// expense. See db/cash_movement.go's CreateCashMovement doc comment for
+// why this isn't modeled through the payments API.
+
+export interface CreateCashMovementRequest {
+  organizationId: string;
+  accountId?: string; // defaults to organization.defaultCashRegisterAccountId
+  date: number;
+  counterAccountType: "bank" | "expense";
+  counterAccountId: string;
+  amount: number;
+  note?: string;
+}
+
+export interface CashMovement {
+  id: string;
+  organizationId: string;
+  accountId: string;
+  date: number;
+  counterAccountType: "bank" | "expense";
+  counterAccountId: string;
+  amount: number;
+  note: string | null;
+  journalEntryId: string | null;
+  createdAt: number;
+}
+
+export interface CashMovementResult {
+  cashMovement: CashMovement;
+  balance: number; // the register's balance immediately after this movement
+}
+
+export const CreateCashMovement = (req: CreateCashMovementRequest) =>
+  post<CashMovementResult>("/cash-movements", req);
 
 // ---- Accounting: GL Export ----
 

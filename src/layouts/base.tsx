@@ -6,6 +6,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   DashboardOutlined,
+  WalletOutlined,
   FileTextOutlined,
   TeamOutlined,
   SolutionOutlined,
@@ -421,6 +422,15 @@ export default function BaseLayout() {
               key: "dashboard",
             },
             {
+              icon: <WalletOutlined />,
+              label: (
+                <Link to="/cash-book">
+                  <Trans>Cash Book</Trans>
+                </Link>
+              ),
+              key: "cash-book",
+            },
+            {
               icon: <ShopOutlined />,
               label: <Trans>Sales</Trans>,
               key: "group-sales",
@@ -668,6 +678,15 @@ export default function BaseLayout() {
                     </Link>
                   ),
                   key: "accounting.inventory-valuation",
+                },
+                {
+                  icon: <WalletOutlined />,
+                  label: (
+                    <Link to="/accounting/daily-cash-movements">
+                      <Trans>Daily Cash Movements</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.daily-cash-movements",
                 },
               ],
             },

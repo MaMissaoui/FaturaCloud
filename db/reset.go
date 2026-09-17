@@ -57,6 +57,10 @@ var transactionalDataTables = []string{
 	// fiscal_periods cascades from fiscal_years (in masterDataTables) the
 	// same way and is likewise not listed separately.
 	"payments",
+	// cash_movements follows the identical precedent as payments immediately
+	// above — its own journalEntryId references journal_entries with no ON
+	// DELETE clause, so it must go before journal_entries too.
+	"cash_movements",
 	"journal_entries",
 	"reconciliation_groups",
 }
@@ -184,7 +188,7 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 
 	if req.ResetMasterData {
 		// organizations itself is never deleted by a reset, but carries
-		// fourteen FK columns pointing into accounts (set by
+		// sixteen FK columns pointing into accounts (set by
 		// seedDefaultChartOfAccounts/seedInventoryAccountsTx/
 		// seedImportCostAccountTx or manual configuration). Null them before
 		// accounts rows are deleted below, or those columns would dangle — a
@@ -199,7 +203,8 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 			    datevClearingAccountId = NULL,
 			    defaultInventoryAccountId = NULL, defaultGRNIAccountId = NULL,
 			    defaultCOGSAccountId = NULL, defaultInventoryAdjustmentAccountId = NULL,
-			    defaultStampDutyAccountId = NULL, defaultImportCostsPayableAccountId = NULL
+			    defaultStampDutyAccountId = NULL, defaultImportCostsPayableAccountId = NULL,
+			    defaultCashRegisterAccountId = NULL
 			WHERE id = ?`, organizationID,
 		); err != nil {
 			return nil, fmt.Errorf("reset_organization_data clear_gl_defaults: %w", err)

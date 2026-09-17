@@ -156,11 +156,12 @@ func TestGetAccountUsageCountCoversEveryReference(t *testing.T) {
 	// no way to introspect the query string itself, so this list is the
 	// thing that must be updated alongside GetAccountUsageCount.
 	covered := map[string]map[string]bool{
-		"journal_lines": {"accountId": true},
-		"taxRates":      {"outputTaxAccountId": true, "inputTaxAccountId": true},
-		"products":      {"revenueAccountId": true, "expenseAccountId": true},
-		"payments":      {"bankAccountId": true},
-		"organizations": {},
+		"journal_lines":  {"accountId": true},
+		"taxRates":       {"outputTaxAccountId": true, "inputTaxAccountId": true},
+		"products":       {"revenueAccountId": true, "expenseAccountId": true},
+		"payments":       {"bankAccountId": true},
+		"cash_movements": {"accountId": true, "counterAccountId": true},
+		"organizations":  {},
 	}
 	for _, col := range accountReferencingOrganizationColumns {
 		covered["organizations"][col] = true
