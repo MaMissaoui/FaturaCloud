@@ -205,7 +205,10 @@ const CashBook = () => {
       // template (see CLAUDE.md's cash register account note) — a Cash
       // Book sale must default to the actual till, or its payment silently
       // credits Bank instead and the register balance/report never move.
-      bankAccountId: organization?.defaultCashRegisterAccountId || organization?.defaultCashAccountId || undefined,
+      bankAccountId:
+        organization?.defaultCashRegisterAccountId ||
+        organization?.defaultCashAccountId ||
+        undefined,
       lineItems: [{ quantity: 1, taxRate: get(find(taxRates, { isDefault: 1 }), "id") }],
     });
     setAmountReceivedTouched(false);
@@ -833,7 +836,9 @@ const CashBook = () => {
           onSettled={handleSettled}
           defaultMethod="cash"
           defaultBankAccountId={
-            organization?.defaultCashRegisterAccountId ?? organization?.defaultCashAccountId ?? undefined
+            organization?.defaultCashRegisterAccountId ??
+            organization?.defaultCashAccountId ??
+            undefined
           }
           minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
         />
