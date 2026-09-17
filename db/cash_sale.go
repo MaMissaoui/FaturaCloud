@@ -120,10 +120,21 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	bankAccountID := req.BankAccountID
 	if req.AmountReceived > 0 {
 		if bankAccountID == "" {
-			if org.DefaultCashAccountID == nil {
+			// defaultCashRegisterAccountId (the physical till) takes priority
+			// over defaultCashAccountId, which every chart-of-accounts
+			// template wires to Bank, not the till — see CLAUDE.md's cash
+			// register account note. Falling back to it here only matters
+			// for a caller that omits bankAccountId entirely and hasn't
+			// configured a register account either; the Cash Book screen
+			// itself always sends one explicitly once configured.
+			switch {
+			case org.DefaultCashRegisterAccountID != nil:
+				bankAccountID = *org.DefaultCashRegisterAccountID
+			case org.DefaultCashAccountID != nil:
+				bankAccountID = *org.DefaultCashAccountID
+			default:
 				return nil, newValidationError("cannot record payment: organization has no default cash account configured")
 			}
-			bankAccountID = *org.DefaultCashAccountID
 		}
 		bankAccount, err := d.GetAccount(bankAccountID)
 		if err != nil {

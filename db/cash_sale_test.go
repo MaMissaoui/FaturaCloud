@@ -625,3 +625,49 @@ func TestCreateCashSaleDueDateDefaultsToSaleDate(t *testing.T) {
 		t.Fatalf("invoice DueDate = %v, want %d (the sale's own date)", result.Invoice.DueDate, fx.date)
 	}
 }
+
+// defaultCashAccountId is wired to Bank in every chart-of-accounts template
+// (see CLAUDE.md's cash register account note) — a cash sale with no
+// explicit bankAccountId must still land in the register when one is
+// configured, not silently default to Bank the way it did before this was
+// fixed (the exact bug behind a real production report: the balance widget
+// watched the register account while every sale credited Bank instead).
+func TestCreateCashSaleDefaultsToRegisterAccountNotBank(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-sale-register-default")
+
+	accounts, err := d.GetAccounts(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetAccounts: %v", err)
+	}
+	var registerAccountID string
+	for _, a := range accounts {
+		if a.Code == "1010" { // "Cash" — the generic chart's till account
+			registerAccountID = a.ID
+		}
+	}
+	if registerAccountID == "" {
+		t.Fatal("expected a seeded account with code 1010 (Cash)")
+	}
+	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
+		DefaultCashRegisterAccountID: ptr(registerAccountID),
+	}); err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
+
+	result, err := d.CreateCashSale(CreateCashSaleRequest{
+		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+		SubTotal: 1000, TaxTotal: 200, Total: 1200,
+		AmountReceived: 1200, // BankAccountID deliberately left empty
+	})
+	if err != nil {
+		t.Fatalf("CreateCashSale: %v", err)
+	}
+	if result.Payment.BankAccountID != registerAccountID {
+		t.Fatalf("payment posted to account %q, want the register account %q (not Bank)", result.Payment.BankAccountID, registerAccountID)
+	}
+}

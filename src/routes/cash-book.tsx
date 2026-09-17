@@ -201,7 +201,11 @@ const CashBook = () => {
     form.setFieldsValue({
       date: dayjs(),
       paymentMethod: "cash",
-      bankAccountId: organization?.defaultCashAccountId || undefined,
+      // defaultCashAccountId is wired to Bank in every chart-of-accounts
+      // template (see CLAUDE.md's cash register account note) — a Cash
+      // Book sale must default to the actual till, or its payment silently
+      // credits Bank instead and the register balance/report never move.
+      bankAccountId: organization?.defaultCashRegisterAccountId || organization?.defaultCashAccountId || undefined,
       lineItems: [{ quantity: 1, taxRate: get(find(taxRates, { isDefault: 1 }), "id") }],
     });
     setAmountReceivedTouched(false);
@@ -828,7 +832,9 @@ const CashBook = () => {
           onClose={closePayment}
           onSettled={handleSettled}
           defaultMethod="cash"
-          defaultBankAccountId={organization?.defaultCashAccountId ?? undefined}
+          defaultBankAccountId={
+            organization?.defaultCashRegisterAccountId ?? organization?.defaultCashAccountId ?? undefined
+          }
           minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
         />
       )}
