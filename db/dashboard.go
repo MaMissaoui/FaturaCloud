@@ -151,6 +151,38 @@ func (d *Database) GetReceivableAging(organizationID string) (OutstandingSummary
 	return d.getOutstandingInvoices(organizationID)
 }
 
+// GetClientOpenInvoices is the Cash Book screen's "does this client have any
+// outstanding loan sales" lookup. Deliberately NOT a call to
+// getOutstandingInvoices above: that query filters state = 'sent' only,
+// which would drop a loan sale someone manually marked 'paid' while a
+// balance still remains (invoices.state has no transition matrix — see
+// db/CLAUDE.md). This filters on the actual balance instead.
+func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice, error) {
+	invoices := []OutstandingInvoice{}
+	err := d.DB.Select(&invoices, `
+		SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
+		       CAST(ROUND(i.total - COALESCE(paid.amount, 0)) AS INTEGER) AS foreignTotal,
+		       CAST(ROUND((i.total - COALESCE(paid.amount, 0)) * COALESCE(i.exchangeRate, 1)) AS INTEGER) AS total
+		FROM invoices i
+		JOIN clients c ON i.clientId = c.id
+		LEFT JOIN (
+			SELECT pa.documentId, SUM(pa.amount) AS amount
+			FROM payment_applications pa
+			JOIN payments p ON p.id = pa.paymentId
+			WHERE pa.documentType = 'invoice' AND p.status != 'voided'
+			GROUP BY pa.documentId
+		) paid ON paid.documentId = i.id
+		WHERE i.clientId = ? AND i.state != 'cancelled'
+		      AND (i.total - COALESCE(paid.amount, 0)) > 0
+		ORDER BY i.date ASC`,
+		clientID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_client_open_invoices: %w", err)
+	}
+	return invoices, nil
+}
+
 // OutstandingBill is getOutstandingInvoices' purchases counterpart. See
 // OutstandingInvoice above for what Currency/ForeignTotal carry.
 type OutstandingBill struct {

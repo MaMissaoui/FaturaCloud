@@ -212,6 +212,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("PUT", "/api/clients/{id}", clientOrgID, h.updateClient)
 	orgMemberProtected("DELETE", "/api/clients/{id}", clientOrgID, h.deleteClient)
 	orgMemberProtected("GET", "/api/clients/{id}/invoice-count", clientOrgID, h.getClientInvoiceCount)
+	orgMemberProtected("GET", "/api/clients/{id}/open-invoices", clientOrgID, h.getClientOpenInvoices)
 
 	// Vendors
 	// vendorOrgID resolves a vendor route's {id} to its owning organization
@@ -623,6 +624,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Payments
 	orgMemberProtected("GET", "/api/organizations/{orgId}/payments", pathOrgID("orgId"), h.listPayments)
 	protected("POST", "/api/payments", h.createPayment)
+	protected("POST", "/api/cash-sales", h.createCashSale)
 	orgMemberProtected("GET", "/api/payments/{id}", paymentOrgID, h.getPayment)
 	orgMemberProtected("GET", "/api/payments/{id}/applications", paymentOrgID, h.getPaymentApplications)
 	orgMemberProtected("POST", "/api/payments/{id}/void", paymentOrgID, h.voidPayment)
