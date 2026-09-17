@@ -100,6 +100,7 @@ function buildOrganization(overrides: Partial<Organization> = {}): Organization 
     defaultFiscalStampAmount: null,
     defaultStampDutyAccountId: null,
     invoiceLayout: null,
+    defaultCashRegisterAccountId: null,
     ...overrides,
   };
 }

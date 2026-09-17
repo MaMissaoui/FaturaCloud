@@ -202,6 +202,7 @@ var createRouteOrgChecks = map[routeKey]struct{ file, fn string }{
 	{"POST", "/api/journal-entries"}:    {"journal_entries.go", "createJournalEntry"},
 	{"POST", "/api/payments"}:           {"payments.go", "createPayment"},
 	{"POST", "/api/cash-sales"}:         {"cash_sale.go", "createCashSale"},
+	{"POST", "/api/cash-movements"}:     {"cash_movement.go", "createCashMovement"},
 }
 
 // pendingPhaseCRoutes are known, tracked, not-yet-migrated routes — see the

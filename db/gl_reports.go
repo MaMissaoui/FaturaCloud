@@ -305,3 +305,146 @@ func (d *Database) GetInventoryValuation(organizationID string) (*InventoryValua
 		Products:      products,
 	}, nil
 }
+
+// resolveCashReportAccount validates an accountId for GetAccountBalance/
+// GetDailyCashMovements: it must exist, belong to the organization, and be
+// postable. A group account (isGroup=1) is never postable —
+// allocateAndFinalizeEntryTx enforces that at write time — but nothing stops
+// one being picked here at read time, where it would otherwise silently
+// return an all-zero report instead of a clear error.
+func (d *Database) resolveCashReportAccount(organizationID, accountID string) (*Account, error) {
+	account, err := d.GetAccount(accountID)
+	if err != nil {
+		return nil, newValidationError("account not found")
+	}
+	if err := requireSameOrg(organizationID, account.OrganizationID, "account"); err != nil {
+		return nil, err
+	}
+	if account.IsGroup != 0 {
+		return nil, newValidationError("account %q is a group header and has no balance of its own", account.Name)
+	}
+	return account, nil
+}
+
+// GetAccountBalance is accountID's running balance as of a point in time —
+// Σ(debit − credit) over every posted-or-reversed journal_lines row up to
+// and including asOfDate, the same predicate GetTrialBalance/GetBalanceSheet
+// use (draft excluded; a reversed entry is real history, only its own
+// separate reversal entry nets it to zero — see GetTrialBalance's own
+// comment above). asOfDate == 0 means "right now", matching
+// GetBalanceSheet's own convention, so a future-dated posted entry never
+// counts toward "current". This is also GetDailyCashMovements' opening-
+// balance seed below — same query, an earlier date.
+func (d *Database) GetAccountBalance(organizationID, accountID string, asOfDate int64) (int64, error) {
+	if _, err := d.resolveCashReportAccount(organizationID, accountID); err != nil {
+		return 0, err
+	}
+	if asOfDate == 0 {
+		asOfDate = time.Now().UnixMilli()
+	}
+	var balance int64
+	err := d.DB.Get(&balance, `
+		SELECT COALESCE(SUM(jl.debit), 0) - COALESCE(SUM(jl.credit), 0)
+		FROM journal_lines jl
+		JOIN journal_entries je ON je.id = jl.journalEntryId
+		WHERE je.organizationId = ? AND je.status IN ('posted', 'reversed')
+		      AND jl.accountId = ? AND je.date <= ?`,
+		organizationID, accountID, asOfDate,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("get_account_balance: %w", err)
+	}
+	return balance, nil
+}
+
+// floorToUTCDay truncates a Unix-ms timestamp to that instant's UTC calendar
+// day (00:00:00.000 UTC) — see DailyCashMovementRow's doc comment for why
+// UTC, not the organization's local time (this app stores no per-
+// organization timezone anywhere).
+func floorToUTCDay(ms int64) time.Time {
+	t := time.UnixMilli(ms).UTC()
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// DailyCashMovementRow is one calendar day's opening balance, total in
+// (debit), total out (credit), and closing balance for a single account.
+//
+// Day boundaries are UTC. journal_entries.date carries real time-of-day
+// (not midnight — a live Cash Book sale is timestamped at actual entry
+// time), and this app stores no per-organization timezone anywhere, so
+// there is no correct local offset to bucket by. An organization operating
+// at a positive UTC offset (e.g. Tunis, UTC+1) will see a very-late-evening
+// local sale land in the previous UTC day's row — a stated limitation, not
+// a silently-missing one, the same stance db/einvoice.go's Peppol decision
+// takes elsewhere in this codebase.
+//
+// A day with no activity still gets a row (opening equals the previous
+// day's closing, zero movement) so the report reads as a continuous ledger
+// — SQL only emits rows for days that actually had activity, so the day
+// range is generated and merged in Go, which is also where the running
+// balance accumulates (Closing[N] == Opening[N+1] is an accumulator-loop
+// property, not something the SQL guarantees on its own).
+type DailyCashMovementRow struct {
+	Date    string `db:"day"     json:"date"` // YYYY-MM-DD, UTC
+	Opening int64  `json:"opening"`
+	In      int64  `db:"debit"   json:"in"`
+	Out     int64  `db:"credit"  json:"out"`
+	Closing int64  `json:"closing"`
+}
+
+// GetDailyCashMovements returns one row per UTC calendar day from startDate
+// to endDate (inclusive) for accountID — see DailyCashMovementRow's doc
+// comment for the day-boundary and zero-activity-day handling. Reversed
+// entries are included in whichever day they were posted (same predicate as
+// GetTrialBalance) — if an entry and its reversal land on different
+// calendar days, one day legitimately shows cash in and a later day shows
+// the offsetting cash out for a transaction that net never happened; that's
+// correct ledger history, not a bug in this report.
+func (d *Database) GetDailyCashMovements(organizationID, accountID string, startDate, endDate int64) ([]DailyCashMovementRow, error) {
+	if _, err := d.resolveCashReportAccount(organizationID, accountID); err != nil {
+		return nil, err
+	}
+	if endDate < startDate {
+		return nil, newValidationError("endDate must not be before startDate")
+	}
+
+	startDay := floorToUTCDay(startDate)
+	endDay := floorToUTCDay(endDate)
+	endOfRange := endDay.AddDate(0, 0, 1).UnixMilli() - 1
+
+	opening, err := d.GetAccountBalance(organizationID, accountID, startDay.UnixMilli()-1)
+	if err != nil {
+		return nil, err
+	}
+
+	activity := []DailyCashMovementRow{}
+	err = d.DB.Select(&activity, `
+		SELECT strftime('%Y-%m-%d', je.date / 1000, 'unixepoch') AS day,
+		       COALESCE(SUM(jl.debit), 0) AS debit, COALESCE(SUM(jl.credit), 0) AS credit
+		FROM journal_lines jl
+		JOIN journal_entries je ON je.id = jl.journalEntryId
+		WHERE je.organizationId = ? AND je.status IN ('posted', 'reversed')
+		      AND jl.accountId = ? AND je.date >= ? AND je.date <= ?
+		GROUP BY day`,
+		organizationID, accountID, startDay.UnixMilli(), endOfRange,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_daily_cash_movements: %w", err)
+	}
+	byDay := make(map[string]DailyCashMovementRow, len(activity))
+	for _, a := range activity {
+		byDay[a.Date] = a
+	}
+
+	rows := []DailyCashMovementRow{}
+	balance := opening
+	for cursor := startDay; !cursor.After(endDay); cursor = cursor.AddDate(0, 0, 1) {
+		key := cursor.Format("2006-01-02")
+		a := byDay[key] // zero value (In=Out=0) for a day with no activity
+		row := DailyCashMovementRow{Date: key, Opening: balance, In: a.In, Out: a.Out}
+		balance += a.In - a.Out
+		row.Closing = balance
+		rows = append(rows, row)
+	}
+	return rows, nil
+}

@@ -679,6 +679,15 @@ export default function BaseLayout() {
                   ),
                   key: "accounting.inventory-valuation",
                 },
+                {
+                  icon: <WalletOutlined />,
+                  label: (
+                    <Link to="/accounting/daily-cash-movements">
+                      <Trans>Daily Cash Movements</Trans>
+                    </Link>
+                  ),
+                  key: "accounting.daily-cash-movements",
+                },
               ],
             },
             {

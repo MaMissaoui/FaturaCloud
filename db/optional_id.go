@@ -98,6 +98,7 @@ var nullableFKClassification = map[string]fkDisposition{
 
 	// --- server-set: "" was never reachable ---
 	"bill_of_materials_version_lines.componentProductId":  fkServerSet,
+	"cash_movements.journalEntryId":                       fkServerSet,
 	"journal_entries.createdBy":                           fkServerSet,
 	"journal_entries.fiscalPeriodId":                      fkServerSet,
 	"journal_entries.reversalOfEntryId":                   fkServerSet,
@@ -117,6 +118,7 @@ var nullableFKClassification = map[string]fkDisposition{
 	"organizations.defaultArAccountId":                  fkExplicitClear,
 	"organizations.defaultCOGSAccountId":                fkExplicitClear,
 	"organizations.defaultCashAccountId":                fkExplicitClear,
+	"organizations.defaultCashRegisterAccountId":        fkExplicitClear,
 	"organizations.defaultExpenseAccountId":             fkExplicitClear,
 	"organizations.defaultGRNIAccountId":                fkExplicitClear,
 	"organizations.defaultImportCostsPayableAccountId":  fkExplicitClear,

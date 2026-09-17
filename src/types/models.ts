@@ -273,6 +273,11 @@ export interface Organization {
   defaultFiscalStampAmount: number | null;
   defaultStampDutyAccountId: string | null;
   invoiceLayout: string | null;
+  // The Cash Book screen's register balance/daily-movements report/cash
+  // withdrawal feature — deliberately separate from defaultCashAccountId,
+  // which every chart-of-accounts template wires to the Bank account, never
+  // the literal Cash/Kasse/Caisse till account.
+  defaultCashRegisterAccountId: string | null;
 }
 
 export interface Order {
