@@ -439,3 +439,208 @@ func TestGetInventoryValuationWithNoActivityIsZero(t *testing.T) {
 		t.Fatalf("expected one untouched product at zero, got %+v", report.Products)
 	}
 }
+
+// postManualEntryForBalanceTest posts a simple two-line entry (Dr debitAcct
+// / Cr creditAcct) on the given date, via the ordinary manual create+post
+// path — used to put a debit ("in") movement on the register account, which
+// CreateCashMovement itself never does (it only ever credits the register).
+func postManualEntryForBalanceTest(t *testing.T, d *Database, orgID, debitAcct, creditAcct string, amount, date int64) {
+	t.Helper()
+	journal, err := getJournalByTypeTx(d.DB, orgID, "cash")
+	if err != nil {
+		t.Fatalf("getJournalByTypeTx: %v", err)
+	}
+	entry, err := d.CreateJournalEntry(CreateJournalEntryRequest{
+		OrganizationID: orgID, JournalID: journal.ID, Date: date, Description: "test entry",
+		Lines: []CreateJournalLineRequest{
+			{AccountID: debitAcct, Debit: amount},
+			{AccountID: creditAcct, Credit: amount},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateJournalEntry: %v", err)
+	}
+	if _, err := d.PostJournalEntry(entry.ID); err != nil {
+		t.Fatalf("PostJournalEntry: %v", err)
+	}
+}
+
+func TestGetAccountBalanceAsOfDate(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-account-balance")
+	register, bank, _ := cashMovementTestAccounts(t, d, fx.orgID)
+
+	postManualEntryForBalanceTest(t, d, fx.orgID, register.ID, bank.ID, 1000, fx.date)
+	postManualEntryForBalanceTest(t, d, fx.orgID, register.ID, bank.ID, 500, fx.date+86400000)
+
+	before, err := d.GetAccountBalance(fx.orgID, register.ID, fx.date-1)
+	if err != nil {
+		t.Fatalf("GetAccountBalance(before): %v", err)
+	}
+	if before != 0 {
+		t.Fatalf("balance before any activity = %d, want 0", before)
+	}
+
+	afterDay1, err := d.GetAccountBalance(fx.orgID, register.ID, fx.date)
+	if err != nil {
+		t.Fatalf("GetAccountBalance(day1): %v", err)
+	}
+	if afterDay1 != 1000 {
+		t.Fatalf("balance as of day 1 = %d, want 1000", afterDay1)
+	}
+
+	current, err := d.GetAccountBalance(fx.orgID, register.ID, 0)
+	if err != nil {
+		t.Fatalf("GetAccountBalance(now): %v", err)
+	}
+	if current != 1500 {
+		t.Fatalf("current balance = %d, want 1500", current)
+	}
+}
+
+// TestGetDailyCashMovementsOpeningBalanceAndZeroActivityDay is the
+// regression test for the two correctness traps this report is most likely
+// to get wrong: a pre-range movement must seed day 1's opening balance
+// (not leave it at 0), and a day with no activity between two active days
+// must still render with the previous day's closing balance carried
+// forward rather than being silently dropped.
+func TestGetDailyCashMovementsOpeningBalanceAndZeroActivityDay(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-daily-cash")
+	register, bank, _ := cashMovementTestAccounts(t, d, fx.orgID)
+
+	day0 := fx.date // 2025-02-01, UTC midnight
+	dayBefore := day0 - 86400000
+	day1 := day0
+	// day0+86400000 (day 2 of the range) is deliberately left with no
+	// activity at all.
+	day3 := day0 + 2*86400000
+
+	// Pre-range: a cash sale-style inflow (debit) the day before the report
+	// window starts — this must become day 1's opening balance.
+	postManualEntryForBalanceTest(t, d, fx.orgID, register.ID, bank.ID, 2000, dayBefore)
+
+	// Day 1: a cash movement withdrawal (credit/"out").
+	if _, err := d.CreateCashMovement(CreateCashMovementRequest{
+		OrganizationID: fx.orgID, AccountID: register.ID, Date: day1,
+		CounterAccountType: "bank", CounterAccountID: bank.ID, Amount: 300,
+	}); err != nil {
+		t.Fatalf("CreateCashMovement day1: %v", err)
+	}
+
+	// Day 2: deliberately nothing.
+
+	// Day 3: another inflow (debit/"in").
+	postManualEntryForBalanceTest(t, d, fx.orgID, register.ID, bank.ID, 500, day3)
+
+	rows, err := d.GetDailyCashMovements(fx.orgID, register.ID, day1, day3)
+	if err != nil {
+		t.Fatalf("GetDailyCashMovements: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("got %d rows, want 3 (one per day in range)", len(rows))
+	}
+
+	if rows[0].Opening != 2000 {
+		t.Fatalf("day1 opening = %d, want 2000 (seeded from the pre-range inflow)", rows[0].Opening)
+	}
+	if rows[0].In != 0 || rows[0].Out != 300 || rows[0].Closing != 1700 {
+		t.Fatalf("day1 = %+v, want in=0 out=300 closing=1700", rows[0])
+	}
+
+	if rows[1].Opening != 1700 || rows[1].In != 0 || rows[1].Out != 0 || rows[1].Closing != 1700 {
+		t.Fatalf("day2 (zero activity) = %+v, want opening=1700 in=0 out=0 closing=1700 carried forward", rows[1])
+	}
+
+	if rows[2].Opening != 1700 || rows[2].In != 500 || rows[2].Out != 0 || rows[2].Closing != 2200 {
+		t.Fatalf("day3 = %+v, want opening=1700 in=500 out=0 closing=2200", rows[2])
+	}
+
+	// The report's final closing balance must agree with the standalone
+	// current-balance figure Cash Book shows, for the same account/date.
+	balance, err := d.GetAccountBalance(fx.orgID, register.ID, day3)
+	if err != nil {
+		t.Fatalf("GetAccountBalance: %v", err)
+	}
+	if balance != rows[len(rows)-1].Closing {
+		t.Fatalf("GetAccountBalance(day3) = %d, does not match the report's day3 closing balance %d",
+			balance, rows[len(rows)-1].Closing)
+	}
+}
+
+// A reversed entry is real history, not a no-op: if it lands on a different
+// calendar day than the entry it reverses, one day legitimately shows the
+// original movement and a later day shows the offsetting reversal — the
+// same predicate GetTrialBalance already uses (status IN ('posted',
+// 'reversed')), applied per day here instead of summed over a whole range.
+func TestGetDailyCashMovementsIncludesReversedEntryOnItsOwnDay(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-daily-cash-reversed")
+	register, bank, _ := cashMovementTestAccounts(t, d, fx.orgID)
+
+	day1 := fx.date
+	day2 := fx.date + 86400000
+
+	journal, err := getJournalByTypeTx(d.DB, fx.orgID, "cash")
+	if err != nil {
+		t.Fatalf("getJournalByTypeTx: %v", err)
+	}
+	entry, err := d.CreateJournalEntry(CreateJournalEntryRequest{
+		OrganizationID: fx.orgID, JournalID: journal.ID, Date: day1, Description: "to be reversed",
+		Lines: []CreateJournalLineRequest{
+			{AccountID: register.ID, Debit: 900},
+			{AccountID: bank.ID, Credit: 900},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateJournalEntry: %v", err)
+	}
+	if _, err := d.PostJournalEntry(entry.ID); err != nil {
+		t.Fatalf("PostJournalEntry: %v", err)
+	}
+	if _, err := d.ReverseJournalEntry(entry.ID, "test reversal", day2); err != nil {
+		t.Fatalf("ReverseJournalEntry: %v", err)
+	}
+
+	rows, err := d.GetDailyCashMovements(fx.orgID, register.ID, day1, day2)
+	if err != nil {
+		t.Fatalf("GetDailyCashMovements: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2", len(rows))
+	}
+	if rows[0].In != 900 || rows[0].Closing != 900 {
+		t.Fatalf("day1 = %+v, want the original 900 debit still counted (status='reversed' is real history)", rows[0])
+	}
+	if rows[1].Out != 900 || rows[1].Closing != 0 {
+		t.Fatalf("day2 = %+v, want the reversal's offsetting 900 credit, netting back to 0", rows[1])
+	}
+}
+
+func TestGetDailyCashMovementsRejectsInvertedRange(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-daily-cash-inverted")
+	register, _, _ := cashMovementTestAccounts(t, d, fx.orgID)
+
+	_, err := d.GetDailyCashMovements(fx.orgID, register.ID, fx.date, fx.date-86400000)
+	if err == nil {
+		t.Fatal("expected an endDate before startDate to be rejected")
+	}
+}
+
+func TestGetDailyCashMovementsCrossOrgAccountRejected(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-daily-cash-crossorg-a")
+	other := newGLPostingTestFixture(t, d, "org-daily-cash-crossorg-b")
+	_, otherBank, _ := cashMovementTestAccounts(t, d, other.orgID)
+
+	_, err := d.GetDailyCashMovements(fx.orgID, otherBank.ID, fx.date, fx.date+86400000)
+	if err == nil {
+		t.Fatal("expected an account belonging to a different organization to be rejected")
+	}
+}
