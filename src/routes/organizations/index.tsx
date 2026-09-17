@@ -57,6 +57,7 @@ const ACCOUNT_DEFAULT_FIELDS = [
   "defaultImportCostsPayableAccountId",
   "datevClearingAccountId",
   "defaultStampDutyAccountId",
+  "defaultCashRegisterAccountId",
 ] as const;
 
 const clearedAccountDefaults = (values: Record<string, unknown>): Record<string, string> => {

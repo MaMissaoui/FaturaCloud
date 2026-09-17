@@ -91,6 +91,7 @@ const APAging = lazy(() => import("src/routes/accounting/reports/ap-aging"));
 const InventoryValuationReport = lazy(
   () => import("src/routes/accounting/reports/inventory-valuation"),
 );
+const DailyCashMovements = lazy(() => import("src/routes/accounting/reports/daily-cash-movements"));
 const RevenueTrend = lazy(() => import("src/routes/reporting/revenue-trend"));
 const SalesByClient = lazy(() => import("src/routes/reporting/sales-by-client"));
 const SalesByProduct = lazy(() => import("src/routes/reporting/sales-by-product"));
@@ -330,6 +331,7 @@ const AppContent = () => {
                     <Route path="ar-aging" element={<ARAging />} />
                     <Route path="ap-aging" element={<APAging />} />
                     <Route path="inventory-valuation" element={<InventoryValuationReport />} />
+                    <Route path="daily-cash-movements" element={<DailyCashMovements />} />
                   </Route>
                   <Route path="/reporting" element={<BaseLayout />}>
                     <Route path="revenue-trend" element={<RevenueTrend />} />

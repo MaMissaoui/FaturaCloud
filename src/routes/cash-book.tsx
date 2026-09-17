@@ -35,7 +35,9 @@ import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import {
+  CreateCashMovement,
   CreateCashSale,
+  GetAccountBalance,
   GetAccounts,
   GetClientOpenInvoices,
   GetInvoice,
@@ -110,6 +112,19 @@ const CashBook = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
 
+  // Register balance widget + withdrawal modal — see db/gl_reports.go's
+  // GetAccountBalance and db/cash_movement.go's CreateCashMovement doc
+  // comments. This is a GL running balance ("what the books say"), not a
+  // physically-counted till figure — labeled accordingly below rather than
+  // as "cash in the drawer", the same scoped-out-till-session boundary this
+  // screen has always had.
+  const registerAccountId = organization?.defaultCashRegisterAccountId;
+  const [registerBalance, setRegisterBalance] = useState<number | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+  const [withdrawForm] = Form.useForm();
+
   useEffect(() => {
     setClients();
     setProducts();
@@ -122,6 +137,62 @@ const CashBook = () => {
       .then((accts) => setAccounts((accts as any[]).filter((a) => !a.isGroup)))
       .catch((error) => console.error("Failed to fetch accounts:", error));
   }, [organizationId]);
+
+  const refreshBalance = async () => {
+    if (!organizationId || !registerAccountId) return;
+    setLoadingBalance(true);
+    try {
+      const { balance } = await GetAccountBalance(organizationId, registerAccountId);
+      setRegisterBalance(balance);
+    } catch (error) {
+      console.error("Failed to fetch the register balance:", error);
+      message.error(t`Failed to load the cash register balance`);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshBalance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, registerAccountId]);
+
+  const bankAccounts = useMemo(() => accounts.filter((a: any) => a.type === "asset"), [accounts]);
+  const expenseAccounts = useMemo(
+    () => accounts.filter((a: any) => a.type === "expense"),
+    [accounts],
+  );
+  const withdrawDestination = Form.useWatch("counterAccountType", withdrawForm);
+
+  const openWithdrawModal = () => {
+    withdrawForm.resetFields();
+    withdrawForm.setFieldsValue({ counterAccountType: "bank" });
+    setWithdrawModalOpen(true);
+  };
+
+  const handleWithdrawSubmit = async (values: any) => {
+    if (!organizationId || !registerAccountId) return;
+    setWithdrawSubmitting(true);
+    try {
+      await CreateCashMovement({
+        organizationId,
+        accountId: registerAccountId,
+        date: Date.now(),
+        counterAccountType: values.counterAccountType,
+        counterAccountId: values.counterAccountId,
+        amount: unitsToCents(toNumber(values.amount) || 0),
+        note: values.note || undefined,
+      });
+      message.success(t`Cash movement recorded`);
+      setWithdrawModalOpen(false);
+      await refreshBalance();
+    } catch (error) {
+      console.error("Failed to record cash movement:", error);
+      message.error(error instanceof Error ? error.message : t`Failed to record cash movement`);
+    } finally {
+      setWithdrawSubmitting(false);
+    }
+  };
 
   const inSale = !!selectedClient || !!newClientDraft;
 
@@ -348,6 +419,35 @@ const CashBook = () => {
         <WalletOutlined style={{ marginRight: 8 }} />
         <Trans>Cash Book</Trans>
       </Typography.Title>
+
+      <Card size="small" style={{ marginBottom: 16 }} loading={loadingBalance}>
+        {registerAccountId ? (
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Typography.Text type="secondary">
+                <Trans>Cash account balance (per books)</Trans>
+              </Typography.Text>
+              <div>
+                <Typography.Title level={4} style={{ margin: 0 }}>
+                  {registerBalance != null ? money(registerBalance) : "—"}
+                </Typography.Title>
+              </div>
+            </Col>
+            <Col>
+              <Button onClick={openWithdrawModal}>
+                <Trans>Withdraw</Trans>
+              </Button>
+            </Col>
+          </Row>
+        ) : (
+          <Typography.Text type="secondary">
+            <Trans>
+              No cash register account configured — set one in Organization settings to see the
+              balance here.
+            </Trans>
+          </Typography.Text>
+        )}
+      </Card>
 
       {!inSale && (
         <Card size="small">
@@ -650,6 +750,65 @@ const CashBook = () => {
           </Form.Item>
           <Form.Item label={t`IBAN`} name="iban">
             <Input />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={<Trans>Withdraw from cash register</Trans>}
+        open={withdrawModalOpen}
+        onCancel={() => setWithdrawModalOpen(false)}
+        onOk={() => withdrawForm.submit()}
+        confirmLoading={withdrawSubmitting}
+        okText={t`Record`}
+        cancelText={t`Cancel`}
+        destroyOnHidden
+      >
+        <Form form={withdrawForm} layout="vertical" onFinish={handleWithdrawSubmit}>
+          <Form.Item
+            label={t`Amount (${currency})`}
+            name="amount"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <InputNumber style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
+          </Form.Item>
+          <Form.Item
+            label={t`Destination`}
+            name="counterAccountType"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <Select onChange={() => withdrawForm.setFieldValue("counterAccountId", undefined)}>
+              <Option value="bank">
+                <Trans>Deposit to the bank</Trans>
+              </Option>
+              <Option value="expense">
+                <Trans>Spend on an expense (no vendor bill)</Trans>
+              </Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            label={
+              withdrawDestination === "expense" ? (
+                <Trans>Expense account</Trans>
+              ) : (
+                <Trans>Bank account</Trans>
+              )
+            }
+            name="counterAccountId"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <Select showSearch optionFilterProp="children">
+              {(withdrawDestination === "expense" ? expenseAccounts : bankAccounts).map(
+                (a: any) => (
+                  <Option key={a.id} value={a.id}>
+                    {a.code} — {a.name}
+                  </Option>
+                ),
+              )}
+            </Select>
+          </Form.Item>
+          <Form.Item label={t`Note`} name="note">
+            <TextArea rows={2} />
           </Form.Item>
         </Form>
       </Modal>
