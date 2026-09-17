@@ -142,6 +142,8 @@ const CashBook = () => {
       setOpenInvoices(await GetClientOpenInvoices(clientId));
     } catch (error) {
       console.error("Failed to fetch open invoices:", error);
+      message.error(t`Failed to load this customer's open invoices`);
+      setOpenInvoices([]);
     } finally {
       setLoadingOpenInvoices(false);
     }
@@ -411,14 +413,20 @@ const CashBook = () => {
             </Typography.Text>
           </Space>
 
-          {selectedClient && openInvoices.length > 0 && (
+          {selectedClient && (
             <Card
               size="small"
               title={<Trans>Open invoices</Trans>}
               style={{ marginBottom: 16 }}
               loading={loadingOpenInvoices}
             >
-              <Table dataSource={openInvoices} rowKey="id" pagination={false} size="small">
+              <Table
+                dataSource={openInvoices}
+                rowKey="id"
+                pagination={false}
+                size="small"
+                locale={{ emptyText: <Trans>No open invoices for this customer</Trans> }}
+              >
                 <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
                 <Table.Column
                   title={<Trans>Balance due</Trans>}
@@ -506,12 +514,31 @@ const CashBook = () => {
                   <Form.Item
                     label={t`Amount received (${currency})`}
                     name="amountReceived"
-                    tooltip={t`Full amount = cash sale. Less than the total (or zero) = loan sale.`}
+                    tooltip={t`Full amount = cash sale. Less than the total (or zero) = loan sale. Entering more than the total just records the change given back — the sale itself is still only ever recorded up to the total.`}
+                    extra={
+                      amountReceivedWatched > total ? (
+                        <Typography.Text type="success">
+                          <Trans>
+                            Change due: {money(unitsToCents(amountReceivedWatched - total))}
+                          </Trans>
+                        </Typography.Text>
+                      ) : amountReceivedWatched < total ? (
+                        <Typography.Text type="warning">
+                          <Trans>
+                            Balance to collect later:{" "}
+                            {money(unitsToCents(total - amountReceivedWatched))}
+                          </Trans>
+                        </Typography.Text>
+                      ) : undefined
+                    }
                   >
+                    {/* No `max`: a cashier routinely receives more than the
+                    total (e.g. a round note) and needs change calculated —
+                    handleSubmitSale still clamps what's actually recorded as
+                    paid on the invoice to the total. */}
                     <InputNumber
                       style={{ width: "100%" }}
                       min={0}
-                      max={total}
                       precision={2}
                       onChange={() => setAmountReceivedTouched(true)}
                     />
@@ -558,13 +585,33 @@ const CashBook = () => {
                 </Col>
               </Row>
 
-              <Button type="primary" htmlType="submit" loading={submitting} size="large">
-                {amountReceivedWatched >= total ? (
+              {/* Color, not just label text, distinguishes the two outcomes —
+              a misread button label is exactly the mistake a fast-moving
+              counter screen should make hard to make: green (matches this
+              app's "paid" state Tag) for a fully-settled cash sale, gold
+              (matches "sent", the state an unsettled loan sale lands in) for
+              anything left owing. */}
+              {amountReceivedWatched >= total ? (
+                <Button
+                  color="green"
+                  variant="solid"
+                  htmlType="submit"
+                  loading={submitting}
+                  size="large"
+                >
                   <Trans>Record cash sale</Trans>
-                ) : (
+                </Button>
+              ) : (
+                <Button
+                  color="gold"
+                  variant="solid"
+                  htmlType="submit"
+                  loading={submitting}
+                  size="large"
+                >
                   <Trans>Record loan sale</Trans>
-                )}
-              </Button>
+                </Button>
+              )}
             </Form>
           </Card>
         </>
@@ -599,30 +646,23 @@ const CashBook = () => {
         </Form>
       </Modal>
 
-      <Modal
-        title={<Trans>Record payment</Trans>}
-        open={!!payingInvoice}
-        onCancel={closePayment}
-        footer={null}
-        destroyOnHidden
-      >
-        {payingInvoice && organizationId && selectedClient && (
-          <PaymentPanel
-            organizationId={organizationId}
-            documentType="invoice"
-            documentId={payingInvoice.id}
-            direction="inbound"
-            clientId={selectedClient.id}
-            currency={payingInvoice.currency}
-            orgCurrency={organization?.currency || "EUR"}
-            total={payingInvoice.total}
-            hasPostedEntry
-            hideHistory
-            onSettled={handleSettled}
-            minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
-          />
-        )}
-      </Modal>
+      {payingInvoice && organizationId && selectedClient && (
+        <PaymentPanel
+          organizationId={organizationId}
+          documentType="invoice"
+          documentId={payingInvoice.id}
+          direction="inbound"
+          clientId={selectedClient.id}
+          currency={payingInvoice.currency}
+          orgCurrency={organization?.currency || "EUR"}
+          total={payingInvoice.total}
+          hasPostedEntry
+          embedded
+          onClose={closePayment}
+          onSettled={handleSettled}
+          minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
+        />
+      )}
     </div>
   );
 };
