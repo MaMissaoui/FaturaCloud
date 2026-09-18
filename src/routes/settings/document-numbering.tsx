@@ -1,10 +1,27 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Col, Form, Input, InputNumber, Layout, Row, Typography, theme } from "antd";
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Layout,
+  Row,
+  Space,
+  Typography,
+  theme,
+} from "antd";
 import { useAtomValue } from "jotai";
 import { createPortal } from "react-dom";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { OrderedListOutlined, SaveOutlined } from "@ant-design/icons";
+import {
+  CaretDownOutlined,
+  CaretRightOutlined,
+  OrderedListOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
 import isEmpty from "lodash/isEmpty";
 
 import { organizationAtom } from "src/atoms/organization";
@@ -51,6 +68,8 @@ type FormValues = Record<string, { format: string; counter: number }>;
 
 function DocumentNumberingCard({ documentType, label }: { documentType: string; label: string }) {
   const form = Form.useFormInstance<FormValues>();
+  const { token } = theme.useToken();
+  const [showVariables, setShowVariables] = useState(false);
   const format = Form.useWatch([documentType, "format"], form);
   const counter = Form.useWatch([documentType, "counter"], form);
   const preview =
@@ -99,6 +118,58 @@ function DocumentNumberingCard({ documentType, label }: { documentType: string; 
           </Form.Item>
         </Col>
       </Row>
+
+      <Button
+        type="link"
+        size="small"
+        onClick={() => setShowVariables(!showVariables)}
+        style={{ padding: 0, height: "auto", gap: 4 }}
+      >
+        {showVariables ? <CaretDownOutlined /> : <CaretRightOutlined />}
+        <Trans>Available variables</Trans>
+      </Button>
+      {showVariables && (
+        <div
+          style={{
+            padding: "12px 16px",
+            backgroundColor: token.colorFillAlter,
+            borderRadius: 4,
+            marginTop: 8,
+          }}
+        >
+          <Space direction="vertical" size={4} style={{ width: "100%" }}>
+            {[
+              ["{number}", <Trans key="n">Sequential number</Trans>],
+              [
+                "{number:N}",
+                <Trans key="np">{`Zero-padded sequential number (e.g. {number:4} → 0007)`}</Trans>,
+              ],
+              ["{year}", <Trans key="y">{`4-digit year (${new Date().getFullYear()})`}</Trans>],
+              [
+                "{y}",
+                <Trans key="y2">{`2-digit year (${String(new Date().getFullYear() % 100).padStart(2, "0")})`}</Trans>,
+              ],
+              [
+                "{month}",
+                <Trans key="mo">{`2-digit month (${String(new Date().getMonth() + 1).padStart(2, "0")})`}</Trans>,
+              ],
+              [
+                "{m}",
+                <Trans key="m">{`Month name (${new Date().toLocaleString("en", { month: "short" })})`}</Trans>,
+              ],
+              [
+                "{day}",
+                <Trans key="d">{`Day of month (${String(new Date().getDate()).padStart(2, "0")})`}</Trans>,
+              ],
+              ["{clientCode}", <Trans key="cc">Client code (e.g. AP, MS)</Trans>],
+            ].map(([code, desc]) => (
+              <div key={String(code)}>
+                <Text code>{code}</Text> — {desc}
+              </div>
+            ))}
+          </Space>
+        </div>
+      )}
     </Card>
   );
 }
