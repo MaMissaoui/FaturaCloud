@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.25.1] - 2026-09-18
+
+### Fixed
+- The app version badge in the header showed "vv3.25.0" instead of
+  "v3.25.0" — the server already returns the full tag name and the
+  frontend was prepending a second "v".
+
 ## [3.25.0] - 2026-09-18
 
 ### Added
