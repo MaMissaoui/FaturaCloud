@@ -45,11 +45,11 @@ import (
 // supply to chance the way ordinary restocking does for the other ~43
 // components per class, which remain purchasable but play no role here.
 var assemblyBOMComponentNames = []string{
-	"Engine block", "Frame chassis", // tierEngineCore
-	"Front fork assembly", "Rear shock absorber", "Wheel rim", "Fuel tank", "Wiring harness", // tierMajorAssembly
-	"Battery",                             // tierMidComponent
-	"Headlight assembly",                  // tierElectricalSmall
-	"Brake pad set", "Tire", "Spark plug", // tierSmallHardware
+	"Bloc moteur", "Châssis", // tierEngineCore
+	"Fourche avant", "Amortisseur arrière", "Jante de roue", "Réservoir de carburant", "Faisceau électrique", // tierMajorAssembly
+	"Batterie",                                             // tierMidComponent
+	"Bloc optique avant",                                   // tierElectricalSmall
+	"Kit plaquettes de frein", "Pneu", "Bougie d'allumage", // tierSmallHardware
 }
 
 var assemblyBOMComponentSet = func() map[string]bool {
@@ -178,10 +178,10 @@ func (s *Seeder) restockAssemblyComponentsForClass(day time.Time, class string, 
 	req := db.CreatePurchaseOrderRequest{
 		OrganizationID: s.orgID,
 		VendorID:       &vendor.id,
-		OrderNumber:    s.poNum.next(day.Year()),
-		Status:         "draft",
-		OrderDate:      midnightUTC(day),
-		LineItems:      reqLines,
+		// OrderNumber left empty — server-generated from document-number-settings ("purchase_order" type).
+		Status:    "draft",
+		OrderDate: midnightUTC(day),
+		LineItems: reqLines,
 	}
 	var po db.PurchaseOrder
 	if err := s.c.Post("/api/purchase-orders", req, &po); err != nil {
@@ -282,8 +282,8 @@ func (s *Seeder) assembleBatch(day time.Time, class string) error {
 	// `batch`) into the order's component lines itself; this doesn't send
 	// them.
 	createReq := db.CreateProductionOrderRequest{
-		OrganizationID:    s.orgID,
-		OrderNumber:       s.productionOrderNum.next(day.Year()),
+		OrganizationID: s.orgID,
+		// OrderNumber left empty — server-generated from document-number-settings ("production_order" type).
 		FinishedProductID: product.id,
 		Quantity:          float64(batch),
 		Date:              midnightUTC(day),
@@ -321,7 +321,7 @@ func (s *Seeder) assembleBatch(day time.Time, class string) error {
 }
 
 // bomComponentsByDisplacement returns this class's instances of
-// assemblyBOMComponentNames — e.g. "Engine block (125cc)" for class
+// assemblyBOMComponentNames — e.g. "Bloc moteur (125cc)" for class
 // "125cc" — by stripping the "(<class>)" suffix catalog.go's
 // buildComponentCatalog appends and checking the base name against the set.
 // finishedByDisplacement is the finished-goods equivalent, unfiltered by

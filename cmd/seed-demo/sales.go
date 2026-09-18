@@ -50,7 +50,7 @@ func (s *Seeder) createDirectInvoice(day time.Time) error {
 		TaxTotal:       taxTotal,
 		SubTotal:       subTotal,
 		LineItems:      lines.items,
-		PaymentTerms:   strPtr(fmt.Sprintf("Net %d days", s.orgProfile.dueDays)),
+		PaymentTerms:   strPtr(fmt.Sprintf(orDefault(s.orgProfile.paymentTermsFormat, "Net %d days"), s.orgProfile.dueDays)),
 	}
 	var inv db.Invoice
 	if err := s.c.Post("/api/invoices", req, &inv); err != nil {
@@ -278,10 +278,13 @@ func (s *Seeder) createOrder(day time.Time) error {
 	req := db.CreateOrderRequest{
 		OrganizationID: s.orgID,
 		ClientID:       &client.id,
-		OrderNumber:    s.orderNum.next(day.Year()),
-		Status:         "draft",
-		OrderDate:      midnightUTC(day),
-		LineItems:      items.items,
+		// OrderNumber left empty: CreateOrder generates it from the org's own
+		// document-number-settings ("order" type — CMD-/ORD- depending on
+		// --country), the real per-org numbering feature this tool should
+		// exercise rather than bypass with a locally hardcoded prefix.
+		Status:    "draft",
+		OrderDate: midnightUTC(day),
+		LineItems: items.items,
 	}
 	var order db.Order
 	if err := s.c.Post("/api/orders", req, &order); err != nil {
@@ -320,9 +323,11 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 	req := db.CreateDeliveryRequest{
 		OrganizationID: s.orgID,
 		OrderID:        &order.ID,
-		DeliveryNumber: s.deliveryNum.next(day.Year()),
-		DeliveryDate:   midnightUTC(day),
-		LineItems:      deliveryItems,
+		// DeliveryNumber left empty — see createOrder's own comment above on
+		// why this tool now leaves numbering to the server for every type
+		// document-number-settings covers.
+		DeliveryDate: midnightUTC(day),
+		LineItems:    deliveryItems,
 	}
 	var delivery db.OutboundDelivery
 	if err := s.c.Post("/api/deliveries", req, &delivery); err != nil {
@@ -379,7 +384,7 @@ func (s *Seeder) shipOrder(day time.Time, order db.Order, orderLines []db.OrderL
 		TaxTotal:       taxTotal,
 		SubTotal:       subTotal,
 		LineItems:      invLines,
-		PaymentTerms:   strPtr(fmt.Sprintf("Net %d days", s.orgProfile.dueDays)),
+		PaymentTerms:   strPtr(fmt.Sprintf(orDefault(s.orgProfile.paymentTermsFormat, "Net %d days"), s.orgProfile.dueDays)),
 	}
 	var inv db.Invoice
 	if err := s.c.Post("/api/invoices", invReq, &inv); err != nil {

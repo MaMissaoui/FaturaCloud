@@ -61,6 +61,7 @@ dry run immediately followed by the real `--org-name`.
 | `--end-date` | today | Last simulated day, `YYYY-MM-DD` |
 | `--seed` | `20260101` | RNG seed — same seed always reproduces the same dataset |
 | `--volume` | `busy` | `small` or `busy` — see `volumeProfiles` in `seeder.go`. Ignored by `--scenario retail`, which sizes itself (see "The retail scenario" below) |
+| `--volume-scale` | `1.0` | Multiplies the chosen `--volume` profile's client/vendor counts and per-day/week document rates (and `--scenario retail`'s organic client-growth target) by this factor — e.g. `0.5` halves both master-data and transactional volume without a new named profile. Never scales a positive bound down to 0 |
 | `--scenario` | `moto` | `moto` (a motorcycle assembler/manufacturer — the original scenario) or `retail` (a home-appliance retailer selling entirely through Cash Book counter sales) — see `scenario.go` and "The retail scenario" below |
 | `--reset` | off | Delete an existing organization named `--org-name` first, then recreate from scratch |
 | `--dry-run` | off | Skip document generation and log the plan — org/master-data/fiscal-year setup still happens for real (see note above) |

@@ -59,6 +59,7 @@ type Config struct {
 	EndDate       time.Time
 	Seed          uint64
 	Volume        string
+	VolumeScale   float64
 	Scenario      string
 	Reset         bool
 	DryRun        bool
@@ -79,6 +80,7 @@ func parseFlags() Config {
 	flag.StringVar(&endDateStr, "end-date", time.Now().Format("2006-01-02"), "last day of the simulated range, YYYY-MM-DD (default: today)")
 	flag.Uint64Var(&cfg.Seed, "seed", 20260101, "RNG seed — the same seed always reproduces the same dataset")
 	flag.StringVar(&volumeStr, "volume", "busy", `data volume profile: "small" or "busy" — ignored by --scenario retail, which sizes itself (see scenario.go's retailConfig)`)
+	flag.Float64Var(&cfg.VolumeScale, "volume-scale", 1.0, "multiply the chosen --volume profile's client/vendor counts and per-day/week document rates by this factor (also scales --scenario retail's organic client-growth target) — e.g. 0.5 halves both master-data and transactional volume without hand-editing volumeProfiles")
 	flag.StringVar(&cfg.Scenario, "scenario", "moto", `business scenario: "moto" (a motorcycle assembler/manufacturer — the original scenario) or "retail" (a home-appliance retailer selling entirely through Cash Book counter sales — see scenario.go)`)
 	flag.BoolVar(&cfg.Reset, "reset", false, "if an organization named --org-name already exists, delete it first and recreate from scratch")
 	flag.BoolVar(&cfg.DryRun, "dry-run", false, "skip day-by-day document generation and just log the plan — still creates/reuses the real organization, master data, and fiscal years via the API (see README's dry-run note)")
@@ -102,6 +104,11 @@ func parseFlags() Config {
 		os.Exit(2)
 	}
 	cfg.Volume = volumeStr
+
+	if cfg.VolumeScale <= 0 {
+		fmt.Fprintf(os.Stderr, "seed-demo: --volume-scale must be > 0\n")
+		os.Exit(2)
+	}
 
 	if cfg.Months < 1 {
 		fmt.Fprintf(os.Stderr, "seed-demo: --months must be >= 1\n")

@@ -34,6 +34,48 @@ var volumeProfiles = map[string]volumeProfile{
 	},
 }
 
+// scaleVolumeProfile multiplies every count/rate in p by scale (--volume-scale),
+// rounding to the nearest int — the mechanism behind "reseed at 50% volume"
+// without hand-editing volumeProfiles or adding a third named profile. A
+// bound that was already 0 (e.g. InvoicesPerWeekendDay's floor) stays 0
+// rather than being nudged up to 1, and a positive bound never scales down to
+// 0, since a "some activity, just less of it" knob shouldn't silently turn a
+// document type off.
+func scaleVolumeProfile(p volumeProfile, scale float64) volumeProfile {
+	return volumeProfile{
+		Clients: scaleCount(p.Clients, scale), Vendors: scaleCount(p.Vendors, scale),
+		InvoicesPerWeekday:    scaleCountRange(p.InvoicesPerWeekday, scale),
+		InvoicesPerWeekendDay: scaleCountRange(p.InvoicesPerWeekendDay, scale),
+		OrdersPerWeek:         scaleCountRange(p.OrdersPerWeek, scale),
+		PurchaseOrdersPerWeek: scaleCountRange(p.PurchaseOrdersPerWeek, scale),
+	}
+}
+
+// scaleCount multiplies v by scale, rounding to the nearest int. v == 0
+// stays 0 (an absent knob shouldn't turn on), and a positive v never scales
+// down to 0 (a "some activity, just less of it" knob shouldn't silently
+// disable a document type) — shared by scaleVolumeProfile above and
+// scenario.go's vendorCount/purchaseOrdersPerWeekRange, which scale the
+// retail scenario's own fixed vendors/purchaseOrdersPerWeek the same way.
+func scaleCount(v int, scale float64) int {
+	if v == 0 {
+		return 0
+	}
+	r := int(math.Round(float64(v) * scale))
+	if r < 1 {
+		r = 1
+	}
+	return r
+}
+
+func scaleCountRange(r [2]int, scale float64) [2]int {
+	lo, hi := scaleCount(r[0], scale), scaleCount(r[1], scale)
+	if hi < lo {
+		hi = lo
+	}
+	return [2]int{lo, hi}
+}
+
 // taxRateRef is what the rest of the tool needs to know about a tax rate it
 // created — the id to reference on a line item, and the percentage to
 // replicate the server's own totals math locally (see money.go).
@@ -168,7 +210,17 @@ type Seeder struct {
 	// placed against — see imports.go's maybeStartImport/maybeCreateImportLinkedPO.
 	currentImport *importRef
 
-	invoiceNum, orderNum, deliveryNum, poNum, inboundNum, incomingNum, importNum, productionOrderNum *numberer
+	// invoiceNum/incomingNum/importNum are the only document types this tool
+	// still numbers itself: CreateInvoice has no server-side auto-generation
+	// (invoice numbering is only wired through cash-sale creation and the
+	// frontend, not this endpoint — see masterdata.go's invoiceNumberFormat
+	// note), VendorInvoiceNumber is the vendor's own external reference (not
+	// a FaturaCloud-generated number), and Import has no document-number-
+	// settings entry at all. Orders/purchase orders/deliveries/inbound
+	// deliveries/production orders instead leave their number field empty so
+	// GenerateNextDocumentNumberTx applies the organization's own configured
+	// format (see sales.go/purchasing.go/production.go's create* functions).
+	invoiceNum, incomingNum, importNum *numberer
 
 	start time.Time
 	stats Stats
@@ -199,22 +251,16 @@ func NewSeeder(c *Client, cfg Config) *Seeder {
 		rng:      rng,
 		cfg:      cfg,
 		log:      log.New(log.Writer(), "", log.LstdFlags),
-		profile:  volumeProfiles[cfg.Volume],
+		profile:  scaleVolumeProfile(volumeProfiles[cfg.Volume], cfg.VolumeScale),
 		scenario: scn,
 		sched:    NewScheduler(),
 
-		invoiceNum:  newNumberer("INV"),
-		orderNum:    newNumberer("SO"),
-		deliveryNum: newNumberer("DN"),
-		poNum:       newNumberer("PO"),
-		inboundNum:  newNumberer("GR"),
+		invoiceNum:  newNumberer(orDefault(orgProfileFor(cfg.Country).invoiceNumberPrefix, "INV")),
 		incomingNum: newNumberer("BILL"),
 		importNum:   newNumberer("IMP"),
-
-		productionOrderNum: newNumberer("PRO"),
 	}
 	if scn.hasCashBookSales {
-		s.targetClientCount = rng.IntRange(400, 450)
+		s.targetClientCount = rng.IntRange(int(math.Round(400*cfg.VolumeScale)), int(math.Round(450*cfg.VolumeScale)))
 		s.usedCustomerPhones = make(map[string]bool)
 	}
 	return s
@@ -230,8 +276,8 @@ func (s *Seeder) Run() error {
 	startDate := s.cfg.EndDate.AddDate(0, -s.cfg.Months, 0)
 	s.start = startDate
 
-	s.log.Printf("seed-demo: range %s .. %s (%s profile, seed %d)",
-		startDate.Format("2006-01-02"), s.cfg.EndDate.Format("2006-01-02"), s.cfg.Volume, s.cfg.Seed)
+	s.log.Printf("seed-demo: range %s .. %s (%s profile x%.2f, seed %d)",
+		startDate.Format("2006-01-02"), s.cfg.EndDate.Format("2006-01-02"), s.cfg.Volume, s.cfg.VolumeScale, s.cfg.Seed)
 
 	if err := s.setupOrganization(); err != nil {
 		return fmt.Errorf("organization setup: %w", err)

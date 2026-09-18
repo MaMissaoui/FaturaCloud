@@ -33,7 +33,7 @@ type brandTier struct {
 }
 
 var majorApplianceTiers = []brandTier{
-	{"Economy", 0.85},
+	{"Économique", 0.85},
 	{"Standard", 1.0},
 	{"Premium", 1.3},
 }
@@ -60,37 +60,37 @@ type applianceCategory struct {
 // markup, not the value added by assembling parts into a finished good.
 var applianceCategories = []applianceCategory{
 	{
-		name: "Refrigerator", unit: "pcs", costFactorLo: 0.78, costFactorHi: 0.88, qtyLo: 1, qtyHi: 1,
+		name: "Réfrigérateur", unit: "pcs", costFactorLo: 0.78, costFactorHi: 0.88, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
-			{"Single-door 180L", 80000, 130000},
-			{"Single-door 250L", 130000, 190000},
-			{"Double-door 320L", 190000, 280000},
-			{"Double-door 420L", 280000, 380000},
+			{"1 porte 180L", 80000, 130000},
+			{"1 porte 250L", 130000, 190000},
+			{"2 portes 320L", 190000, 280000},
+			{"2 portes 420L", 280000, 380000},
 			{"Side-by-side 500L", 380000, 550000},
 		},
 	},
 	{
-		name: "Freezer", unit: "pcs", costFactorLo: 0.78, costFactorHi: 0.87, qtyLo: 1, qtyHi: 1,
+		name: "Congélateur", unit: "pcs", costFactorLo: 0.78, costFactorHi: 0.87, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
-			{"Chest freezer 100L", 60000, 95000},
-			{"Chest freezer 200L", 95000, 150000},
-			{"Upright freezer 250L", 150000, 220000},
+			{"Coffre 100L", 60000, 95000},
+			{"Coffre 200L", 95000, 150000},
+			{"Armoire 250L", 150000, 220000},
 		},
 	},
 	{
-		name: "Washing machine", unit: "pcs", costFactorLo: 0.76, costFactorHi: 0.86, qtyLo: 1, qtyHi: 1,
+		name: "Machine à laver", unit: "pcs", costFactorLo: 0.76, costFactorHi: 0.86, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
-			{"Top-load 6kg", 90000, 140000},
-			{"Top-load 8kg", 140000, 190000},
-			{"Front-load 7kg", 190000, 240000},
-			{"Front-load 9kg", 240000, 280000},
+			{"Ouverture dessus 6kg", 90000, 140000},
+			{"Ouverture dessus 8kg", 140000, 190000},
+			{"Hublot 7kg", 190000, 240000},
+			{"Hublot 9kg", 240000, 280000},
 		},
 	},
 	{
-		name: "Air conditioner", unit: "pcs", costFactorLo: 0.75, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
+		name: "Climatiseur", unit: "pcs", costFactorLo: 0.75, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
 			{"Split 9000 BTU", 120000, 170000},
@@ -100,135 +100,135 @@ var applianceCategories = []applianceCategory{
 		},
 	},
 	{
-		name: "Television", unit: "pcs", costFactorLo: 0.72, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
+		name: "Téléviseur", unit: "pcs", costFactorLo: 0.72, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
-			{`32" LED`, 50000, 90000},
-			{`43" LED`, 90000, 140000},
-			{`50" 4K`, 140000, 220000},
-			{`55" 4K`, 220000, 320000},
-			{`65" 4K`, 320000, 450000},
+			{`LED 32"`, 50000, 90000},
+			{`LED 43"`, 90000, 140000},
+			{`4K 50"`, 140000, 220000},
+			{`4K 55"`, 220000, 320000},
+			{`4K 65"`, 320000, 450000},
 		},
 	},
 	{
-		name: "Microwave oven", unit: "pcs", costFactorLo: 0.70, costFactorHi: 0.83, qtyLo: 1, qtyHi: 1,
+		name: "Four à micro-ondes", unit: "pcs", costFactorLo: 0.70, costFactorHi: 0.83, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
 			{"Solo 20L", 25000, 40000},
-			{"Grill 25L", 40000, 60000},
+			{"Gril 25L", 40000, 60000},
 			{"Convection 30L", 60000, 85000},
 		},
 	},
 	{
-		name: "Gas/electric cooker", unit: "pcs", costFactorLo: 0.74, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
+		name: "Cuisinière gaz/électrique", unit: "pcs", costFactorLo: 0.74, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
-			{"Gas cooker 4-burner", 60000, 95000},
-			{"Gas cooker 5-burner", 95000, 130000},
-			{"Electric cooker with oven", 130000, 180000},
+			{"Cuisinière gaz 4 feux", 60000, 95000},
+			{"Cuisinière gaz 5 feux", 95000, 130000},
+			{"Cuisinière électrique avec four", 130000, 180000},
 		},
 	},
 	{
-		name: "Water heater", unit: "pcs", costFactorLo: 0.74, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
+		name: "Chauffe-eau", unit: "pcs", costFactorLo: 0.74, costFactorHi: 0.85, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
-			{"Electric 30L", 25000, 40000},
-			{"Electric 50L", 40000, 60000},
-			{"Gas instant heater", 60000, 90000},
+			{"Électrique 30L", 25000, 40000},
+			{"Électrique 50L", 40000, 60000},
+			{"Chauffe-eau instantané au gaz", 60000, 90000},
 		},
 	},
 	{
-		name: "Dishwasher", unit: "pcs", costFactorLo: 0.76, costFactorHi: 0.86, qtyLo: 1, qtyHi: 1,
+		name: "Lave-vaisselle", unit: "pcs", costFactorLo: 0.76, costFactorHi: 0.86, qtyLo: 1, qtyHi: 1,
 		tiers: majorApplianceTiers,
 		variants: []applianceVariant{
-			{"Compact 6-place", 90000, 130000},
-			{"Standard 12-place", 130000, 180000},
+			{"Compact 6 couverts", 90000, 130000},
+			{"Standard 12 couverts", 130000, 180000},
 		},
 	},
 	{
-		name: "Blender", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.72, qtyLo: 1, qtyHi: 2,
+		name: "Mixeur", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.72, qtyLo: 1, qtyHi: 2,
 		variants: []applianceVariant{
-			{"Basic", 4000, 7000},
-			{"Mid-range", 7000, 12000},
-			{"High-power", 12000, 20000},
+			{"Basique", 4000, 7000},
+			{"Milieu de gamme", 7000, 12000},
+			{"Haute puissance", 12000, 20000},
 		},
 	},
 	{
-		name: "Electric kettle", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.70, qtyLo: 1, qtyHi: 3,
+		name: "Bouilloire électrique", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.70, qtyLo: 1, qtyHi: 3,
 		variants: []applianceVariant{
-			{"Basic 1.5L", 3000, 5000},
-			{"Cordless 1.7L", 5000, 8000},
+			{"Basique 1.5L", 3000, 5000},
+			{"Sans fil 1.7L", 5000, 8000},
 		},
 	},
 	{
-		name: "Toaster", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.70, qtyLo: 1, qtyHi: 2,
+		name: "Grille-pain", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.70, qtyLo: 1, qtyHi: 2,
 		variants: []applianceVariant{
-			{"2-slice", 3500, 6000},
-			{"4-slice", 6000, 10000},
+			{"2 tranches", 3500, 6000},
+			{"4 tranches", 6000, 10000},
 		},
 	},
 	{
-		name: "Coffee maker", unit: "pcs", costFactorLo: 0.58, costFactorHi: 0.73, qtyLo: 1, qtyHi: 2,
+		name: "Cafetière", unit: "pcs", costFactorLo: 0.58, costFactorHi: 0.73, qtyLo: 1, qtyHi: 2,
 		variants: []applianceVariant{
-			{"Filter, basic", 6000, 10000},
-			{"Filter, programmable", 10000, 16000},
-			{"Espresso machine", 16000, 30000},
+			{"Filtre, basique", 6000, 10000},
+			{"Filtre, programmable", 10000, 16000},
+			{"Machine à espresso", 16000, 30000},
 		},
 	},
 	{
-		name: "Food processor", unit: "pcs", costFactorLo: 0.58, costFactorHi: 0.74, qtyLo: 1, qtyHi: 1,
+		name: "Robot ménager", unit: "pcs", costFactorLo: 0.58, costFactorHi: 0.74, qtyLo: 1, qtyHi: 1,
 		variants: []applianceVariant{
 			{"Compact", 8000, 14000},
 			{"Standard", 14000, 24000},
-			{"Multi-function", 24000, 40000},
+			{"Multifonction", 24000, 40000},
 		},
 	},
 	{
-		name: "Stand mixer", unit: "pcs", costFactorLo: 0.60, costFactorHi: 0.75, qtyLo: 1, qtyHi: 1,
+		name: "Batteur", unit: "pcs", costFactorLo: 0.60, costFactorHi: 0.75, qtyLo: 1, qtyHi: 1,
 		variants: []applianceVariant{
-			{"Hand mixer", 6000, 11000},
-			{"Stand mixer, basic", 25000, 40000},
-			{"Stand mixer, premium", 40000, 70000},
+			{"Batteur à main", 6000, 11000},
+			{"Batteur sur socle, basique", 25000, 40000},
+			{"Batteur sur socle, premium", 40000, 70000},
 		},
 	},
 	{
-		name: "Juicer", unit: "pcs", costFactorLo: 0.58, costFactorHi: 0.73, qtyLo: 1, qtyHi: 1,
+		name: "Extracteur de jus", unit: "pcs", costFactorLo: 0.58, costFactorHi: 0.73, qtyLo: 1, qtyHi: 1,
 		variants: []applianceVariant{
-			{"Citrus press", 4000, 7000},
-			{"Centrifugal juicer", 10000, 18000},
-			{"Cold-press juicer", 18000, 35000},
+			{"Presse-agrumes", 4000, 7000},
+			{"Centrifugeuse", 10000, 18000},
+			{"Extracteur à froid", 18000, 35000},
 		},
 	},
 	{
-		name: "Fan", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.72, qtyLo: 1, qtyHi: 2,
+		name: "Ventilateur", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.72, qtyLo: 1, qtyHi: 2,
 		variants: []applianceVariant{
-			{"Table fan", 4000, 8000},
-			{"Standing fan", 8000, 15000},
-			{"Ceiling fan", 15000, 28000},
+			{"De table", 4000, 8000},
+			{"Sur pied", 8000, 15000},
+			{"Plafonnier", 15000, 28000},
 		},
 	},
 	{
-		name: "Vacuum cleaner", unit: "pcs", costFactorLo: 0.62, costFactorHi: 0.77, qtyLo: 1, qtyHi: 1,
+		name: "Aspirateur", unit: "pcs", costFactorLo: 0.62, costFactorHi: 0.77, qtyLo: 1, qtyHi: 1,
 		variants: []applianceVariant{
-			{"Bagged, basic", 15000, 25000},
-			{"Bagless, standard", 25000, 45000},
-			{"Cordless, cyclonic", 45000, 80000},
+			{"Avec sac, basique", 15000, 25000},
+			{"Sans sac, standard", 25000, 45000},
+			{"Sans fil, cyclonique", 45000, 80000},
 		},
 	},
 	{
-		name: "Iron", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.70, qtyLo: 1, qtyHi: 2,
+		name: "Fer à repasser", unit: "pcs", costFactorLo: 0.55, costFactorHi: 0.70, qtyLo: 1, qtyHi: 2,
 		variants: []applianceVariant{
-			{"Dry iron", 3000, 5000},
-			{"Steam iron", 5000, 9000},
-			{"Steam generator iron", 9000, 18000},
+			{"Fer sec", 3000, 5000},
+			{"Fer à vapeur", 5000, 9000},
+			{"Centrale vapeur", 9000, 18000},
 		},
 	},
 	{
-		name: "Water dispenser", unit: "pcs", costFactorLo: 0.65, costFactorHi: 0.80, qtyLo: 1, qtyHi: 1,
+		name: "Fontaine à eau", unit: "pcs", costFactorLo: 0.65, costFactorHi: 0.80, qtyLo: 1, qtyHi: 1,
 		variants: []applianceVariant{
-			{"Top-load, hot/cold", 15000, 25000},
-			{"Bottom-load, hot/cold", 25000, 40000},
-			{"With built-in fridge", 40000, 65000},
+			{"Bonbonne dessus, chaud/froid", 15000, 25000},
+			{"Bonbonne dessous, chaud/froid", 25000, 40000},
+			{"Avec réfrigérateur intégré", 40000, 65000},
 		},
 	},
 }
@@ -274,10 +274,10 @@ func buildApplianceCatalog() []productCatalogEntry {
 // against the "120-150 products" target (these are services, Type
 // "service", not stock-tracked products).
 var retailServiceCatalog = []productCatalogEntry{
-	{name: "Home delivery", priceCentsLo: 3000, priceCentsHi: 8000, qtyLo: 1, qtyHi: 1},
-	{name: "Installation service", priceCentsLo: 4000, priceCentsHi: 12000, qtyLo: 1, qtyHi: 1},
-	{name: "Extended warranty (1 year)", priceCentsLo: 5000, priceCentsHi: 20000, qtyLo: 1, qtyHi: 1},
-	{name: "Extended warranty (2 years)", priceCentsLo: 9000, priceCentsHi: 35000, qtyLo: 1, qtyHi: 1},
-	{name: "Repair / maintenance visit", priceCentsLo: 3000, priceCentsHi: 15000, qtyLo: 1, qtyHi: 1},
-	{name: "Old appliance disposal", priceCentsLo: 1500, priceCentsHi: 4000, qtyLo: 1, qtyHi: 1},
+	{name: "Livraison à domicile", priceCentsLo: 3000, priceCentsHi: 8000, qtyLo: 1, qtyHi: 1},
+	{name: "Service d'installation", priceCentsLo: 4000, priceCentsHi: 12000, qtyLo: 1, qtyHi: 1},
+	{name: "Extension de garantie (1 an)", priceCentsLo: 5000, priceCentsHi: 20000, qtyLo: 1, qtyHi: 1},
+	{name: "Extension de garantie (2 ans)", priceCentsLo: 9000, priceCentsHi: 35000, qtyLo: 1, qtyHi: 1},
+	{name: "Visite de réparation / entretien", priceCentsLo: 3000, priceCentsHi: 15000, qtyLo: 1, qtyHi: 1},
+	{name: "Enlèvement de l'ancien appareil", priceCentsLo: 1500, priceCentsHi: 4000, qtyLo: 1, qtyHi: 1},
 }
