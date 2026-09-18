@@ -59,6 +59,10 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `PUT /api/organizations/{orgId}/document-templates/{documentType}/orientation` — sets the org's page orientation for this document type
 - `DELETE /api/organizations/{orgId}/document-templates/{documentType}/orientation` — reverts to no override (the template's own authored page setup)
 
+**Mass Data (Excel download/upload for bulk maintenance) — Clients, Vendors, Products, Tax Rates, Payment Terms, Units of Measure, Chart of Accounts**
+- `GET /api/organizations/{orgId}/{clients|vendors|products|tax-rates|payment-terms|units-of-measure|accounts}/export` — org-member read, same level as that table's own list route; returns a real `.xlsx`
+- `POST /api/organizations/{orgId}/{...}/import` — multipart upload (`file` field), returns a JSON report (`{created, updated, failed, rows: [...]}`, never a 4xx for a bad row — see `db/mass_data.go`); role-gated identically to that table's own `PUT`/`DELETE` (`sales` for clients, `purchasing` for vendors, `accounting` for accounts; the rest are any org member) — the 3 role-gated import routes are in `domainRouteRoles`/`api/cross_org_test.go`'s tripwire alongside every other domain-role route
+
 **Products**
 - `GET /api/organizations/{orgId}/products/bom-summaries` — batch componentCount per finished product — see db/product_bom.go
 - `PUT /api/products/{id}` — body also takes unitOfMeasureId — when set, overwrites the legacy free-text unit field server-side with that unit of measure's name (db/product.go's resolveProductUnit), so every existing reader of unit keeps working unchanged

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Client } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Table, Row, Tag, Tooltip } from "antd";
+import { Button, Col, Space, Table, Row, Tag, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -15,7 +15,9 @@ import some from "lodash/some";
 import toString from "lodash/toString";
 
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
+import { organizationIdAtom } from "src/atoms/organization";
 import ClientForm from "src/components/clients/form";
+import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 import { formatAddressOneLine } from "src/utils/address";
 
@@ -27,6 +29,7 @@ const Clients = () => {
   const navigate = useNavigate();
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
+  const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useAtom(searchAtom);
   const [loading, setLoading] = useState(false);
 
@@ -59,11 +62,21 @@ const Clients = () => {
         title={<Trans>Clients</Trans>}
         search={{ placeholder: t`Search text`, onChange: setSearch }}
         actions={
-          <Link to="/clients" state={{ clientModal: true }}>
-            <Button type="primary" style={{ marginBottom: 10 }}>
-              <Trans>New client</Trans>
-            </Button>
-          </Link>
+          <Space wrap>
+            {organizationId && (
+              <MassDataExcelActions
+                organizationId={organizationId}
+                resource="clients"
+                filenamePrefix="clients"
+                onImported={() => setClients()}
+              />
+            )}
+            <Link to="/clients" state={{ clientModal: true }}>
+              <Button type="primary" style={{ marginBottom: 10 }}>
+                <Trans>New client</Trans>
+              </Button>
+            </Link>
+          </Space>
         }
       />
       <Row>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { UnitOfMeasure } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Table } from "antd";
+import { Button, Col, Row, Space, Table } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -9,7 +9,9 @@ import { useLingui } from "@lingui/react";
 import { CheckSquareOutlined, ColumnWidthOutlined } from "@ant-design/icons";
 
 import { unitsOfMeasureAtom, setUnitsOfMeasureAtom } from "src/atoms/unit-of-measure";
+import { organizationIdAtom } from "src/atoms/organization";
 import UnitOfMeasureForm from "src/components/units-of-measure/form";
+import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 
 function SettingsUnitsOfMeasure() {
@@ -19,6 +21,7 @@ function SettingsUnitsOfMeasure() {
 
   const unitsOfMeasure = useAtomValue(unitsOfMeasureAtom);
   const setUnitsOfMeasure = useSetAtom(setUnitsOfMeasureAtom);
+  const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -44,11 +47,21 @@ function SettingsUnitsOfMeasure() {
         title={<Trans>Units of measure</Trans>}
         search={{ placeholder: t`Search`, onChange: setSearch }}
         actions={
-          <Link to="/settings/units-of-measure" state={{ unitOfMeasureModal: true }}>
-            <Button type="primary">
-              <Trans>New unit of measure</Trans>
-            </Button>
-          </Link>
+          <Space wrap>
+            {organizationId && (
+              <MassDataExcelActions
+                organizationId={organizationId}
+                resource="units-of-measure"
+                filenamePrefix="units-of-measure"
+                onImported={() => setUnitsOfMeasure()}
+              />
+            )}
+            <Link to="/settings/units-of-measure" state={{ unitOfMeasureModal: true }}>
+              <Button type="primary">
+                <Trans>New unit of measure</Trans>
+              </Button>
+            </Link>
+          </Space>
         }
       />
 

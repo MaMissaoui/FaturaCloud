@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Account } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Table, Tag, Col, Row } from "antd";
+import { Button, Table, Tag, Col, Row, Space } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -13,7 +13,9 @@ import includes from "lodash/includes";
 import toLower from "lodash/toLower";
 
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
+import { organizationIdAtom } from "src/atoms/organization";
 import AccountForm from "src/components/accounting/account-form";
+import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 
 const searchAtom = atom<string>("");
@@ -49,6 +51,7 @@ const ChartOfAccounts = () => {
   const navigate = useNavigate();
   const accounts = useAtomValue(accountsAtom);
   const setAccounts = useSetAtom(setAccountsAtom);
+  const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useAtom(searchAtom);
   const [loading, setLoading] = useState(false);
 
@@ -70,11 +73,21 @@ const ChartOfAccounts = () => {
         title={<Trans>Chart of Accounts</Trans>}
         search={{ placeholder: t`Search text`, onChange: setSearch }}
         actions={
-          <Link to="/accounting/chart-of-accounts" state={{ accountModal: true }}>
-            <Button type="primary">
-              <Trans>New account</Trans>
-            </Button>
-          </Link>
+          <Space wrap>
+            {organizationId && (
+              <MassDataExcelActions
+                organizationId={organizationId}
+                resource="accounts"
+                filenamePrefix="chart-of-accounts"
+                onImported={() => setAccounts()}
+              />
+            )}
+            <Link to="/accounting/chart-of-accounts" state={{ accountModal: true }}>
+              <Button type="primary">
+                <Trans>New account</Trans>
+              </Button>
+            </Link>
+          </Space>
         }
       />
       <Row>

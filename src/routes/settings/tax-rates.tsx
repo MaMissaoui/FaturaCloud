@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { TaxRate } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Table } from "antd";
+import { Button, Col, Row, Space, Table } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { CalculatorOutlined, CheckSquareOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
@@ -14,6 +14,8 @@ import get from "lodash/get";
 import toString from "lodash/toString";
 
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
+import { organizationIdAtom } from "src/atoms/organization";
+import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 
 const searchAtom = atom<string>("");
@@ -25,6 +27,7 @@ function SettingsTaxRates() {
 
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
+  const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useAtom(searchAtom);
 
   useEffect(() => {
@@ -48,11 +51,21 @@ function SettingsTaxRates() {
         title={<Trans>Tax rates</Trans>}
         search={{ placeholder: t`Search`, onChange: setSearch }}
         actions={
-          <Link to="/settings/tax-rates/new">
-            <Button type="primary">
-              <Trans>New tax rate</Trans>
-            </Button>
-          </Link>
+          <Space wrap>
+            {organizationId && (
+              <MassDataExcelActions
+                organizationId={organizationId}
+                resource="tax-rates"
+                filenamePrefix="tax-rates"
+                onImported={() => setTaxRates()}
+              />
+            )}
+            <Link to="/settings/tax-rates/new">
+              <Button type="primary">
+                <Trans>New tax rate</Trans>
+              </Button>
+            </Link>
+          </Space>
         }
       />
 

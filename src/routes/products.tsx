@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, TaxRate } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Badge, Button, Col, Row, Select, Table, Tag, Tooltip } from "antd";
+import { Badge, Button, Col, Row, Select, Space, Table, Tag, Tooltip } from "antd";
 import type { TableProps } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -15,6 +15,7 @@ import { setProductsAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { GetProducts } from "src/api";
 import ProductForm from "src/components/products/form";
+import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 import { unitLabel } from "src/utils/units";
 
@@ -185,11 +186,21 @@ const Products = () => {
           },
         }}
         actions={
-          <Link to="/products" state={{ productModal: true }}>
-            <Button type="primary">
-              <Trans>New product</Trans>
-            </Button>
-          </Link>
+          <Space wrap>
+            {organizationId && (
+              <MassDataExcelActions
+                organizationId={organizationId}
+                resource="products"
+                filenamePrefix="products"
+                onImported={fetchProducts}
+              />
+            )}
+            <Link to="/products" state={{ productModal: true }}>
+              <Button type="primary">
+                <Trans>New product</Trans>
+              </Button>
+            </Link>
+          </Space>
         }
       />
       <Row style={{ marginTop: 16 }}>
