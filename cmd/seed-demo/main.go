@@ -81,7 +81,7 @@ func parseFlags() Config {
 	flag.StringVar(&volumeStr, "volume", "busy", `data volume profile: "small" or "busy" — ignored by --scenario retail, which sizes itself (see scenario.go's retailConfig)`)
 	flag.StringVar(&cfg.Scenario, "scenario", "moto", `business scenario: "moto" (a motorcycle assembler/manufacturer — the original scenario) or "retail" (a home-appliance retailer selling entirely through Cash Book counter sales — see scenario.go)`)
 	flag.BoolVar(&cfg.Reset, "reset", false, "if an organization named --org-name already exists, delete it first and recreate from scratch")
-	flag.BoolVar(&cfg.DryRun, "dry-run", false, "log the plan (day-by-day activity counts) without calling the API at all")
+	flag.BoolVar(&cfg.DryRun, "dry-run", false, "skip day-by-day document generation and just log the plan — still creates/reuses the real organization, master data, and fiscal years via the API (see README's dry-run note)")
 	flag.IntVar(&cfg.ProgressEvery, "progress-every", 20, "log a progress line every N simulated days (0 disables)")
 	flag.Parse()
 
