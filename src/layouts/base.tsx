@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Button, Divider, Dropdown, Layout, Menu, Select, Space, Row, Col, theme } from "antd";
+import {
+  Button,
+  Divider,
+  Dropdown,
+  Layout,
+  Menu,
+  Select,
+  Space,
+  Row,
+  Col,
+  theme,
+  Typography,
+} from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   MenuFoldOutlined,
@@ -90,7 +102,7 @@ export default function BaseLayout() {
   // Feedback modal state
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
 
-  // App version, shown next to the logo in the sidebar
+  // App version, shown next to the "Send feedback" icon in the header
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
     GetVersion()
@@ -390,19 +402,6 @@ export default function BaseLayout() {
             />
             {!siderIsCollapsed && <Wordmark fontSize={17} />}
           </Link>
-          {!siderIsCollapsed && version && (
-            <span
-              style={{
-                fontSize: 10,
-                opacity: 0.45,
-                letterSpacing: "0.02em",
-                flexShrink: 0,
-                marginLeft: 20,
-              }}
-            >
-              v{version}
-            </span>
-          )}
         </div>
         <Menu
           theme={themeMode}
@@ -826,6 +825,11 @@ export default function BaseLayout() {
             </Col>
             <Col>
               <Space>
+                {version && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    v{version}
+                  </Typography.Text>
+                )}
                 <Button
                   type="text"
                   icon={<CommentOutlined />}
