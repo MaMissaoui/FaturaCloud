@@ -55,7 +55,7 @@ func (s *Seeder) maybeStartImport(day time.Time) error {
 		Date:           midnightUTC(day),
 		FreightCost:    50000,
 		CustomsCost:    20000,
-		Notes:          strPtr("Consolidated component shipment"),
+		Notes:          strPtr("Expédition groupée de composants"),
 	}
 	var imp db.Import
 	if err := s.c.Post("/api/imports", req, &imp); err != nil {

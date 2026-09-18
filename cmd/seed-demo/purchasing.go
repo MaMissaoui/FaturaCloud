@@ -80,10 +80,10 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 	req := db.CreatePurchaseOrderRequest{
 		OrganizationID: s.orgID,
 		VendorID:       &vendor.id,
-		OrderNumber:    s.poNum.next(day.Year()),
-		Status:         "draft",
-		OrderDate:      midnightUTC(day),
-		LineItems:      reqLines,
+		// OrderNumber left empty — server-generated from document-number-settings ("purchase_order" type).
+		Status:    "draft",
+		OrderDate: midnightUTC(day),
+		LineItems: reqLines,
 	}
 	var po db.PurchaseOrder
 	if err := s.c.Post("/api/purchase-orders", req, &po); err != nil {
@@ -152,9 +152,9 @@ func (s *Seeder) receivePurchaseOrder(day time.Time, po db.PurchaseOrder, vendor
 		OrganizationID:  s.orgID,
 		PurchaseOrderID: &po.ID,
 		VendorID:        &vendor.id,
-		DeliveryNumber:  s.inboundNum.next(day.Year()),
-		DeliveryDate:    midnightUTC(day),
-		LineItems:       reqLines,
+		// DeliveryNumber left empty — server-generated from document-number-settings ("inbound_delivery" type).
+		DeliveryDate: midnightUTC(day),
+		LineItems:    reqLines,
 	}
 	// Every line of one PO shares the same currency/rate (set once, frozen,
 	// at PO creation — see purchaseLine's own comment), so reading it off
@@ -245,7 +245,7 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 	}
 	if variance {
 		req.MatchOverride = 1
-		req.MatchOverrideReason = strPtr("Seed data: accepted a routine PO/receipt variance from this vendor.")
+		req.MatchOverrideReason = strPtr("Données de démonstration : écart habituel commande/réception accepté pour ce fournisseur.")
 	}
 
 	var bill db.IncomingInvoice
@@ -338,13 +338,13 @@ func (s *Seeder) createImportLinkedPurchaseOrder(day time.Time, imp *importRef) 
 	req := db.CreatePurchaseOrderRequest{
 		OrganizationID: s.orgID,
 		VendorID:       &vendor.id,
-		OrderNumber:    s.poNum.next(day.Year()),
-		Status:         "draft",
-		OrderDate:      midnightUTC(day),
-		LineItems:      reqLines,
-		Currency:       strPtr(vendor.currency),
-		ExchangeRate:   float64Ptr(rate),
-		ImportID:       &imp.id,
+		// OrderNumber left empty — server-generated from document-number-settings ("purchase_order" type).
+		Status:       "draft",
+		OrderDate:    midnightUTC(day),
+		LineItems:    reqLines,
+		Currency:     strPtr(vendor.currency),
+		ExchangeRate: float64Ptr(rate),
+		ImportID:     &imp.id,
 	}
 	var po db.PurchaseOrder
 	if err := s.c.Post("/api/purchase-orders", req, &po); err != nil {

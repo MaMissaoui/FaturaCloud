@@ -50,17 +50,20 @@ type scenario struct {
 // for either scenario: retail's own scenario.vendors/purchaseOrdersPerWeek
 // when set, otherwise the small/busy volumeProfile every "moto" run has
 // always used. Centralized here rather than an "if scenario == retail" at
-// each call site (setupVendors, maybeStartPurchaseOrder).
+// each call site (setupVendors, maybeStartPurchaseOrder). s.profile is
+// already scaled by --volume-scale (NewSeeder); retail's own fixed
+// scenario.vendors/purchaseOrdersPerWeek are scaled here instead, the same
+// way, so --volume-scale reduces retail's master/transactional volume too.
 func (s *Seeder) vendorCount() int {
 	if s.scenario.vendors > 0 {
-		return s.scenario.vendors
+		return scaleCount(s.scenario.vendors, s.cfg.VolumeScale)
 	}
 	return s.profile.Vendors
 }
 
 func (s *Seeder) purchaseOrdersPerWeekRange() [2]int {
 	if s.scenario.purchaseOrdersPerWeek != [2]int{} {
-		return s.scenario.purchaseOrdersPerWeek
+		return scaleCountRange(s.scenario.purchaseOrdersPerWeek, s.cfg.VolumeScale)
 	}
 	return s.profile.PurchaseOrdersPerWeek
 }

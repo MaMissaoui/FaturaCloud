@@ -58,7 +58,7 @@ func (s *Seeder) maybeWithdrawFromRegister(day time.Time) error {
 		CounterAccountType: "bank",
 		CounterAccountID:   s.cashAccountID,
 		Amount:             amount,
-		Note:               strPtr("Weekly deposit to bank"),
+		Note:               strPtr("Dépôt hebdomadaire en banque"),
 	}
 	if err := s.c.Post("/api/cash-movements", req, nil); err != nil {
 		return fmt.Errorf("deposit to bank: %w", err)
@@ -72,7 +72,7 @@ func (s *Seeder) maybeWithdrawFromRegister(day time.Time) error {
 // attach a payment to — exactly the document-less case CreateCashMovement
 // exists for (see db/cash_movement.go's own doc comment).
 var pettyCashExpenseLabels = []string{
-	"Office supplies", "Cleaning supplies", "Minor repair", "Delivery driver fuel", "Packaging materials",
+	"Fournitures de bureau", "Produits d'entretien", "Petite réparation", "Carburant du livreur", "Matériel d'emballage",
 }
 
 // maybeRecordPettyCashExpense fires roughly once a month (a flat ~1/20

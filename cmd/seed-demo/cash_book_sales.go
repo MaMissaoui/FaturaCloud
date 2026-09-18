@@ -24,7 +24,8 @@ const newCustomerProbability = 0.35
 // weighting.
 func (s *Seeder) generateCashBookSalesForDay(day time.Time) error {
 	lo, hi := cashBookSalesRangeFor(day.Weekday())
-	count := s.rng.IntRange(lo, hi)
+	scaled := scaleCountRange([2]int{lo, hi}, s.cfg.VolumeScale)
+	count := s.rng.IntRange(scaled[0], scaled[1])
 	for i := 0; i < count; i++ {
 		if err := s.createCashBookSale(day); err != nil {
 			return err

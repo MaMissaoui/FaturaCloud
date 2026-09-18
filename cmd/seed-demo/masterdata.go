@@ -22,6 +22,37 @@ type orgProfile struct {
 	vatin, bankName, iban       string
 	dueDays                     int64
 	outputTaxCode, inputTaxCode string
+	// invoiceNumberFormat overrides the default "INV-{year}-{number}" (see
+	// setupOrganization) — "" means use the default. Invoice numbering has
+	// no {number:N} padding token (unlike documentNumberFormats below): the
+	// server's own validateInvoiceNumberFormat (db/organization.go) doesn't
+	// recognize it.
+	invoiceNumberFormat string
+	// invoiceNumberPrefix is the prefix seeder.go's local invoiceNum
+	// numberer uses ("" means "INV") — kept in sync with invoiceNumberFormat
+	// by hand, since CreateInvoice (unlike CreateOrder/CreatePurchaseOrder/…)
+	// has no server-side auto-generation to defer to: it inserts req.Number
+	// literally, so this tool must still number invoices itself, and the
+	// prefix it uses should visibly match what the org's own
+	// invoiceNumberFormat setting says.
+	invoiceNumberPrefix string
+	// documentNumberFormats overrides db/document_number.go's
+	// documentNumberDefaults for this country, keyed by documentType ("order",
+	// "purchase_order", "delivery", "inbound_delivery", "production_order") —
+	// nil means every type keeps the server's own default. Set via
+	// setupDocumentNumberSettings (PUT .../document-number-settings/{type})
+	// right after the organization exists, since (unlike invoiceNumberFormat)
+	// this isn't a CreateOrganizationRequest field.
+	documentNumberFormats map[string]string
+	// paymentTermsFormat is a fmt.Sprintf verb taking dueDays, used as the
+	// invoice's own free-text PaymentTerms line (sales.go's
+	// createDirectInvoice/createInvoiceForOrder) — "" means the default
+	// "Net %d days".
+	paymentTermsFormat string
+	// taxRateStandardName/taxRateReducedName/taxRateZeroName override
+	// setupTaxRates' default English names ("Standard rate", "Reduced rate",
+	// "Zero-rated") — "" means keep the default for that one rate.
+	taxRateStandardName, taxRateReducedName, taxRateZeroName string
 }
 
 // orgProfiles has one entry per --country this tool has been taught real
@@ -52,6 +83,20 @@ var orgProfiles = map[string]orgProfile{
 		vatin: "0987654X/A/M/000", bankName: "Banque Démo Tunisie", iban: "TN5904018104004942711234",
 		dueDays:       30,
 		outputTaxCode: "2200", inputTaxCode: "1200", // no Tunisia-specific chart template yet — falls back to db/account.go's defaultChartOfAccounts
+		// French/Tunisian document-numbering conventions (Facture, Commande,
+		// Bon de Commande, Bon de Livraison, Bon de Réception, Ordre de
+		// Fabrication) instead of the tool's English defaults — see
+		// setupOrganization/setupDocumentNumberSettings below.
+		invoiceNumberFormat: "FAC-{year}-{number}", invoiceNumberPrefix: "FAC",
+		documentNumberFormats: map[string]string{
+			"order":            "CMD-{year}-{number:3}",
+			"purchase_order":   "BC-{year}-{number:4}",
+			"delivery":         "BL-{year}-{number:4}",
+			"inbound_delivery": "BR-{year}-{number:4}",
+			"production_order": "OF-{year}-{number:4}",
+		},
+		paymentTermsFormat:  "Paiement à %d jours",
+		taxRateStandardName: "Taux normal", taxRateReducedName: "Taux réduit", taxRateZeroName: "Taux zéro",
 	},
 }
 
@@ -123,8 +168,9 @@ func (s *Seeder) setupOrganization() error {
 		// {year}/{number} are the real generator's tokens (src/utils/invoice.ts,
 		// db/cash_sale.go's Go port) — {YYYY}/{NNNN} aren't recognized and
 		// used to render as a literal, unsubstituted invoice number on every
-		// document this tool created.
-		InvoiceNumberFormat: strPtr("INV-{year}-{number}"),
+		// document this tool created. p.invoiceNumberFormat overrides this
+		// per-country (e.g. Tunisia's "FAC-{year}-{number}").
+		InvoiceNumberFormat: strPtr(orDefault(p.invoiceNumberFormat, "INV-{year}-{number}")),
 	}
 
 	var org db.Organization
@@ -132,6 +178,9 @@ func (s *Seeder) setupOrganization() error {
 		return fmt.Errorf("create organization: %w", err)
 	}
 	s.orgID = org.ID
+	if err := s.setupDocumentNumberSettings(); err != nil {
+		return fmt.Errorf("document number settings: %w", err)
+	}
 	if org.DefaultCashAccountID == nil {
 		return fmt.Errorf("newly created organization has no default cash account — cannot record payments")
 	}
@@ -160,6 +209,32 @@ func (s *Seeder) setupOrganization() error {
 	}
 	s.log.Printf("seed-demo: organization %q ready (%s)", s.cfg.OrgName, s.orgID)
 	return nil
+}
+
+// setupDocumentNumberSettings applies s.orgProfile.documentNumberFormats (if
+// any) via PUT .../document-number-settings/{documentType} — one call per
+// overridden type, right after the organization exists. A country with no
+// override (documentNumberFormats == nil, e.g. Germany/generic) leaves every
+// type on the server's own default (db/document_number.go's
+// documentNumberDefaults), unchanged from before this existed.
+func (s *Seeder) setupDocumentNumberSettings() error {
+	for documentType, format := range s.orgProfile.documentNumberFormats {
+		req := db.UpdateDocumentNumberSettingRequest{Format: format}
+		if err := s.c.Put("/api/organizations/"+s.orgID+"/document-number-settings/"+documentType, req, nil); err != nil {
+			return fmt.Errorf("%s number format %q: %w", documentType, format, err)
+		}
+	}
+	return nil
+}
+
+// orDefault returns v, or fallback if v is "" — the same "absence over a
+// false claim" convention nonEmptyStrPtr uses just below, for a plain string
+// value rather than a *string field.
+func orDefault(v, fallback string) string {
+	if v == "" {
+		return fallback
+	}
+	return v
 }
 
 // setupCashRegisterAccount wires organizations.defaultCashRegisterAccountId
@@ -277,13 +352,13 @@ func (s *Seeder) setupTaxRates() error {
 	}
 
 	var err error
-	if s.standardTax, err = create("Standard rate", 19, true, "S"); err != nil {
+	if s.standardTax, err = create(orDefault(s.orgProfile.taxRateStandardName, "Standard rate"), 19, true, "S"); err != nil {
 		return err
 	}
-	if s.reducedTax, err = create("Reduced rate", 7, false, "S"); err != nil {
+	if s.reducedTax, err = create(orDefault(s.orgProfile.taxRateReducedName, "Reduced rate"), 7, false, "S"); err != nil {
 		return err
 	}
-	if s.zeroTax, err = create("Zero-rated", 0, false, "Z"); err != nil {
+	if s.zeroTax, err = create(orDefault(s.orgProfile.taxRateZeroName, "Zero-rated"), 0, false, "Z"); err != nil {
 		return err
 	}
 	return nil
@@ -408,8 +483,8 @@ func (s *Seeder) setupProducts() error {
 	// on the products.sku UNIQUE(organizationId, sku) constraint —
 	// slugPrefix truncates to 8 characters, so every displacement variant
 	// of a componentTemplate/motorcycle model line (catalog.go) shares one
-	// prefix (e.g. "Radiator (50cc)".."Radiator (650cc)" all slug to
-	// "radiator"), and with 300+ products drawn from a 9000-value space per
+	// prefix (e.g. "Radiateur (50cc)".."Radiateur (650cc)" all slug to
+	// "radiateu"), and with 300+ products drawn from a 9000-value space per
 	// prefix group, an unretried collision became likely rather than rare
 	// once the catalog grew from ~34 to 310 entries.
 	usedSKUs := make(map[string]bool, len(s.scenario.serviceCatalog)+len(s.scenario.productCatalog))
