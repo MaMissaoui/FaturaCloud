@@ -827,7 +827,7 @@ export default function BaseLayout() {
               <Space>
                 {version && (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    v{version}
+                    {version}
                   </Typography.Text>
                 )}
                 <Button
