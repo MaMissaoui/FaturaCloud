@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.26.0] - 2026-09-18
+
+### Added
+- The Cash Book screen's customer search and "New customer" action moved
+  into the page header, next to the title, instead of a separate block
+  below it.
+- The Cash Book screen can now export the daily register and the loan
+  status list to Excel or PDF, and the loan status list can be filtered
+  to open (outstanding) loans only.
+- Orders, Purchase Orders, Outbound/Inbound Deliveries, and Production
+  Orders each get their own configurable number format and counter,
+  editable from a new Settings → Document Numbering page — previously
+  only Invoices had this, and the other five types had a hardcoded
+  prefix with no way to change it. Number formats can now also express
+  a zero-padded width (`{number:4}` → `0007`), and every type's number
+  is generated from a persisted counter instead of scanning existing
+  documents, so a deleted document's number is never reissued.
+
+### Changed
+- Currency and decimal places are now edited only from the Organization
+  screen. They used to also appear on Settings → Invoice, writing to the
+  exact same organization-level fields — confusing, not a second setting.
+
+### Fixed
+- Thousands separators could render as invisible in red/colored amounts
+  (e.g. overdue balances), making a grouped number look ungrouped (a
+  browser rendering quirk with the narrow space some locales use as a
+  separator, not a data or calculation issue). Every money display in
+  the app now goes through one shared formatter that avoids it.
+
 ## [3.25.1] - 2026-09-18
 
 ### Fixed
