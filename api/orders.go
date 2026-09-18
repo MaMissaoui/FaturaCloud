@@ -17,6 +17,11 @@ func (h *handler) listOrders(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, orders)
 }
 
+func (h *handler) nextOrderNumber(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	writeJSON(w, http.StatusOK, map[string]string{"number": h.db.NextOrderNumber(orgID)})
+}
+
 func (h *handler) getOrder(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	order, err := h.db.GetOrder(id)

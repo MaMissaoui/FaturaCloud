@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -205,6 +206,18 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 		return nil, fmt.Errorf("create_delivery begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Always advances document_number_settings' persisted counter for this
+	// org+type by one, regardless of whether DeliveryNumber ends up storing
+	// the generated value or one the client edited (see
+	// db/document_number.go's doc comment).
+	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "delivery", time.UnixMilli(req.DeliveryDate), "")
+	if err != nil {
+		return nil, err
+	}
+	if req.DeliveryNumber == "" {
+		req.DeliveryNumber = generatedNumber
+	}
 
 	_, err = tx.Exec(`
 		INSERT INTO outbound_deliveries
@@ -771,17 +784,14 @@ func replaceDeliveryLineItemsTx(exec sqlGetExecer, organizationID, deliveryID st
 	return nil
 }
 
-// NextDeliveryNumber proposes the next "DEL-%04d" number for an organization,
-// continuing from the highest number in use rather than COUNT(*)+1 — the
-// latter reissues an already-used number as soon as any delivery is deleted,
-// since deliveryNumber has no UNIQUE constraint to catch the collision.
+// NextDeliveryNumber proposes the next number for an organization,
+// formatted from its configured document_number_settings format (or the
+// "DEL-%04d"-equivalent default) and its persisted counter + 1 — see
+// db/document_number.go. Read-only; does not consume the number.
 func (d *Database) NextDeliveryNumber(organizationID string) string {
-	var maxNumber sql.NullInt64
-	_ = d.DB.Get(&maxNumber, `
-		SELECT MAX(CAST(SUBSTR(deliveryNumber, 5) AS INTEGER))
-		FROM outbound_deliveries
-		WHERE organizationId = ? AND deliveryNumber LIKE 'DEL-%'`,
-		organizationID,
-	)
-	return fmt.Sprintf("DEL-%04d", maxNumber.Int64+1)
+	number, err := d.PreviewNextDocumentNumber(organizationID, "delivery")
+	if err != nil {
+		return ""
+	}
+	return number
 }

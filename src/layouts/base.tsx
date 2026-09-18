@@ -61,6 +61,7 @@ import {
   BarChartOutlined,
   FileExcelOutlined,
   ContainerOutlined,
+  OrderedListOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -283,6 +284,15 @@ export default function BaseLayout() {
         </Link>
       ),
       key: "settings.document-templates",
+    },
+    {
+      icon: <OrderedListOutlined />,
+      label: (
+        <Link to="/settings/document-numbering">
+          <Trans>Document Numbering</Trans>
+        </Link>
+      ),
+      key: "settings.document-numbering",
     },
     ...(isPlatformAdmin
       ? [

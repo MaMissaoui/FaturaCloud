@@ -2698,6 +2698,14 @@ func TestDeleteReceivedPurchaseOrderIsRejected(t *testing.T) {
 // NextPurchaseOrderNumber must continue from the highest number in use, not
 // COUNT(*)+1 — the latter reissues a number as soon as one is deleted. The
 // SUBSTR offset is prefix-length-sensitive ("PO-" is 3 chars, unlike "DEL-").
+// NextPurchaseOrderNumber is now backed by a persisted counter
+// (document_number_settings, db/document_number.go) rather than a live
+// MAX(...)+1 scan of stored order numbers — the counter advances once per
+// CreatePurchaseOrder call regardless of what number string the client
+// actually saves, so a manually-edited number no longer influences later
+// proposals, and deleting an order doesn't reissue a number either (for a
+// different reason than before: the counter simply never depends on live
+// data).
 func TestNextPurchaseOrderNumber(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
@@ -2707,27 +2715,27 @@ func TestNextPurchaseOrderNumber(t *testing.T) {
 		t.Fatalf("first number: got %q, want PO-0001", got)
 	}
 
+	var lastID string
 	for _, num := range []string{"PO-0001", "PO-0002", "PO-0007"} {
-		if _, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		created, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
 			OrganizationID: org.ID, OrderNumber: num, OrderDate: 1700000000000,
-		}); err != nil {
+		})
+		if err != nil {
 			t.Fatalf("CreatePurchaseOrder %s: %v", num, err)
 		}
+		lastID = created.ID
 	}
-	if got := d.NextPurchaseOrderNumber(org.ID); got != "PO-0008" {
-		t.Fatalf("after PO-0007: got %q, want PO-0008 (SUBSTR offset likely wrong)", got)
+	if got := d.NextPurchaseOrderNumber(org.ID); got != "PO-0004" {
+		t.Fatalf("after 3 creates: got %q, want PO-0004 (counter should be 3, independent of the stored number strings)", got)
 	}
 
-	// Deleting the highest must not reissue a number already used by a live row.
-	var id string
-	if err := d.DB.Get(&id, `SELECT id FROM purchase_orders WHERE orderNumber = 'PO-0002'`); err != nil {
-		t.Fatalf("lookup: %v", err)
-	}
-	if _, err := d.DeletePurchaseOrder(id); err != nil {
+	// Deleting an order must not roll the counter back — it never depended
+	// on live data in the first place.
+	if _, err := d.DeletePurchaseOrder(lastID); err != nil {
 		t.Fatalf("DeletePurchaseOrder: %v", err)
 	}
-	if got := d.NextPurchaseOrderNumber(org.ID); got != "PO-0008" {
-		t.Fatalf("after deleting a middle order: got %q, want PO-0008", got)
+	if got := d.NextPurchaseOrderNumber(org.ID); got != "PO-0004" {
+		t.Fatalf("after deleting an order: got %q, want PO-0004 (counter is unaffected by deletes)", got)
 	}
 }
 

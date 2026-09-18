@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -300,6 +301,22 @@ func (d *Database) checkOrderFKOwnership(organizationID string, clientID *string
 	return nil
 }
 
+// NextOrderNumber proposes the next number for an organization, formatted
+// from its configured document_number_settings format (or the
+// "ORD-%03d"-equivalent default) and its persisted counter + 1 — see
+// db/document_number.go. Read-only; does not consume the number. Unlike the
+// other four document types, this had no server-side equivalent at all
+// before — the frontend's nextOrderNumberAtom used to scan whatever orders
+// were already loaded into ordersAtom, which silently proposed a stale or
+// wrong number under pagination or filtering.
+func (d *Database) NextOrderNumber(organizationID string) string {
+	number, err := d.PreviewNextDocumentNumber(organizationID, "order")
+	if err != nil {
+		return ""
+	}
+	return number
+}
+
 func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	// F94: an empty-string optional FK id means "unset"; normalize it to
 	// nil before the guard and the INSERT both see it (db/optional_id.go).
@@ -334,6 +351,20 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 		return nil, fmt.Errorf("create_order begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Always advances document_number_settings' persisted counter for this
+	// org+type by one, regardless of whether OrderNumber ends up storing the
+	// generated value or one the client edited (see
+	// db/document_number.go's doc comment). Replaces the old client-side-only
+	// nextOrderNumberAtom, which scanned whatever orders happened to already
+	// be loaded in the browser — fragile under pagination/filtering.
+	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "order", time.UnixMilli(req.OrderDate), "")
+	if err != nil {
+		return nil, err
+	}
+	if req.OrderNumber == "" {
+		req.OrderNumber = generatedNumber
+	}
 
 	_, err = tx.Exec(`
 		INSERT INTO orders (id, organizationId, clientId, orderNumber, status, orderDate, deliveryDate,

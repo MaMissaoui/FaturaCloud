@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -183,23 +184,16 @@ func (d *Database) GetPurchaseOrderLineItems(orderID string) ([]PurchaseOrderLin
 	return items, nil
 }
 
-// NextPurchaseOrderNumber proposes the next "PO-%04d" number for an
-// organization, continuing from the highest number in use rather than
-// COUNT(*)+1 — the latter reissues an already-used number as soon as any order
-// is deleted, since orderNumber has no UNIQUE constraint to catch the
-// collision.
-//
-// SUBSTR starts at 4 because the prefix "PO-" is three characters; the
-// equivalent for deliveries uses 5 for "DEL-".
+// NextPurchaseOrderNumber proposes the next number for an organization,
+// formatted from its configured document_number_settings format (or the
+// "PO-%04d"-equivalent default) and its persisted counter + 1 — see
+// db/document_number.go. Read-only; does not consume the number.
 func (d *Database) NextPurchaseOrderNumber(organizationID string) string {
-	var maxNumber sql.NullInt64
-	_ = d.DB.Get(&maxNumber, `
-		SELECT MAX(CAST(SUBSTR(orderNumber, 4) AS INTEGER))
-		FROM purchase_orders
-		WHERE organizationId = ? AND orderNumber LIKE 'PO-%'`,
-		organizationID,
-	)
-	return fmt.Sprintf("PO-%04d", maxNumber.Int64+1)
+	number, err := d.PreviewNextDocumentNumber(organizationID, "purchase_order")
+	if err != nil {
+		return ""
+	}
+	return number
 }
 
 // checkPurchaseOrderFKOwnership validates that vendorId/importId (if set)
@@ -283,6 +277,19 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 		return nil, fmt.Errorf("create_purchase_order begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Always advances document_number_settings' persisted counter for this
+	// org+type by one, regardless of whether OrderNumber ends up storing the
+	// generated value or one the client edited — the same unconditional
+	// advance CreateInvoice already does for invoice_number_counter (see
+	// db/document_number.go's doc comment).
+	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "purchase_order", time.UnixMilli(req.OrderDate), "")
+	if err != nil {
+		return nil, err
+	}
+	if req.OrderNumber == "" {
+		req.OrderNumber = generatedNumber
+	}
 
 	_, err = tx.Exec(`
 		INSERT INTO purchase_orders (id, organizationId, vendorId, orderNumber, status, orderDate,

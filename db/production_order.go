@@ -1,12 +1,12 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"math"
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -126,19 +126,16 @@ func (d *Database) GetProductionOrderComponentLines(productionOrderID string) ([
 	return lines, nil
 }
 
-// NextProductionOrderNumber proposes the next "PRO-%04d" number, continuing
-// from the highest in use rather than COUNT(*)+1 — same shape as
-// NextPurchaseOrderNumber. SUBSTR starts at 5 because the prefix "PRO-" is
-// four characters.
+// NextProductionOrderNumber proposes the next number for an organization,
+// formatted from its configured document_number_settings format (or the
+// "PRO-%04d"-equivalent default) and its persisted counter + 1 — see
+// db/document_number.go. Read-only; does not consume the number.
 func (d *Database) NextProductionOrderNumber(organizationID string) string {
-	var maxNumber sql.NullInt64
-	_ = d.DB.Get(&maxNumber, `
-		SELECT MAX(CAST(SUBSTR(orderNumber, 5) AS INTEGER))
-		FROM production_orders
-		WHERE organizationId = ? AND orderNumber LIKE 'PRO-%'`,
-		organizationID,
-	)
-	return fmt.Sprintf("PRO-%04d", maxNumber.Int64+1)
+	number, err := d.PreviewNextDocumentNumber(organizationID, "production_order")
+	if err != nil {
+		return ""
+	}
+	return number
 }
 
 // CreateProductionOrder snapshots the finished product's current BOM
@@ -253,6 +250,18 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 		return nil, fmt.Errorf("create_production_order begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Always advances document_number_settings' persisted counter for this
+	// org+type by one, regardless of whether OrderNumber ends up storing the
+	// generated value or one the client edited (see
+	// db/document_number.go's doc comment).
+	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "production_order", time.UnixMilli(req.Date), "")
+	if err != nil {
+		return nil, err
+	}
+	if req.OrderNumber == "" {
+		req.OrderNumber = generatedNumber
+	}
 
 	if _, err := tx.Exec(`
 		INSERT INTO production_orders

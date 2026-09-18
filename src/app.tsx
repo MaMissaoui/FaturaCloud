@@ -76,6 +76,7 @@ const SettingsUsers = lazy(() => import("src/routes/settings/users"));
 const SettingsCountries = lazy(() => import("src/routes/settings/countries"));
 const SettingsGLExport = lazy(() => import("src/routes/settings/gl-export"));
 const SettingsDocumentTemplates = lazy(() => import("src/routes/settings/document-templates"));
+const SettingsDocumentNumbering = lazy(() => import("src/routes/settings/document-numbering"));
 const NewOrganization = lazy(() => import("src/routes/organizations/new"));
 const TaxRateForm = lazy(() => import("src/components/tax-rates/form.tsx"));
 const ChartOfAccounts = lazy(() => import("src/routes/accounting/chart-of-accounts"));
@@ -351,6 +352,7 @@ const AppContent = () => {
                     <Route path="payment-terms" element={<SettingsPaymentTerms />} />
                     <Route path="units-of-measure" element={<SettingsUnitsOfMeasure />} />
                     <Route path="document-templates" element={<SettingsDocumentTemplates />} />
+                    <Route path="document-numbering" element={<SettingsDocumentNumbering />} />
                     <Route path="backup" element={<SettingsBackup />} />
                     <Route path="users" element={<SettingsUsers />} />
                     <Route path="countries" element={<SettingsCountries />} />

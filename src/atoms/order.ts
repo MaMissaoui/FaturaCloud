@@ -14,6 +14,7 @@ import reject from "lodash/reject";
 
 import {
   GetOrders,
+  GetNextOrderNumber,
   GetOrder,
   GetOrderLineItems,
   CreateOrder,
@@ -38,16 +39,19 @@ export const setOrdersAtom = atom(null, async (get, set) => {
   }
 });
 
-// Next suggested order number (derived from the loaded list)
-export const nextOrderNumberAtom = atom((get) => {
-  const orders = get(ordersAtom);
-  if (orders.length === 0) return "ORD-001";
-  const max = orders.reduce((acc, o) => {
-    const m = String(o.orderNumber ?? "").match(/(\d+)$/);
-    const n = m ? parseInt(m[1], 10) : 0;
-    return n > acc ? n : acc;
-  }, 0);
-  return `ORD-${String(max + 1).padStart(3, "0")}`;
+// Next suggested number comes from the server (a persisted counter, not a
+// MAX-based scan like purchase orders/deliveries) — replaces the old
+// client-side scan of the loaded list, which was fragile under pagination
+// or filtering (it only ever saw whatever page of orders happened to be
+// loaded into ordersAtom).
+export const nextOrderNumberAtom = atom(async (get) => {
+  const organizationId = get(organizationIdAtom);
+  if (!organizationId) return "ORD-001";
+  try {
+    return await GetNextOrderNumber(organizationId);
+  } catch {
+    return "ORD-001";
+  }
 });
 
 // The order form edits dates as dayjs objects (converted to unix-ms on
