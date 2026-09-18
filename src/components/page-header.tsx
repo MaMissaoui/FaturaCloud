@@ -10,6 +10,7 @@ export interface PageHeaderSearchProps {
   placeholder: string;
   allowClear?: boolean;
   onClear?: () => void;
+  autoFocus?: boolean;
 }
 
 interface PageHeaderProps {
@@ -42,6 +43,7 @@ const PageHeader = ({ icon, title, search, extra, actions, style }: PageHeaderPr
             onSearch={search.onSearch}
             allowClear={search.allowClear}
             onClear={search.onClear}
+            autoFocus={search.autoFocus}
           />
         )}
         {actions}

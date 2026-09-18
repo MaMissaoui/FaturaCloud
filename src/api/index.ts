@@ -555,6 +555,40 @@ export const ExportInboundDeliveryDocument = (id: string, format: "xlsx" | "pdf"
     `goods-receipt-${id}.${format}`,
   );
 
+// Exports the Cash Book screen's daily register panel (opening/in/out/
+// closing plus the per-transaction detail table for one UTC day) — see
+// db/report_export.go. dateMs is the same UTC-day-start value the screen
+// itself already computes (utcDayMs in src/routes/cash-book.tsx).
+export const ExportDailyCashMovements = (
+  organizationId: string,
+  accountId: string,
+  dateMs: number,
+  format: "xlsx" | "pdf",
+) =>
+  downloadDocumentExport(
+    `/api/organizations/${organizationId}/reports/daily-cash-movements/export?accountId=${accountId}&date=${dateMs}&format=${format}`,
+    `daily-cash-movements.${format}`,
+  );
+
+// Exports the Cash Book screen's loan status table — see
+// db/report_export.go. clientId mirrors the screen's own customer filter
+// (omit for every customer); openOnly has no on-screen query-param
+// equivalent (the screen filters client-side).
+export const ExportLoanStatus = (
+  organizationId: string,
+  format: "xlsx" | "pdf",
+  clientId?: string,
+  openOnly?: boolean,
+) => {
+  const params = new URLSearchParams({ format });
+  if (clientId) params.set("clientId", clientId);
+  if (openOnly) params.set("openOnly", "true");
+  return downloadDocumentExport(
+    `/api/organizations/${organizationId}/reports/loan-status/export?${params.toString()}`,
+    `loan-status.${format}`,
+  );
+};
+
 // ---- Tax Rates ----
 
 export const GetTaxRates = (organizationId: string) =>
