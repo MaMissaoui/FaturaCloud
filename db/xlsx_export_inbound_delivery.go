@@ -30,7 +30,7 @@ func FillInboundDeliveryTemplate(
 	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
-		lineRows[i] = buildInboundDeliveryLineItemPlaceholders(li, currency, org.MinimumFractionDigits)
+		lineRows[i] = buildInboundDeliveryLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode)
 	}
 	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
@@ -115,7 +115,7 @@ func buildInboundDeliveryScalarPlaceholders(delivery InboundDelivery, org Organi
 // received value is useful on the printed receipt) but there is
 // deliberately no lineItems.taxRate — a receipt's cost has no tax rate of
 // its own, unlike a bill.
-func buildInboundDeliveryLineItemPlaceholders(li InboundDeliveryLineItem, currency string, minimumFractionDigits *int64) map[string]string {
+func buildInboundDeliveryLineItemPlaceholders(li InboundDeliveryLineItem, currency string, minimumFractionDigits *int64, countryCode *string) map[string]string {
 	var unitCost int64
 	if li.UnitCost != nil {
 		unitCost = *li.UnitCost
@@ -126,7 +126,7 @@ func buildInboundDeliveryLineItemPlaceholders(li InboundDeliveryLineItem, curren
 		"lineItems.description": li.Description,
 		"lineItems.quantity":    formatQuantity(li.Quantity),
 		"lineItems.unit":        derefString(li.Unit),
-		"lineItems.unitCost":    formatMoneyCents(unitCost, currency, minimumFractionDigits),
-		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits),
+		"lineItems.unitCost":    formatMoneyCents(unitCost, currency, minimumFractionDigits, countryCode),
+		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits, countryCode),
 	}
 }

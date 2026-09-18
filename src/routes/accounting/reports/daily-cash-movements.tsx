@@ -12,6 +12,7 @@ import { GetAccounts, GetDailyCashMovements } from "src/api";
 import type { DailyCashMovementRow } from "src/api";
 import type { Account } from "src/types/models";
 import PageHeader from "src/components/page-header";
+import { numberFormatLocale } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 
 const { RangePicker } = DatePicker;
@@ -71,7 +72,7 @@ const DailyCashMovements = () => {
   }, [organizationId, accountId, range]);
 
   const money = (cents: number) =>
-    Intl.NumberFormat(i18n.locale, {
+    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
       style: "currency",
       currency: organization?.currency ?? "EUR",
       minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,

@@ -72,6 +72,7 @@ import {
   netFromGross,
   unitsToCents,
 } from "src/utils/currency";
+import { numberFormatLocale } from "src/utils/currencies";
 import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
 
 const { Option } = Select;
@@ -451,7 +452,8 @@ const CashBook = () => {
   }, [total, saleMode, amountReceivedTouched, form]);
 
   const currency = organization?.currency || "EUR";
-  const money = (cents: number) => formatCents(cents, currency, i18n.locale);
+  const money = (cents: number) =>
+    formatCents(cents, currency, numberFormatLocale(organization?.country_code) ?? i18n.locale);
 
   const handleSubmitSale = async (values: any) => {
     if (!organizationId || !isToday) return;
@@ -1183,6 +1185,7 @@ const CashBook = () => {
             undefined
           }
           minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
+          countryCode={organization?.country_code}
         />
       )}
     </div>

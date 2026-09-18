@@ -35,7 +35,7 @@ func FillPurchaseOrderTemplate(
 	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
-		lineRows[i] = buildPurchaseOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
+		lineRows[i] = buildPurchaseOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
 	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
@@ -111,9 +111,9 @@ func buildPurchaseOrderScalarPlaceholders(order PurchaseOrder, org Organization,
 		"purchaseOrder.currency":        currency,
 		"purchaseOrder.deliveryAddress": derefString(order.DeliveryAddress),
 		"purchaseOrder.notes":           derefString(order.Notes),
-		"purchaseOrder.subTotal":        formatMoneyCents(subTotal, currency, org.MinimumFractionDigits),
-		"purchaseOrder.taxTotal":        formatMoneyCents(taxTotal, currency, org.MinimumFractionDigits),
-		"purchaseOrder.total":           formatMoneyCents(total, currency, org.MinimumFractionDigits),
+		"purchaseOrder.subTotal":        formatMoneyCents(subTotal, currency, org.MinimumFractionDigits, org.CountryCode),
+		"purchaseOrder.taxTotal":        formatMoneyCents(taxTotal, currency, org.MinimumFractionDigits, org.CountryCode),
+		"purchaseOrder.total":           formatMoneyCents(total, currency, org.MinimumFractionDigits, org.CountryCode),
 
 		"organization.name":        derefString(org.Name),
 		"organization.vatin":       derefString(org.Vatin),
@@ -140,15 +140,15 @@ func buildPurchaseOrderScalarPlaceholders(order PurchaseOrder, org Organization,
 // repeated line item block. Description is a plain string on
 // PurchaseOrderLineItem (unlike InvoiceLineItem's *string), so no
 // derefString here.
-func buildPurchaseOrderLineItemPlaceholders(li PurchaseOrderLineItem, currency string, minimumFractionDigits *int64, taxRatePercent string) map[string]string {
+func buildPurchaseOrderLineItemPlaceholders(li PurchaseOrderLineItem, currency string, minimumFractionDigits *int64, countryCode *string, taxRatePercent string) map[string]string {
 	lineTotal := lineTotalCents(li.Quantity, li.UnitPrice)
 	return map[string]string{
 		"lineItems.sku":         derefString(li.SKU),
 		"lineItems.description": li.Description,
 		"lineItems.quantity":    formatQuantity(li.Quantity),
 		"lineItems.unit":        derefString(li.Unit),
-		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits),
+		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits, countryCode),
 		"lineItems.taxRate":     taxRatePercent,
-		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits),
+		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits, countryCode),
 	}
 }

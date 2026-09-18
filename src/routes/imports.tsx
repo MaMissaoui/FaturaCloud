@@ -21,6 +21,7 @@ import ImportForm from "src/components/imports/form";
 import PageHeader from "src/components/page-header";
 import { useDateFormatter } from "src/utils/date";
 import { formatCents } from "src/utils/currency";
+import { numberFormatLocale } from "src/utils/currencies";
 
 const searchAtom = atom<string>("");
 
@@ -78,7 +79,12 @@ const Imports = () => {
     });
   };
 
-  const money = (cents: number) => formatCents(cents, organization?.currency ?? "EUR", i18n.locale);
+  const money = (cents: number) =>
+    formatCents(
+      cents,
+      organization?.currency ?? "EUR",
+      numberFormatLocale(organization?.country_code) ?? i18n.locale,
+    );
 
   return (
     <>

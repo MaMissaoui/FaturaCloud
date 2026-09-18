@@ -26,6 +26,64 @@ func currencyDefaultDigits(currencyCode string) int {
 	}
 }
 
+// separators is a country's grouping/decimal-point convention. The zero
+// value (both empty) means "use formatMoneyCents' own default" — never
+// constructed directly, only ever looked up via resolveSeparators.
+type separators struct{ decimal, group string }
+
+var defaultSeparators = separators{decimal: ".", group: ","}
+
+// countryDecimalSeparators is organizations.country_code's separator
+// convention, exports' counterpart to src/utils/currencies.tsx's
+// countryNumberLocale — same curated scope, and each entry's characters
+// were read directly off a real Intl.NumberFormat run for that locale
+// (formatToParts, not guessed) so the two tables agree. They can still
+// drift: this is a hand-maintained table because Go's standard library has
+// no ICU/CLDR equivalent (see this file's top comment), while the frontend
+// asks the browser's own ICU directly — a future ICU update changing a
+// locale's convention updates the frontend automatically and this table
+// not at all. A country not listed here returns defaultSeparators, the
+// same "," / "." this function has always used.
+var countryDecimalSeparators = map[string]separators{
+	// German-speaking
+	"DE": {decimal: ",", group: "."},
+	"AT": {decimal: ",", group: " "},
+	"CH": {decimal: ".", group: "'"},
+	// French-speaking (Europe)
+	"FR": {decimal: ",", group: " "},
+	"BE": {decimal: ",", group: " "},
+	"LU": {decimal: ",", group: "."},
+	// French-speaking Maghreb
+	"TN": {decimal: ",", group: " "},
+	"MA": {decimal: ",", group: "."},
+	"DZ": {decimal: ",", group: " "},
+	// English-speaking
+	"US": {decimal: ".", group: ","},
+	"GB": {decimal: ".", group: ","},
+	"IE": {decimal: ".", group: ","},
+	"CA": {decimal: ".", group: ","},
+	"AU": {decimal: ".", group: ","},
+	"NZ": {decimal: ".", group: ","},
+	// Other common, unambiguous business locales
+	"ES": {decimal: ",", group: "."},
+	"IT": {decimal: ",", group: "."},
+	"PT": {decimal: ",", group: " "},
+	"NL": {decimal: ",", group: "."},
+	"PL": {decimal: ",", group: " "},
+	"RU": {decimal: ",", group: " "},
+	"TR": {decimal: ",", group: "."},
+}
+
+func resolveSeparators(countryCode *string) separators {
+	if countryCode == nil {
+		return defaultSeparators
+	}
+	if s, ok := countryDecimalSeparators[*countryCode]; ok {
+		return s
+	}
+	return defaultSeparators
+}
+
 // formatMoneyCents is the one canonical cents-to-string formatter every
 // money placeholder in the fill engine funnels through — replacing the four
 // inconsistent approaches found across the existing React-PDF components
@@ -42,11 +100,12 @@ func currencyDefaultDigits(currencyCode string) int {
 // currency's own minor unit is (see CLAUDE.md's Database section on TND's
 // millime) — digits beyond that stored precision are zero-padding, not
 // invented precision.
-func formatMoneyCents(cents int64, currencyCode string, minimumFractionDigits *int64) string {
+func formatMoneyCents(cents int64, currencyCode string, minimumFractionDigits *int64, countryCode *string) string {
 	digits := currencyDefaultDigits(currencyCode)
 	if minimumFractionDigits != nil && *minimumFractionDigits >= 0 {
 		digits = int(*minimumFractionDigits)
 	}
+	sep := resolveSeparators(countryCode)
 
 	negative := cents < 0
 	if negative {
@@ -73,9 +132,9 @@ func formatMoneyCents(cents int64, currencyCode string, minimumFractionDigits *i
 		fracDigits = pad2(frac2) + strings.Repeat("0", digits-2)
 	}
 
-	out := groupThousands(strconv.FormatInt(whole, 10))
+	out := groupThousands(strconv.FormatInt(whole, 10), sep.group)
 	if digits > 0 {
-		out += "." + fracDigits
+		out += sep.decimal + fracDigits
 	}
 	if negative && (whole != 0 || frac2 != 0) {
 		out = "-" + out
@@ -94,9 +153,9 @@ func pad2(n int64) string {
 	return s
 }
 
-// groupThousands inserts "," every 3 digits from the right of a non-negative
-// integer string (sign is handled by the caller).
-func groupThousands(s string) string {
+// groupThousands inserts sep every 3 digits from the right of a
+// non-negative integer string (sign is handled by the caller).
+func groupThousands(s string, sep string) string {
 	n := len(s)
 	if n <= 3 {
 		return s
@@ -105,12 +164,12 @@ func groupThousands(s string) string {
 	rem := n % 3
 	if rem > 0 {
 		b.WriteString(s[:rem])
-		b.WriteString(",")
+		b.WriteString(sep)
 	}
 	for i := rem; i < n; i += 3 {
 		b.WriteString(s[i : i+3])
 		if i+3 < n {
-			b.WriteString(",")
+			b.WriteString(sep)
 		}
 	}
 	return b.String()

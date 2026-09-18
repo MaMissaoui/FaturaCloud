@@ -37,6 +37,7 @@ import {
 } from "src/types/purchase-order";
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import { centsToUnits, unitsToCents, formatCents } from "src/utils/currency";
+import { numberFormatLocale } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 import ExchangeRateFields, {
   CurrencySelect,
@@ -466,7 +467,11 @@ const ImportForm = () => {
                 <Col xs={12}>
                   <Statistic
                     title={<Trans>Committed value</Trans>}
-                    value={formatCents(summary.totalCommittedValue, orgCurrency, i18n.locale)}
+                    value={formatCents(
+                      summary.totalCommittedValue,
+                      orgCurrency,
+                      numberFormatLocale(organization?.country_code) ?? i18n.locale,
+                    )}
                   />
                 </Col>
                 <Col xs={12}>

@@ -9,6 +9,7 @@ import { GetReceivableAging } from "src/api";
 import type { OutstandingInvoiceSummary, OutstandingSummary } from "src/api";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
+import { numberFormatLocale } from "src/utils/currencies";
 import { formatCents } from "src/utils/currency";
 
 const ReceivableAging = () => {
@@ -34,7 +35,7 @@ const ReceivableAging = () => {
   }, [refresh]);
 
   const money = (cents: number) =>
-    Intl.NumberFormat(i18n.locale, {
+    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
       style: "currency",
       currency: organization?.currency ?? "EUR",
       minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
@@ -112,7 +113,11 @@ const ReceivableAging = () => {
                   {money(inv.total)}
                   {organization?.currency && inv.currency !== organization.currency && (
                     <div style={{ color: token.colorTextSecondary, fontSize: 12 }}>
-                      {formatCents(inv.foreignTotal, inv.currency, i18n.locale)}
+                      {formatCents(
+                        inv.foreignTotal,
+                        inv.currency,
+                        numberFormatLocale(organization?.country_code) ?? i18n.locale,
+                      )}
                     </div>
                   )}
                 </>

@@ -591,6 +591,7 @@ const IncomingInvoiceDetails = () => {
             total={unitsToCents((invoice as any).total ?? 0)}
             hasPostedEntry={currentState === "approved" || currentState === "paid"}
             minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
+            countryCode={organization?.country_code}
           />
         )}
 
