@@ -207,6 +207,14 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("PUT", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.updateDocumentTemplateOrientation)
 	orgMemberProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.deleteDocumentTemplateOrientation)
 
+	// Document numbering (format + persisted counter) for the five document
+	// types that didn't already have their own org-level equivalent
+	// (invoices keep theirs on the organizations columns — see
+	// db/document_number.go). Same org-member protection tier as the
+	// settings above, matching every other per-(org, documentType) setting.
+	orgMemberProtected("GET", "/api/organizations/{orgId}/document-number-settings/{documentType}", pathOrgID("orgId"), h.getDocumentNumberSetting)
+	orgMemberProtected("PUT", "/api/organizations/{orgId}/document-number-settings/{documentType}", pathOrgID("orgId"), h.updateDocumentNumberSetting)
+
 	// Clients
 	// clientOrgID resolves a client route's {id} to its owning organization
 	// by reusing GetClient — the same row every one of these handlers
@@ -504,6 +512,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		return order.OrganizationID, nil
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/orders", pathOrgID("orgId"), h.listOrders)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/orders/next-number", pathOrgID("orgId"), h.nextOrderNumber)
 	protected("POST", "/api/orders", h.createOrder)
 	orgMemberProtected("GET", "/api/orders/{id}", orderOrgID, h.getOrder)
 	orgMemberProtected("GET", "/api/orders/{id}/line-items", orderOrgID, h.getOrderLineItems)

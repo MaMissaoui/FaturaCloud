@@ -94,6 +94,11 @@ var masterDataTables = []string{
 	// a reset clears an org's orientation overrides too, reverting every
 	// document type back to whatever its template itself is authored with.
 	"document_template_settings",
+	// document_number_settings (per-document-type numbering format +
+	// counter) is the same category again — a reset also clears an org's
+	// numbering overrides and restarts every covered type's counter at 0,
+	// consistent with every transactional document itself being wiped.
+	"document_number_settings",
 	// payment_terms (the maintained Payment terms list) is reference data
 	// with no FK from invoices, same category as taxRates above.
 	"payment_terms",

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -193,18 +194,16 @@ func (d *Database) GetPurchaseOrderReceivedQuantities(purchaseOrderID string) (m
 	return result, nil
 }
 
-// NextInboundDeliveryNumber proposes the next "GR-%04d" (goods receipt) number,
-// continuing from the highest in use rather than COUNT(*)+1. SUBSTR starts at 4
-// because the prefix "GR-" is three characters.
+// NextInboundDeliveryNumber proposes the next number for an organization,
+// formatted from its configured document_number_settings format (or the
+// "GR-%04d"-equivalent default) and its persisted counter + 1 — see
+// db/document_number.go. Read-only; does not consume the number.
 func (d *Database) NextInboundDeliveryNumber(organizationID string) string {
-	var maxNumber sql.NullInt64
-	_ = d.DB.Get(&maxNumber, `
-		SELECT MAX(CAST(SUBSTR(deliveryNumber, 4) AS INTEGER))
-		FROM inbound_deliveries
-		WHERE organizationId = ? AND deliveryNumber LIKE 'GR-%'`,
-		organizationID,
-	)
-	return fmt.Sprintf("GR-%04d", maxNumber.Int64+1)
+	number, err := d.PreviewNextDocumentNumber(organizationID, "inbound_delivery")
+	if err != nil {
+		return ""
+	}
+	return number
 }
 
 // checkInboundDeliveryHeaderFKOwnership validates that purchaseOrderId/
@@ -263,6 +262,18 @@ func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*Inb
 		return nil, fmt.Errorf("create_inbound_delivery begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Always advances document_number_settings' persisted counter for this
+	// org+type by one, regardless of whether DeliveryNumber ends up storing
+	// the generated value or one the client edited (see
+	// db/document_number.go's doc comment).
+	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "inbound_delivery", time.UnixMilli(req.DeliveryDate), "")
+	if err != nil {
+		return nil, err
+	}
+	if req.DeliveryNumber == "" {
+		req.DeliveryNumber = generatedNumber
+	}
 
 	_, err = tx.Exec(`
 		INSERT INTO inbound_deliveries

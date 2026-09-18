@@ -434,6 +434,33 @@ export const UpdateDocumentTemplateOrientation = (
 export const DeleteDocumentTemplateOrientation = (orgId: string, documentType: string) =>
   del<void>(`/organizations/${orgId}/document-templates/${documentType}/orientation`);
 
+// Numbering (format + persisted counter) for the five document types that
+// didn't already have their own org-level equivalent — invoices keep theirs
+// on the Organization/Invoice settings fields, untouched by this table.
+// hasOverride distinguishes "using the type's built-in default" from "the
+// org explicitly saved something," the same shape orientation's blank
+// string signals for the setting above.
+export interface DocumentNumberSetting {
+  documentType: string;
+  format: string;
+  counter: number;
+  hasOverride: boolean;
+}
+
+export const GetDocumentNumberSetting = (orgId: string, documentType: string) =>
+  get<DocumentNumberSetting>(`/organizations/${orgId}/document-number-settings/${documentType}`);
+
+export const UpdateDocumentNumberSetting = (
+  orgId: string,
+  documentType: string,
+  format: string,
+  counter?: number,
+) =>
+  put<DocumentNumberSetting>(`/organizations/${orgId}/document-number-settings/${documentType}`, {
+    format,
+    counter,
+  });
+
 // ---- Clients ----
 
 export const GetClients = (organizationId: string) =>
@@ -828,6 +855,10 @@ export const GetLastExchangeRate = (organizationId: string, currency: string) =>
 
 export const GetOrders = (organizationId: string) =>
   get<Order[]>(`/organizations/${organizationId}/orders`);
+export const GetNextOrderNumber = (organizationId: string) =>
+  get<{ number: string }>(`/organizations/${organizationId}/orders/next-number`).then(
+    (r) => r.number,
+  );
 export const GetOrder = (id: string) => get<Order>(`/orders/${id}`);
 export const GetOrderLineItems = (id: string) => get<OrderLineItem[]>(`/orders/${id}/line-items`);
 export const GetOrderDeliveredQuantities = (id: string) =>
