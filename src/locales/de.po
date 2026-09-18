@@ -21,7 +21,7 @@ msgstr "(aktuell)"
 msgid "%"
 msgstr "%"
 
-#: src/routes/settings/invoice.tsx:121
+#: src/routes/settings/invoice.tsx:84
 msgid "% per day"
 msgstr "% pro Tag"
 
@@ -42,12 +42,12 @@ msgid "1-30 days"
 msgstr "1-30 Tage"
 
 #. placeholder {0}: String(new Date().getMonth() + 1).padStart(2, "0")
-#: src/routes/settings/invoice.tsx:206
+#: src/routes/settings/invoice.tsx:169
 msgid "2-digit month ({0})"
 msgstr "Monat, 2-stellig ({0})"
 
 #. placeholder {0}: String(new Date().getFullYear() % 100).padStart(2, "0")
-#: src/routes/settings/invoice.tsx:202
+#: src/routes/settings/invoice.tsx:165
 msgid "2-digit year ({0})"
 msgstr "Jahr, 2-stellig ({0})"
 
@@ -62,7 +62,7 @@ msgid "31-60 days"
 msgstr "31-60 Tage"
 
 #. placeholder {0}: new Date().getFullYear()
-#: src/routes/settings/invoice.tsx:198
+#: src/routes/settings/invoice.tsx:161
 msgid "4-digit year ({0})"
 msgstr "Jahr, 4-stellig ({0})"
 
@@ -340,7 +340,7 @@ msgstr "Automatischer Zeitplan"
 msgid "Available stock"
 msgstr "Verfügbarer Bestand"
 
-#: src/routes/settings/invoice.tsx:182
+#: src/routes/settings/invoice.tsx:145
 msgid "Available variables"
 msgstr "Verfügbare Variablen"
 
@@ -683,7 +683,7 @@ msgstr "Stadt"
 msgid "Client"
 msgstr "Kunde"
 
-#: src/routes/settings/invoice.tsx:216
+#: src/routes/settings/invoice.tsx:179
 msgid "Client code (e.g. AP, MS)"
 msgstr "Kundencode (z. B. AP, MS)"
 
@@ -872,7 +872,7 @@ msgstr "Die Stückliste dieses Produkts konnte nicht geladen werden"
 msgid "Couldn't load this production order"
 msgstr "Dieser Fertigungsauftrag konnte nicht geladen werden"
 
-#: src/routes/settings/invoice.tsx:236
+#: src/routes/settings/invoice.tsx:199
 msgid "Counter must be 0 or greater"
 msgstr "Zähler muss 0 oder größer sein"
 
@@ -920,7 +920,6 @@ msgstr "Wird mit den Fracht-/Zollkosten erkannt, die einem Wareneingang zugeordn
 #: src/components/organizations/organization-edit-drawer.tsx:160
 #: src/components/organizations/organizations-table.tsx:72
 #: src/routes/organizations/new.tsx:78
-#: src/routes/settings/invoice.tsx:84
 msgid "Currency"
 msgstr "Währung"
 
@@ -1058,7 +1057,7 @@ msgid "day"
 msgstr "Tag"
 
 #. placeholder {0}: String(new Date().getDate()).padStart(2, "0")
-#: src/routes/settings/invoice.tsx:214
+#: src/routes/settings/invoice.tsx:177
 msgid "Day of month ({0})"
 msgstr "Tag des Monats ({0})"
 
@@ -1077,7 +1076,6 @@ msgstr "Soll"
 
 #: src/components/organizations/organization-edit-drawer.tsx:391
 #: src/routes/organizations/new.tsx:97
-#: src/routes/settings/invoice.tsx:109
 msgid "Decimal places"
 msgstr "Dezimalstellen"
 
@@ -1151,7 +1149,7 @@ msgstr "Standard-Erlöskonto"
 msgid "Default tax rate"
 msgstr "Standard-Steuersatz"
 
-#: src/routes/settings/invoice.tsx:80
+#: src/routes/settings/invoice.tsx:74
 msgid "Defaults"
 msgstr "Standardwerte"
 
@@ -1409,7 +1407,7 @@ msgstr "Entwurf"
 msgid "Due date"
 msgstr "Fälligkeitsdatum"
 
-#: src/routes/settings/invoice.tsx:114
+#: src/routes/settings/invoice.tsx:77
 msgid "Due days"
 msgstr "Fälligkeitstage"
 
@@ -1598,7 +1596,7 @@ msgstr "Geben Sie genau eine Seriennummer pro produzierter Einheit ein."
 msgid "Enter exactly one serial number per unit received."
 msgstr "Geben Sie genau eine Seriennummer pro empfangener Einheit ein."
 
-#: src/routes/settings/invoice.tsx:169
+#: src/routes/settings/invoice.tsx:132
 msgid "Enter format to see preview"
 msgstr "Format eingeben, um Vorschau zu sehen"
 
@@ -2213,11 +2211,11 @@ msgstr "Stunde (UTC)"
 msgid "House number"
 msgstr "Hausnummer"
 
-#: src/routes/settings/invoice.tsx:272
+#: src/routes/settings/invoice.tsx:235
 msgid "How far a billed quantity may exceed what was ordered and received."
 msgstr "Wie weit eine berechnete Menge die bestellte und erhaltene Menge überschreiten darf."
 
-#: src/routes/settings/invoice.tsx:261
+#: src/routes/settings/invoice.tsx:224
 msgid "How far a vendor's unit price may differ from the purchase order."
 msgstr "Wie weit der Stückpreis des Lieferanten von der Bestellung abweichen darf."
 
@@ -2428,11 +2426,11 @@ msgstr "Rechnung nicht gefunden"
 msgid "Invoice number"
 msgstr "Rechnungsnummer"
 
-#: src/routes/settings/invoice.tsx:231
+#: src/routes/settings/invoice.tsx:194
 msgid "Invoice number counter"
 msgstr "Rechnungsnummernzähler"
 
-#: src/routes/settings/invoice.tsx:148
+#: src/routes/settings/invoice.tsx:111
 msgid "Invoice number format"
 msgstr "Rechnungsnummernformat"
 
@@ -2440,7 +2438,7 @@ msgstr "Rechnungsnummernformat"
 msgid "Invoice PDF layout"
 msgstr "PDF-Layout der Rechnung"
 
-#: src/routes/settings/invoice.tsx:74
+#: src/routes/settings/invoice.tsx:68
 msgid "Invoice settings"
 msgstr "Rechnungseinstellungen"
 
@@ -2767,7 +2765,7 @@ msgid "Month"
 msgstr "Monat"
 
 #. placeholder {0}: new Date().toLocaleString("en", { month: "short" })
-#: src/routes/settings/invoice.tsx:210
+#: src/routes/settings/invoice.tsx:173
 msgid "Month name ({0})"
 msgstr "Monatsname ({0})"
 
@@ -2967,7 +2965,7 @@ msgstr "Neuer Benutzer"
 msgid "New vendor"
 msgstr "Neuer Lieferant"
 
-#: src/routes/settings/invoice.tsx:233
+#: src/routes/settings/invoice.tsx:196
 msgid "Next invoice will use this number + 1"
 msgstr "Nächste Rechnung verwendet diese Nummer + 1"
 
@@ -3169,7 +3167,7 @@ msgstr "Notiz"
 #: src/routes/production-orders/details.tsx:256
 #: src/routes/production-orders/details.tsx:536
 #: src/routes/purchase-orders/details.tsx:473
-#: src/routes/settings/invoice.tsx:135
+#: src/routes/settings/invoice.tsx:98
 msgid "Notes"
 msgstr "Notizen"
 
@@ -3191,7 +3189,7 @@ msgstr "Nummer"
 msgid "Number on the vendor's paperwork"
 msgstr "Nummer auf dem Lieferschein des Lieferanten"
 
-#: src/routes/settings/invoice.tsx:144
+#: src/routes/settings/invoice.tsx:107
 msgid "Numbering"
 msgstr "Nummerierung"
 
@@ -3445,7 +3443,7 @@ msgstr "Überfällig"
 
 #: src/components/invoices/pdf.tsx:237
 #: src/routes/invoices/details.tsx:639
-#: src/routes/settings/invoice.tsx:120
+#: src/routes/settings/invoice.tsx:83
 msgid "Overdue charge"
 msgstr "Verzögerungszüschlag"
 
@@ -3719,7 +3717,7 @@ msgstr "Füllt den Steuermarkenbetrag einer neuen Rechnung vor. Der gesetzliche 
 msgid "Prefix"
 msgstr "Präfix"
 
-#: src/routes/settings/invoice.tsx:167
+#: src/routes/settings/invoice.tsx:130
 msgid "Preview"
 msgstr "Vorschau"
 
@@ -3738,7 +3736,7 @@ msgstr ""
 msgid "Price is required"
 msgstr "Preis ist erforderlich"
 
-#: src/routes/settings/invoice.tsx:259
+#: src/routes/settings/invoice.tsx:222
 msgid "Price tolerance (%)"
 msgstr "Preistoleranz (%)"
 
@@ -3982,7 +3980,7 @@ msgstr "Menge ist erforderlich"
 msgid "Quantity received"
 msgstr "Erhaltene Menge"
 
-#: src/routes/settings/invoice.tsx:270
+#: src/routes/settings/invoice.tsx:233
 msgid "Quantity tolerance (%)"
 msgstr "Mengentoleranz (%)"
 
@@ -4338,7 +4336,7 @@ msgstr "Umsatz nach Produkt"
 #: src/routes/orders/details.tsx:591
 #: src/routes/purchase-orders/details.tsx:670
 #: src/routes/settings/backup.tsx:237
-#: src/routes/settings/invoice.tsx:305
+#: src/routes/settings/invoice.tsx:268
 #: src/routes/settings/users.tsx:283
 msgid "Save"
 msgstr "Speichern"
@@ -4515,7 +4513,7 @@ msgstr "Feedback senden"
 msgid "Sent"
 msgstr "Gesendet"
 
-#: src/routes/settings/invoice.tsx:195
+#: src/routes/settings/invoice.tsx:158
 msgid "Sequential number"
 msgstr "Fortlaufende Nummer"
 
@@ -4891,9 +4889,8 @@ msgstr "Dies kann nicht rückgängig gemacht werden."
 #: src/routes/invoices/details.tsx:802
 #: src/routes/invoices/details.tsx:844
 #: src/routes/invoices/details.tsx:907
-#: src/routes/settings/invoice.tsx:86
-#: src/routes/settings/invoice.tsx:151
-#: src/routes/settings/invoice.tsx:235
+#: src/routes/settings/invoice.tsx:114
+#: src/routes/settings/invoice.tsx:198
 msgid "This field is required!"
 msgstr "Dieses Feld ist erforderlich!"
 
@@ -5274,7 +5271,7 @@ msgstr "Lieferschein des Lieferanten"
 msgid "Vendor invoice #"
 msgstr "Rechnungsnr. des Lieferanten"
 
-#: src/routes/settings/invoice.tsx:252
+#: src/routes/settings/invoice.tsx:215
 msgid "Vendor invoice matching"
 msgstr "Abgleich von Eingangsrechnungen"
 
