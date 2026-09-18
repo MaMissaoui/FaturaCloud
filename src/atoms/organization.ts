@@ -120,27 +120,43 @@ export const organizationAtom = atom(
 );
 organizationAtom.debugLabel = "organizationAtom";
 
-// isOrgAdminAtom reports whether the current user is an admin member of the
-// currently selected organization — the per-org counterpart to
-// isPlatformAdminAtom, gating org-scoped admin actions (delete/reset
-// organization, close fiscal year, GL exports) that a platform admin isn't
-// automatically entitled to on every organization. Reuses
-// organizationRefreshTokenAtom's bump so it refetches whenever the
-// organization itself does (e.g. after a membership change elsewhere).
-export const isOrgAdminAtom = atom(async (get) => {
+// myOrgRoleAtom fetches the current user's role in the currently selected
+// organization once — isOrgAdminAtom and isOrgAdminOrAccountingAtom below
+// both derive from it rather than each hitting GetMyOrganizationRole
+// separately. Reuses organizationRefreshTokenAtom's bump so it refetches
+// whenever the organization itself does (e.g. after a membership change
+// elsewhere).
+export const myOrgRoleAtom = atom(async (get) => {
   const organizationId = get(organizationIdAtom);
   get(organizationRefreshTokenAtom);
-  if (!organizationId) return false;
+  if (!organizationId) return "";
 
   try {
     const { role } = await GetMyOrganizationRole(organizationId);
-    return role === "admin";
+    return role;
   } catch (error) {
     console.error("Failed to fetch organization role:", error);
-    return false;
+    return "";
   }
 });
+myOrgRoleAtom.debugLabel = "myOrgRoleAtom";
+
+// isOrgAdminAtom reports whether the current user is an admin member of the
+// currently selected organization — the per-org counterpart to
+// isPlatformAdminAtom, gating org-scoped admin actions (delete/reset
+// organization, membership management) that a platform admin isn't
+// automatically entitled to on every organization.
+export const isOrgAdminAtom = atom(async (get) => (await get(myOrgRoleAtom)) === "admin");
 isOrgAdminAtom.debugLabel = "isOrgAdminAtom";
+
+// isOrgAdminOrAccountingAtom gates the two actions the org role redesign
+// folded "accounting" into alongside admin: closing a fiscal year and GL
+// export (see api/middleware.go's orgRoleAdmin) — previously admin-only.
+export const isOrgAdminOrAccountingAtom = atom(async (get) => {
+  const role = await get(myOrgRoleAtom);
+  return role === "admin" || role === "accounting";
+});
+isOrgAdminOrAccountingAtom.debugLabel = "isOrgAdminOrAccountingAtom";
 
 // Forces organizationAtom to refetch the currently selected organization
 // (including its logo) without going through a create/update. Used after a

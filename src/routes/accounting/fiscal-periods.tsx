@@ -31,7 +31,7 @@ import {
   updateFiscalPeriodStatusAtom,
   closeFiscalYearAtom,
 } from "src/atoms/fiscal-period";
-import { isOrgAdminAtom } from "src/atoms/organization";
+import { isOrgAdminOrAccountingAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 
@@ -48,7 +48,7 @@ const FiscalPeriods = () => {
   const createFiscalPeriod = useSetAtom(createFiscalPeriodAtom);
   const updateFiscalPeriodStatus = useSetAtom(updateFiscalPeriodStatusAtom);
   const closeFiscalYear = useSetAtom(closeFiscalYearAtom);
-  const isAdmin = useAtomValue(isOrgAdminAtom);
+  const canCloseFiscalYear = useAtomValue(isOrgAdminOrAccountingAtom);
   const [modalApi, modalContextHolder] = Modal.useModal();
 
   const [loading, setLoading] = useState(false);
@@ -263,7 +263,7 @@ const FiscalPeriods = () => {
                 </Tag>
               )}
             />
-            {isAdmin && (
+            {canCloseFiscalYear && (
               <Table.Column<FiscalYear>
                 key="actions"
                 render={(year) =>
