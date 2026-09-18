@@ -9,7 +9,7 @@ import { GetInventoryValuation } from "src/api";
 import type { InventoryValuation, InventoryValuationLine } from "src/api";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatOrgCents } from "src/utils/currencies";
 
 const InventoryValuationReport = () => {
   const { i18n } = useLingui();
@@ -33,12 +33,7 @@ const InventoryValuationReport = () => {
     refresh();
   }, [refresh]);
 
-  const money = (cents: number) =>
-    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
-      style: "currency",
-      currency: organization?.currency ?? "EUR",
-      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
-    }).format(cents / 100);
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   return (
     <>

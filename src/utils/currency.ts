@@ -33,18 +33,32 @@ export function unitsToCents(units: number, precision: number = 2): number {
  * @param locale - Locale for formatting
  * @returns Formatted currency string
  */
+// Several CLDR locales (fr-*, and others) legitimately use a narrow/thin
+// no-break space (U+202F, occasionally U+2009) as Intl.NumberFormat's
+// thousands grouping separator — real, correct Unicode. But it's a
+// reproducible browser rendering bug (confirmed live in this app: same
+// font/size, only the text color differs) that collapses it to zero
+// visible width in some contexts (e.g. antd's colorError red used for
+// overdue/outstanding amounts), making a grouped amount look ungrouped.
+// Normalizing to an ordinary space sidesteps the bug entirely. Mirrors
+// src/utils/currencies.tsx's identical helper — deliberately not shared
+// across the two files for one regex line, to avoid coupling them.
+const normalizeGroupingSpace = (s: string) => s.replace(/[  ]/g, " ");
+
 export function formatCents(cents: number, currency: string, locale: string): string {
   const units = centsToUnits(cents);
   // A blank/invalid currency code must never crash the caller — see
   // getFormattedNumber in src/utils/currencies.tsx for the same guard and
   // why (Intl.NumberFormat throws a RangeError otherwise).
   try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currency,
-    }).format(units);
+    return normalizeGroupingSpace(
+      new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currency,
+      }).format(units),
+    );
   } catch {
-    return new Intl.NumberFormat(locale).format(units);
+    return normalizeGroupingSpace(new Intl.NumberFormat(locale).format(units));
   }
 }
 

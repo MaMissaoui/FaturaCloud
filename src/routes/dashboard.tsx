@@ -19,7 +19,7 @@ import type {
   ProductRevenue,
 } from "src/api";
 import PageHeader from "src/components/page-header";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatOrgCents } from "src/utils/currencies";
 
 const MONTH_OPTIONS = [3, 6, 12, 24];
 
@@ -77,12 +77,7 @@ const Dashboard = () => {
     fetchDashboard();
   }, [fetchDashboard]);
 
-  const money = (cents: number) =>
-    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
-      style: "currency",
-      currency: organization?.currency ?? "EUR",
-      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
-    }).format(cents / 100);
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   const revenueTotal = (data?.revenueByMonth ?? []).reduce((sum, m) => sum + m.revenue, 0);
 

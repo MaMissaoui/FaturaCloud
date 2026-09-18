@@ -31,13 +31,21 @@ import { unitLabel } from "src/utils/units";
 // on an English-language screen for anyone with a European system locale).
 // This also switches to currency style so the organization's currency code
 // shows here the same way it does on every other money display in the app.
+// The narrow no-break space (U+202F) some locales use as a grouping
+// separator renders with zero visible width in some contexts in this app
+// (a confirmed browser rendering bug, not a data bug) — see
+// src/utils/currencies.tsx's formatMoneyUnits for the full explanation.
+// Normalized here too since this formatter isn't a formatMoneyUnits caller
+// (it needs maximumFractionDigits, which that shared helper doesn't take).
 const formatPrice = (cents: number, currency: string, locale: string, fractionDigits: number) =>
   new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  }).format(cents / 100);
+  })
+    .format(cents / 100)
+    .replace(/[  ]/g, " ");
 
 const DEFAULT_PAGE_SIZE = 25;
 

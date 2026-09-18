@@ -80,7 +80,7 @@ import {
   centsToUnits,
   unitsToCents,
 } from "src/utils/currency";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -973,15 +973,12 @@ const InvoiceDetails: React.FC = () => {
                   >
                     {(() => {
                       const fmt = (value: number) =>
-                        Intl.NumberFormat(
+                        formatMoneyUnits(
+                          value,
+                          watchedCurrency ?? organization.currency ?? "EUR",
                           numberFormatLocale(organization.country_code) ?? i18n.locale,
-                          {
-                            style: "currency",
-                            currency: watchedCurrency ?? organization.currency ?? "EUR",
-                            minimumFractionDigits:
-                              organization.minimum_fraction_digits ?? undefined,
-                          },
-                        ).format(value);
+                          organization.minimum_fraction_digits ?? undefined,
+                        );
                       return (
                         <>
                           <Descriptions.Item label={<Trans>Subtotal</Trans>}>
