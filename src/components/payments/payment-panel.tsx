@@ -38,7 +38,7 @@ import {
 } from "src/types/payment";
 import { useDatePickerFormat } from "src/utils/date";
 import { unitsToCents, centsToUnits } from "src/utils/currency";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
 import { showExchangeRateFields } from "src/components/currency/currency-fields";
 
 const { Option } = Select;
@@ -175,15 +175,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     (cents: number) => {
       const units = centsToUnits(cents);
       const locale = numberFormatLocale(countryCode) ?? i18n.locale;
-      try {
-        return new Intl.NumberFormat(locale, {
-          style: "currency",
-          currency,
-          minimumFractionDigits,
-        }).format(units);
-      } catch {
-        return new Intl.NumberFormat(locale, { minimumFractionDigits }).format(units);
-      }
+      return formatMoneyUnits(units, currency, locale, minimumFractionDigits);
     },
     [currency, i18n.locale, minimumFractionDigits, countryCode],
   );

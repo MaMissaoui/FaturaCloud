@@ -17,7 +17,7 @@ msgstr ""
 msgid "(current)"
 msgstr "(current)"
 
-#: src/routes/reporting/tax-summary.tsx:54
+#: src/routes/reporting/tax-summary.tsx:49
 msgid "%"
 msgstr "%"
 
@@ -30,14 +30,14 @@ msgstr "% per day"
 #~ msgstr "← Back to search"
 
 #: src/components/currency/currency-fields.tsx:103
-#: src/components/payments/payment-panel.tsx:450
+#: src/components/payments/payment-panel.tsx:442
 #: src/routes/invoices/details.tsx:594
 msgid "1 {currency} = this many {orgCurrency}"
 msgstr "1 {currency} = this many {orgCurrency}"
 
-#: src/routes/accounting/reports/ap-aging.tsx:61
-#: src/routes/accounting/reports/ar-aging.tsx:61
-#: src/routes/dashboard.tsx:192
+#: src/routes/accounting/reports/ap-aging.tsx:56
+#: src/routes/accounting/reports/ar-aging.tsx:56
+#: src/routes/dashboard.tsx:187
 msgid "1-30 days"
 msgstr "1-30 days"
 
@@ -55,9 +55,9 @@ msgstr "2-digit year ({0})"
 msgid "3-way match"
 msgstr "3-way match"
 
-#: src/routes/accounting/reports/ap-aging.tsx:66
-#: src/routes/accounting/reports/ar-aging.tsx:66
-#: src/routes/dashboard.tsx:199
+#: src/routes/accounting/reports/ap-aging.tsx:61
+#: src/routes/accounting/reports/ar-aging.tsx:61
+#: src/routes/dashboard.tsx:194
 msgid "31-60 days"
 msgstr "31-60 days"
 
@@ -66,19 +66,19 @@ msgstr "31-60 days"
 msgid "4-digit year ({0})"
 msgstr "4-digit year ({0})"
 
-#: src/routes/accounting/reports/ap-aging.tsx:71
-#: src/routes/accounting/reports/ar-aging.tsx:71
-#: src/routes/dashboard.tsx:206
+#: src/routes/accounting/reports/ap-aging.tsx:66
+#: src/routes/accounting/reports/ar-aging.tsx:66
+#: src/routes/dashboard.tsx:201
 msgid "61-90 days"
 msgstr "61-90 days"
 
-#: src/routes/accounting/reports/ap-aging.tsx:77
-#: src/routes/accounting/reports/ar-aging.tsx:77
-#: src/routes/dashboard.tsx:213
+#: src/routes/accounting/reports/ap-aging.tsx:72
+#: src/routes/accounting/reports/ar-aging.tsx:72
+#: src/routes/dashboard.tsx:208
 msgid "90+ days"
 msgstr "90+ days"
 
-#: src/routes/cash-book.tsx:430
+#: src/routes/cash-book.tsx:378
 msgid "A customer with this phone number already exists"
 msgstr "A customer with this phone number already exists"
 
@@ -100,9 +100,9 @@ msgstr "Accent color used across the app while this organization is selected."
 
 #: src/routes/accounting/journal-entries/details.tsx:229
 #: src/routes/accounting/journal-entries/details.tsx:417
-#: src/routes/accounting/reports/balance-sheet.tsx:45
-#: src/routes/accounting/reports/daily-cash-movements.tsx:89
-#: src/routes/accounting/reports/profit-and-loss.tsx:65
+#: src/routes/accounting/reports/balance-sheet.tsx:40
+#: src/routes/accounting/reports/daily-cash-movements.tsx:84
+#: src/routes/accounting/reports/profit-and-loss.tsx:60
 msgid "Account"
 msgstr "Account"
 
@@ -197,15 +197,15 @@ msgstr "Adjustment — set count to"
 msgid "Admin"
 msgstr "Admin"
 
-#: src/routes/products.tsx:156
+#: src/routes/products.tsx:164
 msgid "All categories"
 msgstr "All categories"
 
-#: src/routes/cash-book.tsx:845
+#: src/routes/cash-book.tsx:716
 msgid "All customers"
 msgstr "All customers"
 
-#: src/routes/accounting/trial-balance.tsx:88
+#: src/routes/accounting/trial-balance.tsx:83
 msgid "All fiscal years"
 msgstr "All fiscal years"
 
@@ -213,7 +213,7 @@ msgstr "All fiscal years"
 msgid "All journals"
 msgstr "All journals"
 
-#: src/routes/accounting/trial-balance.tsx:100
+#: src/routes/accounting/trial-balance.tsx:95
 msgid "All periods"
 msgstr "All periods"
 
@@ -221,7 +221,7 @@ msgstr "All periods"
 msgid "All statuses"
 msgstr "All statuses"
 
-#: src/routes/products.tsx:142
+#: src/routes/products.tsx:150
 msgid "All types"
 msgstr "All types"
 
@@ -233,24 +233,24 @@ msgstr "Allocation"
 msgid "Already invoiced"
 msgstr "Already invoiced"
 
-#: src/components/payments/payment-panel.tsx:385
-#: src/routes/accounting/reports/balance-sheet.tsx:47
-#: src/routes/accounting/reports/profit-and-loss.tsx:67
-#: src/routes/cash-book.tsx:800
+#: src/components/payments/payment-panel.tsx:377
+#: src/routes/accounting/reports/balance-sheet.tsx:42
+#: src/routes/accounting/reports/profit-and-loss.tsx:62
+#: src/routes/cash-book.tsx:675
 msgid "Amount"
 msgstr "Amount"
 
-#: src/components/payments/payment-panel.tsx:328
-#: src/routes/cash-book.tsx:1200
+#: src/components/payments/payment-panel.tsx:320
+#: src/routes/cash-book.tsx:1120
 msgid "Amount ({currency})"
 msgstr "Amount ({currency})"
 
-#: src/routes/cash-book.tsx:1059
+#: src/routes/cash-book.tsx:979
 msgid "Amount received ({currency})"
 msgstr "Amount received ({currency})"
 
 #: src/layouts/base.tsx:666
-#: src/routes/accounting/reports/ap-aging.tsx:46
+#: src/routes/accounting/reports/ap-aging.tsx:41
 msgid "AP Aging"
 msgstr "AP Aging"
 
@@ -275,7 +275,7 @@ msgid "Approved"
 msgstr "Approved"
 
 #: src/layouts/base.tsx:657
-#: src/routes/accounting/reports/ar-aging.tsx:46
+#: src/routes/accounting/reports/ar-aging.tsx:41
 msgid "AR Aging"
 msgstr "AR Aging"
 
@@ -324,7 +324,7 @@ msgstr "Are you sure you want to delete this vendor?"
 msgid "Asset"
 msgstr "Asset"
 
-#: src/routes/accounting/reports/balance-sheet.tsx:85
+#: src/routes/accounting/reports/balance-sheet.tsx:80
 msgid "Assets"
 msgstr "Assets"
 
@@ -348,7 +348,7 @@ msgstr "Available variables"
 msgid "Back to list"
 msgstr "Back to list"
 
-#: src/routes/cash-book.tsx:909
+#: src/routes/cash-book.tsx:829
 msgid "Back to search"
 msgstr "Back to search"
 
@@ -373,20 +373,20 @@ msgstr "Backup failed: {0}"
 msgid "Backup history"
 msgstr "Backup history"
 
-#: src/components/payments/payment-panel.tsx:359
-#: src/routes/accounting/reports/ap-aging.tsx:108
-#: src/routes/accounting/reports/ar-aging.tsx:108
-#: src/routes/cash-book.tsx:937
+#: src/components/payments/payment-panel.tsx:351
+#: src/routes/accounting/reports/ap-aging.tsx:103
+#: src/routes/accounting/reports/ar-aging.tsx:103
+#: src/routes/cash-book.tsx:857
 msgid "Balance due"
 msgstr "Balance due"
 
 #: src/layouts/base.tsx:648
-#: src/routes/accounting/reports/balance-sheet.tsx:71
+#: src/routes/accounting/reports/balance-sheet.tsx:66
 msgid "Balance Sheet"
 msgstr "Balance Sheet"
 
 #. placeholder {0}: money(unitsToCents(total - amountReceivedWatched))
-#: src/routes/cash-book.tsx:1077
+#: src/routes/cash-book.tsx:997
 msgid "Balance to collect later: {0}"
 msgstr "Balance to collect later: {0}"
 
@@ -399,11 +399,11 @@ msgstr "Balanced"
 msgid "Bank"
 msgstr "Bank"
 
-#: src/components/payments/payment-panel.tsx:315
+#: src/components/payments/payment-panel.tsx:307
 msgid "Bank / cash account"
 msgstr "Bank / cash account"
 
-#: src/routes/cash-book.tsx:1225
+#: src/routes/cash-book.tsx:1145
 msgid "Bank account"
 msgstr "Bank account"
 
@@ -419,7 +419,7 @@ msgstr "Bank transfer"
 msgid "Banking"
 msgstr "Banking"
 
-#: src/routes/reporting/tax-summary.tsx:61
+#: src/routes/reporting/tax-summary.tsx:56
 msgid "Base"
 msgstr "Base"
 
@@ -431,7 +431,7 @@ msgstr "Base unit of measure"
 msgid "Batch size"
 msgstr "Batch size"
 
-#: src/routes/accounting/reports/ap-aging.tsx:98
+#: src/routes/accounting/reports/ap-aging.tsx:93
 msgid "Bill"
 msgstr "Bill"
 
@@ -498,7 +498,7 @@ msgstr "Buyer reference"
 msgid "Calculated as a weighted average once goods are received at a cost."
 msgstr "Calculated as a weighted average once goods are received at a cost."
 
-#: src/routes/dashboard.tsx:108
+#: src/routes/dashboard.tsx:103
 msgid "Calendar year"
 msgstr "Calendar year"
 
@@ -513,7 +513,7 @@ msgstr "Canary Islands general indirect tax"
 #: src/components/imports/form.tsx:241
 #: src/components/organizations/organization-edit-drawer.tsx:120
 #: src/components/payment-terms/form.tsx:107
-#: src/components/payments/payment-panel.tsx:290
+#: src/components/payments/payment-panel.tsx:282
 #: src/components/products/bom-editor-drawer.tsx:296
 #: src/components/products/bom-editor-drawer.tsx:308
 #: src/components/products/form.tsx:254
@@ -523,9 +523,9 @@ msgstr "Canary Islands general indirect tax"
 #: src/components/units-of-measure/form.tsx:113
 #: src/components/vendors/form.tsx:151
 #: src/routes/accounting/fiscal-periods.tsx:114
-#: src/routes/cash-book.tsx:433
-#: src/routes/cash-book.tsx:1165
-#: src/routes/cash-book.tsx:1195
+#: src/routes/cash-book.tsx:381
+#: src/routes/cash-book.tsx:1085
+#: src/routes/cash-book.tsx:1115
 #: src/routes/organizations/new.tsx:113
 #: src/routes/settings/backup.tsx:130
 #: src/routes/settings/backup.tsx:154
@@ -538,9 +538,9 @@ msgstr "Cancel"
 msgid "Cancel delivery"
 msgstr "Cancel delivery"
 
-#: src/routes/orders/details.tsx:553
+#: src/routes/orders/details.tsx:554
 #: src/routes/production-orders/details.tsx:626
-#: src/routes/purchase-orders/details.tsx:630
+#: src/routes/purchase-orders/details.tsx:631
 msgid "Cancel order"
 msgstr "Cancel order"
 
@@ -556,7 +556,7 @@ msgstr "Cancel this delivery?"
 msgid "Cancel this goods receipt?"
 msgstr "Cancel this goods receipt?"
 
-#: src/routes/orders/details.tsx:547
+#: src/routes/orders/details.tsx:548
 msgid "Cancel this order?"
 msgstr "Cancel this order?"
 
@@ -564,7 +564,7 @@ msgstr "Cancel this order?"
 msgid "Cancel this production order?"
 msgstr "Cancel this production order?"
 
-#: src/routes/purchase-orders/details.tsx:624
+#: src/routes/purchase-orders/details.tsx:625
 msgid "Cancel this purchase order?"
 msgstr "Cancel this purchase order?"
 
@@ -607,15 +607,15 @@ msgstr "Cash"
 
 #: src/components/organizations/organization-members-panel.tsx:15
 #: src/layouts/base.tsx:426
-#: src/routes/cash-book.tsx:619
+#: src/routes/cash-book.tsx:567
 msgid "Cash Book"
 msgstr "Cash Book"
 
-#: src/routes/cash-book.tsx:349
+#: src/routes/cash-book.tsx:297
 msgid "Cash movement recorded"
 msgstr "Cash movement recorded"
 
-#: src/routes/cash-book.tsx:686
+#: src/routes/cash-book.tsx:574
 msgid "Cash register"
 msgstr "Cash register"
 
@@ -623,22 +623,22 @@ msgstr "Cash register"
 msgid "Cash register account"
 msgstr "Cash register account"
 
-#: src/routes/cash-book.tsx:1048
+#: src/routes/cash-book.tsx:968
 msgid "Cash sale"
 msgstr "Cash sale"
 
-#: src/routes/cash-book.tsx:562
+#: src/routes/cash-book.tsx:510
 msgid "Cash sale recorded"
 msgstr "Cash sale recorded"
 
 #: src/components/products/form.tsx:375
 #: src/routes/inventory.tsx:293
-#: src/routes/products.tsx:239
+#: src/routes/products.tsx:247
 msgid "Category"
 msgstr "Category"
 
 #. placeholder {0}: money(unitsToCents(amountReceivedWatched - total))
-#: src/routes/cash-book.tsx:1071
+#: src/routes/cash-book.tsx:991
 msgid "Change due: {0}"
 msgstr "Change due: {0}"
 
@@ -646,7 +646,7 @@ msgstr "Change due: {0}"
 msgid "Change logo"
 msgstr "Change logo"
 
-#: src/routes/reporting/revenue-trend.tsx:86
+#: src/routes/reporting/revenue-trend.tsx:81
 msgid "Chart"
 msgstr "Chart"
 
@@ -671,15 +671,15 @@ msgstr "Choose file"
 msgid "City"
 msgstr "City"
 
-#: src/routes/accounting/reports/ar-aging.tsx:99
-#: src/routes/dashboard.tsx:232
-#: src/routes/dashboard.tsx:288
+#: src/routes/accounting/reports/ar-aging.tsx:94
+#: src/routes/dashboard.tsx:227
+#: src/routes/dashboard.tsx:283
 #: src/routes/deliveries.tsx:94
 #: src/routes/deliveries/details.tsx:314
 #: src/routes/invoices/index.tsx:171
 #: src/routes/orders.tsx:88
 #: src/routes/orders/details.tsx:274
-#: src/routes/reporting/sales-by-client.tsx:100
+#: src/routes/reporting/sales-by-client.tsx:95
 msgid "Client"
 msgstr "Client"
 
@@ -753,11 +753,11 @@ msgstr "Close year"
 msgid "Closed"
 msgstr "Closed"
 
-#: src/routes/cash-book.tsx:755
+#: src/routes/cash-book.tsx:630
 msgid "Closing"
 msgstr "Closing"
 
-#: src/routes/accounting/reports/daily-cash-movements.tsx:144
+#: src/routes/accounting/reports/daily-cash-movements.tsx:139
 msgid "Closing balance"
 msgstr "Closing balance"
 
@@ -771,9 +771,9 @@ msgstr "Closing balance"
 #: src/components/vendors/form.tsx:180
 #: src/routes/accounting/chart-of-accounts.tsx:96
 #: src/routes/accounting/journals.tsx:76
-#: src/routes/accounting/reports/balance-sheet.tsx:44
-#: src/routes/accounting/reports/profit-and-loss.tsx:64
-#: src/routes/accounting/trial-balance.tsx:133
+#: src/routes/accounting/reports/balance-sheet.tsx:39
+#: src/routes/accounting/reports/profit-and-loss.tsx:59
+#: src/routes/accounting/trial-balance.tsx:128
 #: src/routes/settings/countries.tsx:91
 msgid "Code"
 msgstr "Code"
@@ -796,12 +796,12 @@ msgstr "Completed"
 #: src/routes/inventory.tsx:303
 #: src/routes/production-orders/details.tsx:299
 #: src/routes/production-orders/details.tsx:548
-#: src/routes/products.tsx:249
+#: src/routes/products.tsx:257
 msgid "Component"
 msgstr "Component"
 
 #: src/components/products/form.tsx:389
-#: src/routes/products.tsx:165
+#: src/routes/products.tsx:173
 msgid "Component / intermediate"
 msgstr "Component / intermediate"
 
@@ -813,7 +813,7 @@ msgstr "Component is required"
 msgid "Components"
 msgstr "Components"
 
-#: src/routes/accounting/reports/inventory-valuation.tsx:56
+#: src/routes/accounting/reports/inventory-valuation.tsx:51
 msgid "Computed value"
 msgstr "Computed value"
 
@@ -840,7 +840,7 @@ msgstr "Confirmed"
 msgid "Contact"
 msgstr "Contact"
 
-#: src/routes/cash-book.tsx:1164
+#: src/routes/cash-book.tsx:1084
 msgid "Continue"
 msgstr "Continue"
 
@@ -848,7 +848,7 @@ msgstr "Continue"
 msgid "Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G."
 msgstr "Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G."
 
-#: src/routes/products.tsx:266
+#: src/routes/products.tsx:274
 msgid "Cost"
 msgstr "Cost"
 
@@ -908,7 +908,7 @@ msgstr "Creates a snapshot, saves it to the backup list, and downloads it."
 #: src/routes/accounting/journal-entries/details.tsx:279
 #: src/routes/accounting/journal-entries/details.tsx:323
 #: src/routes/accounting/journal-entries/details.tsx:439
-#: src/routes/accounting/trial-balance.tsx:149
+#: src/routes/accounting/trial-balance.tsx:144
 msgid "Credit"
 msgstr "Credit"
 
@@ -925,17 +925,17 @@ msgid "Currency"
 msgstr "Currency"
 
 #: src/components/products/bom-editor-drawer.tsx:382
-#: src/routes/accounting/reports/ap-aging.tsx:56
-#: src/routes/accounting/reports/ar-aging.tsx:56
-#: src/routes/dashboard.tsx:185
+#: src/routes/accounting/reports/ap-aging.tsx:51
+#: src/routes/accounting/reports/ar-aging.tsx:51
+#: src/routes/dashboard.tsx:180
 msgid "Current"
 msgstr "Current"
 
-#: src/routes/accounting/reports/balance-sheet.tsx:61
+#: src/routes/accounting/reports/balance-sheet.tsx:56
 msgid "Current earnings"
 msgstr "Current earnings"
 
-#: src/routes/dashboard.tsx:113
+#: src/routes/dashboard.tsx:108
 msgid "Current year ({year})"
 msgstr "Current year ({year})"
 
@@ -947,8 +947,8 @@ msgstr "Custom"
 msgid "Custom (uploaded template)"
 msgstr "Custom (uploaded template)"
 
-#: src/routes/cash-book.tsx:795
-#: src/routes/cash-book.tsx:873
+#: src/routes/cash-book.tsx:670
+#: src/routes/cash-book.tsx:737
 msgid "Customer"
 msgstr "Customer"
 
@@ -969,7 +969,7 @@ msgid "Daily %"
 msgstr "Daily %"
 
 #: src/layouts/base.tsx:684
-#: src/routes/accounting/reports/daily-cash-movements.tsx:83
+#: src/routes/accounting/reports/daily-cash-movements.tsx:78
 msgid "Daily Cash Movements"
 msgstr "Daily Cash Movements"
 
@@ -978,7 +978,7 @@ msgid "Danger zone"
 msgstr "Danger zone"
 
 #: src/layouts/base.tsx:417
-#: src/routes/dashboard.tsx:93
+#: src/routes/dashboard.tsx:88
 msgid "Dashboard"
 msgstr "Dashboard"
 
@@ -990,20 +990,20 @@ msgstr "Database restored — reload to see changes"
 
 #: src/components/imports/form.tsx:271
 #: src/components/invoices/pdf.tsx:222
-#: src/components/payments/payment-panel.tsx:295
-#: src/components/payments/payment-panel.tsx:375
+#: src/components/payments/payment-panel.tsx:287
+#: src/components/payments/payment-panel.tsx:367
 #: src/routes/accounting/journal-entries.tsx:104
 #: src/routes/accounting/journal-entries/details.tsx:192
 #: src/routes/accounting/journal-entries/details.tsx:392
-#: src/routes/accounting/reports/daily-cash-movements.tsx:121
-#: src/routes/cash-book.tsx:876
-#: src/routes/cash-book.tsx:964
+#: src/routes/accounting/reports/daily-cash-movements.tsx:116
+#: src/routes/cash-book.tsx:740
+#: src/routes/cash-book.tsx:884
 #: src/routes/imports.tsx:131
 #: src/routes/incoming-invoices.tsx:131
 #: src/routes/inventory.tsx:421
 #: src/routes/invoices/details.tsx:619
 #: src/routes/invoices/index.tsx:179
-#: src/routes/orders/details.tsx:486
+#: src/routes/orders/details.tsx:487
 #: src/routes/production-orders.tsx:130
 #: src/routes/production-orders/details.tsx:231
 #: src/routes/production-orders/details.tsx:530
@@ -1062,16 +1062,16 @@ msgstr "day"
 msgid "Day of month ({0})"
 msgstr "Day of month ({0})"
 
-#: src/routes/accounting/reports/ap-aging.tsx:101
-#: src/routes/accounting/reports/ar-aging.tsx:101
-#: src/routes/dashboard.tsx:234
+#: src/routes/accounting/reports/ap-aging.tsx:96
+#: src/routes/accounting/reports/ar-aging.tsx:96
+#: src/routes/dashboard.tsx:229
 msgid "Days overdue"
 msgstr "Days overdue"
 
 #: src/routes/accounting/journal-entries/details.tsx:260
 #: src/routes/accounting/journal-entries/details.tsx:320
 #: src/routes/accounting/journal-entries/details.tsx:432
-#: src/routes/accounting/trial-balance.tsx:142
+#: src/routes/accounting/trial-balance.tsx:137
 msgid "Debit"
 msgstr "Debit"
 
@@ -1155,7 +1155,7 @@ msgstr "Default tax rate"
 msgid "Defaults"
 msgstr "Defaults"
 
-#: src/routes/cash-book.tsx:1065
+#: src/routes/cash-book.tsx:985
 msgid "Defaults to the full total. Entering more just records the change given back — the sale itself is still only ever recorded up to the total."
 msgstr "Defaults to the full total. Entering more just records the change given back — the sale itself is still only ever recorded up to the total."
 
@@ -1174,11 +1174,11 @@ msgstr "Defaults to the full total. Entering more just records the change given 
 #: src/routes/deliveries/details.tsx:469
 #: src/routes/inbound-deliveries/details.tsx:544
 #: src/routes/incoming-invoices/details.tsx:619
-#: src/routes/invoices/details.tsx:1074
+#: src/routes/invoices/details.tsx:1071
 #: src/routes/invoices/index.tsx:123
-#: src/routes/orders/details.tsx:525
+#: src/routes/orders/details.tsx:526
 #: src/routes/production-orders/details.tsx:594
-#: src/routes/purchase-orders/details.tsx:603
+#: src/routes/purchase-orders/details.tsx:604
 #: src/routes/settings/users.tsx:248
 #: src/routes/settings/users.tsx:273
 msgid "Delete"
@@ -1213,11 +1213,11 @@ msgstr "Delete this goods receipt?"
 msgid "Delete this incoming invoice?"
 msgstr "Delete this incoming invoice?"
 
-#: src/routes/invoices/details.tsx:1068
+#: src/routes/invoices/details.tsx:1065
 msgid "Delete this invoice?"
 msgstr "Delete this invoice?"
 
-#: src/routes/orders/details.tsx:519
+#: src/routes/orders/details.tsx:520
 msgid "Delete this order?"
 msgstr "Delete this order?"
 
@@ -1229,7 +1229,7 @@ msgstr "Delete this organization?"
 msgid "Delete this production order?"
 msgstr "Delete this production order?"
 
-#: src/routes/purchase-orders/details.tsx:597
+#: src/routes/purchase-orders/details.tsx:598
 msgid "Delete this purchase order?"
 msgstr "Delete this purchase order?"
 
@@ -1252,7 +1252,7 @@ msgstr "Deleted {total} record(s)"
 msgid "Delivered"
 msgstr "Delivered"
 
-#: src/routes/orders/details.tsx:476
+#: src/routes/orders/details.tsx:477
 msgid "Deliveries"
 msgstr "Deliveries"
 
@@ -1309,11 +1309,11 @@ msgstr "Delivery update failed"
 msgid "delivery(ies)"
 msgstr "delivery(ies)"
 
-#: src/routes/cash-book.tsx:1060
+#: src/routes/cash-book.tsx:980
 msgid "Deposit received ({currency})"
 msgstr "Deposit received ({currency})"
 
-#: src/routes/cash-book.tsx:1213
+#: src/routes/cash-book.tsx:1133
 msgid "Deposit to the bank"
 msgstr "Deposit to the bank"
 
@@ -1338,7 +1338,7 @@ msgstr "Description"
 msgid "Description required"
 msgstr "Description required"
 
-#: src/routes/cash-book.tsx:1207
+#: src/routes/cash-book.tsx:1127
 msgid "Destination"
 msgstr "Destination"
 
@@ -1348,7 +1348,7 @@ msgstr "Destination"
 msgid "Details"
 msgstr "Details"
 
-#: src/routes/accounting/reports/inventory-valuation.tsx:64
+#: src/routes/accounting/reports/inventory-valuation.tsx:59
 msgid "Difference"
 msgstr "Difference"
 
@@ -1413,7 +1413,7 @@ msgstr "Due date"
 msgid "Due days"
 msgstr "Due days"
 
-#: src/routes/invoices/details.tsx:1063
+#: src/routes/invoices/details.tsx:1060
 #: src/routes/invoices/index.tsx:102
 msgid "Duplicate"
 msgstr "Duplicate"
@@ -1616,23 +1616,21 @@ msgstr "Entry #"
 
 #: src/components/accounting/account-form.tsx:21
 #: src/routes/accounting/chart-of-accounts.tsx:36
-#: src/routes/accounting/reports/balance-sheet.tsx:133
+#: src/routes/accounting/reports/balance-sheet.tsx:128
 msgid "Equity"
 msgstr "Equity"
 
-#: src/routes/cash-book.tsx:713
-#: src/routes/cash-book.tsx:861
 #: src/routes/deliveries/details.tsx:521
 #: src/routes/inbound-deliveries/details.tsx:601
 #: src/routes/incoming-invoices/details.tsx:649
 #: src/routes/invoices/details.tsx:349
-#: src/routes/orders/details.tsx:580
-#: src/routes/purchase-orders/details.tsx:657
+#: src/routes/orders/details.tsx:581
+#: src/routes/purchase-orders/details.tsx:658
 msgid "Excel"
 msgstr "Excel"
 
 #: src/components/currency/currency-fields.tsx:101
-#: src/components/payments/payment-panel.tsx:448
+#: src/components/payments/payment-panel.tsx:440
 #: src/routes/invoices/details.tsx:586
 msgid "Exchange rate"
 msgstr "Exchange rate"
@@ -1660,11 +1658,11 @@ msgid "Expense"
 msgstr "Expense"
 
 #: src/components/products/form.tsx:563
-#: src/routes/cash-book.tsx:1223
+#: src/routes/cash-book.tsx:1143
 msgid "Expense account"
 msgstr "Expense account"
 
-#: src/routes/accounting/reports/profit-and-loss.tsx:118
+#: src/routes/accounting/reports/profit-and-loss.tsx:113
 msgid "Expenses"
 msgstr "Expenses"
 
@@ -1672,8 +1670,6 @@ msgstr "Expenses"
 msgid "Export DATEV"
 msgstr "Export DATEV"
 
-#: src/routes/cash-book.tsx:299
-#: src/routes/cash-book.tsx:317
 #: src/routes/deliveries/details.tsx:256
 #: src/routes/inbound-deliveries/details.tsx:252
 #: src/routes/incoming-invoices/details.tsx:281
@@ -1869,15 +1865,15 @@ msgstr "Failed to generate invoice number"
 msgid "Failed to load bill of materials"
 msgstr "Failed to load bill of materials"
 
-#: src/routes/cash-book.tsx:250
+#: src/routes/cash-book.tsx:239
 msgid "Failed to load cash register movements"
 msgstr "Failed to load cash register movements"
 
-#: src/routes/cash-book.tsx:584
+#: src/routes/cash-book.tsx:532
 msgid "Failed to load invoice"
 msgstr "Failed to load invoice"
 
-#: src/routes/cash-book.tsx:270
+#: src/routes/cash-book.tsx:259
 msgid "Failed to load loan status"
 msgstr "Failed to load loan status"
 
@@ -1893,7 +1889,7 @@ msgstr "Failed to load templates"
 #~ msgid "Failed to load the cash register balance"
 #~ msgstr "Failed to load the cash register balance"
 
-#: src/routes/cash-book.tsx:387
+#: src/routes/cash-book.tsx:335
 msgid "Failed to load this customer's open invoices"
 msgstr "Failed to load this customer's open invoices"
 
@@ -1905,15 +1901,15 @@ msgstr "Failed to load version"
 msgid "Failed to post journal entry"
 msgstr "Failed to post journal entry"
 
-#: src/routes/cash-book.tsx:354
+#: src/routes/cash-book.tsx:302
 msgid "Failed to record cash movement"
 msgstr "Failed to record cash movement"
 
-#: src/components/payments/payment-panel.tsx:274
+#: src/components/payments/payment-panel.tsx:266
 msgid "Failed to record payment"
 msgstr "Failed to record payment"
 
-#: src/routes/cash-book.tsx:573
+#: src/routes/cash-book.tsx:521
 msgid "Failed to record sale"
 msgstr "Failed to record sale"
 
@@ -1998,7 +1994,7 @@ msgstr "Failed to update purchase order status"
 msgid "Failed to update user"
 msgstr "Failed to update user"
 
-#: src/components/payments/payment-panel.tsx:237
+#: src/components/payments/payment-panel.tsx:229
 msgid "Failed to void payment"
 msgstr "Failed to void payment"
 
@@ -2033,8 +2029,8 @@ msgstr "Filter by reference"
 #: src/components/products/form.tsx:386
 #: src/routes/inventory.tsx:255
 #: src/routes/inventory.tsx:299
-#: src/routes/products.tsx:164
-#: src/routes/products.tsx:245
+#: src/routes/products.tsx:172
+#: src/routes/products.tsx:253
 msgid "Finished good"
 msgstr "Finished good"
 
@@ -2073,7 +2069,7 @@ msgstr "Fiscal Periods"
 #: src/components/invoices/pdf-tunisia.tsx:263
 #: src/components/invoices/pdf.tsx:368
 #: src/routes/invoices/details.tsx:679
-#: src/routes/invoices/details.tsx:1005
+#: src/routes/invoices/details.tsx:1002
 msgid "Fiscal stamp"
 msgstr "Fiscal stamp"
 
@@ -2129,7 +2125,7 @@ msgstr "Generate range"
 msgid "Germany — DATEV"
 msgstr "Germany — DATEV"
 
-#: src/routes/accounting/reports/inventory-valuation.tsx:50
+#: src/routes/accounting/reports/inventory-valuation.tsx:45
 msgid "GL balance"
 msgstr "GL balance"
 
@@ -2227,13 +2223,13 @@ msgstr "How far a vendor's unit price may differ from the purchase order."
 
 #: src/components/clients/form.tsx:252
 #: src/components/clients/form.tsx:253
-#: src/routes/cash-book.tsx:1182
+#: src/routes/cash-book.tsx:1102
 msgid "IBAN"
 msgstr "IBAN"
 
 #: src/components/clients/form.tsx:247
 #: src/components/clients/form.tsx:248
-#: src/routes/cash-book.tsx:1179
+#: src/routes/cash-book.tsx:1099
 msgid "Identity number"
 msgstr "Identity number"
 
@@ -2289,8 +2285,8 @@ msgstr "Import updated successfully"
 msgid "Imports"
 msgstr "Imports"
 
-#: src/routes/accounting/reports/daily-cash-movements.tsx:132
-#: src/routes/cash-book.tsx:735
+#: src/routes/accounting/reports/daily-cash-movements.tsx:127
+#: src/routes/cash-book.tsx:610
 #: src/routes/inventory.tsx:39
 msgid "In"
 msgstr "In"
@@ -2356,7 +2352,7 @@ msgstr "Incoming Invoices"
 msgid "Input tax account"
 msgstr "Input tax account"
 
-#: src/routes/reporting/tax-summary.tsx:124
+#: src/routes/reporting/tax-summary.tsx:119
 msgid "Input VAT (Purchases)"
 msgstr "Input VAT (Purchases)"
 
@@ -2371,17 +2367,17 @@ msgid "Inventory"
 msgstr "Inventory"
 
 #: src/layouts/base.tsx:675
-#: src/routes/accounting/reports/inventory-valuation.tsx:45
+#: src/routes/accounting/reports/inventory-valuation.tsx:40
 msgid "Inventory Valuation"
 msgstr "Inventory Valuation"
 
 #: src/components/invoices/pdf-tunisia.tsx:167
 #: src/components/invoices/pdf.tsx:214
 #: src/layouts/base.tsx:246
-#: src/routes/accounting/reports/ar-aging.tsx:98
-#: src/routes/cash-book.tsx:874
-#: src/routes/cash-book.tsx:935
-#: src/routes/dashboard.tsx:231
+#: src/routes/accounting/reports/ar-aging.tsx:93
+#: src/routes/cash-book.tsx:738
+#: src/routes/cash-book.tsx:855
+#: src/routes/dashboard.tsx:226
 #: src/routes/invoices/details.tsx:396
 #: src/routes/settings/document-templates.tsx:239
 msgid "Invoice"
@@ -2562,7 +2558,7 @@ msgstr "Landscape"
 msgid "Language"
 msgstr "Language"
 
-#: src/routes/dashboard.tsx:104
+#: src/routes/dashboard.tsx:99
 msgid "Last {m} months"
 msgstr "Last {m} months"
 
@@ -2570,7 +2566,7 @@ msgstr "Last {m} months"
 msgid "Last login"
 msgstr "Last login"
 
-#: src/routes/dashboard.tsx:115
+#: src/routes/dashboard.tsx:110
 msgid "Last year ({year})"
 msgstr "Last year ({year})"
 
@@ -2586,7 +2582,7 @@ msgstr "Leave blank to use organization address"
 msgid "Leave without saving?"
 msgstr "Leave without saving?"
 
-#: src/routes/accounting/reports/balance-sheet.tsx:109
+#: src/routes/accounting/reports/balance-sheet.tsx:104
 msgid "Liabilities"
 msgstr "Liabilities"
 
@@ -2619,23 +2615,23 @@ msgstr "Link an existing purchase order"
 msgid "Linked order"
 msgstr "Linked order"
 
-#: src/routes/cash-book.tsx:108
+#: src/routes/cash-book.tsx:102
 msgid "Loan (deposit)"
 msgstr "Loan (deposit)"
 
-#: src/routes/cash-book.tsx:110
+#: src/routes/cash-book.tsx:104
 msgid "Loan repayment"
 msgstr "Loan repayment"
 
-#: src/routes/cash-book.tsx:1049
+#: src/routes/cash-book.tsx:969
 msgid "Loan sale"
 msgstr "Loan sale"
 
-#: src/routes/cash-book.tsx:562
+#: src/routes/cash-book.tsx:510
 msgid "Loan sale recorded"
 msgstr "Loan sale recorded"
 
-#: src/routes/cash-book.tsx:834
+#: src/routes/cash-book.tsx:709
 msgid "Loan status"
 msgstr "Loan status"
 
@@ -2743,8 +2739,8 @@ msgstr "Members"
 msgid "Message"
 msgstr "Message"
 
-#: src/components/payments/payment-panel.tsx:302
-#: src/components/payments/payment-panel.tsx:380
+#: src/components/payments/payment-panel.tsx:294
+#: src/components/payments/payment-panel.tsx:372
 msgid "Method"
 msgstr "Method"
 
@@ -2758,7 +2754,7 @@ msgstr "Minimum 6 characters"
 msgid "Miscellaneous"
 msgstr "Miscellaneous"
 
-#: src/routes/cash-book.tsx:1176
+#: src/routes/cash-book.tsx:1096
 msgid "Mobile number"
 msgstr "Mobile number"
 
@@ -2766,7 +2762,7 @@ msgstr "Mobile number"
 msgid "month"
 msgstr "month"
 
-#: src/routes/reporting/revenue-trend.tsx:99
+#: src/routes/reporting/revenue-trend.tsx:94
 msgid "Month"
 msgstr "Month"
 
@@ -2784,7 +2780,7 @@ msgid "Movement"
 msgstr "Movement"
 
 #. placeholder {0}: dayjs(dailyMovement.date).format(dateFormat)
-#: src/routes/cash-book.tsx:770
+#: src/routes/cash-book.tsx:645
 msgid "Movements for {0}"
 msgstr "Movements for {0}"
 
@@ -2808,12 +2804,12 @@ msgstr "Movements for {0}"
 #: src/routes/accounting/fiscal-periods.tsx:300
 #: src/routes/accounting/fiscal-periods.tsx:326
 #: src/routes/accounting/journals.tsx:84
-#: src/routes/accounting/trial-balance.tsx:140
+#: src/routes/accounting/trial-balance.tsx:135
 #: src/routes/bill-of-materials.tsx:112
-#: src/routes/cash-book.tsx:1170
+#: src/routes/cash-book.tsx:1090
 #: src/routes/clients.tsx:83
 #: src/routes/organizations/new.tsx:63
-#: src/routes/products.tsx:208
+#: src/routes/products.tsx:216
 #: src/routes/settings/countries.tsx:98
 #: src/routes/settings/payment-terms.tsx:73
 #: src/routes/settings/tax-rates.tsx:71
@@ -2830,11 +2826,11 @@ msgstr "Name is required"
 
 #: src/components/invoices/pdf-tunisia.tsx:284
 #: src/components/invoices/pdf.tsx:389
-#: src/routes/invoices/details.tsx:1028
+#: src/routes/invoices/details.tsx:1025
 msgid "Net amount due"
 msgstr "Net amount due"
 
-#: src/routes/accounting/reports/profit-and-loss.tsx:145
+#: src/routes/accounting/reports/profit-and-loss.tsx:140
 msgid "Net income"
 msgstr "Net income"
 
@@ -2849,14 +2845,14 @@ msgstr "New account"
 msgid "New client"
 msgstr "New client"
 
-#: src/routes/cash-book.tsx:652
-#: src/routes/cash-book.tsx:915
-#: src/routes/cash-book.tsx:1160
+#: src/routes/cash-book.tsx:820
+#: src/routes/cash-book.tsx:835
+#: src/routes/cash-book.tsx:1080
 msgid "New customer"
 msgstr "New customer"
 
 #: src/routes/deliveries.tsx:60
-#: src/routes/orders/details.tsx:586
+#: src/routes/orders/details.tsx:587
 msgid "New delivery"
 msgstr "New delivery"
 
@@ -2870,7 +2866,7 @@ msgid "New fiscal year"
 msgstr "New fiscal year"
 
 #: src/routes/inbound-deliveries.tsx:60
-#: src/routes/purchase-orders/details.tsx:665
+#: src/routes/purchase-orders/details.tsx:666
 msgid "New goods receipt"
 msgstr "New goods receipt"
 
@@ -2925,7 +2921,7 @@ msgid "New period"
 msgstr "New period"
 
 #: src/components/products/form.tsx:230
-#: src/routes/products.tsx:182
+#: src/routes/products.tsx:190
 msgid "New product"
 msgstr "New product"
 
@@ -2943,7 +2939,7 @@ msgstr "New purchase order"
 msgid "New recipe"
 msgstr "New recipe"
 
-#: src/routes/cash-book.tsx:959
+#: src/routes/cash-book.tsx:879
 msgid "New sale"
 msgstr "New sale"
 
@@ -2986,7 +2982,7 @@ msgstr "Next run: {nextRunLabel}"
 #: src/components/imports/form.tsx:372
 #: src/components/imports/form.tsx:448
 #: src/components/payment-terms/form.tsx:96
-#: src/components/payments/payment-panel.tsx:413
+#: src/components/payments/payment-panel.tsx:405
 #: src/components/products/form.tsx:243
 #: src/components/tax-rates/form.tsx:151
 #: src/components/units-of-measure/form.tsx:102
@@ -3001,28 +2997,28 @@ msgstr "Next run: {nextRunLabel}"
 #: src/routes/inbound-deliveries/details.tsx:571
 #: src/routes/incoming-invoices/details.tsx:616
 #: src/routes/inventory.tsx:490
-#: src/routes/invoices/details.tsx:1071
+#: src/routes/invoices/details.tsx:1068
 #: src/routes/invoices/index.tsx:120
-#: src/routes/orders/details.tsx:522
-#: src/routes/orders/details.tsx:550
+#: src/routes/orders/details.tsx:523
+#: src/routes/orders/details.tsx:551
 #: src/routes/production-orders/details.tsx:591
 #: src/routes/production-orders/details.tsx:607
 #: src/routes/production-orders/details.tsx:622
-#: src/routes/purchase-orders/details.tsx:600
-#: src/routes/purchase-orders/details.tsx:627
+#: src/routes/purchase-orders/details.tsx:601
+#: src/routes/purchase-orders/details.tsx:628
 #: src/routes/settings/users.tsx:269
 msgid "No"
 msgstr "No"
 
-#: src/routes/accounting/reports/daily-cash-movements.tsx:118
+#: src/routes/accounting/reports/daily-cash-movements.tsx:113
 msgid "No activity in this range"
 msgstr "No activity in this range"
 
-#: src/routes/cash-book.tsx:526
+#: src/routes/cash-book.tsx:474
 msgid "No cash register account configured — set one in Organization settings before recording a sale"
 msgstr "No cash register account configured — set one in Organization settings before recording a sale"
 
-#: src/routes/cash-book.tsx:822
+#: src/routes/cash-book.tsx:697
 msgid "No cash register account configured — set one in Organization settings to see movements here."
 msgstr "No cash register account configured — set one in Organization settings to see movements here."
 
@@ -3046,15 +3042,15 @@ msgstr "No fiscal year yet"
 msgid "No line items"
 msgstr "No line items"
 
-#: src/routes/cash-book.tsx:871
+#: src/routes/cash-book.tsx:735
 msgid "No loan sales"
 msgstr "No loan sales"
 
-#: src/routes/cash-book.tsx:661
+#: src/routes/cash-book.tsx:788
 msgid "No matching customers"
 msgstr "No matching customers"
 
-#: src/routes/cash-book.tsx:779
+#: src/routes/cash-book.tsx:654
 msgid "No movements on this date"
 msgstr "No movements on this date"
 
@@ -3062,20 +3058,20 @@ msgstr "No movements on this date"
 msgid "No open fiscal year"
 msgstr "No open fiscal year"
 
-#: src/routes/cash-book.tsx:933
+#: src/routes/cash-book.tsx:853
 msgid "No open invoices for this customer"
 msgstr "No open invoices for this customer"
 
-#: src/routes/accounting/reports/ap-aging.tsx:96
+#: src/routes/accounting/reports/ap-aging.tsx:91
 msgid "No outstanding bills"
 msgstr "No outstanding bills"
 
-#: src/routes/accounting/reports/ar-aging.tsx:96
-#: src/routes/dashboard.tsx:229
+#: src/routes/accounting/reports/ar-aging.tsx:91
+#: src/routes/dashboard.tsx:224
 msgid "No outstanding invoices"
 msgstr "No outstanding invoices"
 
-#: src/components/payments/payment-panel.tsx:372
+#: src/components/payments/payment-panel.tsx:364
 msgid "No payments recorded yet"
 msgstr "No payments recorded yet"
 
@@ -3087,7 +3083,7 @@ msgstr "No products match your filters"
 msgid "No purchase orders linked to this shipment yet."
 msgstr "No purchase orders linked to this shipment yet."
 
-#: src/routes/reporting/purchases-by-vendor.tsx:96
+#: src/routes/reporting/purchases-by-vendor.tsx:91
 msgid "No purchases in this period"
 msgstr "No purchases in this period"
 
@@ -3095,19 +3091,19 @@ msgstr "No purchases in this period"
 msgid "No recipe defined yet"
 msgstr "No recipe defined yet"
 
-#: src/routes/dashboard.tsx:286
-#: src/routes/dashboard.tsx:306
-#: src/routes/reporting/revenue-trend.tsx:96
-#: src/routes/reporting/sales-by-client.tsx:98
-#: src/routes/reporting/sales-by-product.tsx:98
+#: src/routes/dashboard.tsx:281
+#: src/routes/dashboard.tsx:301
+#: src/routes/reporting/revenue-trend.tsx:91
+#: src/routes/reporting/sales-by-client.tsx:93
+#: src/routes/reporting/sales-by-product.tsx:93
 msgid "No revenue in this period"
 msgstr "No revenue in this period"
 
-#: src/routes/accounting/reports/inventory-valuation.tsx:83
+#: src/routes/accounting/reports/inventory-valuation.tsx:78
 msgid "No stock-enabled products"
 msgstr "No stock-enabled products"
 
-#: src/routes/dashboard.tsx:257
+#: src/routes/dashboard.tsx:252
 msgid "No stock-tracked products"
 msgstr "No stock-tracked products"
 
@@ -3155,7 +3151,7 @@ msgid "Not linked to a purchase order line."
 msgstr "Not linked to a purchase order line."
 
 #: src/components/stock/movement-form.tsx:261
-#: src/routes/cash-book.tsx:1241
+#: src/routes/cash-book.tsx:1161
 #: src/routes/inventory.tsx:470
 msgid "Note"
 msgstr "Note"
@@ -3163,8 +3159,8 @@ msgstr "Note"
 #: src/components/imports/form.tsx:354
 #: src/components/imports/form.tsx:355
 #: src/components/invoices/pdf.tsx:339
-#: src/components/payments/payment-panel.tsx:345
-#: src/routes/cash-book.tsx:1116
+#: src/components/payments/payment-panel.tsx:337
+#: src/routes/cash-book.tsx:1036
 #: src/routes/deliveries/details.tsx:379
 #: src/routes/imports.tsx:189
 #: src/routes/inbound-deliveries/details.tsx:463
@@ -3187,7 +3183,7 @@ msgstr "Nothing to delete — this organization was empty"
 
 #: src/routes/deliveries.tsx:76
 #: src/routes/imports.tsx:117
-#: src/routes/orders/details.tsx:479
+#: src/routes/orders/details.tsx:480
 msgid "Number"
 msgstr "Number"
 
@@ -3224,19 +3220,15 @@ msgstr "Open"
 msgid "Open in Bill of Materials screen"
 msgstr "Open in Bill of Materials screen"
 
-#: src/routes/cash-book.tsx:924
+#: src/routes/cash-book.tsx:844
 msgid "Open invoices"
 msgstr "Open invoices"
 
-#: src/routes/cash-book.tsx:840
-msgid "Open only"
-msgstr "Open only"
-
-#: src/routes/cash-book.tsx:725
+#: src/routes/cash-book.tsx:600
 msgid "Opening"
 msgstr "Opening"
 
-#: src/routes/accounting/reports/daily-cash-movements.tsx:126
+#: src/routes/accounting/reports/daily-cash-movements.tsx:121
 msgid "Opening balance"
 msgstr "Opening balance"
 
@@ -3267,7 +3259,7 @@ msgstr "Optional note"
 msgid "Optional reference"
 msgstr "Optional reference"
 
-#: src/routes/cash-book.tsx:1066
+#: src/routes/cash-book.tsx:986
 msgid "Optional upfront deposit — leave at 0 for a zero-deposit loan. The remaining balance is collected later."
 msgstr "Optional upfront deposit — leave at 0 for a zero-deposit loan. The remaining balance is collected later."
 
@@ -3390,7 +3382,7 @@ msgstr "Organization updated successfully"
 msgid "Organizations"
 msgstr "Organizations"
 
-#: src/routes/cash-book.tsx:881
+#: src/routes/cash-book.tsx:745
 msgid "Original"
 msgstr "Original"
 
@@ -3402,8 +3394,8 @@ msgstr "Other"
 msgid "Our reference"
 msgstr "Our reference"
 
-#: src/routes/accounting/reports/daily-cash-movements.tsx:138
-#: src/routes/cash-book.tsx:745
+#: src/routes/accounting/reports/daily-cash-movements.tsx:133
+#: src/routes/cash-book.tsx:620
 #: src/routes/inventory.tsx:45
 msgid "Out"
 msgstr "Out"
@@ -3422,7 +3414,7 @@ msgstr "Outbound Delivery"
 msgid "Output tax account"
 msgstr "Output tax account"
 
-#: src/routes/reporting/tax-summary.tsx:98
+#: src/routes/reporting/tax-summary.tsx:93
 msgid "Output VAT (Sales)"
 msgstr "Output VAT (Sales)"
 
@@ -3430,12 +3422,12 @@ msgstr "Output VAT (Sales)"
 msgid "Outside scope of tax"
 msgstr "Outside scope of tax"
 
-#: src/routes/cash-book.tsx:893
-#: src/routes/dashboard.tsx:139
+#: src/routes/cash-book.tsx:757
+#: src/routes/dashboard.tsx:134
 msgid "Outstanding"
 msgstr "Outstanding"
 
-#: src/routes/dashboard.tsx:181
+#: src/routes/dashboard.tsx:176
 msgid "Outstanding invoices"
 msgstr "Outstanding invoices"
 
@@ -3477,8 +3469,8 @@ msgstr "Overrides the organization's default revenue account on a sales invoice 
 msgid "Page orientation"
 msgstr "Page orientation"
 
-#: src/components/payments/payment-panel.tsx:358
-#: src/routes/cash-book.tsx:887
+#: src/components/payments/payment-panel.tsx:350
+#: src/routes/cash-book.tsx:751
 #: src/types/incoming-invoice.ts:30
 #: src/types/invoice.ts:85
 msgid "Paid"
@@ -3501,7 +3493,7 @@ msgstr "Password"
 msgid "Passwords do not match"
 msgstr "Passwords do not match"
 
-#: src/routes/cash-book.tsx:951
+#: src/routes/cash-book.tsx:871
 msgid "Pay"
 msgstr "Pay"
 
@@ -3509,15 +3501,15 @@ msgstr "Pay"
 msgid "Payment Details"
 msgstr "Payment Details"
 
-#: src/routes/cash-book.tsx:1098
+#: src/routes/cash-book.tsx:1018
 msgid "Payment method"
 msgstr "Payment method"
 
-#: src/components/payments/payment-panel.tsx:260
+#: src/components/payments/payment-panel.tsx:252
 msgid "Payment recorded"
 msgstr "Payment recorded"
 
-#: src/routes/cash-book.tsx:604
+#: src/routes/cash-book.tsx:552
 msgid "Payment recorded, but the invoice status couldn't be updated to Paid — update it manually from the invoice page"
 msgstr "Payment recorded, but the invoice status couldn't be updated to Paid — update it manually from the invoice page"
 
@@ -3558,11 +3550,11 @@ msgstr "Payment terms"
 msgid "Payment terms (days)"
 msgstr "Payment terms (days)"
 
-#: src/components/payments/payment-panel.tsx:233
+#: src/components/payments/payment-panel.tsx:225
 msgid "Payment voided"
 msgstr "Payment voided"
 
-#: src/components/payments/payment-panel.tsx:355
+#: src/components/payments/payment-panel.tsx:347
 msgid "Payments"
 msgstr "Payments"
 
@@ -3599,11 +3591,11 @@ msgstr "Phone"
 msgid "Pick a finished product above to define its recipe."
 msgstr "Pick a finished product above to define its recipe."
 
-#: src/routes/accounting/reports/daily-cash-movements.tsx:110
+#: src/routes/accounting/reports/daily-cash-movements.tsx:105
 msgid "Pick an account to see its daily movements."
 msgstr "Pick an account to see its daily movements."
 
-#: src/routes/cash-book.tsx:513
+#: src/routes/cash-book.tsx:461
 msgid "Pick or create a customer first"
 msgstr "Pick or create a customer first"
 
@@ -3734,11 +3726,11 @@ msgstr "Preview"
 #: src/components/invoices/pdf.tsx:285
 #: src/components/products/form.tsx:415
 #: src/routes/invoices/details.tsx:838
-#: src/routes/products.tsx:256
+#: src/routes/products.tsx:264
 msgid "Price"
 msgstr "Price"
 
-#: src/routes/cash-book.tsx:1017
+#: src/routes/cash-book.tsx:937
 msgid "Price (tax incl.)"
 msgstr "Price (tax incl.)"
 
@@ -3761,15 +3753,15 @@ msgstr "Pricing"
 #: src/components/line-items/table.tsx:191
 #: src/components/products/form.tsx:293
 #: src/components/stock/movement-form.tsx:134
-#: src/routes/accounting/reports/inventory-valuation.tsx:85
-#: src/routes/dashboard.tsx:259
-#: src/routes/dashboard.tsx:308
+#: src/routes/accounting/reports/inventory-valuation.tsx:80
+#: src/routes/dashboard.tsx:254
+#: src/routes/dashboard.tsx:303
 #: src/routes/inventory.tsx:280
 #: src/routes/inventory.tsx:428
 #: src/routes/invoices/details.tsx:734
-#: src/routes/products.tsx:150
-#: src/routes/products.tsx:229
-#: src/routes/reporting/sales-by-product.tsx:100
+#: src/routes/products.tsx:158
+#: src/routes/products.tsx:237
+#: src/routes/reporting/sales-by-product.tsx:95
 msgid "Product"
 msgstr "Product"
 
@@ -3846,12 +3838,12 @@ msgid "Production Orders"
 msgstr "Production Orders"
 
 #: src/layouts/base.tsx:560
-#: src/routes/products.tsx:137
+#: src/routes/products.tsx:145
 msgid "Products"
 msgstr "Products"
 
 #: src/layouts/base.tsx:639
-#: src/routes/accounting/reports/profit-and-loss.tsx:79
+#: src/routes/accounting/reports/profit-and-loss.tsx:74
 msgid "Profit & Loss"
 msgstr "Profit & Loss"
 
@@ -3929,7 +3921,7 @@ msgid "Purchases"
 msgstr "Purchases"
 
 #: src/layouts/base.tsx:727
-#: src/routes/reporting/purchases-by-vendor.tsx:56
+#: src/routes/reporting/purchases-by-vendor.tsx:51
 msgid "Purchases by Vendor"
 msgstr "Purchases by Vendor"
 
@@ -3967,8 +3959,8 @@ msgstr "Quantities below are for a batch of {batchSize} units."
 msgid "Quantities below are per single unit."
 msgstr "Quantities below are per single unit."
 
-#: src/routes/accounting/reports/inventory-valuation.tsx:87
-#: src/routes/dashboard.tsx:261
+#: src/routes/accounting/reports/inventory-valuation.tsx:82
+#: src/routes/dashboard.tsx:256
 #: src/routes/inventory.tsx:451
 #: src/routes/production-orders.tsx:99
 #: src/routes/production-orders/details.tsx:209
@@ -4003,12 +3995,12 @@ msgstr "Range end"
 msgid "Range start"
 msgstr "Range start"
 
-#: src/routes/reporting/tax-summary.tsx:52
+#: src/routes/reporting/tax-summary.tsx:47
 msgid "Rate"
 msgstr "Rate"
 
 #: src/components/currency/currency-fields.tsx:117
-#: src/components/payments/payment-panel.tsx:458
+#: src/components/payments/payment-panel.tsx:450
 #: src/routes/invoices/details.tsx:607
 msgid "Rate date"
 msgstr "Rate date"
@@ -4049,16 +4041,16 @@ msgstr "Received"
 msgid "Recent movements"
 msgstr "Recent movements"
 
-#: src/components/payments/payment-panel.tsx:289
-#: src/routes/cash-book.tsx:1194
+#: src/components/payments/payment-panel.tsx:281
+#: src/routes/cash-book.tsx:1114
 msgid "Record"
 msgstr "Record"
 
-#: src/routes/cash-book.tsx:1141
+#: src/routes/cash-book.tsx:1061
 msgid "Record cash sale"
 msgstr "Record cash sale"
 
-#: src/routes/cash-book.tsx:1151
+#: src/routes/cash-book.tsx:1071
 msgid "Record loan sale"
 msgstr "Record loan sale"
 
@@ -4066,8 +4058,8 @@ msgstr "Record loan sale"
 msgid "Record movement"
 msgstr "Record movement"
 
-#: src/components/payments/payment-panel.tsx:284
-#: src/components/payments/payment-panel.tsx:427
+#: src/components/payments/payment-panel.tsx:276
+#: src/components/payments/payment-panel.tsx:419
 msgid "Record payment"
 msgstr "Record payment"
 
@@ -4075,13 +4067,13 @@ msgstr "Record payment"
 msgid "Record stock movement"
 msgstr "Record stock movement"
 
-#: src/components/payments/payment-panel.tsx:342
-#: src/components/payments/payment-panel.tsx:391
+#: src/components/payments/payment-panel.tsx:334
+#: src/components/payments/payment-panel.tsx:383
 #: src/components/stock/movement-form.tsx:257
 #: src/routes/accounting/journal-entries.tsx:131
 #: src/routes/accounting/journal-entries/details.tsx:199
 #: src/routes/accounting/journal-entries/details.tsx:395
-#: src/routes/cash-book.tsx:1111
+#: src/routes/cash-book.tsx:1031
 #: src/routes/inventory.tsx:463
 msgid "Reference"
 msgstr "Reference"
@@ -4230,20 +4222,20 @@ msgstr "Retry"
 
 #: src/components/accounting/account-form.tsx:23
 #: src/routes/accounting/chart-of-accounts.tsx:38
-#: src/routes/accounting/reports/profit-and-loss.tsx:94
-#: src/routes/dashboard.tsx:171
-#: src/routes/dashboard.tsx:290
-#: src/routes/dashboard.tsx:310
-#: src/routes/reporting/revenue-trend.tsx:104
-#: src/routes/reporting/revenue-trend.tsx:120
-#: src/routes/reporting/sales-by-client.tsx:86
-#: src/routes/reporting/sales-by-client.tsx:102
-#: src/routes/reporting/sales-by-product.tsx:86
-#: src/routes/reporting/sales-by-product.tsx:102
+#: src/routes/accounting/reports/profit-and-loss.tsx:89
+#: src/routes/dashboard.tsx:166
+#: src/routes/dashboard.tsx:285
+#: src/routes/dashboard.tsx:305
+#: src/routes/reporting/revenue-trend.tsx:99
+#: src/routes/reporting/revenue-trend.tsx:115
+#: src/routes/reporting/sales-by-client.tsx:81
+#: src/routes/reporting/sales-by-client.tsx:97
+#: src/routes/reporting/sales-by-product.tsx:81
+#: src/routes/reporting/sales-by-product.tsx:97
 msgid "Revenue"
 msgstr "Revenue"
 
-#: src/routes/dashboard.tsx:131
+#: src/routes/dashboard.tsx:126
 msgid "Revenue (selected period)"
 msgstr "Revenue (selected period)"
 
@@ -4251,16 +4243,16 @@ msgstr "Revenue (selected period)"
 msgid "Revenue account"
 msgstr "Revenue account"
 
-#: src/routes/reporting/revenue-trend.tsx:80
+#: src/routes/reporting/revenue-trend.tsx:75
 msgid "Revenue by month"
 msgstr "Revenue by month"
 
-#: src/routes/dashboard.tsx:161
+#: src/routes/dashboard.tsx:156
 msgid "Revenue over time"
 msgstr "Revenue over time"
 
 #: src/layouts/base.tsx:700
-#: src/routes/reporting/revenue-trend.tsx:64
+#: src/routes/reporting/revenue-trend.tsx:59
 msgid "Revenue Trend"
 msgstr "Revenue Trend"
 
@@ -4298,15 +4290,15 @@ msgstr "Reverted to the default template"
 msgid "Role"
 msgstr "Role"
 
-#: src/routes/dashboard.tsx:101
+#: src/routes/dashboard.tsx:96
 msgid "Rolling window"
 msgstr "Rolling window"
 
-#: src/routes/cash-book.tsx:106
+#: src/routes/cash-book.tsx:100
 msgid "Sale"
 msgstr "Sale"
 
-#: src/routes/cash-book.tsx:1042
+#: src/routes/cash-book.tsx:962
 msgid "Sale type"
 msgstr "Sale type"
 
@@ -4318,12 +4310,12 @@ msgid "Sales"
 msgstr "Sales"
 
 #: src/layouts/base.tsx:709
-#: src/routes/reporting/sales-by-client.tsx:56
+#: src/routes/reporting/sales-by-client.tsx:51
 msgid "Sales by Client"
 msgstr "Sales by Client"
 
 #: src/layouts/base.tsx:718
-#: src/routes/reporting/sales-by-product.tsx:56
+#: src/routes/reporting/sales-by-product.tsx:51
 msgid "Sales by Product"
 msgstr "Sales by Product"
 
@@ -4343,8 +4335,8 @@ msgstr "Sales by Product"
 #: src/routes/inbound-deliveries/details.tsx:606
 #: src/routes/incoming-invoices/details.tsx:665
 #: src/routes/invoices/details.tsx:383
-#: src/routes/orders/details.tsx:590
-#: src/routes/purchase-orders/details.tsx:669
+#: src/routes/orders/details.tsx:591
+#: src/routes/purchase-orders/details.tsx:670
 #: src/routes/settings/backup.tsx:237
 #: src/routes/settings/invoice.tsx:305
 #: src/routes/settings/users.tsx:283
@@ -4363,10 +4355,10 @@ msgstr "Save as draft"
 #: src/routes/incoming-invoices/details.tsx:643
 #: src/routes/invoices/details.tsx:335
 #: src/routes/invoices/details.tsx:343
-#: src/routes/orders/details.tsx:558
-#: src/routes/orders/details.tsx:574
-#: src/routes/purchase-orders/details.tsx:635
-#: src/routes/purchase-orders/details.tsx:651
+#: src/routes/orders/details.tsx:559
+#: src/routes/orders/details.tsx:575
+#: src/routes/purchase-orders/details.tsx:636
+#: src/routes/purchase-orders/details.tsx:652
 msgid "Save your changes before exporting"
 msgstr "Save your changes before exporting"
 
@@ -4388,7 +4380,7 @@ msgstr "Schedule saved"
 #: src/routes/orders.tsx:55
 #: src/routes/organizations/index.tsx:451
 #: src/routes/production-orders.tsx:58
-#: src/routes/products.tsx:172
+#: src/routes/products.tsx:180
 #: src/routes/purchase-orders.tsx:56
 #: src/routes/settings/countries.tsx:67
 #: src/routes/settings/payment-terms.tsx:47
@@ -4402,7 +4394,7 @@ msgstr "Search"
 msgid "Search by name or SKU"
 msgstr "Search by name or SKU"
 
-#: src/routes/cash-book.tsx:624
+#: src/routes/cash-book.tsx:772
 msgid "Search by name, mobile number, IBAN, or identity number"
 msgstr "Search by name, mobile number, IBAN, or identity number"
 
@@ -4418,7 +4410,7 @@ msgstr "Search products"
 msgid "Search text"
 msgstr "Search text"
 
-#: src/routes/cash-book.tsx:667
+#: src/routes/cash-book.tsx:793
 msgid "Select"
 msgstr "Select"
 
@@ -4436,7 +4428,7 @@ msgstr "Select a finished product"
 msgid "Select a finished product to preview its recipe"
 msgstr "Select a finished product to preview its recipe"
 
-#: src/routes/accounting/reports/profit-and-loss.tsx:82
+#: src/routes/accounting/reports/profit-and-loss.tsx:77
 #: src/routes/settings/gl-export.tsx:80
 #: src/routes/settings/gl-export.tsx:111
 msgid "Select a fiscal year"
@@ -4540,8 +4532,8 @@ msgid "Serial numbers to remove"
 msgstr "Serial numbers to remove"
 
 #: src/components/products/form.tsx:290
-#: src/routes/products.tsx:151
-#: src/routes/products.tsx:233
+#: src/routes/products.tsx:159
+#: src/routes/products.tsx:241
 msgid "Service"
 msgstr "Service"
 
@@ -4615,7 +4607,7 @@ msgstr "SKR03/SKR04-style numeric account code for the DATEV export's \"Konto\" 
 
 #: src/routes/bill-of-materials.tsx:113
 #: src/routes/inventory.tsx:291
-#: src/routes/products.tsx:254
+#: src/routes/products.tsx:262
 msgid "SKU"
 msgstr "SKU"
 
@@ -4623,12 +4615,12 @@ msgstr "SKU"
 msgid "SKU / Product code"
 msgstr "SKU / Product code"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:85
-#: src/routes/reporting/purchases-by-vendor.tsx:100
+#: src/routes/reporting/purchases-by-vendor.tsx:80
+#: src/routes/reporting/purchases-by-vendor.tsx:95
 msgid "Spend"
 msgstr "Spend"
 
-#: src/routes/cash-book.tsx:1216
+#: src/routes/cash-book.tsx:1136
 msgid "Spend on an expense (no vendor bill)"
 msgstr "Spend on an expense (no vendor bill)"
 
@@ -4652,7 +4644,7 @@ msgid "State"
 msgstr "State"
 
 #: src/components/imports/form.tsx:431
-#: src/components/payments/payment-panel.tsx:396
+#: src/components/payments/payment-panel.tsx:388
 #: src/routes/accounting/fiscal-periods.tsx:198
 #: src/routes/accounting/fiscal-periods.tsx:257
 #: src/routes/accounting/journal-entries.tsx:137
@@ -4663,7 +4655,7 @@ msgstr "State"
 #: src/routes/incoming-invoices/details.tsx:522
 #: src/routes/orders.tsx:97
 #: src/routes/orders/details.tsx:358
-#: src/routes/orders/details.tsx:491
+#: src/routes/orders/details.tsx:492
 #: src/routes/production-orders.tsx:112
 #: src/routes/production-orders/details.tsx:510
 #: src/routes/purchase-orders.tsx:118
@@ -4679,7 +4671,7 @@ msgstr "Status flow"
 msgid "Stay here"
 msgstr "Stay here"
 
-#: src/routes/products.tsx:287
+#: src/routes/products.tsx:295
 msgid "Stock"
 msgstr "Stock"
 
@@ -4723,8 +4715,8 @@ msgstr "stock movement(s)"
 msgid "Stock out — consume / sell"
 msgstr "Stock out — consume / sell"
 
-#: src/routes/dashboard.tsx:152
-#: src/routes/dashboard.tsx:251
+#: src/routes/dashboard.tsx:147
+#: src/routes/dashboard.tsx:246
 msgid "Stock valuation"
 msgstr "Stock valuation"
 
@@ -4739,7 +4731,7 @@ msgstr "Street"
 #: src/components/invoices/pdf-tunisia.tsx:244
 #: src/components/invoices/pdf.tsx:349
 #: src/routes/incoming-invoices/details.tsx:466
-#: src/routes/invoices/details.tsx:987
+#: src/routes/invoices/details.tsx:984
 #: src/routes/orders/details.tsx:461
 #: src/routes/purchase-orders/details.tsx:569
 msgid "Subtotal"
@@ -4763,16 +4755,16 @@ msgstr "Switch to light mode"
 msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 msgstr "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 
-#: src/routes/reporting/revenue-trend.tsx:85
+#: src/routes/reporting/revenue-trend.tsx:80
 msgid "Table"
 msgstr "Table"
 
 #: src/components/invoices/pdf-tunisia.tsx:206
 #: src/components/line-items/table.tsx:351
 #: src/routes/incoming-invoices/details.tsx:469
-#: src/routes/invoices/details.tsx:994
-#: src/routes/invoices/details.tsx:1000
-#: src/routes/reporting/tax-summary.tsx:68
+#: src/routes/invoices/details.tsx:991
+#: src/routes/invoices/details.tsx:997
+#: src/routes/reporting/tax-summary.tsx:63
 msgid "Tax"
 msgstr "Tax"
 
@@ -4797,7 +4789,7 @@ msgid "Tax number"
 msgstr "Tax number"
 
 #: src/components/tax-rates/form.tsx:182
-#: src/routes/products.tsx:276
+#: src/routes/products.tsx:284
 msgid "Tax rate"
 msgstr "Tax rate"
 
@@ -4837,7 +4829,7 @@ msgid "Tax rates"
 msgstr "Tax rates"
 
 #: src/layouts/base.tsx:736
-#: src/routes/reporting/tax-summary.tsx:82
+#: src/routes/reporting/tax-summary.tsx:77
 msgid "Tax Summary"
 msgstr "Tax Summary"
 
@@ -4877,18 +4869,18 @@ msgstr "This cannot be undone."
 #: src/components/line-items/table.tsx:203
 #: src/components/organizations/organization-edit-drawer.tsx:135
 #: src/components/payment-terms/form.tsx:120
-#: src/components/payments/payment-panel.tsx:297
-#: src/components/payments/payment-panel.tsx:304
-#: src/components/payments/payment-panel.tsx:317
-#: src/components/payments/payment-panel.tsx:330
-#: src/components/payments/payment-panel.tsx:451
-#: src/components/payments/payment-panel.tsx:460
+#: src/components/payments/payment-panel.tsx:289
+#: src/components/payments/payment-panel.tsx:296
+#: src/components/payments/payment-panel.tsx:309
+#: src/components/payments/payment-panel.tsx:322
+#: src/components/payments/payment-panel.tsx:443
+#: src/components/payments/payment-panel.tsx:452
 #: src/components/units-of-measure/form.tsx:126
-#: src/routes/cash-book.tsx:966
-#: src/routes/cash-book.tsx:1172
-#: src/routes/cash-book.tsx:1202
-#: src/routes/cash-book.tsx:1209
-#: src/routes/cash-book.tsx:1229
+#: src/routes/cash-book.tsx:886
+#: src/routes/cash-book.tsx:1092
+#: src/routes/cash-book.tsx:1122
+#: src/routes/cash-book.tsx:1129
+#: src/routes/cash-book.tsx:1149
 #: src/routes/invoices/details.tsx:438
 #: src/routes/invoices/details.tsx:566
 #: src/routes/invoices/details.tsx:595
@@ -4922,7 +4914,7 @@ msgstr "This product has no Bill of Materials — define one before creating a p
 msgid "This replaces the current recipe with v{0}'s components and quantities."
 msgstr "This replaces the current recipe with v{0}'s components and quantities."
 
-#: src/components/payments/payment-panel.tsx:410
+#: src/components/payments/payment-panel.tsx:402
 msgid "This reverses its journal entry and restores the balance due."
 msgstr "This reverses its journal entry and restores the balance due."
 
@@ -4951,44 +4943,44 @@ msgstr "This will reverse the stock this order consumed and produced. Continue?"
 msgid "This will reverse the stock this receipt added. Continue?"
 msgstr "This will reverse the stock this receipt added. Continue?"
 
-#: src/routes/cash-book.tsx:782
+#: src/routes/cash-book.tsx:657
 msgid "Time"
 msgstr "Time"
 
-#: src/routes/reporting/sales-by-client.tsx:72
-#: src/routes/reporting/sales-by-product.tsx:72
+#: src/routes/reporting/sales-by-client.tsx:67
+#: src/routes/reporting/sales-by-product.tsx:67
 msgid "Top 20 by revenue"
 msgstr "Top 20 by revenue"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:72
+#: src/routes/reporting/purchases-by-vendor.tsx:67
 msgid "Top 20 by spend"
 msgstr "Top 20 by spend"
 
-#: src/routes/dashboard.tsx:280
+#: src/routes/dashboard.tsx:275
 msgid "Top clients"
 msgstr "Top clients"
 
-#: src/routes/dashboard.tsx:300
+#: src/routes/dashboard.tsx:295
 msgid "Top products"
 msgstr "Top products"
 
 #: src/components/invoices/pdf.tsx:291
 #: src/components/invoices/pdf.tsx:375
-#: src/components/payments/payment-panel.tsx:357
-#: src/routes/accounting/reports/ap-aging.tsx:51
-#: src/routes/accounting/reports/ar-aging.tsx:51
-#: src/routes/accounting/trial-balance.tsx:120
-#: src/routes/cash-book.tsx:1029
-#: src/routes/dashboard.tsx:241
+#: src/components/payments/payment-panel.tsx:349
+#: src/routes/accounting/reports/ap-aging.tsx:46
+#: src/routes/accounting/reports/ar-aging.tsx:46
+#: src/routes/accounting/trial-balance.tsx:115
+#: src/routes/cash-book.tsx:949
+#: src/routes/dashboard.tsx:236
 #: src/routes/incoming-invoices.tsx:147
 #: src/routes/incoming-invoices/details.tsx:472
 #: src/routes/invoices/details.tsx:901
-#: src/routes/invoices/details.tsx:1012
+#: src/routes/invoices/details.tsx:1009
 #: src/routes/invoices/index.tsx:207
 msgid "Total"
 msgstr "Total"
 
-#: src/routes/accounting/reports/balance-sheet.tsx:97
+#: src/routes/accounting/reports/balance-sheet.tsx:92
 msgid "Total assets"
 msgstr "Total assets"
 
@@ -4996,7 +4988,7 @@ msgstr "Total assets"
 msgid "Total due"
 msgstr "Total due"
 
-#: src/routes/accounting/reports/balance-sheet.tsx:145
+#: src/routes/accounting/reports/balance-sheet.tsx:140
 msgid "Total equity"
 msgstr "Total equity"
 
@@ -5004,19 +4996,19 @@ msgstr "Total equity"
 msgid "Total excl. tax"
 msgstr "Total excl. tax"
 
-#: src/routes/accounting/reports/profit-and-loss.tsx:130
+#: src/routes/accounting/reports/profit-and-loss.tsx:125
 msgid "Total expenses"
 msgstr "Total expenses"
 
-#: src/routes/reporting/tax-summary.tsx:136
+#: src/routes/reporting/tax-summary.tsx:131
 msgid "Total input VAT"
 msgstr "Total input VAT"
 
-#: src/routes/accounting/reports/balance-sheet.tsx:121
+#: src/routes/accounting/reports/balance-sheet.tsx:116
 msgid "Total liabilities"
 msgstr "Total liabilities"
 
-#: src/routes/reporting/tax-summary.tsx:110
+#: src/routes/reporting/tax-summary.tsx:105
 msgid "Total output VAT"
 msgstr "Total output VAT"
 
@@ -5025,7 +5017,7 @@ msgstr "Total output VAT"
 msgid "Total quantity"
 msgstr "Total quantity"
 
-#: src/routes/accounting/reports/profit-and-loss.tsx:106
+#: src/routes/accounting/reports/profit-and-loss.tsx:101
 msgid "Total revenue"
 msgstr "Total revenue"
 
@@ -5052,7 +5044,7 @@ msgid "Transactional data"
 msgstr "Transactional data"
 
 #: src/layouts/base.tsx:630
-#: src/routes/accounting/trial-balance.tsx:83
+#: src/routes/accounting/trial-balance.tsx:78
 msgid "Trial Balance"
 msgstr "Trial Balance"
 
@@ -5066,9 +5058,9 @@ msgstr "Tunisia"
 #: src/components/stock/movement-form.tsx:147
 #: src/routes/accounting/chart-of-accounts.tsx:119
 #: src/routes/accounting/journals.tsx:98
-#: src/routes/cash-book.tsx:788
+#: src/routes/cash-book.tsx:663
 #: src/routes/inventory.tsx:445
-#: src/routes/products.tsx:222
+#: src/routes/products.tsx:230
 msgid "Type"
 msgstr "Type"
 
@@ -5082,7 +5074,7 @@ msgid "Type manually"
 msgstr "Type manually"
 
 #: src/components/products/form.tsx:384
-#: src/routes/products.tsx:166
+#: src/routes/products.tsx:174
 msgid "Unclassified"
 msgstr "Unclassified"
 
@@ -5131,7 +5123,7 @@ msgstr "Unit price"
 msgid "Unit price excl. tax"
 msgstr "Unit price excl. tax"
 
-#: src/routes/products.tsx:296
+#: src/routes/products.tsx:304
 msgid "units"
 msgstr "units"
 
@@ -5148,7 +5140,7 @@ msgstr "Unlink purchase order"
 msgid "Unlink this purchase order from the shipment?"
 msgstr "Unlink this purchase order from the shipment?"
 
-#: src/routes/reporting/tax-summary.tsx:49
+#: src/routes/reporting/tax-summary.tsx:44
 msgid "Unrated"
 msgstr "Unrated"
 
@@ -5172,7 +5164,7 @@ msgstr "Upload logo"
 msgid "Upload template"
 msgstr "Upload template"
 
-#: src/routes/cash-book.tsx:432
+#: src/routes/cash-book.tsx:380
 msgid "Use this customer"
 msgstr "Use this customer"
 
@@ -5219,8 +5211,8 @@ msgstr "User"
 msgid "Users"
 msgstr "Users"
 
-#: src/routes/accounting/reports/inventory-valuation.tsx:93
-#: src/routes/dashboard.tsx:268
+#: src/routes/accounting/reports/inventory-valuation.tsx:88
+#: src/routes/dashboard.tsx:263
 msgid "Value"
 msgstr "Value"
 
@@ -5245,14 +5237,14 @@ msgid "VATIN"
 msgstr "VATIN"
 
 #: src/components/imports/form.tsx:426
-#: src/routes/accounting/reports/ap-aging.tsx:99
+#: src/routes/accounting/reports/ap-aging.tsx:94
 #: src/routes/inbound-deliveries.tsx:90
 #: src/routes/inbound-deliveries/details.tsx:336
 #: src/routes/incoming-invoices.tsx:94
 #: src/routes/incoming-invoices/details.tsx:335
 #: src/routes/purchase-orders.tsx:89
 #: src/routes/purchase-orders/details.tsx:329
-#: src/routes/reporting/purchases-by-vendor.tsx:98
+#: src/routes/reporting/purchases-by-vendor.tsx:93
 msgid "Vendor"
 msgstr "Vendor"
 
@@ -5318,15 +5310,15 @@ msgstr "Vendors"
 msgid "Version restored"
 msgstr "Version restored"
 
-#: src/routes/cash-book.tsx:813
+#: src/routes/cash-book.tsx:688
 msgid "Viewing past movements, read-only. Switch to today to record a sale, payment, or withdrawal."
 msgstr "Viewing past movements, read-only. Switch to today to record a sale, payment, or withdrawal."
 
-#: src/components/payments/payment-panel.tsx:416
+#: src/components/payments/payment-panel.tsx:408
 msgid "Void"
 msgstr "Void"
 
-#: src/components/payments/payment-panel.tsx:409
+#: src/components/payments/payment-panel.tsx:401
 msgid "Void this payment?"
 msgstr "Void this payment?"
 
@@ -5364,15 +5356,15 @@ msgstr "Which template invoices for this organization render with."
 msgid "Why is this variance acceptable?"
 msgstr "Why is this variance acceptable?"
 
-#: src/routes/cash-book.tsx:703
+#: src/routes/cash-book.tsx:589
 msgid "Withdraw"
 msgstr "Withdraw"
 
-#: src/routes/cash-book.tsx:1189
+#: src/routes/cash-book.tsx:1109
 msgid "Withdraw from cash register"
 msgstr "Withdraw from cash register"
 
-#: src/routes/cash-book.tsx:112
+#: src/routes/cash-book.tsx:106
 msgid "Withdrawal"
 msgstr "Withdrawal"
 
@@ -5381,7 +5373,7 @@ msgstr "Withdrawal"
 msgid "Withholding tax"
 msgstr "Withholding tax"
 
-#: src/routes/invoices/details.tsx:1021
+#: src/routes/invoices/details.tsx:1018
 msgid "Withholding tax ({withholdingTaxRate}%)"
 msgstr "Withholding tax ({withholdingTaxRate}%)"
 
@@ -5396,7 +5388,7 @@ msgstr "Withholding tax rate"
 #: src/components/imports/form.tsx:371
 #: src/components/imports/form.tsx:447
 #: src/components/payment-terms/form.tsx:95
-#: src/components/payments/payment-panel.tsx:412
+#: src/components/payments/payment-panel.tsx:404
 #: src/components/products/form.tsx:242
 #: src/components/tax-rates/form.tsx:150
 #: src/components/units-of-measure/form.tsx:101
@@ -5411,15 +5403,15 @@ msgstr "Withholding tax rate"
 #: src/routes/inbound-deliveries/details.tsx:570
 #: src/routes/incoming-invoices/details.tsx:615
 #: src/routes/inventory.tsx:489
-#: src/routes/invoices/details.tsx:1070
+#: src/routes/invoices/details.tsx:1067
 #: src/routes/invoices/index.tsx:119
-#: src/routes/orders/details.tsx:521
-#: src/routes/orders/details.tsx:549
+#: src/routes/orders/details.tsx:522
+#: src/routes/orders/details.tsx:550
 #: src/routes/production-orders/details.tsx:590
 #: src/routes/production-orders/details.tsx:606
 #: src/routes/production-orders/details.tsx:621
-#: src/routes/purchase-orders/details.tsx:599
-#: src/routes/purchase-orders/details.tsx:626
+#: src/routes/purchase-orders/details.tsx:600
+#: src/routes/purchase-orders/details.tsx:627
 #: src/routes/settings/users.tsx:268
 msgid "Yes"
 msgstr "Yes"

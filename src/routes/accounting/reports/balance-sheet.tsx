@@ -12,7 +12,7 @@ import type { BalanceSheet, BalanceSheetLine } from "src/types/models";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import { useDatePickerFormat } from "src/utils/date";
 import PageHeader from "src/components/page-header";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatOrgCents } from "src/utils/currencies";
 
 const BalanceSheetReport = () => {
   const { i18n } = useLingui();
@@ -33,12 +33,7 @@ const BalanceSheetReport = () => {
       .finally(() => setLoading(false));
   }, [organizationId, asOfDate]);
 
-  const money = (cents: number) =>
-    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
-      style: "currency",
-      currency: organization?.currency ?? "EUR",
-      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
-    }).format(cents / 100);
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   const columns = [
     { title: <Trans>Code</Trans>, dataIndex: "code", key: "code", width: 100 },
