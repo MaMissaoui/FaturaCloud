@@ -64,6 +64,71 @@ const countryNumberLocale: Record<string, string> = {
 export const numberFormatLocale = (countryCode?: string | null): string | null =>
   countryCode ? (countryNumberLocale[countryCode] ?? null) : null;
 
+// Several CLDR locales (fr-*, and others) legitimately use a narrow/thin
+// no-break space (U+202F, occasionally U+2009) as Intl.NumberFormat's
+// thousands grouping separator — real, correct Unicode. But it's a
+// reproducible browser rendering bug (confirmed live in this app: same
+// font/size, only the text color differs) that collapses it to zero
+// visible width in some contexts (e.g. antd's colorError red used for
+// overdue/outstanding amounts), making a grouped amount look ungrouped —
+// "82 119 214" renders fine, "7 151 753" in red renders as "7151753".
+// Normalizing to an ordinary space sidesteps the bug entirely and is
+// visually identical wherever the narrow space already rendered fine.
+const normalizeGroupingSpace = (s: string) => s.replace(/[  ]/g, " ");
+
+/**
+ * The single low-level currency formatter every money display in this app
+ * should funnel through — wraps Intl.NumberFormat with the same
+ * blank/invalid-currency fallback getFormattedNumber below already used,
+ * plus normalizeGroupingSpace's fix for the narrow-space rendering bug.
+ */
+export const formatMoneyUnits = (
+  units: number,
+  currency: string,
+  locale: string,
+  minimumFractionDigits?: number,
+): string => {
+  try {
+    return normalizeGroupingSpace(
+      new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        minimumFractionDigits,
+      }).format(units),
+    );
+  } catch {
+    return normalizeGroupingSpace(
+      new Intl.NumberFormat(locale, { minimumFractionDigits }).format(units),
+    );
+  }
+};
+
+/**
+ * formatMoneyUnits' cents-in/organization-in convenience wrapper — the
+ * "org's own currency, org's own country-derived locale, org's own decimal
+ * places" shape every report/dashboard money() closure in this app used to
+ * hand-roll individually (a verified, byte-for-byte duplicated snippet
+ * across ~13 files before this was extracted).
+ */
+export const formatOrgCents = (
+  cents: number,
+  organization:
+    | {
+        country_code?: string | null;
+        currency?: string | null;
+        minimum_fraction_digits?: number | null;
+      }
+    | null
+    | undefined,
+  locale: string,
+): string =>
+  formatMoneyUnits(
+    cents / 100,
+    organization?.currency ?? "EUR",
+    numberFormatLocale(organization?.country_code) ?? locale,
+    organization?.minimum_fraction_digits ?? undefined,
+  );
+
 export const getCurrencySymbol = (locale: string, currency: string) => {
   const numberFormat = new Intl.NumberFormat(locale, { style: "currency", currency });
 
@@ -109,15 +174,10 @@ export const getFormattedNumber = (
   // the passed-in locale (normally i18n.locale) for a country outside the
   // curated table. See numberFormatLocale's doc comment.
   const effectiveLocale = numberFormatLocale(organization?.country_code) ?? locale;
-  try {
-    return new Intl.NumberFormat(effectiveLocale, {
-      style: "currency",
-      currency: effectiveCurrency,
-      minimumFractionDigits: organization.minimum_fraction_digits,
-    }).format(number);
-  } catch {
-    return new Intl.NumberFormat(effectiveLocale, {
-      minimumFractionDigits: organization.minimum_fraction_digits,
-    }).format(number);
-  }
+  return formatMoneyUnits(
+    number,
+    effectiveCurrency,
+    effectiveLocale,
+    organization.minimum_fraction_digits,
+  );
 };

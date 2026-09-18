@@ -11,7 +11,7 @@ import type { ProfitAndLoss, ProfitAndLossLine } from "src/types/models";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import { fiscalYearsAtom, setFiscalYearsAtom } from "src/atoms/fiscal-period";
 import PageHeader from "src/components/page-header";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatOrgCents } from "src/utils/currencies";
 
 const ProfitAndLossReport = () => {
   const { i18n } = useLingui();
@@ -53,12 +53,7 @@ const ProfitAndLossReport = () => {
       .finally(() => setLoading(false));
   }, [organizationId, selectedYear]);
 
-  const money = (cents: number) =>
-    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
-      style: "currency",
-      currency: organization?.currency ?? "EUR",
-      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
-    }).format(cents / 100);
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   const columns = [
     { title: <Trans>Code</Trans>, dataIndex: "code", key: "code", width: 100 },

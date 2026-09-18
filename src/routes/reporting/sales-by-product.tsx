@@ -13,7 +13,7 @@ import { themeAtom } from "src/atoms/generic";
 import { GetSalesByProduct } from "src/api";
 import type { ProductRevenue } from "src/api";
 import PageHeader from "src/components/page-header";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 
 const { RangePicker } = DatePicker;
@@ -42,12 +42,7 @@ const SalesByProduct = () => {
       .finally(() => setLoading(false));
   }, [organizationId, range]);
 
-  const money = (cents: number) =>
-    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
-      style: "currency",
-      currency: organization?.currency ?? "EUR",
-      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
-    }).format(cents / 100);
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   return (
     <>

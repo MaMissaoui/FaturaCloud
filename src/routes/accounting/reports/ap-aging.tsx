@@ -9,7 +9,7 @@ import { GetPayableAging } from "src/api";
 import type { OutstandingBillSummary, PayableAgingSummary } from "src/api";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
 import { formatCents } from "src/utils/currency";
 
 const PayableAging = () => {
@@ -34,12 +34,7 @@ const PayableAging = () => {
     refresh();
   }, [refresh]);
 
-  const money = (cents: number) =>
-    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
-      style: "currency",
-      currency: organization?.currency ?? "EUR",
-      minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,
-    }).format(cents / 100);
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   return (
     <>
