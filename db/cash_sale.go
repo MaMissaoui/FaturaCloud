@@ -120,10 +120,21 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	bankAccountID := req.BankAccountID
 	if req.AmountReceived > 0 {
 		if bankAccountID == "" {
-			if org.DefaultCashAccountID == nil {
+			// defaultCashRegisterAccountId (the physical till) takes priority
+			// over defaultCashAccountId, which every chart-of-accounts
+			// template wires to Bank, not the till — see CLAUDE.md's cash
+			// register account note. Falling back to it here only matters
+			// for a caller that omits bankAccountId entirely and hasn't
+			// configured a register account either; the Cash Book screen
+			// itself always sends one explicitly once configured.
+			switch {
+			case org.DefaultCashRegisterAccountID != nil:
+				bankAccountID = *org.DefaultCashRegisterAccountID
+			case org.DefaultCashAccountID != nil:
+				bankAccountID = *org.DefaultCashAccountID
+			default:
 				return nil, newValidationError("cannot record payment: organization has no default cash account configured")
 			}
-			bankAccountID = *org.DefaultCashAccountID
 		}
 		bankAccount, err := d.GetAccount(bankAccountID)
 		if err != nil {
@@ -343,13 +354,18 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	}
 	number := generateDocumentNumber(format, counter, time.UnixMilli(req.Date), clientCode)
 
+	// dueDate defaults to the sale's own date, not organizations.due_days —
+	// a counter sale (cash or a loan settled later via CreatePayment, not a
+	// term the invoice itself tracks) has no invoicing due-date concept, and
+	// leaving it nil rendered as a bare "-" in the Invoices list with no
+	// explanation.
 	_, err = tx.Exec(`
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
 			currency, exchangeRate, exchangeRateDate, customerNotes, overdueCharge, total, taxTotal, subTotal,
 			buyerReference, paymentTerms, fiscalStampAmount, withholdingTaxRate, withholdingTaxAmount
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		invoiceID, req.OrganizationID, number, state, client.ID, req.Date, nil,
+		invoiceID, req.OrganizationID, number, state, client.ID, req.Date, req.Date,
 		req.Currency, exchangeRate, nil, nil, nil, req.Total, req.TaxTotal, req.SubTotal,
 		nil, nil, 0, nil, nil,
 	)

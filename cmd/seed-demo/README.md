@@ -36,6 +36,18 @@ directly to the database. Use `--dry-run` to check the plan (organization,
 tax rates, master-data counts, fiscal year coverage) without generating any
 documents, and a short `--months` value while iterating on the tool itself.
 
+**`--dry-run` is not a true no-op.** It only skips the day-by-day document
+generation loop — creating/finding the organization, chart of accounts, tax
+rates, master data, and fiscal years still happens for real over the API,
+since `main.go` runs setup unconditionally regardless of the flag. Running
+`--dry-run` and then immediately re-running for real against the *same*
+long-lived/shared server (without `--reset`) is not guaranteed to reuse
+what the dry run created — it can create a **second**, duplicate
+organization instead (observed against production seeding "Établissement
+Ben Salah Électroménager," 2026-09-17: cleaned up by hand afterward). Do a
+throwaway-named dry run first when iterating against a shared server, not a
+dry run immediately followed by the real `--org-name`.
+
 ## Flags
 
 | Flag | Default | What it does |
@@ -48,9 +60,10 @@ documents, and a short `--months` value while iterating on the tool itself.
 | `--months` | `18` | Length of the simulated history, ending at `--end-date` |
 | `--end-date` | today | Last simulated day, `YYYY-MM-DD` |
 | `--seed` | `20260101` | RNG seed — same seed always reproduces the same dataset |
-| `--volume` | `busy` | `small` or `busy` — see `volumeProfiles` in `seeder.go` |
+| `--volume` | `busy` | `small` or `busy` — see `volumeProfiles` in `seeder.go`. Ignored by `--scenario retail`, which sizes itself (see "The retail scenario" below) |
+| `--scenario` | `moto` | `moto` (a motorcycle assembler/manufacturer — the original scenario) or `retail` (a home-appliance retailer selling entirely through Cash Book counter sales) — see `scenario.go` and "The retail scenario" below |
 | `--reset` | off | Delete an existing organization named `--org-name` first, then recreate from scratch |
-| `--dry-run` | off | Print the plan (org, master data, fiscal years) and stop — no documents |
+| `--dry-run` | off | Skip document generation and log the plan — org/master-data/fiscal-year setup still happens for real (see note above) |
 | `--progress-every` | `20` | Log a progress line every N simulated days (`0` disables) |
 
 ## What gets created
@@ -150,6 +163,77 @@ documents, and a short `--months` value while iterating on the tool itself.
 Everything multi-step is coordinated by `scheduler.go`'s day-keyed task
 queue — see its doc comment for the mechanism every generator uses to say
 "come back and do this later."
+
+## The retail scenario (`--scenario retail`)
+
+Everything above describes `--scenario moto` (the default) — "Atlas Moto
+Assemblage SARL," a motorcycle *manufacturer*. `--scenario retail` is a
+structurally different business: a small Tunisian home-appliance
+*retailer* that buys finished goods and resells them, with no assembly of
+its own. Run it with:
+
+```bash
+go run ./cmd/seed-demo \
+  --scenario retail --country Tunisia --currency TND \
+  --org-name "Établissement Ben Salah Électroménager" \
+  --months 18 --seed 20260101
+```
+
+`scenario.go`'s `resolveScenario` is the single place that says what a
+scenario does and doesn't run — see its `scenario` struct for the full
+list of booleans `seeder.go`'s `Run()` reads instead of calling every
+generator unconditionally.
+
+- **Catalog** (`catalog_retail.go`) — ~127 physical products across 20
+  appliance categories (refrigerators, washing machines, air conditioners,
+  TVs, small kitchen appliances, …), each with `category: ""` (never
+  `"finished"`) since this business buys and sells the *same* good —
+  `""` is the only value that passes both `sales.go`'s `sellableProducts`
+  and `purchasing.go`'s `stockProducts` filters. A small (~6 entry)
+  services list (delivery, installation, warranty, repair visit) rides
+  alongside them on the same Cash Book sale.
+- **Sales — Cash Book only.** No direct B2B invoices, no order→delivery
+  channel — every sale goes through `POST /api/cash-sales`
+  (`cash_book_sales.go`'s `createCashBookSale`), the same atomic
+  client+invoice+payment endpoint the Cash Book screen itself calls, at a
+  day-of-week-weighted daily volume (busier Thu-Sat, quieter Sunday — a
+  retail counter, unlike the B2B channel, is open and busiest on
+  weekends).
+- **Customers grow organically, not via a batch pre-create.** A target
+  count is picked once (`400-450`, `seeder.go`'s `targetClientCount`); each
+  sale either creates a new walk-in customer inline (`CreateCashSaleRequest.NewClient`)
+  while under that cap, or picks an existing one — landing on *exactly*
+  the target by construction rather than tuning a flat probability to
+  drift into range. No `setupClients` batch-create runs for this scenario.
+- **Loan sales ("vente à tempérament")** — big-ticket items (above 600
+  TND) are commonly sold on a deposit or a zero-deposit informal
+  installment plan; small items are usually paid in full
+  (`decideAmountReceived`). The remaining balance is collected later via
+  `sales.go`'s `schedulePayment` (reused unmodified, just pointed at the
+  register account instead of Bank — an installment is paid back in cash
+  at the counter) with its own tiered fate distribution
+  (`scheduleLoanRepayment`), in the same spirit as the B2B channel's own
+  paid/slow-pay/bad-debt split.
+- **The cash register account is wired automatically.** Nothing does this
+  for a real organization either (see CLAUDE.md's cash register account
+  note) — `masterdata.go`'s `setupCashRegisterAccount` resolves the
+  chart's `1010` ("Cash") leaf account and sets
+  `defaultCashRegisterAccountId`, exactly the one manual step a real admin
+  does in Organization settings.
+- **Cash withdrawals** (`cash_movements_retail.go`) — a weekly deposit of
+  the till's excess above a 1,500 TND float to the organization's real
+  Bank account, plus an occasional (~monthly) small undocumented
+  petty-cash expense — both via `POST /api/cash-movements`, so the Daily
+  Cash Movements report has real "out" activity, not just sales.
+- **Deliberately skipped**: production/BOM/assembly (no manufacturing —
+  these already no-op safely against a catalog with no `"finished"`/
+  `"component"` entries, but this scenario skips calling them at all
+  rather than relying on that), and Imports/foreign vendors (domestic
+  vendors only, for this first version — a real scope decision, not a
+  gap: F114 imports are a realistic extension for later, since small
+  Tunisian appliance retailers do commonly bring in stock from abroad).
+  Domestic purchasing (`purchasing.go`'s existing PO → receipt → bill →
+  pay chain) is unchanged and still restocks this scenario's catalog.
 
 ## Why HTTP, and why `db` types for the request bodies
 

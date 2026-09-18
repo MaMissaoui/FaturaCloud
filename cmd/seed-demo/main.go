@@ -59,6 +59,7 @@ type Config struct {
 	EndDate       time.Time
 	Seed          uint64
 	Volume        string
+	Scenario      string
 	Reset         bool
 	DryRun        bool
 	ProgressEvery int
@@ -77,11 +78,17 @@ func parseFlags() Config {
 	flag.IntVar(&cfg.Months, "months", 18, "how many months of daily history to generate, ending at --end-date")
 	flag.StringVar(&endDateStr, "end-date", time.Now().Format("2006-01-02"), "last day of the simulated range, YYYY-MM-DD (default: today)")
 	flag.Uint64Var(&cfg.Seed, "seed", 20260101, "RNG seed — the same seed always reproduces the same dataset")
-	flag.StringVar(&volumeStr, "volume", "busy", `data volume profile: "small" or "busy"`)
+	flag.StringVar(&volumeStr, "volume", "busy", `data volume profile: "small" or "busy" — ignored by --scenario retail, which sizes itself (see scenario.go's retailConfig)`)
+	flag.StringVar(&cfg.Scenario, "scenario", "moto", `business scenario: "moto" (a motorcycle assembler/manufacturer — the original scenario) or "retail" (a home-appliance retailer selling entirely through Cash Book counter sales — see scenario.go)`)
 	flag.BoolVar(&cfg.Reset, "reset", false, "if an organization named --org-name already exists, delete it first and recreate from scratch")
-	flag.BoolVar(&cfg.DryRun, "dry-run", false, "log the plan (day-by-day activity counts) without calling the API at all")
+	flag.BoolVar(&cfg.DryRun, "dry-run", false, "skip day-by-day document generation and just log the plan — still creates/reuses the real organization, master data, and fiscal years via the API (see README's dry-run note)")
 	flag.IntVar(&cfg.ProgressEvery, "progress-every", 20, "log a progress line every N simulated days (0 disables)")
 	flag.Parse()
+
+	if cfg.Scenario != "moto" && cfg.Scenario != "retail" {
+		fmt.Fprintf(os.Stderr, "seed-demo: --scenario must be one of: moto, retail\n")
+		os.Exit(2)
+	}
 
 	end, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {

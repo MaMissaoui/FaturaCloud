@@ -120,7 +120,11 @@ func (s *Seeder) setupOrganization() error {
 		Vatin:                 nonEmptyStrPtr(p.vatin),
 		BankName:              nonEmptyStrPtr(p.bankName),
 		IBAN:                  nonEmptyStrPtr(p.iban),
-		InvoiceNumberFormat:   strPtr("INV-{YYYY}-{NNNN}"),
+		// {year}/{number} are the real generator's tokens (src/utils/invoice.ts,
+		// db/cash_sale.go's Go port) — {YYYY}/{NNNN} aren't recognized and
+		// used to render as a literal, unsubstituted invoice number on every
+		// document this tool created.
+		InvoiceNumberFormat: strPtr("INV-{year}-{number}"),
 	}
 
 	var org db.Organization
@@ -132,16 +136,61 @@ func (s *Seeder) setupOrganization() error {
 		return fmt.Errorf("newly created organization has no default cash account — cannot record payments")
 	}
 	s.cashAccountID = *org.DefaultCashAccountID
-	// db/gl_posting.go's applyLandedCost (F114) credits this account when
-	// receiving a purchase order linked to an import — seedDefaultChartOfAccounts
-	// should always set it via importCostAdditions, but verify rather than
-	// let every import-linked receipt in this run 409 one at a time until
-	// the 25-error abort threshold (seeder.go's maybeAbort) trips partway
-	// through an otherwise-successful multi-minute run.
-	if org.DefaultImportCostsPayableAccountID == nil {
-		return fmt.Errorf("newly created organization has no default import-costs-payable account — cannot receive a purchase order linked to an import")
+	if s.scenario.hasImports {
+		// db/gl_posting.go's applyLandedCost (F114) credits this account when
+		// receiving a purchase order linked to an import — seedDefaultChartOfAccounts
+		// should always set it via importCostAdditions, but verify rather than
+		// let every import-linked receipt in this run 409 one at a time until
+		// the 25-error abort threshold (seeder.go's maybeAbort) trips partway
+		// through an otherwise-successful multi-minute run.
+		if org.DefaultImportCostsPayableAccountID == nil {
+			return fmt.Errorf("newly created organization has no default import-costs-payable account — cannot receive a purchase order linked to an import")
+		}
+	}
+	if s.scenario.hasCashBookSales {
+		if err := s.setupCashRegisterAccount(); err != nil {
+			return fmt.Errorf("cash register account: %w", err)
+		}
+		// cash_movements_retail.go's petty-cash withdrawal posts an
+		// undocumented expense against this account.
+		if org.DefaultExpenseAccountID == nil {
+			return fmt.Errorf("newly created organization has no default expense account — cannot record a petty-cash withdrawal")
+		}
+		s.expenseAccountID = *org.DefaultExpenseAccountID
 	}
 	s.log.Printf("seed-demo: organization %q ready (%s)", s.cfg.OrgName, s.orgID)
+	return nil
+}
+
+// setupCashRegisterAccount wires organizations.defaultCashRegisterAccountId
+// to the chart's own literal "Cash"/till leaf account — nothing does this
+// automatically (unlike defaultCashAccountId, which every chart template
+// wires to Bank via defaultRole: "cash" — see CLAUDE.md's cash register
+// account note and db/account.go's chart definitions). This is exactly the
+// one manual step a real admin has to do in Organization settings →
+// Accounting, done here so Cash Book sales/withdrawals land somewhere the
+// balance widget and Daily Cash Movements report actually watch.
+func (s *Seeder) setupCashRegisterAccount() error {
+	var accounts []db.Account
+	if err := s.c.Get("/api/organizations/"+s.orgID+"/accounts", &accounts); err != nil {
+		return fmt.Errorf("list accounts: %w", err)
+	}
+	var registerAccountID string
+	for _, a := range accounts {
+		if a.Code == "1010" { // "Cash" — the generic chart's till account (Tunisia has no dedicated chart template yet)
+			registerAccountID = a.ID
+			break
+		}
+	}
+	if registerAccountID == "" {
+		return fmt.Errorf(`could not find a "1010" (Cash) account on the new organization's chart of accounts`)
+	}
+	if err := s.c.Put("/api/organizations/"+s.orgID, db.UpdateOrganizationRequest{
+		DefaultCashRegisterAccountID: &registerAccountID,
+	}, nil); err != nil {
+		return fmt.Errorf("set defaultCashRegisterAccountId: %w", err)
+	}
+	s.registerAccountID = registerAccountID
 	return nil
 }
 
@@ -156,11 +205,23 @@ func (s *Seeder) setupMasterData() error {
 	if err := s.setupVendors(); err != nil {
 		return fmt.Errorf("vendors: %w", err)
 	}
-	if err := s.setupForeignVendors(); err != nil {
-		return fmt.Errorf("foreign vendors: %w", err)
+	if s.scenario.hasImports {
+		if err := s.setupForeignVendors(); err != nil {
+			return fmt.Errorf("foreign vendors: %w", err)
+		}
 	}
-	if err := s.setupClients(); err != nil {
-		return fmt.Errorf("clients: %w", err)
+	if s.scenario.hasCashBookSales {
+		// The client base grows organically via Cash Book's inline
+		// NewClient creation instead — see cash_book_sales.go and
+		// seeder.go's targetClientCount. Seeding a batch of clients up
+		// front here would both double-count against that target and
+		// give every walk-in "customer" an implausible pre-existing
+		// account before their first purchase.
+		s.log.Printf("seed-demo: skipping batch client setup — %s scenario grows its %d clients organically via Cash Book", s.scenario.name, s.targetClientCount)
+	} else {
+		if err := s.setupClients(); err != nil {
+			return fmt.Errorf("clients: %w", err)
+		}
 	}
 	if err := s.setupProducts(); err != nil {
 		return fmt.Errorf("products: %w", err)
@@ -238,7 +299,7 @@ func (s *Seeder) setupTaxRates() error {
 // business logic elsewhere (e.g. db/einvoice.go's e-invoice profile
 // resolution keys off a client's own CountryCode).
 func (s *Seeder) setupVendors() error {
-	for i := 0; i < s.profile.Vendors; i++ {
+	for i := 0; i < s.vendorCount(); i++ {
 		name := s.rng.CompanyName()
 		city, plz := s.rng.City()
 		req := db.CreateVendorRequest{
@@ -351,7 +412,7 @@ func (s *Seeder) setupProducts() error {
 	// "radiator"), and with 300+ products drawn from a 9000-value space per
 	// prefix group, an unretried collision became likely rather than rare
 	// once the catalog grew from ~34 to 310 entries.
-	usedSKUs := make(map[string]bool, len(serviceCatalog)+len(productCatalog))
+	usedSKUs := make(map[string]bool, len(s.scenario.serviceCatalog)+len(s.scenario.productCatalog))
 	uniqueSKU := func(name string) string {
 		for {
 			sku := productSKU(name, s.rng)
@@ -410,12 +471,12 @@ func (s *Seeder) setupProducts() error {
 		return nil
 	}
 
-	for _, entry := range serviceCatalog {
+	for _, entry := range s.scenario.serviceCatalog {
 		if err := create(entry); err != nil {
 			return err
 		}
 	}
-	for _, entry := range productCatalog {
+	for _, entry := range s.scenario.productCatalog {
 		if err := create(entry); err != nil {
 			return err
 		}
