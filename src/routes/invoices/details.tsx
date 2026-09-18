@@ -80,6 +80,7 @@ import {
   centsToUnits,
   unitsToCents,
 } from "src/utils/currency";
+import { numberFormatLocale } from "src/utils/currencies";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -972,11 +973,15 @@ const InvoiceDetails: React.FC = () => {
                   >
                     {(() => {
                       const fmt = (value: number) =>
-                        Intl.NumberFormat(i18n.locale, {
-                          style: "currency",
-                          currency: watchedCurrency ?? organization.currency ?? "EUR",
-                          minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,
-                        }).format(value);
+                        Intl.NumberFormat(
+                          numberFormatLocale(organization.country_code) ?? i18n.locale,
+                          {
+                            style: "currency",
+                            currency: watchedCurrency ?? organization.currency ?? "EUR",
+                            minimumFractionDigits:
+                              organization.minimum_fraction_digits ?? undefined,
+                          },
+                        ).format(value);
                       return (
                         <>
                           <Descriptions.Item label={<Trans>Subtotal</Trans>}>
@@ -1102,6 +1107,7 @@ const InvoiceDetails: React.FC = () => {
               total={unitsToCents((invoice as any).total ?? 0)}
               hasPostedEntry={currentInvoiceState === "sent" || currentInvoiceState === "paid"}
               minimumFractionDigits={organization.minimum_fraction_digits ?? undefined}
+              countryCode={organization.country_code}
             />
           </Col>
         </Row>

@@ -13,6 +13,7 @@ import { themeAtom } from "src/atoms/generic";
 import { GetPurchasesByVendor } from "src/api";
 import type { VendorSpend } from "src/api";
 import PageHeader from "src/components/page-header";
+import { numberFormatLocale } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 
 const { RangePicker } = DatePicker;
@@ -42,7 +43,7 @@ const PurchasesByVendor = () => {
   }, [organizationId, range]);
 
   const money = (cents: number) =>
-    Intl.NumberFormat(i18n.locale, {
+    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
       style: "currency",
       currency: organization?.currency ?? "EUR",
       minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,

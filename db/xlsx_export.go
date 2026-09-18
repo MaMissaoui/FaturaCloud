@@ -45,7 +45,7 @@ func FillInvoiceTemplate(
 	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
-		lineRows[i] = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
+		lineRows[i] = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
 	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
@@ -317,7 +317,7 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 	withholdingTaxLine := ""
 	if invoice.WithholdingTaxRate != nil && invoice.WithholdingTaxAmount != nil {
 		rate := strconv.FormatFloat(*invoice.WithholdingTaxRate, 'f', -1, 64)
-		amount := formatMoneyCents(*invoice.WithholdingTaxAmount, currency, org.MinimumFractionDigits)
+		amount := formatMoneyCents(*invoice.WithholdingTaxAmount, currency, org.MinimumFractionDigits, org.CountryCode)
 		withholdingTaxLine = fmt.Sprintf("Withholding tax (%s%%): %s", rate, amount)
 	}
 
@@ -326,16 +326,16 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 		"invoice.date":           formatOrgDate(invoice.Date, org.DateFormat),
 		"invoice.dueDate":        formatOptionalOrgDate(invoice.DueDate, org.DateFormat),
 		"invoice.currency":       currency,
-		"invoice.subTotal":       formatMoneyCents(invoice.SubTotal, currency, org.MinimumFractionDigits),
-		"invoice.taxTotal":       formatMoneyCents(invoice.TaxTotal, currency, org.MinimumFractionDigits),
-		"invoice.total":          formatMoneyCents(invoice.Total, currency, org.MinimumFractionDigits),
+		"invoice.subTotal":       formatMoneyCents(invoice.SubTotal, currency, org.MinimumFractionDigits, org.CountryCode),
+		"invoice.taxTotal":       formatMoneyCents(invoice.TaxTotal, currency, org.MinimumFractionDigits, org.CountryCode),
+		"invoice.total":          formatMoneyCents(invoice.Total, currency, org.MinimumFractionDigits, org.CountryCode),
 		"invoice.buyerReference": derefString(invoice.BuyerReference),
 		"invoice.paymentTerms":   derefString(invoice.PaymentTerms),
 		// Tunisia invoice support (see db/invoice.go's own comment on these
 		// three fields) — fiscalStampAmount is NOT NULL DEFAULT 0, so this is
 		// always a real amount, "0.00 EUR" for an organization that doesn't
 		// use it, same as every other always-present label on this template.
-		"invoice.fiscalStampAmount":  formatMoneyCents(invoice.FiscalStampAmount, currency, org.MinimumFractionDigits),
+		"invoice.fiscalStampAmount":  formatMoneyCents(invoice.FiscalStampAmount, currency, org.MinimumFractionDigits, org.CountryCode),
 		"invoice.withholdingTaxLine": withholdingTaxLine,
 
 		"organization.name":        derefString(org.Name),
@@ -363,15 +363,15 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 
 // buildLineItemPlaceholders is the per-row namespace for the repeated line
 // item block.
-func buildLineItemPlaceholders(li InvoiceLineItem, currency string, minimumFractionDigits *int64, taxRatePercent string) map[string]string {
+func buildLineItemPlaceholders(li InvoiceLineItem, currency string, minimumFractionDigits *int64, countryCode *string, taxRatePercent string) map[string]string {
 	lineTotal := lineTotalCents(li.Quantity, li.UnitPrice)
 	return map[string]string{
 		"lineItems.sku":         derefString(li.SKU),
 		"lineItems.description": derefString(li.Description),
 		"lineItems.quantity":    formatQuantity(li.Quantity),
-		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits),
+		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits, countryCode),
 		"lineItems.taxRate":     taxRatePercent,
-		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits),
+		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits, countryCode),
 	}
 }
 

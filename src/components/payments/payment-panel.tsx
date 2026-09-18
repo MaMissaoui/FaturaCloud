@@ -38,6 +38,7 @@ import {
 } from "src/types/payment";
 import { useDatePickerFormat } from "src/utils/date";
 import { unitsToCents, centsToUnits } from "src/utils/currency";
+import { numberFormatLocale } from "src/utils/currencies";
 import { showExchangeRateFields } from "src/components/currency/currency-fields";
 
 const { Option } = Select;
@@ -97,6 +98,11 @@ interface PaymentPanelProps {
   // 3 for TND — which is correct by the standard but disagrees with every
   // other TND amount on the page, which is 2dp by the org's own setting.
   minimumFractionDigits?: number;
+  // organizations.country_code — drives grouping/decimal separator style
+  // (numberFormatLocale) the same way minimumFractionDigits above drives
+  // decimal place count: the organization's own convention, not whichever
+  // UI language the current viewer happens to have selected.
+  countryCode?: string | null;
 }
 
 const PaymentPanel: React.FC<PaymentPanelProps> = ({
@@ -117,6 +123,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   defaultMethod,
   defaultBankAccountId,
   minimumFractionDigits,
+  countryCode,
 }) => {
   const { i18n } = useLingui();
   const { message } = App.useApp();
@@ -167,17 +174,18 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   const money = useCallback(
     (cents: number) => {
       const units = centsToUnits(cents);
+      const locale = numberFormatLocale(countryCode) ?? i18n.locale;
       try {
-        return new Intl.NumberFormat(i18n.locale, {
+        return new Intl.NumberFormat(locale, {
           style: "currency",
           currency,
           minimumFractionDigits,
         }).format(units);
       } catch {
-        return new Intl.NumberFormat(i18n.locale, { minimumFractionDigits }).format(units);
+        return new Intl.NumberFormat(locale, { minimumFractionDigits }).format(units);
       }
     },
-    [currency, i18n.locale, minimumFractionDigits],
+    [currency, i18n.locale, minimumFractionDigits, countryCode],
   );
 
   useEffect(() => {

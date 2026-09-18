@@ -47,6 +47,7 @@ import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from 
 import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
+import { numberFormatLocale } from "src/utils/currencies";
 import ExchangeRateFields, {
   CurrencySelect,
   prefillExchangeRate,
@@ -566,7 +567,7 @@ const PurchaseOrderDetails = () => {
                 }}
               >
                 <Descriptions.Item label={<Trans>Subtotal</Trans>}>
-                  {Intl.NumberFormat(i18n.locale, {
+                  {Intl.NumberFormat(numberFormatLocale(organization.country_code) ?? i18n.locale, {
                     style: "currency",
                     currency,
                     minimumFractionDigits: organization.minimum_fraction_digits ?? undefined,

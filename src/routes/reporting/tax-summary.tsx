@@ -10,6 +10,7 @@ import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import { GetTaxSummary } from "src/api";
 import type { TaxSummary as TaxSummaryData, TaxSummaryLine } from "src/api";
 import PageHeader from "src/components/page-header";
+import { numberFormatLocale } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 
 const { RangePicker } = DatePicker;
@@ -38,7 +39,7 @@ const TaxSummary = () => {
   }, [organizationId, range]);
 
   const money = (cents: number) =>
-    Intl.NumberFormat(i18n.locale, {
+    Intl.NumberFormat(numberFormatLocale(organization?.country_code) ?? i18n.locale, {
       style: "currency",
       currency: organization?.currency ?? "EUR",
       minimumFractionDigits: organization?.minimum_fraction_digits ?? undefined,

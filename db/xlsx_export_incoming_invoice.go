@@ -29,7 +29,7 @@ func FillIncomingInvoiceTemplate(
 	mergeExportMetaPlaceholders(scalars, org.DateFormat)
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
-		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, resolveTaxRatePercent(taxRates, li.TaxRate))
+		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
 	return fillTemplate(templateBytes, scalars, lineRows, orientation)
 }
@@ -104,9 +104,9 @@ func buildIncomingInvoiceScalarPlaceholders(invoice IncomingInvoice, org Organiz
 		"incomingInvoice.reference":     derefString(invoice.Reference),
 		"incomingInvoice.purchaseOrder": derefString(invoice.OrderNumber),
 		"incomingInvoice.notes":         derefString(invoice.Notes),
-		"incomingInvoice.subTotal":      formatMoneyCents(invoice.SubTotal, currency, org.MinimumFractionDigits),
-		"incomingInvoice.taxTotal":      formatMoneyCents(invoice.TaxTotal, currency, org.MinimumFractionDigits),
-		"incomingInvoice.total":         formatMoneyCents(invoice.Total, currency, org.MinimumFractionDigits),
+		"incomingInvoice.subTotal":      formatMoneyCents(invoice.SubTotal, currency, org.MinimumFractionDigits, org.CountryCode),
+		"incomingInvoice.taxTotal":      formatMoneyCents(invoice.TaxTotal, currency, org.MinimumFractionDigits, org.CountryCode),
+		"incomingInvoice.total":         formatMoneyCents(invoice.Total, currency, org.MinimumFractionDigits, org.CountryCode),
 
 		"organization.name":        derefString(org.Name),
 		"organization.vatin":       derefString(org.Vatin),
@@ -133,13 +133,13 @@ func buildIncomingInvoiceScalarPlaceholders(invoice IncomingInvoice, org Organiz
 // repeated line item block. Description is a plain string on
 // IncomingInvoiceLineItem (unlike InvoiceLineItem's *string), same as
 // PurchaseOrderLineItem — no derefString here.
-func buildIncomingInvoiceLineItemPlaceholders(li IncomingInvoiceLineItem, currency string, minimumFractionDigits *int64, taxRatePercent string) map[string]string {
+func buildIncomingInvoiceLineItemPlaceholders(li IncomingInvoiceLineItem, currency string, minimumFractionDigits *int64, countryCode *string, taxRatePercent string) map[string]string {
 	lineTotal := lineTotalCents(li.Quantity, li.UnitPrice)
 	return map[string]string{
 		"lineItems.description": li.Description,
 		"lineItems.quantity":    formatQuantity(li.Quantity),
-		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits),
+		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits, countryCode),
 		"lineItems.taxRate":     taxRatePercent,
-		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits),
+		"lineItems.lineTotal":   formatMoneyCents(lineTotal, currency, minimumFractionDigits, countryCode),
 	}
 }
