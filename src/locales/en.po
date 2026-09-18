@@ -20,7 +20,7 @@ msgstr "(current)"
 #. placeholder {0}: result.created
 #. placeholder {1}: result.updated
 #. placeholder {2}: result.failed
-#: src/components/mass-data/mass-data-excel-actions.tsx:102
+#: src/components/mass-data/mass-data-excel-actions.tsx:100
 msgid "{0} created, {1} updated, {2} failed."
 msgstr "{0} created, {1} updated, {2} failed."
 
@@ -742,7 +742,7 @@ msgstr "Clients"
 msgid "clients, vendors, products, tax rates"
 msgstr "clients, vendors, products, tax rates"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:95
+#: src/components/mass-data/mass-data-excel-actions.tsx:93
 #: src/routes/accounting/fiscal-periods.tsx:229
 msgid "Close"
 msgstr "Close"
@@ -1403,7 +1403,7 @@ msgstr "Download current"
 msgid "Download default"
 msgstr "Download default"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:82
+#: src/components/mass-data/mass-data-excel-actions.tsx:80
 msgid "Download Excel"
 msgstr "Download Excel"
 
@@ -1651,7 +1651,7 @@ msgstr "Entry #"
 msgid "Equity"
 msgstr "Equity"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:113
+#: src/components/mass-data/mass-data-excel-actions.tsx:111
 msgid "Error"
 msgstr "Error"
 
@@ -2299,7 +2299,7 @@ msgstr "Import {0} reserves {1}{2} to {3}{4}."
 
 #. placeholder {0}: res.created
 #. placeholder {1}: res.updated
-#: src/components/mass-data/mass-data-excel-actions.tsx:63
+#: src/components/mass-data/mass-data-excel-actions.tsx:62
 msgid "Import complete: {0} created, {1} updated."
 msgstr "Import complete: {0} created, {1} updated."
 
@@ -2325,7 +2325,7 @@ msgstr "Import deletion failed"
 msgid "Import number"
 msgstr "Import number"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:92
+#: src/components/mass-data/mass-data-excel-actions.tsx:90
 msgid "Import results"
 msgstr "Import results"
 
@@ -4121,7 +4121,7 @@ msgstr "Received"
 msgid "Recent movements"
 msgstr "Recent movements"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:112
+#: src/components/mass-data/mass-data-excel-actions.tsx:110
 #: src/components/payments/payment-panel.tsx:281
 #: src/routes/cash-book.tsx:1194
 msgid "Record"
@@ -4375,7 +4375,7 @@ msgstr "Role"
 msgid "Rolling window"
 msgstr "Rolling window"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:111
+#: src/components/mass-data/mass-data-excel-actions.tsx:109
 msgid "Row"
 msgstr "Row"
 
@@ -5243,11 +5243,11 @@ msgstr "Upload a .db file to replace the current database."
 msgid "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
 msgstr "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:86
+#: src/components/mass-data/mass-data-excel-actions.tsx:84
 msgid "Upload Excel"
 msgstr "Upload Excel"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:68
+#: src/components/mass-data/mass-data-excel-actions.tsx:66
 #: src/routes/settings/document-templates.tsx:89
 msgid "Upload failed"
 msgstr "Upload failed"
