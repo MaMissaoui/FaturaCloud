@@ -28,7 +28,7 @@ import {
   UserAddOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import get from "lodash/get";
 import find from "lodash/find";
 import map from "lodash/map";
@@ -42,13 +42,17 @@ import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import {
   CreateCashMovement,
   CreateCashSale,
-  GetAccountBalance,
   GetAccounts,
   GetClientOpenInvoices,
+  GetDailyCashMovements,
   GetInvoice,
   UpdateInvoiceState,
 } from "src/api";
-import type { CreateCashSaleRequest, OutstandingInvoiceSummary } from "src/api";
+import type {
+  CreateCashSaleRequest,
+  DailyCashMovementRow,
+  OutstandingInvoiceSummary,
+} from "src/api";
 import type { Account, Client, Invoice } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PaymentPanel from "src/components/payments/payment-panel";
@@ -119,18 +123,36 @@ const CashBook = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
 
-  // Register balance widget + withdrawal modal — see db/gl_reports.go's
-  // GetAccountBalance and db/cash_movement.go's CreateCashMovement doc
-  // comments. This is a GL running balance ("what the books say"), not a
-  // physically-counted till figure — labeled accordingly below rather than
-  // as "cash in the drawer", the same scoped-out-till-session boundary this
-  // screen has always had.
+  // Register daily-movement panel + withdrawal modal — see
+  // db/gl_reports.go's GetDailyCashMovements and db/cash_movement.go's
+  // CreateCashMovement doc comments. Opening/In/Out/Closing are a GL
+  // derivation ("what the books say"), not a physically-counted till
+  // figure — labeled accordingly below rather than as "cash in the
+  // drawer", the same scoped-out-till-session boundary this screen has
+  // always had.
   const registerAccountId = organization?.defaultCashRegisterAccountId;
-  const [registerBalance, setRegisterBalance] = useState<number | null>(null);
-  const [loadingBalance, setLoadingBalance] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(() => dayjs());
+  const [dailyMovement, setDailyMovement] = useState<DailyCashMovementRow | null>(null);
+  const [loadingDailyMovement, setLoadingDailyMovement] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
   const [withdrawForm] = Form.useForm();
+
+  // Local-calendar comparison, deliberately not UTC — "today" is what the
+  // cashier at the counter means by it, and it's what gates whether new
+  // sales/payments/withdrawals can be entered at all. A sale rung up very
+  // late at a positive UTC offset (e.g. after 23:00 in Tunis, UTC+1) still
+  // lands in the *previous* UTC day's row below — DailyCashMovementRow's
+  // own documented limitation, a stated edge case this screen doesn't try
+  // to correct.
+  const isToday = selectedDate.isSame(dayjs(), "day");
+
+  // Maps the picked calendar date straight to that date's UTC midnight —
+  // not selectedDate.valueOf() (local midnight), which the server would
+  // floor to the *previous* UTC day at any positive UTC offset, silently
+  // fetching yesterday's bucket for a panel labeled "today". See
+  // db/gl_reports.go's DailyCashMovementRow doc comment.
+  const utcDayMs = (d: Dayjs) => Date.UTC(d.year(), d.month(), d.date());
 
   useEffect(() => {
     setClients();
@@ -145,24 +167,26 @@ const CashBook = () => {
       .catch((error) => console.error("Failed to fetch accounts:", error));
   }, [organizationId]);
 
-  const refreshBalance = async () => {
+  const refreshDailyMovement = async () => {
     if (!organizationId || !registerAccountId) return;
-    setLoadingBalance(true);
+    setLoadingDailyMovement(true);
     try {
-      const { balance } = await GetAccountBalance(organizationId, registerAccountId);
-      setRegisterBalance(balance);
+      const dayMs = utcDayMs(selectedDate);
+      const [row] = await GetDailyCashMovements(organizationId, registerAccountId, dayMs, dayMs);
+      setDailyMovement(row ?? null);
     } catch (error) {
-      console.error("Failed to fetch the register balance:", error);
-      message.error(t`Failed to load the cash register balance`);
+      console.error("Failed to fetch daily cash movements:", error);
+      message.error(t`Failed to load cash register movements`);
+      setDailyMovement(null);
     } finally {
-      setLoadingBalance(false);
+      setLoadingDailyMovement(false);
     }
   };
 
   useEffect(() => {
-    refreshBalance();
+    refreshDailyMovement();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, registerAccountId]);
+  }, [organizationId, registerAccountId, selectedDate.valueOf()]);
 
   const bankAccounts = useMemo(() => accounts.filter((a: any) => a.type === "asset"), [accounts]);
   const expenseAccounts = useMemo(
@@ -178,7 +202,7 @@ const CashBook = () => {
   };
 
   const handleWithdrawSubmit = async (values: any) => {
-    if (!organizationId || !registerAccountId) return;
+    if (!organizationId || !registerAccountId || !isToday) return;
     setWithdrawSubmitting(true);
     try {
       await CreateCashMovement({
@@ -192,7 +216,7 @@ const CashBook = () => {
       });
       message.success(t`Cash movement recorded`);
       setWithdrawModalOpen(false);
-      await refreshBalance();
+      await refreshDailyMovement();
     } catch (error) {
       console.error("Failed to record cash movement:", error);
       message.error(error instanceof Error ? error.message : t`Failed to record cash movement`);
@@ -344,17 +368,17 @@ const CashBook = () => {
   const money = (cents: number) => formatCents(cents, currency, i18n.locale);
 
   const handleSubmitSale = async (values: any) => {
-    if (!organizationId) return;
+    if (!organizationId || !isToday) return;
     if (!selectedClient && !newClientDraft) {
       message.error(t`Pick or create a customer first`);
       return;
     }
-    // Kept off-screen entirely (see the balance card above, which already
-    // surfaces the same missing-config case) but still resolved and sent
-    // explicitly, never left for CreateCashSale's own server-side fallback
-    // — defaultCashAccountId is wired to Bank in every chart-of-accounts
-    // template, and a sale posted there silently never moves the register
-    // balance/report.
+    // Kept off-screen entirely (see the daily-movement panel above, which
+    // already surfaces the same missing-config case) but still resolved
+    // and sent explicitly, never left for CreateCashSale's own
+    // server-side fallback — defaultCashAccountId is wired to Bank in
+    // every chart-of-accounts template, and a sale posted there silently
+    // never moves the register balance/report.
     const bankAccountId =
       organization?.defaultCashRegisterAccountId || organization?.defaultCashAccountId;
     if (!bankAccountId) {
@@ -401,6 +425,7 @@ const CashBook = () => {
       setNewClientDraft(null);
       await setClients();
       await refreshOpenInvoices(result.client.id);
+      await refreshDailyMovement();
       resetSaleForm();
     } catch (error) {
       console.error("Failed to record sale:", error);
@@ -440,6 +465,7 @@ const CashBook = () => {
       }
     }
     await closePayment();
+    await refreshDailyMovement();
   };
 
   const clientName = selectedClient?.name || newClientDraft?.name || "";
@@ -451,36 +477,104 @@ const CashBook = () => {
         <Trans>Cash Book</Trans>
       </Typography.Title>
 
-      <Card size="small" style={{ marginBottom: 16 }} loading={loadingBalance}>
-        {registerAccountId ? (
-          <Row justify="space-between" align="middle">
-            <Col>
-              <Typography.Text type="secondary">
-                <Trans>Cash account balance (per books)</Trans>
-              </Typography.Text>
-              <div>
-                <Typography.Title level={4} style={{ margin: 0 }}>
-                  {registerBalance != null ? money(registerBalance) : "—"}
-                </Typography.Title>
-              </div>
-            </Col>
+      <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
+          <Col>
+            <Typography.Text type="secondary">
+              <Trans>Cash register</Trans>
+            </Typography.Text>
+            <div>
+              <DatePicker
+                value={selectedDate}
+                onChange={(d) => d && setSelectedDate(d)}
+                format={dateFormat}
+                allowClear={false}
+                disabledDate={(d) => d.isAfter(dayjs(), "day")}
+              />
+            </div>
+          </Col>
+          {registerAccountId && isToday && (
             <Col>
               <Button onClick={openWithdrawModal}>
                 <Trans>Withdraw</Trans>
               </Button>
             </Col>
-          </Row>
+          )}
+        </Row>
+
+        {registerAccountId ? (
+          <>
+            <Row gutter={16}>
+              <Col span={6}>
+                <Typography.Text type="secondary">
+                  <Trans>Opening</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.opening) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+              <Col span={6}>
+                <Typography.Text type="secondary">
+                  <Trans>In</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.in) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+              <Col span={6}>
+                <Typography.Text type="secondary">
+                  <Trans>Out</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.out) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+              <Col span={6}>
+                <Typography.Text type="secondary">
+                  <Trans>Closing</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.closing) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+            </Row>
+            {/* Labeled from the fetched row's own date, not the picker's
+            value — if utcDayMs above ever drifted from the picked
+            calendar date, this would visibly disagree with the picker
+            instead of silently hiding the mismatch. */}
+            {dailyMovement && (
+              <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+                <Trans>Movements for {dayjs(dailyMovement.date).format(dateFormat)}</Trans>
+              </Typography.Text>
+            )}
+            {!isToday && (
+              <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
+                <Trans>
+                  Viewing past movements, read-only. Switch to today to record a sale, payment, or
+                  withdrawal.
+                </Trans>
+              </Typography.Text>
+            )}
+          </>
         ) : (
           <Typography.Text type="secondary">
             <Trans>
-              No cash register account configured — set one in Organization settings to see the
-              balance here.
+              No cash register account configured — set one in Organization settings to see
+              movements here.
             </Trans>
           </Typography.Text>
         )}
       </Card>
 
-      {!inSale && (
+      {isToday && !inSale && (
         <Card size="small">
           <Input.Search
             placeholder={t`Search by name, mobile number, IBAN, or identity number`}
@@ -536,7 +630,7 @@ const CashBook = () => {
         </Card>
       )}
 
-      {inSale && (
+      {isToday && inSale && (
         <>
           <Space style={{ marginBottom: 16 }}>
             <Button icon={<ArrowLeftOutlined />} onClick={backToSearch}>
@@ -599,7 +693,14 @@ const CashBook = () => {
                     name="date"
                     rules={[{ required: true, message: t`This field is required!` }]}
                   >
-                    <DatePicker style={{ width: "100%" }} format={dateFormat} />
+                    {/* A forward-dated sale would post into a future day's
+                    bucket, which the panel above never shows as "today"
+                    even after today catches up to it — see utcDayMs. */}
+                    <DatePicker
+                      style={{ width: "100%" }}
+                      format={dateFormat}
+                      disabledDate={(d) => d.isAfter(dayjs(), "day")}
+                    />
                   </Form.Item>
                 </Col>
               </Row>
@@ -840,7 +941,7 @@ const CashBook = () => {
         </Form>
       </Modal>
 
-      {payingInvoice && organizationId && selectedClient && (
+      {isToday && payingInvoice && organizationId && selectedClient && (
         <PaymentPanel
           organizationId={organizationId}
           documentType="invoice"
