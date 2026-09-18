@@ -36,6 +36,18 @@ directly to the database. Use `--dry-run` to check the plan (organization,
 tax rates, master-data counts, fiscal year coverage) without generating any
 documents, and a short `--months` value while iterating on the tool itself.
 
+**`--dry-run` is not a true no-op.** It only skips the day-by-day document
+generation loop — creating/finding the organization, chart of accounts, tax
+rates, master data, and fiscal years still happens for real over the API,
+since `main.go` runs setup unconditionally regardless of the flag. Running
+`--dry-run` and then immediately re-running for real against the *same*
+long-lived/shared server (without `--reset`) is not guaranteed to reuse
+what the dry run created — it can create a **second**, duplicate
+organization instead (observed against production seeding "Établissement
+Ben Salah Électroménager," 2026-09-17: cleaned up by hand afterward). Do a
+throwaway-named dry run first when iterating against a shared server, not a
+dry run immediately followed by the real `--org-name`.
+
 ## Flags
 
 | Flag | Default | What it does |
@@ -51,7 +63,7 @@ documents, and a short `--months` value while iterating on the tool itself.
 | `--volume` | `busy` | `small` or `busy` — see `volumeProfiles` in `seeder.go`. Ignored by `--scenario retail`, which sizes itself (see "The retail scenario" below) |
 | `--scenario` | `moto` | `moto` (a motorcycle assembler/manufacturer — the original scenario) or `retail` (a home-appliance retailer selling entirely through Cash Book counter sales) — see `scenario.go` and "The retail scenario" below |
 | `--reset` | off | Delete an existing organization named `--org-name` first, then recreate from scratch |
-| `--dry-run` | off | Print the plan (org, master data, fiscal years) and stop — no documents |
+| `--dry-run` | off | Skip document generation and log the plan — org/master-data/fiscal-year setup still happens for real (see note above) |
 | `--progress-every` | `20` | Log a progress line every N simulated days (`0` disables) |
 
 ## What gets created
