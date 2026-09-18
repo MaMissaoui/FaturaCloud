@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PaymentTerm } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Table } from "antd";
+import { Button, Col, Row, Space, Table } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -11,7 +11,9 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { paymentTermsAtom, setPaymentTermsAtom } from "src/atoms/payment-term";
+import { organizationIdAtom } from "src/atoms/organization";
 import PaymentTermForm from "src/components/payment-terms/form";
+import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 
 const searchAtom = atom<string>("");
@@ -23,6 +25,7 @@ function SettingsPaymentTerms() {
 
   const paymentTerms = useAtomValue(paymentTermsAtom);
   const setPaymentTerms = useSetAtom(setPaymentTermsAtom);
+  const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useAtom(searchAtom);
   const [loading, setLoading] = useState(false);
 
@@ -46,11 +49,21 @@ function SettingsPaymentTerms() {
         title={<Trans>Payment terms</Trans>}
         search={{ placeholder: t`Search`, onChange: setSearch }}
         actions={
-          <Link to="/settings/payment-terms" state={{ paymentTermModal: true }}>
-            <Button type="primary">
-              <Trans>New payment term</Trans>
-            </Button>
-          </Link>
+          <Space wrap>
+            {organizationId && (
+              <MassDataExcelActions
+                organizationId={organizationId}
+                resource="payment-terms"
+                filenamePrefix="payment-terms"
+                onImported={() => setPaymentTerms()}
+              />
+            )}
+            <Link to="/settings/payment-terms" state={{ paymentTermModal: true }}>
+              <Button type="primary">
+                <Trans>New payment term</Trans>
+              </Button>
+            </Link>
+          </Space>
         }
       />
 

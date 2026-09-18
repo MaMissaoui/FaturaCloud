@@ -17,6 +17,13 @@ msgstr ""
 msgid "(current)"
 msgstr "(actuel)"
 
+#. placeholder {0}: result.created
+#. placeholder {1}: result.updated
+#. placeholder {2}: result.failed
+#: src/components/mass-data/mass-data-excel-actions.tsx:100
+msgid "{0} created, {1} updated, {2} failed."
+msgstr "{0} créé(s), {1} mis à jour, {2} en échec."
+
 #: src/routes/reporting/tax-summary.tsx:49
 msgid "%"
 msgstr "%"
@@ -146,8 +153,8 @@ msgid "Accounts receivable"
 msgstr "Comptes clients"
 
 #: src/components/accounting/account-form.tsx:198
-#: src/routes/accounting/chart-of-accounts.tsx:146
-#: src/routes/accounting/chart-of-accounts.tsx:153
+#: src/routes/accounting/chart-of-accounts.tsx:159
+#: src/routes/accounting/chart-of-accounts.tsx:166
 #: src/routes/settings/countries.tsx:104
 #: src/routes/settings/users.tsx:206
 #: src/routes/settings/users.tsx:304
@@ -177,8 +184,8 @@ msgstr "Ajouter une ligne"
 #: src/components/clients/form.tsx:274
 #: src/components/organizations/organization-edit-drawer.tsx:312
 #: src/components/vendors/form.tsx:231
-#: src/routes/clients.tsx:97
-#: src/routes/vendors.tsx:97
+#: src/routes/clients.tsx:110
+#: src/routes/vendors.tsx:110
 msgid "Address"
 msgstr "Adresse"
 
@@ -200,7 +207,7 @@ msgstr "Ajustement — définir le compte à"
 msgid "Admin"
 msgstr "Administrateur"
 
-#: src/routes/products.tsx:164
+#: src/routes/products.tsx:165
 msgid "All categories"
 msgstr "Toutes les catégories"
 
@@ -224,7 +231,7 @@ msgstr "Toutes les périodes"
 msgid "All statuses"
 msgstr "Tous les statuts"
 
-#: src/routes/products.tsx:150
+#: src/routes/products.tsx:151
 msgid "All types"
 msgstr "Tous les types"
 
@@ -323,7 +330,7 @@ msgid "Are you sure you want to delete this vendor?"
 msgstr "Voulez-vous vraiment supprimer ce fournisseur ?"
 
 #: src/components/accounting/account-form.tsx:17
-#: src/routes/accounting/chart-of-accounts.tsx:32
+#: src/routes/accounting/chart-of-accounts.tsx:34
 msgid "Asset"
 msgstr "Actif"
 
@@ -637,7 +644,7 @@ msgstr "Vente au comptant enregistrée"
 
 #: src/components/products/form.tsx:375
 #: src/routes/inventory.tsx:293
-#: src/routes/products.tsx:247
+#: src/routes/products.tsx:258
 msgid "Category"
 msgstr "Catégorie"
 
@@ -655,7 +662,7 @@ msgid "Chart"
 msgstr "Graphique"
 
 #: src/layouts/base.tsx:604
-#: src/routes/accounting/chart-of-accounts.tsx:70
+#: src/routes/accounting/chart-of-accounts.tsx:73
 msgid "Chart of Accounts"
 msgstr "Plan comptable"
 
@@ -727,7 +734,7 @@ msgid "client(s)"
 msgstr "client(s)"
 
 #: src/layouts/base.tsx:552
-#: src/routes/clients.tsx:59
+#: src/routes/clients.tsx:62
 msgid "Clients"
 msgstr "Clients"
 
@@ -735,6 +742,7 @@ msgstr "Clients"
 msgid "clients, vendors, products, tax rates"
 msgstr "clients, fournisseurs, produits, taux de taxe"
 
+#: src/components/mass-data/mass-data-excel-actions.tsx:93
 #: src/routes/accounting/fiscal-periods.tsx:229
 msgid "Close"
 msgstr "Clôturer"
@@ -774,7 +782,7 @@ msgstr "Solde de clôture"
 #: src/components/organizations/organizations-table.tsx:45
 #: src/components/vendors/form.tsx:179
 #: src/components/vendors/form.tsx:180
-#: src/routes/accounting/chart-of-accounts.tsx:96
+#: src/routes/accounting/chart-of-accounts.tsx:109
 #: src/routes/accounting/journals.tsx:76
 #: src/routes/accounting/reports/balance-sheet.tsx:39
 #: src/routes/accounting/reports/profit-and-loss.tsx:59
@@ -801,12 +809,12 @@ msgstr "Terminé"
 #: src/routes/inventory.tsx:303
 #: src/routes/production-orders/details.tsx:299
 #: src/routes/production-orders/details.tsx:548
-#: src/routes/products.tsx:257
+#: src/routes/products.tsx:268
 msgid "Component"
 msgstr "Composant"
 
 #: src/components/products/form.tsx:389
-#: src/routes/products.tsx:173
+#: src/routes/products.tsx:174
 msgid "Component / intermediate"
 msgstr "Composant / intermédiaire"
 
@@ -853,7 +861,7 @@ msgstr "Continuer"
 msgid "Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G."
 msgstr "Copiée dans les nouvelles factures de ce client, par ex. un Leitweg-ID pour le B2G allemand."
 
-#: src/routes/products.tsx:274
+#: src/routes/products.tsx:285
 msgid "Cost"
 msgstr "Coût"
 
@@ -1094,9 +1102,9 @@ msgstr "Décimales"
 #: src/components/organizations/organization-edit-drawer.tsx:404
 #: src/components/tax-rates/form.tsx:207
 #: src/routes/settings/document-templates.tsx:142
-#: src/routes/settings/payment-terms.tsx:87
-#: src/routes/settings/tax-rates.tsx:97
-#: src/routes/settings/units-of-measure.tsx:85
+#: src/routes/settings/payment-terms.tsx:100
+#: src/routes/settings/tax-rates.tsx:110
+#: src/routes/settings/units-of-measure.tsx:98
 msgid "Default"
 msgstr "Par défaut"
 
@@ -1339,7 +1347,7 @@ msgstr "Déposer à la banque"
 #: src/routes/accounting/journal-entries/details.tsx:398
 #: src/routes/accounting/journal-entries/details.tsx:426
 #: src/routes/incoming-invoices/details.tsx:493
-#: src/routes/settings/tax-rates.tsx:81
+#: src/routes/settings/tax-rates.tsx:94
 msgid "Description"
 msgstr "Description"
 
@@ -1395,6 +1403,11 @@ msgstr "Télécharger le modèle actuel"
 msgid "Download default"
 msgstr "Télécharger le modèle par défaut"
 
+#: src/components/mass-data/mass-data-excel-actions.tsx:80
+msgid "Download Excel"
+msgstr "Télécharger Excel"
+
+#: src/components/mass-data/mass-data-excel-actions.tsx:47
 #: src/routes/settings/document-templates.tsx:108
 msgid "Download failed"
 msgstr "Échec du téléchargement"
@@ -1582,8 +1595,8 @@ msgstr "Email"
 msgid "Email of an existing user"
 msgstr "E-mail d'un utilisateur existant"
 
-#: src/routes/clients.tsx:105
-#: src/routes/vendors.tsx:105
+#: src/routes/clients.tsx:118
+#: src/routes/vendors.tsx:118
 msgid "Emails"
 msgstr "E-mails"
 
@@ -1633,10 +1646,14 @@ msgid "Entry #"
 msgstr "N° d'écriture"
 
 #: src/components/accounting/account-form.tsx:21
-#: src/routes/accounting/chart-of-accounts.tsx:36
+#: src/routes/accounting/chart-of-accounts.tsx:38
 #: src/routes/accounting/reports/balance-sheet.tsx:128
 msgid "Equity"
 msgstr "Capitaux propres"
+
+#: src/components/mass-data/mass-data-excel-actions.tsx:111
+msgid "Error"
+msgstr "Erreur"
 
 #: src/routes/cash-book.tsx:713
 #: src/routes/cash-book.tsx:861
@@ -1673,7 +1690,7 @@ msgid "Expected date"
 msgstr "Date prévue"
 
 #: src/components/accounting/account-form.tsx:25
-#: src/routes/accounting/chart-of-accounts.tsx:40
+#: src/routes/accounting/chart-of-accounts.tsx:42
 msgid "Expense"
 msgstr "Charge"
 
@@ -2059,8 +2076,8 @@ msgstr "Filtrer par référence"
 #: src/components/products/form.tsx:386
 #: src/routes/inventory.tsx:255
 #: src/routes/inventory.tsx:299
-#: src/routes/products.tsx:172
-#: src/routes/products.tsx:253
+#: src/routes/products.tsx:173
+#: src/routes/products.tsx:264
 msgid "Finished good"
 msgstr "Produit fini"
 
@@ -2211,11 +2228,11 @@ msgstr "Réceptions de marchandises"
 msgid "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 msgstr "Marchandises reçues non facturées — comptabilise un passif à la réception d'un bon de réception, soldé lors de l'approbation de la facture fournisseur correspondante."
 
-#: src/routes/accounting/chart-of-accounts.tsx:138
+#: src/routes/accounting/chart-of-accounts.tsx:151
 msgid "Group"
 msgstr "Groupe"
 
-#: src/routes/accounting/chart-of-accounts.tsx:143
+#: src/routes/accounting/chart-of-accounts.tsx:156
 msgid "Header"
 msgstr "En-tête"
 
@@ -2280,6 +2297,12 @@ msgstr "Import"
 msgid "Import {0} reserves {1}{2} to {3}{4}."
 msgstr "L'import {0} réserve {1}{2} à {3}{4}."
 
+#. placeholder {0}: res.created
+#. placeholder {1}: res.updated
+#: src/components/mass-data/mass-data-excel-actions.tsx:62
+msgid "Import complete: {0} created, {1} updated."
+msgstr "Import terminé : {0} créé(s), {1} mis à jour."
+
 #: src/atoms/import.ts:60
 msgid "Import created"
 msgstr "Import créé"
@@ -2301,6 +2324,10 @@ msgstr "Échec de la suppression de l'import"
 #: src/components/imports/form.tsx:265
 msgid "Import number"
 msgstr "Numéro d'import"
+
+#: src/components/mass-data/mass-data-excel-actions.tsx:90
+msgid "Import results"
+msgstr "Résultats de l'import"
 
 #: src/atoms/import.ts:77
 msgid "Import update failed"
@@ -2326,7 +2353,7 @@ msgid "In stock"
 msgstr "En stock"
 
 #: src/components/organizations/organization-members-panel.tsx:66
-#: src/routes/accounting/chart-of-accounts.tsx:155
+#: src/routes/accounting/chart-of-accounts.tsx:168
 msgid "Inactive"
 msgstr "Inactif"
 
@@ -2618,7 +2645,7 @@ msgid "Liabilities"
 msgstr "Passifs"
 
 #: src/components/accounting/account-form.tsx:19
-#: src/routes/accounting/chart-of-accounts.tsx:34
+#: src/routes/accounting/chart-of-accounts.tsx:36
 msgid "Liability"
 msgstr "Passif"
 
@@ -2830,7 +2857,7 @@ msgstr ""
 #: src/components/units-of-measure/form.tsx:125
 #: src/components/vendors/form.tsx:167
 #: src/components/vendors/form.tsx:171
-#: src/routes/accounting/chart-of-accounts.tsx:104
+#: src/routes/accounting/chart-of-accounts.tsx:117
 #: src/routes/accounting/fiscal-periods.tsx:184
 #: src/routes/accounting/fiscal-periods.tsx:243
 #: src/routes/accounting/fiscal-periods.tsx:300
@@ -2839,16 +2866,16 @@ msgstr ""
 #: src/routes/accounting/trial-balance.tsx:135
 #: src/routes/bill-of-materials.tsx:112
 #: src/routes/cash-book.tsx:1170
-#: src/routes/clients.tsx:83
+#: src/routes/clients.tsx:96
 #: src/routes/organizations/new.tsx:63
-#: src/routes/products.tsx:216
+#: src/routes/products.tsx:227
 #: src/routes/settings/countries.tsx:98
-#: src/routes/settings/payment-terms.tsx:73
-#: src/routes/settings/tax-rates.tsx:71
-#: src/routes/settings/units-of-measure.tsx:71
+#: src/routes/settings/payment-terms.tsx:86
+#: src/routes/settings/tax-rates.tsx:84
+#: src/routes/settings/units-of-measure.tsx:84
 #: src/routes/settings/users.tsx:177
 #: src/routes/settings/users.tsx:294
-#: src/routes/vendors.tsx:83
+#: src/routes/vendors.tsx:96
 msgid "Name"
 msgstr "Nom"
 
@@ -2867,12 +2894,12 @@ msgid "Net income"
 msgstr "Résultat net"
 
 #: src/components/accounting/account-form.tsx:118
-#: src/routes/accounting/chart-of-accounts.tsx:75
+#: src/routes/accounting/chart-of-accounts.tsx:87
 msgid "New account"
 msgstr "Nouveau compte"
 
 #: src/components/clients/form.tsx:137
-#: src/routes/clients.tsx:64
+#: src/routes/clients.tsx:76
 #: src/routes/invoices/details.tsx:493
 msgid "New client"
 msgstr "Nouveau client"
@@ -2944,7 +2971,7 @@ msgid "New password (leave blank to keep current)"
 msgstr "Nouveau mot de passe (laisser vide pour conserver l'actuel)"
 
 #: src/components/payment-terms/form.tsx:83
-#: src/routes/settings/payment-terms.tsx:51
+#: src/routes/settings/payment-terms.tsx:63
 msgid "New payment term"
 msgstr "Nouvelle condition de paiement"
 
@@ -2953,7 +2980,7 @@ msgid "New period"
 msgstr "Nouvelle période"
 
 #: src/components/products/form.tsx:230
-#: src/routes/products.tsx:190
+#: src/routes/products.tsx:200
 msgid "New product"
 msgstr "Nouveau produit"
 
@@ -2980,12 +3007,12 @@ msgid "New stock count"
 msgstr "Nouveau comptage de stock"
 
 #: src/components/tax-rates/form.tsx:131
-#: src/routes/settings/tax-rates.tsx:53
+#: src/routes/settings/tax-rates.tsx:65
 msgid "New tax rate"
 msgstr "Nouveau taux de taxe"
 
 #: src/components/units-of-measure/form.tsx:88
-#: src/routes/settings/units-of-measure.tsx:49
+#: src/routes/settings/units-of-measure.tsx:61
 msgid "New unit of measure"
 msgstr "Nouvelle unité de mesure"
 
@@ -2995,7 +3022,7 @@ msgid "New user"
 msgstr "Nouvel utilisateur"
 
 #: src/components/vendors/form.tsx:122
-#: src/routes/vendors.tsx:64
+#: src/routes/vendors.tsx:76
 msgid "New vendor"
 msgstr "Nouveau fournisseur"
 
@@ -3526,7 +3553,7 @@ msgstr "Orientation de la page"
 msgid "Paid"
 msgstr "Payée"
 
-#: src/routes/accounting/chart-of-accounts.tsx:128
+#: src/routes/accounting/chart-of-accounts.tsx:141
 msgid "Parent"
 msgstr "Parent"
 
@@ -3591,7 +3618,7 @@ msgstr "Condition de paiement mise à jour"
 #: src/components/invoices/pdf-tunisia.tsx:235
 #: src/layouts/base.tsx:265
 #: src/routes/invoices/details.tsx:520
-#: src/routes/settings/payment-terms.tsx:46
+#: src/routes/settings/payment-terms.tsx:49
 msgid "Payment terms"
 msgstr "Conditions de paiement"
 
@@ -3614,7 +3641,7 @@ msgstr "pcs, kg, m…"
 
 #: src/components/tax-rates/form.tsx:198
 #: src/components/tax-rates/form.tsx:201
-#: src/routes/settings/tax-rates.tsx:89
+#: src/routes/settings/tax-rates.tsx:102
 msgid "Percentage"
 msgstr "Pourcentage"
 
@@ -3632,8 +3659,8 @@ msgstr "Supprime définitivement les données de cette organisation sans supprim
 #: src/components/organizations/organizations-table.tsx:58
 #: src/components/vendors/form.tsx:194
 #: src/components/vendors/form.tsx:195
-#: src/routes/clients.tsx:121
-#: src/routes/vendors.tsx:121
+#: src/routes/clients.tsx:134
+#: src/routes/vendors.tsx:134
 msgid "Phone"
 msgstr "Téléphone"
 
@@ -3777,7 +3804,7 @@ msgstr "Aperçu"
 #: src/components/invoices/pdf.tsx:285
 #: src/components/products/form.tsx:415
 #: src/routes/invoices/details.tsx:838
-#: src/routes/products.tsx:264
+#: src/routes/products.tsx:275
 msgid "Price"
 msgstr "Prix"
 
@@ -3810,8 +3837,8 @@ msgstr "Tarification"
 #: src/routes/inventory.tsx:280
 #: src/routes/inventory.tsx:428
 #: src/routes/invoices/details.tsx:734
-#: src/routes/products.tsx:158
-#: src/routes/products.tsx:237
+#: src/routes/products.tsx:159
+#: src/routes/products.tsx:248
 #: src/routes/reporting/sales-by-product.tsx:95
 msgid "Product"
 msgstr "Produit"
@@ -3890,7 +3917,7 @@ msgid "Production Orders"
 msgstr "Ordres de fabrication"
 
 #: src/layouts/base.tsx:570
-#: src/routes/products.tsx:145
+#: src/routes/products.tsx:146
 msgid "Products"
 msgstr "Produits"
 
@@ -4094,6 +4121,7 @@ msgstr "Reçue"
 msgid "Recent movements"
 msgstr "Mouvements de stock récents"
 
+#: src/components/mass-data/mass-data-excel-actions.tsx:110
 #: src/components/payments/payment-panel.tsx:281
 #: src/routes/cash-book.tsx:1194
 msgid "Record"
@@ -4274,7 +4302,7 @@ msgid "Retry"
 msgstr "Réessayer"
 
 #: src/components/accounting/account-form.tsx:23
-#: src/routes/accounting/chart-of-accounts.tsx:38
+#: src/routes/accounting/chart-of-accounts.tsx:40
 #: src/routes/accounting/reports/profit-and-loss.tsx:89
 #: src/routes/dashboard.tsx:166
 #: src/routes/dashboard.tsx:285
@@ -4346,6 +4374,10 @@ msgstr "Rôle"
 #: src/routes/dashboard.tsx:96
 msgid "Rolling window"
 msgstr "Fenêtre glissante"
+
+#: src/components/mass-data/mass-data-excel-actions.tsx:109
+msgid "Row"
+msgstr "Ligne"
 
 #: src/routes/cash-book.tsx:106
 msgid "Sale"
@@ -4434,12 +4466,12 @@ msgstr "Planification enregistrée"
 #: src/routes/orders.tsx:55
 #: src/routes/organizations/index.tsx:451
 #: src/routes/production-orders.tsx:58
-#: src/routes/products.tsx:180
+#: src/routes/products.tsx:181
 #: src/routes/purchase-orders.tsx:56
 #: src/routes/settings/countries.tsx:67
-#: src/routes/settings/payment-terms.tsx:47
-#: src/routes/settings/tax-rates.tsx:49
-#: src/routes/settings/units-of-measure.tsx:45
+#: src/routes/settings/payment-terms.tsx:50
+#: src/routes/settings/tax-rates.tsx:52
+#: src/routes/settings/units-of-measure.tsx:48
 #: src/routes/settings/users.tsx:151
 msgid "Search"
 msgstr "Rechercher"
@@ -4456,11 +4488,11 @@ msgstr "Rechercher par nom, numéro de mobile, IBAN ou numéro d'identité"
 msgid "Search products"
 msgstr "Rechercher des produits"
 
-#: src/routes/accounting/chart-of-accounts.tsx:71
-#: src/routes/clients.tsx:60
+#: src/routes/accounting/chart-of-accounts.tsx:74
+#: src/routes/clients.tsx:63
 #: src/routes/imports.tsx:94
 #: src/routes/invoices/index.tsx:138
-#: src/routes/vendors.tsx:60
+#: src/routes/vendors.tsx:63
 msgid "Search text"
 msgstr "Rechercher du texte"
 
@@ -4587,8 +4619,8 @@ msgid "Serial numbers to remove"
 msgstr "Numéros de série à retirer"
 
 #: src/components/products/form.tsx:290
-#: src/routes/products.tsx:159
-#: src/routes/products.tsx:241
+#: src/routes/products.tsx:160
+#: src/routes/products.tsx:252
 msgid "Service"
 msgstr "Service"
 
@@ -4662,7 +4694,7 @@ msgstr "Code de compte numérique de style SKR03/SKR04 pour la colonne « Konto 
 
 #: src/routes/bill-of-materials.tsx:113
 #: src/routes/inventory.tsx:291
-#: src/routes/products.tsx:262
+#: src/routes/products.tsx:273
 msgid "SKU"
 msgstr "SKU"
 
@@ -4726,7 +4758,7 @@ msgstr "Flux de statut"
 msgid "Stay here"
 msgstr "Rester ici"
 
-#: src/routes/products.tsx:295
+#: src/routes/products.tsx:306
 msgid "Stock"
 msgstr "Stock"
 
@@ -4844,7 +4876,7 @@ msgid "Tax number"
 msgstr "Numéro fiscal"
 
 #: src/components/tax-rates/form.tsx:182
-#: src/routes/products.tsx:284
+#: src/routes/products.tsx:295
 msgid "Tax rate"
 msgstr "Taux de taxe"
 
@@ -4879,7 +4911,7 @@ msgid "tax rate(s)"
 msgstr "taux de taxe"
 
 #: src/layouts/base.tsx:256
-#: src/routes/settings/tax-rates.tsx:48
+#: src/routes/settings/tax-rates.tsx:51
 msgid "Tax rates"
 msgstr "Taux de taxe"
 
@@ -5115,11 +5147,11 @@ msgstr "Tunisie"
 #: src/components/accounting/journal-form.tsx:153
 #: src/components/products/form.tsx:283
 #: src/components/stock/movement-form.tsx:147
-#: src/routes/accounting/chart-of-accounts.tsx:119
+#: src/routes/accounting/chart-of-accounts.tsx:132
 #: src/routes/accounting/journals.tsx:98
 #: src/routes/cash-book.tsx:788
 #: src/routes/inventory.tsx:445
-#: src/routes/products.tsx:230
+#: src/routes/products.tsx:241
 msgid "Type"
 msgstr "Type"
 
@@ -5133,7 +5165,7 @@ msgid "Type manually"
 msgstr "Saisie manuelle"
 
 #: src/components/products/form.tsx:384
-#: src/routes/products.tsx:174
+#: src/routes/products.tsx:175
 msgid "Unclassified"
 msgstr "Non classé"
 
@@ -5182,12 +5214,12 @@ msgstr "Prix unitaire"
 msgid "Unit price excl. tax"
 msgstr "PU HT"
 
-#: src/routes/products.tsx:304
+#: src/routes/products.tsx:315
 msgid "units"
 msgstr "unités"
 
 #: src/layouts/base.tsx:274
-#: src/routes/settings/units-of-measure.tsx:44
+#: src/routes/settings/units-of-measure.tsx:47
 msgid "Units of measure"
 msgstr "Unités de mesure"
 
@@ -5211,6 +5243,11 @@ msgstr "Téléversez un fichier .db pour remplacer la base de données actuelle.
 msgid "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
 msgstr "Téléversez une mise en page Excel personnalisée pour un type de document, ou téléchargez l'actuelle pour la modifier. Pour utiliser un modèle personnalisé pour les factures, réglez la mise en page de facture sur « Personnalisé » dans les paramètres de formatage des Organisations."
 
+#: src/components/mass-data/mass-data-excel-actions.tsx:84
+msgid "Upload Excel"
+msgstr "Importer Excel"
+
+#: src/components/mass-data/mass-data-excel-actions.tsx:66
 #: src/routes/settings/document-templates.tsx:89
 msgid "Upload failed"
 msgstr "Échec du téléversement"
@@ -5290,8 +5327,8 @@ msgstr "Numéro de TVA"
 msgid "VAT reverse charge"
 msgstr "Autoliquidation de la TVA"
 
-#: src/routes/clients.tsx:137
-#: src/routes/vendors.tsx:137
+#: src/routes/clients.tsx:150
+#: src/routes/vendors.tsx:150
 msgid "VATIN"
 msgstr "N° TVA"
 
@@ -5361,7 +5398,7 @@ msgid "vendor(s)"
 msgstr "fournisseur(s)"
 
 #: src/layouts/base.tsx:561
-#: src/routes/vendors.tsx:59
+#: src/routes/vendors.tsx:62
 msgid "Vendors"
 msgstr "Fournisseurs"
 
@@ -5398,8 +5435,8 @@ msgstr "Attention : Cela supprimera également {invoiceCount} facture(s) associ�
 #: src/components/organizations/organization-edit-drawer.tsx:186
 #: src/components/vendors/form.tsx:199
 #: src/components/vendors/form.tsx:200
-#: src/routes/clients.tsx:143
-#: src/routes/vendors.tsx:143
+#: src/routes/clients.tsx:156
+#: src/routes/vendors.tsx:156
 msgid "Website"
 msgstr "Site web"
 

@@ -368,8 +368,9 @@ func TestPhaseCRouteCoverage(t *testing.T) {
 // of a review question — the same shape TestPhaseCRouteCoverage already
 // gives org-scoping itself.
 var domainRouteRoles = map[routeKey][]string{
-	{"PUT", "/api/clients/{id}"}:    {"sales"},
-	{"DELETE", "/api/clients/{id}"}: {"sales"},
+	{"PUT", "/api/clients/{id}"}:                          {"sales"},
+	{"DELETE", "/api/clients/{id}"}:                       {"sales"},
+	{"POST", "/api/organizations/{orgId}/clients/import"}: {"sales"},
 
 	{"PUT", "/api/invoices/{id}"}:         {"sales"},
 	{"PATCH", "/api/invoices/{id}/state"}: {"sales"},
@@ -383,8 +384,9 @@ var domainRouteRoles = map[routeKey][]string{
 	{"PATCH", "/api/deliveries/{id}/status"}: {"sales"},
 	{"DELETE", "/api/deliveries/{id}"}:       {"sales"},
 
-	{"PUT", "/api/vendors/{id}"}:    {"purchasing"},
-	{"DELETE", "/api/vendors/{id}"}: {"purchasing"},
+	{"PUT", "/api/vendors/{id}"}:                          {"purchasing"},
+	{"DELETE", "/api/vendors/{id}"}:                       {"purchasing"},
+	{"POST", "/api/organizations/{orgId}/vendors/import"}: {"purchasing"},
 
 	{"PUT", "/api/imports/{id}"}:    {"purchasing"},
 	{"DELETE", "/api/imports/{id}"}: {"purchasing"},
@@ -401,8 +403,9 @@ var domainRouteRoles = map[routeKey][]string{
 	{"PATCH", "/api/incoming-invoices/{id}/state"}: {"purchasing"},
 	{"DELETE", "/api/incoming-invoices/{id}"}:      {"purchasing"},
 
-	{"PUT", "/api/accounts/{id}"}:    {"accounting"},
-	{"DELETE", "/api/accounts/{id}"}: {"accounting"},
+	{"PUT", "/api/accounts/{id}"}:                          {"accounting"},
+	{"DELETE", "/api/accounts/{id}"}:                       {"accounting"},
+	{"POST", "/api/organizations/{orgId}/accounts/import"}: {"accounting"},
 
 	{"PUT", "/api/journals/{id}"}:    {"accounting"},
 	{"DELETE", "/api/journals/{id}"}: {"accounting"},

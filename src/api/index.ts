@@ -461,6 +461,82 @@ export const UpdateDocumentNumberSetting = (
     counter,
   });
 
+// ---- Mass Data (Excel download/upload for bulk maintenance) ----
+// Every reference-data list below (clients, vendors, products, tax rates,
+// payment terms, units of measure, chart of accounts) supports the same
+// "download it, edit many rows in a spreadsheet app, upload it back"
+// workflow — db/mass_data.go's shared engine plus one small per-table spec.
+// Uploading creates a row whose ID column is blank and updates one whose ID
+// matches an existing record; nothing is ever deleted by import — remove a
+// row in the app itself instead.
+
+export type MassDataResource =
+  | "clients"
+  | "vendors"
+  | "products"
+  | "tax-rates"
+  | "payment-terms"
+  | "units-of-measure"
+  | "accounts";
+
+export interface MassDataRowResult {
+  row: number;
+  identifier: string;
+  action: "created" | "updated" | "error";
+  error?: string;
+}
+
+export interface MassDataImportResult {
+  created: number;
+  updated: number;
+  failed: number;
+  rows: MassDataRowResult[];
+}
+
+const massDataExportBlob = async (orgId: string, resource: MassDataResource): Promise<Blob> => {
+  const res = await fetch(`/api/organizations/${orgId}/${resource}/export`, {
+    credentials: "same-origin",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+  return res.blob();
+};
+
+export const DownloadMassData = async (
+  orgId: string,
+  resource: MassDataResource,
+  defaultFilename: string,
+): Promise<void> => {
+  const blob = await massDataExportBlob(orgId, resource);
+  await SaveFile(defaultFilename, blob);
+};
+
+// Mirrors UploadDocumentTemplate's shape (raw fetch, manual CSRF header,
+// beforeUpload takes over the request) — the response body here is always
+// JSON (the import report), not a 204, whether or not any individual row
+// failed: a bad row doesn't fail the HTTP call, only that row's own entry.
+export const ImportMassData = async (
+  orgId: string,
+  resource: MassDataResource,
+  file: File,
+): Promise<MassDataImportResult> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`/api/organizations/${orgId}/${resource}/import`, {
+    method: "POST",
+    headers: { [CSRF_HEADER]: "1" },
+    credentials: "same-origin",
+    body: form,
+  });
+  const body = await res.json().catch(() => ({ error: res.statusText }));
+  if (!res.ok) {
+    throw new Error(body.error ?? res.statusText);
+  }
+  return body as MassDataImportResult;
+};
+
 // ---- Clients ----
 
 export const GetClients = (organizationId: string) =>
