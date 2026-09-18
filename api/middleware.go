@@ -123,25 +123,36 @@ func pathOrgID(param string) orgIDResolver {
 	}
 }
 
-// orgAuthorized is the shared implementation orgAdmin and orgMember both
-// call. Runs before withDB (see api/router.go's route wiring), so — like
-// authMiddleware's isActive check — it takes its own short-lived dbMu read
-// lock around resolve()+the role check (resolve() may itself hit the DB,
-// e.g. looking up which organization a fiscal year belongs to) rather than
-// relying on a route's own withDB wrapper, released before next.ServeHTTP.
+// orgAuthMode selects orgAuthorized's failure-response shape — see its own
+// doc comment for why the two differ.
+type orgAuthMode int
+
+const (
+	// modeMemberCollapse collapses BOTH "resolve failed" and "caller isn't
+	// a member" to a plain 404: used by resolvers keyed off an
+	// attacker-controlled resource {id} (an invoice, a vendor, …), where a
+	// distinct 403 would let any authenticated user learn "this id exists,
+	// just in someone else's org" — a cross-tenant existence oracle.
+	modeMemberCollapse orgAuthMode = iota
+	// modeAdminStrict 404s only when resolve() itself fails (the row is
+	// genuinely absent) and 403s otherwise — fine for routes the caller is
+	// almost always already "inside" via pathOrgID, where existence isn't
+	// secret.
+	modeAdminStrict
+)
+
+// orgAuthorized is the shared implementation orgAdmin/orgMember/orgRole/
+// orgRoleAdmin all build on. Runs before withDB (see api/router.go's route
+// wiring), so — like authMiddleware's isActive check — it takes its own
+// short-lived dbMu read lock around resolve()+the role check (resolve() may
+// itself hit the DB, e.g. looking up which organization a fiscal year
+// belongs to) rather than relying on a route's own withDB wrapper, released
+// before next.ServeHTTP.
 //
-// orgAdmin and orgMember deliberately diverge on the failure response:
-// orgAdmin 404s only when resolve() itself fails (the row is genuinely
-// absent) and 403s when the caller isn't an admin of an org they already
-// know exists — fine for admin-tier routes, which the caller is almost
-// always already inside via pathOrgID. orgMember instead collapses BOTH
-// "resolve failed" and "caller isn't a member" to a plain 404: most of its
-// resolvers key off an attacker-controlled resource {id} unrelated to any
-// path the caller is otherwise authorized into, so a distinct 403 there
-// would let any authenticated user learn "this invoice id exists (in
-// someone else's org)" — a cross-tenant existence oracle. This is a
-// deliberate choice, not an inherited accident.
-func (h *handler) orgAuthorized(resolve orgIDResolver, requireAdmin bool) func(http.Handler) http.Handler {
+// allowed decides, given the resolved (role, isMember), whether the request
+// may proceed — see mode's doc comment for how a "no" there turns into a
+// 403 vs. a 404 depending on which resolver shape the caller is protecting.
+func (h *handler) orgAuthorized(resolve orgIDResolver, mode orgAuthMode, allowed func(role string, isMember bool) bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims := getClaims(r)
@@ -159,26 +170,28 @@ func (h *handler) orgAuthorized(resolve orgIDResolver, requireAdmin bool) func(h
 			}
 			h.dbMu.RUnlock()
 
-			if requireAdmin {
+			if err != nil {
+				writeInternalError(w, err)
+				return
+			}
+
+			switch mode {
+			case modeAdminStrict:
 				if resolveErr != nil || orgID == "" {
 					writeError(w, http.StatusNotFound, "not found")
 					return
 				}
-				if err != nil {
-					writeInternalError(w, err)
-					return
-				}
-				if !isMember || role != "admin" {
+				if !allowed(role, isMember) {
 					writeError(w, http.StatusForbidden, "forbidden")
 					return
 				}
-			} else {
-				if err != nil {
-					writeInternalError(w, err)
-					return
-				}
+			default: // modeMemberCollapse
 				if resolveErr != nil || orgID == "" || !isMember {
 					writeError(w, http.StatusNotFound, "not found")
+					return
+				}
+				if !allowed(role, isMember) {
+					writeError(w, http.StatusForbidden, "forbidden")
 					return
 				}
 			}
@@ -190,7 +203,9 @@ func (h *handler) orgAuthorized(resolve orgIDResolver, requireAdmin bool) func(h
 // orgAdmin gates an org-scoped admin action: the caller must hold the
 // "admin" role in the organization resolve identifies.
 func (h *handler) orgAdmin(resolve orgIDResolver) func(http.Handler) http.Handler {
-	return h.orgAuthorized(resolve, true)
+	return h.orgAuthorized(resolve, modeAdminStrict, func(role string, isMember bool) bool {
+		return isMember && role == "admin"
+	})
 }
 
 // orgMember gates an ordinary org-scoped action on plain membership (any
@@ -198,7 +213,44 @@ func (h *handler) orgAdmin(resolve orgIDResolver) func(http.Handler) http.Handle
 // require admin privileges, just that the caller belongs to the
 // organization resolve identifies.
 func (h *handler) orgMember(resolve orgIDResolver) func(http.Handler) http.Handler {
-	return h.orgAuthorized(resolve, false)
+	return h.orgAuthorized(resolve, modeMemberCollapse, func(role string, isMember bool) bool {
+		return true
+	})
+}
+
+// orgRole gates an org-scoped mutation to "admin", "general" (the org-wide
+// non-admin role — full read/write everywhere non-admin-gated, unchanged
+// from before per-domain roles existed), or one of the listed domain roles
+// (org role redesign, migration 0081). Uses modeMemberCollapse — the same
+// resource-id resolvers (clientOrgID, invoiceOrgID, …) already protect
+// these routes' own GET counterparts via orgMember, so a member-but-wrong-
+// domain caller learns nothing a non-member wouldn't already be told by the
+// read route; only genuinely new information (this org has this resource,
+// and I'm a member) is gated as 403 instead of 404.
+func (h *handler) orgRole(resolve orgIDResolver, roles ...string) func(http.Handler) http.Handler {
+	allowed := map[string]bool{"admin": true, "general": true}
+	for _, role := range roles {
+		allowed[role] = true
+	}
+	return h.orgAuthorized(resolve, modeMemberCollapse, func(role string, isMember bool) bool {
+		return allowed[role]
+	})
+}
+
+// orgRoleAdmin gates an org-scoped admin-tier action (same modeAdminStrict
+// failure shape as orgAdmin — these routes are reached via pathOrgID/
+// fiscalYearOrgID, contexts the caller is already "inside", so a 403 for a
+// non-member reveals nothing new) to "admin" plus the listed roles. Used
+// for the two actions the org role redesign folded "accounting" into
+// alongside admin: closing a fiscal year, exporting the GL.
+func (h *handler) orgRoleAdmin(resolve orgIDResolver, roles ...string) func(http.Handler) http.Handler {
+	allowed := map[string]bool{"admin": true}
+	for _, role := range roles {
+		allowed[role] = true
+	}
+	return h.orgAuthorized(resolve, modeAdminStrict, func(role string, isMember bool) bool {
+		return isMember && allowed[role]
+	})
 }
 
 // requireOrgMember checks org membership from INSIDE a Create* handler,
@@ -229,6 +281,38 @@ func (h *handler) requireOrgMember(w http.ResponseWriter, r *http.Request, orgID
 		return false
 	}
 	if !isMember {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return false
+	}
+	return true
+}
+
+// requireOrgRole is requireOrgMember's domain-role-checking sibling — same
+// "runs from inside an already-withDB'd Create* handler, after decodeJSON,
+// 403 not 404" reasoning, but also requires the caller's role to be
+// "admin", "general", or one of roles (org role redesign, migration 0081).
+func (h *handler) requireOrgRole(w http.ResponseWriter, r *http.Request, orgID string, roles ...string) bool {
+	claims := getClaims(r)
+	if claims == nil || orgID == "" {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return false
+	}
+	role, isMember, err := h.db.GetOrganizationRole(orgID, claims.UserID)
+	if err != nil {
+		writeInternalError(w, err)
+		return false
+	}
+	if !isMember {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return false
+	}
+	allowed := role == "admin" || role == "general"
+	for _, want := range roles {
+		if role == want {
+			allowed = true
+		}
+	}
+	if !allowed {
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
 	}
