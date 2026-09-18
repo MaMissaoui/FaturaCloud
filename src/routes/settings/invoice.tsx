@@ -8,7 +8,6 @@ import {
   InputNumber,
   Layout,
   Row,
-  Select,
   Space,
   Typography,
   theme,
@@ -24,24 +23,19 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { useLingui } from "@lingui/react";
-import map from "lodash/map";
 import isEmpty from "lodash/isEmpty";
 
 import { organizationAtom, setOrganizationsAtom } from "src/atoms/organization";
-import { currencies, getCurrencySymbol, getDefaultFractionDigits } from "src/utils/currencies";
 import { validateInvoiceFormat, generateInvoiceNumber } from "src/utils/invoice";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
-const { Option } = Select;
 const { Footer } = Layout;
 
 const submittingAtom = atom(false);
 
 function SettingsInvoice() {
   const [form] = Form.useForm();
-  const { i18n } = useLingui();
   const { token } = theme.useToken();
 
   const setOrganizations = useSetAtom(setOrganizationsAtom);
@@ -79,37 +73,6 @@ function SettingsInvoice() {
           <Col xs={24} xl={12}>
             <Card size="small" title={<Trans>Defaults</Trans>} style={{ marginBottom: 16 }}>
               <Row gutter={[16, 0]}>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    label={t`Currency`}
-                    name="currency"
-                    rules={[{ required: true, message: t`This field is required!` }]}
-                  >
-                    <Select
-                      showSearch
-                      onChange={(currency: string) =>
-                        form.setFieldValue(
-                          "minimum_fraction_digits",
-                          getDefaultFractionDigits(currency, i18n.locale),
-                        )
-                      }
-                    >
-                      {map(currencies, (currency) => {
-                        const symbol = getCurrencySymbol(i18n.locale, currency);
-                        return (
-                          <Option value={currency} key={currency}>
-                            {`${currency}${currency !== symbol ? ` ${symbol}` : ""}`}
-                          </Option>
-                        );
-                      })}
-                    </Select>
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={12}>
-                  <Form.Item label={t`Decimal places`} name="minimum_fraction_digits">
-                    <InputNumber min={0} max={10} style={{ width: "100%" }} />
-                  </Form.Item>
-                </Col>
                 <Col xs={24} md={12}>
                   <Form.Item label={t`Due days`} name="due_days">
                     <InputNumber min={0} style={{ width: "100%" }} />
