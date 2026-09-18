@@ -79,7 +79,7 @@ import {
   organizationsLoadedAtom,
   organizationIdAtom,
   organizationAtom,
-  isOrgAdminAtom,
+  isOrgAdminOrAccountingAtom,
 } from "src/atoms/organization";
 import { currentUserAtom, isPlatformAdminAtom } from "src/atoms/auth";
 import { GetVersion, Logout } from "src/api";
@@ -146,7 +146,7 @@ export default function BaseLayout() {
   // Auth
   const currentUser = useAtomValue(currentUserAtom);
   const isPlatformAdmin = useAtomValue(isPlatformAdminAtom);
-  const isOrgAdmin = useAtomValue(isOrgAdminAtom);
+  const canAccessGLExport = useAtomValue(isOrgAdminOrAccountingAtom);
   const handleLogout = () => {
     Logout();
     navigate("/login");
@@ -315,12 +315,11 @@ export default function BaseLayout() {
           },
         ]
       : []),
-    // GL Export is an org-scoped admin action, not a platform-wide one — an
-    // org admin sees it here even without being a platform admin, and a
-    // platform admin who isn't an admin of the currently selected
-    // organization doesn't. Same condition the sidebar used before this
-    // moved out of it.
-    ...(isOrgAdmin
+    // GL Export is an org-scoped action, not a platform-wide one — an org
+    // admin or accounting-role member sees it here even without being a
+    // platform admin, and a platform admin who isn't a member of the
+    // currently selected organization at either role doesn't.
+    ...(canAccessGLExport
       ? [
           {
             icon: <ExportOutlined />,

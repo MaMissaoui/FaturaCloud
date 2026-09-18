@@ -21,7 +21,7 @@ func TestOrganizationMembers_RequiresOrgAdmin(t *testing.T) {
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-1", Name: strPtr("ACME")}); err != nil {
 		t.Fatalf("seed CreateOrganization: %v", err)
 	}
-	if _, err := database.AddOrganizationUser("org-1", "org-member", "user"); err != nil {
+	if _, err := database.AddOrganizationUser("org-1", "org-member", "general"); err != nil {
 		t.Fatalf("seed membership: %v", err)
 	}
 
@@ -52,7 +52,7 @@ func TestOrganizationMembers_CRUD(t *testing.T) {
 	token := mintTestJWT(t, "org-admin", "")
 
 	rec := doJSON(t, mux, token, http.MethodPost, "/api/organizations/org-1/members", map[string]any{
-		"email": "new-member@test.local", "role": "user",
+		"email": "new-member@test.local", "role": "general",
 	})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected 201 adding a member by email, got %d: %s", rec.Code, rec.Body.String())
@@ -103,7 +103,7 @@ func TestOrganizationMembers_AddUnknownEmailRejected(t *testing.T) {
 	token := mintTestJWT(t, "org-admin", "")
 
 	rec := doJSON(t, mux, token, http.MethodPost, "/api/organizations/org-1/members", map[string]any{
-		"email": "nobody@nowhere.local", "role": "user",
+		"email": "nobody@nowhere.local", "role": "general",
 	})
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for an unknown email, got %d: %s", rec.Code, rec.Body.String())
@@ -126,10 +126,10 @@ func TestOrganizationMembers_ReAddingSoleAdminAtLowerRoleRejected(t *testing.T) 
 	token := mintTestJWT(t, "org-admin", "")
 
 	rec := doJSON(t, mux, token, http.MethodPost, "/api/organizations/org-1/members", map[string]any{
-		"email": "org-admin@test.local", "role": "user",
+		"email": "org-admin@test.local", "role": "general",
 	})
 	if rec.Code != http.StatusConflict {
-		t.Fatalf("expected 409 re-adding the sole admin at role=user, got %d: %s", rec.Code, rec.Body.String())
+		t.Fatalf("expected 409 re-adding the sole admin at role=general, got %d: %s", rec.Code, rec.Body.String())
 	}
 
 	role, isMember, err := database.GetOrganizationRole("org-1", "org-admin")
@@ -204,7 +204,7 @@ func TestGetMyOrganizationRoles(t *testing.T) {
 	if _, err := database.AddOrganizationUser("org-a", "multi-org-user", "admin"); err != nil {
 		t.Fatalf("seed org-a membership: %v", err)
 	}
-	if _, err := database.AddOrganizationUser("org-b", "multi-org-user", "user"); err != nil {
+	if _, err := database.AddOrganizationUser("org-b", "multi-org-user", "general"); err != nil {
 		t.Fatalf("seed org-b membership: %v", err)
 	}
 	// Deliberately no membership in org-c.
@@ -221,8 +221,8 @@ func TestGetMyOrganizationRoles(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &roles); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if len(roles) != 2 || roles["org-a"] != "admin" || roles["org-b"] != "user" {
-		t.Fatalf("expected {org-a: admin, org-b: user}, got %v", roles)
+	if len(roles) != 2 || roles["org-a"] != "admin" || roles["org-b"] != "general" {
+		t.Fatalf("expected {org-a: admin, org-b: general}, got %v", roles)
 	}
 	if _, present := roles["org-c"]; present {
 		t.Fatalf("expected org-c absent (not a member), got %v", roles)

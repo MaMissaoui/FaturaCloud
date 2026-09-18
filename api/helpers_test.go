@@ -45,7 +45,7 @@ func TestDecodeJSON_NormalBodyAccepted(t *testing.T) {
 	// POST /api/clients now requires org membership (issue #141 Phase C) —
 	// unrelated to what this test actually checks (body size), but the
 	// request must clear that check to reach decodeJSON at all.
-	if _, err := database.AddOrganizationUser("org-1", "test-user", "user"); err != nil {
+	if _, err := database.AddOrganizationUser("org-1", "test-user", "general"); err != nil {
 		t.Fatalf("seed org membership: %v", err)
 	}
 

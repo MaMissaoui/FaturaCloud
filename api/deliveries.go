@@ -41,7 +41,7 @@ func (h *handler) createDelivery(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
-	if !h.requireOrgMember(w, r, req.OrganizationID) {
+	if !h.requireOrgRole(w, r, req.OrganizationID, "sales") {
 		return
 	}
 	row, err := h.db.CreateDelivery(req)

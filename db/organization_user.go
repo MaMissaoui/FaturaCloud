@@ -15,8 +15,20 @@ import (
 var ErrLastOrgAdmin = errors.New("organization must keep at least one admin member")
 
 // validOrganizationUserRoles are the only values organization_users.role may
-// take (also enforced by a DB-level CHECK constraint).
-var validOrganizationUserRoles = map[string]bool{"admin": true, "user": true}
+// take (also enforced by a DB-level CHECK constraint, migration 0081).
+// "admin" and "general" (a straight rename of the old "user") can read/write
+// everything non-admin-gated; the other four are narrow domain roles —
+// write access to their own domain only, read access to everything, same as
+// every member already had — enforced in api/router.go and the Create*
+// handlers, not here.
+var validOrganizationUserRoles = map[string]bool{
+	"admin":      true,
+	"general":    true,
+	"sales":      true,
+	"purchasing": true,
+	"accounting": true,
+	"cashbook":   true,
+}
 
 // OrganizationUser mirrors the organization_users table.
 type OrganizationUser struct {
@@ -124,7 +136,7 @@ func (d *Database) GetUserOrganizationRoles(userID string) (map[string]string, e
 // silently leave the organization with none.
 func (d *Database) AddOrganizationUser(organizationID, userID, role string) (*OrganizationUser, error) {
 	if !validOrganizationUserRoles[role] {
-		return nil, newValidationError("role must be %q or %q", "admin", "user")
+		return nil, newValidationError("role must be one of %q, %q, %q, %q, %q, %q", "admin", "general", "sales", "purchasing", "accounting", "cashbook")
 	}
 	if role != "admin" {
 		isLast, err := d.isLastOrgAdmin(organizationID, userID)
@@ -159,7 +171,7 @@ func (d *Database) AddOrganizationUser(organizationID, userID, role string) (*Or
 // change that would demote the organization's last remaining admin.
 func (d *Database) UpdateOrganizationUserRole(organizationID, userID, role string) error {
 	if !validOrganizationUserRoles[role] {
-		return newValidationError("role must be %q or %q", "admin", "user")
+		return newValidationError("role must be one of %q, %q, %q, %q, %q, %q", "admin", "general", "sales", "purchasing", "accounting", "cashbook")
 	}
 	if role != "admin" {
 		isLast, err := d.isLastOrgAdmin(organizationID, userID)

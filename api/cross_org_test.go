@@ -66,6 +66,7 @@ func discoverRoutes(t *testing.T) map[routeKey]string {
 	wrapperNames := map[string]bool{
 		"protected": true, "orgMemberProtected": true,
 		"orgAdminProtected": true, "platformAdminProtected": true,
+		"orgRoleProtected": true, "orgRoleAdminProtected": true,
 	}
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -144,6 +145,74 @@ func stringLit(e ast.Expr) (string, bool) {
 		return "", false
 	}
 	return v, true
+}
+
+// discoverDomainRoles parses router.go a second time and, for every
+// orgRoleProtected/orgRoleAdminProtected call site, extracts the actual
+// []string{...} roles argument passed (the 4th positional arg for both
+// wrappers) — so TestDomainRoleRouteCoverage below compares the maintained
+// domainRouteRoles table against what router.go *really* passes, not just
+// against which wrapper name was used. A route whose role list drifts from
+// the maintained table (added, removed, or reordered-but-different) fails
+// the build, the same guarantee discoverRoutes already gives org-scoping.
+func discoverDomainRoles(t *testing.T) map[routeKey][]string {
+	t.Helper()
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filepath.Join(".", "router.go"), nil, 0)
+	if err != nil {
+		t.Fatalf("parse router.go: %v", err)
+	}
+
+	roles := map[routeKey][]string{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := call.Fun.(*ast.Ident)
+		if !ok || (ident.Name != "orgRoleProtected" && ident.Name != "orgRoleAdminProtected") || len(call.Args) < 4 {
+			return true
+		}
+		method, ok1 := stringLit(call.Args[0])
+		pattern, ok2 := stringLit(call.Args[1])
+		if !ok1 || !ok2 {
+			return true
+		}
+		composite, ok := call.Args[3].(*ast.CompositeLit)
+		if !ok {
+			t.Fatalf("%s %s: 4th argument to %s isn't a []string{...} literal — discoverDomainRoles can't extract it", method, pattern, ident.Name)
+		}
+		var roleList []string
+		for _, elt := range composite.Elts {
+			s, ok := stringLit(elt)
+			if !ok {
+				t.Fatalf("%s %s: non-string-literal element in the roles argument to %s", method, pattern, ident.Name)
+			}
+			roleList = append(roleList, s)
+		}
+		roles[routeKey{method, pattern}] = roleList
+		return true
+	})
+	return roles
+}
+
+func sameRoleSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	counts := map[string]int{}
+	for _, r := range a {
+		counts[r]++
+	}
+	for _, r := range b {
+		counts[r]--
+	}
+	for _, c := range counts {
+		if c != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // exemptRoutes are never org-scoped, on purpose.
@@ -228,6 +297,12 @@ func TestPhaseCRouteCoverage(t *testing.T) {
 
 	orgScopedWrappers := map[string]bool{
 		"orgMemberProtected": true, "orgAdminProtected": true,
+		// orgRoleProtected/orgRoleAdminProtected are self-evidently
+		// org-scoped too (they're built on the same orgIDResolver
+		// machinery, with a role check layered on top) — the role list
+		// itself is verified separately by TestDomainRoleRouteCoverage,
+		// not by this org-scoping tripwire.
+		"orgRoleProtected": true, "orgRoleAdminProtected": true,
 	}
 
 	for key, wrapper := range discovered {
@@ -280,12 +355,138 @@ func TestPhaseCRouteCoverage(t *testing.T) {
 	}
 }
 
+// --- Domain-role route-coverage tripwire (org role redesign) -------------
+//
+// domainRouteRoles is the maintained twin of the roles actually passed at
+// each orgRoleProtected/orgRoleAdminProtected call site in router.go — "one
+// of the sales/purchasing/accounting/cashbook domain roles" beyond the
+// "admin"/"general" every such route implicitly already allows (see
+// orgRole/orgRoleAdmin's own doc comments in api/middleware.go). Keeping
+// this as a maintained table that discoverDomainRoles verifies against the
+// real call sites (not just a comment) is what turns "did every domain
+// mutation actually get the right role" into a build-time guarantee instead
+// of a review question — the same shape TestPhaseCRouteCoverage already
+// gives org-scoping itself.
+var domainRouteRoles = map[routeKey][]string{
+	{"PUT", "/api/clients/{id}"}:    {"sales"},
+	{"DELETE", "/api/clients/{id}"}: {"sales"},
+
+	{"PUT", "/api/invoices/{id}"}:         {"sales"},
+	{"PATCH", "/api/invoices/{id}/state"}: {"sales"},
+	{"DELETE", "/api/invoices/{id}"}:      {"sales"},
+
+	{"PUT", "/api/orders/{id}"}:          {"sales"},
+	{"PATCH", "/api/orders/{id}/status"}: {"sales"},
+	{"DELETE", "/api/orders/{id}"}:       {"sales"},
+
+	{"PUT", "/api/deliveries/{id}"}:          {"sales"},
+	{"PATCH", "/api/deliveries/{id}/status"}: {"sales"},
+	{"DELETE", "/api/deliveries/{id}"}:       {"sales"},
+
+	{"PUT", "/api/vendors/{id}"}:    {"purchasing"},
+	{"DELETE", "/api/vendors/{id}"}: {"purchasing"},
+
+	{"PUT", "/api/imports/{id}"}:    {"purchasing"},
+	{"DELETE", "/api/imports/{id}"}: {"purchasing"},
+
+	{"PUT", "/api/purchase-orders/{id}"}:          {"purchasing"},
+	{"PATCH", "/api/purchase-orders/{id}/status"}: {"purchasing"},
+	{"DELETE", "/api/purchase-orders/{id}"}:       {"purchasing"},
+
+	{"PUT", "/api/inbound-deliveries/{id}"}:          {"purchasing"},
+	{"PATCH", "/api/inbound-deliveries/{id}/status"}: {"purchasing"},
+	{"DELETE", "/api/inbound-deliveries/{id}"}:       {"purchasing"},
+
+	{"PUT", "/api/incoming-invoices/{id}"}:         {"purchasing"},
+	{"PATCH", "/api/incoming-invoices/{id}/state"}: {"purchasing"},
+	{"DELETE", "/api/incoming-invoices/{id}"}:      {"purchasing"},
+
+	{"PUT", "/api/accounts/{id}"}:    {"accounting"},
+	{"DELETE", "/api/accounts/{id}"}: {"accounting"},
+
+	{"PUT", "/api/journals/{id}"}:    {"accounting"},
+	{"DELETE", "/api/journals/{id}"}: {"accounting"},
+
+	{"PATCH", "/api/fiscal-periods/{id}/status"}: {"accounting"},
+	{"POST", "/api/fiscal-years/{id}/close"}:     {"accounting"},
+
+	{"PATCH", "/api/journal-entries/{id}/post"}:   {"accounting"},
+	{"POST", "/api/journal-entries/{id}/reverse"}: {"accounting"},
+	{"DELETE", "/api/journal-entries/{id}"}:       {"accounting"},
+
+	{"GET", "/api/organizations/{orgId}/gl-export/fec"}:   {"accounting"},
+	{"GET", "/api/organizations/{orgId}/gl-export/datev"}: {"accounting"},
+}
+
+// createRouteDomainRoles is domainRouteRoles' counterpart for the
+// body-org Create* routes (organizationId lives in the JSON body, so
+// there's no orgRoleProtected call site — the check is the inline
+// h.requireOrgRole(...) call TestCreateRouteOrgChecksArePresent below
+// verifies is actually present and passes these exact roles).
+var createRouteDomainRoles = map[routeKey][]string{
+	{"POST", "/api/clients"}:    {"sales"},
+	{"POST", "/api/invoices"}:   {"sales"},
+	{"POST", "/api/orders"}:     {"sales"},
+	{"POST", "/api/deliveries"}: {"sales"},
+
+	{"POST", "/api/vendors"}:            {"purchasing"},
+	{"POST", "/api/imports"}:            {"purchasing"},
+	{"POST", "/api/purchase-orders"}:    {"purchasing"},
+	{"POST", "/api/inbound-deliveries"}: {"purchasing"},
+	{"POST", "/api/incoming-invoices"}:  {"purchasing"},
+
+	{"POST", "/api/accounts"}:        {"accounting"},
+	{"POST", "/api/journals"}:        {"accounting"},
+	{"POST", "/api/fiscal-years"}:    {"accounting"},
+	{"POST", "/api/fiscal-periods"}:  {"accounting"},
+	{"POST", "/api/journal-entries"}: {"accounting"},
+
+	{"POST", "/api/cash-sales"}:     {"cashbook"},
+	{"POST", "/api/cash-movements"}: {"cashbook"},
+}
+
+// TestDomainRoleRouteCoverage is TestPhaseCRouteCoverage's counterpart for
+// the role dimension: every orgRoleProtected/orgRoleAdminProtected call
+// site in router.go must appear in domainRouteRoles with the identical role
+// list actually passed (not just documented), and every domainRouteRoles
+// entry must still be a real orgRoleProtected/orgRoleAdminProtected route.
+func TestDomainRoleRouteCoverage(t *testing.T) {
+	discovered := discoverRoutes(t)
+	actualRoles := discoverDomainRoles(t)
+	if len(actualRoles) == 0 {
+		t.Fatal("discovered zero domain-role routes — router.go parsing is broken, not that no route uses orgRoleProtected/orgRoleAdminProtected")
+	}
+
+	for key, roles := range actualRoles {
+		want, ok := domainRouteRoles[key]
+		if !ok {
+			t.Errorf("%s is gated via orgRoleProtected/orgRoleAdminProtected with roles %v but has no domainRouteRoles entry — add one", key, roles)
+			continue
+		}
+		if !sameRoleSet(want, roles) {
+			t.Errorf("%s: domainRouteRoles says %v but router.go actually passes %v", key, want, roles)
+		}
+	}
+	for key := range domainRouteRoles {
+		wrapper, ok := discovered[key]
+		if !ok {
+			t.Errorf("domainRouteRoles lists %s, which router.go no longer registers", key)
+			continue
+		}
+		if wrapper != "orgRoleProtected" && wrapper != "orgRoleAdminProtected" {
+			t.Errorf("domainRouteRoles lists %s, but it's registered via %s, not an orgRole*Protected wrapper", key, wrapper)
+		}
+	}
+}
+
 // TestCreateRouteOrgChecksArePresent parses each createRouteOrgChecks
 // handler's own source file and confirms its function body actually calls
-// h.requireOrgMember — the thing that makes "POST /api/clients is in
-// createRouteOrgChecks" a verified fact rather than an assertion the
-// handler could silently stop satisfying (e.g. a future refactor that
-// removes the check without anyone remembering to update this table).
+// h.requireOrgMember (or, for a route also listed in createRouteDomainRoles,
+// h.requireOrgRole with exactly that role list) — the thing that makes
+// "POST /api/clients is in createRouteOrgChecks" a verified fact rather
+// than an assertion the handler could silently stop satisfying (e.g. a
+// future refactor that removes the check without anyone remembering to
+// update this table).
 func TestCreateRouteOrgChecksArePresent(t *testing.T) {
 	for key, loc := range createRouteOrgChecks {
 		t.Run(key.String(), func(t *testing.T) {
@@ -305,25 +506,76 @@ func TestCreateRouteOrgChecksArePresent(t *testing.T) {
 			if found == nil {
 				t.Fatalf("%s: handler func %q not found", loc.file, loc.fn)
 			}
+
+			wantRoles, isDomainRoute := createRouteDomainRoles[key]
+
 			callsRequireOrgMember := false
+			var requireOrgRoleCalls [][]string
 			ast.Inspect(found, func(n ast.Node) bool {
 				call, ok := n.(*ast.CallExpr)
 				if !ok {
 					return true
 				}
 				sel, ok := call.Fun.(*ast.SelectorExpr)
-				if ok && sel.Sel.Name == "requireOrgMember" {
+				if !ok {
+					return true
+				}
+				switch sel.Sel.Name {
+				case "requireOrgMember":
 					callsRequireOrgMember = true
+				case "requireOrgRole":
+					// Signature: h.requireOrgRole(w, r, orgID, roles...) —
+					// the variadic roles start at the 4th positional arg.
+					var roles []string
+					for _, arg := range call.Args[3:] {
+						if s, ok := stringLit(arg); ok {
+							roles = append(roles, s)
+						}
+					}
+					requireOrgRoleCalls = append(requireOrgRoleCalls, roles)
 				}
 				return true
 			})
-			if !callsRequireOrgMember {
+
+			if !isDomainRoute {
+				if !callsRequireOrgMember {
+					t.Errorf(
+						"%s (%s) is listed in createRouteOrgChecks but its handler %s doesn't call h.requireOrgMember",
+						key, loc.file, loc.fn,
+					)
+				}
+				return
+			}
+
+			if len(requireOrgRoleCalls) == 0 {
 				t.Errorf(
-					"%s (%s) is listed in createRouteOrgChecks but its handler %s doesn't call h.requireOrgMember",
-					key, loc.file, loc.fn,
+					"%s (%s) is listed in createRouteDomainRoles (wants %v) but its handler %s doesn't call h.requireOrgRole",
+					key, loc.file, wantRoles, loc.fn,
+				)
+				return
+			}
+			matched := false
+			for _, got := range requireOrgRoleCalls {
+				if sameRoleSet(wantRoles, got) {
+					matched = true
+				}
+			}
+			if !matched {
+				t.Errorf(
+					"%s (%s): createRouteDomainRoles wants %v but handler %s calls h.requireOrgRole with %v",
+					key, loc.file, wantRoles, loc.fn, requireOrgRoleCalls,
 				)
 			}
 		})
+	}
+
+	// Converse: every createRouteDomainRoles entry must also be a
+	// createRouteOrgChecks entry (the loop above is what actually verifies
+	// it) — catches a route added to one table but not the other.
+	for key := range createRouteDomainRoles {
+		if _, ok := createRouteOrgChecks[key]; !ok {
+			t.Errorf("createRouteDomainRoles lists %s, which has no createRouteOrgChecks entry", key)
+		}
 	}
 }
 
@@ -771,5 +1023,148 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 					path, rec.Code, rec.Body.String())
 			}
 		})
+	}
+}
+
+// --- Domain-role enforcement (org role redesign) --------------------------
+
+// TestDomainRoleEnforcement is real, not just AST-verified, evidence that
+// the domain roles introduced by the org role redesign actually gate what
+// they claim to: a member scoped to one domain can write within it and is
+// denied outside it, while "general" keeps full access to both — proving
+// the mechanism itself, not just that the router table claims it (that
+// structural guarantee is TestDomainRoleRouteCoverage's job, the same
+// division TestPhaseCRouteCoverage/TestCrossOrgAccessDenied already have
+// for org-scoping).
+func TestDomainRoleEnforcement(t *testing.T) {
+	t.Parallel()
+	mux, database, _, _ := newTestRouter(t)
+	seedUser(t, database, "org-r-admin", "user", 1)
+	seedUser(t, database, "sales-1", "user", 1)
+	seedUser(t, database, "purchasing-1", "user", 1)
+	seedUser(t, database, "general-1", "user", 1)
+
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-r"}); err != nil {
+		t.Fatalf("seed CreateOrganization: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-r", "org-r-admin", "admin"); err != nil {
+		t.Fatalf("seed org-r-admin membership: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-r", "sales-1", "sales"); err != nil {
+		t.Fatalf("seed sales-1 membership: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-r", "purchasing-1", "purchasing"); err != nil {
+		t.Fatalf("seed purchasing-1 membership: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-r", "general-1", "general"); err != nil {
+		t.Fatalf("seed general-1 membership: %v", err)
+	}
+
+	client, err := database.CreateClient(db.CreateClientRequest{
+		ID: "org-r-client", OrganizationID: "org-r", Name: strPtr("ACME"),
+	})
+	if err != nil {
+		t.Fatalf("seed CreateClient: %v", err)
+	}
+	newVendor := func(id string) *db.Vendor {
+		v, err := database.CreateVendor(db.CreateVendorRequest{ID: id, OrganizationID: "org-r", Name: strPtr("Vendor " + id)})
+		if err != nil {
+			t.Fatalf("seed CreateVendor %s: %v", id, err)
+		}
+		return v
+	}
+
+	salesToken := mintTestJWT(t, "sales-1", "")
+	purchasingToken := mintTestJWT(t, "purchasing-1", "")
+	generalToken := mintTestJWT(t, "general-1", "")
+
+	// sales-1 can write its own domain (clients)...
+	rec := doJSON(t, mux, salesToken, http.MethodPut, "/api/clients/"+client.ID, map[string]any{"name": "Sales Edit"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("sales-1 PUT client: expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	// ...but not purchasing's.
+	vendorA := newVendor("org-r-vendor-a")
+	rec = doJSON(t, mux, salesToken, http.MethodDelete, "/api/vendors/"+vendorA.ID, nil)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("sales-1 DELETE vendor: expected 403, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// purchasing-1 is the mirror image: vendors yes, clients no.
+	rec = doJSON(t, mux, purchasingToken, http.MethodDelete, "/api/vendors/"+vendorA.ID, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("purchasing-1 DELETE vendor: expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	rec = doJSON(t, mux, purchasingToken, http.MethodPut, "/api/clients/"+client.ID, map[string]any{"name": "Purchasing Edit"})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("purchasing-1 PUT client: expected 403, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// general-1 keeps full access to both — unchanged from before domain
+	// roles existed, confirming "general" wasn't accidentally narrowed.
+	rec = doJSON(t, mux, generalToken, http.MethodPut, "/api/clients/"+client.ID, map[string]any{"name": "General Edit"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("general-1 PUT client: expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	vendorB := newVendor("org-r-vendor-b")
+	rec = doJSON(t, mux, generalToken, http.MethodDelete, "/api/vendors/"+vendorB.ID, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("general-1 DELETE vendor: expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestOrgRoleAdminEnforcement covers orgRoleAdmin — the modeAdminStrict
+// counterpart to orgRole, used for the two actions the org role redesign
+// folded "accounting" into alongside admin (fiscal-year close, GL export).
+// GL export is the cheaper of the two to exercise here: passing the role
+// gate with no fiscalYearId query param reaches the handler's own 400
+// ("fiscalYearId is required"), which is enough to prove the request got
+// *past* authorization — distinct from the 403 a denied role/non-member
+// gets, without needing a fully valid FEC-generation fixture.
+func TestOrgRoleAdminEnforcement(t *testing.T) {
+	t.Parallel()
+	mux, database, _, _ := newTestRouter(t)
+	seedUser(t, database, "org-x-admin", "user", 1)
+	seedUser(t, database, "accounting-1", "user", 1)
+	seedUser(t, database, "sales-1", "user", 1)
+	seedUser(t, database, "outsider", "user", 1)
+
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-x"}); err != nil {
+		t.Fatalf("seed CreateOrganization: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-x", "org-x-admin", "admin"); err != nil {
+		t.Fatalf("seed org-x-admin membership: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-x", "accounting-1", "accounting"); err != nil {
+		t.Fatalf("seed accounting-1 membership: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-x", "sales-1", "sales"); err != nil {
+		t.Fatalf("seed sales-1 membership: %v", err)
+	}
+	// outsider is deliberately not a member of org-x at all.
+
+	get := func(actor string) *httptest.ResponseRecorder {
+		token := mintTestJWT(t, actor, "")
+		req := httptest.NewRequest(http.MethodGet, "/api/organizations/org-x/gl-export/fec", nil)
+		authRequest(req, token)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec
+	}
+
+	// accounting-1 passes the role gate — reaches the handler's own
+	// validation (400, not 403/404).
+	if rec := get("accounting-1"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("accounting-1 GL export: expected 400 (past the role gate), got %d: %s", rec.Code, rec.Body.String())
+	}
+	// sales-1 is a member of org-x, just the wrong role — denied.
+	if rec := get("sales-1"); rec.Code != http.StatusForbidden {
+		t.Fatalf("sales-1 GL export: expected 403, got %d: %s", rec.Code, rec.Body.String())
+	}
+	// outsider isn't a member of org-x at all — orgRoleAdmin's
+	// modeAdminStrict shape means this is also 403, not 404 (see
+	// orgRoleAdmin's doc comment in api/middleware.go).
+	if rec := get("outsider"); rec.Code != http.StatusForbidden {
+		t.Fatalf("outsider GL export: expected 403, got %d: %s", rec.Code, rec.Body.String())
 	}
 }

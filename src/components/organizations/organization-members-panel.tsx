@@ -2,19 +2,30 @@ import { Button, Card, Input, Popconfirm, Select, Space, Table, Tag } from "antd
 import { DeleteOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import type { OrganizationMember } from "src/api";
+import type { OrganizationMember, OrganizationRole } from "src/api";
+
+// Shared by both the member-list role Select and the "add member" Select
+// below — one place naming the six roles and their labels.
+const roleOptions = (): { value: OrganizationRole; label: string }[] => [
+  { value: "admin", label: t`Admin` },
+  { value: "general", label: t`General` },
+  { value: "sales", label: t`Sales` },
+  { value: "purchasing", label: t`Purchasing` },
+  { value: "accounting", label: t`Accounting` },
+  { value: "cashbook", label: t`Cash Book` },
+];
 
 export interface OrganizationMembersPanelProps {
   members: OrganizationMember[];
   membersLoading: boolean;
   newMemberEmail: string;
-  newMemberRole: "admin" | "user";
+  newMemberRole: OrganizationRole;
   addingMember: boolean;
   memberActionId: string | null;
   onNewMemberEmailChange: (value: string) => void;
-  onNewMemberRoleChange: (value: "admin" | "user") => void;
+  onNewMemberRoleChange: (value: OrganizationRole) => void;
   onAddMember: () => void;
-  onMemberRoleChange: (userId: string, role: "admin" | "user") => void;
+  onMemberRoleChange: (userId: string, role: OrganizationRole) => void;
   onRemoveMember: (userId: string) => void;
 }
 
@@ -61,18 +72,15 @@ export default function OrganizationMembersPanel({
           <Table.Column
             title={<Trans>Role</Trans>}
             key="role"
-            width={140}
+            width={160}
             render={(_: unknown, record: OrganizationMember) => (
               <Select
                 size="small"
                 value={record.role}
-                style={{ width: 110 }}
+                style={{ width: 140 }}
                 disabled={memberActionId === record.userId}
                 onChange={(role) => onMemberRoleChange(record.userId, role)}
-                options={[
-                  { value: "admin", label: t`Admin` },
-                  { value: "user", label: t`User` },
-                ]}
+                options={roleOptions()}
               />
             )}
           />
@@ -107,12 +115,9 @@ export default function OrganizationMembersPanel({
           />
           <Select
             value={newMemberRole}
-            style={{ width: 110 }}
+            style={{ width: 140 }}
             onChange={onNewMemberRoleChange}
-            options={[
-              { value: "admin", label: t`Admin` },
-              { value: "user", label: t`User` },
-            ]}
+            options={roleOptions()}
           />
           <Button
             type="primary"

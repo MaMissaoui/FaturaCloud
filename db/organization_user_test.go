@@ -33,11 +33,11 @@ func TestOrganizationUserCRUD(t *testing.T) {
 		t.Fatalf("expected no membership yet, got isMember=%v err=%v", isMember, err)
 	}
 
-	ou, err := d.AddOrganizationUser(org.ID, "user-1", "user")
+	ou, err := d.AddOrganizationUser(org.ID, "user-1", "general")
 	if err != nil {
 		t.Fatalf("AddOrganizationUser: %v", err)
 	}
-	if ou.Role != "user" || ou.OrganizationID != org.ID || ou.UserID != "user-1" {
+	if ou.Role != "general" || ou.OrganizationID != org.ID || ou.UserID != "user-1" {
 		t.Fatalf("unexpected membership row: %+v", ou)
 	}
 
@@ -45,8 +45,8 @@ func TestOrganizationUserCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOrganizationRole: %v", err)
 	}
-	if !isMember || role != "user" {
-		t.Fatalf("expected member with role=user, got isMember=%v role=%q", isMember, role)
+	if !isMember || role != "general" {
+		t.Fatalf("expected member with role=general, got isMember=%v role=%q", isMember, role)
 	}
 
 	if err := d.UpdateOrganizationUserRole(org.ID, "user-1", "admin"); err != nil {
@@ -111,7 +111,7 @@ func TestGetUserOrganizationRoles(t *testing.T) {
 	if _, err := d.AddOrganizationUser(orgA.ID, "roles-user", "admin"); err != nil {
 		t.Fatalf("add to org A: %v", err)
 	}
-	if _, err := d.AddOrganizationUser(orgB.ID, "roles-user", "user"); err != nil {
+	if _, err := d.AddOrganizationUser(orgB.ID, "roles-user", "general"); err != nil {
 		t.Fatalf("add to org B: %v", err)
 	}
 	// Deliberately no membership added for orgC — it must be absent from the
@@ -127,8 +127,8 @@ func TestGetUserOrganizationRoles(t *testing.T) {
 	if roles[orgA.ID] != "admin" {
 		t.Errorf("expected org A role=admin, got %q", roles[orgA.ID])
 	}
-	if roles[orgB.ID] != "user" {
-		t.Errorf("expected org B role=user, got %q", roles[orgB.ID])
+	if roles[orgB.ID] != "general" {
+		t.Errorf("expected org B role=general, got %q", roles[orgB.ID])
 	}
 	if _, present := roles[orgC.ID]; present {
 		t.Errorf("expected org C to be absent (not a member), got role %q", roles[orgC.ID])
@@ -154,7 +154,7 @@ func TestAddOrganizationUser_UpsertsRoleOnReAdd(t *testing.T) {
 	}
 	seedTestUser(t, d, "user-1", "user", 0)
 
-	if _, err := d.AddOrganizationUser(org.ID, "user-1", "user"); err != nil {
+	if _, err := d.AddOrganizationUser(org.ID, "user-1", "general"); err != nil {
 		t.Fatalf("first add: %v", err)
 	}
 	ou, err := d.AddOrganizationUser(org.ID, "user-1", "admin")
@@ -176,9 +176,9 @@ func TestAddOrganizationUser_UpsertsRoleOnReAdd(t *testing.T) {
 
 // TestAddOrganizationUser_ReAddingSoleAdminAtLowerRoleBlocked covers the
 // upsert path demoting an existing member exactly like
-// UpdateOrganizationUserRole can — re-adding the sole admin at role "user"
-// (e.g. a re-invite that got the role wrong) must not silently leave the
-// organization with zero admins.
+// UpdateOrganizationUserRole can — re-adding the sole admin at role
+// "general" (e.g. a re-invite that got the role wrong) must not silently
+// leave the organization with zero admins.
 func TestAddOrganizationUser_ReAddingSoleAdminAtLowerRoleBlocked(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
@@ -191,8 +191,8 @@ func TestAddOrganizationUser_ReAddingSoleAdminAtLowerRoleBlocked(t *testing.T) {
 		t.Fatalf("seed sole admin: %v", err)
 	}
 
-	if _, err := d.AddOrganizationUser(org.ID, "admin-1", "user"); !errors.Is(err, ErrLastOrgAdmin) {
-		t.Fatalf("expected ErrLastOrgAdmin re-adding the sole admin at role=user, got %v", err)
+	if _, err := d.AddOrganizationUser(org.ID, "admin-1", "general"); !errors.Is(err, ErrLastOrgAdmin) {
+		t.Fatalf("expected ErrLastOrgAdmin re-adding the sole admin at role=general, got %v", err)
 	}
 
 	role, isMember, err := d.GetOrganizationRole(org.ID, "admin-1")
@@ -252,7 +252,7 @@ func TestUpdateOrganizationUserRole_DemotingLastAdminBlocked(t *testing.T) {
 		t.Fatalf("seed membership: %v", err)
 	}
 
-	if err := d.UpdateOrganizationUserRole(org.ID, "admin-1", "user"); !errors.Is(err, ErrLastOrgAdmin) {
+	if err := d.UpdateOrganizationUserRole(org.ID, "admin-1", "general"); !errors.Is(err, ErrLastOrgAdmin) {
 		t.Fatalf("expected ErrLastOrgAdmin demoting the sole admin, got %v", err)
 	}
 }
@@ -408,9 +408,15 @@ func TestOrganizationUserBackfillPreservesAccess(t *testing.T) {
 	// against data seeded after the migration already ran — confirms it
 	// grants every user membership in every organization at their existing
 	// role, matching pre-migration "any authenticated user, any org" access.
+	// The CASE mirrors migration 0081's own 'user' -> 'general' rename,
+	// since this replay runs against organization_users' *current* schema
+	// (newTestDB applies every migration, 0081 included) — a plain 'user'
+	// value would now fail 0081's widened CHECK constraint.
 	if _, err := d.DB.Exec(
 		`INSERT INTO organization_users (id, organizationId, userId, role, createdAt)
-		 SELECT lower(hex(randomblob(16))), o.id, u.id, u.role, strftime('%Y-%m-%d %H:%M:%S', 'now')
+		 SELECT lower(hex(randomblob(16))), o.id, u.id,
+		        CASE WHEN u.role = 'user' THEN 'general' ELSE u.role END,
+		        strftime('%Y-%m-%d %H:%M:%S', 'now')
 		 FROM organizations o CROSS JOIN users u`,
 	); err != nil {
 		t.Fatalf("replay backfill: %v", err)
@@ -422,8 +428,8 @@ func TestOrganizationUserBackfillPreservesAccess(t *testing.T) {
 			t.Fatalf("expected admin-1 backfilled as admin of %s, got isMember=%v role=%q err=%v", org.ID, isMember, role, err)
 		}
 		role, isMember, err = d.GetOrganizationRole(org.ID, "user-1")
-		if err != nil || !isMember || role != "user" {
-			t.Fatalf("expected user-1 backfilled as user of %s, got isMember=%v role=%q err=%v", org.ID, isMember, role, err)
+		if err != nil || !isMember || role != "general" {
+			t.Fatalf("expected user-1 backfilled as general of %s, got isMember=%v role=%q err=%v", org.ID, isMember, role, err)
 		}
 	}
 }

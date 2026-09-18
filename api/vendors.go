@@ -32,7 +32,7 @@ func (h *handler) createVendor(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
-	if !h.requireOrgMember(w, r, req.OrganizationID) {
+	if !h.requireOrgRole(w, r, req.OrganizationID, "purchasing") {
 		return
 	}
 	vendor, err := h.db.CreateVendor(req)

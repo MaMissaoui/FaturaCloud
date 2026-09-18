@@ -30,6 +30,7 @@ import {
   RemoveOrganizationMember,
   type OrganizationUsageCount,
   type OrganizationMember,
+  type OrganizationRole,
 } from "src/api";
 import {
   organizationIdAtom,
@@ -105,7 +106,7 @@ export default function Organizations() {
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState<"admin" | "user">("user");
+  const [newMemberRole, setNewMemberRole] = useState<OrganizationRole>("general");
   const [addingMember, setAddingMember] = useState(false);
   const [memberActionId, setMemberActionId] = useState<string | null>(null);
 
@@ -121,7 +122,7 @@ export default function Organizations() {
       // One request for every organization's role (issue #147), replacing
       // the old one-GetMyOrganizationRole-call-per-row N+1 pattern.
       const roles = await GetMyOrganizationRoles().catch(
-        () => ({}) as Record<string, "admin" | "user">,
+        () => ({}) as Record<string, OrganizationRole>,
       );
       setMyOrgAdminIds(new Set(Object.keys(roles).filter((orgId) => roles[orgId] === "admin")));
     } finally {
@@ -171,7 +172,7 @@ export default function Organizations() {
     setActiveSections([]);
     setMembers([]);
     setNewMemberEmail("");
-    setNewMemberRole("user");
+    setNewMemberRole("general");
     setDrawerOpen(true);
     // Listing members is org-admin gated — only fetch if this actor is known
     // to administer this organization, to avoid a noisy 403 for everyone
@@ -219,7 +220,7 @@ export default function Organizations() {
       await AddOrganizationMember(id, { email: newMemberEmail.trim(), role: newMemberRole });
       message.success(t`Member added`);
       setNewMemberEmail("");
-      setNewMemberRole("user");
+      setNewMemberRole("general");
       await fetchMembers(id);
     } catch (error) {
       message.error(error instanceof Error ? error.message : t`Failed to add member`);
@@ -228,7 +229,7 @@ export default function Organizations() {
     }
   };
 
-  const handleMemberRoleChange = async (id: string, userId: string, role: "admin" | "user") => {
+  const handleMemberRoleChange = async (id: string, userId: string, role: OrganizationRole) => {
     setMemberActionId(userId);
     try {
       await UpdateOrganizationMemberRole(id, userId, role);
