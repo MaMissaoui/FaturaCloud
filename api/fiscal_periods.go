@@ -21,7 +21,7 @@ func (h *handler) createFiscalYear(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
-	if !h.requireOrgMember(w, r, req.OrganizationID) {
+	if !h.requireOrgRole(w, r, req.OrganizationID, "accounting") {
 		return
 	}
 	year, err := h.db.CreateFiscalYear(req)
@@ -47,7 +47,7 @@ func (h *handler) createFiscalPeriod(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
-	if !h.requireOrgMember(w, r, req.OrganizationID) {
+	if !h.requireOrgRole(w, r, req.OrganizationID, "accounting") {
 		return
 	}
 	period, err := h.db.CreateFiscalPeriod(req)

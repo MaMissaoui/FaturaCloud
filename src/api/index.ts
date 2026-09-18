@@ -282,11 +282,23 @@ export const DeleteOrganizationLogo = (id: string) => del<void>(`/organizations/
 // Per-organization membership/roles — who can access this organization and
 // at what role. Managing membership is itself an org-admin action.
 
+// "general" reads/writes everything non-admin-gated (a straight rename of
+// the old "user" role); the four domain roles write only within their own
+// domain (sales/purchasing/accounting/cashbook — see api/CLAUDE.md) while
+// still reading everything, same as every member always could.
+export type OrganizationRole =
+  | "admin"
+  | "general"
+  | "sales"
+  | "purchasing"
+  | "accounting"
+  | "cashbook";
+
 export interface OrganizationMember {
   id: string;
   organizationId: string;
   userId: string;
-  role: "admin" | "user";
+  role: OrganizationRole;
   createdAt: string;
   email: string;
   displayName: string;
@@ -300,7 +312,7 @@ export const GetOrganizationMembers = (organizationId: string) =>
 // organization, which is how the frontend decides whether to show
 // org-admin-only actions for the currently selected organization.
 export const GetMyOrganizationRole = (organizationId: string) =>
-  get<{ role: "admin" | "user" | ""; isMember: boolean }>(
+  get<{ role: OrganizationRole | ""; isMember: boolean }>(
     `/organizations/${organizationId}/my-role`,
   );
 
@@ -309,20 +321,20 @@ export const GetMyOrganizationRole = (organizationId: string) =>
 // id. An organization absent from the map means "not a member," same as
 // GetMyOrganizationRole's isMember: false.
 export const GetMyOrganizationRoles = () =>
-  get<Record<string, "admin" | "user">>("/organizations/my-roles");
+  get<Record<string, OrganizationRole>>("/organizations/my-roles");
 
 // Grants an existing user account access by email — an org admin has no
 // route to list every platform user account to find an id by, so email is
 // what they'd actually have on hand to invite someone with.
 export const AddOrganizationMember = (
   organizationId: string,
-  req: { email: string; role: "admin" | "user" },
+  req: { email: string; role: OrganizationRole },
 ) => post<OrganizationMember>(`/organizations/${organizationId}/members`, req);
 
 export const UpdateOrganizationMemberRole = (
   organizationId: string,
   userId: string,
-  role: "admin" | "user",
+  role: OrganizationRole,
 ) => put<{ updated: boolean }>(`/organizations/${organizationId}/members/${userId}`, { role });
 
 export const RemoveOrganizationMember = (organizationId: string, userId: string) =>

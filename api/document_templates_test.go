@@ -46,7 +46,7 @@ func TestUploadDocumentTemplate_UnknownDocumentTypeReturns400(t *testing.T) {
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-1", Name: strPtr("ACME")}); err != nil {
 		t.Fatalf("seed CreateOrganization: %v", err)
 	}
-	if _, err := database.AddOrganizationUser("org-1", "test-user", "user"); err != nil {
+	if _, err := database.AddOrganizationUser("org-1", "test-user", "general"); err != nil {
 		t.Fatalf("seed org membership: %v", err)
 	}
 
@@ -73,7 +73,7 @@ func TestUploadAndListDocumentTemplates(t *testing.T) {
 	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-1", Name: strPtr("ACME")}); err != nil {
 		t.Fatalf("seed CreateOrganization: %v", err)
 	}
-	if _, err := database.AddOrganizationUser("org-1", "test-user", "user"); err != nil {
+	if _, err := database.AddOrganizationUser("org-1", "test-user", "general"); err != nil {
 		t.Fatalf("seed org membership: %v", err)
 	}
 

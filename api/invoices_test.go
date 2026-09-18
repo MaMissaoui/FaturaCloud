@@ -23,8 +23,10 @@ func seedOrgAndClient(t *testing.T, database *db.Database) (orgID, clientID stri
 	// Every caller of this helper also seeds "test-user" via seedUser — this
 	// grants that same, consistently-named user org membership, now
 	// required (issue #141 Phase C) for the single-resource routes these
-	// tests exercise.
-	if _, err := database.AddOrganizationUser(org.ID, "test-user", "user"); err != nil {
+	// tests exercise. "general" (not a narrower domain role) since callers
+	// exercise routes across several domains (invoices, orders, deliveries,
+	// purchase orders, …) with this one seeded membership.
+	if _, err := database.AddOrganizationUser(org.ID, "test-user", "general"); err != nil {
 		t.Fatalf("seed org membership: %v", err)
 	}
 	return org.ID, client.ID
