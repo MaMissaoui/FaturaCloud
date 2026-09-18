@@ -107,7 +107,58 @@ jobs:
           retention-days: 30
 
       - name: Vulnerability scan
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        # govulncheck exits 3 (not just nonzero-on-error) whenever it finds a
+        # vulnerability actually *called* by this code — every PR since
+        # issue #257 has failed here on GO-2026-6452 (a panic in excelize's
+        # DuplicateRowTo/GetRows, both called from db/xlsx_export.go), which
+        # has no fix available upstream ("Fixed in: N/A") and was triaged as
+        # non-blocking, requiring a `gh pr merge --admin` bypass every time
+        # instead of an honest green check. This allowlists specifically
+        # that finding and nothing else: any *other* vulnerability id still
+        # fails the job. Text output (not -json, which always exits 0
+        # regardless of findings — useless as a pass/fail signal on its own)
+        # is parsed for "Vulnerability #N: GO-..." lines, which only appear
+        # for a called vulnerability — govulncheck's own "imported/required
+        # but never called" findings are reported separately and never cause
+        # a nonzero exit, so they need no allowlist entry here.
+        run: |
+          set +e
+          go run golang.org/x/vuln/cmd/govulncheck@latest ./... > govulncheck-output.txt 2>&1
+          exit_code=$?
+          set -e
+          cat govulncheck-output.txt
+
+          # Known, already-triaged findings with no upstream fix (issue link
+          # in the comment for each). Adding a real vulnerability here to
+          # silence CI defeats the point — only add one after confirming
+          # there's genuinely no fixed version to upgrade to.
+          allowed_ids="GO-2026-6452" # excelize DuplicateRowTo/GetRows panic, issue #257 — no fix upstream
+
+          if [ "$exit_code" -eq 0 ]; then
+            exit 0
+          fi
+
+          found_ids=$(grep -oE '^Vulnerability #[0-9]+: GO-[0-9]+-[0-9]+' govulncheck-output.txt | grep -oE 'GO-[0-9]+-[0-9]+')
+
+          if [ -z "$found_ids" ]; then
+            echo "::error::govulncheck exited $exit_code with no vulnerability reported — likely a scan/build error, not a known finding"
+            exit "$exit_code"
+          fi
+
+          unexpected=""
+          for id in $found_ids; do
+            case " $allowed_ids " in
+              *" $id "*) ;;
+              *) unexpected="$unexpected $id" ;;
+            esac
+          done
+
+          if [ -n "$unexpected" ]; then
+            echo "::error::new/unaccepted vulnerabilities found (not in the allowlist):$unexpected"
+            exit 1
+          fi
+
+          echo "Only known, already-triaged vulnerabilities found, not blocking:$found_ids"
 
   frontend:
     runs-on: ubuntu-latest
