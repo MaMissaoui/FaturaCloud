@@ -22,7 +22,12 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { ArrowLeftOutlined, UserAddOutlined, WalletOutlined } from "@ant-design/icons";
+import {
+  ArrowLeftOutlined,
+  DollarOutlined,
+  UserAddOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import get from "lodash/get";
 import find from "lodash/find";
@@ -53,7 +58,9 @@ import {
   calculateTax,
   centsToUnits,
   formatCents,
+  grossFromNet,
   multiplyDecimal,
+  netFromGross,
   unitsToCents,
 } from "src/utils/currency";
 import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
@@ -201,14 +208,13 @@ const CashBook = () => {
     form.setFieldsValue({
       date: dayjs(),
       paymentMethod: "cash",
-      // defaultCashAccountId is wired to Bank in every chart-of-accounts
-      // template (see CLAUDE.md's cash register account note) — a Cash
-      // Book sale must default to the actual till, or its payment silently
-      // credits Bank instead and the register balance/report never move.
-      bankAccountId:
-        organization?.defaultCashRegisterAccountId ||
-        organization?.defaultCashAccountId ||
-        undefined,
+      // taxRate is still assigned per line (needed for the net/tax split
+      // below and the posted GL entry) even though the screen no longer
+      // shows a Tax column — every counter sale silently uses the
+      // organization's default tax rate unless a picked product overrides
+      // it with its own. An organization with no default tax rate records
+      // every Cash Book sale as tax-free; that's a master-data
+      // precondition for this screen, not something recoverable here.
       lineItems: [{ quantity: 1, taxRate: get(find(taxRates, { isDefault: 1 }), "id") }],
     });
     setAmountReceivedTouched(false);
@@ -286,37 +292,41 @@ const CashBook = () => {
     resetSaleForm();
   };
 
-  // ---- New sale totals (units, not cents — same convention as the invoice
-  // form; converted to cents only when building the CreateCashSale payload) ----
+  // ---- New sale totals ----
+  // Counter prices are entered GROSS (tax-inclusive) — the opposite of
+  // every other document's unitPrice, which is net with tax added on top.
+  // netCentsFor is the single source of truth for the net price behind a
+  // gross-priced line: it rounds to cents once, and every downstream
+  // number (the totals below, and handleSubmitSale's payload) is derived
+  // from that same integer rather than re-deriving from the unrounded
+  // gross/(1+rate) value in more than one place — the two can disagree by
+  // a cent once quantity amplifies the sub-cent gap, and
+  // db/invoice_totals.go's validateInvoiceTotals requires an exact match.
   const lineItems = Form.useWatch("lineItems", form);
-  const subTotal = useMemo(
-    () =>
-      sum(
-        map(lineItems || [], (item: any) =>
-          multiplyDecimal(toNumber(item?.quantity) || 0, toNumber(item?.unitPrice) || 0),
-        ),
-      ),
-    [lineItems],
-  );
+  const netCentsFor = (item: any) => {
+    const rate = find(taxRates, { id: item?.taxRate });
+    return unitsToCents(netFromGross(toNumber(item?.unitPrice) || 0, rate?.percentage ?? 0));
+  };
   const taxGroups = useMemo(() => {
     const groups: Record<string, { taxRate: any; subtotal: number; tax: number }> = {};
     ((lineItems || []) as any[]).forEach((item) => {
-      const taxRateId = item?.taxRate;
-      if (!taxRateId) return;
-      const lineTotal = multiplyDecimal(
+      const key = item?.taxRate || "";
+      const lineNetTotal = multiplyDecimal(
         toNumber(item?.quantity) || 0,
-        toNumber(item?.unitPrice) || 0,
+        centsToUnits(netCentsFor(item)),
       );
-      if (!groups[taxRateId]) {
-        groups[taxRateId] = { taxRate: find(taxRates, { id: taxRateId }), subtotal: 0, tax: 0 };
+      if (!groups[key]) {
+        groups[key] = { taxRate: find(taxRates, { id: item?.taxRate }), subtotal: 0, tax: 0 };
       }
-      groups[taxRateId].subtotal = addDecimal(groups[taxRateId].subtotal, lineTotal);
+      groups[key].subtotal = addDecimal(groups[key].subtotal, lineNetTotal);
     });
     Object.values(groups).forEach((g) => {
       g.tax = g.taxRate?.percentage ? calculateTax(g.subtotal, g.taxRate.percentage) : 0;
     });
     return Object.values(groups);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems, taxRates]);
+  const subTotal = sum(map(taxGroups, "subtotal"));
   const taxTotal = sum(map(taxGroups, "tax"));
   const total = addDecimal(subTotal, taxTotal);
   const amountReceivedWatched = toNumber(Form.useWatch("amountReceived", form));
@@ -339,6 +349,20 @@ const CashBook = () => {
       message.error(t`Pick or create a customer first`);
       return;
     }
+    // Kept off-screen entirely (see the balance card above, which already
+    // surfaces the same missing-config case) but still resolved and sent
+    // explicitly, never left for CreateCashSale's own server-side fallback
+    // — defaultCashAccountId is wired to Bank in every chart-of-accounts
+    // template, and a sale posted there silently never moves the register
+    // balance/report.
+    const bankAccountId =
+      organization?.defaultCashRegisterAccountId || organization?.defaultCashAccountId;
+    if (!bankAccountId) {
+      message.error(
+        t`No cash register account configured — set one in Organization settings before recording a sale`,
+      );
+      return;
+    }
     const totalCents = unitsToCents(total);
     const amountReceivedCents = Math.min(
       unitsToCents(toNumber(values.amountReceived) || 0),
@@ -354,7 +378,7 @@ const CashBook = () => {
         lineItems: (values.lineItems || []).map((item: any) => ({
           description: item.description || null,
           quantity: item.quantity,
-          unitPrice: unitsToCents(toNumber(item.unitPrice) || 0),
+          unitPrice: netCentsFor(item),
           taxRate: item.taxRate || null,
           productId: item.productId || null,
         })),
@@ -363,7 +387,7 @@ const CashBook = () => {
         total: totalCents,
         amountReceived: amountReceivedCents,
         paymentMethod: values.paymentMethod || "cash",
-        bankAccountId: values.bankAccountId || undefined,
+        bankAccountId,
         reference: values.reference || undefined,
         notes: values.notes || undefined,
         ...(selectedClient ? { clientId: selectedClient.id } : { newClient: newClientDraft! }),
@@ -551,8 +575,13 @@ const CashBook = () => {
                 />
                 <Table.Column
                   key="actions"
+                  align="right"
                   render={(inv: OutstandingInvoiceSummary) => (
-                    <Button size="small" onClick={() => openPayment(inv.id)}>
+                    <Button
+                      type="primary"
+                      icon={<DollarOutlined />}
+                      onClick={() => openPayment(inv.id)}
+                    >
                       <Trans>Pay</Trans>
                     </Button>
                   )}
@@ -589,10 +618,21 @@ const CashBook = () => {
                       const product = find(products, { id: productId }) as any;
                       if (product) {
                         const items = formInstance.getFieldValue("lineItems");
+                        // A picked product's own tax rate wins when it has
+                        // one; otherwise the row keeps whatever default
+                        // it already carried (see defaultNewRow above) —
+                        // either way, that rate is what grossFromNet needs
+                        // to prefill a tax-inclusive price the cashier
+                        // never has to compute themselves.
+                        const taxRateId = product.taxRateId || items[fieldName]?.taxRate;
+                        const rate = find(taxRates, { id: taxRateId });
                         items[fieldName] = {
                           ...items[fieldName],
                           description: product.name,
-                          unitPrice: centsToUnits(product.price ?? 0),
+                          unitPrice: grossFromNet(
+                            centsToUnits(product.price ?? 0),
+                            rate?.percentage ?? 0,
+                          ),
                           ...(product.taxRateId ? { taxRate: product.taxRateId } : {}),
                         };
                         formInstance.setFieldValue("lineItems", [...items]);
@@ -601,31 +641,27 @@ const CashBook = () => {
                   },
                   { kind: "description", required: true },
                   { kind: "quantity" },
-                  { kind: "unitPrice" },
-                  { kind: "taxRate", taxRates },
+                  { kind: "unitPrice", label: t`Price (tax incl.)` },
                 ]}
               />
 
+              {/* Tax is still computed and posted correctly behind the
+              scenes (see netCentsFor above) — this screen just never shows
+              the subtotal/tax split, since every price is entered
+              tax-inclusive and that's the only number a counter sale
+              needs to communicate. */}
               <Row justify="end" style={{ marginTop: 8, marginBottom: 16 }}>
                 <Col>
-                  <Space direction="vertical" align="end" size={0}>
-                    <Typography.Text>
-                      <Trans>Subtotal</Trans>: {money(unitsToCents(subTotal))}
-                    </Typography.Text>
-                    <Typography.Text>
-                      <Trans>Tax</Trans>: {money(unitsToCents(taxTotal))}
-                    </Typography.Text>
-                    <Typography.Text strong>
-                      <Trans>Total</Trans>: {money(unitsToCents(total))}
-                    </Typography.Text>
-                  </Space>
+                  <Typography.Title level={4} style={{ margin: 0 }}>
+                    <Trans>Total</Trans>: {money(unitsToCents(total))}
+                  </Typography.Title>
                 </Col>
               </Row>
 
               <Divider />
 
               <Row gutter={16}>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={12}>
                   <Form.Item
                     label={t`Amount received (${currency})`}
                     name="amountReceived"
@@ -659,28 +695,12 @@ const CashBook = () => {
                     />
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={12}>
                   <Form.Item label={t`Payment method`} name="paymentMethod">
                     <Select>
                       {PAYMENT_METHODS.map((m) => (
                         <Option key={m} value={m}>
                           {paymentMethodLabel(m)}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={8}>
-                  <Form.Item label={t`Cash / bank account`} name="bankAccountId">
-                    <Select
-                      showSearch
-                      optionFilterProp="children"
-                      allowClear
-                      placeholder={t`Organization default`}
-                    >
-                      {accounts.map((a: any) => (
-                        <Option key={a.id} value={a.id}>
-                          {a.code} — {a.name}
                         </Option>
                       ))}
                     </Select>
