@@ -678,6 +678,17 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reporting/purchases-by-vendor", pathOrgID("orgId"), h.getPurchasesByVendor)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reporting/tax-summary", pathOrgID("orgId"), h.getTaxSummary)
 
+	// Cash Book screen's Excel/PDF report exports — same reasoning as
+	// GET /api/invoices/{id}/export above — registered directly on mux,
+	// not through protected(), so a LibreOffice PDF conversion never runs
+	// inside withDB's request-long RLock. Member-gated like every other
+	// read on this screen (reads stay member-gated across the org-role
+	// redesign — see api/CLAUDE.md), not restricted to accounting/admin
+	// the way gl-export below is: this is the same data already visible
+	// to any member on the Cash Book screen itself.
+	mux.Handle("GET /api/organizations/{orgId}/reports/daily-cash-movements/export", auth(h.orgMember(pathOrgID("orgId"))(csrf(limitBody(defaultMaxBody, h.getDailyCashMovementsExport)))))
+	mux.Handle("GET /api/organizations/{orgId}/reports/loan-status/export", auth(h.orgMember(pathOrgID("orgId"))(csrf(limitBody(defaultMaxBody, h.getLoanStatusExport)))))
+
 	// GL export — France FEC only; DATEV is deliberately not implemented
 	// yet (see db/export_fec.go and the GL Export settings page). Admin-only,
 	// same sensitivity class as the database backup download: a full ledger

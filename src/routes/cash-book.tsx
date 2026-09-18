@@ -3,6 +3,7 @@ import {
   App,
   Button,
   Card,
+  Checkbox,
   Col,
   DatePicker,
   Divider,
@@ -26,6 +27,8 @@ import { useLingui } from "@lingui/react";
 import {
   ArrowLeftOutlined,
   DollarOutlined,
+  FileExcelOutlined,
+  FilePdfOutlined,
   UserAddOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
@@ -43,6 +46,8 @@ import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import {
   CreateCashMovement,
   CreateCashSale,
+  ExportDailyCashMovements,
+  ExportLoanStatus,
   GetAccounts,
   GetCashMovementDetails,
   GetClientOpenInvoices,
@@ -60,6 +65,7 @@ import type {
 } from "src/api";
 import type { Account, Client, Invoice } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
+import PageHeader from "src/components/page-header";
 import PaymentPanel from "src/components/payments/payment-panel";
 import { useDatePickerFormat } from "src/utils/date";
 import {
@@ -186,6 +192,8 @@ const CashBook = () => {
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
   const [withdrawForm] = Form.useForm();
+  const [downloadingDailyPdf, setDownloadingDailyPdf] = useState(false);
+  const [downloadingDailyExcel, setDownloadingDailyExcel] = useState(false);
 
   // Loan status — a standing report of who owes what, not scoped to
   // selectedDate/isToday at all (unlike everything else on this screen):
@@ -193,6 +201,9 @@ const CashBook = () => {
   const [loanStatusClientId, setLoanStatusClientId] = useState<string>("");
   const [loanStatusRows, setLoanStatusRows] = useState<LoanStatusRow[]>([]);
   const [loadingLoanStatus, setLoadingLoanStatus] = useState(false);
+  const [openLoansOnly, setOpenLoansOnly] = useState(false);
+  const [downloadingLoanPdf, setDownloadingLoanPdf] = useState(false);
+  const [downloadingLoanExcel, setDownloadingLoanExcel] = useState(false);
 
   // Local-calendar comparison, deliberately not UTC — "today" is what the
   // cashier at the counter means by it, and it's what gates whether new
@@ -267,6 +278,47 @@ const CashBook = () => {
     refreshLoanStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, loanStatusClientId]);
+
+  const filteredLoanStatusRows = useMemo(
+    () => (openLoansOnly ? loanStatusRows.filter((row) => row.outstanding !== 0) : loanStatusRows),
+    [loanStatusRows, openLoansOnly],
+  );
+
+  const handleExportDailyMovements = (format: "xlsx" | "pdf") => async () => {
+    if (!organizationId || !registerAccountId) return;
+    const setDownloading = format === "xlsx" ? setDownloadingDailyExcel : setDownloadingDailyPdf;
+    setDownloading(true);
+    try {
+      await ExportDailyCashMovements(
+        organizationId,
+        registerAccountId,
+        utcDayMs(selectedDate),
+        format,
+      );
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleExportLoanStatus = (format: "xlsx" | "pdf") => async () => {
+    if (!organizationId) return;
+    const setDownloading = format === "xlsx" ? setDownloadingLoanExcel : setDownloadingLoanPdf;
+    setDownloading(true);
+    try {
+      await ExportLoanStatus(
+        organizationId,
+        format,
+        loanStatusClientId || undefined,
+        openLoansOnly,
+      );
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const bankAccounts = useMemo(() => accounts.filter((a: any) => a.type === "asset"), [accounts]);
   const expenseAccounts = useMemo(
@@ -562,10 +614,70 @@ const CashBook = () => {
 
   return (
     <div style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
-      <Typography.Title level={3}>
-        <WalletOutlined style={{ marginRight: 8 }} />
-        <Trans>Cash Book</Trans>
-      </Typography.Title>
+      <PageHeader
+        icon={<WalletOutlined />}
+        title={<Trans>Cash Book</Trans>}
+        style={{ marginBottom: 16 }}
+        search={
+          isToday && !inSale
+            ? {
+                placeholder: t`Search by name, mobile number, IBAN, or identity number`,
+                value: search,
+                onChange: setSearch,
+                allowClear: true,
+                autoFocus: true,
+                onSearch: () => {
+                  // Enter is the natural motion after typing a phone number
+                  // at a counter — auto-select when the search has narrowed
+                  // to one customer instead of making the cashier reach for
+                  // the mouse.
+                  if (searchResults.length === 1) selectClient(searchResults[0]);
+                },
+              }
+            : undefined
+        }
+        actions={
+          isToday && !inSale ? (
+            <Button
+              type="dashed"
+              icon={<UserAddOutlined />}
+              onClick={() => {
+                newClientForm.resetFields();
+                if (needle && searchResults.length === 0) {
+                  newClientForm.setFieldValue("name", search);
+                }
+                setNewClientModalOpen(true);
+              }}
+            >
+              <Trans>New customer</Trans>
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {isToday && !inSale && needle && (
+        <List
+          dataSource={searchResults}
+          locale={{ emptyText: <Trans>No matching customers</Trans> }}
+          style={{ marginBottom: 16 }}
+          renderItem={(client: any) => (
+            <List.Item
+              actions={[
+                <Button type="link" onClick={() => selectClient(client)} key="select">
+                  <Trans>Select</Trans>
+                </Button>,
+              ]}
+            >
+              <List.Item.Meta
+                title={client.name}
+                description={[client.phone, client.identity_number, client.iban]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            </List.Item>
+          )}
+        />
+      )}
 
       <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
         <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
@@ -583,11 +695,24 @@ const CashBook = () => {
               />
             </div>
           </Col>
-          {registerAccountId && isToday && (
+          {registerAccountId && (
             <Col>
-              <Button onClick={openWithdrawModal}>
-                <Trans>Withdraw</Trans>
-              </Button>
+              <Space>
+                {isToday && (
+                  <Button onClick={openWithdrawModal}>
+                    <Trans>Withdraw</Trans>
+                  </Button>
+                )}
+                <Button loading={downloadingDailyPdf} onClick={handleExportDailyMovements("pdf")}>
+                  <FilePdfOutlined /> PDF
+                </Button>
+                <Button
+                  loading={downloadingDailyExcel}
+                  onClick={handleExportDailyMovements("xlsx")}
+                >
+                  <FileExcelOutlined /> <Trans>Excel</Trans>
+                </Button>
+              </Space>
             </Col>
           )}
         </Row>
@@ -710,25 +835,36 @@ const CashBook = () => {
         style={{ marginBottom: 16 }}
         loading={loadingLoanStatus}
         extra={
-          <Select
-            value={loanStatusClientId || undefined}
-            onChange={(value) => setLoanStatusClientId(value ?? "")}
-            placeholder={t`All customers`}
-            allowClear
-            showSearch
-            optionFilterProp="children"
-            style={{ minWidth: 220 }}
-          >
-            {(clients as any[]).map((c) => (
-              <Option key={c.id} value={c.id}>
-                {c.name}
-              </Option>
-            ))}
-          </Select>
+          <Space>
+            <Checkbox checked={openLoansOnly} onChange={(e) => setOpenLoansOnly(e.target.checked)}>
+              <Trans>Open only</Trans>
+            </Checkbox>
+            <Select
+              value={loanStatusClientId || undefined}
+              onChange={(value) => setLoanStatusClientId(value ?? "")}
+              placeholder={t`All customers`}
+              allowClear
+              showSearch
+              optionFilterProp="children"
+              style={{ minWidth: 220 }}
+            >
+              {(clients as any[]).map((c) => (
+                <Option key={c.id} value={c.id}>
+                  {c.name}
+                </Option>
+              ))}
+            </Select>
+            <Button loading={downloadingLoanPdf} onClick={handleExportLoanStatus("pdf")}>
+              <FilePdfOutlined /> PDF
+            </Button>
+            <Button loading={downloadingLoanExcel} onClick={handleExportLoanStatus("xlsx")}>
+              <FileExcelOutlined /> <Trans>Excel</Trans>
+            </Button>
+          </Space>
         }
       >
         <Table
-          dataSource={loanStatusRows}
+          dataSource={filteredLoanStatusRows}
           rowKey="invoiceId"
           size="small"
           pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
@@ -765,62 +901,6 @@ const CashBook = () => {
           />
         </Table>
       </Card>
-
-      {isToday && !inSale && (
-        <Card size="small">
-          <Input.Search
-            placeholder={t`Search by name, mobile number, IBAN, or identity number`}
-            allowClear
-            autoFocus
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={() => {
-              // Enter is the natural motion after typing a phone number at a
-              // counter — auto-select when the search has narrowed to one
-              // customer instead of making the cashier reach for the mouse.
-              if (searchResults.length === 1) selectClient(searchResults[0]);
-            }}
-            style={{ marginBottom: 16 }}
-          />
-          {needle && (
-            <List
-              dataSource={searchResults}
-              locale={{ emptyText: <Trans>No matching customers</Trans> }}
-              renderItem={(client: any) => (
-                <List.Item
-                  actions={[
-                    <Button type="link" onClick={() => selectClient(client)} key="select">
-                      <Trans>Select</Trans>
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={client.name}
-                    description={[client.phone, client.identity_number, client.iban]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  />
-                </List.Item>
-              )}
-            />
-          )}
-          <Button
-            type="dashed"
-            block
-            icon={<UserAddOutlined />}
-            style={{ marginTop: 16 }}
-            onClick={() => {
-              newClientForm.resetFields();
-              if (needle && searchResults.length === 0) {
-                newClientForm.setFieldValue("name", search);
-              }
-              setNewClientModalOpen(true);
-            }}
-          >
-            <Trans>New customer</Trans>
-          </Button>
-        </Card>
-      )}
 
       {isToday && inSale && (
         <>
