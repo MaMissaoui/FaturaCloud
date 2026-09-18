@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.27.0] - 2026-09-18
+
+### Added
+- Clients, Vendors, Products, Tax Rates, Payment Terms, Units of
+  Measure, and Chart of Accounts can now be downloaded to Excel,
+  edited in bulk, and re-uploaded to mass-create or mass-update
+  records — a "Download Excel"/"Upload Excel" pair next to each of
+  these master-data list's own "New ..." button. Each spreadsheet row
+  is matched to an existing record by its ID column (blank creates a
+  new record); every row still goes through that table's own
+  validation, so a bad row is reported without blocking the rest of
+  the file.
+- `cmd/seed-demo` (internal demo-data tool, not part of the served
+  application): a `--volume-scale` flag to shrink or grow generated
+  data volume, and Tunisia/French master data (French product and
+  service catalogs, Tunisian document number formats and tax/payment
+  labels).
+
 ## [3.26.0] - 2026-09-18
 
 ### Added
