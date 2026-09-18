@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.25.0] - 2026-09-18
+
+### Added
+- Organization membership roles are no longer just admin/user. Members can
+  now be assigned **Sales**, **Purchasing**, **Accounting**, or **Cash
+  Book**, each able to write only within their own domain while still
+  reading everything else in the organization, same as before. The old
+  "user" role is renamed **General** and keeps its full read/write access
+  unchanged. Accounting also gained the two actions previously reserved
+  for org admins: closing a fiscal year and GL export (FEC/DATEV).
+
 ## [3.21.0] - 2026-09-15
 
 ### Added
