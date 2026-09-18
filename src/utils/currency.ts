@@ -109,3 +109,34 @@ export function calculateTax(amount: number | string, percentage: number | strin
     .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
     .toNumber();
 }
+
+/**
+ * Back out the tax-exclusive (net) unit price from a tax-inclusive (gross)
+ * one, rounded to 2 decimal places like every other stored price. Used by
+ * gross-price entry screens (Cash Book) to convert what a cashier types
+ * into the net unitPrice CreateCashSaleRequest — and every other
+ * document's line items — actually stores. Round the result once here and
+ * reuse it everywhere downstream (totals math, the submitted payload):
+ * recomputing from the unrounded value in one place and the rounded cents
+ * in another drifts apart once quantity amplifies the sub-cent gap, and
+ * db/invoice_totals.go's validateInvoiceTotals requires an exact match.
+ * @param gross - Tax-inclusive unit price
+ * @param percentage - Tax percentage (e.g., 19 for 19%)
+ */
+export function netFromGross(gross: number | string, percentage: number | string): number {
+  const pct = new Decimal(percentage || 0);
+  const net = pct.isZero() ? new Decimal(gross) : new Decimal(gross).div(pct.div(100).plus(1));
+  return net.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+}
+
+/**
+ * The inverse of netFromGross — used to prefill a gross-price field from a
+ * product's stored net price when it's selected on a gross-price screen.
+ * @param net - Tax-exclusive unit price
+ * @param percentage - Tax percentage (e.g., 19 for 19%)
+ */
+export function grossFromNet(net: number | string, percentage: number | string): number {
+  const pct = new Decimal(percentage || 0);
+  const gross = pct.isZero() ? new Decimal(net) : new Decimal(net).times(pct.div(100).plus(1));
+  return gross.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+}
