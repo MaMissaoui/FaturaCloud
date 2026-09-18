@@ -641,6 +641,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/inventory-valuation", pathOrgID("orgId"), h.getInventoryValuation)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/account-balance", pathOrgID("orgId"), h.getAccountBalance)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/daily-cash-movements", pathOrgID("orgId"), h.getDailyCashMovements)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/cash-movement-details", pathOrgID("orgId"), h.getCashMovementDetails)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/reports/loan-status", pathOrgID("orgId"), h.getLoanStatus)
 
 	// Reporting — document-derived sales/purchasing analytics, a distinct
 	// tier from the GL-derived Reports above (see db/sales_reports.go).
