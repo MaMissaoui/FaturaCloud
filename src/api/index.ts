@@ -1145,6 +1145,51 @@ export const GetDailyCashMovements = (
     `/organizations/${organizationId}/reports/daily-cash-movements?accountId=${accountId}&startDate=${startDate}&endDate=${endDate}`,
   );
 
+// GetDailyCashMovements' per-transaction drill-down — see
+// db/cash_movement_details.go's CashMovementDetail doc comment for what
+// "kind" means and why it's computed from payment history, not the
+// invoice's current (and retroactive) state.
+export interface CashMovementDetail {
+  id: string;
+  date: number;
+  direction: "in" | "out";
+  kind: "sale" | "loan" | "repayment" | "withdrawal";
+  amount: number;
+  clientName: string | null;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+  note: string | null;
+}
+
+export const GetCashMovementDetails = (
+  organizationId: string,
+  accountId: string,
+  startDate: number,
+  endDate: number,
+) =>
+  get<CashMovementDetail[]>(
+    `/organizations/${organizationId}/reports/cash-movement-details?accountId=${accountId}&startDate=${startDate}&endDate=${endDate}`,
+  );
+
+// The Cash Book screen's embedded loan tracker — see db/dashboard.go's
+// LoanStatusRow doc comment for the "was ever a loan" filter (a settled
+// loan still appears, with outstanding: 0; a pure cash sale never does).
+export interface LoanStatusRow {
+  invoiceId: string;
+  number: string;
+  clientId: string;
+  clientName: string;
+  date: number;
+  original: number;
+  paid: number;
+  outstanding: number;
+}
+
+export const GetLoanStatus = (organizationId: string, clientId?: string) => {
+  const qs = clientId ? `?clientId=${clientId}` : "";
+  return get<LoanStatusRow[]>(`/organizations/${organizationId}/reports/loan-status${qs}`);
+};
+
 // ---- Cash Book: withdrawals ----
 // Money leaving a cash register with no vendor bill to attach a payment
 // to — deposited to the bank, or spent as an undocumented (petty-cash)

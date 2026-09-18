@@ -12,6 +12,7 @@ import {
   List,
   Modal,
   Row,
+  Segmented,
   Select,
   Space,
   Table,
@@ -43,14 +44,18 @@ import {
   CreateCashMovement,
   CreateCashSale,
   GetAccounts,
+  GetCashMovementDetails,
   GetClientOpenInvoices,
   GetDailyCashMovements,
   GetInvoice,
+  GetLoanStatus,
   UpdateInvoiceState,
 } from "src/api";
 import type {
+  CashMovementDetail,
   CreateCashSaleRequest,
   DailyCashMovementRow,
+  LoanStatusRow,
   OutstandingInvoiceSummary,
 } from "src/api";
 import type { Account, Client, Invoice } from "src/types/models";
@@ -84,13 +89,44 @@ interface NewClientDraft {
   iban?: string;
 }
 
+// Labels/colors for CashMovementDetail.kind — see
+// db/cash_movement_details.go's CashMovementDetail doc comment for what
+// each one means and why it's computed from payment history, not the
+// invoice's current state.
+const movementKindLabel = (kind: CashMovementDetail["kind"]) => {
+  switch (kind) {
+    case "sale":
+      return t`Sale`;
+    case "loan":
+      return t`Loan (deposit)`;
+    case "repayment":
+      return t`Loan repayment`;
+    case "withdrawal":
+      return t`Withdrawal`;
+  }
+};
+const movementKindColor = (kind: CashMovementDetail["kind"]) => {
+  switch (kind) {
+    case "sale":
+      return "green";
+    case "loan":
+      return "gold";
+    case "repayment":
+      return "blue";
+    case "withdrawal":
+      return "default";
+  }
+};
+
 // Cash Book: a single fast-entry screen for a walk-in retail counter —
 // search for a customer by name/mobile/IBAN/identity number, then either
 // pay off one of their open (loan sale) invoices or record a new sale.
-// "Cash sale" and "loan sale" aren't separate modes here: a sale is a cash
-// sale exactly when the amount received equals the total, and a loan sale
-// otherwise (including a zero-upfront deposit) — see the "Amount received"
-// field below.
+// Cash vs. loan is an explicit choice (saleMode, the "Sale type" toggle
+// below), not inferred from the amount received — what actually gets
+// recorded is still whatever CreateCashSale computes from it server-side
+// (paid iff amountReceived == total), see the "Amount received"/"Deposit
+// received" field below for how the two stay in sync without fighting
+// each other.
 const CashBook = () => {
   const { i18n } = useLingui();
   const { message, modal } = App.useApp();
@@ -120,6 +156,17 @@ const CashBook = () => {
   const [loadingOpenInvoices, setLoadingOpenInvoices] = useState(false);
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
   const [amountReceivedTouched, setAmountReceivedTouched] = useState(false);
+  // Sale type is an explicit choice, not inferred from whatever happens to
+  // be in the amount field — the old design defaulted that field to the
+  // full total and only became a loan sale via an active downward edit, so
+  // the *safe-looking* default (touch nothing, click submit) was actually
+  // the unsafe one: a cashier who forgot to lower it recorded a real debt
+  // as collected. Defaulting to "loan" here fails the other direction
+  // instead — forgetting to switch to Cash leaves a fully-paid sale
+  // looking unpaid in AR, which is visible and correctable rather than
+  // silently wrong, and this is a retailer where installment sales on
+  // big-ticket items are routine, not the exception.
+  const [saleMode, setSaleMode] = useState<"cash" | "loan">("loan");
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
 
@@ -133,10 +180,18 @@ const CashBook = () => {
   const registerAccountId = organization?.defaultCashRegisterAccountId;
   const [selectedDate, setSelectedDate] = useState<Dayjs>(() => dayjs());
   const [dailyMovement, setDailyMovement] = useState<DailyCashMovementRow | null>(null);
+  const [movementDetails, setMovementDetails] = useState<CashMovementDetail[]>([]);
   const [loadingDailyMovement, setLoadingDailyMovement] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
   const [withdrawForm] = Form.useForm();
+
+  // Loan status — a standing report of who owes what, not scoped to
+  // selectedDate/isToday at all (unlike everything else on this screen):
+  // it should stay visible and useful while glancing at a past day above.
+  const [loanStatusClientId, setLoanStatusClientId] = useState<string>("");
+  const [loanStatusRows, setLoanStatusRows] = useState<LoanStatusRow[]>([]);
+  const [loadingLoanStatus, setLoadingLoanStatus] = useState(false);
 
   // Local-calendar comparison, deliberately not UTC — "today" is what the
   // cashier at the counter means by it, and it's what gates whether new
@@ -172,12 +227,17 @@ const CashBook = () => {
     setLoadingDailyMovement(true);
     try {
       const dayMs = utcDayMs(selectedDate);
-      const [row] = await GetDailyCashMovements(organizationId, registerAccountId, dayMs, dayMs);
+      const [[row], details] = await Promise.all([
+        GetDailyCashMovements(organizationId, registerAccountId, dayMs, dayMs),
+        GetCashMovementDetails(organizationId, registerAccountId, dayMs, dayMs),
+      ]);
       setDailyMovement(row ?? null);
+      setMovementDetails(details);
     } catch (error) {
       console.error("Failed to fetch daily cash movements:", error);
       message.error(t`Failed to load cash register movements`);
       setDailyMovement(null);
+      setMovementDetails([]);
     } finally {
       setLoadingDailyMovement(false);
     }
@@ -187,6 +247,25 @@ const CashBook = () => {
     refreshDailyMovement();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, registerAccountId, selectedDate.valueOf()]);
+
+  const refreshLoanStatus = async () => {
+    if (!organizationId) return;
+    setLoadingLoanStatus(true);
+    try {
+      setLoanStatusRows(await GetLoanStatus(organizationId, loanStatusClientId || undefined));
+    } catch (error) {
+      console.error("Failed to fetch loan status:", error);
+      message.error(t`Failed to load loan status`);
+      setLoanStatusRows([]);
+    } finally {
+      setLoadingLoanStatus(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshLoanStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, loanStatusClientId]);
 
   const bankAccounts = useMemo(() => accounts.filter((a: any) => a.type === "asset"), [accounts]);
   const expenseAccounts = useMemo(
@@ -240,8 +319,10 @@ const CashBook = () => {
       // every Cash Book sale as tax-free; that's a master-data
       // precondition for this screen, not something recoverable here.
       lineItems: [{ quantity: 1, taxRate: get(find(taxRates, { isDefault: 1 }), "id") }],
+      amountReceived: 0,
     });
     setAmountReceivedTouched(false);
+    setSaleMode("loan");
   };
 
   const refreshOpenInvoices = async (clientId: string) => {
@@ -355,14 +436,19 @@ const CashBook = () => {
   const total = addDecimal(subTotal, taxTotal);
   const amountReceivedWatched = toNumber(Form.useWatch("amountReceived", form));
 
-  // Keeps "Amount received" synced to the running total (a cash sale, the
-  // common case) until the user edits it themselves — at which point it's
-  // treated as a loan sale's deposit and left alone.
+  // Defaults the amount field to what each mode naturally means — the full
+  // total for a cash sale (kept in sync as line items change, so it's
+  // still correct if the cashier never touches the field), zero for a
+  // loan sale's deposit — but only ever while the cashier hasn't typed a
+  // value themselves. Switching modes never overwrites a value they
+  // already entered: a cashier who typed a 300 TND deposit, toggled to
+  // Cash to glance at it, and toggled back to Loan must still see 300, not
+  // a value silently reset out from under them.
   useEffect(() => {
     if (!amountReceivedTouched) {
-      form.setFieldValue("amountReceived", total);
+      form.setFieldValue("amountReceived", saleMode === "cash" ? total : 0);
     }
-  }, [total, amountReceivedTouched, form]);
+  }, [total, saleMode, amountReceivedTouched, form]);
 
   const currency = organization?.currency || "EUR";
   const money = (cents: number) => formatCents(cents, currency, i18n.locale);
@@ -426,6 +512,7 @@ const CashBook = () => {
       await setClients();
       await refreshOpenInvoices(result.client.id);
       await refreshDailyMovement();
+      await refreshLoanStatus();
       resetSaleForm();
     } catch (error) {
       console.error("Failed to record sale:", error);
@@ -466,6 +553,7 @@ const CashBook = () => {
     }
     await closePayment();
     await refreshDailyMovement();
+    await refreshLoanStatus();
   };
 
   const clientName = selectedClient?.name || newClientDraft?.name || "";
@@ -555,6 +643,44 @@ const CashBook = () => {
                 <Trans>Movements for {dayjs(dailyMovement.date).format(dateFormat)}</Trans>
               </Typography.Text>
             )}
+            <Table
+              dataSource={movementDetails}
+              rowKey="id"
+              size="small"
+              pagination={false}
+              style={{ marginTop: 8 }}
+              locale={{ emptyText: <Trans>No movements on this date</Trans> }}
+            >
+              <Table.Column
+                title={<Trans>Time</Trans>}
+                key="time"
+                width={70}
+                render={(row: CashMovementDetail) => dayjs(row.date).format("HH:mm")}
+              />
+              <Table.Column
+                title={<Trans>Type</Trans>}
+                key="kind"
+                render={(row: CashMovementDetail) => (
+                  <Tag color={movementKindColor(row.kind)}>{movementKindLabel(row.kind)}</Tag>
+                )}
+              />
+              <Table.Column
+                title={<Trans>Customer</Trans>}
+                key="clientName"
+                render={(row: CashMovementDetail) => row.clientName ?? row.note ?? "—"}
+              />
+              <Table.Column
+                title={<Trans>Amount</Trans>}
+                key="amount"
+                align="right"
+                render={(row: CashMovementDetail) => (
+                  <Typography.Text type={row.direction === "in" ? "success" : "danger"}>
+                    {row.direction === "in" ? "+" : "−"}
+                    {money(row.amount)}
+                  </Typography.Text>
+                )}
+              />
+            </Table>
             {!isToday && (
               <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
                 <Trans>
@@ -572,6 +698,70 @@ const CashBook = () => {
             </Trans>
           </Typography.Text>
         )}
+      </Card>
+
+      {/* Not isToday-gated — a standing report of who owes what, not tied
+      to whichever day the panel above happens to be showing. */}
+      <Card
+        size="small"
+        title={<Trans>Loan status</Trans>}
+        style={{ marginBottom: 16 }}
+        loading={loadingLoanStatus}
+        extra={
+          <Select
+            value={loanStatusClientId || undefined}
+            onChange={(value) => setLoanStatusClientId(value ?? "")}
+            placeholder={t`All customers`}
+            allowClear
+            showSearch
+            optionFilterProp="children"
+            style={{ minWidth: 220 }}
+          >
+            {(clients as any[]).map((c) => (
+              <Option key={c.id} value={c.id}>
+                {c.name}
+              </Option>
+            ))}
+          </Select>
+        }
+      >
+        <Table
+          dataSource={loanStatusRows}
+          rowKey="invoiceId"
+          size="small"
+          pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
+          locale={{ emptyText: <Trans>No loan sales</Trans> }}
+        >
+          <Table.Column title={<Trans>Customer</Trans>} dataIndex="clientName" key="clientName" />
+          <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
+          <Table.Column
+            title={<Trans>Date</Trans>}
+            key="date"
+            render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
+          />
+          <Table.Column
+            title={<Trans>Original</Trans>}
+            key="original"
+            align="right"
+            render={(row: LoanStatusRow) => money(row.original)}
+          />
+          <Table.Column
+            title={<Trans>Paid</Trans>}
+            key="paid"
+            align="right"
+            render={(row: LoanStatusRow) => money(row.paid)}
+          />
+          <Table.Column
+            title={<Trans>Outstanding</Trans>}
+            key="outstanding"
+            align="right"
+            render={(row: LoanStatusRow) => (
+              <Typography.Text strong type={row.outstanding > 0 ? "warning" : "success"}>
+                {money(row.outstanding)}
+              </Typography.Text>
+            )}
+          />
+        </Table>
       </Card>
 
       {isToday && !inSale && (
@@ -761,12 +951,38 @@ const CashBook = () => {
 
               <Divider />
 
+              {/* An explicit choice, not inferred from the amount field —
+              see saleMode's own comment above for why the old
+              infer-from-a-number design was a trap. Switching modes never
+              clears whatever's already in the amount field (see the
+              defaulting effect above); it only changes which default this
+              field would have started at. */}
+              <Form.Item label={<Trans>Sale type</Trans>}>
+                <Segmented
+                  block
+                  value={saleMode}
+                  onChange={(value) => setSaleMode(value as "cash" | "loan")}
+                  options={[
+                    { label: t`Cash sale`, value: "cash" },
+                    { label: t`Loan sale`, value: "loan" },
+                  ]}
+                />
+              </Form.Item>
+
               <Row gutter={16}>
                 <Col xs={24} md={12}>
                   <Form.Item
-                    label={t`Amount received (${currency})`}
+                    label={
+                      saleMode === "cash"
+                        ? t`Amount received (${currency})`
+                        : t`Deposit received (${currency})`
+                    }
                     name="amountReceived"
-                    tooltip={t`Full amount = cash sale. Less than the total (or zero) = loan sale. Entering more than the total just records the change given back — the sale itself is still only ever recorded up to the total.`}
+                    tooltip={
+                      saleMode === "cash"
+                        ? t`Defaults to the full total. Entering more just records the change given back — the sale itself is still only ever recorded up to the total.`
+                        : t`Optional upfront deposit — leave at 0 for a zero-deposit loan. The remaining balance is collected later.`
+                    }
                     extra={
                       amountReceivedWatched > total ? (
                         <Typography.Text type="success">
@@ -821,12 +1037,17 @@ const CashBook = () => {
                 </Col>
               </Row>
 
-              {/* Color, not just label text, distinguishes the two outcomes —
-              a misread button label is exactly the mistake a fast-moving
-              counter screen should make hard to make: green (matches this
-              app's "paid" state Tag) for a fully-settled cash sale, gold
-              (matches "sent", the state an unsettled loan sale lands in) for
-              anything left owing. */}
+              {/* Deliberately still driven by the actual amount, not
+              saleMode — the toggle above sets *intent* (which default the
+              amount field starts at), this reads back the *outcome* that's
+              about to be recorded, and the two can legitimately diverge
+              (e.g. Cash mode with a cashier knowingly letting someone off
+              a few coins short). Color, not just label text, distinguishes
+              the two outcomes — a misread button label is exactly the
+              mistake a fast-moving counter screen should make hard to
+              make: green (matches this app's "paid" state Tag) for a
+              fully-settled sale, gold (matches "sent", the state an
+              unsettled sale lands in) for anything left owing. */}
               {amountReceivedWatched >= total ? (
                 <Button
                   color="green"

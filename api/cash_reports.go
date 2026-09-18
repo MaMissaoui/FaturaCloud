@@ -28,3 +28,27 @@ func (h *handler) getDailyCashMovements(w http.ResponseWriter, r *http.Request) 
 	}
 	writeJSON(w, http.StatusOK, rows)
 }
+
+func (h *handler) getCashMovementDetails(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	accountID := r.URL.Query().Get("accountId")
+	startDate := parseInt64Param(r, "startDate")
+	endDate := parseInt64Param(r, "endDate")
+	rows, err := h.db.GetCashMovementDetails(orgID, accountID, startDate, endDate)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, rows)
+}
+
+func (h *handler) getLoanStatus(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	clientID := r.URL.Query().Get("clientId")
+	rows, err := h.db.GetLoanStatus(orgID, clientID)
+	if err != nil {
+		writeMutationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, rows)
+}

@@ -186,6 +186,74 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 	return invoices, nil
 }
 
+// LoanStatusRow is one invoice's loan lifecycle: what it was originally
+// billed for, what's been collected against it so far (every posted
+// payment, not just the first), and what's still outstanding. Unlike
+// getOutstandingInvoices/GetClientOpenInvoices, this does NOT filter to a
+// currently-nonzero balance — a loan that's since been fully repaid still
+// belongs here with Outstanding: 0, since selecting a specific customer
+// who has settled up should show that, not render a table indistinguishable
+// from "no data for this customer at all".
+//
+// The actual filter is "was ever a loan": excludes a pure cash sale — an
+// invoice with exactly one payment application, for the full total, and
+// nothing since — the same first-payment-application signal
+// GetCashMovementDetails uses to tell a "sale" movement from a "loan"
+// one. Everything else (no payment yet, a partial first payment, or more
+// than one payment) is a loan by construction, whatever its current
+// balance.
+type LoanStatusRow struct {
+	InvoiceID   string `db:"id"          json:"invoiceId"`
+	Number      string `db:"number"      json:"number"`
+	ClientID    string `db:"clientId"    json:"clientId"`
+	ClientName  string `db:"clientName"  json:"clientName"`
+	Date        int64  `db:"date"        json:"date"`
+	Original    int64  `db:"original"    json:"original"`
+	Paid        int64  `db:"paid"        json:"paid"`
+	Outstanding int64  `db:"outstanding" json:"outstanding"`
+}
+
+// GetLoanStatus is the Cash Book screen's embedded loan tracker — org-wide
+// by default, or scoped to one customer via clientID (empty means every
+// customer). See LoanStatusRow's doc comment for the "was ever a loan"
+// filter and why a settled loan still appears. Sorted outstanding-first so
+// the customers who actually owe money surface before ones who've settled
+// up, which the date-only ordering every other report here uses would bury.
+func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusRow, error) {
+	query := `
+		SELECT i.id, i.number, i.clientId, c.name AS clientName, i.date,
+		       i.total AS original,
+		       COALESCE(paid.amount, 0) AS paid,
+		       CAST(ROUND(i.total - COALESCE(paid.amount, 0)) AS INTEGER) AS outstanding
+		FROM invoices i
+		JOIN clients c ON i.clientId = c.id
+		LEFT JOIN (
+			SELECT pa.documentId, SUM(pa.amount) AS amount, COUNT(*) AS appCount
+			FROM payment_applications pa
+			JOIN payments p ON p.id = pa.paymentId
+			WHERE pa.documentType = 'invoice' AND p.status = 'posted'
+			GROUP BY pa.documentId
+		) paid ON paid.documentId = i.id
+		WHERE i.organizationId = ? AND i.state IN ('sent', 'paid')
+		      AND (
+		          COALESCE(paid.appCount, 0) = 0
+		          OR paid.appCount > 1
+		          OR paid.amount < i.total
+		      )`
+	args := []any{organizationID}
+	if clientID != "" {
+		query += " AND i.clientId = ?"
+		args = append(args, clientID)
+	}
+	query += " ORDER BY outstanding DESC, i.date ASC"
+
+	rows := []LoanStatusRow{}
+	if err := d.DB.Select(&rows, query, args...); err != nil {
+		return nil, fmt.Errorf("get_loan_status: %w", err)
+	}
+	return rows, nil
+}
+
 // OutstandingBill is getOutstandingInvoices' purchases counterpart. See
 // OutstandingInvoice above for what Currency/ForeignTotal carry.
 type OutstandingBill struct {
