@@ -86,8 +86,10 @@ export const deleteProductAtom = atom(null, async (get, set, productId: string) 
     } else {
       message.error(t`Product deletion failed`);
     }
+    return success;
   } catch (error) {
     console.error("Failed to delete product:", error);
-    message.error(t`Product deletion failed`);
+    message.error(error instanceof Error ? error.message : t`Product deletion failed`);
+    return false;
   }
 });

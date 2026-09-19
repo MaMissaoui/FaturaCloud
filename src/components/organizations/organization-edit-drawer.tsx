@@ -146,7 +146,17 @@ export default function OrganizationEditDrawer({
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="country" label={<Trans>Country</Trans>}>
+              <Form.Item
+                name="country"
+                label={<Trans>Country</Trans>}
+                tooltip={
+                  <Trans>
+                    Used to pick a starter chart of accounts (Germany/France get a localized one,
+                    everything else a generic one) — separate from the Address tab's Country, which
+                    is the ISO code driving currency/date defaults and e-invoicing.
+                  </Trans>
+                }
+              >
                 <Select showSearch placeholder={t`Select country`}>
                   {countries.map((c) => (
                     <Select.Option key={c.name} value={c.name}>
@@ -314,7 +324,17 @@ export default function OrganizationEditDrawer({
               children: (
                 <Row gutter={[16, 0]}>
                   <Col xs={24} md={12}>
-                    <Form.Item name="country_code" label={<Trans>Country</Trans>}>
+                    <Form.Item
+                      name="country_code"
+                      label={<Trans>Country</Trans>}
+                      tooltip={
+                        <Trans>
+                          The ISO country code — drives currency/date formatting defaults and which
+                          e-invoicing profile applies. Separate from the Country field near the top,
+                          which only picks a starter chart of accounts.
+                        </Trans>
+                      }
+                    >
                       <Select
                         showSearch
                         allowClear
