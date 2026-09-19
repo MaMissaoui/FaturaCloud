@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.27.2] - 2026-09-19
+
+### Added
+- Purchase Order detail: Cards showing linked Goods Receipts and Incoming
+  Invoices, and a "New incoming invoice" shortcut next to the existing
+  "New goods receipt" one.
+- Incoming Invoices list: a "Variance" tag flagging a blocking 3-way-match
+  variance, without having to open the invoice to find out.
+- Tax Summary report: each tax line now shows its VAT category code (with a
+  tooltip explaining it), and a "Net VAT liability" figure (output VAT
+  minus input VAT) — the number that actually matters for a filing, which
+  the separate totals never combined.
+- Sales by Client, Sales by Product, and Purchases by Vendor reports: each
+  row now links to the underlying client/product/vendor record.
+- German and French translations for every remaining untranslated string
+  in the app (previously ~27 missing, mostly on the Cash Book screen —
+  movement-type tags like "Sale"/"Loan (deposit)" and several column
+  headers were showing in English regardless of locale).
+
+### Fixed
+- Purchase Orders: a partially-received order (status never auto-advances
+  past "confirmed") could still be deleted, orphaning the goods receipt's
+  line links and its posted GRNI accrual. Now rejected on both the
+  frontend and the API.
+- Incoming Invoice detail: the state control was a read-only tag near the
+  top plus a disconnected dropdown buried in the footer — consolidated
+  into one clickable control. A 3-way-match override also used to
+  disappear from the form (with no way to review or clear it) the moment
+  its underlying variance resolved.
+- Products: deleting one from the edit drawer closed the drawer even when
+  the delete had actually failed, silently reporting success.
+- Products list: opening the edit drawer no longer fetches the entire
+  unpaginated catalog on every visit — only when the drawer is open.
+- Bill of Materials and Organizations lists: the Name column was
+  mouse-only, with no way to open a row from the keyboard.
+- Vendors: added the Code column and the Tunisia "Matricule Fiscal (MF)"
+  relabeling that Clients already had.
+- Organizations edit drawer: the two same-labeled "Country" fields (one
+  picks a starter chart of accounts, the other drives currency/date
+  defaults and e-invoicing) now have tooltips explaining which is which.
+- Trial Balance and Tax Summary reports: a failed load rendered identically
+  to a genuinely empty/balanced period (0.00 everywhere) — both now show a
+  real error with a Retry action instead.
+- Revenue Trend, Sales by Client, Sales by Product, and Purchases by
+  Vendor reports: the same false-empty-on-failure issue, fixed the same
+  way.
+- Journal Entries: a reversed entry had no link forward to whatever
+  reversed it, only the reversal linked back to the original. Amounts on
+  this screen also bypassed the app's currency formatter.
+- A deactivated account could still be posted to, from any posting path
+  (manual entry, auto-post, payments, fiscal-year close) — now rejected
+  server-side, and excluded from the manual journal entry's account
+  picker.
+- Fiscal Periods: the period-level Close/Reopen button had no role gate,
+  unlike the year-level Close button next to it (the backend already
+  enforced the correct role either way).
+
 ## [3.27.1] - 2026-09-19
 
 ### Fixed
