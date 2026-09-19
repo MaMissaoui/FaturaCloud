@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, Col, Row, Statistic, Table, theme } from "antd";
+import { Alert, Button, Card, Col, Row, Statistic, Table, theme } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react";
 import { GoldOutlined } from "@ant-design/icons";
+import { Link } from "react-router";
 
 import { GetInventoryValuation } from "src/api";
 import type { InventoryValuation, InventoryValuationLine } from "src/api";
@@ -19,13 +20,24 @@ const InventoryValuationReport = () => {
 
   const [report, setReport] = useState<InventoryValuation | null>(null);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset report to null, which the Statistic cards
+  // below then rendered identically to "still loading" — both as
+  // 0.00/0.00/0.00, and a zero Difference is this report's *good* outcome,
+  // so a slow load or a transient error looked exactly like "books
+  // reconcile." Tracked separately so the cards can show a real error
+  // instead of a false all-clear.
+  const [failed, setFailed] = useState(false);
 
   const refresh = useCallback(() => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     GetInventoryValuation(organizationId)
       .then(setReport)
-      .catch(() => setReport(null))
+      .catch(() => {
+        setReport(null);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [organizationId]);
 
@@ -39,17 +51,36 @@ const InventoryValuationReport = () => {
     <>
       <PageHeader icon={<GoldOutlined />} title={<Trans>Inventory Valuation</Trans>} />
 
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the inventory valuation report</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Row gutter={[8, 8]} style={{ marginTop: 16, marginBottom: 16 }}>
         <Col xs={12} md={8}>
           <Card>
-            <Statistic title={<Trans>GL balance</Trans>} value={money(report?.glBalance ?? 0)} />
+            <Statistic
+              title={<Trans>GL balance</Trans>}
+              value={failed ? "—" : money(report?.glBalance ?? 0)}
+              loading={loading}
+            />
           </Card>
         </Col>
         <Col xs={12} md={8}>
           <Card>
             <Statistic
               title={<Trans>Computed value</Trans>}
-              value={money(report?.computedValue ?? 0)}
+              value={failed ? "—" : money(report?.computedValue ?? 0)}
+              loading={loading}
             />
           </Card>
         </Col>
@@ -57,10 +88,11 @@ const InventoryValuationReport = () => {
           <Card>
             <Statistic
               title={<Trans>Difference</Trans>}
-              value={money(report?.difference ?? 0)}
+              value={failed ? "—" : money(report?.difference ?? 0)}
+              loading={loading}
               styles={{
                 content: {
-                  color: (report?.difference ?? 0) !== 0 ? token.colorError : undefined,
+                  color: !failed && (report?.difference ?? 0) !== 0 ? token.colorError : undefined,
                 },
               }}
             />
@@ -77,17 +109,41 @@ const InventoryValuationReport = () => {
             pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
             locale={{ emptyText: <Trans>No stock-enabled products</Trans> }}
           >
-            <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
+            <Table.Column
+              title={<Trans>Product</Trans>}
+              dataIndex="name"
+              key="name"
+              sorter={(a: InventoryValuationLine, b: InventoryValuationLine) =>
+                a.name.localeCompare(b.name)
+              }
+              render={(name: string, product: InventoryValuationLine) => (
+                <Link to="/products" state={{ productModal: true, productId: product.productId }}>
+                  {name}
+                </Link>
+              )}
+            />
+            <Table.Column
+              title={<Trans>SKU</Trans>}
+              dataIndex="sku"
+              key="sku"
+              sorter={(a: InventoryValuationLine, b: InventoryValuationLine) =>
+                (a.sku ?? "").localeCompare(b.sku ?? "")
+              }
+            />
             <Table.Column
               title={<Trans>Quantity</Trans>}
               dataIndex="quantity"
               key="quantity"
               align="right"
+              sorter={(a: InventoryValuationLine, b: InventoryValuationLine) =>
+                a.quantity - b.quantity
+              }
             />
             <Table.Column
               title={<Trans>Value</Trans>}
               key="value"
               align="right"
+              sorter={(a: InventoryValuationLine, b: InventoryValuationLine) => a.value - b.value}
               render={(product: InventoryValuationLine) => money(product.value)}
             />
           </Table>

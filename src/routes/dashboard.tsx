@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Card, Col, Row, Select, Statistic, Table, theme } from "antd";
+import { Link, useNavigate } from "react-router";
+import { Alert, Button, Card, Col, Row, Select, Statistic, Table, theme, Typography } from "antd";
 import { Column } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -54,6 +55,7 @@ const Dashboard = () => {
   useLingui();
   const { i18n } = useLingui();
   const { token } = theme.useToken();
+  const navigate = useNavigate();
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
   const themeMode = useAtomValue(themeAtom);
@@ -61,15 +63,27 @@ const Dashboard = () => {
   const [period, setPeriod] = useState<Period>({ kind: "months", months: 12 });
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to leave `data` untouched (stale, from a previous
+  // period) or null (first load) — either way every Statistic/Table below
+  // rendered a plausible-looking "nothing owed, nothing to see" reading
+  // with no indication anything went wrong, on the one screen every user
+  // checks daily to decide what needs attention. Same fix shape as
+  // src/routes/accounting/reports/inventory-valuation.tsx.
+  const [failed, setFailed] = useState(false);
 
   const fetchDashboard = useCallback(() => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     GetDashboard(
       organizationId,
       period.kind === "year" ? { year: period.year } : { months: period.months },
     )
       .then(setData)
+      .catch(() => {
+        setData(null);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [organizationId, period]);
 
@@ -119,23 +133,54 @@ const Dashboard = () => {
         }
       />
 
+      {failed && (
+        <Alert
+          style={{ marginTop: 12 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the dashboard</Trans>}
+          action={
+            <Button size="small" onClick={fetchDashboard}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} md={8}>
           <Card size="small" loading={loading}>
             <Statistic
               title={<Trans>Revenue (selected period)</Trans>}
-              value={money(revenueTotal)}
+              value={failed ? "—" : money(revenueTotal)}
             />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card size="small" loading={loading}>
             <Statistic
-              title={<Trans>Outstanding</Trans>}
-              value={money(data?.outstanding.total ?? 0)}
+              title={
+                <>
+                  <Trans>Outstanding</Trans>{" "}
+                  <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+                    (<Trans>as of today</Trans>)
+                  </Typography.Text>
+                </>
+              }
+              value={failed ? "—" : money(data?.outstanding.total ?? 0)}
+              // Red only when the genuinely alarming (90+ days) bucket is
+              // nonzero — a routine, healthy AR balance is a normal thing
+              // for any active business to carry, so coloring the raw
+              // total red unconditionally meant this card was red for
+              // nearly every organization nearly all the time, which
+              // stops the color signaling anything at all. Matches the
+              // "90+ days" card below, the actually-alarming figure.
               styles={{
                 content: {
-                  color: (data?.outstanding.total ?? 0) > 0 ? token.colorError : undefined,
+                  color:
+                    !failed && (data?.outstanding.days90Plus ?? 0) > 0
+                      ? token.colorError
+                      : undefined,
                 },
               }}
             />
@@ -144,8 +189,15 @@ const Dashboard = () => {
         <Col xs={24} md={8}>
           <Card size="small" loading={loading}>
             <Statistic
-              title={<Trans>Stock valuation</Trans>}
-              value={money(data?.stockValuation.total ?? 0)}
+              title={
+                <>
+                  <Trans>Stock valuation</Trans>{" "}
+                  <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+                    (<Trans>as of today</Trans>)
+                  </Typography.Text>
+                </>
+              }
+              value={failed ? "—" : money(data?.stockValuation.total ?? 0)}
             />
           </Card>
         </Col>
@@ -153,7 +205,12 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col span={24}>
-          <Card size="small" title={<Trans>Revenue over time</Trans>} loading={loading}>
+          <Card
+            size="small"
+            title={<Trans>Revenue over time</Trans>}
+            loading={loading}
+            extra={<Link to="/reporting/revenue-trend">{t`View full report`}</Link>}
+          >
             <Column
               data={data?.revenueByMonth ?? []}
               xField="month"
@@ -173,7 +230,12 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} xl={12}>
-          <Card size="small" title={<Trans>Outstanding invoices</Trans>} loading={loading}>
+          <Card
+            size="small"
+            title={<Trans>Outstanding invoices</Trans>}
+            loading={loading}
+            extra={<Link to="/accounting/reports/ar-aging">{t`View full report`}</Link>}
+          >
             <Row gutter={[8, 12]} style={{ marginBottom: 12 }}>
               <Col xs={12} sm={8}>
                 <Statistic
@@ -222,6 +284,10 @@ const Dashboard = () => {
               size="small"
               pagination={{ pageSize: 5, hideOnSinglePage: true }}
               locale={{ emptyText: <Trans>No outstanding invoices</Trans> }}
+              onRow={(record: OutstandingInvoiceSummary) => ({
+                onClick: () => navigate(`/invoices/${record.id}`),
+                style: { cursor: "pointer" },
+              })}
             >
               <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
               <Table.Column title={<Trans>Client</Trans>} dataIndex="clientName" key="clientName" />
@@ -243,13 +309,25 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} xl={12}>
-          <Card size="small" title={<Trans>Stock valuation</Trans>} loading={loading}>
+          <Card
+            size="small"
+            title={<Trans>Stock valuation by product</Trans>}
+            loading={loading}
+            extra={<Link to="/accounting/reports/inventory-valuation">{t`View full report`}</Link>}
+          >
             <Table
               dataSource={data?.stockValuation.items ?? []}
               rowKey="productId"
               size="small"
               pagination={false}
               locale={{ emptyText: <Trans>No stock-tracked products</Trans> }}
+              onRow={(record: StockValuationItem) => ({
+                onClick: () =>
+                  navigate("/products", {
+                    state: { productModal: true, productId: record.productId },
+                  }),
+                style: { cursor: "pointer" },
+              })}
             >
               <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
               <Table.Column
@@ -272,13 +350,25 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
         <Col xs={24} xl={12}>
-          <Card size="small" title={<Trans>Top clients</Trans>} loading={loading}>
+          <Card
+            size="small"
+            title={<Trans>Top clients</Trans>}
+            loading={loading}
+            extra={<Link to="/reporting/sales-by-client">{t`View full report`}</Link>}
+          >
             <Table
               dataSource={data?.topClients ?? []}
               rowKey="clientId"
               size="small"
               pagination={false}
               locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
+              onRow={(record: ClientRevenue) => ({
+                onClick: () =>
+                  navigate("/clients", {
+                    state: { clientModal: true, clientId: record.clientId },
+                  }),
+                style: { cursor: "pointer" },
+              })}
             >
               <Table.Column title={<Trans>Client</Trans>} dataIndex="name" key="name" />
               <Table.Column
@@ -292,13 +382,25 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} xl={12}>
-          <Card size="small" title={<Trans>Top products</Trans>} loading={loading}>
+          <Card
+            size="small"
+            title={<Trans>Top products</Trans>}
+            loading={loading}
+            extra={<Link to="/reporting/sales-by-product">{t`View full report`}</Link>}
+          >
             <Table
               dataSource={data?.topProducts ?? []}
               rowKey="productId"
               size="small"
               pagination={false}
               locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
+              onRow={(record: ProductRevenue) => ({
+                onClick: () =>
+                  navigate("/products", {
+                    state: { productModal: true, productId: record.productId },
+                  }),
+                style: { cursor: "pointer" },
+              })}
             >
               <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
               <Table.Column

@@ -3992,6 +3992,10 @@ func TestOutboundDeliveryClientPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateOrder: %v", err)
 	}
+	// CreateDelivery now refuses to create against a draft order — confirm it first.
+	if _, err := d.UpdateOrderStatus(order.ID, "confirmed"); err != nil {
+		t.Fatalf("UpdateOrderStatus: %v", err)
+	}
 
 	// Standalone delivery: effective client is its own directly-set clientId.
 	standalone, err := d.CreateDelivery(CreateDeliveryRequest{
@@ -4059,6 +4063,75 @@ func TestOutboundDeliveryClientPrecedence(t *testing.T) {
 	}
 	if updated.ClientID == nil || *updated.ClientID != clientA.ID {
 		t.Fatalf("UpdateDelivery: ClientID = %v, want %s", updated.ClientID, clientA.ID)
+	}
+}
+
+// TestCreateDeliveryRejectsDraftOrCancelledOrder covers a UI audit finding:
+// the "New delivery" button was hidden for a draft/cancelled order on the
+// frontend, but nothing stopped a delivery (and the stock/COGS postings
+// that come with shipping one) from being created against one directly.
+// Also confirms the guard is create-only, not shared with UpdateDelivery: a
+// delivery already linked to an order that's later cancelled must still be
+// editable (e.g. to fix its tracking number), since the frontend form
+// resubmits the unchanged orderId on every save.
+func TestCreateDeliveryRejectsDraftOrCancelledOrder(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{OrganizationID: org.ID, Name: ptr("Client A")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	draftOrder, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-draft", OrganizationID: org.ID, ClientID: &client.ID,
+		OrderNumber: "ORD-0001", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder draft: %v", err)
+	}
+	if _, err := d.CreateDelivery(CreateDeliveryRequest{
+		OrganizationID: org.ID, OrderID: &draftOrder.ID,
+		DeliveryNumber: "DEL-0001", DeliveryDate: 1700000000000,
+	}); err == nil {
+		t.Fatalf("CreateDelivery against a draft order: want error, got none")
+	}
+
+	confirmedOrder, err := d.CreateOrder(CreateOrderRequest{
+		ID: "order-confirmed", OrganizationID: org.ID, ClientID: &client.ID,
+		OrderNumber: "ORD-0002", OrderDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateOrder confirmed: %v", err)
+	}
+	if _, err := d.UpdateOrderStatus(confirmedOrder.ID, "confirmed"); err != nil {
+		t.Fatalf("UpdateOrderStatus confirmed: %v", err)
+	}
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-1", OrganizationID: org.ID, OrderID: &confirmedOrder.ID,
+		DeliveryNumber: "DEL-0002", DeliveryDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery against a confirmed order: %v", err)
+	}
+	if _, err := d.UpdateOrderStatus(confirmedOrder.ID, "cancelled"); err != nil {
+		t.Fatalf("UpdateOrderStatus cancelled: %v", err)
+	}
+	if _, err := d.CreateDelivery(CreateDeliveryRequest{
+		OrganizationID: org.ID, OrderID: &confirmedOrder.ID,
+		DeliveryNumber: "DEL-0003", DeliveryDate: 1700000000000,
+	}); err == nil {
+		t.Fatalf("CreateDelivery against a cancelled order: want error, got none")
+	}
+
+	// The existing delivery, created while the order was still confirmed,
+	// must still be freely editable now that the order has been cancelled —
+	// the guard is create-only.
+	trackingNumber := "TRACK-123"
+	if _, err := d.UpdateDelivery(delivery.ID, UpdateDeliveryRequest{TrackingNumber: &trackingNumber}); err != nil {
+		t.Fatalf("UpdateDelivery on a delivery whose order was later cancelled: %v", err)
 	}
 }
 
