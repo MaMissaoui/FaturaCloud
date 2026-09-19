@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
+  Alert,
   Button,
   Col,
   DatePicker,
@@ -16,6 +17,7 @@ import {
   Tag,
   theme,
   Tooltip,
+  Typography,
   message,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -40,6 +42,8 @@ import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import {
+  deliveriesAtom,
+  setDeliveriesAtom,
   deliveryIdAtom,
   deliveryAtom,
   nextDeliveryNumberAtom,
@@ -90,6 +94,13 @@ const DeliveryDetails = () => {
   const setOrders = useSetAtom(setOrdersAtom);
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
+  // The other deliveries against the same order, if any — a delivery
+  // opened directly (the normal entry point from the Deliveries list) would
+  // otherwise give no indication it's one of several against an order, or
+  // what fraction of the order it covers; that context previously only
+  // existed on the Order side.
+  const allDeliveries = useAtomValue(deliveriesAtom);
+  const setAllDeliveries = useSetAtom(setDeliveriesAtom);
   const products = useAtomValue(productsAtom);
   // A component/intermediate isn't sellable — exclude it from the picker.
   // Unclassified products (category null) stay eligible everywhere.
@@ -123,13 +134,14 @@ const DeliveryDetails = () => {
     setClients();
     setOrders();
     setProducts();
+    setAllDeliveries();
     if (!isNew) {
       setDeliveryId(id ?? null);
     }
     return () => {
       setDeliveryId(null);
     };
-  }, [id, isNew, setClients, setOrders, setProducts, setDeliveryId]);
+  }, [id, isNew, setClients, setOrders, setProducts, setAllDeliveries, setDeliveryId]);
 
   // When creating a delivery from an order, prefill line items with the
   // quantity still outstanding (order quantity minus what's already been
@@ -280,6 +292,22 @@ const DeliveryDetails = () => {
   const transitions = deliveryTransitions(currentStatus);
   const watchedOrderId = Form.useWatch("orderId", form);
 
+  // The Client field is hidden whenever an order is linked (see the Col
+  // below) since the order's own client is authoritative — but nothing
+  // used to show that effective client anywhere on this page. Falls back
+  // to the loaded delivery's own resolved clientName (view mode) if the
+  // order list hasn't loaded that order for some reason.
+  const linkedOrder = watchedOrderId ? find(orders, { id: watchedOrderId }) : null;
+  const effectiveClientName =
+    (linkedOrder as any)?.clientName ??
+    (delivery && !(delivery as any).then ? (delivery as any).clientName : null);
+
+  const siblingDeliveries = useMemo(
+    () =>
+      watchedOrderId ? (allDeliveries as any[]).filter((dv) => dv.orderId === watchedOrderId) : [],
+    [allDeliveries, watchedOrderId],
+  );
+
   if (!organization) return null;
   if (!isNew && !delivery) return null;
 
@@ -309,7 +337,13 @@ const DeliveryDetails = () => {
               </Select>
             </Form.Item>
           </Col>
-          {!watchedOrderId && (
+          {watchedOrderId ? (
+            <Col xs={24} md={12} xl={6}>
+              <Form.Item label={<Trans>Client</Trans>}>
+                <Typography.Text>{effectiveClientName ?? "—"}</Typography.Text>
+              </Form.Item>
+            </Col>
+          ) : (
             <Col xs={24} md={12} xl={6}>
               <Form.Item label={<Trans>Client</Trans>} name="clientId">
                 <Select
@@ -382,9 +416,46 @@ const DeliveryDetails = () => {
           </Col>
         </Row>
 
+        {/* Only the *other* deliveries — this one is already the page the
+            user is looking at, so counting it in "N of M" would be
+            confusing ("delivery 1 of 1" for the only delivery against an
+            order). */}
+        {siblingDeliveries.length > 1 && (
+          <Row style={{ marginBottom: 16 }}>
+            <Col span={24}>
+              <Typography.Text type="secondary">
+                <Trans>
+                  {siblingDeliveries.length} deliveries exist for order{" "}
+                  {(linkedOrder as any)?.orderNumber}:
+                </Trans>{" "}
+                {siblingDeliveries.map((dv: any, i: number) => (
+                  <span key={dv.id}>
+                    {i > 0 && ", "}
+                    {dv.id === id ? (
+                      dv.deliveryNumber
+                    ) : (
+                      <Link to={`/deliveries/${dv.id}`}>{dv.deliveryNumber}</Link>
+                    )}
+                  </span>
+                ))}
+              </Typography.Text>
+            </Col>
+          </Row>
+        )}
+
         <Divider style={{ marginTop: 0 }} />
 
         {/* Line items — no prices */}
+        {!isEditable && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={
+              <Trans>Line items are locked because this delivery has already shipped.</Trans>
+            }
+          />
+        )}
         <LineItemsTable
           disabled={!isEditable}
           columns={[

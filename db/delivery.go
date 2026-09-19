@@ -165,6 +165,32 @@ func (d *Database) GetDeliveryLineItems(deliveryID string) ([]OutboundDeliveryLi
 // item's orderLineItemId/productId are checked separately, inside
 // replaceDeliveryLineItemsTx, since resolving a line's product from its
 // order line requires the same query either way.
+// requireShippableOrder is CreateDelivery-only, deliberately not folded into
+// checkDeliveryHeaderFKOwnership below: that helper also runs inside
+// UpdateDelivery, whose own req.OrderID is the delivery's *already-linked*
+// order re-sent unchanged on every header save (the frontend submits the
+// whole form) — gating there would start rejecting an ordinary tracking
+// number/notes edit the moment that order was later cancelled, on a
+// delivery that isn't itself being re-parented.
+func (d *Database) requireShippableOrder(organizationID, orderID string) error {
+	order, err := d.GetOrder(orderID)
+	if err != nil {
+		return newValidationError("order not found")
+	}
+	if err := requireSameOrg(organizationID, order.OrganizationID, "order"); err != nil {
+		return err
+	}
+	// The frontend already hides the "New delivery" button for a
+	// draft/cancelled order, but nothing previously stopped a delivery (and
+	// the stock/COGS postings that come with shipping one) from being
+	// created against one directly — a draft order isn't confirmed yet, and
+	// a cancelled one shouldn't ship at all.
+	if order.Status == "draft" || order.Status == "cancelled" {
+		return newValidationError("cannot create a delivery against a %s order", order.Status)
+	}
+	return nil
+}
+
 func (d *Database) checkDeliveryHeaderFKOwnership(organizationID string, orderID, clientID *string) error {
 	if orderID != nil && *orderID != "" {
 		order, err := d.GetOrder(*orderID)
@@ -199,6 +225,11 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 	}
 	if err := d.checkDeliveryHeaderFKOwnership(req.OrganizationID, req.OrderID, req.ClientID); err != nil {
 		return nil, err
+	}
+	if req.OrderID != nil && *req.OrderID != "" {
+		if err := d.requireShippableOrder(req.OrganizationID, *req.OrderID); err != nil {
+			return nil, err
+		}
 	}
 
 	tx, err := d.DB.Beginx()

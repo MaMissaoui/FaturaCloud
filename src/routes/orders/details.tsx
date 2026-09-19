@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router";
 import {
+  Alert,
   Button,
   Card,
   Col,
@@ -123,6 +124,16 @@ const OrderDetails = () => {
   const linkedDeliveries = useMemo(
     () => deliveries.filter((dv: any) => dv.orderId === id),
     [deliveries, id],
+  );
+  // Editing (or deleting) a line item after a delivery already shipped
+  // against it would silently invalidate the per-line "Delivered X/Y" tags
+  // below — same reasoning as purchase-orders/details.tsx's
+  // lineItemsFrozen, adapted from "a receipt exists" to "a non-cancelled
+  // delivery exists" since Orders has no per-line received-quantity map to
+  // check instead.
+  const lineItemsFrozen = useMemo(
+    () => linkedDeliveries.some((dv: any) => dv.status !== "cancelled"),
+    [linkedDeliveries],
   );
 
   const [orderId, setOrderId] = useAtom(orderIdAtom);
@@ -386,7 +397,21 @@ const OrderDetails = () => {
         </Row>
 
         {/* Line items */}
+        {lineItemsFrozen && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={
+              <Trans>
+                Line items are locked because a delivery already exists for this order. Cancel every
+                delivery to change them — header fields can still be edited.
+              </Trans>
+            }
+          />
+        )}
         <LineItemsTable
+          disabled={lineItemsFrozen}
           columns={[
             { kind: "index" },
             {
@@ -582,7 +607,7 @@ const OrderDetails = () => {
                         </Button>
                       </Tooltip>
                     )}
-                    {!isNew && (
+                    {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
                       <Button onClick={() => navigate(`/deliveries/new?orderId=${id}`)}>
                         <PlusOutlined /> <Trans>New delivery</Trans>
                       </Button>

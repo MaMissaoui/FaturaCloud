@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Delivery } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Table, Tag } from "antd";
+import { Button, Col, Row, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -11,7 +11,12 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
-import { deliveryStatusColor, deliveryStatusLabel, type DeliveryStatus } from "src/types/delivery";
+import {
+  DELIVERY_STATUSES,
+  deliveryStatusColor,
+  deliveryStatusLabel,
+  type DeliveryStatus,
+} from "src/types/delivery";
 import PageHeader from "src/components/page-header";
 import { useDateFormatter } from "src/utils/date";
 
@@ -55,64 +60,78 @@ const Deliveries = () => {
         title={<Trans>Outbound Deliveries</Trans>}
         search={{ placeholder: t`Search`, onChange: setSearch }}
         actions={
-          <Link to="/deliveries/new">
-            <Button type="primary" style={{ marginBottom: 10 }}>
-              <Trans>New delivery</Trans>
-            </Button>
-          </Link>
+          <Button type="primary" onClick={() => navigate("/deliveries/new")}>
+            <Trans>New delivery</Trans>
+          </Button>
         }
       />
-      <Table
-        dataSource={filtered}
-        pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
-        rowKey="id"
-        loading={loading}
-        onRow={(record: Delivery) => ({
-          onClick: () => navigate(`/deliveries/${record.id}`),
-          style: { cursor: "pointer" },
-        })}
-      >
-        <Table.Column
-          title={<Trans>Number</Trans>}
-          key="deliveryNumber"
-          render={(d: Delivery) => (
-            <Link to={`/deliveries/${d.id}`} onClick={(e) => e.stopPropagation()}>
-              {d.deliveryNumber}
-            </Link>
-          )}
-          sorter={(a: Delivery, b: Delivery) => a.deliveryNumber.localeCompare(b.deliveryNumber)}
-        />
-        <Table.Column
-          title={<Trans>Order</Trans>}
-          dataIndex="orderNumber"
-          key="orderNumber"
-          sorter={(a: Delivery, b: Delivery) =>
-            (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")
-          }
-        />
-        <Table.Column
-          title={<Trans>Client</Trans>}
-          dataIndex="clientName"
-          key="clientName"
-          sorter={(a: Delivery, b: Delivery) =>
-            (a.clientName ?? "").localeCompare(b.clientName ?? "")
-          }
-        />
-        <Table.Column
-          title={<Trans>Delivery date</Trans>}
-          dataIndex="deliveryDate"
-          key="deliveryDate"
-          render={(v: number) => (v ? formatDate(v) : "—")}
-          sorter={(a: Delivery, b: Delivery) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
-        />
-        <Table.Column
-          title={<Trans>Status</Trans>}
-          dataIndex="status"
-          key="status"
-          sorter={(a: Delivery, b: Delivery) => (a.status ?? "").localeCompare(b.status ?? "")}
-          render={statusTag}
-        />
-      </Table>
+      <Row style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Table
+            dataSource={filtered}
+            pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
+            rowKey="id"
+            loading={loading}
+            onRow={(record: Delivery) => ({
+              onClick: () => navigate(`/deliveries/${record.id}`),
+              style: { cursor: "pointer" },
+            })}
+          >
+            <Table.Column
+              title={<Trans>Number</Trans>}
+              key="deliveryNumber"
+              render={(d: Delivery) => (
+                <Link to={`/deliveries/${d.id}`} onClick={(e) => e.stopPropagation()}>
+                  {d.deliveryNumber}
+                </Link>
+              )}
+              sorter={(a: Delivery, b: Delivery) =>
+                a.deliveryNumber.localeCompare(b.deliveryNumber)
+              }
+            />
+            <Table.Column
+              title={<Trans>Order</Trans>}
+              key="orderNumber"
+              sorter={(a: Delivery, b: Delivery) =>
+                (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")
+              }
+              render={(d: Delivery) =>
+                d.orderId ? (
+                  <Link to={`/orders/${d.orderId}`} onClick={(e) => e.stopPropagation()}>
+                    {d.orderNumber}
+                  </Link>
+                ) : (
+                  (d.orderNumber ?? "—")
+                )
+              }
+            />
+            <Table.Column
+              title={<Trans>Client</Trans>}
+              dataIndex="clientName"
+              key="clientName"
+              sorter={(a: Delivery, b: Delivery) =>
+                (a.clientName ?? "").localeCompare(b.clientName ?? "")
+              }
+            />
+            <Table.Column
+              title={<Trans>Delivery date</Trans>}
+              dataIndex="deliveryDate"
+              key="deliveryDate"
+              render={(v: number) => (v ? formatDate(v) : "—")}
+              sorter={(a: Delivery, b: Delivery) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
+            />
+            <Table.Column
+              title={<Trans>Status</Trans>}
+              dataIndex="status"
+              key="status"
+              filters={DELIVERY_STATUSES.map((s) => ({ text: deliveryStatusLabel(s), value: s }))}
+              onFilter={(value, record: Delivery) => record.status === value}
+              sorter={(a: Delivery, b: Delivery) => (a.status ?? "").localeCompare(b.status ?? "")}
+              render={statusTag}
+            />
+          </Table>
+        </Col>
+      </Row>
     </>
   );
 };
