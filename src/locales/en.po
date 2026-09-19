@@ -110,7 +110,7 @@ msgstr "A journal entry can only be posted within an open fiscal year. Create on
 msgid "A reason is required to override"
 msgstr "A reason is required to override"
 
-#: src/components/organizations/organization-edit-drawer.tsx:213
+#: src/components/organizations/organization-edit-drawer.tsx:223
 msgid "Accent color used across the app while this organization is selected."
 msgstr "Accent color used across the app while this organization is selected."
 
@@ -142,19 +142,19 @@ msgstr "Account save failed"
 msgid "Account updated"
 msgstr "Account updated"
 
-#: src/components/organizations/organization-edit-drawer.tsx:419
+#: src/components/organizations/organization-edit-drawer.tsx:439
 #: src/components/organizations/organization-members-panel.tsx:14
-#: src/components/products/form.tsx:539
+#: src/components/products/form.tsx:551
 #: src/components/tax-rates/form.tsx:246
 #: src/layouts/base.tsx:597
 msgid "Accounting"
 msgstr "Accounting"
 
-#: src/components/organizations/organization-edit-drawer.tsx:441
+#: src/components/organizations/organization-edit-drawer.tsx:461
 msgid "Accounts payable"
 msgstr "Accounts payable"
 
-#: src/components/organizations/organization-edit-drawer.tsx:426
+#: src/components/organizations/organization-edit-drawer.tsx:446
 msgid "Accounts receivable"
 msgstr "Accounts receivable"
 
@@ -188,14 +188,14 @@ msgid "Add line item"
 msgstr "Add line item"
 
 #: src/components/clients/form.tsx:292
-#: src/components/organizations/organization-edit-drawer.tsx:312
-#: src/components/vendors/form.tsx:231
+#: src/components/organizations/organization-edit-drawer.tsx:322
+#: src/components/vendors/form.tsx:246
 #: src/routes/clients.tsx:117
-#: src/routes/vendors.tsx:110
+#: src/routes/vendors.tsx:117
 msgid "Address"
 msgstr "Address"
 
-#: src/components/products/form.tsx:344
+#: src/components/products/form.tsx:356
 msgid "Adjust stock to zero first"
 msgstr "Adjust stock to zero first"
 
@@ -270,7 +270,7 @@ msgstr "Amount received ({currency})"
 msgid "AP Aging"
 msgstr "AP Aging"
 
-#: src/components/organizations/organization-edit-drawer.tsx:206
+#: src/components/organizations/organization-edit-drawer.tsx:216
 msgid "Appearance"
 msgstr "Appearance"
 
@@ -319,7 +319,7 @@ msgstr "Are you sure you want to delete this journal?"
 msgid "Are you sure you want to delete this payment term?"
 msgstr "Are you sure you want to delete this payment term?"
 
-#: src/components/products/form.tsx:240
+#: src/components/products/form.tsx:252
 msgid "Are you sure you want to delete this product?"
 msgstr "Are you sure you want to delete this product?"
 
@@ -331,7 +331,7 @@ msgstr "Are you sure you want to delete this tax rate?"
 msgid "Are you sure you want to delete this unit of measure?"
 msgstr "Are you sure you want to delete this unit of measure?"
 
-#: src/components/vendors/form.tsx:132
+#: src/components/vendors/form.tsx:133
 msgid "Are you sure you want to delete this vendor?"
 msgstr "Are you sure you want to delete this vendor?"
 
@@ -433,7 +433,7 @@ msgstr "Bank / cash account"
 msgid "Bank account"
 msgstr "Bank account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:285
+#: src/components/organizations/organization-edit-drawer.tsx:295
 msgid "Bank name"
 msgstr "Bank name"
 
@@ -441,7 +441,7 @@ msgstr "Bank name"
 msgid "Bank transfer"
 msgstr "Bank transfer"
 
-#: src/components/organizations/organization-edit-drawer.tsx:280
+#: src/components/organizations/organization-edit-drawer.tsx:290
 msgid "Banking"
 msgstr "Banking"
 
@@ -449,7 +449,7 @@ msgstr "Banking"
 msgid "Base"
 msgstr "Base"
 
-#: src/components/products/form.tsx:461
+#: src/components/products/form.tsx:473
 msgid "Base unit of measure"
 msgstr "Base unit of measure"
 
@@ -466,7 +466,7 @@ msgid "Bill From"
 msgstr "Bill From"
 
 #: src/components/products/bom-editor-drawer.tsx:286
-#: src/components/products/form.tsx:521
+#: src/components/products/form.tsx:533
 #: src/layouts/base.tsx:579
 #: src/routes/bill-of-materials.tsx:72
 msgid "Bill of Materials"
@@ -503,7 +503,7 @@ msgstr "Billing {0} but only {1} ordered."
 msgid "Billing {0} but only {1} received ({2} already invoiced)."
 msgstr "Billing {0} but only {1} received ({2} already invoiced)."
 
-#: src/components/organizations/organization-edit-drawer.tsx:211
+#: src/components/organizations/organization-edit-drawer.tsx:221
 msgid "Brand color"
 msgstr "Brand color"
 
@@ -520,7 +520,7 @@ msgstr "Built-in journals can't be deleted"
 msgid "Buyer reference"
 msgstr "Buyer reference"
 
-#: src/components/products/form.tsx:436
+#: src/components/products/form.tsx:448
 msgid "Calculated as a weighted average once goods are received at a cost."
 msgstr "Calculated as a weighted average once goods are received at a cost."
 
@@ -542,12 +542,12 @@ msgstr "Canary Islands general indirect tax"
 #: src/components/payments/payment-panel.tsx:282
 #: src/components/products/bom-editor-drawer.tsx:296
 #: src/components/products/bom-editor-drawer.tsx:308
-#: src/components/products/form.tsx:254
+#: src/components/products/form.tsx:266
 #: src/components/stock/movement-form.tsx:119
 #: src/components/stock/serial-capture-modal.tsx:158
 #: src/components/tax-rates/form.tsx:162
 #: src/components/units-of-measure/form.tsx:113
-#: src/components/vendors/form.tsx:151
+#: src/components/vendors/form.tsx:152
 #: src/routes/accounting/fiscal-periods.tsx:114
 #: src/routes/cash-book.tsx:439
 #: src/routes/cash-book.tsx:1210
@@ -605,7 +605,7 @@ msgid "Cancelled"
 msgstr "Cancelled"
 
 #. placeholder {0}: product.stockQuantity
-#: src/components/products/form.tsx:354
+#: src/components/products/form.tsx:366
 msgid "Cannot change while stock is non-zero ({0}) — adjust stock to zero first."
 msgstr "Cannot change while stock is non-zero ({0}) — adjust stock to zero first."
 
@@ -645,7 +645,7 @@ msgstr "Cash movement recorded"
 msgid "Cash register"
 msgstr "Cash register"
 
-#: src/components/organizations/organization-edit-drawer.tsx:508
+#: src/components/organizations/organization-edit-drawer.tsx:528
 msgid "Cash register account"
 msgstr "Cash register account"
 
@@ -657,7 +657,7 @@ msgstr "Cash sale"
 msgid "Cash sale recorded"
 msgstr "Cash sale recorded"
 
-#: src/components/products/form.tsx:375
+#: src/components/products/form.tsx:387
 #: src/routes/inventory.tsx:335
 #: src/routes/products.tsx:258
 msgid "Category"
@@ -668,7 +668,7 @@ msgstr "Category"
 msgid "Change due: {0}"
 msgstr "Change due: {0}"
 
-#: src/components/organizations/organization-edit-drawer.tsx:260
+#: src/components/organizations/organization-edit-drawer.tsx:270
 msgid "Change logo"
 msgstr "Change logo"
 
@@ -691,9 +691,9 @@ msgstr "Choose file"
 
 #: src/components/clients/form.tsx:327
 #: src/components/clients/form.tsx:328
-#: src/components/organizations/organization-edit-drawer.tsx:345
-#: src/components/vendors/form.tsx:262
-#: src/components/vendors/form.tsx:263
+#: src/components/organizations/organization-edit-drawer.tsx:365
+#: src/components/vendors/form.tsx:277
+#: src/components/vendors/form.tsx:278
 msgid "City"
 msgstr "City"
 
@@ -744,7 +744,7 @@ msgstr "Client update failed"
 msgid "Client updated successfully"
 msgstr "Client updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:89
+#: src/components/organizations/organizations-table.tsx:101
 #: src/routes/organizations/index.tsx:417
 msgid "client(s)"
 msgstr "client(s)"
@@ -795,9 +795,9 @@ msgstr "Closing balance"
 #: src/components/clients/form.tsx:207
 #: src/components/clients/form.tsx:208
 #: src/components/organizations/organization-edit-drawer.tsx:141
-#: src/components/organizations/organizations-table.tsx:45
-#: src/components/vendors/form.tsx:179
+#: src/components/organizations/organizations-table.tsx:57
 #: src/components/vendors/form.tsx:180
+#: src/components/vendors/form.tsx:181
 #: src/routes/accounting/chart-of-accounts.tsx:109
 #: src/routes/accounting/journals.tsx:76
 #: src/routes/accounting/reports/balance-sheet.tsx:39
@@ -805,6 +805,7 @@ msgstr "Closing balance"
 #: src/routes/accounting/trial-balance.tsx:128
 #: src/routes/clients.tsx:110
 #: src/routes/settings/countries.tsx:91
+#: src/routes/vendors.tsx:110
 msgid "Code"
 msgstr "Code"
 
@@ -831,7 +832,7 @@ msgstr "Completed"
 msgid "Component"
 msgstr "Component"
 
-#: src/components/products/form.tsx:389
+#: src/components/products/form.tsx:401
 #: src/routes/products.tsx:174
 msgid "Component / intermediate"
 msgstr "Component / intermediate"
@@ -840,7 +841,7 @@ msgstr "Component / intermediate"
 msgid "Component is required"
 msgstr "Component is required"
 
-#: src/routes/bill-of-materials.tsx:121
+#: src/routes/bill-of-materials.tsx:134
 msgid "Components"
 msgstr "Components"
 
@@ -867,7 +868,7 @@ msgid "Confirmed"
 msgstr "Confirmed"
 
 #: src/components/clients/form.tsx:190
-#: src/components/vendors/form.tsx:162
+#: src/components/vendors/form.tsx:163
 msgid "Contact"
 msgstr "Contact"
 
@@ -883,11 +884,11 @@ msgstr "Copied into new invoices for this client, e.g. a Leitweg-ID for German B
 msgid "Cost"
 msgstr "Cost"
 
-#: src/components/organizations/organization-edit-drawer.tsx:572
+#: src/components/organizations/organization-edit-drawer.tsx:592
 msgid "Cost of goods sold, recognized against inventory when a shipment ships."
 msgstr "Cost of goods sold, recognized against inventory when a shipment ships."
 
-#: src/components/products/form.tsx:434
+#: src/components/products/form.tsx:446
 msgid "Cost price"
 msgstr "Cost price"
 
@@ -920,7 +921,7 @@ msgstr "Counter"
 msgid "Counter must be 0 or greater"
 msgstr "Counter must be 0 or greater"
 
-#: src/components/organizations/organization-edit-drawer.tsx:592
+#: src/components/organizations/organization-edit-drawer.tsx:612
 msgid "Counter-account for a manual stock adjustment's signed inventory value change."
 msgstr "Counter-account for a manual stock adjustment's signed inventory value change."
 
@@ -930,9 +931,9 @@ msgid "Countries"
 msgstr "Countries"
 
 #: src/components/clients/form.tsx:295
-#: src/components/organizations/organization-edit-drawer.tsx:149
-#: src/components/organizations/organization-edit-drawer.tsx:317
-#: src/components/vendors/form.tsx:234
+#: src/components/organizations/organization-edit-drawer.tsx:151
+#: src/components/organizations/organization-edit-drawer.tsx:329
+#: src/components/vendors/form.tsx:249
 #: src/routes/organizations/new.tsx:67
 msgid "Country"
 msgstr "Country"
@@ -956,13 +957,13 @@ msgstr "Creates a snapshot, saves it to the backup list, and downloads it."
 msgid "Credit"
 msgstr "Credit"
 
-#: src/components/organizations/organization-edit-drawer.tsx:612
+#: src/components/organizations/organization-edit-drawer.tsx:632
 msgid "Credited for the freight/customs allocated to a receipt whose purchase order belongs to an import — separate from GRNI, which stays valued at the vendor's goods price only."
 msgstr "Credited for the freight/customs allocated to a receipt whose purchase order belongs to an import — separate from GRNI, which stays valued at the vendor's goods price only."
 
 #: src/components/currency/currency-fields.tsx:47
-#: src/components/organizations/organization-edit-drawer.tsx:160
-#: src/components/organizations/organizations-table.tsx:72
+#: src/components/organizations/organization-edit-drawer.tsx:170
+#: src/components/organizations/organizations-table.tsx:84
 #: src/routes/organizations/new.tsx:78
 msgid "Currency"
 msgstr "Currency"
@@ -1054,7 +1055,7 @@ msgstr "Database restored — reload to see changes"
 msgid "Date"
 msgstr "Date"
 
-#: src/components/organizations/organization-edit-drawer.tsx:377
+#: src/components/organizations/organization-edit-drawer.tsx:397
 msgid "Date format"
 msgstr "Date format"
 
@@ -1072,15 +1073,15 @@ msgstr "Date range"
 msgid "DATEV account number"
 msgstr "DATEV account number"
 
-#: src/components/organizations/organization-edit-drawer.tsx:631
+#: src/components/organizations/organization-edit-drawer.tsx:651
 msgid "DATEV clearing account"
 msgstr "DATEV clearing account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:664
+#: src/components/organizations/organization-edit-drawer.tsx:684
 msgid "DATEV client number"
 msgstr "DATEV client number"
 
-#: src/components/organizations/organization-edit-drawer.tsx:653
+#: src/components/organizations/organization-edit-drawer.tsx:673
 msgid "DATEV consultant number"
 msgstr "DATEV consultant number"
 
@@ -1119,13 +1120,13 @@ msgstr "Days overdue"
 msgid "Debit"
 msgstr "Debit"
 
-#: src/components/organizations/organization-edit-drawer.tsx:391
+#: src/components/organizations/organization-edit-drawer.tsx:411
 #: src/routes/organizations/new.tsx:97
 msgid "Decimal places"
 msgstr "Decimal places"
 
 #: src/components/invoices/layouts.ts:31
-#: src/components/organizations/organization-edit-drawer.tsx:404
+#: src/components/organizations/organization-edit-drawer.tsx:424
 #: src/components/tax-rates/form.tsx:207
 #: src/routes/settings/document-templates.tsx:142
 #: src/routes/settings/payment-terms.tsx:100
@@ -1139,26 +1140,26 @@ msgstr "Default"
 msgid "Default buyer reference"
 msgstr "Default buyer reference"
 
-#: src/components/organizations/organization-edit-drawer.tsx:494
+#: src/components/organizations/organization-edit-drawer.tsx:514
 msgid "Default cash account"
 msgstr "Default cash account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:570
+#: src/components/organizations/organization-edit-drawer.tsx:590
 msgid "Default COGS account"
 msgstr "Default COGS account"
 
 #: src/components/clients/form.tsx:277
 #: src/components/clients/form.tsx:280
-#: src/components/vendors/form.tsx:204
-#: src/components/vendors/form.tsx:205
+#: src/components/vendors/form.tsx:219
+#: src/components/vendors/form.tsx:220
 msgid "Default currency"
 msgstr "Default currency"
 
-#: src/components/organizations/organization-edit-drawer.tsx:475
+#: src/components/organizations/organization-edit-drawer.tsx:495
 msgid "Default expense account"
 msgstr "Default expense account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:709
+#: src/components/organizations/organization-edit-drawer.tsx:729
 msgid "Default fiscal stamp amount"
 msgstr "Default fiscal stamp amount"
 
@@ -1170,27 +1171,27 @@ msgstr "Default for new invoices"
 msgid "Default for new products"
 msgstr "Default for new products"
 
-#: src/components/organizations/organization-edit-drawer.tsx:550
+#: src/components/organizations/organization-edit-drawer.tsx:570
 msgid "Default GRNI account"
 msgstr "Default GRNI account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:610
+#: src/components/organizations/organization-edit-drawer.tsx:630
 msgid "Default import costs payable account"
 msgstr "Default import costs payable account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:530
+#: src/components/organizations/organization-edit-drawer.tsx:550
 msgid "Default inventory account"
 msgstr "Default inventory account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:590
+#: src/components/organizations/organization-edit-drawer.tsx:610
 msgid "Default inventory adjustment account"
 msgstr "Default inventory adjustment account"
 
-#: src/components/organizations/organization-edit-drawer.tsx:456
+#: src/components/organizations/organization-edit-drawer.tsx:476
 msgid "Default revenue account"
 msgstr "Default revenue account"
 
-#: src/components/products/form.tsx:503
+#: src/components/products/form.tsx:515
 msgid "Default tax rate"
 msgstr "Default tax rate"
 
@@ -1206,13 +1207,13 @@ msgstr "Defaults to the full total. Entering more just records the change given 
 #: src/components/accounting/journal-form.tsx:115
 #: src/components/clients/form.tsx:167
 #: src/components/imports/form.tsx:234
-#: src/components/organizations/organizations-table.tsx:135
+#: src/components/organizations/organizations-table.tsx:147
 #: src/components/payment-terms/form.tsx:100
-#: src/components/products/form.tsx:247
+#: src/components/products/form.tsx:259
 #: src/components/tax-rates/form.tsx:143
 #: src/components/tax-rates/form.tsx:155
 #: src/components/units-of-measure/form.tsx:106
-#: src/components/vendors/form.tsx:139
+#: src/components/vendors/form.tsx:140
 #: src/routes/accounting/journal-entries/details.tsx:375
 #: src/routes/deliveries/details.tsx:540
 #: src/routes/inbound-deliveries/details.tsx:544
@@ -1264,7 +1265,7 @@ msgstr "Delete this invoice?"
 msgid "Delete this order?"
 msgstr "Delete this order?"
 
-#: src/components/organizations/organizations-table.tsx:103
+#: src/components/organizations/organizations-table.tsx:115
 msgid "Delete this organization?"
 msgstr "Delete this organization?"
 
@@ -1347,7 +1348,7 @@ msgstr "Delivery status updated"
 msgid "Delivery update failed"
 msgstr "Delivery update failed"
 
-#: src/components/organizations/organizations-table.tsx:97
+#: src/components/organizations/organizations-table.tsx:109
 #: src/routes/organizations/index.tsx:427
 msgid "delivery(ies)"
 msgstr "delivery(ies)"
@@ -1364,7 +1365,7 @@ msgstr "Deposit to the bank"
 #: src/components/invoices/pdf-tunisia.tsx:197
 #: src/components/invoices/pdf.tsx:279
 #: src/components/line-items/table.tsx:259
-#: src/components/products/form.tsx:401
+#: src/components/products/form.tsx:413
 #: src/components/tax-rates/form.tsx:191
 #: src/components/tax-rates/form.tsx:192
 #: src/routes/accounting/journal-entries.tsx:119
@@ -1386,7 +1387,7 @@ msgid "Destination"
 msgstr "Destination"
 
 #: src/components/organizations/organization-edit-drawer.tsx:129
-#: src/components/products/form.tsx:270
+#: src/components/products/form.tsx:282
 #: src/components/stock/movement-form.tsx:255
 msgid "Details"
 msgstr "Details"
@@ -1399,7 +1400,7 @@ msgstr "Difference"
 msgid "Direct debit"
 msgstr "Direct debit"
 
-#: src/components/products/form.tsx:488
+#: src/components/products/form.tsx:500
 msgid "Discard and continue"
 msgstr "Discard and continue"
 
@@ -1480,23 +1481,23 @@ msgid "E-invoice export failed"
 msgstr "E-invoice export failed"
 
 #: src/components/clients/form.tsx:341
-#: src/components/organizations/organization-edit-drawer.tsx:354
+#: src/components/organizations/organization-edit-drawer.tsx:374
 #: src/components/tax-rates/form.tsx:214
 msgid "E-invoicing"
 msgstr "E-invoicing"
 
-#: src/components/organizations/organization-edit-drawer.tsx:176
+#: src/components/organizations/organization-edit-drawer.tsx:186
 msgid "E-mail"
 msgstr "E-mail"
 
 #: src/components/clients/form.tsx:232
 #: src/components/clients/form.tsx:233
-#: src/components/vendors/form.tsx:189
-#: src/components/vendors/form.tsx:190
+#: src/components/vendors/form.tsx:204
+#: src/components/vendors/form.tsx:205
 msgid "E-mails"
 msgstr "E-mails"
 
-#: src/components/organizations/organization-edit-drawer.tsx:658
+#: src/components/organizations/organization-edit-drawer.tsx:678
 msgid "e.g. 1001"
 msgstr "e.g. 1001"
 
@@ -1510,6 +1511,8 @@ msgstr "e.g. 1200"
 
 #: src/components/clients/form.tsx:221
 #: src/components/clients/form.tsx:223
+#: src/components/vendors/form.tsx:193
+#: src/components/vendors/form.tsx:195
 msgid "e.g. 1234567A/B/C/000"
 msgstr "e.g. 1234567A/B/C/000"
 
@@ -1517,7 +1520,7 @@ msgstr "e.g. 1234567A/B/C/000"
 msgid "e.g. 2026"
 msgstr "e.g. 2026"
 
-#: src/components/organizations/organization-edit-drawer.tsx:667
+#: src/components/organizations/organization-edit-drawer.tsx:687
 msgid "e.g. 456"
 msgstr "e.g. 456"
 
@@ -1553,7 +1556,7 @@ msgstr "e.g. Net 30"
 msgid "e.g. Sales"
 msgstr "e.g. Sales"
 
-#: src/components/products/form.tsx:304
+#: src/components/products/form.tsx:316
 msgid "e.g. SVC-001"
 msgstr "e.g. SVC-001"
 
@@ -1589,7 +1592,7 @@ msgstr "Edit organization"
 msgid "Edit payment term"
 msgstr "Edit payment term"
 
-#: src/components/products/form.tsx:230
+#: src/components/products/form.tsx:242
 msgid "Edit product"
 msgstr "Edit product"
 
@@ -1605,12 +1608,12 @@ msgstr "Edit unit of measure"
 msgid "Edit user"
 msgstr "Edit user"
 
-#: src/components/vendors/form.tsx:122
+#: src/components/vendors/form.tsx:123
 msgid "Edit vendor"
 msgstr "Edit vendor"
 
 #: src/components/feedback-modal.tsx:65
-#: src/components/organizations/organizations-table.tsx:52
+#: src/components/organizations/organizations-table.tsx:64
 #: src/routes/login.tsx:111
 #: src/routes/settings/users.tsx:183
 #: src/routes/settings/users.tsx:316
@@ -1622,7 +1625,7 @@ msgid "Email of an existing user"
 msgstr "Email of an existing user"
 
 #: src/routes/clients.tsx:125
-#: src/routes/vendors.tsx:118
+#: src/routes/vendors.tsx:125
 msgid "Emails"
 msgstr "Emails"
 
@@ -1634,11 +1637,11 @@ msgstr "Enable \"Track inventory\" on a product (Master Data → Products) to se
 msgid "Enable automatic backups"
 msgstr "Enable automatic backups"
 
-#: src/components/organizations/organization-edit-drawer.tsx:683
+#: src/components/organizations/organization-edit-drawer.tsx:703
 msgid "Enable fiscal stamp"
 msgstr "Enable fiscal stamp"
 
-#: src/components/organizations/organization-edit-drawer.tsx:700
+#: src/components/organizations/organization-edit-drawer.tsx:720
 msgid "Enable withholding tax"
 msgstr "Enable withholding tax"
 
@@ -1724,7 +1727,7 @@ msgstr "Expected date"
 msgid "Expense"
 msgstr "Expense"
 
-#: src/components/products/form.tsx:563
+#: src/components/products/form.tsx:575
 #: src/routes/cash-book.tsx:1268
 msgid "Expense account"
 msgstr "Expense account"
@@ -2003,7 +2006,7 @@ msgid "Failed to reverse journal entry"
 msgstr "Failed to reverse journal entry"
 
 #: src/components/products/bom-editor-drawer.tsx:244
-#: src/components/products/form.tsx:204
+#: src/components/products/form.tsx:216
 msgid "Failed to save bill of materials"
 msgstr "Failed to save bill of materials"
 
@@ -2107,7 +2110,7 @@ msgstr "Filter by reference"
 msgid "Filtered by product type, set above"
 msgstr "Filtered by product type, set above"
 
-#: src/components/products/form.tsx:386
+#: src/components/products/form.tsx:398
 #: src/routes/inventory.tsx:291
 #: src/routes/inventory.tsx:341
 #: src/routes/inventory.tsx:406
@@ -2167,7 +2170,7 @@ msgstr "Fiscal year created"
 msgid "Fiscal year creation failed"
 msgstr "Fiscal year creation failed"
 
-#: src/components/organizations/organization-edit-drawer.tsx:372
+#: src/components/organizations/organization-edit-drawer.tsx:392
 msgid "Formatting"
 msgstr "Formatting"
 
@@ -2253,7 +2256,7 @@ msgstr "Goods receipt status updated"
 msgid "Goods receipt update failed"
 msgstr "Goods receipt update failed"
 
-#: src/components/organizations/organizations-table.tsx:95
+#: src/components/organizations/organizations-table.tsx:107
 #: src/routes/organizations/index.tsx:429
 msgid "goods receipt(s)"
 msgstr "goods receipt(s)"
@@ -2263,7 +2266,7 @@ msgstr "goods receipt(s)"
 msgid "Goods Receipts"
 msgstr "Goods Receipts"
 
-#: src/components/organizations/organization-edit-drawer.tsx:552
+#: src/components/organizations/organization-edit-drawer.tsx:572
 msgid "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 msgstr "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 
@@ -2293,9 +2296,9 @@ msgstr "Hour (UTC)"
 
 #: src/components/clients/form.tsx:313
 #: src/components/clients/form.tsx:314
-#: src/components/organizations/organization-edit-drawer.tsx:335
-#: src/components/vendors/form.tsx:252
-#: src/components/vendors/form.tsx:253
+#: src/components/organizations/organization-edit-drawer.tsx:355
+#: src/components/vendors/form.tsx:267
+#: src/components/vendors/form.tsx:268
 msgid "House number"
 msgstr "House number"
 
@@ -2435,7 +2438,7 @@ msgstr "Incoming invoice state updated"
 msgid "Incoming invoice update failed"
 msgstr "Incoming invoice update failed"
 
-#: src/components/organizations/organizations-table.tsx:96
+#: src/components/organizations/organizations-table.tsx:108
 #: src/routes/organizations/index.tsx:430
 msgid "incoming invoice(s)"
 msgstr "incoming invoice(s)"
@@ -2533,7 +2536,7 @@ msgstr "Invoice number counter"
 msgid "Invoice number format"
 msgstr "Invoice number format"
 
-#: src/components/organizations/organization-edit-drawer.tsx:398
+#: src/components/organizations/organization-edit-drawer.tsx:418
 msgid "Invoice PDF layout"
 msgstr "Invoice PDF layout"
 
@@ -2553,7 +2556,7 @@ msgstr "Invoice update failed"
 msgid "Invoice updated successfully"
 msgstr "Invoice updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:91
+#: src/components/organizations/organizations-table.tsx:103
 #: src/routes/organizations/index.tsx:425
 msgid "invoice(s)"
 msgstr "invoice(s)"
@@ -2675,7 +2678,7 @@ msgstr "Leave blank to use client address"
 msgid "Leave blank to use organization address"
 msgstr "Leave blank to use organization address"
 
-#: src/components/products/form.tsx:486
+#: src/components/products/form.tsx:498
 msgid "Leave without saving?"
 msgstr "Leave without saving?"
 
@@ -2688,7 +2691,7 @@ msgstr "Liabilities"
 msgid "Liability"
 msgstr "Liability"
 
-#: src/components/organizations/organization-edit-drawer.tsx:726
+#: src/components/organizations/organization-edit-drawer.tsx:746
 msgid "Liability account credited when an invoice's fiscal stamp posts — the seller collects it on behalf of the state, so it's never revenue."
 msgstr "Liability account credited when an invoice's fiscal stamp posts — the seller collects it on behalf of the state, so it's never revenue."
 
@@ -2744,7 +2747,7 @@ msgstr "Loan status"
 msgid "Login failed"
 msgstr "Login failed"
 
-#: src/components/organizations/organization-edit-drawer.tsx:226
+#: src/components/organizations/organization-edit-drawer.tsx:236
 msgid "Logo"
 msgstr "Logo"
 
@@ -2764,7 +2767,7 @@ msgstr "Manage clients"
 msgid "Manage payment terms"
 msgstr "Manage payment terms"
 
-#: src/components/products/form.tsx:494
+#: src/components/products/form.tsx:506
 msgid "Manage units of measure"
 msgstr "Manage units of measure"
 
@@ -2773,7 +2776,7 @@ msgstr "Manage units of measure"
 msgid "Manage vendors"
 msgstr "Manage vendors"
 
-#: src/components/products/form.tsx:487
+#: src/components/products/form.tsx:499
 msgid "Managing units of measure closes this product and discards your unsaved changes."
 msgstr "Managing units of measure closes this product and discards your unsaved changes."
 
@@ -2825,6 +2828,7 @@ msgid "Matched"
 msgstr "Matched"
 
 #: src/components/clients/form.tsx:220
+#: src/components/vendors/form.tsx:192
 msgid "Matricule Fiscal (MF)"
 msgstr "Matricule Fiscal (MF)"
 
@@ -2898,12 +2902,12 @@ msgstr "Movements for {0}"
 #: src/components/organizations/organization-edit-drawer.tsx:134
 #: src/components/organizations/organizations-table.tsx:39
 #: src/components/payment-terms/form.tsx:119
-#: src/components/products/form.tsx:275
+#: src/components/products/form.tsx:287
 #: src/components/tax-rates/form.tsx:186
 #: src/components/tax-rates/form.tsx:189
 #: src/components/units-of-measure/form.tsx:125
-#: src/components/vendors/form.tsx:167
-#: src/components/vendors/form.tsx:171
+#: src/components/vendors/form.tsx:168
+#: src/components/vendors/form.tsx:172
 #: src/routes/accounting/chart-of-accounts.tsx:117
 #: src/routes/accounting/fiscal-periods.tsx:184
 #: src/routes/accounting/fiscal-periods.tsx:243
@@ -2911,7 +2915,7 @@ msgstr "Movements for {0}"
 #: src/routes/accounting/fiscal-periods.tsx:326
 #: src/routes/accounting/journals.tsx:84
 #: src/routes/accounting/trial-balance.tsx:135
-#: src/routes/bill-of-materials.tsx:112
+#: src/routes/bill-of-materials.tsx:113
 #: src/routes/cash-book.tsx:1215
 #: src/routes/clients.tsx:96
 #: src/routes/organizations/new.tsx:63
@@ -2926,7 +2930,7 @@ msgstr "Movements for {0}"
 msgid "Name"
 msgstr "Name"
 
-#: src/components/products/form.tsx:276
+#: src/components/products/form.tsx:288
 msgid "Name is required"
 msgstr "Name is required"
 
@@ -3026,7 +3030,7 @@ msgstr "New payment term"
 msgid "New period"
 msgstr "New period"
 
-#: src/components/products/form.tsx:230
+#: src/components/products/form.tsx:242
 #: src/routes/products.tsx:200
 msgid "New product"
 msgstr "New product"
@@ -3068,7 +3072,7 @@ msgstr "New unit of measure"
 msgid "New user"
 msgstr "New user"
 
-#: src/components/vendors/form.tsx:122
+#: src/components/vendors/form.tsx:123
 #: src/routes/vendors.tsx:76
 msgid "New vendor"
 msgstr "New vendor"
@@ -3093,10 +3097,10 @@ msgstr "Next run: {nextRunLabel}"
 #: src/components/imports/form.tsx:448
 #: src/components/payment-terms/form.tsx:96
 #: src/components/payments/payment-panel.tsx:405
-#: src/components/products/form.tsx:243
+#: src/components/products/form.tsx:255
 #: src/components/tax-rates/form.tsx:151
 #: src/components/units-of-measure/form.tsx:102
-#: src/components/vendors/form.tsx:135
+#: src/components/vendors/form.tsx:136
 #: src/routes/accounting/fiscal-periods.tsx:225
 #: src/routes/accounting/journal-entries/details.tsx:362
 #: src/routes/accounting/journal-entries/details.tsx:372
@@ -3201,7 +3205,7 @@ msgstr "No purchase orders linked to this shipment yet."
 msgid "No purchases in this period"
 msgstr "No purchases in this period"
 
-#: src/routes/bill-of-materials.tsx:129
+#: src/routes/bill-of-materials.tsx:142
 msgid "No recipe defined yet"
 msgstr "No recipe defined yet"
 
@@ -3231,22 +3235,22 @@ msgstr "No vendor"
 
 #: src/components/accounting/account-form.tsx:183
 #: src/components/line-items/table.tsx:369
-#: src/components/organizations/organization-edit-drawer.tsx:432
-#: src/components/organizations/organization-edit-drawer.tsx:447
-#: src/components/organizations/organization-edit-drawer.tsx:466
-#: src/components/organizations/organization-edit-drawer.tsx:485
-#: src/components/organizations/organization-edit-drawer.tsx:499
-#: src/components/organizations/organization-edit-drawer.tsx:521
+#: src/components/organizations/organization-edit-drawer.tsx:452
+#: src/components/organizations/organization-edit-drawer.tsx:467
+#: src/components/organizations/organization-edit-drawer.tsx:486
+#: src/components/organizations/organization-edit-drawer.tsx:505
+#: src/components/organizations/organization-edit-drawer.tsx:519
 #: src/components/organizations/organization-edit-drawer.tsx:541
 #: src/components/organizations/organization-edit-drawer.tsx:561
 #: src/components/organizations/organization-edit-drawer.tsx:581
 #: src/components/organizations/organization-edit-drawer.tsx:601
-#: src/components/organizations/organization-edit-drawer.tsx:622
-#: src/components/organizations/organization-edit-drawer.tsx:644
-#: src/components/organizations/organization-edit-drawer.tsx:736
+#: src/components/organizations/organization-edit-drawer.tsx:621
+#: src/components/organizations/organization-edit-drawer.tsx:642
+#: src/components/organizations/organization-edit-drawer.tsx:664
+#: src/components/organizations/organization-edit-drawer.tsx:756
 #: src/components/tax-rates/form.tsx:262
 #: src/components/tax-rates/form.tsx:281
-#: src/routes/bill-of-materials.tsx:130
+#: src/routes/bill-of-materials.tsx:143
 #: src/routes/production-orders/details.tsx:248
 #: src/routes/purchase-orders/details.tsx:393
 msgid "None"
@@ -3340,7 +3344,7 @@ msgstr "Only active countries appear in the country picklist on organizations, v
 msgid "Open"
 msgstr "Open"
 
-#: src/components/products/form.tsx:528
+#: src/components/products/form.tsx:540
 msgid "Open in Bill of Materials screen"
 msgstr "Open in Bill of Materials screen"
 
@@ -3367,7 +3371,7 @@ msgstr "Opening balance"
 msgid "Optional"
 msgstr "Optional"
 
-#: src/components/products/form.tsx:377
+#: src/components/products/form.tsx:389
 msgid "Optional — filters this product out of purchasing pickers (if \"Finished good\") or sales pickers (if \"Component / intermediate\"). Leave unset if it's neither."
 msgstr "Optional — filters this product out of purchasing pickers (if \"Finished good\") or sales pickers (if \"Component / intermediate\"). Leave unset if it's neither."
 
@@ -3375,7 +3379,7 @@ msgstr "Optional — filters this product out of purchasing pickers (if \"Finish
 msgid "Optional — links the produced units to a shipment's reserved serial-number range."
 msgstr "Optional — links the produced units to a shipment's reserved serial-number range."
 
-#: src/components/products/form.tsx:404
+#: src/components/products/form.tsx:416
 msgid "Optional description or notes"
 msgstr "Optional description or notes"
 
@@ -3463,7 +3467,7 @@ msgstr "Order status updated"
 msgid "Order update failed"
 msgstr "Order update failed"
 
-#: src/components/organizations/organizations-table.tsx:93
+#: src/components/organizations/organizations-table.tsx:105
 #: src/routes/organizations/index.tsx:426
 msgid "order(s)"
 msgstr "order(s)"
@@ -3485,8 +3489,8 @@ msgstr "Organization created"
 msgid "Organization creation failed"
 msgstr "Organization creation failed"
 
-#: src/components/products/form.tsx:554
-#: src/components/products/form.tsx:574
+#: src/components/products/form.tsx:566
+#: src/components/products/form.tsx:586
 msgid "Organization default"
 msgstr "Organization default"
 
@@ -3587,11 +3591,11 @@ msgstr "Override"
 msgid "Override reason"
 msgstr "Override reason"
 
-#: src/components/products/form.tsx:565
+#: src/components/products/form.tsx:577
 msgid "Overrides the organization's default expense account on a vendor bill line."
 msgstr "Overrides the organization's default expense account on a vendor bill line."
 
-#: src/components/products/form.tsx:546
+#: src/components/products/form.tsx:558
 msgid "Overrides the organization's default revenue account on a sales invoice line."
 msgstr "Overrides the organization's default revenue account on a sales invoice line."
 
@@ -3675,8 +3679,8 @@ msgstr "Payment term updated"
 msgid "Payment terms"
 msgstr "Payment terms"
 
-#: src/components/vendors/form.tsx:217
-#: src/components/vendors/form.tsx:221
+#: src/components/vendors/form.tsx:232
+#: src/components/vendors/form.tsx:236
 msgid "Payment terms (days)"
 msgstr "Payment terms (days)"
 
@@ -3712,12 +3716,12 @@ msgstr "Personal ID/CIN card number — used to look up this client in Cash Book
 
 #: src/components/clients/form.tsx:237
 #: src/components/clients/form.tsx:238
-#: src/components/organizations/organization-edit-drawer.tsx:181
-#: src/components/organizations/organizations-table.tsx:58
-#: src/components/vendors/form.tsx:194
-#: src/components/vendors/form.tsx:195
+#: src/components/organizations/organization-edit-drawer.tsx:191
+#: src/components/organizations/organizations-table.tsx:70
+#: src/components/vendors/form.tsx:209
+#: src/components/vendors/form.tsx:210
 #: src/routes/clients.tsx:141
-#: src/routes/vendors.tsx:134
+#: src/routes/vendors.tsx:141
 msgid "Phone"
 msgstr "Phone"
 
@@ -3783,7 +3787,7 @@ msgstr "Please input a percentage!"
 
 #: src/components/clients/form.tsx:196
 #: src/components/tax-rates/form.tsx:187
-#: src/components/vendors/form.tsx:168
+#: src/components/vendors/form.tsx:169
 #: src/routes/organizations/new.tsx:62
 msgid "Please input name!"
 msgstr "Please input name!"
@@ -3829,9 +3833,9 @@ msgstr "Post this entry? It cannot be edited afterward."
 
 #: src/components/clients/form.tsx:320
 #: src/components/clients/form.tsx:323
-#: src/components/organizations/organization-edit-drawer.tsx:340
-#: src/components/vendors/form.tsx:257
-#: src/components/vendors/form.tsx:258
+#: src/components/organizations/organization-edit-drawer.tsx:360
+#: src/components/vendors/form.tsx:272
+#: src/components/vendors/form.tsx:273
 msgid "Postal code"
 msgstr "Postal code"
 
@@ -3844,7 +3848,7 @@ msgstr "Posted"
 msgid "Prefill only — every purchase order linked to this import still stores and freezes its own currency and rate when saved."
 msgstr "Prefill only — every purchase order linked to this import still stores and freezes its own currency and rate when saved."
 
-#: src/components/organizations/organization-edit-drawer.tsx:711
+#: src/components/organizations/organization-edit-drawer.tsx:731
 msgid "Prefills a new invoice's stamp amount. The statutory amount changes by law from time to time, so this is a plain editable default, not enforced."
 msgstr "Prefills a new invoice's stamp amount. The statutory amount changes by law from time to time, so this is a plain editable default, not enforced."
 
@@ -3859,7 +3863,7 @@ msgid "Preview"
 msgstr "Preview"
 
 #: src/components/invoices/pdf.tsx:285
-#: src/components/products/form.tsx:415
+#: src/components/products/form.tsx:427
 #: src/routes/invoices/details.tsx:830
 #: src/routes/products.tsx:275
 msgid "Price"
@@ -3869,7 +3873,7 @@ msgstr "Price"
 msgid "Price (tax incl.)"
 msgstr "Price (tax incl.)"
 
-#: src/components/products/form.tsx:416
+#: src/components/products/form.tsx:428
 msgid "Price is required"
 msgstr "Price is required"
 
@@ -3881,12 +3885,12 @@ msgstr "Price tolerance (%)"
 msgid "Price variance"
 msgstr "Price variance"
 
-#: src/components/products/form.tsx:410
+#: src/components/products/form.tsx:422
 msgid "Pricing"
 msgstr "Pricing"
 
 #: src/components/line-items/table.tsx:200
-#: src/components/products/form.tsx:293
+#: src/components/products/form.tsx:305
 #: src/components/stock/movement-form.tsx:134
 #: src/routes/accounting/reports/inventory-valuation.tsx:113
 #: src/routes/dashboard.tsx:332
@@ -3900,7 +3904,7 @@ msgstr "Pricing"
 msgid "Product"
 msgstr "Product"
 
-#: src/components/products/form.tsx:302
+#: src/components/products/form.tsx:314
 msgid "Product code is required"
 msgstr "Product code is required"
 
@@ -3917,7 +3921,7 @@ msgid "Product deleted"
 msgstr "Product deleted"
 
 #: src/atoms/product.ts:87
-#: src/atoms/product.ts:91
+#: src/atoms/product.ts:92
 msgid "Product deletion failed"
 msgstr "Product deletion failed"
 
@@ -3925,7 +3929,7 @@ msgstr "Product deletion failed"
 msgid "Product filter cleared — no longer matches the Stock levels filter above."
 msgstr "Product filter cleared — no longer matches the Stock levels filter above."
 
-#: src/components/products/form.tsx:278
+#: src/components/products/form.tsx:290
 msgid "Product or service name"
 msgstr "Product or service name"
 
@@ -3937,7 +3941,7 @@ msgstr "Product update failed"
 msgid "Product updated"
 msgstr "Product updated"
 
-#: src/components/organizations/organizations-table.tsx:92
+#: src/components/organizations/organizations-table.tsx:104
 #: src/routes/organizations/index.tsx:419
 msgid "product(s)"
 msgstr "product(s)"
@@ -4038,7 +4042,7 @@ msgstr "Purchase order unlinked"
 msgid "Purchase order update failed"
 msgstr "Purchase order update failed"
 
-#: src/components/organizations/organizations-table.tsx:94
+#: src/components/organizations/organizations-table.tsx:106
 #: src/routes/organizations/index.tsx:428
 msgid "purchase order(s)"
 msgstr "purchase order(s)"
@@ -4225,7 +4229,7 @@ msgstr "Reference"
 msgid "Refresh"
 msgstr "Refresh"
 
-#: src/components/organizations/organization-edit-drawer.tsx:191
+#: src/components/organizations/organization-edit-drawer.tsx:201
 msgid "Registration number"
 msgstr "Registration number"
 
@@ -4237,7 +4241,7 @@ msgstr "Remove line"
 msgid "Remove line item"
 msgstr "Remove line item"
 
-#: src/components/organizations/organization-edit-drawer.tsx:270
+#: src/components/organizations/organization-edit-drawer.tsx:280
 msgid "Remove logo"
 msgstr "Remove logo"
 
@@ -4276,11 +4280,11 @@ msgstr "Reporting"
 msgid "Required"
 msgstr "Required"
 
-#: src/components/organizations/organization-edit-drawer.tsx:665
+#: src/components/organizations/organization-edit-drawer.tsx:685
 msgid "Required to generate a DATEV export (1–99999)."
 msgstr "Required to generate a DATEV export (1–99999)."
 
-#: src/components/organizations/organization-edit-drawer.tsx:655
+#: src/components/organizations/organization-edit-drawer.tsx:675
 msgid "Required to generate a DATEV export (1001–9999999)."
 msgstr "Required to generate a DATEV export (1001–9999999)."
 
@@ -4384,7 +4388,7 @@ msgstr "Revenue"
 msgid "Revenue (selected period)"
 msgstr "Revenue (selected period)"
 
-#: src/components/products/form.tsx:544
+#: src/components/products/form.tsx:556
 msgid "Revenue account"
 msgstr "Revenue account"
 
@@ -4475,11 +4479,11 @@ msgstr "Sales by Product"
 #: src/components/organizations/organization-edit-drawer.tsx:123
 #: src/components/payment-terms/form.tsx:110
 #: src/components/products/bom-editor-drawer.tsx:327
-#: src/components/products/form.tsx:257
+#: src/components/products/form.tsx:269
 #: src/components/stock/movement-form.tsx:122
 #: src/components/tax-rates/form.tsx:165
 #: src/components/units-of-measure/form.tsx:116
-#: src/components/vendors/form.tsx:154
+#: src/components/vendors/form.tsx:155
 #: src/routes/deliveries/details.tsx:597
 #: src/routes/inbound-deliveries/details.tsx:606
 #: src/routes/incoming-invoices/details.tsx:665
@@ -4569,8 +4573,8 @@ msgid "Select"
 msgstr "Select"
 
 #: src/components/clients/form.tsx:299
-#: src/components/organizations/organization-edit-drawer.tsx:321
-#: src/components/vendors/form.tsx:238
+#: src/components/organizations/organization-edit-drawer.tsx:341
+#: src/components/vendors/form.tsx:253
 msgid "Select a country"
 msgstr "Select a country"
 
@@ -4600,7 +4604,7 @@ msgstr "Select a journal"
 msgid "Select a product"
 msgstr "Select a product"
 
-#: src/components/products/form.tsx:465
+#: src/components/products/form.tsx:477
 msgid "Select a unit of measure"
 msgstr "Select a unit of measure"
 
@@ -4612,11 +4616,11 @@ msgstr "Select an account"
 msgid "Select component"
 msgstr "Select component"
 
-#: src/components/organizations/organization-edit-drawer.tsx:150
+#: src/components/organizations/organization-edit-drawer.tsx:160
 msgid "Select country"
 msgstr "Select country"
 
-#: src/components/organizations/organization-edit-drawer.tsx:378
+#: src/components/organizations/organization-edit-drawer.tsx:398
 msgid "Select date format"
 msgstr "Select date format"
 
@@ -4647,7 +4651,7 @@ msgstr "Select product"
 msgid "Select serial numbers to ship"
 msgstr "Select serial numbers to ship"
 
-#: src/components/products/form.tsx:504
+#: src/components/products/form.tsx:516
 #: src/routes/invoices/details.tsx:879
 msgid "Select tax rate"
 msgstr "Select tax rate"
@@ -4690,7 +4694,7 @@ msgstr "Serial Numbers"
 msgid "Serial numbers to remove"
 msgstr "Serial numbers to remove"
 
-#: src/components/products/form.tsx:290
+#: src/components/products/form.tsx:302
 #: src/routes/products.tsx:160
 #: src/routes/products.tsx:252
 msgid "Service"
@@ -4723,11 +4727,11 @@ msgstr "Shortage quantity found"
 msgid "Show status flow"
 msgstr "Show status flow"
 
-#: src/components/organizations/organization-edit-drawer.tsx:676
+#: src/components/organizations/organization-edit-drawer.tsx:696
 msgid "Shows a fiscal stamp (flat, non-taxable duty) field on this organization's invoices, independent of the PDF layout."
 msgstr "Shows a fiscal stamp (flat, non-taxable duty) field on this organization's invoices, independent of the PDF layout."
 
-#: src/components/organizations/organization-edit-drawer.tsx:693
+#: src/components/organizations/organization-edit-drawer.tsx:713
 msgid "Shows a withholding tax rate field on this organization's invoices, independent of the PDF layout."
 msgstr "Shows a withholding tax rate field on this organization's invoices, independent of the PDF layout."
 
@@ -4765,13 +4769,13 @@ msgid "SKR03/SKR04-style numeric account code for the DATEV export's \"Konto\" c
 msgstr "SKR03/SKR04-style numeric account code for the DATEV export's \"Konto\" column. Required on every account referenced by a posted entry before a DATEV export can be generated."
 
 #: src/routes/accounting/reports/inventory-valuation.tsx:126
-#: src/routes/bill-of-materials.tsx:113
+#: src/routes/bill-of-materials.tsx:126
 #: src/routes/inventory.tsx:329
 #: src/routes/products.tsx:273
 msgid "SKU"
 msgstr "SKU"
 
-#: src/components/products/form.tsx:301
+#: src/components/products/form.tsx:313
 msgid "SKU / Product code"
 msgstr "SKU / Product code"
 
@@ -4784,7 +4788,7 @@ msgstr "Spend"
 msgid "Spend on an expense (no vendor bill)"
 msgstr "Spend on an expense (no vendor bill)"
 
-#: src/components/organizations/organization-edit-drawer.tsx:724
+#: src/components/organizations/organization-edit-drawer.tsx:744
 msgid "Stamp duty account"
 msgstr "Stamp duty account"
 
@@ -4828,7 +4832,7 @@ msgstr "Status"
 msgid "Status flow"
 msgstr "Status flow"
 
-#: src/components/products/form.tsx:489
+#: src/components/products/form.tsx:501
 msgid "Stay here"
 msgstr "Stay here"
 
@@ -4886,9 +4890,9 @@ msgstr "Stock valuation by product"
 
 #: src/components/clients/form.tsx:308
 #: src/components/clients/form.tsx:309
-#: src/components/organizations/organization-edit-drawer.tsx:330
-#: src/components/vendors/form.tsx:247
-#: src/components/vendors/form.tsx:248
+#: src/components/organizations/organization-edit-drawer.tsx:350
+#: src/components/vendors/form.tsx:262
+#: src/components/vendors/form.tsx:263
 msgid "Street"
 msgstr "Street"
 
@@ -4915,7 +4919,7 @@ msgstr "Switch to dark mode"
 msgid "Switch to light mode"
 msgstr "Switch to light mode"
 
-#: src/components/organizations/organization-edit-drawer.tsx:633
+#: src/components/organizations/organization-edit-drawer.tsx:653
 msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 msgstr "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 
@@ -4948,7 +4952,7 @@ msgstr "Tax for production, services and importation in Ceuta and Melilla"
 
 #: src/components/clients/form.tsx:346
 #: src/components/clients/form.tsx:347
-#: src/components/organizations/organization-edit-drawer.tsx:361
+#: src/components/organizations/organization-edit-drawer.tsx:381
 msgid "Tax number"
 msgstr "Tax number"
 
@@ -4982,7 +4986,7 @@ msgstr "Tax rate update failed"
 msgid "Tax rate updated successfully"
 msgstr "Tax rate updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:98
+#: src/components/organizations/organizations-table.tsx:110
 #: src/routes/organizations/index.tsx:420
 msgid "tax rate(s)"
 msgstr "tax rate(s)"
@@ -5009,6 +5013,10 @@ msgstr "Template uploaded"
 msgid "Thank you for your business"
 msgstr "Thank you for your business"
 
+#: src/components/organizations/organization-edit-drawer.tsx:331
+msgid "The ISO country code — drives currency/date formatting defaults and which e-invoicing profile applies. Separate from the Country field near the top, which only picks a starter chart of accounts."
+msgstr "The ISO country code — drives currency/date formatting defaults and which e-invoicing profile applies. Separate from the Country field near the top, which only picks a starter chart of accounts."
+
 #: src/routes/settings/document-numbering.tsx:238
 msgid "The number format and next counter for each document type. Invoice numbering is configured separately under Invoice settings."
 msgstr "The number format and next counter for each document type. Invoice numbering is configured separately under Invoice settings."
@@ -5017,7 +5025,7 @@ msgstr "The number format and next counter for each document type. Invoice numbe
 msgid "The number on the vendor's invoice"
 msgstr "The number on the vendor's invoice"
 
-#: src/components/organizations/organization-edit-drawer.tsx:510
+#: src/components/organizations/organization-edit-drawer.tsx:530
 msgid "The physical till the Cash Book screen's balance and daily movements report read — deliberately separate from \"Default cash account\" above, which this organization's chart of accounts uses as a payment default, not the register itself."
 msgstr "The physical till the Cash Book screen's balance and daily movements report read — deliberately separate from \"Default cash account\" above, which this organization's chart of accounts uses as a payment default, not the register itself."
 
@@ -5026,8 +5034,8 @@ msgid "The shipment this order's goods travel in — drives landed cost (freight
 msgstr "The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received."
 
 #: src/components/organizations/organization-danger-zone.tsx:102
-#: src/components/organizations/organizations-table.tsx:118
-#: src/components/organizations/organizations-table.tsx:122
+#: src/components/organizations/organizations-table.tsx:130
+#: src/components/organizations/organizations-table.tsx:134
 msgid "This cannot be undone."
 msgstr "This cannot be undone."
 
@@ -5103,7 +5111,7 @@ msgid "This will consume the recipe's components and produce the finished units.
 msgstr "This will consume the recipe's components and produce the finished units. Continue?"
 
 #: src/components/organizations/organization-danger-zone.tsx:86
-#: src/components/organizations/organizations-table.tsx:108
+#: src/components/organizations/organizations-table.tsx:120
 msgid "This will permanently delete:"
 msgstr "This will permanently delete:"
 
@@ -5193,11 +5201,11 @@ msgstr "Total quantity"
 msgid "Total revenue"
 msgstr "Total revenue"
 
-#: src/components/products/form.tsx:313
+#: src/components/products/form.tsx:325
 msgid "Track inventory"
 msgstr "Track inventory"
 
-#: src/components/products/form.tsx:350
+#: src/components/products/form.tsx:362
 msgid "Track serial numbers"
 msgstr "Track serial numbers"
 
@@ -5226,7 +5234,7 @@ msgstr "Tunisia"
 
 #: src/components/accounting/account-form.tsx:168
 #: src/components/accounting/journal-form.tsx:153
-#: src/components/products/form.tsx:283
+#: src/components/products/form.tsx:295
 #: src/components/stock/movement-form.tsx:147
 #: src/routes/accounting/chart-of-accounts.tsx:132
 #: src/routes/accounting/journals.tsx:98
@@ -5245,13 +5253,13 @@ msgstr "Type a serial number and press Enter"
 msgid "Type manually"
 msgstr "Type manually"
 
-#: src/components/products/form.tsx:384
+#: src/components/products/form.tsx:396
 #: src/routes/products.tsx:175
 msgid "Unclassified"
 msgstr "Unclassified"
 
 #: src/components/line-items/table.tsx:324
-#: src/routes/bill-of-materials.tsx:115
+#: src/routes/bill-of-materials.tsx:128
 #: src/routes/production-orders/details.tsx:322
 #: src/routes/production-orders/details.tsx:602
 msgid "Unit"
@@ -5333,7 +5341,7 @@ msgstr "Upload Excel"
 msgid "Upload failed"
 msgstr "Upload failed"
 
-#: src/components/organizations/organization-edit-drawer.tsx:260
+#: src/components/organizations/organization-edit-drawer.tsx:270
 msgid "Upload logo"
 msgstr "Upload logo"
 
@@ -5345,29 +5353,33 @@ msgstr "Upload template"
 msgid "Use this customer"
 msgstr "Use this customer"
 
-#: src/components/vendors/form.tsx:145
+#: src/components/vendors/form.tsx:146
 msgid "Used by {documentCount} document(s)"
 msgstr "Used by {documentCount} document(s)"
 
-#: src/components/organizations/organization-edit-drawer.tsx:458
+#: src/components/organizations/organization-edit-drawer.tsx:478
 msgid "Used for a sales invoice line whose product has no override."
 msgstr "Used for a sales invoice line whose product has no override."
 
-#: src/components/organizations/organization-edit-drawer.tsx:477
+#: src/components/organizations/organization-edit-drawer.tsx:497
 msgid "Used for a vendor bill line whose product has no override."
 msgstr "Used for a vendor bill line whose product has no override."
 
-#: src/components/organizations/organization-edit-drawer.tsx:442
+#: src/components/organizations/organization-edit-drawer.tsx:462
 msgid "Used for the AP line when a vendor bill posts."
 msgstr "Used for the AP line when a vendor bill posts."
 
-#: src/components/organizations/organization-edit-drawer.tsx:427
+#: src/components/organizations/organization-edit-drawer.tsx:447
 msgid "Used for the AR line when a sales invoice posts."
 msgstr "Used for the AR line when a sales invoice posts."
 
-#: src/components/organizations/organization-edit-drawer.tsx:532
+#: src/components/organizations/organization-edit-drawer.tsx:552
 msgid "Used to capitalize a stock-enabled product's value when it's received or adjusted."
 msgstr "Used to capitalize a stock-enabled product's value when it's received or adjusted."
+
+#: src/components/organizations/organization-edit-drawer.tsx:153
+msgid "Used to pick a starter chart of accounts (Germany/France get a localized one, everything else a generic one) — separate from the Address tab's Country, which is the ISO code driving currency/date defaults and e-invoicing."
+msgstr "Used to pick a starter chart of accounts (Germany/France get a localized one, everything else a generic one) — separate from the Address tab's Country, which is the ISO code driving currency/date defaults and e-invoicing."
 
 #: src/components/tax-rates/form.tsx:254
 msgid "Used when this rate applies to a sales invoice — a liability account."
@@ -5399,8 +5411,8 @@ msgstr "VAT category"
 
 #: src/components/clients/form.tsx:226
 #: src/components/clients/form.tsx:227
-#: src/components/vendors/form.tsx:184
-#: src/components/vendors/form.tsx:185
+#: src/components/vendors/form.tsx:198
+#: src/components/vendors/form.tsx:199
 msgid "VAT Number"
 msgstr "VAT Number"
 
@@ -5409,7 +5421,7 @@ msgid "VAT reverse charge"
 msgstr "VAT reverse charge"
 
 #: src/routes/clients.tsx:157
-#: src/routes/vendors.tsx:150
+#: src/routes/vendors.tsx:157
 msgid "VATIN"
 msgstr "VATIN"
 
@@ -5473,7 +5485,7 @@ msgstr "Vendor update failed"
 msgid "Vendor updated successfully"
 msgstr "Vendor updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:90
+#: src/components/organizations/organizations-table.tsx:102
 #: src/routes/organizations/index.tsx:418
 msgid "vendor(s)"
 msgstr "vendor(s)"
@@ -5521,11 +5533,11 @@ msgstr "Warning: This will also delete {invoiceCount} related invoice(s)."
 
 #: src/components/clients/form.tsx:242
 #: src/components/clients/form.tsx:243
-#: src/components/organizations/organization-edit-drawer.tsx:186
-#: src/components/vendors/form.tsx:199
-#: src/components/vendors/form.tsx:200
+#: src/components/organizations/organization-edit-drawer.tsx:196
+#: src/components/vendors/form.tsx:214
+#: src/components/vendors/form.tsx:215
 #: src/routes/clients.tsx:163
-#: src/routes/vendors.tsx:156
+#: src/routes/vendors.tsx:163
 msgid "Website"
 msgstr "Website"
 
@@ -5533,7 +5545,7 @@ msgstr "Website"
 msgid "week"
 msgstr "week"
 
-#: src/components/organizations/organization-edit-drawer.tsx:401
+#: src/components/organizations/organization-edit-drawer.tsx:421
 msgid "Which template invoices for this organization render with."
 msgstr "Which template invoices for this organization render with."
 
@@ -5574,10 +5586,10 @@ msgstr "Withholding tax rate"
 #: src/components/imports/form.tsx:447
 #: src/components/payment-terms/form.tsx:95
 #: src/components/payments/payment-panel.tsx:404
-#: src/components/products/form.tsx:242
+#: src/components/products/form.tsx:254
 #: src/components/tax-rates/form.tsx:150
 #: src/components/units-of-measure/form.tsx:101
-#: src/components/vendors/form.tsx:134
+#: src/components/vendors/form.tsx:135
 #: src/routes/accounting/fiscal-periods.tsx:224
 #: src/routes/accounting/journal-entries/details.tsx:361
 #: src/routes/accounting/journal-entries/details.tsx:371
