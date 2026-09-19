@@ -9,6 +9,7 @@ import {
   DatePicker,
   Descriptions,
   Divider,
+  Dropdown,
   Form,
   Input,
   Layout,
@@ -32,6 +33,7 @@ import {
   DeleteOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
+  MoreOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -410,11 +412,33 @@ const IncomingInvoiceDetails = () => {
           </Col>
           <Col xs={24} md={12} xl={5}>
             <Form.Item label={<Trans>State</Trans>}>
-              <Space>
+              {isNew ? (
                 <Tag color={incomingInvoiceStateColor[currentState as IncomingInvoiceState]}>
                   {incomingInvoiceStateLabel(currentState)}
                 </Tag>
-              </Space>
+              ) : (
+                <Dropdown
+                  menu={{
+                    items: INCOMING_INVOICE_STATES.map((s) => ({
+                      key: s,
+                      label: incomingInvoiceStateLabel(s),
+                    })),
+                    selectable: true,
+                    selectedKeys: [currentState],
+                    onSelect: ({ key }) => handleStateChange(key),
+                  }}
+                >
+                  <Tag
+                    color={incomingInvoiceStateColor[currentState as IncomingInvoiceState]}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Space size={4}>
+                      {incomingInvoiceStateLabel(currentState)}
+                      <MoreOutlined />
+                    </Space>
+                  </Tag>
+                </Dropdown>
+              )}
             </Form.Item>
           </Col>
           <Col xs={24} md={12} xl={10}>
@@ -549,7 +573,27 @@ const IncomingInvoiceDetails = () => {
               />
             )}
 
-            {blocked && (
+            {/* Once set, the override stays visible (and clearable) even after
+                the variance it was recorded for is resolved — without this,
+                matchOverride/matchOverrideReason unmount with `blocked` and
+                the invoice is left permanently flagged with no way to review
+                or undo it. */}
+            {!blocked && overrideActive && (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message={<Trans>This invoice's match variance is now resolved</Trans>}
+                description={
+                  <Trans>
+                    It was previously approved with an override — clear the checkbox below if it's
+                    no longer needed.
+                  </Trans>
+                }
+              />
+            )}
+
+            {(blocked || overrideActive) && (
               <Row gutter={24}>
                 <Col xs={24} md={6}>
                   <Form.Item name="matchOverride" valuePropName="checked">
@@ -649,17 +693,6 @@ const IncomingInvoiceDetails = () => {
                           <FileExcelOutlined /> <Trans>Excel</Trans>
                         </Button>
                       </Tooltip>
-                    )}
-                    {!isNew && (
-                      <Select
-                        value={currentState}
-                        style={{ width: 150 }}
-                        onChange={handleStateChange}
-                        options={INCOMING_INVOICE_STATES.map((s) => ({
-                          value: s,
-                          label: incomingInvoiceStateLabel(s),
-                        }))}
-                      />
                     )}
                     <Button type="primary" onClick={() => form.submit()}>
                       <SaveOutlined /> <Trans>Save</Trans>
