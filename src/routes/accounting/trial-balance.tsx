@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TrialBalanceRow } from "src/types/models";
 import { useLocation } from "react-router";
-import { Col, Row, Select, Table, Typography } from "antd";
+import { Alert, Button, Col, Row, Select, Table, Typography } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -40,6 +40,13 @@ const TrialBalance = () => {
 
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset rows to [], which rendered identically to a
+  // genuinely empty/balanced trial balance (0.00 debit, 0.00 credit is this
+  // report's whole point, not a red flag) — a slow load or transient error
+  // looked exactly like "books reconcile." Tracked separately so the page can
+  // show a real error instead of a false all-clear, the same fix already
+  // applied to inventory-valuation.tsx and the other accounting reports.
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (location.pathname === "/accounting/trial-balance") {
@@ -51,14 +58,20 @@ const TrialBalance = () => {
     if (fiscalYearId) loadFiscalPeriods(fiscalYearId);
   }, [fiscalYearId, loadFiscalPeriods]);
 
-  useEffect(() => {
+  const refresh = () => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     GetTrialBalance(organizationId, fiscalYearId || undefined, fiscalPeriodId || undefined)
       .then(setRows)
-      .catch(() => setRows([]))
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
-  }, [organizationId, fiscalYearId, fiscalPeriodId]);
+  };
+
+  useEffect(refresh, [organizationId, fiscalYearId, fiscalPeriodId]);
 
   const periods = fiscalYearId ? (fiscalPeriodsByYear[fiscalYearId] ?? []) : [];
   const totalDebit = sum(rows.map((r) => r.debit));
@@ -101,10 +114,25 @@ const TrialBalance = () => {
           </>
         }
       />
+
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the trial balance</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
-            dataSource={rows}
+            dataSource={failed ? [] : rows}
             pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
             rowKey="accountId"
             loading={loading}
@@ -116,10 +144,10 @@ const TrialBalance = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Typography.Text strong>{money(totalDebit)}</Typography.Text>
+                  <Typography.Text strong>{failed ? "—" : money(totalDebit)}</Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="right">
-                  <Typography.Text strong>{money(totalCredit)}</Typography.Text>
+                  <Typography.Text strong>{failed ? "—" : money(totalCredit)}</Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}

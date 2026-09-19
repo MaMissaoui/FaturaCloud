@@ -102,7 +102,7 @@ msgstr "Un client avec ce numéro de téléphone existe déjà"
 msgid "A flat statutory duty added to the invoice total, not subject to VAT."
 msgstr "Un droit fixe légal ajouté au total de la facture, non soumis à la TVA."
 
-#: src/routes/accounting/journal-entries/details.tsx:147
+#: src/routes/accounting/journal-entries/details.tsx:176
 msgid "A journal entry can only be posted within an open fiscal year. Create one under <0>Fiscal Periods</0> first."
 msgstr "Une écriture ne peut être comptabilisée que dans un exercice ouvert. Créez-en un d'abord sous <0>Exercices comptables</0>."
 
@@ -114,8 +114,8 @@ msgstr "Une justification est requise pour passer outre"
 msgid "Accent color used across the app while this organization is selected."
 msgstr "Couleur d'accent utilisée dans toute l'application lorsque cette organisation est sélectionnée."
 
-#: src/routes/accounting/journal-entries/details.tsx:229
-#: src/routes/accounting/journal-entries/details.tsx:417
+#: src/routes/accounting/journal-entries/details.tsx:258
+#: src/routes/accounting/journal-entries/details.tsx:453
 #: src/routes/accounting/reports/balance-sheet.tsx:40
 #: src/routes/accounting/reports/daily-cash-movements.tsx:84
 #: src/routes/accounting/reports/profit-and-loss.tsx:60
@@ -179,7 +179,7 @@ msgstr "Ajouter une nouvelle organisation à votre compte"
 msgid "Add component"
 msgstr "Ajouter un composant"
 
-#: src/routes/accounting/journal-entries/details.tsx:224
+#: src/routes/accounting/journal-entries/details.tsx:253
 msgid "Add line"
 msgstr "Ajouter une ligne"
 
@@ -219,9 +219,9 @@ msgstr "Toutes les catégories"
 
 #: src/routes/cash-book.tsx:1144
 msgid "All customers"
-msgstr ""
+msgstr "Tous les clients"
 
-#: src/routes/accounting/trial-balance.tsx:83
+#: src/routes/accounting/trial-balance.tsx:96
 msgid "All fiscal years"
 msgstr "Tous les exercices"
 
@@ -229,7 +229,7 @@ msgstr "Tous les exercices"
 msgid "All journals"
 msgstr "Tous les journaux"
 
-#: src/routes/accounting/trial-balance.tsx:95
+#: src/routes/accounting/trial-balance.tsx:108
 msgid "All periods"
 msgstr "Toutes les périodes"
 
@@ -416,7 +416,7 @@ msgstr "Bilan"
 msgid "Balance to collect later: {0}"
 msgstr "Solde à encaisser plus tard : {0}"
 
-#: src/routes/accounting/journal-entries/details.tsx:326
+#: src/routes/accounting/journal-entries/details.tsx:355
 msgid "Balanced"
 msgstr "Équilibrée"
 
@@ -643,7 +643,7 @@ msgstr "Mouvement de caisse enregistré"
 
 #: src/routes/cash-book.tsx:985
 msgid "Cash register"
-msgstr ""
+msgstr "Caisse"
 
 #: src/components/organizations/organization-edit-drawer.tsx:528
 msgid "Cash register account"
@@ -651,7 +651,7 @@ msgstr "Compte de caisse enregistreuse"
 
 #: src/routes/cash-book.tsx:840
 msgid "Cash sale"
-msgstr ""
+msgstr "Vente au comptant"
 
 #: src/routes/cash-book.tsx:567
 msgid "Cash sale recorded"
@@ -759,7 +759,7 @@ msgid "clients, vendors, products, tax rates"
 msgstr "clients, fournisseurs, produits, taux de taxe"
 
 #: src/components/mass-data/mass-data-excel-actions.tsx:93
-#: src/routes/accounting/fiscal-periods.tsx:229
+#: src/routes/accounting/fiscal-periods.tsx:230
 msgid "Close"
 msgstr "Clôturer"
 
@@ -768,23 +768,23 @@ msgstr "Clôturer"
 msgid "Close fiscal year \"{0}\"?"
 msgstr "Clôturer l'exercice « {0} » ?"
 
-#: src/routes/accounting/fiscal-periods.tsx:213
+#: src/routes/accounting/fiscal-periods.tsx:214
 msgid "Close this period? New entries will be blocked."
 msgstr "Clôturer cette période ? Les nouvelles écritures seront bloquées."
 
 #: src/routes/accounting/fiscal-periods.tsx:112
-#: src/routes/accounting/fiscal-periods.tsx:279
+#: src/routes/accounting/fiscal-periods.tsx:281
 msgid "Close year"
 msgstr "Clôturer l'exercice"
 
 #: src/routes/accounting/fiscal-periods.tsx:203
-#: src/routes/accounting/fiscal-periods.tsx:262
+#: src/routes/accounting/fiscal-periods.tsx:264
 msgid "Closed"
 msgstr "Clôturée"
 
 #: src/routes/cash-book.tsx:1054
 msgid "Closing"
-msgstr ""
+msgstr "Solde de clôture"
 
 #: src/routes/accounting/reports/daily-cash-movements.tsx:139
 msgid "Closing balance"
@@ -802,7 +802,7 @@ msgstr "Solde de clôture"
 #: src/routes/accounting/journals.tsx:76
 #: src/routes/accounting/reports/balance-sheet.tsx:39
 #: src/routes/accounting/reports/profit-and-loss.tsx:59
-#: src/routes/accounting/trial-balance.tsx:128
+#: src/routes/accounting/trial-balance.tsx:156
 #: src/routes/clients.tsx:110
 #: src/routes/settings/countries.tsx:91
 #: src/routes/vendors.tsx:110
@@ -900,6 +900,10 @@ msgstr "Impossible de charger le tableau de bord"
 msgid "Couldn't load the inventory valuation report"
 msgstr "Impossible de charger le rapport de valorisation des stocks"
 
+#: src/routes/accounting/trial-balance.tsx:123
+msgid "Couldn't load the trial balance"
+msgstr "Impossible de charger la balance générale"
+
 #: src/components/products/bom-editor-drawer.tsx:339
 msgid "Couldn't load this bill of materials"
 msgstr "Impossible de charger cette nomenclature"
@@ -950,10 +954,10 @@ msgstr "Créer une organisation"
 msgid "Creates a snapshot, saves it to the backup list, and downloads it."
 msgstr "Crée un instantané, l'enregistre dans la liste des sauvegardes et le télécharge."
 
-#: src/routes/accounting/journal-entries/details.tsx:279
-#: src/routes/accounting/journal-entries/details.tsx:323
-#: src/routes/accounting/journal-entries/details.tsx:439
-#: src/routes/accounting/trial-balance.tsx:144
+#: src/routes/accounting/journal-entries/details.tsx:308
+#: src/routes/accounting/journal-entries/details.tsx:352
+#: src/routes/accounting/journal-entries/details.tsx:475
+#: src/routes/accounting/trial-balance.tsx:172
 msgid "Credit"
 msgstr "Crédit"
 
@@ -994,7 +998,7 @@ msgstr "Personnalisé (modèle téléversé)"
 #: src/routes/cash-book.tsx:1094
 #: src/routes/cash-book.tsx:1172
 msgid "Customer"
-msgstr ""
+msgstr "Client"
 
 #: src/routes/invoices/details.tsx:493
 msgid "Customer note"
@@ -1037,8 +1041,8 @@ msgstr "Base de données restaurée — actualisez pour voir les changements"
 #: src/components/payments/payment-panel.tsx:287
 #: src/components/payments/payment-panel.tsx:367
 #: src/routes/accounting/journal-entries.tsx:104
-#: src/routes/accounting/journal-entries/details.tsx:192
-#: src/routes/accounting/journal-entries/details.tsx:392
+#: src/routes/accounting/journal-entries/details.tsx:221
+#: src/routes/accounting/journal-entries/details.tsx:421
 #: src/routes/accounting/reports/daily-cash-movements.tsx:116
 #: src/routes/cash-book.tsx:756
 #: src/routes/cash-book.tsx:1175
@@ -1066,8 +1070,8 @@ msgstr "Format de date"
 msgid "Date is required"
 msgstr "La date est obligatoire"
 
-#: src/routes/accounting/fiscal-periods.tsx:307
-#: src/routes/accounting/fiscal-periods.tsx:333
+#: src/routes/accounting/fiscal-periods.tsx:309
+#: src/routes/accounting/fiscal-periods.tsx:335
 msgid "Date range"
 msgstr "Période"
 
@@ -1115,10 +1119,10 @@ msgstr "Jour du mois ({0})"
 msgid "Days overdue"
 msgstr "Jours de retard"
 
-#: src/routes/accounting/journal-entries/details.tsx:260
-#: src/routes/accounting/journal-entries/details.tsx:320
-#: src/routes/accounting/journal-entries/details.tsx:432
-#: src/routes/accounting/trial-balance.tsx:137
+#: src/routes/accounting/journal-entries/details.tsx:289
+#: src/routes/accounting/journal-entries/details.tsx:349
+#: src/routes/accounting/journal-entries/details.tsx:468
+#: src/routes/accounting/trial-balance.tsx:165
 msgid "Debit"
 msgstr "Débit"
 
@@ -1203,7 +1207,7 @@ msgstr "Valeurs par défaut"
 
 #: src/routes/cash-book.tsx:857
 msgid "Defaults to the full total. Entering more just records the change given back — the sale itself is still only ever recorded up to the total."
-msgstr ""
+msgstr "Par défaut, le montant total. Saisir un montant supérieur n'enregistre que la monnaie rendue — la vente elle-même n'est toujours enregistrée qu'à hauteur du total."
 
 #: src/components/accounting/account-form.tsx:135
 #: src/components/accounting/journal-form.tsx:115
@@ -1216,7 +1220,7 @@ msgstr ""
 #: src/components/tax-rates/form.tsx:155
 #: src/components/units-of-measure/form.tsx:106
 #: src/components/vendors/form.tsx:140
-#: src/routes/accounting/journal-entries/details.tsx:375
+#: src/routes/accounting/journal-entries/details.tsx:404
 #: src/routes/deliveries/details.tsx:540
 #: src/routes/inbound-deliveries/details.tsx:544
 #: src/routes/incoming-invoices/details.tsx:663
@@ -1247,7 +1251,7 @@ msgstr "Supprimer la facture ?"
 msgid "Delete this delivery?"
 msgstr "Supprimer cette livraison ?"
 
-#: src/routes/accounting/journal-entries/details.tsx:369
+#: src/routes/accounting/journal-entries/details.tsx:398
 msgid "Delete this draft?"
 msgstr "Supprimer ce brouillon ?"
 
@@ -1357,7 +1361,7 @@ msgstr "livraison(s)"
 
 #: src/routes/cash-book.tsx:852
 msgid "Deposit received ({currency})"
-msgstr ""
+msgstr "Acompte reçu ({currency})"
 
 #: src/routes/cash-book.tsx:1258
 msgid "Deposit to the bank"
@@ -1371,10 +1375,10 @@ msgstr "Déposer à la banque"
 #: src/components/tax-rates/form.tsx:191
 #: src/components/tax-rates/form.tsx:192
 #: src/routes/accounting/journal-entries.tsx:119
-#: src/routes/accounting/journal-entries/details.tsx:206
-#: src/routes/accounting/journal-entries/details.tsx:251
-#: src/routes/accounting/journal-entries/details.tsx:398
-#: src/routes/accounting/journal-entries/details.tsx:426
+#: src/routes/accounting/journal-entries/details.tsx:235
+#: src/routes/accounting/journal-entries/details.tsx:280
+#: src/routes/accounting/journal-entries/details.tsx:427
+#: src/routes/accounting/journal-entries/details.tsx:462
 #: src/routes/incoming-invoices/details.tsx:517
 #: src/routes/settings/tax-rates.tsx:94
 msgid "Description"
@@ -1518,7 +1522,7 @@ msgstr "ex. 1200"
 msgid "e.g. 1234567A/B/C/000"
 msgstr "p. ex. 1234567A/B/C/000"
 
-#: src/routes/accounting/fiscal-periods.tsx:303
+#: src/routes/accounting/fiscal-periods.tsx:305
 msgid "e.g. 2026"
 msgstr "ex. 2026"
 
@@ -1530,7 +1534,7 @@ msgstr "ex. 456"
 msgid "e.g. 9"
 msgstr "ex. 9"
 
-#: src/routes/accounting/journal-entries/details.tsx:209
+#: src/routes/accounting/journal-entries/details.tsx:238
 msgid "e.g. Bank fee"
 msgstr "ex. Frais bancaires"
 
@@ -1542,7 +1546,7 @@ msgstr "ex. Caisse"
 msgid "e.g. Intra-community supply"
 msgstr "p. ex. livraison intracommunautaire"
 
-#: src/routes/accounting/fiscal-periods.tsx:329
+#: src/routes/accounting/fiscal-periods.tsx:331
 msgid "e.g. January"
 msgstr "ex. Janvier"
 
@@ -1648,7 +1652,7 @@ msgid "Enable withholding tax"
 msgstr "Activer la retenue à la source"
 
 #: src/routes/accounting/fiscal-periods.tsx:192
-#: src/routes/accounting/fiscal-periods.tsx:251
+#: src/routes/accounting/fiscal-periods.tsx:253
 msgid "End"
 msgstr "Fin"
 
@@ -1941,7 +1945,7 @@ msgstr "Échec du chargement de la nomenclature"
 
 #: src/routes/cash-book.tsx:256
 msgid "Failed to load cash register movements"
-msgstr ""
+msgstr "Échec du chargement des mouvements de caisse"
 
 #: src/routes/cash-book.tsx:589
 msgid "Failed to load invoice"
@@ -1949,7 +1953,7 @@ msgstr "Échec du chargement de la facture"
 
 #: src/routes/cash-book.tsx:276
 msgid "Failed to load loan status"
-msgstr ""
+msgstr "Échec du chargement du statut des crédits"
 
 #: src/routes/settings/document-numbering.tsx:201
 msgid "Failed to load numbering settings"
@@ -2589,8 +2593,8 @@ msgid "It was previously approved with an override — clear the checkbox below 
 msgstr "Elle a été précédemment approuvée avec une dérogation — décochez la case ci-dessous si ce n'est plus nécessaire."
 
 #: src/routes/accounting/journal-entries.tsx:110
-#: src/routes/accounting/journal-entries/details.tsx:180
-#: src/routes/accounting/journal-entries/details.tsx:389
+#: src/routes/accounting/journal-entries/details.tsx:209
+#: src/routes/accounting/journal-entries/details.tsx:418
 msgid "Journal"
 msgstr "Journal"
 
@@ -2615,7 +2619,7 @@ msgstr "Écritures"
 msgid "Journal entries can only be posted within an open fiscal year. Create one to start using the general ledger."
 msgstr "Les écritures ne peuvent être comptabilisées que dans un exercice ouvert. Créez-en un pour commencer à utiliser la comptabilité générale."
 
-#: src/routes/accounting/journal-entries/details.tsx:345
+#: src/routes/accounting/journal-entries/details.tsx:374
 msgid "Journal entry"
 msgstr "Écriture"
 
@@ -2739,15 +2743,15 @@ msgstr "Commande liée"
 
 #: src/routes/cash-book.tsx:111
 msgid "Loan (deposit)"
-msgstr ""
+msgstr "Crédit (acompte)"
 
 #: src/routes/cash-book.tsx:113
 msgid "Loan repayment"
-msgstr ""
+msgstr "Remboursement de crédit"
 
 #: src/routes/cash-book.tsx:841
 msgid "Loan sale"
-msgstr ""
+msgstr "Vente à crédit"
 
 #: src/routes/cash-book.tsx:567
 msgid "Loan sale recorded"
@@ -2755,7 +2759,7 @@ msgstr "Vente à crédit enregistrée"
 
 #: src/routes/cash-book.tsx:1133
 msgid "Loan status"
-msgstr ""
+msgstr "Statut des crédits"
 
 #: src/routes/login.tsx:46
 msgid "Login failed"
@@ -2906,7 +2910,7 @@ msgstr "Mouvement"
 #. placeholder {0}: dayjs(dailyMovement.date).format(dateFormat)
 #: src/routes/cash-book.tsx:1069
 msgid "Movements for {0}"
-msgstr ""
+msgstr "Mouvements du {0}"
 
 #: src/components/accounting/account-form.tsx:161
 #: src/components/accounting/journal-form.tsx:146
@@ -2924,11 +2928,11 @@ msgstr ""
 #: src/components/vendors/form.tsx:172
 #: src/routes/accounting/chart-of-accounts.tsx:117
 #: src/routes/accounting/fiscal-periods.tsx:184
-#: src/routes/accounting/fiscal-periods.tsx:243
-#: src/routes/accounting/fiscal-periods.tsx:300
-#: src/routes/accounting/fiscal-periods.tsx:326
+#: src/routes/accounting/fiscal-periods.tsx:245
+#: src/routes/accounting/fiscal-periods.tsx:302
+#: src/routes/accounting/fiscal-periods.tsx:328
 #: src/routes/accounting/journals.tsx:84
-#: src/routes/accounting/trial-balance.tsx:135
+#: src/routes/accounting/trial-balance.tsx:163
 #: src/routes/bill-of-materials.tsx:113
 #: src/routes/cash-book.tsx:1215
 #: src/routes/clients.tsx:96
@@ -2980,12 +2984,12 @@ msgstr "Nouveau client"
 msgid "New delivery"
 msgstr "Nouvelle livraison"
 
-#: src/routes/accounting/fiscal-periods.tsx:316
+#: src/routes/accounting/fiscal-periods.tsx:318
 msgid "New fiscal period"
 msgstr "Nouvelle période"
 
 #: src/routes/accounting/fiscal-periods.tsx:134
-#: src/routes/accounting/fiscal-periods.tsx:290
+#: src/routes/accounting/fiscal-periods.tsx:292
 msgid "New fiscal year"
 msgstr "Nouvel exercice"
 
@@ -3014,7 +3018,7 @@ msgid "New journal"
 msgstr "Nouveau journal"
 
 #: src/routes/accounting/journal-entries.tsx:79
-#: src/routes/accounting/journal-entries/details.tsx:158
+#: src/routes/accounting/journal-entries/details.tsx:187
 msgid "New journal entry"
 msgstr "Nouvelle écriture"
 
@@ -3116,9 +3120,9 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 #: src/components/tax-rates/form.tsx:151
 #: src/components/units-of-measure/form.tsx:102
 #: src/components/vendors/form.tsx:136
-#: src/routes/accounting/fiscal-periods.tsx:225
-#: src/routes/accounting/journal-entries/details.tsx:362
-#: src/routes/accounting/journal-entries/details.tsx:372
+#: src/routes/accounting/fiscal-periods.tsx:226
+#: src/routes/accounting/journal-entries/details.tsx:391
+#: src/routes/accounting/journal-entries/details.tsx:401
 #: src/routes/deliveries/details.tsx:537
 #: src/routes/deliveries/details.tsx:562
 #: src/routes/inbound-deliveries/details.tsx:541
@@ -3145,11 +3149,11 @@ msgstr "Aucune activité sur cette période"
 
 #: src/routes/cash-book.tsx:531
 msgid "No cash register account configured — set one in Organization settings before recording a sale"
-msgstr ""
+msgstr "Aucun compte de caisse configuré — configurez-en un dans les paramètres de l'organisation avant d'enregistrer une vente"
 
 #: src/routes/cash-book.tsx:1121
 msgid "No cash register account configured — set one in Organization settings to see movements here."
-msgstr ""
+msgstr "Aucun compte de caisse configuré — configurez-en un dans les paramètres de l'organisation pour voir les mouvements ici."
 
 #: src/routes/cash-book.tsx:475
 #~ msgid "No cash register account configured — set one in Organization settings to see the balance here."
@@ -3173,7 +3177,7 @@ msgstr "Aucune ligne d'article"
 
 #: src/routes/cash-book.tsx:1170
 msgid "No loan sales"
-msgstr ""
+msgstr "Aucune vente à crédit"
 
 #: src/routes/cash-book.tsx:670
 msgid "No matching customers"
@@ -3181,9 +3185,9 @@ msgstr "Aucun client correspondant"
 
 #: src/routes/cash-book.tsx:1078
 msgid "No movements on this date"
-msgstr ""
+msgstr "Aucun mouvement à cette date"
 
-#: src/routes/accounting/journal-entries/details.tsx:145
+#: src/routes/accounting/journal-entries/details.tsx:174
 msgid "No open fiscal year"
 msgstr "Aucun exercice ouvert"
 
@@ -3271,7 +3275,7 @@ msgstr "Aucun fournisseur"
 msgid "None"
 msgstr "Aucune"
 
-#: src/routes/accounting/journal-entries/details.tsx:326
+#: src/routes/accounting/journal-entries/details.tsx:355
 msgid "Not balanced"
 msgstr "Non équilibrée"
 
@@ -3356,7 +3360,7 @@ msgid "Only active countries appear in the country picklist on organizations, ve
 msgstr "Seuls les pays actifs apparaissent dans la liste des pays des organisations, fournisseurs et clients. Les enregistrements existants conservent leur pays actuel, même s'il est désactivé ici par la suite."
 
 #: src/routes/accounting/fiscal-periods.tsx:203
-#: src/routes/accounting/fiscal-periods.tsx:262
+#: src/routes/accounting/fiscal-periods.tsx:264
 msgid "Open"
 msgstr "Ouvert"
 
@@ -3374,14 +3378,14 @@ msgstr "Uniquement ouverts"
 
 #: src/routes/cash-book.tsx:1024
 msgid "Opening"
-msgstr ""
+msgstr "Solde d'ouverture"
 
 #: src/routes/accounting/reports/daily-cash-movements.tsx:121
 msgid "Opening balance"
 msgstr "Solde d'ouverture"
 
 #: src/components/imports/form.tsx:299
-#: src/routes/accounting/journal-entries/details.tsx:255
+#: src/routes/accounting/journal-entries/details.tsx:284
 #: src/routes/inbound-deliveries/details.tsx:392
 #: src/routes/incoming-invoices/details.tsx:380
 msgid "Optional"
@@ -3403,13 +3407,13 @@ msgstr "Description ou notes facultatives"
 msgid "Optional note"
 msgstr "Note facultative"
 
-#: src/routes/accounting/journal-entries/details.tsx:200
+#: src/routes/accounting/journal-entries/details.tsx:229
 msgid "Optional reference"
 msgstr "Référence facultative"
 
 #: src/routes/cash-book.tsx:858
 msgid "Optional upfront deposit — leave at 0 for a zero-deposit loan. The remaining balance is collected later."
-msgstr ""
+msgstr "Acompte initial facultatif — laisser à 0 pour un crédit sans acompte. Le solde restant est encaissé plus tard."
 
 #: src/routes/login.tsx:95
 msgid "or"
@@ -3533,7 +3537,7 @@ msgstr "Organisations"
 
 #: src/routes/cash-book.tsx:1180
 msgid "Original"
-msgstr ""
+msgstr "Montant initial"
 
 #: src/types/payment.ts:31
 msgid "Other"
@@ -3773,7 +3777,7 @@ msgstr "Veuillez entrer vos commentaires"
 msgid "Please enter your password"
 msgstr "Veuillez saisir votre mot de passe"
 
-#: src/routes/accounting/journal-entries/details.tsx:472
+#: src/routes/accounting/journal-entries/details.tsx:508
 msgid "Please explain why this entry is being reversed!"
 msgstr "Veuillez expliquer pourquoi cette écriture est extournée !"
 
@@ -3782,14 +3786,14 @@ msgstr "Veuillez expliquer pourquoi cette écriture est extournée !"
 msgid "Please input a code!"
 msgstr "Veuillez saisir un code !"
 
-#: src/routes/accounting/journal-entries/details.tsx:207
+#: src/routes/accounting/journal-entries/details.tsx:236
 msgid "Please input a description!"
 msgstr "Veuillez saisir une description !"
 
 #: src/components/accounting/account-form.tsx:162
 #: src/components/accounting/journal-form.tsx:147
-#: src/routes/accounting/fiscal-periods.tsx:301
-#: src/routes/accounting/fiscal-periods.tsx:327
+#: src/routes/accounting/fiscal-periods.tsx:303
+#: src/routes/accounting/fiscal-periods.tsx:329
 msgid "Please input a name!"
 msgstr "Veuillez saisir un nom !"
 
@@ -3808,17 +3812,17 @@ msgstr "Veuillez saisir un pourcentage !"
 msgid "Please input name!"
 msgstr "Veuillez saisir un nom !"
 
-#: src/routes/accounting/fiscal-periods.tsx:308
-#: src/routes/accounting/fiscal-periods.tsx:334
+#: src/routes/accounting/fiscal-periods.tsx:310
+#: src/routes/accounting/fiscal-periods.tsx:336
 msgid "Please select a date range!"
 msgstr "Veuillez sélectionner une période !"
 
-#: src/routes/accounting/journal-entries/details.tsx:193
-#: src/routes/accounting/journal-entries/details.tsx:464
+#: src/routes/accounting/journal-entries/details.tsx:222
+#: src/routes/accounting/journal-entries/details.tsx:500
 msgid "Please select a date!"
 msgstr "Veuillez sélectionner une date !"
 
-#: src/routes/accounting/journal-entries/details.tsx:181
+#: src/routes/accounting/journal-entries/details.tsx:210
 msgid "Please select a journal!"
 msgstr "Veuillez sélectionner un journal !"
 
@@ -3839,11 +3843,11 @@ msgstr "N° de bon de commande, ID de facture, …"
 msgid "Portrait"
 msgstr "Portrait"
 
-#: src/routes/accounting/journal-entries/details.tsx:365
+#: src/routes/accounting/journal-entries/details.tsx:394
 msgid "Post"
 msgstr "Comptabiliser"
 
-#: src/routes/accounting/journal-entries/details.tsx:359
+#: src/routes/accounting/journal-entries/details.tsx:388
 msgid "Post this entry? It cannot be edited afterward."
 msgstr "Comptabiliser cette écriture ? Elle ne pourra plus être modifiée ensuite."
 
@@ -3887,7 +3891,7 @@ msgstr "Prix"
 
 #: src/routes/cash-book.tsx:809
 msgid "Price (tax incl.)"
-msgstr ""
+msgstr "Prix (TTC)"
 
 #: src/components/products/form.tsx:428
 msgid "Price is required"
@@ -4167,7 +4171,7 @@ msgstr "Taux"
 msgid "Rate date"
 msgstr "Date du taux"
 
-#: src/routes/accounting/journal-entries/details.tsx:470
+#: src/routes/accounting/journal-entries/details.tsx:506
 msgid "Reason"
 msgstr "Motif"
 
@@ -4234,8 +4238,8 @@ msgstr "Enregistrer un mouvement de stock"
 #: src/components/payments/payment-panel.tsx:383
 #: src/components/stock/movement-form.tsx:257
 #: src/routes/accounting/journal-entries.tsx:131
-#: src/routes/accounting/journal-entries/details.tsx:199
-#: src/routes/accounting/journal-entries/details.tsx:395
+#: src/routes/accounting/journal-entries/details.tsx:228
+#: src/routes/accounting/journal-entries/details.tsx:424
 #: src/routes/cash-book.tsx:903
 #: src/routes/inventory.tsx:539
 msgid "Reference"
@@ -4249,7 +4253,7 @@ msgstr "Actualiser"
 msgid "Registration number"
 msgstr "Numéro d'enregistrement"
 
-#: src/routes/accounting/journal-entries/details.tsx:307
+#: src/routes/accounting/journal-entries/details.tsx:336
 msgid "Remove line"
 msgstr "Supprimer la ligne"
 
@@ -4269,11 +4273,11 @@ msgstr "Supprimer le membre"
 msgid "Remove this member?"
 msgstr "Supprimer ce membre ?"
 
-#: src/routes/accounting/fiscal-periods.tsx:231
+#: src/routes/accounting/fiscal-periods.tsx:232
 msgid "Reopen"
 msgstr "Rouvrir"
 
-#: src/routes/accounting/fiscal-periods.tsx:215
+#: src/routes/accounting/fiscal-periods.tsx:216
 msgid "Reopen this period?"
 msgstr "Rouvrir cette période ?"
 
@@ -4291,7 +4295,7 @@ msgid "Reporting"
 msgstr "Rapports"
 
 #: src/components/line-items/table.tsx:304
-#: src/routes/accounting/journal-entries/details.tsx:235
+#: src/routes/accounting/journal-entries/details.tsx:264
 #: src/routes/deliveries/details.tsx:368
 msgid "Required"
 msgstr "Obligatoire"
@@ -4380,6 +4384,7 @@ msgstr "Rétention (jours)"
 
 #: src/components/products/bom-editor-drawer.tsx:348
 #: src/routes/accounting/reports/inventory-valuation.tsx:62
+#: src/routes/accounting/trial-balance.tsx:126
 #: src/routes/dashboard.tsx:144
 #: src/routes/production-orders/details.tsx:274
 msgid "Retry"
@@ -4421,19 +4426,19 @@ msgstr "Évolution du chiffre d'affaires"
 msgid "Revenue Trend"
 msgstr "Évolution du chiffre d'affaires"
 
-#: src/routes/accounting/journal-entries/details.tsx:463
+#: src/routes/accounting/journal-entries/details.tsx:499
 msgid "Reversal date"
 msgstr "Date d'extourne"
 
-#: src/routes/accounting/journal-entries/details.tsx:409
+#: src/routes/accounting/journal-entries/details.tsx:445
 msgid "Reversal reason"
 msgstr "Motif de l'extourne"
 
-#: src/routes/accounting/journal-entries/details.tsx:382
+#: src/routes/accounting/journal-entries/details.tsx:411
 msgid "Reverse"
 msgstr "Extourner"
 
-#: src/routes/accounting/journal-entries/details.tsx:448
+#: src/routes/accounting/journal-entries/details.tsx:484
 msgid "Reverse journal entry"
 msgstr "Extourner l'écriture"
 
@@ -4441,7 +4446,11 @@ msgstr "Extourner l'écriture"
 msgid "Reversed"
 msgstr "Extournée"
 
-#: src/routes/accounting/journal-entries/details.tsx:402
+#: src/routes/accounting/journal-entries/details.tsx:438
+msgid "Reversed by"
+msgstr "Annulée par"
+
+#: src/routes/accounting/journal-entries/details.tsx:431
 msgid "Reverses"
 msgstr "Extourne"
 
@@ -4465,11 +4474,11 @@ msgstr "Ligne"
 
 #: src/routes/cash-book.tsx:109
 msgid "Sale"
-msgstr ""
+msgstr "Vente"
 
 #: src/routes/cash-book.tsx:834
 msgid "Sale type"
-msgstr ""
+msgstr "Type de vente"
 
 #: src/components/accounting/journal-form.tsx:17
 #: src/components/organizations/organization-members-panel.tsx:12
@@ -4513,7 +4522,7 @@ msgstr "Ventes par produit"
 msgid "Save"
 msgstr "Enregistrer"
 
-#: src/routes/accounting/journal-entries/details.tsx:166
+#: src/routes/accounting/journal-entries/details.tsx:195
 msgid "Save as draft"
 msgstr "Enregistrer comme brouillon"
 
@@ -4612,7 +4621,7 @@ msgstr "Sélectionnez un produit fini pour prévisualiser sa recette"
 msgid "Select a fiscal year"
 msgstr "Sélectionner un exercice"
 
-#: src/routes/accounting/journal-entries/details.tsx:184
+#: src/routes/accounting/journal-entries/details.tsx:213
 msgid "Select a journal"
 msgstr "Sélectionner un journal"
 
@@ -4624,7 +4633,7 @@ msgstr "Sélectionner un produit"
 msgid "Select a unit of measure"
 msgstr "Sélectionner une unité de mesure"
 
-#: src/routes/accounting/journal-entries/details.tsx:239
+#: src/routes/accounting/journal-entries/details.tsx:268
 msgid "Select an account"
 msgstr "Sélectionner un compte"
 
@@ -4813,7 +4822,7 @@ msgid "Standard rate"
 msgstr "Taux normal"
 
 #: src/routes/accounting/fiscal-periods.tsx:186
-#: src/routes/accounting/fiscal-periods.tsx:245
+#: src/routes/accounting/fiscal-periods.tsx:247
 msgid "Start"
 msgstr "Début"
 
@@ -4827,7 +4836,7 @@ msgstr "État"
 #: src/components/imports/form.tsx:431
 #: src/components/payments/payment-panel.tsx:388
 #: src/routes/accounting/fiscal-periods.tsx:198
-#: src/routes/accounting/fiscal-periods.tsx:257
+#: src/routes/accounting/fiscal-periods.tsx:259
 #: src/routes/accounting/journal-entries.tsx:137
 #: src/routes/deliveries.tsx:124
 #: src/routes/deliveries/details.tsx:388
@@ -5147,7 +5156,7 @@ msgstr "Le stock ajouté par cette réception sera contrepassé. Continuer ?"
 
 #: src/routes/cash-book.tsx:1081
 msgid "Time"
-msgstr ""
+msgstr "Heure"
 
 #: src/routes/reporting/sales-by-client.tsx:67
 #: src/routes/reporting/sales-by-product.tsx:67
@@ -5171,7 +5180,7 @@ msgstr "Meilleurs produits"
 #: src/components/payments/payment-panel.tsx:349
 #: src/routes/accounting/reports/ap-aging.tsx:46
 #: src/routes/accounting/reports/ar-aging.tsx:46
-#: src/routes/accounting/trial-balance.tsx:115
+#: src/routes/accounting/trial-balance.tsx:143
 #: src/routes/cash-book.tsx:821
 #: src/routes/dashboard.tsx:302
 #: src/routes/incoming-invoices.tsx:161
@@ -5246,7 +5255,7 @@ msgid "Transactional data"
 msgstr "Données transactionnelles"
 
 #: src/layouts/base.tsx:640
-#: src/routes/accounting/trial-balance.tsx:78
+#: src/routes/accounting/trial-balance.tsx:91
 msgid "Trial Balance"
 msgstr "Balance générale"
 
@@ -5536,7 +5545,7 @@ msgstr "Voir le rapport complet"
 
 #: src/routes/cash-book.tsx:1112
 msgid "Viewing past movements, read-only. Switch to today to record a sale, payment, or withdrawal."
-msgstr ""
+msgstr "Consultation des mouvements passés en lecture seule. Revenez à aujourd'hui pour enregistrer une vente, un paiement ou un retrait."
 
 #: src/components/payments/payment-panel.tsx:408
 msgid "Void"
@@ -5590,7 +5599,7 @@ msgstr "Retirer de la caisse"
 
 #: src/routes/cash-book.tsx:115
 msgid "Withdrawal"
-msgstr ""
+msgstr "Retrait"
 
 #: src/components/invoices/pdf-tunisia.tsx:278
 #: src/components/invoices/pdf.tsx:383
@@ -5617,9 +5626,9 @@ msgstr "Taux de retenue à la source"
 #: src/components/tax-rates/form.tsx:150
 #: src/components/units-of-measure/form.tsx:101
 #: src/components/vendors/form.tsx:135
-#: src/routes/accounting/fiscal-periods.tsx:224
-#: src/routes/accounting/journal-entries/details.tsx:361
-#: src/routes/accounting/journal-entries/details.tsx:371
+#: src/routes/accounting/fiscal-periods.tsx:225
+#: src/routes/accounting/journal-entries/details.tsx:390
+#: src/routes/accounting/journal-entries/details.tsx:400
 #: src/routes/deliveries/details.tsx:536
 #: src/routes/deliveries/details.tsx:561
 #: src/routes/inbound-deliveries/details.tsx:540

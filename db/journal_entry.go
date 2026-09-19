@@ -112,6 +112,24 @@ func (d *Database) GetJournalEntry(entryID string) (*JournalEntry, error) {
 	return &entry, nil
 }
 
+// GetJournalEntryReversal is the reverse direction of ReversalOfEntryID — an
+// original entry has no column pointing forward to whatever reversed it (only
+// the new entry stores reversalOfEntryId, per ReverseJournalEntry), so a
+// reversed entry's detail page has no way to link forward to its reversal
+// without this lookup. Returns nil, nil (not an error) when the entry was
+// never reversed, which is the common case.
+func (d *Database) GetJournalEntryReversal(entryID string) (*JournalEntry, error) {
+	var entry JournalEntry
+	err := d.DB.Get(&entry, `SELECT * FROM journal_entries WHERE reversalOfEntryId = ? LIMIT 1`, entryID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get_journal_entry_reversal: %w", err)
+	}
+	return &entry, nil
+}
+
 func (d *Database) GetJournalEntryLines(entryID string) ([]JournalLine, error) {
 	lines := []JournalLine{}
 	err := d.DB.Select(&lines,
@@ -336,6 +354,22 @@ func allocateAndFinalizeEntryTx(tx *sqlx.Tx, entryID, organizationID, fiscalYear
 	}
 	if groupLineCount > 0 {
 		return newValidationError("cannot post to a group account — group accounts are headers only")
+	}
+
+	// A deactivated account shouldn't receive new postings, from any path —
+	// manual entry, auto-post, payments, or a fiscal-year close — not just
+	// the one Chart of Accounts screen that shows the isActive toggle.
+	var inactiveLineCount int64
+	if err := tx.Get(&inactiveLineCount, `
+		SELECT COUNT(*) FROM journal_lines jl
+		JOIN accounts a ON a.id = jl.accountId
+		WHERE jl.journalEntryId = ? AND a.isActive = 0`,
+		entryID,
+	); err != nil {
+		return fmt.Errorf("allocate_and_finalize_entry inactive_check: %w", err)
+	}
+	if inactiveLineCount > 0 {
+		return newValidationError("cannot post to an inactive account")
 	}
 
 	// The per-line CHECK (debit=0)<>(credit=0) only guarantees one side per

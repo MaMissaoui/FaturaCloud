@@ -1152,6 +1152,10 @@ export const GetJournalEntries = (
 export const GetJournalEntry = (id: string) => get<JournalEntry>(`/journal-entries/${id}`);
 export const GetJournalEntryLines = (id: string) =>
   get<JournalLine[]>(`/journal-entries/${id}/lines`);
+// The forward direction of reversalOfEntryId — null when this entry was
+// never reversed.
+export const GetJournalEntryReversal = (id: string) =>
+  get<JournalEntry | null>(`/journal-entries/${id}/reversal`);
 export const CreateJournalEntry = (req: unknown) => post<JournalEntry>("/journal-entries", req);
 export const PostJournalEntry = (id: string) =>
   patch<JournalEntry>(`/journal-entries/${id}/post`, {});
