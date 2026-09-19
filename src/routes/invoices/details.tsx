@@ -102,7 +102,7 @@ const InvoiceDetails: React.FC = () => {
   const { id } = useParams<string>();
   const { i18n } = useLingui();
   const {
-    token: { colorBgContainer },
+    token: { colorBgContainer, colorText },
   } = theme.useToken();
   const { message } = App.useApp();
   const organization = useAtomValue(organizationAtom);
@@ -405,27 +405,7 @@ const InvoiceDetails: React.FC = () => {
             layout="vertical"
             initialValues={initialValues}
           >
-            <Card
-              size="small"
-              title={<Trans>Invoice details</Trans>}
-              extra={
-                !isNew &&
-                id && (
-                  <InvoiceStateSelect
-                    invoice={{ id, state: currentInvoiceState }}
-                    onChanged={() => {
-                      // invoiceAtom is a separate fetch keyed off invoiceIdAtom
-                      // (not derived from invoicesAtom, which
-                      // updateInvoiceStateAtom already updated) — same
-                      // refetch nudge the "Cancel invoice" action below uses.
-                      setInvoiceId(null);
-                      setTimeout(() => setInvoiceId(id), 0);
-                    }}
-                  />
-                )
-              }
-              style={{ marginBottom: 24 }}
-            >
+            <Card size="small" title={<Trans>Invoice details</Trans>} style={{ marginBottom: 24 }}>
               <Row gutter={24}>
                 {/* Left: the two fields that need real room — a searchable
                     dropdown and free text — stacked so the note fills the
@@ -558,6 +538,26 @@ const InvoiceDetails: React.FC = () => {
                     total height roughly matches the left column's instead of
                     each field getting its own mostly-empty full-width row. */}
                 <Col xs={24} xl={12}>
+                  {!isNew && id && (
+                    <Row gutter={16}>
+                      <Col xs={24} md={12}>
+                        <Form.Item label={<Trans>Status</Trans>}>
+                          <InvoiceStateSelect
+                            invoice={{ id, state: currentInvoiceState }}
+                            onChanged={() => {
+                              // invoiceAtom is a separate fetch keyed off
+                              // invoiceIdAtom (not derived from invoicesAtom,
+                              // which updateInvoiceStateAtom already updated)
+                              // — same refetch nudge the "Cancel invoice"
+                              // action below uses.
+                              setInvoiceId(null);
+                              setTimeout(() => setInvoiceId(id), 0);
+                            }}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  )}
                   <Row gutter={16}>
                     <Col xs={24} md={12}>
                       <Form.Item
@@ -635,15 +635,7 @@ const InvoiceDetails: React.FC = () => {
                   </Row>
                   <Row gutter={16}>
                     <Col xs={24} md={12}>
-                      <Form.Item
-                        label={t`Overdue charge`}
-                        name="overdueCharge"
-                        help={
-                          <span
-                            style={{ fontSize: "12px", display: "block", textAlign: "right" }}
-                          >{t`Daily %`}</span>
-                        }
-                      >
+                      <Form.Item label={t`Overdue charge`} name="overdueCharge" help={t`Daily %`}>
                         <InputNumber
                           style={{ width: "100%" }}
                           min={0}
@@ -789,7 +781,7 @@ const InvoiceDetails: React.FC = () => {
                           </Form.Item>
                         ),
                       },
-                      { kind: "description", required: true, rows: 4 },
+                      { kind: "description", required: true },
                       {
                         kind: "custom",
                         key: "quantity",
@@ -956,7 +948,7 @@ const InvoiceDetails: React.FC = () => {
                         textAlign: "right",
                         display: "inline-block",
                         minWidth: 120,
-                        color: "rgba(0, 0, 0, 0.88)",
+                        color: colorText,
                         fontSize: 15,
                         lineHeight: 1.4,
                       },
@@ -964,7 +956,7 @@ const InvoiceDetails: React.FC = () => {
                         textAlign: "right",
                         display: "inline-block",
                         width: "100%",
-                        color: "rgba(0, 0, 0, 0.88)",
+                        color: colorText,
                         fontWeight: 500,
                         fontSize: 15,
                         lineHeight: 1.4,

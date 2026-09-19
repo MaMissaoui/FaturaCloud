@@ -154,6 +154,15 @@ const LineItemsTable = ({
   return (
     <Form.List name={name}>
       {(fields, { add, remove }) => {
+        // Enter in the last row's Quantity/Unit price field appends a new
+        // row — those two are the only inputs common to every document
+        // type's column config, and neither is a Select/TextArea, so this
+        // can't collide with Enter-selects-option or Enter-inserts-newline
+        // behavior elsewhere in the row.
+        const addRowOnEnterFromLastRow = (rowIndex: number) => {
+          if (!disabled && rowIndex === fields.length - 1) add(defaultNewRow);
+        };
+
         const table = (
           <Table
             className={styles.wrapper}
@@ -300,6 +309,7 @@ const LineItemsTable = ({
                                   min={0}
                                   precision={precision}
                                   disabled={disabled}
+                                  onPressEnter={() => addRowOnEnterFromLastRow(field.index)}
                                 />
                               </Form.Item>
                             );
@@ -340,6 +350,7 @@ const LineItemsTable = ({
                             precision={2}
                             step={0.01}
                             disabled={disabled}
+                            onPressEnter={() => addRowOnEnterFromLastRow(field.index)}
                           />
                         </Form.Item>
                       )}

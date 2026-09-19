@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   App,
   Button,
@@ -10,6 +11,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Layout,
   List,
   Modal,
   Row,
@@ -18,6 +20,7 @@ import {
   Space,
   Table,
   Tag,
+  theme,
   Typography,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -72,17 +75,17 @@ import {
   addDecimal,
   calculateTax,
   centsToUnits,
-  formatCents,
   grossFromNet,
   multiplyDecimal,
   netFromGross,
   unitsToCents,
 } from "src/utils/currency";
-import { numberFormatLocale } from "src/utils/currencies";
+import { formatOrgCents } from "src/utils/currencies";
 import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
 
 const { Option } = Select;
 const { TextArea } = Input;
+const { Footer } = Layout;
 
 // A new customer picked in the "New customer" modal below — kept as local
 // draft state, not created via a separate API call, until the whole sale is
@@ -138,6 +141,9 @@ const CashBook = () => {
   const { i18n } = useLingui();
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
+  const {
+    token: { colorBgContainer },
+  } = theme.useToken();
 
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
@@ -504,8 +510,7 @@ const CashBook = () => {
   }, [total, saleMode, amountReceivedTouched, form]);
 
   const currency = organization?.currency || "EUR";
-  const money = (cents: number) =>
-    formatCents(cents, currency, numberFormatLocale(organization?.country_code) ?? i18n.locale);
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   const handleSubmitSale = async (values: any) => {
     if (!organizationId || !isToday) return;
@@ -613,7 +618,7 @@ const CashBook = () => {
   const clientName = selectedClient?.name || newClientDraft?.name || "";
 
   return (
-    <div style={{ padding: 24, maxWidth: 960, margin: "0 auto" }}>
+    <>
       <PageHeader
         icon={<WalletOutlined />}
         title={<Trans>Cash Book</Trans>}
@@ -638,6 +643,10 @@ const CashBook = () => {
         }
         actions={
           isToday && !inSale ? (
+            // Deliberately "dashed", not "primary" like every other list
+            // page's create button — this screen's real primary action is
+            // recording a sale, not adding a customer, so this stays
+            // de-emphasized on purpose.
             <Button
               type="dashed"
               icon={<UserAddOutlined />}
@@ -662,6 +671,8 @@ const CashBook = () => {
           style={{ marginBottom: 16 }}
           renderItem={(client: any) => (
             <List.Item
+              onClick={() => selectClient(client)}
+              style={{ cursor: "pointer" }}
               actions={[
                 <Button type="link" onClick={() => selectClient(client)} key="select">
                   <Trans>Select</Trans>
@@ -679,229 +690,10 @@ const CashBook = () => {
         />
       )}
 
-      <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
-        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
-          <Col>
-            <Typography.Text type="secondary">
-              <Trans>Cash register</Trans>
-            </Typography.Text>
-            <div>
-              <DatePicker
-                value={selectedDate}
-                onChange={(d) => d && setSelectedDate(d)}
-                format={dateFormat}
-                allowClear={false}
-                disabledDate={(d) => d.isAfter(dayjs(), "day")}
-              />
-            </div>
-          </Col>
-          {registerAccountId && (
-            <Col>
-              <Space>
-                {isToday && (
-                  <Button onClick={openWithdrawModal}>
-                    <Trans>Withdraw</Trans>
-                  </Button>
-                )}
-                <Button loading={downloadingDailyPdf} onClick={handleExportDailyMovements("pdf")}>
-                  <FilePdfOutlined /> PDF
-                </Button>
-                <Button
-                  loading={downloadingDailyExcel}
-                  onClick={handleExportDailyMovements("xlsx")}
-                >
-                  <FileExcelOutlined /> <Trans>Excel</Trans>
-                </Button>
-              </Space>
-            </Col>
-          )}
-        </Row>
-
-        {registerAccountId ? (
-          <>
-            <Row gutter={16}>
-              <Col span={6}>
-                <Typography.Text type="secondary">
-                  <Trans>Opening</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.opening) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-              <Col span={6}>
-                <Typography.Text type="secondary">
-                  <Trans>In</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.in) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-              <Col span={6}>
-                <Typography.Text type="secondary">
-                  <Trans>Out</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.out) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-              <Col span={6}>
-                <Typography.Text type="secondary">
-                  <Trans>Closing</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.closing) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-            </Row>
-            {/* Labeled from the fetched row's own date, not the picker's
-            value — if utcDayMs above ever drifted from the picked
-            calendar date, this would visibly disagree with the picker
-            instead of silently hiding the mismatch. */}
-            {dailyMovement && (
-              <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
-                <Trans>Movements for {dayjs(dailyMovement.date).format(dateFormat)}</Trans>
-              </Typography.Text>
-            )}
-            <Table
-              dataSource={movementDetails}
-              rowKey="id"
-              size="small"
-              pagination={false}
-              style={{ marginTop: 8 }}
-              locale={{ emptyText: <Trans>No movements on this date</Trans> }}
-            >
-              <Table.Column
-                title={<Trans>Time</Trans>}
-                key="time"
-                width={70}
-                render={(row: CashMovementDetail) => dayjs(row.date).format("HH:mm")}
-              />
-              <Table.Column
-                title={<Trans>Type</Trans>}
-                key="kind"
-                render={(row: CashMovementDetail) => (
-                  <Tag color={movementKindColor(row.kind)}>{movementKindLabel(row.kind)}</Tag>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Customer</Trans>}
-                key="clientName"
-                render={(row: CashMovementDetail) => row.clientName ?? row.note ?? "—"}
-              />
-              <Table.Column
-                title={<Trans>Amount</Trans>}
-                key="amount"
-                align="right"
-                render={(row: CashMovementDetail) => (
-                  <Typography.Text type={row.direction === "in" ? "success" : "danger"}>
-                    {row.direction === "in" ? "+" : "−"}
-                    {money(row.amount)}
-                  </Typography.Text>
-                )}
-              />
-            </Table>
-            {!isToday && (
-              <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
-                <Trans>
-                  Viewing past movements, read-only. Switch to today to record a sale, payment, or
-                  withdrawal.
-                </Trans>
-              </Typography.Text>
-            )}
-          </>
-        ) : (
-          <Typography.Text type="secondary">
-            <Trans>
-              No cash register account configured — set one in Organization settings to see
-              movements here.
-            </Trans>
-          </Typography.Text>
-        )}
-      </Card>
-
-      {/* Not isToday-gated — a standing report of who owes what, not tied
-      to whichever day the panel above happens to be showing. */}
-      <Card
-        size="small"
-        title={<Trans>Loan status</Trans>}
-        style={{ marginBottom: 16 }}
-        loading={loadingLoanStatus}
-        extra={
-          <Space>
-            <Checkbox checked={openLoansOnly} onChange={(e) => setOpenLoansOnly(e.target.checked)}>
-              <Trans>Open only</Trans>
-            </Checkbox>
-            <Select
-              value={loanStatusClientId || undefined}
-              onChange={(value) => setLoanStatusClientId(value ?? "")}
-              placeholder={t`All customers`}
-              allowClear
-              showSearch
-              optionFilterProp="children"
-              style={{ minWidth: 220 }}
-            >
-              {(clients as any[]).map((c) => (
-                <Option key={c.id} value={c.id}>
-                  {c.name}
-                </Option>
-              ))}
-            </Select>
-            <Button loading={downloadingLoanPdf} onClick={handleExportLoanStatus("pdf")}>
-              <FilePdfOutlined /> PDF
-            </Button>
-            <Button loading={downloadingLoanExcel} onClick={handleExportLoanStatus("xlsx")}>
-              <FileExcelOutlined /> <Trans>Excel</Trans>
-            </Button>
-          </Space>
-        }
-      >
-        <Table
-          dataSource={filteredLoanStatusRows}
-          rowKey="invoiceId"
-          size="small"
-          pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
-          locale={{ emptyText: <Trans>No loan sales</Trans> }}
-        >
-          <Table.Column title={<Trans>Customer</Trans>} dataIndex="clientName" key="clientName" />
-          <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
-          <Table.Column
-            title={<Trans>Date</Trans>}
-            key="date"
-            render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
-          />
-          <Table.Column
-            title={<Trans>Original</Trans>}
-            key="original"
-            align="right"
-            render={(row: LoanStatusRow) => money(row.original)}
-          />
-          <Table.Column
-            title={<Trans>Paid</Trans>}
-            key="paid"
-            align="right"
-            render={(row: LoanStatusRow) => money(row.paid)}
-          />
-          <Table.Column
-            title={<Trans>Outstanding</Trans>}
-            key="outstanding"
-            align="right"
-            render={(row: LoanStatusRow) => (
-              <Typography.Text strong type={row.outstanding > 0 ? "warning" : "success"}>
-                {money(row.outstanding)}
-              </Typography.Text>
-            )}
-          />
-        </Table>
-      </Card>
-
+      {/* The sale-in-progress flow (below) renders before the register/loan
+      reports — those are standing back-office panels a cashier doesn't need
+      mid-transaction, so they'd otherwise sit between "customer picked" and
+      the form that actually rings up the sale on every single sale. */}
       {isToday && inSale && (
         <>
           <Space style={{ marginBottom: 16 }}>
@@ -1125,36 +917,289 @@ const CashBook = () => {
               about to be recorded, and the two can legitimately diverge
               (e.g. Cash mode with a cashier knowingly letting someone off
               a few coins short). Color, not just label text, distinguishes
-              the two outcomes — a misread button label is exactly the
-              mistake a fast-moving counter screen should make hard to
-              make: green (matches this app's "paid" state Tag) for a
-              fully-settled sale, gold (matches "sent", the state an
-              unsettled sale lands in) for anything left owing. */}
-              {amountReceivedWatched >= total ? (
-                <Button
-                  color="green"
-                  variant="solid"
-                  htmlType="submit"
-                  loading={submitting}
-                  size="large"
-                >
-                  <Trans>Record cash sale</Trans>
-                </Button>
-              ) : (
-                <Button
-                  color="gold"
-                  variant="solid"
-                  htmlType="submit"
-                  loading={submitting}
-                  size="large"
-                >
-                  <Trans>Record loan sale</Trans>
-                </Button>
-              )}
+              the two outcomes — a misread status is exactly the mistake a
+              fast-moving counter screen should make hard to make — but
+              it's carried by a Tag (green, matching this app's "paid"
+              state; gold, matching "sent", the state an unsettled sale
+              lands in), the same movementKindColor-style pattern used in
+              the register table above, rather than recoloring the submit
+              button itself: that button (in the sticky footer below,
+              reachable without scrolling past however many line items
+              were added) stays type="primary" like every other primary
+              action in the app, so it both respects the organization's
+              own brand color and keeps AntD's guaranteed-accessible text
+              contrast instead of the solid-green/gold palette's weak
+              contrast at this weight. */}
+              <Space>
+                <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
+                  {amountReceivedWatched >= total ? (
+                    <Trans>Fully settled</Trans>
+                  ) : (
+                    <Trans>Balance owing</Trans>
+                  )}
+                </Tag>
+              </Space>
             </Form>
           </Card>
+
+          {document.getElementById("footer") &&
+            createPortal(
+              <Footer
+                style={{
+                  position: "sticky",
+                  bottom: 0,
+                  zIndex: 1,
+                  padding: 0,
+                  background: colorBgContainer,
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                }}
+              >
+                <Row align="middle" justify="end" style={{ height: 64 }}>
+                  <Col>
+                    <Button
+                      type="primary"
+                      onClick={() => form.submit()}
+                      loading={submitting}
+                      size="large"
+                    >
+                      {amountReceivedWatched >= total ? (
+                        <Trans>Record cash sale</Trans>
+                      ) : (
+                        <Trans>Record loan sale</Trans>
+                      )}
+                    </Button>
+                  </Col>
+                </Row>
+              </Footer>,
+              // @ts-expect-error - Footer can be null
+              document.getElementById("footer"),
+            )}
         </>
       )}
+
+      <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
+          <Col>
+            <Typography.Text type="secondary">
+              <Trans>Cash register</Trans>
+            </Typography.Text>
+            <div>
+              <DatePicker
+                value={selectedDate}
+                onChange={(d) => d && setSelectedDate(d)}
+                format={dateFormat}
+                allowClear={false}
+                disabledDate={(d) => d.isAfter(dayjs(), "day")}
+              />
+            </div>
+          </Col>
+          {registerAccountId && (
+            <Col>
+              <Space>
+                {isToday && (
+                  <Button onClick={openWithdrawModal}>
+                    <Trans>Withdraw</Trans>
+                  </Button>
+                )}
+                <Button loading={downloadingDailyPdf} onClick={handleExportDailyMovements("pdf")}>
+                  <FilePdfOutlined /> PDF
+                </Button>
+                <Button
+                  loading={downloadingDailyExcel}
+                  onClick={handleExportDailyMovements("xlsx")}
+                >
+                  <FileExcelOutlined /> <Trans>Excel</Trans>
+                </Button>
+              </Space>
+            </Col>
+          )}
+        </Row>
+
+        {registerAccountId ? (
+          <>
+            <Row gutter={16}>
+              <Col xs={12} sm={6}>
+                <Typography.Text type="secondary">
+                  <Trans>Opening</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.opening) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Typography.Text type="secondary">
+                  <Trans>In</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.in) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Typography.Text type="secondary">
+                  <Trans>Out</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.out) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+              <Col xs={12} sm={6}>
+                <Typography.Text type="secondary">
+                  <Trans>Closing</Trans>
+                </Typography.Text>
+                <div>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    {dailyMovement ? money(dailyMovement.closing) : "—"}
+                  </Typography.Title>
+                </div>
+              </Col>
+            </Row>
+            {/* Labeled from the fetched row's own date, not the picker's
+            value — if utcDayMs above ever drifted from the picked
+            calendar date, this would visibly disagree with the picker
+            instead of silently hiding the mismatch. */}
+            {dailyMovement && (
+              <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+                <Trans>Movements for {dayjs(dailyMovement.date).format(dateFormat)}</Trans>
+              </Typography.Text>
+            )}
+            <Table
+              dataSource={movementDetails}
+              rowKey="id"
+              size="small"
+              pagination={false}
+              style={{ marginTop: 8 }}
+              locale={{ emptyText: <Trans>No movements on this date</Trans> }}
+            >
+              <Table.Column
+                title={<Trans>Time</Trans>}
+                key="time"
+                width={70}
+                render={(row: CashMovementDetail) => dayjs(row.date).format("HH:mm")}
+              />
+              <Table.Column
+                title={<Trans>Type</Trans>}
+                key="kind"
+                render={(row: CashMovementDetail) => (
+                  <Tag color={movementKindColor(row.kind)}>{movementKindLabel(row.kind)}</Tag>
+                )}
+              />
+              <Table.Column
+                title={<Trans>Customer</Trans>}
+                key="clientName"
+                render={(row: CashMovementDetail) => row.clientName ?? row.note ?? "—"}
+              />
+              <Table.Column
+                title={<Trans>Amount</Trans>}
+                key="amount"
+                align="right"
+                render={(row: CashMovementDetail) => (
+                  <Typography.Text type={row.direction === "in" ? "success" : "danger"}>
+                    {row.direction === "in" ? "+" : "−"}
+                    {money(row.amount)}
+                  </Typography.Text>
+                )}
+              />
+            </Table>
+            {!isToday && (
+              <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
+                <Trans>
+                  Viewing past movements, read-only. Switch to today to record a sale, payment, or
+                  withdrawal.
+                </Trans>
+              </Typography.Text>
+            )}
+          </>
+        ) : (
+          <Typography.Text type="secondary">
+            <Trans>
+              No cash register account configured — set one in Organization settings to see
+              movements here.
+            </Trans>
+          </Typography.Text>
+        )}
+      </Card>
+
+      {/* Not isToday-gated — a standing report of who owes what, not tied
+      to whichever day the panel above happens to be showing. */}
+      <Card
+        size="small"
+        title={<Trans>Loan status</Trans>}
+        style={{ marginBottom: 16 }}
+        loading={loadingLoanStatus}
+        extra={
+          <Space>
+            <Checkbox checked={openLoansOnly} onChange={(e) => setOpenLoansOnly(e.target.checked)}>
+              <Trans>Open only</Trans>
+            </Checkbox>
+            <Select
+              value={loanStatusClientId || undefined}
+              onChange={(value) => setLoanStatusClientId(value ?? "")}
+              placeholder={t`All customers`}
+              allowClear
+              showSearch
+              optionFilterProp="children"
+              style={{ minWidth: 220 }}
+            >
+              {(clients as any[]).map((c) => (
+                <Option key={c.id} value={c.id}>
+                  {c.name}
+                </Option>
+              ))}
+            </Select>
+            <Button loading={downloadingLoanPdf} onClick={handleExportLoanStatus("pdf")}>
+              <FilePdfOutlined /> PDF
+            </Button>
+            <Button loading={downloadingLoanExcel} onClick={handleExportLoanStatus("xlsx")}>
+              <FileExcelOutlined /> <Trans>Excel</Trans>
+            </Button>
+          </Space>
+        }
+      >
+        <Table
+          dataSource={filteredLoanStatusRows}
+          rowKey="invoiceId"
+          size="small"
+          pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
+          locale={{ emptyText: <Trans>No loan sales</Trans> }}
+        >
+          <Table.Column title={<Trans>Customer</Trans>} dataIndex="clientName" key="clientName" />
+          <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
+          <Table.Column
+            title={<Trans>Date</Trans>}
+            key="date"
+            render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
+          />
+          <Table.Column
+            title={<Trans>Original</Trans>}
+            key="original"
+            align="right"
+            render={(row: LoanStatusRow) => money(row.original)}
+          />
+          <Table.Column
+            title={<Trans>Paid</Trans>}
+            key="paid"
+            align="right"
+            render={(row: LoanStatusRow) => money(row.paid)}
+          />
+          <Table.Column
+            title={<Trans>Outstanding</Trans>}
+            key="outstanding"
+            align="right"
+            render={(row: LoanStatusRow) => (
+              <Typography.Text strong type={row.outstanding > 0 ? "warning" : "success"}>
+                {money(row.outstanding)}
+              </Typography.Text>
+            )}
+          />
+        </Table>
+      </Card>
 
       <Modal
         title={<Trans>New customer</Trans>}
@@ -1268,7 +1313,7 @@ const CashBook = () => {
           countryCode={organization?.country_code}
         />
       )}
-    </div>
+    </>
   );
 };
 
