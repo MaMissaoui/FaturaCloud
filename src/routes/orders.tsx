@@ -11,7 +11,12 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
-import { orderStatusColor, orderStatusLabel, type OrderStatus } from "src/types/order";
+import {
+  ORDER_STATUSES,
+  orderStatusColor,
+  orderStatusLabel,
+  type OrderStatus,
+} from "src/types/order";
 import PageHeader from "src/components/page-header";
 import { useDateFormatter } from "src/utils/date";
 
@@ -97,6 +102,8 @@ const Orders = () => {
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
+              filters={ORDER_STATUSES.map((s) => ({ text: orderStatusLabel(s), value: s }))}
+              onFilter={(value, record: Order) => record.status === value}
               sorter={(a: Order, b: Order) => (a.status ?? "").localeCompare(b.status ?? "")}
               render={statusTag}
             />

@@ -1263,6 +1263,7 @@ export const GetPayableAging = (organizationId: string) =>
 export interface InventoryValuationLine {
   productId: string;
   name: string;
+  sku: string | null;
   quantity: number;
   value: number;
 }

@@ -236,6 +236,7 @@ func (d *Database) GetBalanceSheet(organizationID string, asOfDate int64) (*Bala
 type InventoryValuationLine struct {
 	ProductID string  `db:"id"            json:"productId"`
 	Name      string  `db:"name"          json:"name"`
+	SKU       *string `db:"sku"           json:"sku"`
 	Quantity  float64 `db:"stockQuantity" json:"quantity"`
 	Value     int64   `db:"value"         json:"value"`
 }
@@ -282,7 +283,7 @@ func (d *Database) GetInventoryValuation(organizationID string) (*InventoryValua
 
 	products := []InventoryValuationLine{}
 	err = d.DB.Select(&products, `
-		SELECT id, name, stockQuantity,
+		SELECT id, name, sku, stockQuantity,
 		       CAST(ROUND(stockQuantity * COALESCE(unitCost, 0)) AS INTEGER) AS value
 		FROM products
 		WHERE organizationId = ? AND stockEnabled = 1
