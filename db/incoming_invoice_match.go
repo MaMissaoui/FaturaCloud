@@ -244,3 +244,42 @@ func valueOrZero(v *float64) float64 {
 	}
 	return *v
 }
+
+// hasBlockingVariance mirrors src/types/incoming-invoice.ts's function of the
+// same name — unlinked is informational only and never blocks.
+func hasBlockingVariance(lines []MatchLine) bool {
+	for _, line := range lines {
+		if line.Status != MatchMatched && line.Status != MatchUnlinked {
+			return true
+		}
+	}
+	return false
+}
+
+// GetIncomingInvoiceMatchSummaries reports, for every purchase-order-linked
+// incoming invoice in the organization, whether it currently has a blocking
+// 3-way-match variance — the list page's only way to surface this without
+// opening every invoice individually. Reuses GetIncomingInvoiceMatch's
+// well-tested per-line logic rather than re-deriving it as a set-based query;
+// scoped to PO-linked invoices only (an invoice with no purchase order has
+// every line "unlinked", which is informational and never a variance).
+func (d *Database) GetIncomingInvoiceMatchSummaries(organizationID string) (map[string]bool, error) {
+	var ids []string
+	if err := d.DB.Select(&ids, `
+		SELECT id FROM incoming_invoices
+		WHERE organizationId = ? AND purchaseOrderId IS NOT NULL`,
+		organizationID,
+	); err != nil {
+		return nil, fmt.Errorf("get_incoming_invoice_match_summaries: %w", err)
+	}
+
+	summaries := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		lines, err := d.GetIncomingInvoiceMatch(id)
+		if err != nil {
+			return nil, err
+		}
+		summaries[id] = hasBlockingVariance(lines)
+	}
+	return summaries, nil
+}

@@ -363,6 +363,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		return invoice.OrganizationID, nil
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/incoming-invoices", pathOrgID("orgId"), h.listIncomingInvoices)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/incoming-invoices/match-summaries", pathOrgID("orgId"), h.getIncomingInvoiceMatchSummaries)
 	protected("POST", "/api/incoming-invoices", h.createIncomingInvoice)
 	orgMemberProtected("GET", "/api/incoming-invoices/{id}", incomingInvoiceOrgID, h.getIncomingInvoice)
 	orgMemberProtected("GET", "/api/incoming-invoices/{id}/line-items", incomingInvoiceOrgID, h.getIncomingInvoiceLineItems)

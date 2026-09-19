@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import {
   Alert,
   Button,
+  Card,
   Col,
   DatePicker,
   Descriptions,
@@ -16,6 +17,7 @@ import {
   Row,
   Select,
   Space,
+  Table,
   Tag,
   theme,
   Tooltip,
@@ -45,7 +47,7 @@ import sum from "lodash/sum";
 
 import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from "src/api";
 import PageHeader from "src/components/page-header";
-import { useDatePickerFormat } from "src/utils/date";
+import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
 import ExchangeRateFields, {
@@ -63,10 +65,22 @@ import {
   purchaseOrderTransitions,
   type PurchaseOrderStatus,
 } from "src/types/purchase-order";
+import {
+  inboundDeliveryStatusColor,
+  inboundDeliveryStatusLabel,
+  type InboundDeliveryStatus,
+} from "src/types/inbound-delivery";
+import {
+  incomingInvoiceStateColor,
+  incomingInvoiceStateLabel,
+  type IncomingInvoiceState,
+} from "src/types/incoming-invoice";
 import { organizationAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import { importsAtom, setImportsAtom } from "src/atoms/import";
+import { inboundDeliveriesAtom, setInboundDeliveriesAtom } from "src/atoms/inbound-delivery";
+import { incomingInvoicesAtom, setIncomingInvoicesAtom } from "src/atoms/incoming-invoice";
 import {
   purchaseOrderIdAtom,
   purchaseOrderAtom,
@@ -101,6 +115,7 @@ const PurchaseOrderDetails = () => {
     token: { colorBgContainer },
   } = theme.useToken();
   const dateFormat = useDatePickerFormat();
+  const formatDate = useDateFormatter();
 
   const isNew = id === "new";
   // Set when navigating here from the Imports drawer's "New purchase order"
@@ -121,6 +136,21 @@ const PurchaseOrderDetails = () => {
     [products],
   );
   const setProducts = useSetAtom(setProductsAtom);
+  // Client-side filter of the already-fetched org-wide lists — same
+  // "no extra request" pattern as orders/details.tsx's linkedDeliveries —
+  // rather than a dedicated by-purchase-order endpoint.
+  const inboundDeliveries = useAtomValue(inboundDeliveriesAtom);
+  const setInboundDeliveries = useSetAtom(setInboundDeliveriesAtom);
+  const linkedReceipts = useMemo(
+    () => inboundDeliveries.filter((rc: any) => rc.purchaseOrderId === id),
+    [inboundDeliveries, id],
+  );
+  const incomingInvoices = useAtomValue(incomingInvoicesAtom);
+  const setIncomingInvoices = useSetAtom(setIncomingInvoicesAtom);
+  const linkedIncomingInvoices = useMemo(
+    () => incomingInvoices.filter((inv: any) => inv.purchaseOrderId === id),
+    [incomingInvoices, id],
+  );
   // Read the async atom directly so the component suspends until the real
   // number arrives. A non-suspending read would let the Form mount with a
   // placeholder, and antd applies initialValues only on first mount — freezing
@@ -146,6 +176,8 @@ const PurchaseOrderDetails = () => {
     setVendors();
     setProducts();
     setImports();
+    setInboundDeliveries();
+    setIncomingInvoices();
     setStatusOverride(null);
     if (!isNew) {
       setOrderId(id ?? null);
@@ -153,7 +185,16 @@ const PurchaseOrderDetails = () => {
     return () => {
       setOrderId(null);
     };
-  }, [id, isNew, setVendors, setProducts, setImports, setOrderId]);
+  }, [
+    id,
+    isNew,
+    setVendors,
+    setProducts,
+    setImports,
+    setInboundDeliveries,
+    setIncomingInvoices,
+    setOrderId,
+  ]);
 
   // Per-line fulfilment, so partial receipts are visible without opening every
   // goods receipt for this order.
@@ -579,6 +620,64 @@ const PurchaseOrderDetails = () => {
           </Row>
         )}
 
+        {/* Documents already created against this order — no visibility into
+            these otherwise short of navigating to Goods Receipts/Incoming
+            Invoices and searching for this order number. */}
+        {!isNew && linkedReceipts.length > 0 && (
+          <Card size="small" title={<Trans>Goods receipts</Trans>} style={{ marginTop: 16 }}>
+            <Table dataSource={linkedReceipts} rowKey="id" size="small" pagination={false}>
+              <Table.Column
+                title={<Trans>Number</Trans>}
+                key="deliveryNumber"
+                render={(receipt: any) => (
+                  <Link to={`/inbound-deliveries/${receipt.id}`}>{receipt.deliveryNumber}</Link>
+                )}
+              />
+              <Table.Column
+                title={<Trans>Date</Trans>}
+                key="deliveryDate"
+                render={(receipt: any) => formatDate(receipt.deliveryDate)}
+              />
+              <Table.Column
+                title={<Trans>Status</Trans>}
+                key="status"
+                render={(receipt: any) => (
+                  <Tag color={inboundDeliveryStatusColor[receipt.status as InboundDeliveryStatus]}>
+                    {inboundDeliveryStatusLabel(receipt.status)}
+                  </Tag>
+                )}
+              />
+            </Table>
+          </Card>
+        )}
+        {!isNew && linkedIncomingInvoices.length > 0 && (
+          <Card size="small" title={<Trans>Incoming invoices</Trans>} style={{ marginTop: 16 }}>
+            <Table dataSource={linkedIncomingInvoices} rowKey="id" size="small" pagination={false}>
+              <Table.Column
+                title={<Trans>Vendor invoice #</Trans>}
+                key="vendorInvoiceNumber"
+                render={(invoice: any) => (
+                  <Link to={`/incoming-invoices/${invoice.id}`}>{invoice.vendorInvoiceNumber}</Link>
+                )}
+              />
+              <Table.Column
+                title={<Trans>Date</Trans>}
+                key="date"
+                render={(invoice: any) => formatDate(invoice.date)}
+              />
+              <Table.Column
+                title={<Trans>State</Trans>}
+                key="state"
+                render={(invoice: any) => (
+                  <Tag color={incomingInvoiceStateColor[invoice.state as IncomingInvoiceState]}>
+                    {incomingInvoiceStateLabel(invoice.state)}
+                  </Tag>
+                )}
+              />
+            </Table>
+          </Card>
+        )}
+
         {/* Footer bar — portaled into the slot BaseLayout renders */}
         {document.getElementById("footer") &&
           createPortal(
@@ -593,7 +692,7 @@ const PurchaseOrderDetails = () => {
             >
               <Row align="middle" justify="space-between" style={{ height: 64 }}>
                 <Col>
-                  {!isNew && currentStatus !== "received" && (
+                  {!isNew && currentStatus !== "received" && !lineItemsFrozen && (
                     <Popconfirm
                       title={t`Delete this purchase order?`}
                       onConfirm={handleDelete}
@@ -664,6 +763,13 @@ const PurchaseOrderDetails = () => {
                         onClick={() => navigate(`/inbound-deliveries/new?purchaseOrderId=${id}`)}
                       >
                         <PlusOutlined /> <Trans>New goods receipt</Trans>
+                      </Button>
+                    )}
+                    {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
+                      <Button
+                        onClick={() => navigate(`/incoming-invoices/new?purchaseOrderId=${id}`)}
+                      >
+                        <PlusOutlined /> <Trans>New incoming invoice</Trans>
                       </Button>
                     )}
                     <Button type="primary" onClick={() => form.submit()}>

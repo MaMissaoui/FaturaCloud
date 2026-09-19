@@ -50,6 +50,19 @@ func (h *handler) getIncomingInvoiceMatch(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, lines)
 }
 
+// getIncomingInvoiceMatchSummaries backs the Incoming Invoices list page's
+// per-row variance flag — the list has no other way to surface a blocking
+// 3-way-match variance without opening every invoice individually.
+func (h *handler) getIncomingInvoiceMatchSummaries(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	summaries, err := h.db.GetIncomingInvoiceMatchSummaries(orgID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, summaries)
+}
+
 func (h *handler) createIncomingInvoice(w http.ResponseWriter, r *http.Request) {
 	var req db.CreateIncomingInvoiceRequest
 	if err := decodeJSON(w, r, &req); err != nil {

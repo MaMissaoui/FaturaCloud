@@ -13,6 +13,7 @@ import includes from "lodash/includes";
 import { useDateFormatter } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
 import { centsToUnits } from "src/utils/currency";
+import { GetIncomingInvoiceMatchSummaries } from "src/api";
 import {
   INCOMING_INVOICE_STATES,
   incomingInvoiceStateColor,
@@ -35,6 +36,7 @@ const IncomingInvoices = () => {
   const setInvoices = useSetAtom(setIncomingInvoicesAtom);
   const [search, setSearch] = useAtom(searchAtom);
   const [loading, setLoading] = useState(false);
+  const [variances, setVariances] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (location.pathname === "/incoming-invoices") {
@@ -42,6 +44,13 @@ const IncomingInvoices = () => {
       setInvoices().finally(() => setLoading(false));
     }
   }, [location, setInvoices]);
+
+  useEffect(() => {
+    if (location.pathname !== "/incoming-invoices" || !organization?.id) return;
+    GetIncomingInvoiceMatchSummaries(organization.id)
+      .then(setVariances)
+      .catch(() => setVariances({}));
+  }, [location, organization?.id]);
 
   const filtered = search
     ? filter(
@@ -122,6 +131,11 @@ const IncomingInvoices = () => {
                   {record.matchOverride === 1 && (
                     <Tag color="warning">
                       <Trans>Override</Trans>
+                    </Tag>
+                  )}
+                  {record.matchOverride !== 1 && variances[record.id] && (
+                    <Tag color="error">
+                      <Trans>Variance</Trans>
                     </Tag>
                   )}
                 </Space>

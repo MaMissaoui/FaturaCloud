@@ -2695,6 +2695,38 @@ func TestDeleteReceivedPurchaseOrderIsRejected(t *testing.T) {
 	}
 }
 
+// purchase_orders.status is never auto-advanced from received quantities, so
+// a partially-received order can sit at "confirmed" indefinitely — deleting
+// it must still be rejected, not just when status happens to read "received".
+func TestDeletePartiallyReceivedPurchaseOrderIsRejected(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	_, receipt := seedReceipt(t, d, "org-po-partial-del", 10, 250)
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
+		t.Fatalf("UpdateInboundDeliveryStatus: %v", err)
+	}
+
+	po, err := d.GetPurchaseOrder(*receipt.PurchaseOrderID)
+	if err != nil {
+		t.Fatalf("GetPurchaseOrder: %v", err)
+	}
+	if po.Status == "received" {
+		t.Fatalf("expected purchase order status to stay %q, got %q — test setup no longer exercises the gap", "confirmed", po.Status)
+	}
+
+	ok, err := d.DeletePurchaseOrder(po.ID)
+	if err == nil {
+		t.Fatal("expected deleting a partially-received purchase order to be rejected")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError (surfaced as 409), got %T: %v", err, err)
+	}
+	if ok {
+		t.Fatal("DeletePurchaseOrder reported success despite the guard")
+	}
+}
+
 // NextPurchaseOrderNumber must continue from the highest number in use, not
 // COUNT(*)+1 — the latter reissues a number as soon as one is deleted. The
 // SUBSTR offset is prefix-length-sensitive ("PO-" is 3 chars, unlike "DEL-").

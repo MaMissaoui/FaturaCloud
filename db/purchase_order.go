@@ -531,6 +531,23 @@ func (d *Database) DeletePurchaseOrder(orderID string) (bool, error) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// purchase_orders.status is never auto-advanced from received quantities
+	// (see purchase_order_freeze.go), so a partially-received order can sit
+	// at "confirmed" indefinitely — the status check above alone would let
+	// it be deleted out from under a posted GRNI accrual and the receipt's
+	// own line links. Re-checked under tx for the same race-closing reason
+	// checkPurchaseOrderLineItemFreezeTx already documents.
+	receipt, err := freezingReceiptForPurchaseOrderTx(tx, orderID)
+	if err != nil {
+		return false, err
+	}
+	if receipt != "" {
+		return false, newValidationError(
+			"cannot delete a purchase order that goods receipt %s has already received — cancel that receipt first",
+			receipt,
+		)
+	}
+
 	if _, err = tx.Exec(
 		`DELETE FROM purchase_order_line_items WHERE purchaseOrderId = ?`, orderID,
 	); err != nil {

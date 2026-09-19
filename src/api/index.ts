@@ -1084,6 +1084,12 @@ export const GetIncomingInvoiceLineItems = (id: string) =>
 // the current state of the linked order and its goods receipts.
 export const GetIncomingInvoiceMatch = (id: string) =>
   get<MatchLine[]>(`/incoming-invoices/${id}/match`);
+// Per-invoice hasBlockingVariance, keyed by id — the list page's only way to
+// flag a variance without fetching every invoice's own match report.
+export const GetIncomingInvoiceMatchSummaries = (organizationId: string) =>
+  get<Record<string, boolean>>(
+    `/organizations/${organizationId}/incoming-invoices/match-summaries`,
+  );
 export const CreateIncomingInvoice = (req: unknown) =>
   post<IncomingInvoice>("/incoming-invoices", req);
 export const UpdateIncomingInvoice = (id: string, req: unknown) =>
