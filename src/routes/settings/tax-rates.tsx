@@ -77,7 +77,15 @@ function SettingsTaxRates() {
             rowKey="id"
             onRow={(record: TaxRate) => ({
               onClick: () => navigate(`/settings/tax-rates/${record.id}`),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/settings/tax-rates/${record.id}`);
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column

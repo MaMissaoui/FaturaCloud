@@ -138,7 +138,15 @@ export default function OrganizationEditDrawer({
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="code" label={<Trans>Code</Trans>}>
+              <Form.Item
+                name="code"
+                label={<Trans>Code</Trans>}
+                tooltip={
+                  <Trans>
+                    Short code used in document numbering (e.g. ACME, MS). Auto-uppercased.
+                  </Trans>
+                }
+              >
                 <Input
                   maxLength={20}
                   onChange={(e) => form.setFieldValue("code", e.target.value.toUpperCase())}
@@ -167,7 +175,16 @@ export default function OrganizationEditDrawer({
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="currency" label={<Trans>Currency</Trans>}>
+              <Form.Item
+                name="currency"
+                label={<Trans>Currency</Trans>}
+                tooltip={
+                  <Trans>
+                    Default currency for invoices and reports. Changing this updates decimal
+                    precision.
+                  </Trans>
+                }
+              >
                 <Select
                   showSearch
                   onChange={(c: string) =>
@@ -198,7 +215,16 @@ export default function OrganizationEditDrawer({
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="registration_number" label={<Trans>Registration number</Trans>}>
+              <Form.Item
+                name="registration_number"
+                label={<Trans>Registration number</Trans>}
+                tooltip={
+                  <Trans>
+                    Tax/VAT registration number. Appears on invoices. For France FEC export, must be
+                    a 9-digit SIREN.
+                  </Trans>
+                }
+              >
                 <Input />
               </Form.Item>
             </Col>

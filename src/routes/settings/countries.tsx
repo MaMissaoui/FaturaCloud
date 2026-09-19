@@ -108,9 +108,10 @@ function SettingsCountries() {
               sorter={(a: { code: string }, b: { code: string }) =>
                 Number(activeSet.has(a.code)) - Number(activeSet.has(b.code))
               }
-              render={(row: { code: string }) => (
+              render={(row: { code: string; name: string }) => (
                 <Switch
                   checked={activeSet.has(row.code)}
+                  aria-label={t`Toggle ${row.name} active`}
                   onChange={(checked) => toggleCountryActive({ code: row.code, active: checked })}
                 />
               )}

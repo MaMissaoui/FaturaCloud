@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TrialBalanceRow } from "src/types/models";
 import { useLocation } from "react-router";
-import { Alert, Button, Col, Row, Select, Table, Typography } from "antd";
+import { Alert, Button, Col, Row, Select, Space, Table, Tag, Typography } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -139,9 +139,21 @@ const TrialBalance = () => {
             summary={() => (
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={2}>
-                  <Typography.Text strong>
-                    <Trans>Total</Trans>
-                  </Typography.Text>
+                  <Space>
+                    <Typography.Text strong>
+                      <Trans>Total</Trans>
+                    </Typography.Text>
+                    {!failed && totalDebit === totalCredit && (
+                      <Tag color="green">
+                        <Trans>Balanced</Trans>
+                      </Tag>
+                    )}
+                    {!failed && totalDebit !== totalCredit && (
+                      <Tag color="red">
+                        <Trans>Out of balance</Trans>
+                      </Tag>
+                    )}
+                  </Space>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
                   <Typography.Text strong>{failed ? "—" : money(totalDebit)}</Typography.Text>

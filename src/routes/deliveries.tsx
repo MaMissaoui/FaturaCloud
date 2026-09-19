@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Delivery } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -72,9 +72,30 @@ const Deliveries = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No deliveries match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No deliveries yet</Trans>}>
+                  <Link to="/deliveries/new">
+                    <Button type="primary">
+                      <Trans>Create your first delivery</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: Delivery) => ({
               onClick: () => navigate(`/deliveries/${record.id}`),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/deliveries/${record.id}`);
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column

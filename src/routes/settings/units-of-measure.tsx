@@ -77,7 +77,17 @@ function SettingsUnitsOfMeasure() {
                 navigate("/settings/units-of-measure", {
                   state: { unitOfMeasureModal: true, unitOfMeasureId: record.id },
                 }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/settings/units-of-measure", {
+                    state: { unitOfMeasureModal: true, unitOfMeasureId: record.id },
+                  });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "button",
             })}
           >
             <Table.Column

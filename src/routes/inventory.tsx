@@ -38,30 +38,30 @@ const movementTypeTag = (type: string) => {
   if (type === "in")
     return (
       <Tag color="green">
-        ↑ <Trans>In</Trans>
+        <span aria-hidden="true">↑</span> <Trans>In</Trans>
       </Tag>
     );
   if (type === "out")
     return (
       <Tag color="red">
-        ↓ <Trans>Out</Trans>
+        <span aria-hidden="true">↓</span> <Trans>Out</Trans>
       </Tag>
     );
   if (type === "count_addition")
     return (
       <Tag color="cyan">
-        ↑ <Trans>Stock count (surplus)</Trans>
+        <span aria-hidden="true">↑</span> <Trans>Stock count (surplus)</Trans>
       </Tag>
     );
   if (type === "count_subtraction")
     return (
       <Tag color="orange">
-        ↓ <Trans>Stock count (shortage)</Trans>
+        <span aria-hidden="true">↓</span> <Trans>Stock count (shortage)</Trans>
       </Tag>
     );
   return (
     <Tag color="blue">
-      ⇆ <Trans>Adjustment</Trans>
+      <span aria-hidden="true">⇆</span> <Trans>Adjustment</Trans>
     </Tag>
   );
 };
@@ -101,6 +101,14 @@ const Inventory = () => {
   const [referenceInput, setReferenceInput] = useState("");
   const [referenceFilter, setReferenceFilter] = useState("");
   const [stockSearch, setStockSearch] = useState("");
+  // Stock levels' own pagination — kept as state rather than left to the
+  // Table's default uncontrolled pagination, which doesn't reset itself when
+  // the filtered dataSource shrinks: browsing to page 2+ of "Finished good"
+  // and then switching to "Component" (a smaller filtered set) left antd
+  // pinned on a page number the new set doesn't have, rendering an empty
+  // table even though matching rows existed on page 1.
+  const [stockPage, setStockPage] = useState(1);
+  const [stockPageSize, setStockPageSize] = useState(25);
   const [sortField, setSortField] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
 
@@ -159,6 +167,10 @@ const Inventory = () => {
       message.info(t`Product filter cleared — no longer matches the Stock levels filter above.`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryFilter, stockSearch]);
+
+  useEffect(() => {
+    setStockPage(1);
   }, [categoryFilter, stockSearch]);
 
   const fetchMovements = useCallback(() => {
@@ -310,7 +322,16 @@ const Inventory = () => {
                 dataSource={filteredTrackedProducts}
                 rowKey="id"
                 loading={productsLoading}
-                pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
+                pagination={{
+                  current: stockPage,
+                  pageSize: stockPageSize,
+                  showSizeChanger: true,
+                  hideOnSinglePage: true,
+                }}
+                onChange={(pagination) => {
+                  setStockPage(pagination.current ?? 1);
+                  setStockPageSize(pagination.pageSize ?? 25);
+                }}
                 locale={{ emptyText: t`No products match your filters` }}
               >
                 <Table.Column

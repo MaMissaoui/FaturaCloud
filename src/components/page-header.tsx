@@ -25,15 +25,15 @@ interface PageHeaderProps {
 // Shared header for list pages: icon + title on the left, search + actions on
 // the right. Was hand-rolled byte-for-byte-similar in every list/settings page.
 const PageHeader = ({ icon, title, search, extra, actions, style }: PageHeaderProps) => (
-  <Row style={style}>
-    <Col span={12}>
+  <Row gutter={[16, 12]} style={style}>
+    <Col xs={24} md={12}>
       <Title level={3} style={{ margin: 0 }}>
         <span style={{ marginRight: 8 }}>{icon}</span>
         {title}
       </Title>
     </Col>
-    <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
-      <Space style={{ alignItems: "start" }}>
+    <Col xs={24} md={12} style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" }}>
+      <Space wrap size="small" style={{ alignItems: "start" }}>
         {extra}
         {search && (
           <Input.Search

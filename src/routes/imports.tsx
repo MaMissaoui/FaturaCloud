@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Import, ImportSummary, PurchaseOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Table, Row, Tag, Tooltip } from "antd";
+import { Button, Col, Empty, Table, Row, Tag, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -91,7 +91,7 @@ const Imports = () => {
       <PageHeader
         icon={<ContainerOutlined />}
         title={<Trans>Imports</Trans>}
-        search={{ placeholder: t`Search text`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, onChange: setSearch }}
         actions={
           <Link to="/imports" state={{ importModal: true }}>
             <Button type="primary" style={{ marginBottom: 10 }}>
@@ -107,10 +107,31 @@ const Imports = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No imports match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No imports yet</Trans>}>
+                  <Link to="/imports" state={{ importModal: true }}>
+                    <Button type="primary">
+                      <Trans>Create your first import</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: Import) => ({
               onClick: () =>
                 navigate("/imports", { state: { importModal: true, importId: record.id } }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/imports", { state: { importModal: true, importId: record.id } });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "button",
             })}
           >
             <Table.Column

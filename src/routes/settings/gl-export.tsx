@@ -77,6 +77,7 @@ const SettingsGLExport = () => {
             </Text>
             <Space>
               <Select
+                aria-label={t`Fiscal year for FEC export`}
                 placeholder={t`Select a fiscal year`}
                 style={{ width: 180 }}
                 value={fiscalYearId || undefined}
@@ -108,6 +109,7 @@ const SettingsGLExport = () => {
             </Text>
             <Space>
               <Select
+                aria-label={t`Fiscal year for DATEV export`}
                 placeholder={t`Select a fiscal year`}
                 style={{ width: 180 }}
                 value={fiscalYearId || undefined}

@@ -16,6 +16,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Table,
   Tag,
@@ -47,6 +48,8 @@ import sum from "lodash/sum";
 
 import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from "src/api";
 import PageHeader from "src/components/page-header";
+import useSaveShortcut from "src/hooks/useSaveShortcut";
+import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
@@ -171,6 +174,9 @@ const PurchaseOrderDetails = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+
+  useSaveShortcut(form);
+  useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
     setVendors();
@@ -345,16 +351,31 @@ const PurchaseOrderDetails = () => {
 
   const currentStatus =
     statusOverride ?? (!isNew && order && !(order as any).then ? (order as any).status : "draft");
+  const orderNumber =
+    !isNew && order && !(order as any).then ? (order as any).orderNumber : undefined;
   const transitions = isNew ? [] : purchaseOrderTransitions(currentStatus);
 
   if (!organization) return null;
-  if (!isNew && !order) return null;
+  if (!isNew && !order) {
+    return (
+      <>
+        <PageHeader
+          icon={<ShoppingCartOutlined />}
+          title={<Trans>Purchase Order</Trans>}
+          style={{ marginBottom: 24 }}
+        />
+        <Skeleton active paragraph={{ rows: 12 }} />
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         icon={<ShoppingCartOutlined />}
-        title={<Trans>Purchase Order</Trans>}
+        title={
+          isNew ? <Trans>New purchase order</Trans> : <Trans>Purchase order {orderNumber}</Trans>
+        }
         style={{ marginBottom: 24 }}
       />
       <Form

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Button, Card, Col, Row, Statistic, Table, theme } from "antd";
+import { Alert, Button, Card, Col, Row, Statistic, Table, theme, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react";
@@ -108,6 +108,25 @@ const InventoryValuationReport = () => {
             loading={loading}
             pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
             locale={{ emptyText: <Trans>No stock-enabled products</Trans> }}
+            summary={() =>
+              report?.products?.length ? (
+                <Table.Summary.Row>
+                  <Table.Summary.Cell index={0} colSpan={2}>
+                    <Typography.Text strong>
+                      <Trans>Total</Trans>
+                    </Typography.Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right">
+                    <Typography.Text strong>
+                      {report.products.reduce((sum, p) => sum + p.quantity, 0)}
+                    </Typography.Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} align="right">
+                    <Typography.Text strong>{money(report.computedValue)}</Typography.Text>
+                  </Table.Summary.Cell>
+                </Table.Summary.Row>
+              ) : null
+            }
           >
             <Table.Column
               title={<Trans>Product</Trans>}

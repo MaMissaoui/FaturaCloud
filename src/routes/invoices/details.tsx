@@ -13,6 +13,7 @@ import {
   Row,
   Col,
   Select,
+  Skeleton,
   Space,
   Descriptions,
   Layout,
@@ -38,6 +39,8 @@ import {
 } from "@ant-design/icons";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
+import useSaveShortcut from "src/hooks/useSaveShortcut";
+import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
 import dayjs from "dayjs";
 
@@ -140,6 +143,8 @@ const InvoiceDetails: React.FC = () => {
   const [isDirty, setIsDirty] = useState(false);
   const dateFormat = useDatePickerFormat();
 
+  useUnsavedChangesWarning(isDirty);
+
   const isNew = id === "new";
 
   useEffect(() => {
@@ -196,6 +201,8 @@ const InvoiceDetails: React.FC = () => {
 
   const initialValues = getInitialValues();
   const [form] = Form.useForm();
+
+  useSaveShortcut(form);
 
   // Reset form when invoice data changes (e.g., after duplication)
   useEffect(() => {
@@ -325,6 +332,10 @@ const InvoiceDetails: React.FC = () => {
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
       ? ((invoice as any).state ?? "draft")
       : "draft";
+  const invoiceNumber =
+    !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
+      ? (invoice as any).invoiceNumber
+      : undefined;
 
   // Footer action groups — built as arrays and filtered before being handed
   // to <Space split>, so a group that's conditionally empty (e.g. every
@@ -387,13 +398,24 @@ const InvoiceDetails: React.FC = () => {
   const footerActionGroups = [exportActions, stateActions].filter((group) => group.length > 0);
 
   if (!organization) return null;
-  if (!isNew && !invoice) return null;
+  if (!isNew && !invoice) {
+    return (
+      <>
+        <PageHeader
+          icon={<FileTextOutlined />}
+          title={<Trans>Invoice</Trans>}
+          style={{ marginBottom: 24 }}
+        />
+        <Skeleton active paragraph={{ rows: 12 }} />
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         icon={<FileTextOutlined />}
-        title={<Trans>Invoice</Trans>}
+        title={isNew ? <Trans>New invoice</Trans> : <Trans>Invoice {invoiceNumber}</Trans>}
         style={{ marginBottom: 24 }}
       />
       <Row>

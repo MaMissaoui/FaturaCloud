@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { App, Button, Card, Select, Space, Tag, Typography, Upload } from "antd";
+import { App, Button, Card, Popconfirm, Select, Space, Tag, Typography, Upload } from "antd";
 import type { UploadProps } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -164,9 +164,18 @@ function DocumentTemplateCard({
             </Button>
           </Upload>
           {hasOverride && (
-            <Button danger icon={<DeleteOutlined />} loading={deleting} onClick={handleDelete}>
-              <Trans>Reset to default</Trans>
-            </Button>
+            <Popconfirm
+              title={t`Reset this template to the default?`}
+              description={t`Your custom template will be permanently deleted.`}
+              onConfirm={handleDelete}
+              okText={t`Reset`}
+              cancelText={t`Cancel`}
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger icon={<DeleteOutlined />} loading={deleting}>
+                <Trans>Reset to default</Trans>
+              </Button>
+            </Popconfirm>
           )}
         </Space>
       </div>

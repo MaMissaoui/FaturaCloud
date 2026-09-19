@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { IncomingInvoice } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Space, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Space, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -82,9 +82,30 @@ const IncomingInvoices = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No incoming invoices match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No incoming invoices yet</Trans>}>
+                  <Link to="/incoming-invoices/new">
+                    <Button type="primary">
+                      <Trans>Create your first incoming invoice</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: IncomingInvoice) => ({
               onClick: () => navigate(`/incoming-invoices/${record.id}`),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/incoming-invoices/${record.id}`);
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column

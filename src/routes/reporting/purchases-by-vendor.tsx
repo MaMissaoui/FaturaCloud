@@ -65,6 +65,19 @@ const PurchasesByVendor = () => {
             value={range}
             format={dateFormat}
             allowClear={false}
+            presets={[
+              { label: t`Last 7 days`, value: [dayjs().subtract(7, "day"), dayjs()] },
+              { label: t`Last 30 days`, value: [dayjs().subtract(30, "day"), dayjs()] },
+              { label: t`This month`, value: [dayjs().startOf("month"), dayjs().endOf("month")] },
+              {
+                label: t`Last month`,
+                value: [
+                  dayjs().subtract(1, "month").startOf("month"),
+                  dayjs().subtract(1, "month").endOf("month"),
+                ],
+              },
+              { label: t`This year`, value: [dayjs().startOf("year"), dayjs().endOf("year")] },
+            ]}
             onChange={(values) => {
               if (values?.[0] && values?.[1]) setRange([values[0], values[1]]);
             }}
@@ -86,51 +99,61 @@ const PurchasesByVendor = () => {
         />
       )}
 
-      <Card
-        style={{ marginTop: 16 }}
-        loading={loading}
-        title={rows.length > 20 ? <Trans>Top 20 by spend</Trans> : undefined}
-      >
-        <Bar
-          data={failed ? [] : rows.slice(0, 20)}
-          xField="name"
-          yField="spend"
-          theme={themeMode === "dark" ? "classicDark" : "classic"}
-          // Fixed height regardless of row count made G2Plot auto-hide
-          // overlapping category-axis labels once this list neared 20 items —
-          // scale with the actual number of bars instead.
-          height={Math.max(280, Math.min(rows.length, 20) * 32)}
-          axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-          tooltip={{
-            items: [{ field: "spend", name: t`Spend`, valueFormatter: (v: number) => money(v) }],
-          }}
-        />
-      </Card>
+      {!failed && (
+        <>
+          <Card
+            style={{ marginTop: 16 }}
+            loading={loading}
+            title={
+              rows.length > 20 ? <Trans>Top 20 by spend</Trans> : <Trans>Spend by vendor</Trans>
+            }
+          >
+            <div role="img" aria-label={t`Bar chart showing spend by vendor`}>
+              <Bar
+                data={rows.slice(0, 20)}
+                xField="name"
+                yField="spend"
+                theme={themeMode === "dark" ? "classicDark" : "classic"}
+                // Fixed height regardless of row count made G2Plot auto-hide
+                // overlapping category-axis labels once this list neared 20 items —
+                // scale with the actual number of bars instead.
+                height={Math.max(280, Math.min(rows.length, 20) * 32)}
+                axis={{ y: { labelFormatter: (v: number) => money(v) } }}
+                tooltip={{
+                  items: [
+                    { field: "spend", name: t`Spend`, valueFormatter: (v: number) => money(v) },
+                  ],
+                }}
+              />
+            </div>
+          </Card>
 
-      <Table
-        style={{ marginTop: 16 }}
-        dataSource={failed ? [] : rows}
-        rowKey="vendorId"
-        loading={loading}
-        pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
-        locale={{ emptyText: <Trans>No purchases in this period</Trans> }}
-      >
-        <Table.Column
-          title={<Trans>Vendor</Trans>}
-          key="name"
-          render={(row: VendorSpend) => (
-            <Link to="/vendors" state={{ vendorModal: true, vendorId: row.vendorId }}>
-              {row.name}
-            </Link>
-          )}
-        />
-        <Table.Column
-          title={<Trans>Spend</Trans>}
-          key="spend"
-          align="right"
-          render={(row: VendorSpend) => money(row.spend)}
-        />
-      </Table>
+          <Table
+            style={{ marginTop: 16 }}
+            dataSource={rows}
+            rowKey="vendorId"
+            loading={loading}
+            pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
+            locale={{ emptyText: <Trans>No purchases in this period</Trans> }}
+          >
+            <Table.Column
+              title={<Trans>Vendor</Trans>}
+              key="name"
+              render={(row: VendorSpend) => (
+                <Link to="/vendors" state={{ vendorModal: true, vendorId: row.vendorId }}>
+                  {row.name}
+                </Link>
+              )}
+            />
+            <Table.Column
+              title={<Trans>Spend</Trans>}
+              key="spend"
+              align="right"
+              render={(row: VendorSpend) => money(row.spend)}
+            />
+          </Table>
+        </>
+      )}
     </>
   );
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DatePicker, Select, Space, Table, Typography } from "antd";
+import { Card, Col, DatePicker, Row, Select, Space, Statistic, Table, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -105,43 +105,81 @@ const DailyCashMovements = () => {
           <Trans>Pick an account to see its daily movements.</Trans>
         </Typography.Text>
       ) : (
-        <Table
-          dataSource={rows}
-          rowKey="date"
-          loading={loading}
-          pagination={{ hideOnSinglePage: true, defaultPageSize: 31 }}
-          locale={{ emptyText: <Trans>No activity in this range</Trans> }}
-        >
-          <Table.Column
-            title={<Trans>Date</Trans>}
-            key="date"
-            render={(row: DailyCashMovementRow) => dayjs(row.date).format(dateFormat)}
-          />
-          <Table.Column
-            title={<Trans>Opening balance</Trans>}
-            key="opening"
-            align="right"
-            render={(row: DailyCashMovementRow) => money(row.opening)}
-          />
-          <Table.Column
-            title={<Trans>In</Trans>}
-            key="in"
-            align="right"
-            render={(row: DailyCashMovementRow) => money(row.in)}
-          />
-          <Table.Column
-            title={<Trans>Out</Trans>}
-            key="out"
-            align="right"
-            render={(row: DailyCashMovementRow) => money(row.out)}
-          />
-          <Table.Column
-            title={<Trans>Closing balance</Trans>}
-            key="closing"
-            align="right"
-            render={(row: DailyCashMovementRow) => <strong>{money(row.closing)}</strong>}
-          />
-        </Table>
+        <>
+          {rows.length > 0 && (
+            <Row gutter={[8, 8]} style={{ marginTop: 16, marginBottom: 16 }}>
+              <Col xs={12} md={6}>
+                <Card>
+                  <Statistic
+                    title={<Trans>Opening balance</Trans>}
+                    value={money(rows[0]?.opening ?? 0)}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} md={6}>
+                <Card>
+                  <Statistic
+                    title={<Trans>Total in</Trans>}
+                    value={money(rows.reduce((sum, r) => sum + r.in, 0))}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} md={6}>
+                <Card>
+                  <Statistic
+                    title={<Trans>Total out</Trans>}
+                    value={money(rows.reduce((sum, r) => sum + r.out, 0))}
+                  />
+                </Card>
+              </Col>
+              <Col xs={12} md={6}>
+                <Card>
+                  <Statistic
+                    title={<Trans>Closing balance</Trans>}
+                    value={money(rows[rows.length - 1]?.closing ?? 0)}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          )}
+          <Table
+            dataSource={rows}
+            rowKey="date"
+            loading={loading}
+            pagination={{ hideOnSinglePage: true, defaultPageSize: 31 }}
+            locale={{ emptyText: <Trans>No activity in this range</Trans> }}
+          >
+            <Table.Column
+              title={<Trans>Date</Trans>}
+              key="date"
+              render={(row: DailyCashMovementRow) => dayjs(row.date).format(dateFormat)}
+            />
+            <Table.Column
+              title={<Trans>Opening balance</Trans>}
+              key="opening"
+              align="right"
+              render={(row: DailyCashMovementRow) => money(row.opening)}
+            />
+            <Table.Column
+              title={<Trans>In</Trans>}
+              key="in"
+              align="right"
+              render={(row: DailyCashMovementRow) => money(row.in)}
+            />
+            <Table.Column
+              title={<Trans>Out</Trans>}
+              key="out"
+              align="right"
+              render={(row: DailyCashMovementRow) => money(row.out)}
+            />
+            <Table.Column
+              title={<Trans>Closing balance</Trans>}
+              key="closing"
+              align="right"
+              render={(row: DailyCashMovementRow) => <strong>{money(row.closing)}</strong>}
+            />
+          </Table>
+        </>
       )}
     </>
   );

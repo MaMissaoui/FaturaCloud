@@ -73,6 +73,19 @@ const RevenueTrend = () => {
             value={range}
             format={dateFormat}
             allowClear={false}
+            presets={[
+              { label: t`Last 7 days`, value: [dayjs().subtract(7, "day"), dayjs()] },
+              { label: t`Last 30 days`, value: [dayjs().subtract(30, "day"), dayjs()] },
+              { label: t`This month`, value: [dayjs().startOf("month"), dayjs().endOf("month")] },
+              {
+                label: t`Last month`,
+                value: [
+                  dayjs().subtract(1, "month").startOf("month"),
+                  dayjs().subtract(1, "month").endOf("month"),
+                ],
+              },
+              { label: t`This year`, value: [dayjs().startOf("year"), dayjs().endOf("year")] },
+            ]}
             onChange={(values) => {
               if (values?.[0] && values?.[1]) setRange([values[0], values[1]]);
             }}
@@ -94,55 +107,59 @@ const RevenueTrend = () => {
         />
       )}
 
-      <Card
-        style={{ marginTop: 16 }}
-        loading={loading}
-        title={<Trans>Revenue by month</Trans>}
-        extra={
-          <Switch
-            checked={showTable}
-            onChange={setShowTable}
-            checkedChildren={<Trans>Table</Trans>}
-            unCheckedChildren={<Trans>Chart</Trans>}
-          />
-        }
-      >
-        {showTable ? (
-          <Table
-            dataSource={failed ? [] : rows}
-            rowKey="month"
-            size="small"
-            pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
-            locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
-          >
-            <Table.Column
-              title={<Trans>Month</Trans>}
-              key="month"
-              render={(row: MonthlyRevenue) => formatMonth(row.month)}
+      {!failed && (
+        <Card
+          style={{ marginTop: 16 }}
+          loading={loading}
+          title={<Trans>Revenue by month</Trans>}
+          extra={
+            <Switch
+              checked={showTable}
+              onChange={setShowTable}
+              checkedChildren={<Trans>Table</Trans>}
+              unCheckedChildren={<Trans>Chart</Trans>}
             />
-            <Table.Column
-              title={<Trans>Revenue</Trans>}
-              key="revenue"
-              align="right"
-              render={(row: MonthlyRevenue) => money(row.revenue)}
-            />
-          </Table>
-        ) : (
-          <Column
-            data={failed ? [] : rows}
-            xField="month"
-            yField="revenue"
-            theme={themeMode === "dark" ? "classicDark" : "classic"}
-            height={320}
-            axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-            tooltip={{
-              items: [
-                { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
-              ],
-            }}
-          />
-        )}
-      </Card>
+          }
+        >
+          {showTable ? (
+            <Table
+              dataSource={rows}
+              rowKey="month"
+              size="small"
+              pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
+              locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
+            >
+              <Table.Column
+                title={<Trans>Month</Trans>}
+                key="month"
+                render={(row: MonthlyRevenue) => formatMonth(row.month)}
+              />
+              <Table.Column
+                title={<Trans>Revenue</Trans>}
+                key="revenue"
+                align="right"
+                render={(row: MonthlyRevenue) => money(row.revenue)}
+              />
+            </Table>
+          ) : (
+            <div role="img" aria-label={t`Bar chart showing monthly revenue data`}>
+              <Column
+                data={failed ? [] : rows}
+                xField="month"
+                yField="revenue"
+                theme={themeMode === "dark" ? "classicDark" : "classic"}
+                height={320}
+                axis={{ y: { labelFormatter: (v: number) => money(v) } }}
+                tooltip={{
+                  items: [
+                    { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
+                  ],
+                }}
+              />
+            </div>
+          )}
+        </Card>
+      )}
     </>
   );
 };

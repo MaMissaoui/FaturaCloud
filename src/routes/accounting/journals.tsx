@@ -69,7 +69,17 @@ const Journals = () => {
                 navigate("/accounting/journals", {
                   state: { journalModal: true, journalId: record.id },
                 }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/accounting/journals", {
+                    state: { journalModal: true, journalId: record.id },
+                  });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "button",
             })}
           >
             <Table.Column

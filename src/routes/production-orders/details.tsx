@@ -20,6 +20,7 @@ import {
   Tag,
   theme,
   Tooltip,
+  Typography,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
@@ -337,6 +338,11 @@ const CreateProductionOrderForm = ({
             return (
               <span style={{ color: short ? token.colorError : undefined, fontWeight: 600 }}>
                 {onHand % 1 === 0 ? onHand : onHand.toFixed(2)}
+                {short && (
+                  <Typography.Text type="danger" style={{ marginLeft: 4, fontSize: 12 }}>
+                    (−{(required - onHand).toFixed(2)})
+                  </Typography.Text>
+                )}
               </span>
             );
           }}

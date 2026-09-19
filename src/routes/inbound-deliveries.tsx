@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { InboundDelivery } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -69,9 +69,30 @@ const InboundDeliveries = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No goods receipts match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No goods receipts yet</Trans>}>
+                  <Link to="/inbound-deliveries/new">
+                    <Button type="primary">
+                      <Trans>Create your first goods receipt</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: InboundDelivery) => ({
               onClick: () => navigate(`/inbound-deliveries/${record.id}`),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/inbound-deliveries/${record.id}`);
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column

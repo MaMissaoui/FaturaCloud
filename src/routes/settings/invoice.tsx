@@ -74,7 +74,11 @@ function SettingsInvoice() {
             <Card size="small" title={<Trans>Defaults</Trans>} style={{ marginBottom: 16 }}>
               <Row gutter={[16, 0]}>
                 <Col xs={24} md={12}>
-                  <Form.Item label={t`Due days`} name="due_days">
+                  <Form.Item
+                    label={t`Due days`}
+                    name="due_days"
+                    extra={t`Calendar days from invoice date until due date. Set to 0 for due on receipt.`}
+                  >
                     <InputNumber min={0} style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>
@@ -82,6 +86,7 @@ function SettingsInvoice() {
                   <Form.Item
                     label={t`Overdue charge`}
                     help={<Trans>% per day</Trans>}
+                    extra={t`Applied daily on overdue invoices. Set to 0 to disable.`}
                     name="overdueCharge"
                   >
                     <InputNumber

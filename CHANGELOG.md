@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.0] - 2026-09-19
+
+### Added
+- Empty states on the Clients, Vendors, Orders, Purchase Orders, Deliveries,
+  Goods Receipts, Incoming Invoices, Production Orders and Imports lists:
+  a "No … yet" prompt with a "Create your first …" button, and a distinct
+  "No … match your search" message when a search filters everything out.
+- Date-range presets (Last 7 days, Last 30 days, This month, Last month,
+  This year) on the Reporting pickers.
+- Ctrl/Cmd+S saves the open form, and closing or reloading the tab warns
+  about unsaved changes on the main editing screens.
+- Sticky, responsive action footer on document and settings screens.
+
+### Changed
+- Accessibility: table rows that navigate are now keyboard-focusable
+  (Enter/Space) with link/button roles, and charts carry a text
+  description for screen readers.
+- Consistent search placeholder, page headers and layout across the
+  Accounting, Reporting, Settings and document screens.
+
+### Fixed
+- German and French translations for the 65 remaining untranslated
+  strings (empty states, report presets, chart descriptions, settings help
+  text).
+
 ## [3.27.2] - 2026-09-19
 
 ### Added
