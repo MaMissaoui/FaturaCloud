@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Card, DatePicker, Table } from "antd";
+import { Alert, Button, Card, DatePicker, Table } from "antd";
 import { Bar } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
+import { Link } from "react-router";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -28,19 +29,29 @@ const SalesByProduct = () => {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(12, "month"), dayjs()]);
   const [rows, setRows] = useState<ProductRevenue[]>([]);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset rows to [], which rendered identically to a
+  // genuinely revenue-free period — tracked separately so the page can show
+  // a real error instead of a false all-clear.
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const refresh = () => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     GetSalesByProduct(
       organizationId,
       range[0].startOf("day").valueOf(),
       range[1].endOf("day").valueOf(),
     )
       .then(setRows)
-      .catch(() => setRows([]))
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
-  }, [organizationId, range]);
+  };
+
+  useEffect(refresh, [organizationId, range]);
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
@@ -61,13 +72,27 @@ const SalesByProduct = () => {
         }
       />
 
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load sales by product</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Card
         style={{ marginTop: 16 }}
         loading={loading}
         title={rows.length > 20 ? <Trans>Top 20 by revenue</Trans> : undefined}
       >
         <Bar
-          data={rows.slice(0, 20)}
+          data={failed ? [] : rows.slice(0, 20)}
           xField="name"
           yField="revenue"
           theme={themeMode === "dark" ? "classicDark" : "classic"}
@@ -86,13 +111,21 @@ const SalesByProduct = () => {
 
       <Table
         style={{ marginTop: 16 }}
-        dataSource={rows}
+        dataSource={failed ? [] : rows}
         rowKey="productId"
         loading={loading}
         pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
         locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
       >
-        <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
+        <Table.Column
+          title={<Trans>Product</Trans>}
+          key="name"
+          render={(row: ProductRevenue) => (
+            <Link to="/products" state={{ productModal: true, productId: row.productId }}>
+              {row.name}
+            </Link>
+          )}
+        />
         <Table.Column
           title={<Trans>Revenue</Trans>}
           key="revenue"

@@ -25,28 +25,13 @@ import { taxRateIdAtom, taxRateAtom, deleteTaxRateAtom } from "src/atoms/tax-rat
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import Section from "src/components/form-section";
 import ScrollShadow from "src/components/scroll-shadow";
+import {
+  TAX_RATE_CATEGORY_CODES,
+  CATEGORIES_REQUIRING_EXEMPTION_REASON,
+  useTaxRateCategoryLabels,
+} from "src/utils/tax-rate-categories";
 
 const loadableTaxRateAtom = loadable(taxRateAtom);
-
-// BT-118 VAT category code (UNTDID 5305 subset EN 16931 accepts). Must stay
-// in sync with taxRateCategoryCodes in db/tax_rate.go.
-const TAX_RATE_CATEGORY_CODES = ["S", "Z", "E", "AE", "K", "G", "O", "L", "M"] as const;
-
-// Categories other than standard rate normally need a BT-120 exemption
-// reason so the exported XRechnung line isn't rejected as invalid.
-const CATEGORIES_REQUIRING_EXEMPTION_REASON = new Set(["Z", "E", "AE", "K", "G", "O", "L", "M"]);
-
-const useTaxRateCategoryLabels = (): Record<(typeof TAX_RATE_CATEGORY_CODES)[number], string> => ({
-  S: t`Standard rate`,
-  Z: t`Zero rated goods`,
-  E: t`Exempt from tax`,
-  AE: t`VAT reverse charge`,
-  K: t`Intra-community supply (EEA)`,
-  G: t`Free export item, tax not charged`,
-  O: t`Outside scope of tax`,
-  L: t`Canary Islands general indirect tax`,
-  M: t`Tax for production, services and importation in Ceuta and Melilla`,
-});
 
 const TaxRateForm = () => {
   const navigate = useNavigate();

@@ -30,7 +30,7 @@ msgstr "{0} erstellt, {1} aktualisiert, {2} fehlgeschlagen."
 msgid "{0} deliveries exist for order {1}:"
 msgstr "{0} Lieferungen existieren für Auftrag {1}:"
 
-#: src/routes/reporting/tax-summary.tsx:49
+#: src/routes/reporting/tax-summary.tsx:77
 msgid "%"
 msgstr "%"
 
@@ -145,7 +145,7 @@ msgstr "Konto aktualisiert"
 #: src/components/organizations/organization-edit-drawer.tsx:439
 #: src/components/organizations/organization-members-panel.tsx:14
 #: src/components/products/form.tsx:551
-#: src/components/tax-rates/form.tsx:246
+#: src/components/tax-rates/form.tsx:231
 #: src/layouts/base.tsx:597
 msgid "Accounting"
 msgstr "Buchhaltung"
@@ -323,7 +323,7 @@ msgstr "Möchten Sie diese Zahlungsbedingung wirklich löschen?"
 msgid "Are you sure you want to delete this product?"
 msgstr "Sind Sie sicher, dass Sie dieses Produkt löschen möchten?"
 
-#: src/components/tax-rates/form.tsx:148
+#: src/components/tax-rates/form.tsx:133
 msgid "Are you sure you want to delete this tax rate?"
 msgstr "Sind Sie sicher, dass Sie diesen Steuersatz löschen möchten?"
 
@@ -445,7 +445,7 @@ msgstr "Banküberweisung"
 msgid "Banking"
 msgstr "Bankverbindung"
 
-#: src/routes/reporting/tax-summary.tsx:56
+#: src/routes/reporting/tax-summary.tsx:84
 msgid "Base"
 msgstr "Basis"
 
@@ -528,7 +528,7 @@ msgstr "Wird als gewichteter Durchschnitt berechnet, sobald Waren mit Kosten ein
 msgid "Calendar year"
 msgstr "Kalenderjahr"
 
-#: src/components/tax-rates/form.tsx:47
+#: src/utils/tax-rate-categories.ts:32
 msgid "Canary Islands general indirect tax"
 msgstr "Allgemeine indirekte Steuer der Kanarischen Inseln"
 
@@ -545,7 +545,7 @@ msgstr "Allgemeine indirekte Steuer der Kanarischen Inseln"
 #: src/components/products/form.tsx:266
 #: src/components/stock/movement-form.tsx:119
 #: src/components/stock/serial-capture-modal.tsx:158
-#: src/components/tax-rates/form.tsx:162
+#: src/components/tax-rates/form.tsx:147
 #: src/components/units-of-measure/form.tsx:113
 #: src/components/vendors/form.tsx:152
 #: src/routes/accounting/fiscal-periods.tsx:114
@@ -609,7 +609,7 @@ msgstr "Storniert"
 msgid "Cannot change while stock is non-zero ({0}) — adjust stock to zero first."
 msgstr "Kann nicht geändert werden, solange der Bestand ungleich null ist ({0}) — Bestand zuerst auf null setzen."
 
-#: src/components/tax-rates/form.tsx:141
+#: src/components/tax-rates/form.tsx:126
 msgid "Cannot delete: used by {usageCount} invoice(s)"
 msgstr "Löschen nicht möglich: wird von {usageCount} Rechnung(en) verwendet"
 
@@ -660,6 +660,7 @@ msgstr "Barverkauf erfasst"
 #: src/components/products/form.tsx:387
 #: src/routes/inventory.tsx:335
 #: src/routes/products.tsx:258
+#: src/routes/reporting/tax-summary.tsx:64
 msgid "Category"
 msgstr "Kategorie"
 
@@ -672,7 +673,7 @@ msgstr "Rückgeld: {0}"
 msgid "Change logo"
 msgstr "Logo ändern"
 
-#: src/routes/reporting/revenue-trend.tsx:81
+#: src/routes/reporting/revenue-trend.tsx:106
 msgid "Chart"
 msgstr "Diagramm"
 
@@ -706,7 +707,7 @@ msgstr "Stadt"
 #: src/routes/invoices/index.tsx:171
 #: src/routes/orders.tsx:93
 #: src/routes/orders/details.tsx:285
-#: src/routes/reporting/sales-by-client.tsx:95
+#: src/routes/reporting/sales-by-client.tsx:121
 msgid "Client"
 msgstr "Kunde"
 
@@ -892,6 +893,18 @@ msgstr "Wareneinsatz, beim Versand einer Lieferung gegen den Bestand erfasst."
 msgid "Cost price"
 msgstr "Einkaufspreis"
 
+#: src/routes/reporting/purchases-by-vendor.tsx:80
+msgid "Couldn't load purchases by vendor"
+msgstr "Einkäufe nach Lieferant konnten nicht geladen werden"
+
+#: src/routes/reporting/sales-by-client.tsx:80
+msgid "Couldn't load sales by client"
+msgstr "Umsatz nach Kunde konnte nicht geladen werden"
+
+#: src/routes/reporting/sales-by-product.tsx:80
+msgid "Couldn't load sales by product"
+msgstr "Umsatz nach Produkt konnte nicht geladen werden"
+
 #: src/routes/dashboard.tsx:141
 msgid "Couldn't load the dashboard"
 msgstr "Das Dashboard konnte nicht geladen werden"
@@ -899,6 +912,14 @@ msgstr "Das Dashboard konnte nicht geladen werden"
 #: src/routes/accounting/reports/inventory-valuation.tsx:59
 msgid "Couldn't load the inventory valuation report"
 msgstr "Der Lagerbewertungsbericht konnte nicht geladen werden"
+
+#: src/routes/reporting/revenue-trend.tsx:88
+msgid "Couldn't load the revenue trend"
+msgstr "Der Umsatztrend konnte nicht geladen werden"
+
+#: src/routes/reporting/tax-summary.tsx:126
+msgid "Couldn't load the tax summary"
+msgstr "Die Steuerübersicht konnte nicht geladen werden"
 
 #: src/routes/accounting/trial-balance.tsx:123
 msgid "Couldn't load the trial balance"
@@ -1095,11 +1116,11 @@ msgstr "DATEV-Beraternummer"
 msgid "DATEV export failed"
 msgstr "DATEV-Export fehlgeschlagen"
 
-#: src/components/tax-rates/form.tsx:290
+#: src/components/tax-rates/form.tsx:275
 msgid "DATEV tax key (BU-Schlüssel)"
 msgstr "DATEV-Steuerschlüssel (BU-Schlüssel)"
 
-#: src/components/tax-rates/form.tsx:292
+#: src/components/tax-rates/form.tsx:277
 msgid "DATEV's own tax key, independent of the percentage above. Leave blank if this rate isn't used with the DATEV export."
 msgstr "DATEVs eigener Steuerschlüssel, unabhängig vom obigen Prozentsatz. Leer lassen, wenn dieser Steuersatz nicht für den DATEV-Export verwendet wird."
 
@@ -1133,7 +1154,7 @@ msgstr "Dezimalstellen"
 
 #: src/components/invoices/layouts.ts:31
 #: src/components/organizations/organization-edit-drawer.tsx:424
-#: src/components/tax-rates/form.tsx:207
+#: src/components/tax-rates/form.tsx:192
 #: src/routes/settings/document-templates.tsx:142
 #: src/routes/settings/payment-terms.tsx:100
 #: src/routes/settings/tax-rates.tsx:110
@@ -1216,8 +1237,8 @@ msgstr "Standardmäßig der Gesamtbetrag. Ein höherer Betrag erfasst nur das zu
 #: src/components/organizations/organizations-table.tsx:147
 #: src/components/payment-terms/form.tsx:100
 #: src/components/products/form.tsx:259
-#: src/components/tax-rates/form.tsx:143
-#: src/components/tax-rates/form.tsx:155
+#: src/components/tax-rates/form.tsx:128
+#: src/components/tax-rates/form.tsx:140
 #: src/components/units-of-measure/form.tsx:106
 #: src/components/vendors/form.tsx:140
 #: src/routes/accounting/journal-entries/details.tsx:404
@@ -1372,8 +1393,8 @@ msgstr "Auf die Bank einzahlen"
 #: src/components/invoices/pdf.tsx:279
 #: src/components/line-items/table.tsx:259
 #: src/components/products/form.tsx:413
-#: src/components/tax-rates/form.tsx:191
-#: src/components/tax-rates/form.tsx:192
+#: src/components/tax-rates/form.tsx:176
+#: src/components/tax-rates/form.tsx:177
 #: src/routes/accounting/journal-entries.tsx:119
 #: src/routes/accounting/journal-entries/details.tsx:235
 #: src/routes/accounting/journal-entries/details.tsx:280
@@ -1488,7 +1509,7 @@ msgstr "E-Rechnungs-Export fehlgeschlagen"
 
 #: src/components/clients/form.tsx:341
 #: src/components/organizations/organization-edit-drawer.tsx:374
-#: src/components/tax-rates/form.tsx:214
+#: src/components/tax-rates/form.tsx:199
 msgid "E-invoicing"
 msgstr "E-Rechnung"
 
@@ -1530,7 +1551,7 @@ msgstr "z. B. 2026"
 msgid "e.g. 456"
 msgstr "z. B. 456"
 
-#: src/components/tax-rates/form.tsx:298
+#: src/components/tax-rates/form.tsx:283
 msgid "e.g. 9"
 msgstr "z. B. 9"
 
@@ -1542,7 +1563,7 @@ msgstr "z. B. Bankgebühr"
 msgid "e.g. Cash"
 msgstr "z. B. Kasse"
 
-#: src/components/tax-rates/form.tsx:242
+#: src/components/tax-rates/form.tsx:227
 msgid "e.g. Intra-community supply"
 msgstr "z. B. innergemeinschaftliche Lieferung"
 
@@ -1602,7 +1623,7 @@ msgstr "Zahlungsbedingung bearbeiten"
 msgid "Edit product"
 msgstr "Produkt bearbeiten"
 
-#: src/components/tax-rates/form.tsx:131
+#: src/components/tax-rates/form.tsx:116
 msgid "Edit tax rate"
 msgstr "Steuersatz bearbeiten"
 
@@ -1711,11 +1732,11 @@ msgstr "Excel"
 msgid "Exchange rate"
 msgstr "Wechselkurs"
 
-#: src/components/tax-rates/form.tsx:42
+#: src/utils/tax-rate-categories.ts:27
 msgid "Exempt from tax"
 msgstr "Steuerbefreit"
 
-#: src/components/tax-rates/form.tsx:230
+#: src/components/tax-rates/form.tsx:215
 msgid "Exemption reason"
 msgstr "Befreiungsgrund"
 
@@ -2184,7 +2205,7 @@ msgstr "Formatierung"
 msgid "France — FEC"
 msgstr "Frankreich — FEC"
 
-#: src/components/tax-rates/form.tsx:45
+#: src/utils/tax-rate-categories.ts:30
 msgid "Free export item, tax not charged"
 msgstr "Steuerfreie Ausfuhr, keine Steuer berechnet"
 
@@ -2462,15 +2483,15 @@ msgstr "Eingangsrechnungen"
 msgid "Incoming Invoices"
 msgstr "Eingangsrechnungen"
 
-#: src/components/tax-rates/form.tsx:271
+#: src/components/tax-rates/form.tsx:256
 msgid "Input tax account"
 msgstr "Vorsteuerkonto"
 
-#: src/routes/reporting/tax-summary.tsx:119
+#: src/routes/reporting/tax-summary.tsx:164
 msgid "Input VAT (Purchases)"
 msgstr "Vorsteuer (Einkäufe)"
 
-#: src/components/tax-rates/form.tsx:44
+#: src/utils/tax-rate-categories.ts:29
 msgid "Intra-community supply (EEA)"
 msgstr "Innergemeinschaftliche Lieferung (EWR)"
 
@@ -2889,7 +2910,7 @@ msgstr "Mobilnummer"
 msgid "month"
 msgstr "Monat"
 
-#: src/routes/reporting/revenue-trend.tsx:94
+#: src/routes/reporting/revenue-trend.tsx:119
 msgid "Month"
 msgstr "Monat"
 
@@ -2921,8 +2942,8 @@ msgstr "Bewegungen für {0}"
 #: src/components/organizations/organizations-table.tsx:39
 #: src/components/payment-terms/form.tsx:119
 #: src/components/products/form.tsx:287
-#: src/components/tax-rates/form.tsx:186
-#: src/components/tax-rates/form.tsx:189
+#: src/components/tax-rates/form.tsx:171
+#: src/components/tax-rates/form.tsx:174
 #: src/components/units-of-measure/form.tsx:125
 #: src/components/vendors/form.tsx:168
 #: src/components/vendors/form.tsx:172
@@ -2961,6 +2982,10 @@ msgstr "Netto fälliger Betrag"
 #: src/routes/accounting/reports/profit-and-loss.tsx:140
 msgid "Net income"
 msgstr "Reingewinn"
+
+#: src/routes/reporting/tax-summary.tsx:196
+msgid "Net VAT liability"
+msgstr "Netto-Umsatzsteuerschuld"
 
 #: src/components/accounting/account-form.tsx:118
 #: src/routes/accounting/chart-of-accounts.tsx:87
@@ -3076,7 +3101,7 @@ msgstr "Neuer Verkauf"
 msgid "New stock count"
 msgstr "Neue Bestandszählung"
 
-#: src/components/tax-rates/form.tsx:131
+#: src/components/tax-rates/form.tsx:116
 #: src/routes/settings/tax-rates.tsx:65
 msgid "New tax rate"
 msgstr "Neuer Steuersatz"
@@ -3117,7 +3142,7 @@ msgstr "Nächste Ausführung: {nextRunLabel}"
 #: src/components/payment-terms/form.tsx:96
 #: src/components/payments/payment-panel.tsx:405
 #: src/components/products/form.tsx:255
-#: src/components/tax-rates/form.tsx:151
+#: src/components/tax-rates/form.tsx:136
 #: src/components/units-of-measure/form.tsx:102
 #: src/components/vendors/form.tsx:136
 #: src/routes/accounting/fiscal-periods.tsx:226
@@ -3220,7 +3245,7 @@ msgstr "Keine Produkte entsprechen Ihren Filtern"
 msgid "No purchase orders linked to this shipment yet."
 msgstr "Diesem Import sind noch keine Bestellungen zugeordnet."
 
-#: src/routes/reporting/purchases-by-vendor.tsx:91
+#: src/routes/reporting/purchases-by-vendor.tsx:116
 msgid "No purchases in this period"
 msgstr "Keine Einkäufe in diesem Zeitraum"
 
@@ -3230,9 +3255,9 @@ msgstr "Noch keine Stückliste definiert"
 
 #: src/routes/dashboard.tsx:364
 #: src/routes/dashboard.tsx:396
-#: src/routes/reporting/revenue-trend.tsx:91
-#: src/routes/reporting/sales-by-client.tsx:93
-#: src/routes/reporting/sales-by-product.tsx:93
+#: src/routes/reporting/revenue-trend.tsx:116
+#: src/routes/reporting/sales-by-client.tsx:118
+#: src/routes/reporting/sales-by-product.tsx:118
 msgid "No revenue in this period"
 msgstr "Kein Umsatz in diesem Zeitraum"
 
@@ -3267,8 +3292,8 @@ msgstr "Kein Lieferant"
 #: src/components/organizations/organization-edit-drawer.tsx:642
 #: src/components/organizations/organization-edit-drawer.tsx:664
 #: src/components/organizations/organization-edit-drawer.tsx:756
-#: src/components/tax-rates/form.tsx:262
-#: src/components/tax-rates/form.tsx:281
+#: src/components/tax-rates/form.tsx:247
+#: src/components/tax-rates/form.tsx:266
 #: src/routes/bill-of-materials.tsx:143
 #: src/routes/production-orders/details.tsx:248
 #: src/routes/purchase-orders/details.tsx:434
@@ -3564,15 +3589,15 @@ msgstr "Ausgangslieferungen"
 msgid "Outbound Delivery"
 msgstr "Ausgangslieferung"
 
-#: src/components/tax-rates/form.tsx:252
+#: src/components/tax-rates/form.tsx:237
 msgid "Output tax account"
 msgstr "Umsatzsteuerkonto"
 
-#: src/routes/reporting/tax-summary.tsx:93
+#: src/routes/reporting/tax-summary.tsx:138
 msgid "Output VAT (Sales)"
 msgstr "Umsatzsteuer (Verkäufe)"
 
-#: src/components/tax-rates/form.tsx:46
+#: src/utils/tax-rate-categories.ts:31
 msgid "Outside scope of tax"
 msgstr "Außerhalb des Steueranwendungsbereichs"
 
@@ -3618,6 +3643,10 @@ msgstr "Überschreibt das Standard-Aufwandskonto der Organisation für eine Posi
 #: src/components/products/form.tsx:558
 msgid "Overrides the organization's default revenue account on a sales invoice line."
 msgstr "Überschreibt das Standard-Erlöskonto der Organisation für eine Position auf einer Ausgangsrechnung."
+
+#: src/routes/reporting/tax-summary.tsx:210
+msgid "Owed — output VAT exceeds input VAT for this period"
+msgstr "Zu zahlen — Umsatzsteuer übersteigt Vorsteuer in diesem Zeitraum"
 
 #: src/routes/settings/document-templates.tsx:176
 msgid "Page orientation"
@@ -3716,8 +3745,8 @@ msgstr "Zahlungen"
 msgid "pcs, kg, m…"
 msgstr "Stk, kg, m…"
 
-#: src/components/tax-rates/form.tsx:198
-#: src/components/tax-rates/form.tsx:201
+#: src/components/tax-rates/form.tsx:183
+#: src/components/tax-rates/form.tsx:186
 #: src/routes/settings/tax-rates.tsx:102
 msgid "Percentage"
 msgstr "Prozentsatz"
@@ -3801,12 +3830,12 @@ msgstr "Bitte geben Sie einen Namen ein!"
 msgid "Please input a number!"
 msgstr "Bitte geben Sie eine Zahl ein!"
 
-#: src/components/tax-rates/form.tsx:199
+#: src/components/tax-rates/form.tsx:184
 msgid "Please input a percentage!"
 msgstr "Bitte geben Sie einen Prozentsatz ein!"
 
 #: src/components/clients/form.tsx:196
-#: src/components/tax-rates/form.tsx:187
+#: src/components/tax-rates/form.tsx:172
 #: src/components/vendors/form.tsx:169
 #: src/routes/organizations/new.tsx:62
 msgid "Please input name!"
@@ -3831,7 +3860,7 @@ msgstr "Bitte wählen Sie ein Journal!"
 msgid "Please select a type!"
 msgstr "Bitte wählen Sie einen Typ!"
 
-#: src/components/tax-rates/form.tsx:219
+#: src/components/tax-rates/form.tsx:204
 msgid "Please select a VAT category!"
 msgstr "Bitte wählen Sie eine USt-Kategorie aus!"
 
@@ -3920,7 +3949,7 @@ msgstr "Preisgestaltung"
 #: src/routes/invoices/details.tsx:726
 #: src/routes/products.tsx:159
 #: src/routes/products.tsx:248
-#: src/routes/reporting/sales-by-product.tsx:95
+#: src/routes/reporting/sales-by-product.tsx:121
 msgid "Product"
 msgstr "Produkt"
 
@@ -4087,7 +4116,7 @@ msgid "Purchases"
 msgstr "Einkauf"
 
 #: src/layouts/base.tsx:737
-#: src/routes/reporting/purchases-by-vendor.tsx:51
+#: src/routes/reporting/purchases-by-vendor.tsx:62
 msgid "Purchases by Vendor"
 msgstr "Einkäufe nach Lieferant"
 
@@ -4161,7 +4190,7 @@ msgstr "Bereichsende"
 msgid "Range start"
 msgstr "Bereichsanfang"
 
-#: src/routes/reporting/tax-summary.tsx:47
+#: src/routes/reporting/tax-summary.tsx:62
 msgid "Rate"
 msgstr "Steuersatz"
 
@@ -4206,6 +4235,10 @@ msgstr "Erhalten"
 #: src/routes/inventory.tsx:395
 msgid "Recent movements"
 msgstr "Letzte Lagerbewegungen"
+
+#: src/routes/reporting/tax-summary.tsx:208
+msgid "Reclaimable — input VAT exceeds output VAT for this period"
+msgstr "Erstattungsfähig — Vorsteuer übersteigt Umsatzsteuer in diesem Zeitraum"
 
 #: src/components/mass-data/mass-data-excel-actions.tsx:110
 #: src/components/payments/payment-panel.tsx:281
@@ -4387,6 +4420,11 @@ msgstr "Aufbewahrung (Tage)"
 #: src/routes/accounting/trial-balance.tsx:126
 #: src/routes/dashboard.tsx:144
 #: src/routes/production-orders/details.tsx:274
+#: src/routes/reporting/purchases-by-vendor.tsx:83
+#: src/routes/reporting/revenue-trend.tsx:91
+#: src/routes/reporting/sales-by-client.tsx:83
+#: src/routes/reporting/sales-by-product.tsx:83
+#: src/routes/reporting/tax-summary.tsx:129
 msgid "Retry"
 msgstr "Erneut versuchen"
 
@@ -4396,12 +4434,12 @@ msgstr "Erneut versuchen"
 #: src/routes/dashboard.tsx:223
 #: src/routes/dashboard.tsx:375
 #: src/routes/dashboard.tsx:407
-#: src/routes/reporting/revenue-trend.tsx:99
-#: src/routes/reporting/revenue-trend.tsx:115
-#: src/routes/reporting/sales-by-client.tsx:81
-#: src/routes/reporting/sales-by-client.tsx:97
-#: src/routes/reporting/sales-by-product.tsx:81
-#: src/routes/reporting/sales-by-product.tsx:97
+#: src/routes/reporting/revenue-trend.tsx:124
+#: src/routes/reporting/revenue-trend.tsx:140
+#: src/routes/reporting/sales-by-client.tsx:106
+#: src/routes/reporting/sales-by-client.tsx:130
+#: src/routes/reporting/sales-by-product.tsx:106
+#: src/routes/reporting/sales-by-product.tsx:130
 msgid "Revenue"
 msgstr "Umsatz"
 
@@ -4413,7 +4451,7 @@ msgstr "Umsatz (gewählter Zeitraum)"
 msgid "Revenue account"
 msgstr "Erlöskonto"
 
-#: src/routes/reporting/revenue-trend.tsx:75
+#: src/routes/reporting/revenue-trend.tsx:100
 msgid "Revenue by month"
 msgstr "Umsatz nach Monat"
 
@@ -4422,7 +4460,7 @@ msgid "Revenue over time"
 msgstr "Umsatzentwicklung"
 
 #: src/layouts/base.tsx:710
-#: src/routes/reporting/revenue-trend.tsx:59
+#: src/routes/reporting/revenue-trend.tsx:70
 msgid "Revenue Trend"
 msgstr "Umsatzentwicklung"
 
@@ -4488,12 +4526,12 @@ msgid "Sales"
 msgstr "Verkauf"
 
 #: src/layouts/base.tsx:719
-#: src/routes/reporting/sales-by-client.tsx:51
+#: src/routes/reporting/sales-by-client.tsx:62
 msgid "Sales by Client"
 msgstr "Umsatz nach Kunde"
 
 #: src/layouts/base.tsx:728
-#: src/routes/reporting/sales-by-product.tsx:51
+#: src/routes/reporting/sales-by-product.tsx:62
 msgid "Sales by Product"
 msgstr "Umsatz nach Produkt"
 
@@ -4506,7 +4544,7 @@ msgstr "Umsatz nach Produkt"
 #: src/components/products/bom-editor-drawer.tsx:327
 #: src/components/products/form.tsx:269
 #: src/components/stock/movement-form.tsx:122
-#: src/components/tax-rates/form.tsx:165
+#: src/components/tax-rates/form.tsx:150
 #: src/components/units-of-measure/form.tsx:116
 #: src/components/vendors/form.tsx:155
 #: src/routes/deliveries/details.tsx:597
@@ -4804,8 +4842,8 @@ msgstr "SKU"
 msgid "SKU / Product code"
 msgstr "SKU / Produktcode"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:80
-#: src/routes/reporting/purchases-by-vendor.tsx:95
+#: src/routes/reporting/purchases-by-vendor.tsx:105
+#: src/routes/reporting/purchases-by-vendor.tsx:128
 msgid "Spend"
 msgstr "Ausgaben"
 
@@ -4817,7 +4855,7 @@ msgstr "Für eine Ausgabe verwenden (keine Lieferantenrechnung)"
 msgid "Stamp duty account"
 msgstr "Konto für Steuermarke"
 
-#: src/components/tax-rates/form.tsx:40
+#: src/utils/tax-rate-categories.ts:25
 msgid "Standard rate"
 msgstr "Regelsteuersatz"
 
@@ -4950,7 +4988,7 @@ msgstr "Zum hellen Modus wechseln"
 msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 msgstr "Synthetisches Gegenkonto für eine manuelle Buchung mit mehr als einer Zeile auf beiden Seiten (ohne natürliche Ankerzeile) beim Export nach DATEV. Leer lassen, wenn Sie DATEV nicht verwenden."
 
-#: src/routes/reporting/revenue-trend.tsx:80
+#: src/routes/reporting/revenue-trend.tsx:105
 msgid "Table"
 msgstr "Tabelle"
 
@@ -4959,7 +4997,7 @@ msgstr "Tabelle"
 #: src/routes/incoming-invoices/details.tsx:493
 #: src/routes/invoices/details.tsx:983
 #: src/routes/invoices/details.tsx:989
-#: src/routes/reporting/tax-summary.tsx:63
+#: src/routes/reporting/tax-summary.tsx:91
 msgid "Tax"
 msgstr "Steuer"
 
@@ -4973,7 +5011,7 @@ msgstr "Steuer %"
 msgid "Tax 0%"
 msgstr "Steuer 0%"
 
-#: src/components/tax-rates/form.tsx:48
+#: src/utils/tax-rate-categories.ts:33
 msgid "Tax for production, services and importation in Ceuta and Melilla"
 msgstr "Steuer für Produktion, Dienstleistungen und Einfuhr in Ceuta und Melilla"
 
@@ -4983,7 +5021,7 @@ msgstr "Steuer für Produktion, Dienstleistungen und Einfuhr in Ceuta und Melill
 msgid "Tax number"
 msgstr "Steuernummer"
 
-#: src/components/tax-rates/form.tsx:182
+#: src/components/tax-rates/form.tsx:167
 #: src/routes/products.tsx:295
 msgid "Tax rate"
 msgstr "Steuersatz"
@@ -5024,7 +5062,7 @@ msgid "Tax rates"
 msgstr "Steuersätze"
 
 #: src/layouts/base.tsx:746
-#: src/routes/reporting/tax-summary.tsx:77
+#: src/routes/reporting/tax-summary.tsx:108
 msgid "Tax Summary"
 msgstr "Steuerübersicht"
 
@@ -5129,7 +5167,7 @@ msgstr "Dadurch wird das aktuelle Rezept durch die Komponenten und Mengen von v{
 msgid "This reverses its journal entry and restores the balance due."
 msgstr "Dies storniert den zugehörigen Buchungssatz und stellt den offenen Betrag wieder her."
 
-#: src/components/tax-rates/form.tsx:236
+#: src/components/tax-rates/form.tsx:221
 msgid "This VAT category requires an exemption reason!"
 msgstr "Diese USt-Kategorie erfordert einen Befreiungsgrund!"
 
@@ -5158,12 +5196,12 @@ msgstr "Dadurch wird der durch diesen Wareneingang hinzugefügte Bestand zurück
 msgid "Time"
 msgstr "Uhrzeit"
 
-#: src/routes/reporting/sales-by-client.tsx:67
-#: src/routes/reporting/sales-by-product.tsx:67
+#: src/routes/reporting/sales-by-client.tsx:92
+#: src/routes/reporting/sales-by-product.tsx:92
 msgid "Top 20 by revenue"
 msgstr "Top 20 nach Umsatz"
 
-#: src/routes/reporting/purchases-by-vendor.tsx:67
+#: src/routes/reporting/purchases-by-vendor.tsx:92
 msgid "Top 20 by spend"
 msgstr "Top 20 nach Ausgaben"
 
@@ -5211,7 +5249,7 @@ msgstr "Gesamt netto"
 msgid "Total expenses"
 msgstr "Aufwendungen gesamt"
 
-#: src/routes/reporting/tax-summary.tsx:131
+#: src/routes/reporting/tax-summary.tsx:176
 msgid "Total input VAT"
 msgstr "Vorsteuer gesamt"
 
@@ -5219,7 +5257,7 @@ msgstr "Vorsteuer gesamt"
 msgid "Total liabilities"
 msgstr "Verbindlichkeiten gesamt"
 
-#: src/routes/reporting/tax-summary.tsx:105
+#: src/routes/reporting/tax-summary.tsx:150
 msgid "Total output VAT"
 msgstr "Umsatzsteuer gesamt"
 
@@ -5351,7 +5389,7 @@ msgstr "Bestellung entkoppeln"
 msgid "Unlink this purchase order from the shipment?"
 msgstr "Diese Bestellung vom Import trennen?"
 
-#: src/routes/reporting/tax-summary.tsx:44
+#: src/routes/reporting/tax-summary.tsx:59
 msgid "Unrated"
 msgstr "Ohne Steuersatz"
 
@@ -5412,11 +5450,11 @@ msgstr "Wird verwendet, um den Wert eines bestandsgeführten Produkts beim Waren
 msgid "Used to pick a starter chart of accounts (Germany/France get a localized one, everything else a generic one) — separate from the Address tab's Country, which is the ISO code driving currency/date defaults and e-invoicing."
 msgstr "Wird verwendet, um einen Start-Kontenplan auszuwählen (Deutschland/Frankreich erhalten einen lokalisierten, alle anderen einen generischen) — getrennt vom Feld \"Land\" im Tab \"Adresse\", das der ISO-Code ist, der Währungs-/Datumsstandards und E-Rechnungen steuert."
 
-#: src/components/tax-rates/form.tsx:254
+#: src/components/tax-rates/form.tsx:239
 msgid "Used when this rate applies to a sales invoice — a liability account."
 msgstr "Wird verwendet, wenn dieser Steuersatz auf eine Ausgangsrechnung angewendet wird — ein Passivkonto."
 
-#: src/components/tax-rates/form.tsx:273
+#: src/components/tax-rates/form.tsx:258
 msgid "Used when this rate applies to a vendor bill — a reclaimable asset account."
 msgstr "Wird verwendet, wenn dieser Steuersatz auf eine Lieferantenrechnung angewendet wird — ein aktivierbares Vorsteuerkonto."
 
@@ -5440,7 +5478,7 @@ msgstr "Wert"
 msgid "Variance"
 msgstr "Abweichung"
 
-#: src/components/tax-rates/form.tsx:218
+#: src/components/tax-rates/form.tsx:203
 msgid "VAT category"
 msgstr "USt-Kategorie"
 
@@ -5451,7 +5489,7 @@ msgstr "USt-Kategorie"
 msgid "VAT Number"
 msgstr "USt-IdNr."
 
-#: src/components/tax-rates/form.tsx:43
+#: src/utils/tax-rate-categories.ts:28
 msgid "VAT reverse charge"
 msgstr "Umkehrung der Steuerschuldnerschaft (Reverse Charge)"
 
@@ -5468,7 +5506,7 @@ msgstr "USt-IdNr."
 #: src/routes/incoming-invoices/details.tsx:337
 #: src/routes/purchase-orders.tsx:89
 #: src/routes/purchase-orders/details.tsx:370
-#: src/routes/reporting/purchases-by-vendor.tsx:93
+#: src/routes/reporting/purchases-by-vendor.tsx:119
 msgid "Vendor"
 msgstr "Lieferant"
 
@@ -5623,7 +5661,7 @@ msgstr "Quellensteuersatz"
 #: src/components/payment-terms/form.tsx:95
 #: src/components/payments/payment-panel.tsx:404
 #: src/components/products/form.tsx:254
-#: src/components/tax-rates/form.tsx:150
+#: src/components/tax-rates/form.tsx:135
 #: src/components/units-of-measure/form.tsx:101
 #: src/components/vendors/form.tsx:135
 #: src/routes/accounting/fiscal-periods.tsx:225
@@ -5657,7 +5695,7 @@ msgstr "Ihr Name (optional)"
 msgid "your.email@example.com (optional)"
 msgstr "ihre.email@beispiel.de (optional)"
 
-#: src/components/tax-rates/form.tsx:41
+#: src/utils/tax-rate-categories.ts:26
 msgid "Zero rated goods"
 msgstr "Steuersatz null"
 
