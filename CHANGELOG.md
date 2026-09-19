@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.27.1] - 2026-09-19
+
+### Fixed
+- Invoice detail screen: the total/subtotal/tax block was low-contrast in
+  dark mode, the line-item description field was forced to a 4-line-tall
+  box regardless of content, and Status was a 12px tag tucked into a card
+  corner instead of a proper field — the least prominent status control
+  in the app despite being the highest-traffic screen.
+- Client form: IBAN and Identity number looked like real banking/tax
+  fields but are actually Cash Book lookup keys only, with no indication
+  of that; the client list had no Code column despite Code driving
+  invoice-number formatting.
+- Cash Book: the sale form rendered below the Cash register/Loan status
+  reports even once a customer was picked; the submit button used a
+  color combination that failed contrast and ignored the organization's
+  own brand color; the submit button could scroll out of reach with
+  enough line items; amounts could render with the wrong decimal
+  precision for an organization with a non-default setting; customer
+  search results were only clickable on a narrow "Select" link rather
+  than the whole row.
+- Line-item tables (all document types): pressing Enter in the last
+  row's Quantity or Price field now appends a new row instead of
+  requiring a click on "Add line item".
+
 ## [3.27.0] - 2026-09-18
 
 ### Added
