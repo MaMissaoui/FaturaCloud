@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Col, DatePicker, Row, Table, Typography } from "antd";
+import { Col, DatePicker, Row, Space, Table, Tag, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -148,6 +148,36 @@ const BalanceSheetReport = () => {
           />
         </Col>
       </Row>
+
+      {report && (
+        <Row style={{ marginTop: 16 }}>
+          <Col span={24}>
+            <Space align="center">
+              <Typography.Text strong>
+                <Trans>Accounting equation check:</Trans>
+              </Typography.Text>
+              <Typography.Text>{money(report.totalAssets)}</Typography.Text>
+              <Typography.Text strong>=</Typography.Text>
+              <Typography.Text>
+                {money(report.totalLiabilities)} + {money(report.totalEquity)}
+              </Typography.Text>
+              <Typography.Text strong>=</Typography.Text>
+              <Typography.Text>
+                {money(report.totalLiabilities + report.totalEquity)}
+              </Typography.Text>
+              {report.totalAssets === report.totalLiabilities + report.totalEquity ? (
+                <Tag color="green">
+                  <Trans>Balanced</Trans>
+                </Tag>
+              ) : (
+                <Tag color="red">
+                  <Trans>Out of balance</Trans>
+                </Tag>
+              )}
+            </Space>
+          </Col>
+        </Row>
+      )}
     </>
   );
 };

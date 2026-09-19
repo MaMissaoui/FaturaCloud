@@ -65,6 +65,19 @@ const SalesByClient = () => {
             value={range}
             format={dateFormat}
             allowClear={false}
+            presets={[
+              { label: t`Last 7 days`, value: [dayjs().subtract(7, "day"), dayjs()] },
+              { label: t`Last 30 days`, value: [dayjs().subtract(30, "day"), dayjs()] },
+              { label: t`This month`, value: [dayjs().startOf("month"), dayjs().endOf("month")] },
+              {
+                label: t`Last month`,
+                value: [
+                  dayjs().subtract(1, "month").startOf("month"),
+                  dayjs().subtract(1, "month").endOf("month"),
+                ],
+              },
+              { label: t`This year`, value: [dayjs().startOf("year"), dayjs().endOf("year")] },
+            ]}
             onChange={(values) => {
               if (values?.[0] && values?.[1]) setRange([values[0], values[1]]);
             }}
@@ -86,53 +99,61 @@ const SalesByClient = () => {
         />
       )}
 
-      <Card
-        style={{ marginTop: 16 }}
-        loading={loading}
-        title={rows.length > 20 ? <Trans>Top 20 by revenue</Trans> : undefined}
-      >
-        <Bar
-          data={failed ? [] : rows.slice(0, 20)}
-          xField="name"
-          yField="revenue"
-          theme={themeMode === "dark" ? "classicDark" : "classic"}
-          // Fixed height regardless of row count made G2Plot auto-hide
-          // overlapping category-axis labels once this list neared 20 items —
-          // scale with the actual number of bars instead.
-          height={Math.max(280, Math.min(rows.length, 20) * 32)}
-          axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-          tooltip={{
-            items: [
-              { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
-            ],
-          }}
-        />
-      </Card>
+      {!failed && (
+        <>
+          <Card
+            style={{ marginTop: 16 }}
+            loading={loading}
+            title={
+              rows.length > 20 ? <Trans>Top 20 by revenue</Trans> : <Trans>Revenue by client</Trans>
+            }
+          >
+            <div role="img" aria-label={t`Bar chart showing revenue by client`}>
+              <Bar
+                data={rows.slice(0, 20)}
+                xField="name"
+                yField="revenue"
+                theme={themeMode === "dark" ? "classicDark" : "classic"}
+                // Fixed height regardless of row count made G2Plot auto-hide
+                // overlapping category-axis labels once this list neared 20 items —
+                // scale with the actual number of bars instead.
+                height={Math.max(280, Math.min(rows.length, 20) * 32)}
+                axis={{ y: { labelFormatter: (v: number) => money(v) } }}
+                tooltip={{
+                  items: [
+                    { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
+                  ],
+                }}
+              />
+            </div>
+          </Card>
 
-      <Table
-        style={{ marginTop: 16 }}
-        dataSource={failed ? [] : rows}
-        rowKey="clientId"
-        loading={loading}
-        pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
-        locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
-      >
-        <Table.Column
-          title={<Trans>Client</Trans>}
-          key="name"
-          render={(row: ClientRevenue) => (
-            <Link to="/clients" state={{ clientModal: true, clientId: row.clientId }}>
-              {row.name}
-            </Link>
-          )}
-        />
-        <Table.Column
-          title={<Trans>Revenue</Trans>}
-          key="revenue"
-          align="right"
-          render={(row: ClientRevenue) => money(row.revenue)}
-        />
-      </Table>
+          <Table
+            style={{ marginTop: 16 }}
+            dataSource={rows}
+            rowKey="clientId"
+            loading={loading}
+            pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
+            locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
+          >
+            <Table.Column
+              title={<Trans>Client</Trans>}
+              key="name"
+              render={(row: ClientRevenue) => (
+                <Link to="/clients" state={{ clientModal: true, clientId: row.clientId }}>
+                  {row.name}
+                </Link>
+              )}
+            />
+            <Table.Column
+              title={<Trans>Revenue</Trans>}
+              key="revenue"
+              align="right"
+              render={(row: ClientRevenue) => money(row.revenue)}
+            />
+          </Table>
+        </>
+      )}
     </>
   );
 };

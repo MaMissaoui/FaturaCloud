@@ -90,7 +90,15 @@ const JournalEntries = () => {
             loading={loading}
             onRow={(record: any) => ({
               onClick: () => navigate(`/accounting/journal-entries/${record.id}`),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/accounting/journal-entries/${record.id}`);
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column
@@ -104,6 +112,8 @@ const JournalEntries = () => {
               title={<Trans>Date</Trans>}
               dataIndex="date"
               key="date"
+              sorter={(a: any, b: any) => a.date - b.date}
+              defaultSortOrder="descend"
               render={(v: number) => formatDate(v)}
             />
             <Table.Column

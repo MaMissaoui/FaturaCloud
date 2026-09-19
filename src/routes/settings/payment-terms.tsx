@@ -79,7 +79,17 @@ function SettingsPaymentTerms() {
                 navigate("/settings/payment-terms", {
                   state: { paymentTermModal: true, paymentTermId: record.id },
                 }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/settings/payment-terms", {
+                    state: { paymentTermModal: true, paymentTermId: record.id },
+                  });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "button",
             })}
           >
             <Table.Column

@@ -16,6 +16,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Table,
   Tag,
@@ -47,6 +48,8 @@ import {
   GetPurchaseOrderLineItems,
 } from "src/api";
 import PageHeader from "src/components/page-header";
+import useSaveShortcut from "src/hooks/useSaveShortcut";
+import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
 import {
@@ -131,6 +134,9 @@ const IncomingInvoiceDetails = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+
+  useSaveShortcut(form);
+  useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
     setVendors();
@@ -313,15 +319,32 @@ const IncomingInvoiceDetails = () => {
     : undefined;
 
   if (!organization) return null;
-  if (!isNew && !invoice) return null;
+  if (!isNew && !invoice) {
+    return (
+      <>
+        <PageHeader
+          icon={<AuditOutlined />}
+          title={<Trans>Incoming Invoice</Trans>}
+          style={{ marginBottom: 24 }}
+        />
+        <Skeleton active paragraph={{ rows: 12 }} />
+      </>
+    );
+  }
 
+  const vendorInvoiceNumber =
+    !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
+      ? (invoice as any).vendorInvoiceNumber
+      : undefined;
   const money = (units: number) => getFormattedNumber(units, currency, i18n.locale, organization);
 
   return (
     <>
       <PageHeader
         icon={<AuditOutlined />}
-        title={<Trans>Incoming Invoice</Trans>}
+        title={
+          isNew ? <Trans>New incoming invoice</Trans> : <Trans>Invoice {vendorInvoiceNumber}</Trans>
+        }
         style={{ marginBottom: 24 }}
       />
       <Form

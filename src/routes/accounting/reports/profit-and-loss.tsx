@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Col, Row, Select, Table, Typography } from "antd";
+import { Card, Col, Row, Select, Table, Typography, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -15,6 +15,7 @@ import { formatOrgCents } from "src/utils/currencies";
 
 const ProfitAndLossReport = () => {
   const { i18n } = useLingui();
+  const { token } = theme.useToken();
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
   const fiscalYears = useAtomValue(fiscalYearsAtom);
@@ -135,10 +136,31 @@ const ProfitAndLossReport = () => {
       </Row>
 
       <Row style={{ marginTop: 24 }}>
-        <Col span={24} style={{ textAlign: "right" }}>
-          <Typography.Title level={4}>
-            <Trans>Net income</Trans>: {money(report?.netIncome ?? 0)}
-          </Typography.Title>
+        <Col span={24}>
+          <Card
+            style={{
+              background: (report?.netIncome ?? 0) >= 0 ? token.colorSuccessBg : token.colorErrorBg,
+            }}
+          >
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Typography.Title level={4} style={{ margin: 0 }}>
+                  <Trans>Net income</Trans>
+                </Typography.Title>
+              </Col>
+              <Col>
+                <Typography.Title
+                  level={3}
+                  style={{
+                    margin: 0,
+                    color: (report?.netIncome ?? 0) >= 0 ? token.colorSuccess : token.colorError,
+                  }}
+                >
+                  {money(report?.netIncome ?? 0)}
+                </Typography.Title>
+              </Col>
+            </Row>
+          </Card>
         </Col>
       </Row>
     </>

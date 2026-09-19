@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Vendor } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Space, Table, Row, Tag, Tooltip } from "antd";
+import { Button, Col, Empty, Space, Table, Row, Tag, Tooltip } from "antd";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -60,7 +60,7 @@ const Vendors = () => {
       <PageHeader
         icon={<SolutionOutlined />}
         title={<Trans>Vendors</Trans>}
-        search={{ placeholder: t`Search text`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, onChange: setSearch }}
         actions={
           <Space wrap>
             {organizationId && (
@@ -86,10 +86,31 @@ const Vendors = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No vendors match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No vendors yet</Trans>}>
+                  <Link to="/vendors" state={{ vendorModal: true }}>
+                    <Button type="primary">
+                      <Trans>Create your first vendor</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: Vendor) => ({
               onClick: () =>
                 navigate("/vendors", { state: { vendorModal: true, vendorId: record.id } }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/vendors", { state: { vendorModal: true, vendorId: record.id } });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "button",
             })}
           >
             <Table.Column

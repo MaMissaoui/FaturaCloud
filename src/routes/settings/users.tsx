@@ -171,7 +171,18 @@ export default function SettingsUsers() {
         loading={loading}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         size="middle"
-        onRow={(record) => ({ onClick: () => openEdit(record.id), style: { cursor: "pointer" } })}
+        onRow={(record) => ({
+          onClick: () => openEdit(record.id),
+          onKeyDown: (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openEdit(record.id);
+            }
+          },
+          style: { cursor: "pointer" },
+          tabIndex: 0,
+          role: "button",
+        })}
       >
         <Table.Column<UserRecord>
           title={<Trans>Name</Trans>}
@@ -213,6 +224,7 @@ export default function SettingsUsers() {
               checked={v === 1}
               size="small"
               disabled={record.id === me?.id}
+              aria-label={t`Toggle ${record.displayName} active`}
               onClick={(_, e) => e.stopPropagation()}
               onChange={(checked) => handleToggleActive(record.id, checked)}
             />

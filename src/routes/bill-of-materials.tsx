@@ -92,7 +92,7 @@ const BillOfMaterials = () => {
             dataSource={filteredProducts}
             rowKey="id"
             loading={loading}
-            pagination={{ pageSize: 25, hideOnSinglePage: true }}
+            pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             locale={{
               emptyText: search ? (
                 <Trans>No finished-good products match "{search}"</Trans>
@@ -113,6 +113,8 @@ const BillOfMaterials = () => {
               title={<Trans>Name</Trans>}
               dataIndex="name"
               key="name"
+              sorter={(a: Product, b: Product) => (a.name ?? "").localeCompare(b.name ?? "")}
+              defaultSortOrder="ascend"
               render={(name: string, record: Product) => (
                 <Link
                   to="/bill-of-materials"
@@ -123,7 +125,12 @@ const BillOfMaterials = () => {
                 </Link>
               )}
             />
-            <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" />
+            <Table.Column
+              title={<Trans>SKU</Trans>}
+              dataIndex="sku"
+              key="sku"
+              sorter={(a: Product, b: Product) => (a.sku ?? "").localeCompare(b.sku ?? "")}
+            />
             <Table.Column
               title={<Trans>Unit</Trans>}
               dataIndex="unit"

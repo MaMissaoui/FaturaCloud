@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, TaxRate } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Badge, Button, Col, Row, Select, Space, Table, Tag, Tooltip } from "antd";
+import { Badge, Button, Col, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import type { TableProps } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -308,7 +308,7 @@ const Products = () => {
               align="center"
               sorter
               render={(p: Product) => {
-                if (!p.stockEnabled) return null;
+                if (!p.stockEnabled) return <Typography.Text type="secondary">—</Typography.Text>;
                 const qty: number = p.stockQuantity ?? 0;
                 const status = qty <= 0 ? "error" : qty <= 5 ? "warning" : "success";
                 return (

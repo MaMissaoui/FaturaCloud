@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ProductionOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Select, Table, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -26,6 +26,7 @@ const ProductionOrders = () => {
   const orders = useAtomValue(productionOrdersAtom);
   const setOrders = useSetAtom(setProductionOrdersAtom);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ProductionOrderStatus | "">("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -42,13 +43,15 @@ const ProductionOrders = () => {
   // 2026-09-14 F91).
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return orders;
-    return orders.filter(
-      (o: ProductionOrder) =>
+    return orders.filter((o: ProductionOrder) => {
+      const matchesSearch =
+        !term ||
         (o.orderNumber ?? "").toLowerCase().includes(term) ||
-        (o.finishedProductName ?? "").toLowerCase().includes(term),
-    );
-  }, [orders, search]);
+        (o.finishedProductName ?? "").toLowerCase().includes(term);
+      const matchesStatus = !statusFilter || o.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, search, statusFilter]);
 
   return (
     <>
@@ -56,6 +59,19 @@ const ProductionOrders = () => {
         icon={<DeploymentUnitOutlined />}
         title={<Trans>Production Orders</Trans>}
         search={{ placeholder: t`Search`, onChange: setSearch }}
+        extra={
+          <Select
+            allowClear
+            placeholder={t`All statuses`}
+            style={{ width: 160 }}
+            value={statusFilter || undefined}
+            onChange={(value) => setStatusFilter(value || "")}
+            options={PRODUCTION_ORDER_STATUSES.map((s) => ({
+              value: s,
+              label: productionOrderStatusLabel(s),
+            }))}
+          />
+        }
         actions={
           <Button type="primary" onClick={() => navigate("/production-orders/new")}>
             <Trans>New production order</Trans>
@@ -70,9 +86,30 @@ const ProductionOrders = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No production orders match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No production orders yet</Trans>}>
+                  <Link to="/production-orders/new">
+                    <Button type="primary">
+                      <Trans>Create your first production order</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: ProductionOrder) => ({
               onClick: () => navigate(`/production-orders/${record.id}`),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/production-orders/${record.id}`);
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column

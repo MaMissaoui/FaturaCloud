@@ -14,6 +14,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Table,
   Tag,
@@ -362,7 +363,7 @@ const JournalEntryDetails = () => {
     );
   }
 
-  if (!entry) return null;
+  if (!entry) return <Skeleton active paragraph={{ rows: 12 }} />;
 
   const journal = find(journals, { id: entry.journalId });
 

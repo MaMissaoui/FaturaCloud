@@ -16,6 +16,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Table,
   Tag,
@@ -46,6 +47,8 @@ import map from "lodash/map";
 import sum from "lodash/sum";
 import { ExportOrderDocument, GetOrderDeliveredQuantities } from "src/api";
 import PageHeader from "src/components/page-header";
+import useSaveShortcut from "src/hooks/useSaveShortcut";
+import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
@@ -148,6 +151,9 @@ const OrderDetails = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+
+  useSaveShortcut(form);
+  useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
     setClients();
@@ -259,17 +265,30 @@ const OrderDetails = () => {
     orgCurrency;
 
   const currentStatus = !isNew && order && !(order as any).then ? (order as any).status : "draft";
+  const orderNumber =
+    !isNew && order && !(order as any).then ? (order as any).orderNumber : undefined;
 
   const transitions = orderTransitions(currentStatus);
 
   if (!organization) return null;
-  if (!isNew && !order) return null;
+  if (!isNew && !order) {
+    return (
+      <>
+        <PageHeader
+          icon={<ShoppingOutlined />}
+          title={<Trans>Order</Trans>}
+          style={{ marginBottom: 24 }}
+        />
+        <Skeleton active paragraph={{ rows: 12 }} />
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         icon={<ShoppingOutlined />}
-        title={<Trans>Order</Trans>}
+        title={isNew ? <Trans>New order</Trans> : <Trans>Order {orderNumber}</Trans>}
         style={{ marginBottom: 24 }}
       />
       <Form

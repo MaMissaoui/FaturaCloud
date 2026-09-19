@@ -259,11 +259,18 @@ const FiscalPeriods = () => {
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
-              render={(status: string) => (
-                <Tag color={status === "open" ? "green" : "default"}>
-                  {status === "open" ? t`Open` : t`Closed`}
-                </Tag>
-              )}
+              render={(status: string, year: FiscalYear) => {
+                const now = Date.now();
+                const isCurrent = year.startDate <= now && now <= year.endDate;
+                return (
+                  <span>
+                    <Tag color={status === "open" ? "green" : "default"}>
+                      {status === "open" ? t`Open` : t`Closed`}
+                    </Tag>
+                    {isCurrent && <Tag color="blue">{t`Current`}</Tag>}
+                  </span>
+                );
+              }}
             />
             {canCloseFiscalYear && (
               <Table.Column<FiscalYear>

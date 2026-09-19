@@ -146,6 +146,14 @@ function SettingsBackup() {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
+    if (!file.name.endsWith(".db")) {
+      messageApi.error(t`Please select a .db file`);
+      return;
+    }
+    if (file.size > 500 * 1024 * 1024) {
+      messageApi.error(t`File is too large (max 500 MB)`);
+      return;
+    }
     modalApi.confirm({
       title: t`Restore database`,
       content: t`Replace all current data with the uploaded file? This cannot be undone.`,

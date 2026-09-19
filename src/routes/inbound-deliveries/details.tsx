@@ -12,6 +12,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Tag,
   theme,
@@ -38,6 +39,8 @@ import isString from "lodash/isString";
 import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import PageHeader from "src/components/page-header";
+import useSaveShortcut from "src/hooks/useSaveShortcut";
+import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 
 import {
   ExportInboundDeliveryDocument,
@@ -137,6 +140,9 @@ const InboundDeliveryDetails = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+
+  useSaveShortcut(form);
+  useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
     setVendors();
@@ -310,17 +316,30 @@ const InboundDeliveryDetails = () => {
   const currentStatus =
     statusOverride ??
     (!isNew && delivery && !(delivery as any).then ? (delivery as any).status : "draft");
+  const deliveryNumber =
+    !isNew && delivery && !(delivery as any).then ? (delivery as any).deliveryNumber : undefined;
   const transitions = isNew ? [] : inboundDeliveryTransitions(currentStatus);
   const isEditable = isNew || currentStatus === "draft";
 
   if (!organization) return null;
-  if (!isNew && !delivery) return null;
+  if (!isNew && !delivery) {
+    return (
+      <>
+        <PageHeader
+          icon={<ImportOutlined />}
+          title={<Trans>Goods Receipt</Trans>}
+          style={{ marginBottom: 24 }}
+        />
+        <Skeleton active paragraph={{ rows: 12 }} />
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         icon={<ImportOutlined />}
-        title={<Trans>Goods Receipt</Trans>}
+        title={isNew ? <Trans>New goods receipt</Trans> : <Trans>Receipt {deliveryNumber}</Trans>}
         style={{ marginBottom: 24 }}
       />
       <Form

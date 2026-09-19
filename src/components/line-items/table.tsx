@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button, Form, Input, InputNumber, Select, Table } from "antd";
+import { Button, Form, Input, InputNumber, Select, Table, Typography } from "antd";
 import type { FormInstance } from "antd/es/form";
 import { DeleteOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
@@ -179,6 +179,28 @@ const LineItemsTable = ({
             // totals/submit button out of reach without horizontal scrolling
             // the entire document.
             scroll={{ x: "max-content" }}
+            summary={() => {
+              if (fields.length === 0) return null;
+              const items = form.getFieldValue(name) || [];
+              const totalQty = items.reduce(
+                (sum: number, item: any) => sum + (Number(item?.quantity) || 0),
+                0,
+              );
+              return (
+                <Table.Summary.Row>
+                  <Table.Summary.Cell index={0} colSpan={2}>
+                    <Typography.Text type="secondary">
+                      <Trans>{fields.length} item(s)</Trans>
+                    </Typography.Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} align="right">
+                    <Typography.Text type="secondary">
+                      <Trans>Total qty: {totalQty}</Trans>
+                    </Typography.Text>
+                  </Table.Summary.Cell>
+                </Table.Summary.Row>
+              );
+            }}
           >
             {columns.map((col) => {
               switch (col.kind) {

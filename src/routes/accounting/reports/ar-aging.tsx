@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, Col, Row, Statistic, Table, theme } from "antd";
+import { Card, Col, Row, Statistic, Table, theme, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react";
@@ -89,6 +89,20 @@ const ReceivableAging = () => {
             loading={loading}
             pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
             locale={{ emptyText: <Trans>No outstanding invoices</Trans> }}
+            summary={() =>
+              summary?.invoices?.length ? (
+                <Table.Summary.Row>
+                  <Table.Summary.Cell index={0} colSpan={3}>
+                    <Typography.Text strong>
+                      <Trans>Total</Trans>
+                    </Typography.Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={3} align="right">
+                    <Typography.Text strong>{money(summary.total)}</Typography.Text>
+                  </Table.Summary.Cell>
+                </Table.Summary.Row>
+              ) : null
+            }
           >
             <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
             <Table.Column title={<Trans>Client</Trans>} dataIndex="clientName" key="clientName" />

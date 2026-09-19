@@ -211,19 +211,21 @@ const Dashboard = () => {
             loading={loading}
             extra={<Link to="/reporting/revenue-trend">{t`View full report`}</Link>}
           >
-            <Column
-              data={data?.revenueByMonth ?? []}
-              xField="month"
-              yField="revenue"
-              theme={themeMode === "dark" ? "classicDark" : "classic"}
-              height={220}
-              axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-              tooltip={{
-                items: [
-                  { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
-                ],
-              }}
-            />
+            <div role="img" aria-label={t`Column chart showing revenue over time`}>
+              <Column
+                data={data?.revenueByMonth ?? []}
+                xField="month"
+                yField="revenue"
+                theme={themeMode === "dark" ? "classicDark" : "classic"}
+                height={220}
+                axis={{ y: { labelFormatter: (v: number) => money(v) } }}
+                tooltip={{
+                  items: [
+                    { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
+                  ],
+                }}
+              />
+            </div>
           </Card>
         </Col>
       </Row>
@@ -286,7 +288,15 @@ const Dashboard = () => {
               locale={{ emptyText: <Trans>No outstanding invoices</Trans> }}
               onRow={(record: OutstandingInvoiceSummary) => ({
                 onClick: () => navigate(`/invoices/${record.id}`),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/invoices/${record.id}`);
+                  }
+                },
                 style: { cursor: "pointer" },
+                tabIndex: 0,
+                role: "link",
               })}
             >
               <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
@@ -326,7 +336,17 @@ const Dashboard = () => {
                   navigate("/products", {
                     state: { productModal: true, productId: record.productId },
                   }),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate("/products", {
+                      state: { productModal: true, productId: record.productId },
+                    });
+                  }
+                },
                 style: { cursor: "pointer" },
+                tabIndex: 0,
+                role: "link",
               })}
             >
               <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
@@ -367,7 +387,17 @@ const Dashboard = () => {
                   navigate("/clients", {
                     state: { clientModal: true, clientId: record.clientId },
                   }),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate("/clients", {
+                      state: { clientModal: true, clientId: record.clientId },
+                    });
+                  }
+                },
                 style: { cursor: "pointer" },
+                tabIndex: 0,
+                role: "link",
               })}
             >
               <Table.Column title={<Trans>Client</Trans>} dataIndex="name" key="name" />
@@ -399,7 +429,17 @@ const Dashboard = () => {
                   navigate("/products", {
                     state: { productModal: true, productId: record.productId },
                   }),
+                onKeyDown: (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate("/products", {
+                      state: { productModal: true, productId: record.productId },
+                    });
+                  }
+                },
                 style: { cursor: "pointer" },
+                tabIndex: 0,
+                role: "link",
               })}
             >
               <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />

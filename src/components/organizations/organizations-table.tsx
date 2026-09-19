@@ -33,7 +33,18 @@ export default function OrganizationsTable({
       loading={loading}
       pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
       size="middle"
-      onRow={(record) => ({ onClick: () => onRowClick(record.id), style: { cursor: "pointer" } })}
+      onRow={(record) => ({
+        onClick: () => onRowClick(record.id),
+        onKeyDown: (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onRowClick(record.id);
+          }
+        },
+        style: { cursor: "pointer" },
+        tabIndex: 0,
+        role: "button",
+      })}
     >
       <Table.Column
         title={<Trans>Name</Trans>}

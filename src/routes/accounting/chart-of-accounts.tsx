@@ -102,7 +102,17 @@ const ChartOfAccounts = () => {
                 navigate("/accounting/chart-of-accounts", {
                   state: { accountModal: true, accountId: record.id },
                 }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/accounting/chart-of-accounts", {
+                    state: { accountModal: true, accountId: record.id },
+                  });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "button",
             })}
           >
             <Table.Column

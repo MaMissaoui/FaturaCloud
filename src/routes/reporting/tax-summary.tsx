@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Col, DatePicker, Row, Table, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Col, DatePicker, Row, Table, Tooltip, Typography, theme } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
+import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { CalculatorOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
@@ -18,6 +19,7 @@ const { RangePicker } = DatePicker;
 
 const TaxSummary = () => {
   const { i18n } = useLingui();
+  const { token } = theme.useToken();
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
   const dateFormat = useDatePickerFormat();
@@ -111,6 +113,19 @@ const TaxSummary = () => {
             value={range}
             format={dateFormat}
             allowClear={false}
+            presets={[
+              { label: t`Last 7 days`, value: [dayjs().subtract(7, "day"), dayjs()] },
+              { label: t`Last 30 days`, value: [dayjs().subtract(30, "day"), dayjs()] },
+              { label: t`This month`, value: [dayjs().startOf("month"), dayjs().endOf("month")] },
+              {
+                label: t`Last month`,
+                value: [
+                  dayjs().subtract(1, "month").startOf("month"),
+                  dayjs().subtract(1, "month").endOf("month"),
+                ],
+              },
+              { label: t`This year`, value: [dayjs().startOf("year"), dayjs().endOf("year")] },
+            ]}
             onChange={(values) => {
               if (values?.[0] && values?.[1]) setRange([values[0], values[1]]);
             }}
@@ -192,24 +207,38 @@ const TaxSummary = () => {
           combined into one figure. */}
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
-          <Typography.Title level={5}>
-            <Trans>Net VAT liability</Trans>
-          </Typography.Title>
-          <Typography.Text
-            strong
-            style={{ fontSize: 20 }}
-            type={!failed && netVatLiability < 0 ? "success" : undefined}
+          <Card
+            style={{
+              background:
+                !failed && netVatLiability < 0 ? token.colorSuccessBg : token.colorErrorBg,
+            }}
           >
-            {failed ? "—" : money(netVatLiability)}
-          </Typography.Text>
-          <br />
-          <Typography.Text type="secondary">
-            {!failed && netVatLiability < 0 ? (
-              <Trans>Reclaimable — input VAT exceeds output VAT for this period</Trans>
-            ) : (
-              <Trans>Owed — output VAT exceeds input VAT for this period</Trans>
-            )}
-          </Typography.Text>
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Typography.Title level={4} style={{ margin: 0 }}>
+                  <Trans>Net VAT liability</Trans>
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  {!failed && netVatLiability < 0 ? (
+                    <Trans>Reclaimable — input VAT exceeds output VAT for this period</Trans>
+                  ) : (
+                    <Trans>Owed — output VAT exceeds input VAT for this period</Trans>
+                  )}
+                </Typography.Text>
+              </Col>
+              <Col>
+                <Typography.Title
+                  level={3}
+                  style={{
+                    margin: 0,
+                    color: !failed && netVatLiability < 0 ? token.colorSuccess : token.colorError,
+                  }}
+                >
+                  {failed ? "—" : money(netVatLiability)}
+                </Typography.Title>
+              </Col>
+            </Row>
+          </Card>
         </Col>
       </Row>
     </>

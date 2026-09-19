@@ -13,6 +13,7 @@ import {
   Popconfirm,
   Row,
   Select,
+  Skeleton,
   Space,
   Tag,
   theme,
@@ -37,6 +38,8 @@ import { ExportDeliveryDocument, GetOrderLineItems, GetOrderDeliveredQuantities 
 import { useDatePickerFormat } from "src/utils/date";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
+import useSaveShortcut from "src/hooks/useSaveShortcut";
+import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { organizationAtom } from "src/atoms/organization";
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
@@ -129,6 +132,9 @@ const DeliveryDetails = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+
+  useSaveShortcut(form);
+  useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
     setClients();
@@ -283,6 +289,8 @@ const DeliveryDetails = () => {
 
   const currentStatus =
     !isNew && delivery && !(delivery as any).then ? ((delivery as any).status ?? "draft") : "draft";
+  const deliveryNumber =
+    !isNew && delivery && !(delivery as any).then ? (delivery as any).deliveryNumber : undefined;
 
   // Mirrors the server-side guard in db/delivery.go: line items are frozen
   // once a delivery is shipped/delivered. Header-only fields (tracking
@@ -309,13 +317,24 @@ const DeliveryDetails = () => {
   );
 
   if (!organization) return null;
-  if (!isNew && !delivery) return null;
+  if (!isNew && !delivery) {
+    return (
+      <>
+        <PageHeader
+          icon={<SendOutlined />}
+          title={<Trans>Outbound Delivery</Trans>}
+          style={{ marginBottom: 24 }}
+        />
+        <Skeleton active paragraph={{ rows: 12 }} />
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         icon={<SendOutlined />}
-        title={<Trans>Outbound Delivery</Trans>}
+        title={isNew ? <Trans>New delivery</Trans> : <Trans>Delivery {deliveryNumber}</Trans>}
         style={{ marginBottom: 24 }}
       />
       <Form
