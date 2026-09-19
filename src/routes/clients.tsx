@@ -107,6 +107,13 @@ const Clients = () => {
               )}
             />
             <Table.Column
+              title={<Trans>Code</Trans>}
+              dataIndex="code"
+              key="code"
+              width={100}
+              sorter={(a: Client, b: Client) => (a.code ?? "").localeCompare(b.code ?? "")}
+            />
+            <Table.Column
               title={<Trans>Address</Trans>}
               key="address"
               sorter={(a: Client, b: Client) =>

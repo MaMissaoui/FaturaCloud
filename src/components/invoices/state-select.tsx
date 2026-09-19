@@ -46,7 +46,7 @@ const InvoiceStateSelect = ({
       }}
     >
       <Tag color={color} style={{ marginInlineEnd: 0, cursor: "pointer" }}>
-        <Space size={4} style={{ fontSize: 12 }}>
+        <Space size={4}>
           {invoiceStateLabel(invoice.state)}
           <MoreOutlined />
         </Space>
