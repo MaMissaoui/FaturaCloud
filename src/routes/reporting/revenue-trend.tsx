@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, DatePicker, Switch, Table } from "antd";
+import { Alert, Button, Card, DatePicker, Switch, Table } from "antd";
 import { Column } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -29,19 +29,30 @@ const RevenueTrend = () => {
   const [rows, setRows] = useState<MonthlyRevenue[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset rows to [], which rendered identically to a
+  // genuinely revenue-free period — a slow load or transient error looked
+  // exactly like "no sales." Tracked separately so the page can show a real
+  // error instead of a false all-clear.
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const refresh = () => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     GetRevenueTrend(
       organizationId,
       range[0].startOf("day").valueOf(),
       range[1].endOf("day").valueOf(),
     )
       .then(setRows)
-      .catch(() => setRows([]))
+      .catch(() => {
+        setRows([]);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
-  }, [organizationId, range]);
+  };
+
+  useEffect(refresh, [organizationId, range]);
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
@@ -69,6 +80,20 @@ const RevenueTrend = () => {
         }
       />
 
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the revenue trend</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Card
         style={{ marginTop: 16 }}
         loading={loading}
@@ -84,7 +109,7 @@ const RevenueTrend = () => {
       >
         {showTable ? (
           <Table
-            dataSource={rows}
+            dataSource={failed ? [] : rows}
             rowKey="month"
             size="small"
             pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
@@ -104,7 +129,7 @@ const RevenueTrend = () => {
           </Table>
         ) : (
           <Column
-            data={rows}
+            data={failed ? [] : rows}
             xField="month"
             yField="revenue"
             theme={themeMode === "dark" ? "classicDark" : "classic"}
