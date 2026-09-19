@@ -202,6 +202,37 @@ func TestPostJournalEntryRejectsGroupAccount(t *testing.T) {
 	}
 }
 
+func TestPostJournalEntryRejectsInactiveAccount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newJournalEntryTestFixture(t, d)
+
+	inactive := 0
+	deactivated, err := d.CreateAccount(CreateAccountRequest{
+		ID: "je-test-inactive", OrganizationID: fx.orgID, Code: "9500", Name: "Retired Account",
+		Type: "expense", IsActive: &inactive,
+	})
+	if err != nil {
+		t.Fatalf("CreateAccount(inactive): %v", err)
+	}
+
+	entry, err := d.CreateJournalEntry(CreateJournalEntryRequest{
+		OrganizationID: fx.orgID, JournalID: fx.journalID, Date: fx.date,
+		Description: "Posted to a deactivated account",
+		Lines: []CreateJournalLineRequest{
+			{AccountID: deactivated.ID, Debit: 1000},
+			{AccountID: fx.salesAccountID, Credit: 1000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateJournalEntry: %v", err)
+	}
+
+	if _, err := d.PostJournalEntry(entry.ID); err == nil {
+		t.Fatal("PostJournalEntry: expected an error for posting to an inactive account, got nil")
+	}
+}
+
 func TestDeleteJournalEntryOnlyAllowsDraft(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)

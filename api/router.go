@@ -657,6 +657,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("POST", "/api/journal-entries", h.createJournalEntry)
 	orgMemberProtected("GET", "/api/journal-entries/{id}", journalEntryOrgID, h.getJournalEntry)
 	orgMemberProtected("GET", "/api/journal-entries/{id}/lines", journalEntryOrgID, h.getJournalEntryLines)
+	orgMemberProtected("GET", "/api/journal-entries/{id}/reversal", journalEntryOrgID, h.getJournalEntryReversal)
 	orgRoleProtected("PATCH", "/api/journal-entries/{id}/post", journalEntryOrgID, []string{"accounting"}, h.postJournalEntry)
 	orgRoleProtected("POST", "/api/journal-entries/{id}/reverse", journalEntryOrgID, []string{"accounting"}, h.reverseJournalEntry)
 	orgRoleProtected("DELETE", "/api/journal-entries/{id}", journalEntryOrgID, []string{"accounting"}, h.deleteJournalEntry)

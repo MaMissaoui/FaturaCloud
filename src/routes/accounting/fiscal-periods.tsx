@@ -204,36 +204,38 @@ const FiscalPeriods = () => {
                           </Tag>
                         )}
                       />
-                      <Table.Column
-                        key="actions"
-                        render={(period: FiscalPeriod) => (
-                          <Popconfirm
-                            title={
-                              period.status === "open" ? (
-                                <Trans>Close this period? New entries will be blocked.</Trans>
-                              ) : (
-                                <Trans>Reopen this period?</Trans>
-                              )
-                            }
-                            onConfirm={() =>
-                              updateFiscalPeriodStatus({
-                                id: period.id,
-                                status: period.status === "open" ? "closed" : "open",
-                              })
-                            }
-                            okText={<Trans>Yes</Trans>}
-                            cancelText={<Trans>No</Trans>}
-                          >
-                            <Button size="small">
-                              {period.status === "open" ? (
-                                <Trans>Close</Trans>
-                              ) : (
-                                <Trans>Reopen</Trans>
-                              )}
-                            </Button>
-                          </Popconfirm>
-                        )}
-                      />
+                      {canCloseFiscalYear && (
+                        <Table.Column
+                          key="actions"
+                          render={(period: FiscalPeriod) => (
+                            <Popconfirm
+                              title={
+                                period.status === "open" ? (
+                                  <Trans>Close this period? New entries will be blocked.</Trans>
+                                ) : (
+                                  <Trans>Reopen this period?</Trans>
+                                )
+                              }
+                              onConfirm={() =>
+                                updateFiscalPeriodStatus({
+                                  id: period.id,
+                                  status: period.status === "open" ? "closed" : "open",
+                                })
+                              }
+                              okText={<Trans>Yes</Trans>}
+                              cancelText={<Trans>No</Trans>}
+                            >
+                              <Button size="small">
+                                {period.status === "open" ? (
+                                  <Trans>Close</Trans>
+                                ) : (
+                                  <Trans>Reopen</Trans>
+                                )}
+                              </Button>
+                            </Popconfirm>
+                          )}
+                        />
+                      )}
                     </Table>
                   </div>
                 );

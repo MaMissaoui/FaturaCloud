@@ -31,9 +31,13 @@ import sum from "lodash/sum";
 
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import { journalEntryStatusColor, journalEntryStatusLabel } from "src/types/journal-entry";
+import { formatMoneyUnits } from "src/utils/currencies";
+import { GetJournalEntryReversal } from "src/api";
+import type { JournalEntry } from "src/types/models";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { journalsAtom, setJournalsAtom } from "src/atoms/journal";
 import { fiscalYearsAtom, setFiscalYearsAtom } from "src/atoms/fiscal-period";
+import { organizationAtom } from "src/atoms/organization";
 import {
   journalEntryIdAtom,
   journalEntryAtom,
@@ -49,7 +53,7 @@ import {
 const loadableEntryAtom = loadable(journalEntryAtom);
 
 const JournalEntryDetails = () => {
-  useLingui();
+  const { i18n } = useLingui();
   const { id } = useParams<string>();
   const navigate = useNavigate();
   const dateFormat = useDatePickerFormat();
@@ -57,12 +61,22 @@ const JournalEntryDetails = () => {
 
   const isNew = id === "new";
 
+  const organization = useAtomValue(organizationAtom);
   const accounts = useAtomValue(accountsAtom);
   const setAccounts = useSetAtom(setAccountsAtom);
   const journals = useAtomValue(journalsAtom);
   const setJournals = useSetAtom(setJournalsAtom);
   const fiscalYears = useAtomValue(fiscalYearsAtom);
   const setFiscalYears = useSetAtom(setFiscalYearsAtom);
+  const [reversal, setReversal] = useState<JournalEntry | null>(null);
+
+  const money = (units: number) =>
+    formatMoneyUnits(
+      units,
+      organization?.currency ?? "EUR",
+      i18n.locale,
+      organization?.minimum_fraction_digits ?? undefined,
+    );
 
   const [entryId, setEntryId] = useAtom(journalEntryIdAtom);
   const entryLoadable = useAtomValue(loadableEntryAtom);
@@ -91,7 +105,22 @@ const JournalEntryDetails = () => {
     }
   }, [isNew, entryId, navigate]);
 
-  const postableAccounts = accounts.filter((a) => !a.isGroup);
+  // The forward direction of reversalOfEntryId — only a reversed entry can
+  // have one, so there's nothing to look up otherwise.
+  useEffect(() => {
+    if (!id || isNew || entry?.status !== "reversed") {
+      setReversal(null);
+      return;
+    }
+    GetJournalEntryReversal(id)
+      .then(setReversal)
+      .catch(() => setReversal(null));
+  }, [id, isNew, entry?.status]);
+
+  // Mirrors the server-side guard in allocateAndFinalizeEntryTx (db/journal_entry.go)
+  // — a deactivated account should never even be offered here, not just
+  // rejected on save.
+  const postableAccounts = accounts.filter((a) => !a.isGroup && a.isActive);
 
   const lines = Form.useWatch("lines", form) ?? [];
   const totalDebit = sum(lines.map((l: any) => Number(l?.debit) || 0));
@@ -317,10 +346,10 @@ const JournalEntryDetails = () => {
             <Col>
               <Space size="large">
                 <Typography.Text>
-                  <Trans>Debit</Trans>: {totalDebit.toFixed(2)}
+                  <Trans>Debit</Trans>: {money(totalDebit)}
                 </Typography.Text>
                 <Typography.Text>
-                  <Trans>Credit</Trans>: {totalCredit.toFixed(2)}
+                  <Trans>Credit</Trans>: {money(totalCredit)}
                 </Typography.Text>
                 <Tag color={isBalanced ? "green" : "volcano"}>
                   {isBalanced ? <Trans>Balanced</Trans> : <Trans>Not balanced</Trans>}
@@ -405,6 +434,13 @@ const JournalEntryDetails = () => {
             </Link>
           </Descriptions.Item>
         )}
+        {reversal && (
+          <Descriptions.Item label={<Trans>Reversed by</Trans>}>
+            <Link to={`/accounting/journal-entries/${reversal.id}`}>
+              {reversal.entryNumber ? `#${reversal.entryNumber}` : reversal.id}
+            </Link>
+          </Descriptions.Item>
+        )}
         {entry.reversalReason && (
           <Descriptions.Item label={<Trans>Reversal reason</Trans>}>
             {entry.reversalReason}
@@ -433,14 +469,14 @@ const JournalEntryDetails = () => {
           dataIndex="debit"
           key="debit"
           align="right"
-          render={(v: number) => (v ? v.toFixed(2) : "—")}
+          render={(v: number) => (v ? money(v) : "—")}
         />
         <Table.Column
           title={<Trans>Credit</Trans>}
           dataIndex="credit"
           key="credit"
           align="right"
-          render={(v: number) => (v ? v.toFixed(2) : "—")}
+          render={(v: number) => (v ? money(v) : "—")}
         />
       </Table>
 

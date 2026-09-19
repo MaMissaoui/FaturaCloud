@@ -28,6 +28,18 @@ func (h *handler) getJournalEntry(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, entry)
 }
 
+// getJournalEntryReversal is the forward direction of reversalOfEntryId —
+// returns null (not 404) when the entry was never reversed.
+func (h *handler) getJournalEntryReversal(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	entry, err := h.db.GetJournalEntryReversal(id)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, entry)
+}
+
 func (h *handler) getJournalEntryLines(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lines, err := h.db.GetJournalEntryLines(id)
