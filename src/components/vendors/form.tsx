@@ -56,6 +56,7 @@ const VendorForm = () => {
   }, [vendors, vendorId]);
 
   const countryOptions = useCountryOptions(vendor?.country_code);
+  const watchedCountryCode = Form.useWatch("country_code", form);
 
   const handleClose = () => {
     setVendorId(null);
@@ -181,9 +182,23 @@ const VendorForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
-                  <Input placeholder={t`VAT Number`} />
-                </Form.Item>
+                {/* Same relabeling as src/components/clients/form.tsx — Tunisia's
+                    Matricule Fiscal (MF) is the same "this party's tax ID"
+                    concept the vatin column already stores for every other
+                    country, not a new field. */}
+                {watchedCountryCode === "TN" ? (
+                  <Form.Item
+                    name="vatin"
+                    label={<Trans>Matricule Fiscal (MF)</Trans>}
+                    tooltip={<Trans>e.g. 1234567A/B/C/000</Trans>}
+                  >
+                    <Input placeholder={t`e.g. 1234567A/B/C/000`} />
+                  </Form.Item>
+                ) : (
+                  <Form.Item name="vatin" label={<Trans>VAT Number</Trans>}>
+                    <Input placeholder={t`VAT Number`} />
+                  </Form.Item>
+                )}
               </Col>
               <Col xs={24}>
                 <Form.Item name="emails" label={<Trans>E-mails</Trans>}>

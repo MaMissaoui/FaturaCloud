@@ -40,6 +40,18 @@ export default function OrganizationsTable({
         dataIndex="name"
         key="name"
         sorter={(a: Organization, b: Organization) => (a.name ?? "").localeCompare(b.name ?? "")}
+        render={(name: string, record: Organization) => (
+          <Button
+            type="link"
+            style={{ padding: 0, height: "auto" }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRowClick(record.id);
+            }}
+          >
+            {name}
+          </Button>
+        )}
       />
       <Table.Column
         title={<Trans>Code</Trans>}

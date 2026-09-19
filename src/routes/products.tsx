@@ -11,7 +11,6 @@ import { AppstoreOutlined } from "@ant-design/icons";
 import debounce from "lodash/debounce";
 
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
-import { setProductsAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { GetProducts } from "src/api";
 import ProductForm from "src/components/products/form";
@@ -59,10 +58,12 @@ const Products = () => {
   const fractionDigits = organization?.minimum_fraction_digits ?? 2;
   const currency = organization?.currency ?? "EUR";
   // The table itself no longer reads the shared productsAtom — it fetches
-  // its own paginated page below — but ProductForm still does, both to look
-  // up the product being edited and to derive a collision-free SKU proposal
-  // for a new one. Keep populating it here so that drawer keeps working.
-  const setProducts = useSetAtom(setProductsAtom);
+  // its own paginated page below. ProductForm still reads productsAtom (to
+  // look up the product being edited, populate the BOM component picker,
+  // and derive a collision-free SKU proposal), but fetches it itself, gated
+  // on the drawer actually being open — see form.tsx — rather than this
+  // page paying an unpaginated full-catalog fetch on every visit whether or
+  // not the drawer is ever opened.
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
 
@@ -120,11 +121,10 @@ const Products = () => {
       // Re-runs whenever `location` changes — including when ProductForm
       // closes its drawer via navigate(), which is what refreshes this page
       // after a create/update/delete without a dedicated callback prop.
-      setProducts();
       setTaxRates();
       fetchProducts();
     }
-  }, [location, fetchProducts, setProducts, setTaxRates]);
+  }, [location, fetchProducts, setTaxRates]);
 
   const handleTableChange: TableProps<Product>["onChange"] = (pagination, _filters, sorter) => {
     setPage(pagination.current ?? 1);

@@ -23,7 +23,13 @@ import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 import find from "lodash/find";
 
-import { productIdAtom, productAtom, productsAtom, deleteProductAtom } from "src/atoms/product";
+import {
+  productIdAtom,
+  productAtom,
+  productsAtom,
+  setProductsAtom,
+  deleteProductAtom,
+} from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { unitsOfMeasureAtom, setUnitsOfMeasureAtom } from "src/atoms/unit-of-measure";
@@ -54,6 +60,7 @@ const ProductForm = () => {
 
   const [productId, setProductId] = useAtom(productIdAtom);
   const products = useAtomValue(productsAtom);
+  const setProducts = useSetAtom(setProductsAtom);
   const setProduct = useSetAtom(productAtom);
   const [submitting, setSubmitting] = useState(false);
   const deleteProduct = useSetAtom(deleteProductAtom);
@@ -112,13 +119,18 @@ const ProductForm = () => {
     }
   }, [isVisible, productId, product?.category, form]);
 
+  // The full (unpaginated) product catalog is only needed while this drawer
+  // is actually open — to look up the product being edited, populate the
+  // BOM component picker, and derive a collision-free SKU proposal — so it's
+  // fetched here rather than unconditionally on every Products list visit.
   useEffect(() => {
     if (isVisible) {
+      setProducts();
       setTaxRates();
       setAccounts();
       setUnitsOfMeasure();
     }
-  }, [isVisible, setTaxRates, setAccounts, setUnitsOfMeasure]);
+  }, [isVisible, setProducts, setTaxRates, setAccounts, setUnitsOfMeasure]);
 
   useEffect(() => {
     const navProductId = get(location.state, "productId");
@@ -219,8 +231,8 @@ const ProductForm = () => {
   const handleDelete = async () => {
     if (productId) {
       setSubmitting(true);
-      await deleteProduct(productId);
-      handleClose();
+      const success = await deleteProduct(productId);
+      if (success) handleClose();
       setSubmitting(false);
     }
   };

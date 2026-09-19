@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Badge, Button, Col, Row, Table, Tooltip } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -109,7 +109,20 @@ const BillOfMaterials = () => {
               style: { cursor: "pointer" },
             })}
           >
-            <Table.Column title={<Trans>Name</Trans>} dataIndex="name" key="name" />
+            <Table.Column
+              title={<Trans>Name</Trans>}
+              dataIndex="name"
+              key="name"
+              render={(name: string, record: Product) => (
+                <Link
+                  to="/bill-of-materials"
+                  state={{ bomModal: true, productId: record.id }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {name}
+                </Link>
+              )}
+            />
             <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" />
             <Table.Column
               title={<Trans>Unit</Trans>}
