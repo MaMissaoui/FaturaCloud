@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, StockMovement } from "src/types/models";
 import { Link, useLocation } from "react-router";
 import {
+  Alert,
+  App,
   Button,
   Col,
   Input,
@@ -72,6 +74,7 @@ const DEFAULT_PAGE_SIZE = 50;
 const Inventory = () => {
   useLingui();
   const { token } = theme.useToken();
+  const { message } = App.useApp();
   const location = useLocation();
   const organizationId = useAtomValue(organizationIdAtom);
   const products = useAtomValue(productsAtom);
@@ -81,6 +84,11 @@ const Inventory = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  // Starts true — productsAtom is [] until the fetch below resolves, and
+  // without tracking this separately the "No products are tracking stock
+  // yet" empty state flashed falsely during that window on every cold
+  // load/navigation, for organizations that do have tracked products.
+  const [productsLoading, setProductsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [productFilter, setProductFilter] = useState<string | null>(null);
@@ -109,7 +117,12 @@ const Inventory = () => {
   );
   useEffect(() => () => debouncedSetReferenceFilter.cancel(), [debouncedSetReferenceFilter]);
 
-  const trackedProducts = products.filter((p) => p.stockEnabled);
+  // Memoized — this page has two filter rows on the same component, and an
+  // unmemoized derivation here got rebuilt (and both consuming tables'
+  // dataSource/option lists with it) on every keystroke anywhere on the
+  // page, including in Recent movements' own, unrelated filter boxes. Same
+  // bug class already found and fixed on the Production Orders list.
+  const trackedProducts = useMemo(() => products.filter((p) => p.stockEnabled), [products]);
   // Drives both the Stock levels table below and — via categoryFilter,
   // shared with fetchMovements' `category` param — the Recent movements
   // table too, so the two sections can't disagree about what "filtered by
@@ -118,23 +131,32 @@ const Inventory = () => {
   // so it can never offer a product the current category/search filter
   // excludes — see the reconciling effect right below for what happens
   // when a change here would otherwise strand a stale selection there.
-  const filteredTrackedProducts = trackedProducts.filter((p) => {
-    if (categoryFilter && p.category !== categoryFilter) return false;
-    if (!stockSearch) return true;
-    const needle = stockSearch.toLowerCase();
-    return p.name.toLowerCase().includes(needle) || (p.sku ?? "").toLowerCase().includes(needle);
-  });
+  const filteredTrackedProducts = useMemo(
+    () =>
+      trackedProducts.filter((p) => {
+        if (categoryFilter && p.category !== categoryFilter) return false;
+        if (!stockSearch) return true;
+        const needle = stockSearch.toLowerCase();
+        return (
+          p.name.toLowerCase().includes(needle) || (p.sku ?? "").toLowerCase().includes(needle)
+        );
+      }),
+    [trackedProducts, categoryFilter, stockSearch],
+  );
 
   // Keeps the Recent movements product picker's selection consistent with
   // whichever product it's now drawing its options from: if a category or
   // search change (in Stock levels) excludes the currently-selected
   // product, clear the selection instead of leaving a query that combines
   // a stale productId with the new category/search and silently returns
-  // nothing.
+  // nothing. Surfaced with a toast — silently emptying a filter someone
+  // just set is exactly the "looked broken" trap this page's filters have
+  // hit before, just from the other direction.
   useEffect(() => {
     if (productFilter && !filteredTrackedProducts.some((p) => p.id === productFilter)) {
       setProductFilter(null);
       setPage(1);
+      message.info(t`Product filter cleared — no longer matches the Stock levels filter above.`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, stockSearch]);
@@ -178,7 +200,8 @@ const Inventory = () => {
       // Re-runs whenever `location` changes — including when MovementForm
       // closes its drawer via navigate(), which is what refreshes this page
       // after recording a movement without a dedicated callback prop.
-      setProducts();
+      setProductsLoading(true);
+      setProducts().finally(() => setProductsLoading(false));
       fetchMovements();
     }
   }, [location, fetchMovements, setProducts]);
@@ -231,6 +254,19 @@ const Inventory = () => {
           actually low or out of stock" without scanning every card. Search
           is client-side over the already-loaded productsAtom (the same data
           the old card grid already relied on) — no new endpoint needed. */}
+      {!productsLoading && trackedProducts.length === 0 && (
+        <Alert
+          style={{ marginTop: 24 }}
+          type="info"
+          showIcon
+          message={<Trans>No products are tracking stock yet</Trans>}
+          description={
+            <Trans>
+              Enable "Track inventory" on a product (Master Data → Products) to see it here.
+            </Trans>
+          }
+        />
+      )}
       {trackedProducts.length > 0 && (
         <>
           <Row style={{ marginTop: 24 }} align="middle" justify="space-between">
@@ -273,6 +309,7 @@ const Inventory = () => {
               <Table
                 dataSource={filteredTrackedProducts}
                 rowKey="id"
+                loading={productsLoading}
                 pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
                 locale={{ emptyText: t`No products match your filters` }}
               >
@@ -288,7 +325,12 @@ const Inventory = () => {
                     </Link>
                   )}
                 />
-                <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" sorter />
+                <Table.Column
+                  title={<Trans>SKU</Trans>}
+                  dataIndex="sku"
+                  key="sku"
+                  sorter={(a: Product, b: Product) => (a.sku ?? "").localeCompare(b.sku ?? "")}
+                />
                 <Table.Column
                   title={<Trans>Category</Trans>}
                   dataIndex="category"
@@ -315,8 +357,19 @@ const Inventory = () => {
                   }
                   render={(qty: number, p: Product) => {
                     const q = qty ?? 0;
-                    const color =
-                      q <= 0 ? token.colorError : q <= 5 ? token.colorWarning : token.colorSuccess;
+                    // Only "at or below zero" is unambiguous across a whole
+                    // catalog — there's no per-product low-stock threshold
+                    // field, so a fixed mid-tier number (e.g. "5") applied
+                    // to every product regardless of unit/scale produced
+                    // both false alarms (5 units of something ordered in
+                    // bulk) and false confidence (5 of something scarce).
+                    // colorErrorText/colorSuccessText, not the base
+                    // colorError/colorSuccess — the base 6-shade tokens are
+                    // under the WCAG AA 4.5:1 contrast floor for text at
+                    // this weight (~2.3:1/~3.3:1 measured against white);
+                    // the *Text variants are the darker 9-shade tokens antd
+                    // itself reserves for exactly this use.
+                    const color = q <= 0 ? token.colorErrorText : token.colorSuccessText;
                     return (
                       <span style={{ color, fontWeight: 600 }}>
                         {q % 1 === 0 ? q : q.toFixed(2)}
@@ -337,9 +390,27 @@ const Inventory = () => {
 
       <Row style={{ marginTop: 24 }} align="middle" justify="space-between">
         <Col>
-          <Typography.Title level={5} style={{ margin: 0 }}>
-            <Trans>Recent movements</Trans>
-          </Typography.Title>
+          <Space align="center">
+            <Typography.Title level={5} style={{ margin: 0 }}>
+              <Trans>Recent movements</Trans>
+            </Typography.Title>
+            {/* categoryFilter isn't set from a control in this section (see
+                the comment on the filter row below) — without this, a
+                category picked in Stock levels above silently narrows this
+                table too, which this page's own filters have hit before as
+                a "looks broken" trap. */}
+            {categoryFilter && (
+              <Tooltip title={<Trans>Filtered by product type, set above</Trans>}>
+                <Tag color="blue">
+                  {categoryFilter === "finished" ? (
+                    <Trans>Finished good</Trans>
+                  ) : (
+                    <Trans>Component</Trans>
+                  )}
+                </Tag>
+              </Tooltip>
+            )}
+          </Space>
         </Col>
         <Col>
           {/* Product/movement-type/reference filter this table only. Product
@@ -454,7 +525,12 @@ const Inventory = () => {
               align="right"
               sorter
               render={(qty: number) => (
-                <span style={{ color: qty >= 0 ? "#52c41a" : "#ff4d4f", fontWeight: 600 }}>
+                <span
+                  style={{
+                    color: qty >= 0 ? token.colorSuccessText : token.colorErrorText,
+                    fontWeight: 600,
+                  }}
+                >
                   {formatQty(qty)}
                 </span>
               )}

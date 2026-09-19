@@ -19,6 +19,7 @@ import {
   Table,
   Tag,
   theme,
+  Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
@@ -92,6 +93,7 @@ const footerNode = () => document.getElementById("footer") as HTMLElement | null
 // would create a form instance that's never attached to any <Form>.
 const CreateProductionOrderForm = ({
   finishedProducts,
+  products,
   imports,
   nextNumber,
   createOrder,
@@ -99,12 +101,14 @@ const CreateProductionOrderForm = ({
   colorBgContainer,
 }: {
   finishedProducts: Product[];
+  products: Product[];
   imports: Import[];
   nextNumber: string;
   createOrder: (values: Partial<ProductionOrder>) => Promise<unknown>;
   dateFormat: string;
   colorBgContainer: string;
 }) => {
+  const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [bomLines, setBomLines] = useState<BillOfMaterialsLine[]>([]);
@@ -316,6 +320,27 @@ const CreateProductionOrderForm = ({
           render={(l: BillOfMaterialsLine) => roundDisplay(l.quantityPerUnit * watchedQuantity)}
         />
         <Table.Column title={<Trans>Unit</Trans>} dataIndex="componentUnit" key="componentUnit" />
+        <Table.Column
+          title={<Trans>On hand</Trans>}
+          key="onHand"
+          align="right"
+          // stockQuantity comes from the already-loaded productsAtom — no
+          // new endpoint. Completion is what actually consumes stock (see
+          // the transitions comment on ProductionOrderStatus), so before
+          // this column existed the only shortfall signal was a 409 on
+          // "Mark as completed," after the order was already created.
+          render={(l: BillOfMaterialsLine) => {
+            const component = find(products, { id: l.componentProductId });
+            const onHand = component?.stockQuantity ?? 0;
+            const required = roundDisplay(l.quantityPerUnit * watchedQuantity);
+            const short = onHand < required;
+            return (
+              <span style={{ color: short ? token.colorError : undefined, fontWeight: 600 }}>
+                {onHand % 1 === 0 ? onHand : onHand.toFixed(2)}
+              </span>
+            );
+          }}
+        />
       </Table>
 
       {footerNode() &&
@@ -331,14 +356,24 @@ const CreateProductionOrderForm = ({
           >
             <Row align="middle" justify="end" style={{ height: 64 }}>
               <Col>
-                <Button
-                  type="primary"
-                  loading={submitting}
-                  disabled={bomLines.length === 0}
-                  onClick={() => form.submit()}
+                <Tooltip
+                  title={
+                    !watchedProductId
+                      ? t`Select a finished product first`
+                      : bomLines.length === 0
+                        ? t`This product has no Bill of Materials`
+                        : undefined
+                  }
                 >
-                  <SaveOutlined /> <Trans>Create</Trans>
-                </Button>
+                  <Button
+                    type="primary"
+                    loading={submitting}
+                    disabled={bomLines.length === 0}
+                    onClick={() => form.submit()}
+                  >
+                    <SaveOutlined /> <Trans>Create</Trans>
+                  </Button>
+                </Tooltip>
               </Col>
             </Row>
           </Footer>,
@@ -351,9 +386,8 @@ const CreateProductionOrderForm = ({
 const ProductionOrderDetails = () => {
   const { id } = useParams<string>();
   const navigate = useNavigate();
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
+  const { token } = theme.useToken();
+  const { colorBgContainer } = token;
   const dateFormat = useDatePickerFormat();
   const formatDate = useDateFormatter();
 
@@ -462,7 +496,7 @@ const ProductionOrderDetails = () => {
   if (!isNew && !order) {
     return (
       <>
-        <PageHeader title={<Trans>Production order</Trans>} icon={<DeploymentUnitOutlined />} />
+        <PageHeader title={<Trans>Production Order</Trans>} icon={<DeploymentUnitOutlined />} />
         <div style={{ padding: 24 }}>
           {orderLoadable.state === "loading" ? (
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -494,6 +528,7 @@ const ProductionOrderDetails = () => {
       {isNew ? (
         <CreateProductionOrderForm
           finishedProducts={finishedProducts}
+          products={products}
           imports={imports}
           nextNumber={nextNumber}
           createOrder={createOrder}
@@ -567,6 +602,22 @@ const ProductionOrderDetails = () => {
                 title={<Trans>Unit</Trans>}
                 dataIndex="componentUnit"
                 key="componentUnit"
+              />
+              <Table.Column
+                title={<Trans>On hand</Trans>}
+                key="onHand"
+                align="right"
+                render={(_: unknown, l: ProductionOrderComponentLine) => {
+                  if (!l.componentProductId) return "—";
+                  const component = find(products, { id: l.componentProductId });
+                  const onHand = component?.stockQuantity ?? 0;
+                  const short = onHand < l.totalQuantity;
+                  return (
+                    <span style={{ color: short ? token.colorError : undefined, fontWeight: 600 }}>
+                      {onHand % 1 === 0 ? onHand : onHand.toFixed(2)}
+                    </span>
+                  );
+                }}
               />
             </Table>
 
