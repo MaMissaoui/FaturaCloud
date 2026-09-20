@@ -26,12 +26,13 @@ import { InboxOutlined, DeleteOutlined } from "@ant-design/icons";
 import find from "lodash/find";
 import debounce from "lodash/debounce";
 
-import { organizationIdAtom } from "src/atoms/organization";
+import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { deleteStockMovementAtom } from "src/atoms/stock";
 import { GetStockMovements } from "src/api";
 import MovementForm from "src/components/stock/movement-form";
 import PageHeader from "src/components/page-header";
+import { numberFormatLocale } from "src/utils/currencies";
 import { unitLabel } from "src/utils/units";
 
 const movementTypeTag = (type: string) => {
@@ -66,20 +67,40 @@ const movementTypeTag = (type: string) => {
   );
 };
 
-const formatQty = (qty: number) =>
-  (qty >= 0 ? "+" : "") + (qty % 1 === 0 ? String(qty) : qty.toFixed(2));
+// Quantities are a display concern only — storage keeps its own precision.
+// Intl.NumberFormat with the organization's country-derived locale (falling
+// back to the viewer's UI language) renders "2,5" rather than a hardcoded
+// "." on French/German organizations; minimumFractionDigits 0 keeps whole
+// quantities clean ("5", not "5,00") while maximumFractionDigits 2 matches
+// the old toFixed(2) cap.
+const formatQty = (qty: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(qty);
+
+// Movement quantities show their direction on screen ("+5"); the sign is a
+// display affordance, the underlying stored number keeps its own sign.
+const formatSignedQty = (qty: number, locale: string) =>
+  (qty >= 0 ? "+" : "") + formatQty(qty, locale);
 
 const DEFAULT_PAGE_SIZE = 50;
 
 const Inventory = () => {
-  useLingui();
+  const { i18n } = useLingui();
   const { token } = theme.useToken();
   const { message } = App.useApp();
   const location = useLocation();
   const organizationId = useAtomValue(organizationIdAtom);
+  const organization = useAtomValue(organizationAtom);
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
   const deleteMovement = useSetAtom(deleteStockMovementAtom);
+
+  // The organization's own country drives the decimal separator (comma vs.
+  // period) for quantities, not the viewer's UI language — the same
+  // precedence the money formatters in src/utils/currencies.tsx use.
+  const qtyLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;
 
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [total, setTotal] = useState(0);
@@ -399,7 +420,7 @@ const Inventory = () => {
                     const color = q <= 0 ? token.colorErrorText : token.colorSuccessText;
                     return (
                       <span style={{ color, fontWeight: 600 }}>
-                        {q % 1 === 0 ? q : q.toFixed(2)}
+                        {formatQty(q, qtyLocale)}
                         {p.unit && (
                           <span style={{ fontWeight: 400, marginLeft: 4 }}>
                             {unitLabel(p.unit)}
@@ -558,7 +579,7 @@ const Inventory = () => {
                     fontWeight: 600,
                   }}
                 >
-                  {formatQty(qty)}
+                  {formatSignedQty(qty, qtyLocale)}
                 </span>
               )}
             />

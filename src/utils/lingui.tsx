@@ -35,4 +35,14 @@ export async function dynamicActivate(locale: string) {
   i18n.activate(locale);
 
   dayjs.locale(locale);
+
+  // F127: keep the document's declared language in sync with the active locale
+  // so assistive tech and the browser's own translation/spellcheck logic see
+  // the right language. index.html ships lang="en" as the pre-hydration
+  // default; this updates it on every switch (both the app-mount effect in
+  // src/app.tsx and the header language switcher in src/layouts/base.tsx go
+  // through here). Guarded for non-DOM contexts (tests).
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = locale;
+  }
 }

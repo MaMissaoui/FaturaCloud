@@ -7,6 +7,9 @@
 // (format + counter) is the actual source of truth, advanced atomically
 // server-side on create.
 
+import { i18n } from "@lingui/core";
+import { t } from "@lingui/core/macro";
+
 export interface DocumentNumberFormatValidationResult {
   isValid: boolean;
   error?: string;
@@ -25,9 +28,10 @@ export const validateDocumentNumberFormat = (
   const matches = format.match(/\{([^}]+)\}/g) || [];
   for (const match of matches) {
     if (plainTokens.has(match) || paddedNumberToken.test(match)) continue;
+    const validVariables = `{number}, {number:N}, ${Array.from(plainTokens).join(", ")}`;
     return {
       isValid: false,
-      error: `Invalid variable: ${match}. Valid variables are: {number}, {number:N}, ${Array.from(plainTokens).join(", ")}`,
+      error: t`Invalid variable: ${match}. Valid variables are: ${validVariables}`,
     };
   }
 
@@ -56,7 +60,7 @@ export const generateDocumentNumber = (
       case "{month}":
         return String(date.getMonth() + 1).padStart(2, "0");
       case "{m}":
-        return date.toLocaleString("en", { month: "short" });
+        return date.toLocaleString(i18n.locale || "en", { month: "short" });
       case "{day}":
         return String(date.getDate()).padStart(2, "0");
       case "{clientCode}":

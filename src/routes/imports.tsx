@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Import, ImportSummary, PurchaseOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Empty, Table, Row, Tag, Tooltip } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -20,10 +20,7 @@ import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import ImportForm from "src/components/imports/form";
 import PageHeader from "src/components/page-header";
 import { useDateFormatter } from "src/utils/date";
-import { formatCents } from "src/utils/currency";
-import { numberFormatLocale } from "src/utils/currencies";
-
-const searchAtom = atom<string>("");
+import { formatOrgCents } from "src/utils/currencies";
 
 const Imports = () => {
   const { i18n } = useLingui();
@@ -35,7 +32,11 @@ const Imports = () => {
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
   const organization = useAtomValue(organizationAtom);
   const organizationId = useAtomValue(organizationIdAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  // useState + useMemo, matching production-orders.tsx rather than the older
+  // module-level searchAtom + unmemoized filter: that wrote a global atom and
+  // rebuilt the dataSource on every keystroke, re-rendering every visible row
+  // (audit 2026-09-19 F130).
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [summaries, setSummaries] = useState<Record<string, ImportSummary>>({});
   const formatDate = useDateFormatter();
@@ -70,28 +71,29 @@ const Imports = () => {
     return map;
   }, [orders]);
 
-  const searchImports = () => {
+  const filteredImports = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return imports;
     return filter(imports, (imp: Import) => {
       return some(["importNumber", "notes"], (field) => {
         const value = get(imp, field);
-        return includes(toString(value).toLowerCase(), search.toLowerCase());
+        return includes(toString(value).toLowerCase(), term);
       });
     });
-  };
+  }, [imports, search]);
 
-  const money = (cents: number) =>
-    formatCents(
-      cents,
-      organization?.currency ?? "EUR",
-      numberFormatLocale(organization?.country_code) ?? i18n.locale,
-    );
+  // formatOrgCents applies the organization's own minimum_fraction_digits
+  // (the same helper every other money screen uses) — formatCents ignored it,
+  // so Imports rendered a different number of decimals than the rest of the
+  // app for the same organization.
+  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   return (
     <>
       <PageHeader
         icon={<ContainerOutlined />}
         title={<Trans>Imports</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Link to="/imports" state={{ importModal: true }}>
             <Button type="primary" style={{ marginBottom: 10 }}>
@@ -103,7 +105,7 @@ const Imports = () => {
       <Row>
         <Col span={24}>
           <Table
-            dataSource={search ? searchImports() : imports}
+            dataSource={filteredImports}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}

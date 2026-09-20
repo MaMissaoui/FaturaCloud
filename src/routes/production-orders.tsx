@@ -62,6 +62,7 @@ const ProductionOrders = () => {
         extra={
           <Select
             allowClear
+            aria-label={t`Filter by status`}
             placeholder={t`All statuses`}
             style={{ width: 160 }}
             value={statusFilter || undefined}

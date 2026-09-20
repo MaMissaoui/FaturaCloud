@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { IncomingInvoice } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Space, Table, Tag } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -24,8 +24,6 @@ import { organizationAtom } from "src/atoms/organization";
 import { incomingInvoicesAtom, setIncomingInvoicesAtom } from "src/atoms/incoming-invoice";
 import PageHeader from "src/components/page-header";
 
-const searchAtom = atom<string>("");
-
 const IncomingInvoices = () => {
   const { i18n } = useLingui();
   const location = useLocation();
@@ -34,7 +32,7 @@ const IncomingInvoices = () => {
   const organization = useAtomValue(organizationAtom);
   const invoices = useAtomValue(incomingInvoicesAtom);
   const setInvoices = useSetAtom(setIncomingInvoicesAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [variances, setVariances] = useState<Record<string, boolean>>({});
 
@@ -52,22 +50,24 @@ const IncomingInvoices = () => {
       .catch(() => setVariances({}));
   }, [location, organization?.id]);
 
-  const filtered = search
-    ? filter(
+  const filtered = useMemo(
+    () =>
+      filter(
         invoices,
         (i: IncomingInvoice) =>
           includes((i.vendorInvoiceNumber ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((i.vendorName ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((i.reference ?? "").toLowerCase(), search.toLowerCase()),
-      )
-    : invoices;
+      ),
+    [invoices, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<AuditOutlined />}
         title={<Trans>Incoming Invoices</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Button type="primary" onClick={() => navigate("/incoming-invoices/new")}>
             <Trans>New incoming invoice</Trans>

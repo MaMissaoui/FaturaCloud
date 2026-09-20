@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button, Table, Typography, Dropdown, MenuProps, Popconfirm, Tooltip } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   FileTextOutlined,
   MoreOutlined,
@@ -33,8 +33,6 @@ import PageHeader from "src/components/page-header";
 import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
 import type { InvoiceDisplay } from "src/types/invoice";
 
-const searchAtom = atom<string>("");
-
 const Invoices = () => {
   // Built inside the component (not at module scope) so the filter labels
   // follow the active locale rather than freezing at import-time locale.
@@ -52,7 +50,7 @@ const Invoices = () => {
   const setInvoices = useSetAtom(setInvoicesAtom);
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   // Computed once per component render rather than inside the Due date
   // column's per-row render callback, so every row's overdue comparison
@@ -70,14 +68,16 @@ const Invoices = () => {
     setInvoices().finally(() => setLoading(false));
   }, [setInvoices]);
 
-  const searchInvoices = () => {
-    return filter(invoices, (invoice: InvoiceDisplay) => {
-      return some(["clientName", "number", "customerNotes", "total"], (field) => {
-        const value = get(invoice, field);
-        return includes(toString(value).toLowerCase(), search.toLowerCase());
-      });
-    });
-  };
+  const filtered = useMemo(
+    () =>
+      filter(invoices, (invoice: InvoiceDisplay) => {
+        return some(["clientName", "number", "customerNotes", "total"], (field) => {
+          const value = get(invoice, field);
+          return includes(toString(value).toLowerCase(), search.toLowerCase());
+        });
+      }),
+    [invoices, search],
+  );
 
   const handleDuplicateInvoice = async (invoiceId: string) => {
     const newInvoiceId = await duplicateInvoice(invoiceId);
@@ -135,7 +135,7 @@ const Invoices = () => {
       <PageHeader
         icon={<FileTextOutlined />}
         title={<Trans>Invoices</Trans>}
-        search={{ placeholder: t`Search text`, onChange: setSearch }}
+        search={{ placeholder: t`Search text`, value: search, onChange: setSearch }}
         actions={
           <Link to="/invoices/new">
             <Button type="primary" style={{ marginBottom: 10 }}>
@@ -146,13 +146,21 @@ const Invoices = () => {
       />
 
       <Table
-        dataSource={search ? searchInvoices() : invoices}
+        dataSource={filtered}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         rowKey="id"
         loading={loading}
         onRow={(record: InvoiceDisplay) => ({
           onClick: () => navigate(`/invoices/${record.id}`),
+          onKeyDown: (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate(`/invoices/${record.id}`);
+            }
+          },
           style: { cursor: "pointer" },
+          tabIndex: 0,
+          role: "link",
         })}
       >
         <Table.Column

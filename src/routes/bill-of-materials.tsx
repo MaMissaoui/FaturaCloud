@@ -133,7 +133,17 @@ const BillOfMaterials = () => {
             onRow={(record: Product) => ({
               onClick: () =>
                 navigate("/bill-of-materials", { state: { bomModal: true, productId: record.id } }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/bill-of-materials", {
+                    state: { bomModal: true, productId: record.id },
+                  });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column

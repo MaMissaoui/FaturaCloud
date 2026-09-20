@@ -119,6 +119,7 @@ const DailyCashMovements = () => {
           value={accountId || undefined}
           onChange={setAccountId}
           placeholder={t`Account`}
+          aria-label={t`Account`}
           showSearch
           optionFilterProp="children"
           style={{ minWidth: 220 }}
@@ -134,6 +135,7 @@ const DailyCashMovements = () => {
           onChange={(dates) => dates?.[0] && dates?.[1] && setRange([dates[0], dates[1]])}
           format={dateFormat}
           allowClear={false}
+          aria-label={t`Date range`}
         />
       </Space>
 

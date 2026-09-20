@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Account } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, Table, Tag, Col, Row, Space } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -17,8 +17,6 @@ import { organizationIdAtom } from "src/atoms/organization";
 import AccountForm from "src/components/accounting/account-form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
-
-const searchAtom = atom<string>("");
 
 const accountTypeColor: Record<string, string> = {
   asset: "blue",
@@ -52,7 +50,7 @@ const ChartOfAccounts = () => {
   const accounts = useAtomValue(accountsAtom);
   const setAccounts = useSetAtom(setAccountsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -62,16 +60,18 @@ const ChartOfAccounts = () => {
     }
   }, [location, setAccounts]);
 
-  const filtered = search
-    ? filter(accounts, (a: Account) => includes(toLower(`${a.code} ${a.name}`), toLower(search)))
-    : accounts;
+  const filtered = useMemo(
+    () =>
+      filter(accounts, (a: Account) => includes(toLower(`${a.code} ${a.name}`), toLower(search))),
+    [accounts, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<BankOutlined />}
         title={<Trans>Chart of Accounts</Trans>}
-        search={{ placeholder: t`Search text`, onChange: setSearch }}
+        search={{ placeholder: t`Search text`, value: search, onChange: setSearch }}
         actions={
           <Space wrap>
             {organizationId && (

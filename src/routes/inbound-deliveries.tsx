@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { InboundDelivery } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -20,8 +20,6 @@ import {
 import { inboundDeliveriesAtom, setInboundDeliveriesAtom } from "src/atoms/inbound-delivery";
 import PageHeader from "src/components/page-header";
 
-const searchAtom = atom<string>("");
-
 const InboundDeliveries = () => {
   useLingui();
   const location = useLocation();
@@ -29,7 +27,7 @@ const InboundDeliveries = () => {
   const formatDate = useDateFormatter();
   const deliveries = useAtomValue(inboundDeliveriesAtom);
   const setDeliveries = useSetAtom(setInboundDeliveriesAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -39,22 +37,24 @@ const InboundDeliveries = () => {
     }
   }, [location, setDeliveries]);
 
-  const filtered = search
-    ? filter(
+  const filtered = useMemo(
+    () =>
+      filter(
         deliveries,
         (d: InboundDelivery) =>
           includes((d.deliveryNumber ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((d.vendorName ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((d.orderNumber ?? "").toLowerCase(), search.toLowerCase()),
-      )
-    : deliveries;
+      ),
+    [deliveries, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<ImportOutlined />}
         title={<Trans>Goods Receipts</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Button type="primary" onClick={() => navigate("/inbound-deliveries/new")}>
             <Trans>New goods receipt</Trans>

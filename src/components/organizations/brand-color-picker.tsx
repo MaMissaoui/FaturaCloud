@@ -1,19 +1,24 @@
 import { CheckOutlined, StopOutlined } from "@ant-design/icons";
 import { Tooltip, theme } from "antd";
+import { t } from "@lingui/core/macro";
 
 // Curated, contrast-checked presets — Phase 1 is deliberately a fixed swatch
 // set, not a free-form color picker, so a chosen color can't land on a hue
 // antd's theme algorithm can't derive a readable button/text ramp from. Must
 // stay in sync with brandColorPalette in db/organization.go, the
 // server-side source of truth: the API rejects any value not on that list.
-const SWATCHES: { label: string; value: string }[] = [
-  { label: "Indigo", value: "#2E4CAE" },
-  { label: "Teal", value: "#0F7C74" },
-  { label: "Emerald", value: "#1D8A5D" },
-  { label: "Navy", value: "#16325C" },
-  { label: "Violet", value: "#6D3FBF" },
-  { label: "Terracotta", value: "#B5502E" },
-  { label: "Slate", value: "#475569" },
+//
+// Labels are functions, not module-scope strings, so the `t` call happens at
+// render time and re-reads the active locale — same reasoning as
+// invoiceStateLabel in src/types/invoice.ts. The hex values stay untranslated.
+const SWATCHES: { label: () => string; value: string }[] = [
+  { label: () => t`Indigo`, value: "#2E4CAE" },
+  { label: () => t`Teal`, value: "#0F7C74" },
+  { label: () => t`Emerald`, value: "#1D8A5D" },
+  { label: () => t`Navy`, value: "#16325C" },
+  { label: () => t`Violet`, value: "#6D3FBF" },
+  { label: () => t`Terracotta`, value: "#B5502E" },
+  { label: () => t`Slate`, value: "#475569" },
 ];
 
 interface BrandColorPickerProps {
@@ -63,11 +68,11 @@ export default function BrandColorPicker({ value, onChange }: BrandColorPickerPr
   return (
     <div
       role="group"
-      aria-label="Brand color"
+      aria-label={t`Brand color`}
       style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
     >
-      {renderSwatch("", "Default")}
-      {SWATCHES.map((s) => renderSwatch(s.value, s.label))}
+      {renderSwatch("", t`Default`)}
+      {SWATCHES.map((s) => renderSwatch(s.value, s.label()))}
     </div>
   );
 }
