@@ -26,7 +26,21 @@ type Database struct {
 func NewDatabase(dbPath string) (*Database, error) {
 	// Embed pragmas in the DSN so every connection gets them automatically,
 	// regardless of pool size. busy_timeout avoids SQLITE_BUSY under load.
-	dsn := dbPath + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
+	//
+	// synchronous=NORMAL is the standard WAL pairing: it still guarantees a
+	// consistent (non-corrupt) database after a crash while skipping the
+	// per-commit fsync, so only the last few committed transactions can be
+	// lost on a power cut — a conscious trade for a single-file, single-writer
+	// deployment (a Raspberry Pi on an SD card). temp_store=MEMORY keeps the
+	// planner's many temp B-tree sorts in RAM; cache_size is in KiB (negative
+	// = KiB) and mmap_size in bytes.
+	dsn := dbPath + "?_pragma=foreign_keys(1)" +
+		"&_pragma=journal_mode(WAL)" +
+		"&_pragma=busy_timeout(5000)" +
+		"&_pragma=synchronous(NORMAL)" +
+		"&_pragma=temp_store(MEMORY)" +
+		"&_pragma=cache_size(-64000)" +
+		"&_pragma=mmap_size(268435456)"
 	db, err := sqlx.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
