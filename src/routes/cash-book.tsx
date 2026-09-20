@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   App,
   Button,
@@ -11,7 +10,6 @@ import {
   Form,
   Input,
   InputNumber,
-  Layout,
   List,
   Modal,
   Radio,
@@ -85,7 +83,6 @@ import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
 
 const { Option } = Select;
 const { TextArea } = Input;
-const { Footer } = Layout;
 
 // A new customer picked in the "New customer" modal below — kept as local
 // draft state, not created via a separate API call, until the whole sale is
@@ -142,7 +139,7 @@ const CashBook = () => {
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
   const {
-    token: { colorBgContainer, colorSuccess, colorError, colorBorder },
+    token: { colorSuccess, colorError, colorBorder },
   } = theme.useToken();
 
   const organizationId = useAtomValue(organizationIdAtom);
@@ -625,6 +622,15 @@ const CashBook = () => {
   const closePayment = async () => {
     setPayingInvoice(null);
     await refreshLoanStatus();
+    // A payment posts to the cash register as well as against the invoice, so
+    // refresh the register's movements here too. This runs for every way the
+    // panel closes — a partial payment (PaymentPanel calls onClose, not
+    // onSettled), a full settlement (handleSettled → closePayment), and a
+    // plain dismissal. Without it, a payment recorded while a sale is in
+    // progress (the register card is hidden then — see the !inSale gate)
+    // stayed missing from the movements list after returning to the search
+    // screen, since nothing else re-runs refreshDailyMovement.
+    await refreshDailyMovement();
   };
 
   // Auto-progresses the invoice to "paid" once its balance clears — see
@@ -643,8 +649,9 @@ const CashBook = () => {
         );
       }
     }
+    // closePayment also refreshes the register movements, so no separate
+    // refreshDailyMovement call is needed here.
     await closePayment();
-    await refreshDailyMovement();
   };
 
   const clientName = selectedClient?.name || newClientDraft?.name || "";
@@ -782,7 +789,7 @@ const CashBook = () => {
       {isToday && inSale && (
         <>
           <Space align="center" size={12} style={{ marginBottom: 16 }}>
-            <Button icon={<ArrowLeftOutlined />} onClick={backToSearch}>
+            <Button type="primary" icon={<ArrowLeftOutlined />} onClick={backToSearch}>
               <Trans>Back to search</Trans>
             </Button>
             <Typography.Title level={4} style={{ margin: 0 }}>
@@ -1005,13 +1012,11 @@ const CashBook = () => {
               state; gold, matching "sent", the state an unsettled sale
               lands in), the same movementKindColor-style pattern used in
               the register table above, rather than recoloring the submit
-              button itself: that button (in the sticky footer below,
-              reachable without scrolling past however many line items
-              were added) stays type="primary" like every other primary
-              action in the app, so it both respects the organization's
-              own brand color and keeps AntD's guaranteed-accessible text
-              contrast instead of the solid-green/gold palette's weak
-              contrast at this weight. */}
+              button itself: that button (at the foot of this card) stays
+              type="primary" like every other primary action in the app, so
+              it both respects the organization's own brand color and keeps
+              AntD's guaranteed-accessible text contrast instead of the
+              solid-green/gold palette's weak contrast at this weight. */}
               <Space>
                 <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
                   {amountReceivedWatched >= total ? (
@@ -1022,45 +1027,32 @@ const CashBook = () => {
                 </Tag>
               </Space>
             </Form>
-          </Card>
 
-          {document.getElementById("footer") &&
-            createPortal(
-              <Footer
-                style={{
-                  position: "sticky",
-                  bottom: 0,
-                  zIndex: 1,
-                  padding: 0,
-                  background: colorBgContainer,
-                  paddingLeft: 16,
-                  paddingRight: 16,
-                }}
-              >
-                <Row align="middle" justify="end" style={{ height: 64 }}>
-                  <Col>
-                    <Button
-                      type="primary"
-                      onClick={() => form.submit()}
-                      loading={submitting}
-                      size="large"
-                      // F101: an amount > 0 means a payment will post to the
-                      // register; with none configured it can't be recorded.
-                      // A zero-deposit loan sale (amount 0) is still allowed.
-                      disabled={amountReceivedWatched > 0 && !registerAccountId}
-                    >
-                      {amountReceivedWatched >= total ? (
-                        <Trans>Record cash sale</Trans>
-                      ) : (
-                        <Trans>Record loan sale</Trans>
-                      )}
-                    </Button>
-                  </Col>
-                </Row>
-              </Footer>,
-              // @ts-expect-error - Footer can be null
-              document.getElementById("footer"),
-            )}
+            {/* The submit button sits at the foot of this card rather than in
+            a sticky footer portaled to #footer, so it reads as part of the
+            sale it records instead of floating below the loan-status report
+            that follows. */}
+            <Row align="middle" justify="end" style={{ marginTop: 16 }}>
+              <Col>
+                <Button
+                  type="primary"
+                  onClick={() => form.submit()}
+                  loading={submitting}
+                  size="large"
+                  // F101: an amount > 0 means a payment will post to the
+                  // register; with none configured it can't be recorded.
+                  // A zero-deposit loan sale (amount 0) is still allowed.
+                  disabled={amountReceivedWatched > 0 && !registerAccountId}
+                >
+                  {amountReceivedWatched >= total ? (
+                    <Trans>Record cash sale</Trans>
+                  ) : (
+                    <Trans>Record loan sale</Trans>
+                  )}
+                </Button>
+              </Col>
+            </Row>
+          </Card>
         </>
       )}
 
