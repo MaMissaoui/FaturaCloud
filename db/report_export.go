@@ -130,6 +130,21 @@ func setColWidths(f *excelize.File, sheet string, widths []float64) {
 	}
 }
 
+// repeatReportHeaderRow sets Excel/LibreOffice's native "print titles" so a
+// report's column-label row repeats at the top of every printed page. Unlike
+// the document templates (db/templates/gen/styles.go's
+// applyRepeatingHeaderRows, which repeats the whole title/identity block),
+// only the one label row repeats here — a report's title/filter block is
+// meant to appear once, on the first page. Without this, a loan report long
+// enough to paginate continues on page two under no column headings at all.
+func repeatReportHeaderRow(f *excelize.File, sheet string, row int) error {
+	return f.SetDefinedName(&excelize.DefinedName{
+		Name:     "_xlnm.Print_Titles",
+		RefersTo: fmt.Sprintf("'%s'!$%d:$%d", sheet, row, row),
+		Scope:    sheet,
+	})
+}
+
 // GenerateDailyCashMovementsExport builds the Cash Book screen's daily
 // register panel (opening/in/out/closing plus the per-transaction detail
 // table) as an .xlsx workbook for one UTC day, the same accountID/day
@@ -232,6 +247,11 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 // itself — filtered here in Go rather than added to that query, since the
 // on-screen table filters identically client-side and the row counts this
 // report deals with are small.
+//
+// The workbook is also self-describing across pages: the active filter (the
+// customer, or "All customers") is named in the first-page header block, the
+// column-label row repeats at the top of every printed page, and the three
+// money columns carry a totals row at the end.
 func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, openOnly bool) ([]byte, string, error) {
 	org, err := d.GetOrganization(organizationID)
 	if err != nil {
@@ -264,7 +284,20 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 		return formatMoneyCents(cents, currency, org.MinimumFractionDigits, org.CountryCode)
 	}
 
-	subtitle := fmt.Sprintf("%s — generated %s", orgName, formatOrgDate(time.Now().UnixMilli(), org.DateFormat))
+	// The report's active filter, named in the first-page header block so an
+	// exported report is self-describing — otherwise a reader can't tell
+	// whether these are one customer's loans or the whole organization's.
+	filterLabel := "All customers"
+	if clientID != "" {
+		filterLabel = "Customer: " + clientID
+		if client, err := d.GetClient(clientID); err == nil && client.OrganizationID == organizationID {
+			if client.Name != nil && *client.Name != "" {
+				filterLabel = "Customer: " + *client.Name
+			}
+		}
+	}
+
+	subtitle := fmt.Sprintf("%s — %s — generated %s", orgName, filterLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat))
 	if openOnly {
 		subtitle += " — open loans only"
 	}
@@ -275,12 +308,18 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 	}
 	defer f.Close()
 
+	headerRow := row
 	if err := writeHeaderRow(f, sheet, row, []string{
 		"Customer", "Invoice", "Date", "Original", "Paid", "Outstanding",
 	}); err != nil {
 		return nil, "", err
 	}
+	if err := repeatReportHeaderRow(f, sheet, headerRow); err != nil {
+		return nil, "", err
+	}
 	row++
+
+	var totalOriginal, totalPaid, totalOutstanding int64
 	for _, r := range rows {
 		if err := setRow(f, sheet, row, []any{
 			r.ClientName, r.Number, formatOrgDate(r.Date, org.DateFormat),
@@ -288,7 +327,31 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 		}); err != nil {
 			return nil, "", err
 		}
+		totalOriginal += r.Original
+		totalPaid += r.Paid
+		totalOutstanding += r.Outstanding
 		row++
+	}
+
+	// Totals row — the report exists to answer "who still owes what", so the
+	// three money columns are summed across every row the filter selected,
+	// with a rule above so the row reads as a total, not another loan.
+	totalStyle, err := f.NewStyle(&excelize.Style{
+		Font:   &excelize.Font{Bold: true},
+		Border: []excelize.Border{{Type: "top", Color: "000000", Style: 1}},
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	if err := setRow(f, sheet, row, []any{
+		"Total", "", "", money(totalOriginal), money(totalPaid), money(totalOutstanding),
+	}); err != nil {
+		return nil, "", err
+	}
+	totalStart, _ := excelize.CoordinatesToCellName(1, row)
+	totalEnd, _ := excelize.CoordinatesToCellName(6, row)
+	if err := f.SetCellStyle(sheet, totalStart, totalEnd, totalStyle); err != nil {
+		return nil, "", err
 	}
 
 	setColWidths(f, sheet, []float64{24, 16, 14, 16, 16, 16})
