@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.36.0] - 2026-09-20
+
+Loan status detail and cash book payment history.
+
+### Changed
+- The loan status report is now at invoice **line-item** level: the invoice
+  number column is replaced by Product (name · SKU), Qty, Amount, Paid and
+  Outstanding. Each line's paid amount is the invoice's paid amount allocated
+  proportionally by net line amount. The Excel/PDF export matches.
+
+### Added
+- Cash Book: a **Payment history** card below the loan status report, on both
+  the search and sale screens, scoped to the customer being served.
+
 ## [3.35.0] - 2026-09-20
 
 Cash Book customer capture and report improvements.
