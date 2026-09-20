@@ -26,7 +26,11 @@ export default function LoginPage() {
   } = theme.useToken();
 
   useEffect(() => {
-    GetOidcEnabled().then(setSsoEnabled);
+    // If the probe fails, SSO simply stays hidden — but the rejection must be
+    // handled so it doesn't surface as an unhandled promise rejection.
+    GetOidcEnabled()
+      .then(setSsoEnabled)
+      .catch((error) => console.error("Failed to check OIDC status:", error));
   }, []);
 
   useEffect(() => {

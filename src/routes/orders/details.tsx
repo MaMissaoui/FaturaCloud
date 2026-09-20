@@ -270,6 +270,17 @@ const OrderDetails = () => {
 
   const transitions = orderTransitions(currentStatus);
 
+  // Re-runs the async detail read after a failed fetch. Clearing the id and
+  // restoring it on the next tick is what actually invalidates the atom's
+  // cached read — re-setting the same id alone doesn't (jotai skips the
+  // notification when the value is unchanged), the same idiom
+  // handleStatusChange above uses.
+  const retryLoad = () => {
+    if (!id) return;
+    setOrderId(null);
+    setTimeout(() => setOrderId(id), 0);
+  };
+
   if (!organization) return null;
   if (!isNew && !order) {
     return (
@@ -279,7 +290,20 @@ const OrderDetails = () => {
           title={<Trans>Order</Trans>}
           style={{ marginBottom: 24 }}
         />
-        <Skeleton active paragraph={{ rows: 12 }} />
+        {orderLoadable.state === "loading" ? (
+          <Skeleton active paragraph={{ rows: 12 }} />
+        ) : (
+          <Alert
+            type="error"
+            showIcon
+            message={<Trans>Couldn't load this order</Trans>}
+            action={
+              <Button size="small" onClick={retryLoad}>
+                <Trans>Retry</Trans>
+              </Button>
+            }
+          />
+        )}
       </>
     );
   }

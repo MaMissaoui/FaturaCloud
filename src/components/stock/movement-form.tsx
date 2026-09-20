@@ -67,43 +67,47 @@ const MovementForm = () => {
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
 
-    if (isSerialized) {
-      await createMovement({
-        productId: values.productId,
-        type: values.type,
-        serialNumbers: values.serialNumbers ?? [],
-        unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
-        note: values.note || null,
-        reference: values.reference || null,
-      });
+    try {
+      if (isSerialized) {
+        await createMovement({
+          productId: values.productId,
+          type: values.type,
+          serialNumbers: values.serialNumbers ?? [],
+          unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
+          note: values.note || null,
+          reference: values.reference || null,
+        });
+      } else {
+        const product = products.find((p: any) => p.id === values.productId);
+        const rawQty: number = values.quantity ?? 0;
+
+        let signedQty: number;
+        if (values.type === "out" || values.type === "count_subtraction") {
+          signedQty = -rawQty;
+        } else if (values.type === "adjustment") {
+          signedQty = rawQty - (product?.stockQuantity ?? 0);
+        } else {
+          signedQty = rawQty;
+        }
+
+        await createMovement({
+          productId: values.productId,
+          type: values.type,
+          quantity: signedQty,
+          unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
+          note: values.note || null,
+          reference: values.reference || null,
+        });
+      }
+
+      // Only on success — the atom rethrows on failure (F113), so a 409
+      // leaves the drawer open with everything the user typed still in place.
       handleClose();
+    } catch {
+      // The atom already toasted the server's message; keep the drawer open.
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    const product = products.find((p: any) => p.id === values.productId);
-    const rawQty: number = values.quantity ?? 0;
-
-    let signedQty: number;
-    if (values.type === "out" || values.type === "count_subtraction") {
-      signedQty = -rawQty;
-    } else if (values.type === "adjustment") {
-      signedQty = rawQty - (product?.stockQuantity ?? 0);
-    } else {
-      signedQty = rawQty;
-    }
-
-    await createMovement({
-      productId: values.productId,
-      type: values.type,
-      quantity: signedQty,
-      unitCost: values.unitCost != null ? Math.round(values.unitCost * 100) : null,
-      note: values.note || null,
-      reference: values.reference || null,
-    });
-
-    handleClose();
-    setSubmitting(false);
   };
 
   return (

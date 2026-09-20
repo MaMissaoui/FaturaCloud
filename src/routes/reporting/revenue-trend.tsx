@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, DatePicker, Switch, Table } from "antd";
 import { Column } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
@@ -34,9 +34,13 @@ const RevenueTrend = () => {
   // exactly like "no sales." Tracked separately so the page can show a real
   // error instead of a false all-clear.
   const [failed, setFailed] = useState(false);
+  // requestIdRef guards against an in-flight earlier range's request
+  // overwriting a newer one, the same shape as products.tsx's search guard.
+  const requestIdRef = useRef(0);
 
   const refresh = () => {
     if (!organizationId) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setFailed(false);
     GetRevenueTrend(
@@ -44,12 +48,18 @@ const RevenueTrend = () => {
       range[0].startOf("day").valueOf(),
       range[1].endOf("day").valueOf(),
     )
-      .then(setRows)
+      .then((data) => {
+        if (requestId !== requestIdRef.current) return;
+        setRows(data);
+      })
       .catch(() => {
+        if (requestId !== requestIdRef.current) return;
         setRows([]);
         setFailed(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (requestId === requestIdRef.current) setLoading(false);
+      });
   };
 
   useEffect(refresh, [organizationId, range]);

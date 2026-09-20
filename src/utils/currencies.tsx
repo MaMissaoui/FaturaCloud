@@ -178,6 +178,6 @@ export const getFormattedNumber = (
     number,
     effectiveCurrency,
     effectiveLocale,
-    organization.minimum_fraction_digits,
+    organization?.minimum_fraction_digits,
   );
 };

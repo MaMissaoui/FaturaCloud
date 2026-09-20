@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   App,
@@ -211,6 +211,14 @@ const CashBook = () => {
   const [downloadingLoanPdf, setDownloadingLoanPdf] = useState(false);
   const [downloadingLoanExcel, setDownloadingLoanExcel] = useState(false);
 
+  // Guards against an in-flight earlier request overwriting a newer one —
+  // rapid date picker changes (daily movement) or customer-filter changes
+  // (loan status) could otherwise apply whichever response resolved last,
+  // leaving stale rows under a newly-selected date/customer. Same shape as
+  // products.tsx/inventory.tsx's debounced-search guards.
+  const dailyMovementRequestIdRef = useRef(0);
+  const loanStatusRequestIdRef = useRef(0);
+
   // Local-calendar comparison, deliberately not UTC — "today" is what the
   // cashier at the counter means by it, and it's what gates whether new
   // sales/payments/withdrawals can be entered at all. A sale rung up very
@@ -242,6 +250,7 @@ const CashBook = () => {
 
   const refreshDailyMovement = async () => {
     if (!organizationId || !registerAccountId) return;
+    const requestId = ++dailyMovementRequestIdRef.current;
     setLoadingDailyMovement(true);
     try {
       const dayMs = utcDayMs(selectedDate);
@@ -249,15 +258,17 @@ const CashBook = () => {
         GetDailyCashMovements(organizationId, registerAccountId, dayMs, dayMs),
         GetCashMovementDetails(organizationId, registerAccountId, dayMs, dayMs),
       ]);
+      if (requestId !== dailyMovementRequestIdRef.current) return;
       setDailyMovement(row ?? null);
       setMovementDetails(details);
     } catch (error) {
+      if (requestId !== dailyMovementRequestIdRef.current) return;
       console.error("Failed to fetch daily cash movements:", error);
       message.error(t`Failed to load cash register movements`);
       setDailyMovement(null);
       setMovementDetails([]);
     } finally {
-      setLoadingDailyMovement(false);
+      if (requestId === dailyMovementRequestIdRef.current) setLoadingDailyMovement(false);
     }
   };
 
@@ -268,15 +279,19 @@ const CashBook = () => {
 
   const refreshLoanStatus = async () => {
     if (!organizationId) return;
+    const requestId = ++loanStatusRequestIdRef.current;
     setLoadingLoanStatus(true);
     try {
-      setLoanStatusRows(await GetLoanStatus(organizationId, loanStatusClientId || undefined));
+      const rows = await GetLoanStatus(organizationId, loanStatusClientId || undefined);
+      if (requestId !== loanStatusRequestIdRef.current) return;
+      setLoanStatusRows(rows);
     } catch (error) {
+      if (requestId !== loanStatusRequestIdRef.current) return;
       console.error("Failed to fetch loan status:", error);
       message.error(t`Failed to load loan status`);
       setLoanStatusRows([]);
     } finally {
-      setLoadingLoanStatus(false);
+      if (requestId === loanStatusRequestIdRef.current) setLoadingLoanStatus(false);
     }
   };
 
