@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.29.0] - 2026-09-20
+
+Remediation of the 2026-09-19 full-repo audit (F96–F139), plus Cash Book
+sale-flow improvements.
+
+### Added
+- Cash Book: a "Record payment" action on every open loan in the Loan status
+  report, so a customer loan can be settled without leaving the screen — on
+  both the search and the sale view. The report defaults to "Open only" and is
+  scoped to the customer being served while a sale is in progress.
+
+### Changed
+- Cash Book sale flow: the Cash/Loan sale-type choice is now a filled toggle
+  with a line naming the active mode, the Cash register report is hidden while
+  a sale is in progress, and the separate "Open invoices" card was removed
+  (settle a loan via the report's "Record payment", or an invoice from its own
+  page).
+- Creating or voiding a payment now requires the organization's `accounting`
+  role.
+- Deactivating an account no longer blocks reversing a posted entry or closing
+  the fiscal year; the inactive-account check applies only to new postings.
+- Money in exports/PDFs now matches the on-screen amount: the organization's
+  "Decimal places" setting is treated as a minimum (as `Intl` does) instead of
+  rounding to it.
+- Quantities, percentages, the Cash Book and the products list use the
+  organization's country-derived locale; `<html lang>` follows the selected
+  language; the organization's default cash register account is required for a
+  cash sale rather than falling back to Bank.
+
+### Fixed
+- Fresh installs: the seeded administrator is now a platform admin — it was
+  created without the flag and locked out of user management, backups, restore
+  and countries.
+- The product form no longer wipes a real bill of materials when its fetch
+  fails.
+- The Cash Book daily-movement detail list and its export were always empty
+  (a zero-width date window); they now cover the whole selected day.
+- Document numbers can no longer be rewound or reissued by a format-only
+  settings save.
+- The last-admin guards are transactional, so concurrent demotions can no
+  longer leave an organization (or the platform) with zero admins.
+- Inbound-delivery serial capture can no longer be submitted twice; a failed
+  stock movement no longer closes the drawer and discards the entry.
+- AP/AR aging, P&L, balance sheet, daily cash movements, the BOM list and the
+  document detail pages no longer render a failed fetch as real empty/zero
+  data — they show an error with Retry.
+- Document deletes re-verify status and posted entries inside the delete's own
+  transaction.
+- Tax-rate usage counts manual journal lines and products; the organization
+  usage count covers every table; three hot predicates gained indexes.
+- Create-side validation errors return 409 with the real message instead of a
+  500.
+- Incoming-invoice match summaries are one set of queries instead of an N+1.
+- OIDC discovery is time-bounded and no longer holds the provider lock across
+  the network call; `email_verified` accepts bool or string and fails closed.
+
+### Security
+- JWT sessions are revocable: logout and password change bump a per-user
+  `tokenVersion` that `authMiddleware` re-checks.
+- The login rate limiter keys on the proxy-appended client address, not the
+  spoofable leftmost `X-Forwarded-For` entry.
+
+### Documentation / CI
+- Corrected the authorization-model, PDF-architecture and role-gating docs and
+  documented the Cash Book, Document Numbering and the six-role model.
+- CI now builds the backend Docker target and validates both compose files on
+  every PR; base images are pinned to multi-arch digests.
+
 ## [3.28.0] - 2026-09-19
 
 ### Added
