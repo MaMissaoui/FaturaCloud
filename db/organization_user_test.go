@@ -382,6 +382,62 @@ func TestGetOrganizationsWhereSoleAdmin(t *testing.T) {
 	}
 }
 
+// TestConcurrentDemotionKeepsOneOrgAdmin is F98's regression test: the
+// last-admin guard used to run as a separate d.DB read before the write's own
+// d.DB statement, so two concurrent demotions of an organization's last two
+// admins could each read "another admin exists" before either wrote and both
+// commit, leaving the organization with zero admins. With the guard and the
+// write in one transaction — and db.SetMaxOpenConns(1) serializing
+// transactions — the loser's guard runs against the winner's committed state
+// and is refused. The invariant asserted here (exactly one admin survives) is
+// scheduling-independent, so the test is not flaky even when the goroutines
+// don't happen to overlap.
+func TestConcurrentDemotionKeepsOneOrgAdmin(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-concurrent-demote"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	admins := []string{"admin-1", "admin-2"}
+	for _, id := range admins {
+		seedTestUser(t, d, id, "admin", 1)
+		if _, err := d.AddOrganizationUser(org.ID, id, "admin"); err != nil {
+			t.Fatalf("seed membership %s: %v", id, err)
+		}
+	}
+
+	errs := concurrentlyRun(len(admins), func(i int) error {
+		return d.UpdateOrganizationUserRole(org.ID, admins[i], "general")
+	})
+	successes := 0
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, ErrLastOrgAdmin):
+			// The expected loser: the other demotion committed first, so this
+			// member is now the organization's sole admin.
+		default:
+			t.Fatalf("goroutine %d: unexpected error: %v", i, err)
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("demotions succeeded %d times, want exactly 1 — both admins were demoted", successes)
+	}
+
+	var remaining int
+	if err := d.DB.Get(&remaining,
+		`SELECT COUNT(*) FROM organization_users WHERE organizationId = ? AND role = 'admin'`,
+		org.ID,
+	); err != nil {
+		t.Fatalf("count remaining admins: %v", err)
+	}
+	if remaining != 1 {
+		t.Fatalf("organization has %d admins after concurrent demotions, want exactly 1", remaining)
+	}
+}
+
 // TestOrganizationUserBackfillPreservesAccess exercises migration 0069's
 // backfill directly against a live migrated DB: since NewDatabase always runs
 // every migration, this seeds users/orgs with plain INSERTs (bypassing the

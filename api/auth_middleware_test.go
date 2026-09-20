@@ -89,3 +89,37 @@ func TestAuthMiddleware_RejectsTokenWithoutIssuerAudience(t *testing.T) {
 		t.Fatalf("expected a token without iss/aud to be rejected, got %d", rec.Code)
 	}
 }
+
+// TestAuthMiddleware_RejectsTokenAfterPasswordChange is F109's other
+// revocation path: a password change (here an admin resetting another user's
+// password) bumps that user's tokenVersion, so their already-issued token
+// stops working immediately. Without it, a reset after a suspected compromise
+// would leave the old session valid until its natural expiry.
+func TestAuthMiddleware_RejectsTokenAfterPasswordChange(t *testing.T) {
+	mux, database, _, _ := newTestRouter(t)
+	seedUser(t, database, "actor", "admin", 1)
+	seedUser(t, database, "target", "user", 1)
+	actorToken := mintTestJWT(t, "actor", "admin")
+	targetToken := mintTestJWT(t, "target", "user")
+
+	protected := func(token string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/organizations", nil)
+		authRequest(req, token)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	if code := protected(targetToken); code != http.StatusOK {
+		t.Fatalf("expected target's token to be accepted before the change, got %d", code)
+	}
+
+	rec := doJSON(t, mux, actorToken, http.MethodPut, "/api/users/target", map[string]any{"password": "brand-new-password"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected password change to succeed, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if code := protected(targetToken); code != http.StatusUnauthorized {
+		t.Fatalf("expected target's pre-change token to be rejected, got %d", code)
+	}
+}
