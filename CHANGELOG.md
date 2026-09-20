@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.35.0] - 2026-09-20
+
+Cash Book customer capture and report improvements.
+
+### Added
+- Cash Book "New customer": Address, Phone 2, Phone 3 and Guarantor fields
+  (new `clients` columns), with name and phone now mandatory. The full
+  Clients form gains the same fields so they survive an edit.
+
+### Changed
+- The Cash Book loan-status customer filter now shows the same identifying
+  details as the search results (customer no., all phones, CIN, IBAN,
+  address, guarantor).
+- The Cash Book product picker shows the product name (with its SKU) instead
+  of the SKU alone.
+
 ## [3.34.0] - 2026-09-20
 
 First batch of the requirements round.
