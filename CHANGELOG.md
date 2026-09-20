@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.30.0] - 2026-09-20
+
+Cash Book refinements: a clearer sale button, a more usable loan-status
+export, and a reduced view for the cashbook role.
+
+### Added
+- Loan status export: the column labels now repeat on every printed page, a
+  totals row sums Original/Paid/Outstanding at the end, and the active filter
+  (customer, or "All customers") is named in the first-page header.
+
+### Changed
+- The `cashbook` role now gets a deliberately reduced view: only Cash Book and
+  Clients appear in the sidebar, its other routes redirect back to the Cash
+  Book, and its users land on `/cash-book` after sign-in.
+
+### Fixed
+- Cash Book: the sale submit button is labelled by the selected sale type
+  ("Record cash sale" / "Record loan sale") instead of by the amount entered.
+
 ## [3.29.2] - 2026-09-20
 
 Cash Book follow-ups: a payment-refresh fix and two layout tweaks.
