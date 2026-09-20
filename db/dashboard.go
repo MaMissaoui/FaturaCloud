@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -231,55 +232,54 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 	return invoices, nil
 }
 
-// LoanStatusRow is one invoice's loan lifecycle: what it was originally
-// billed for, what's been collected against it so far (every posted
-// payment, not just the first), and what's still outstanding. Unlike
-// getOutstandingInvoices/GetClientOpenInvoices, this does NOT filter to a
-// currently-nonzero balance — a loan that's since been fully repaid still
-// belongs here with Outstanding: 0, since selecting a specific customer
-// who has settled up should show that, not render a table indistinguishable
-// from "no data for this customer at all".
-//
-// The actual filter is "was ever a loan": excludes a pure cash sale — an
-// invoice with exactly one payment application, for the full total, and
-// nothing since — the same first-payment-application signal
-// GetCashMovementDetails uses to tell a "sale" movement from a "loan"
-// one. Everything else (no payment yet, a partial first payment, or more
-// than one payment) is a loan by construction, whatever its current
-// balance.
+// LoanStatusRow is one invoice line's contribution to the loan tracker:
+// which customer, when, what product/quantity, how much that line accounts
+// for, and how much of it has been paid. Payments are recorded at the
+// invoice level, so a line's Paid is the invoice's paid amount allocated
+// proportionally by net line amount — with the rounding remainder landing
+// on the invoice's last line, so the line amounts always sum back to the
+// invoice total.
 type LoanStatusRow struct {
-	InvoiceID   string `db:"id"          json:"invoiceId"`
-	Number      string `db:"number"      json:"number"`
-	ClientID    string `db:"clientId"    json:"clientId"`
-	ClientName  string `db:"clientName"  json:"clientName"`
-	Date        int64  `db:"date"        json:"date"`
-	Original    int64  `db:"original"    json:"original"`
-	Paid        int64  `db:"paid"        json:"paid"`
-	Outstanding int64  `db:"outstanding" json:"outstanding"`
+	LineID      string  `db:"lineId"      json:"lineId"`
+	InvoiceID   string  `db:"invoiceId"   json:"invoiceId"`
+	ClientID    string  `db:"clientId"    json:"clientId"`
+	ClientName  string  `db:"clientName"  json:"clientName"`
+	Date        int64   `db:"date"        json:"date"`
+	ProductName string  `db:"productName" json:"productName"`
+	Sku         string  `db:"sku"         json:"sku"`
+	Quantity    float64 `db:"quantity"    json:"quantity"`
+	Amount      int64   `db:"amount"      json:"amount"`
+	Paid        int64   `db:"paid"        json:"paid"`
+	Outstanding int64   `db:"outstanding" json:"outstanding"`
 }
 
 // GetLoanStatus is the Cash Book screen's embedded loan tracker — org-wide
 // by default, or scoped to one customer via clientID (empty means every
 // customer). See LoanStatusRow's doc comment for the "was ever a loan"
-// filter and why a settled loan still appears. Sorted outstanding-first so
-// the customers who actually owe money surface before ones who've settled
-// up, which the date-only ordering every other report here uses would bury.
+// filter and why a settled loan still appears, and for how each invoice's
+// payments are split across its lines. Sorted outstanding-first so the
+// customers who actually owe money surface before ones who've settled up.
 func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusRow, error) {
 	query := fmt.Sprintf(`
-		SELECT id, number, clientId, clientName, docDate AS date,
-		       original,
-		       paid,
-		       CAST(ROUND(original - paid) AS INTEGER) AS outstanding
+		SELECT lineId, invoiceId, clientId, clientName, docDate,
+		       invoiceTotal, invoicePaid, productName, sku, quantity, netLine
 		FROM (
-			SELECT i.id, i.number, i.clientId, c.name AS clientName, i.date AS docDate,
-			       i.total AS original,
-			       %s AS paid,
-			       %s AS appCount
+			SELECT li.id AS lineId, i.id AS invoiceId, i.clientId AS clientId,
+			       c.name AS clientName, i.date AS docDate,
+			       i.total AS invoiceTotal,
+			       %s AS invoicePaid,
+			       %s AS appCount,
+			       COALESCE(pr.name, li.description, '') AS productName,
+			       COALESCE(pr.sku, '') AS sku,
+			       li.quantity AS quantity,
+			       CAST(ROUND(li.unitPrice * li.quantity) AS INTEGER) AS netLine
 			FROM invoices i
 			JOIN clients c ON i.clientId = c.id
+			JOIN invoiceLineItems li ON li.invoiceId = i.id
+			LEFT JOIN products pr ON li.productId = pr.id
 			WHERE i.organizationId = ? AND i.state IN ('sent', 'paid')
 		)
-		WHERE (appCount = 0 OR appCount > 1 OR paid < original)`,
+		WHERE (appCount = 0 OR appCount > 1 OR invoicePaid < invoiceTotal)`,
 		documentPaidAmountExpr("i", "invoice", paymentsPosted),
 		documentPaymentAppCountExpr("i", "invoice", paymentsPosted),
 	)
@@ -288,12 +288,74 @@ func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusR
 		query += " AND clientId = ?"
 		args = append(args, clientID)
 	}
-	query += " ORDER BY outstanding DESC, docDate ASC"
+	query += " ORDER BY docDate ASC, invoiceId ASC, netLine DESC, lineId ASC"
 
-	rows := []LoanStatusRow{}
-	if err := d.DB.Select(&rows, query, args...); err != nil {
+	raw := []struct {
+		LineID       string  `db:"lineId"`
+		InvoiceID    string  `db:"invoiceId"`
+		ClientID     string  `db:"clientId"`
+		ClientName   string  `db:"clientName"`
+		Date         int64   `db:"docDate"`
+		InvoiceTotal int64   `db:"invoiceTotal"`
+		InvoicePaid  int64   `db:"invoicePaid"`
+		ProductName  string  `db:"productName"`
+		Sku          string  `db:"sku"`
+		Quantity     float64 `db:"quantity"`
+		NetLine      int64   `db:"netLine"`
+	}{}
+	if err := d.DB.Select(&raw, query, args...); err != nil {
 		return nil, fmt.Errorf("get_loan_status: %w", err)
 	}
+
+	// Allocate each invoice's total and paid amount across its lines by net
+	// line weight. The rows are contiguous per invoice (ORDER BY invoiceId),
+	// so a single forward pass groups them; the last line of each invoice
+	// absorbs the rounding remainder so the parts always sum to the whole.
+	rows := make([]LoanStatusRow, 0, len(raw))
+	for i := 0; i < len(raw); {
+		j := i
+		var netSum int64
+		for j < len(raw) && raw[j].InvoiceID == raw[i].InvoiceID {
+			netSum += raw[j].NetLine
+			j++
+		}
+		if netSum <= 0 {
+			// All-zero (e.g. a free line) — split evenly rather than divide by zero.
+			netSum = int64(j - i)
+		}
+		var allocatedAmount, allocatedPaid int64
+		for k := i; k < j; k++ {
+			r := raw[k]
+			weight := r.NetLine
+			if weight <= 0 {
+				weight = 1
+			}
+			var amount, paid int64
+			if k == j-1 {
+				amount = r.InvoiceTotal - allocatedAmount
+				paid = r.InvoicePaid - allocatedPaid
+			} else {
+				amount = r.InvoiceTotal * weight / netSum
+				paid = r.InvoicePaid * weight / netSum
+			}
+			allocatedAmount += amount
+			allocatedPaid += paid
+			rows = append(rows, LoanStatusRow{
+				LineID: r.LineID, InvoiceID: r.InvoiceID, ClientID: r.ClientID,
+				ClientName: r.ClientName, Date: r.Date,
+				ProductName: r.ProductName, Sku: r.Sku, Quantity: r.Quantity,
+				Amount: amount, Paid: paid, Outstanding: amount - paid,
+			})
+		}
+		i = j
+	}
+
+	sort.SliceStable(rows, func(a, b int) bool {
+		if rows[a].Outstanding != rows[b].Outstanding {
+			return rows[a].Outstanding > rows[b].Outstanding
+		}
+		return rows[a].Date < rows[b].Date
+	})
 	return rows, nil
 }
 

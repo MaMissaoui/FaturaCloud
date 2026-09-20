@@ -310,7 +310,7 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 
 	headerRow := row
 	if err := writeHeaderRow(f, sheet, row, []string{
-		"Customer", "Invoice", "Date", "Original", "Paid", "Outstanding",
+		"Customer", "Date", "Product", "SKU", "Qty", "Amount", "Paid", "Outstanding",
 	}); err != nil {
 		return nil, "", err
 	}
@@ -319,23 +319,26 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 	}
 	row++
 
-	var totalOriginal, totalPaid, totalOutstanding int64
+	var totalQty float64
+	var totalAmount, totalPaid, totalOutstanding int64
 	for _, r := range rows {
 		if err := setRow(f, sheet, row, []any{
-			r.ClientName, r.Number, formatOrgDate(r.Date, org.DateFormat),
-			money(r.Original), money(r.Paid), money(r.Outstanding),
+			r.ClientName, formatOrgDate(r.Date, org.DateFormat),
+			r.ProductName, r.Sku, r.Quantity,
+			money(r.Amount), money(r.Paid), money(r.Outstanding),
 		}); err != nil {
 			return nil, "", err
 		}
-		totalOriginal += r.Original
+		totalQty += r.Quantity
+		totalAmount += r.Amount
 		totalPaid += r.Paid
 		totalOutstanding += r.Outstanding
 		row++
 	}
 
 	// Totals row — the report exists to answer "who still owes what", so the
-	// three money columns are summed across every row the filter selected,
-	// with a rule above so the row reads as a total, not another loan.
+	// quantity and money columns are summed across every row the filter
+	// selected, with a rule above so the row reads as a total.
 	totalStyle, err := f.NewStyle(&excelize.Style{
 		Font:   &excelize.Font{Bold: true},
 		Border: []excelize.Border{{Type: "top", Color: "000000", Style: 1}},
@@ -344,17 +347,17 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 		return nil, "", err
 	}
 	if err := setRow(f, sheet, row, []any{
-		"Total", "", "", money(totalOriginal), money(totalPaid), money(totalOutstanding),
+		"Total", "", "", "", totalQty, money(totalAmount), money(totalPaid), money(totalOutstanding),
 	}); err != nil {
 		return nil, "", err
 	}
 	totalStart, _ := excelize.CoordinatesToCellName(1, row)
-	totalEnd, _ := excelize.CoordinatesToCellName(6, row)
+	totalEnd, _ := excelize.CoordinatesToCellName(8, row)
 	if err := f.SetCellStyle(sheet, totalStart, totalEnd, totalStyle); err != nil {
 		return nil, "", err
 	}
 
-	setColWidths(f, sheet, []float64{24, 16, 14, 16, 16, 16})
+	setColWidths(f, sheet, []float64{24, 14, 28, 16, 10, 16, 16, 16})
 
 	var buf bytes.Buffer
 	raw, err := f.WriteToBuffer()
