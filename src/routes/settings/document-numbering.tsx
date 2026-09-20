@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Button,
   Card,
@@ -180,6 +180,12 @@ function SettingsDocumentNumbering() {
   const organization = useAtomValue(organizationAtom);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // What the server reported the counter was when this page loaded. The
+  // counter is only sent back on save if the user actually changed it —
+  // otherwise an admin who opened this page while someone was creating a
+  // document would rewind the counter on a format-only edit (see
+  // db/document_number.go for the server-side half of this fix).
+  const loadedCounters = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (!organization?.id) return;
@@ -191,9 +197,12 @@ function SettingsDocumentNumbering() {
     )
       .then((settings) => {
         const values: FormValues = {};
+        const counters: Record<string, number> = {};
         settings.forEach((setting) => {
           values[setting.documentType] = { format: setting.format, counter: setting.counter };
+          counters[setting.documentType] = setting.counter;
         });
+        loadedCounters.current = counters;
         form.setFieldsValue(values);
       })
       .catch((error) => {
@@ -211,14 +220,20 @@ function SettingsDocumentNumbering() {
     setSubmitting(true);
     try {
       await Promise.all(
-        documentNumberTypes.map((documentType) =>
-          UpdateDocumentNumberSetting(
+        documentNumberTypes.map((documentType) => {
+          const counter = values[documentType].counter;
+          // Only send the counter when the user actually changed it. An
+          // untouched counter is omitted so the server leaves it alone —
+          // otherwise saving a format edit would rewind a counter that
+          // advanced after this page loaded.
+          const counterChanged = counter !== loadedCounters.current[documentType];
+          return UpdateDocumentNumberSetting(
             organization.id,
             documentType,
             values[documentType].format,
-            values[documentType].counter,
-          ),
-        ),
+            counterChanged ? counter : undefined,
+          );
+        }),
       );
       message.success(t`Numbering settings saved`);
     } catch (error) {

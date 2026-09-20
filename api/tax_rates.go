@@ -37,7 +37,10 @@ func (h *handler) createTaxRate(w http.ResponseWriter, r *http.Request) {
 	}
 	rate, err := h.db.CreateTaxRate(req)
 	if err != nil {
-		writeInternalError(w, err)
+		// Same F72/F102 fix as updateTaxRate below: CreateTaxRate rejects an
+		// unknown category code with a *db.ValidationError, which belongs to
+		// the caller as a 409, not to the logs as a 500.
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, rate)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, Col, Row, Statistic, Table, theme, Typography } from "antd";
+import { Alert, Button, Card, Col, Row, Statistic, Table, theme, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react";
@@ -20,13 +20,22 @@ const ReceivableAging = () => {
 
   const [summary, setSummary] = useState<OutstandingSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset summary to null, which the cards and table
+  // below rendered identically to a genuinely balances-free ledger — a
+  // transient 500 told an accountant their receivables were €0.00. Tracked
+  // separately so this page shows a real error instead of a false all-clear.
+  const [failed, setFailed] = useState(false);
 
   const refresh = useCallback(() => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     GetReceivableAging(organizationId)
       .then(setSummary)
-      .catch(() => setSummary(null))
+      .catch(() => {
+        setSummary(null);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [organizationId]);
 
@@ -40,40 +49,69 @@ const ReceivableAging = () => {
     <>
       <PageHeader icon={<ClockCircleOutlined />} title={<Trans>AR Aging</Trans>} />
 
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the AR aging report</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Row gutter={[8, 8]} style={{ marginTop: 16, marginBottom: 16 }}>
         <Col xs={12} md={4}>
           <Card>
-            <Statistic title={<Trans>Total</Trans>} value={money(summary?.total ?? 0)} />
+            <Statistic
+              title={<Trans>Total</Trans>}
+              value={failed ? "—" : money(summary?.total ?? 0)}
+            />
           </Card>
         </Col>
         <Col xs={12} md={4}>
           <Card>
-            <Statistic title={<Trans>Current</Trans>} value={money(summary?.current ?? 0)} />
+            <Statistic
+              title={<Trans>Current</Trans>}
+              value={failed ? "—" : money(summary?.current ?? 0)}
+            />
           </Card>
         </Col>
         <Col xs={12} md={4}>
           <Card>
-            <Statistic title={<Trans>1-30 days</Trans>} value={money(summary?.days1To30 ?? 0)} />
+            <Statistic
+              title={<Trans>1-30 days</Trans>}
+              value={failed ? "—" : money(summary?.days1To30 ?? 0)}
+            />
           </Card>
         </Col>
         <Col xs={12} md={4}>
           <Card>
-            <Statistic title={<Trans>31-60 days</Trans>} value={money(summary?.days31To60 ?? 0)} />
+            <Statistic
+              title={<Trans>31-60 days</Trans>}
+              value={failed ? "—" : money(summary?.days31To60 ?? 0)}
+            />
           </Card>
         </Col>
         <Col xs={12} md={4}>
           <Card>
-            <Statistic title={<Trans>61-90 days</Trans>} value={money(summary?.days61To90 ?? 0)} />
+            <Statistic
+              title={<Trans>61-90 days</Trans>}
+              value={failed ? "—" : money(summary?.days61To90 ?? 0)}
+            />
           </Card>
         </Col>
         <Col xs={12} md={4}>
           <Card>
             <Statistic
               title={<Trans>90+ days</Trans>}
-              value={money(summary?.days90Plus ?? 0)}
+              value={failed ? "—" : money(summary?.days90Plus ?? 0)}
               styles={{
                 content: {
-                  color: (summary?.days90Plus ?? 0) > 0 ? token.colorError : undefined,
+                  color: !failed && (summary?.days90Plus ?? 0) > 0 ? token.colorError : undefined,
                 },
               }}
             />
@@ -88,7 +126,7 @@ const ReceivableAging = () => {
             rowKey="id"
             loading={loading}
             pagination={{ hideOnSinglePage: true, defaultPageSize: 50 }}
-            locale={{ emptyText: <Trans>No outstanding invoices</Trans> }}
+            locale={{ emptyText: failed ? "—" : <Trans>No outstanding invoices</Trans> }}
             summary={() =>
               summary?.invoices?.length ? (
                 <Table.Summary.Row>

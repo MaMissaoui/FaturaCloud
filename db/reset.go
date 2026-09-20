@@ -161,6 +161,11 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 	if !req.ResetMasterData {
 		deleted.Clients, deleted.Vendors, deleted.Products, deleted.TaxRates = 0, 0, 0, 0
 		deleted.Accounts, deleted.Journals = 0, 0
+		deleted.FiscalYears, deleted.FiscalPeriods = 0, 0
+		deleted.PaymentTerms, deleted.UnitsOfMeasure = 0, 0
+		deleted.DocumentTemplates, deleted.DocumentTemplateSettings = 0, 0
+		deleted.DocumentNumberSettings = 0
+		deleted.BillOfMaterials, deleted.BillOfMaterialsVersions = 0, 0
 	}
 
 	tx, err := d.DB.Beginx()
@@ -231,6 +236,8 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 		deleted.PurchaseOrders, deleted.InboundDeliveries, deleted.IncomingInvoices = 0, 0, 0
 		deleted.StockMovements = 0
 		deleted.JournalEntries, deleted.Payments = 0, 0
+		deleted.ProductionOrders, deleted.Imports, deleted.CashMovements = 0, 0, 0
+		deleted.ProductSerialNumbers, deleted.ReconciliationGroups = 0, 0
 	}
 	return deleted, nil
 }

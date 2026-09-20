@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -137,8 +139,14 @@ func (d *Database) GetDocumentNumberSetting(organizationID, documentType string)
 		WHERE organizationId = ? AND documentType = ?`,
 		organizationID, documentType,
 	)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		return &DocumentNumberSetting{DocumentType: documentType, Format: defaultFormat, Counter: 0}, nil
+	}
+	if err != nil {
+		// A real query failure must surface, not masquerade as "no row yet":
+		// swallowing it would make a transient DB error look like an
+		// unconfigured type and silently hand callers the default counter.
+		return nil, fmt.Errorf("get_document_number_setting: %w", err)
 	}
 	return &DocumentNumberSetting{
 		DocumentType: documentType, Format: row.Format, Counter: row.Counter, HasOverride: true,
@@ -148,7 +156,14 @@ func (d *Database) GetDocumentNumberSetting(organizationID, documentType string)
 // UpdateDocumentNumberSettingRequest mirrors the omitted-means-keep
 // convention UpdateOrganization's nullable fields use — Counter is a
 // pointer so the Settings UI can update the format alone (the common case)
-// without also having to know and resend the current counter.
+// without also having to know or resend the current counter.
+//
+// The distinction is load-bearing. A nil Counter means "leave the counter
+// exactly as it is" and is written as a no-op in the upsert's DO UPDATE
+// clause, so a format-only save can never rewind a counter that a concurrent
+// GenerateNextDocumentNumberTx advanced in between this request being sent
+// and being applied. A non-nil Counter is an explicit, deliberate set and is
+// the only path that writes the counter column directly.
 type UpdateDocumentNumberSettingRequest struct {
 	Format  string `json:"format"`
 	Counter *int64 `json:"counter"`
@@ -156,6 +171,14 @@ type UpdateDocumentNumberSettingRequest struct {
 
 // UpdateDocumentNumberSetting validates and upserts an org's format/counter
 // override for documentType.
+//
+// With req.Counter nil the statement never references the existing counter
+// value at all — the ON CONFLICT branch touches only format/updatedAt, and
+// the INSERT branch (first-ever save) seeds it to 0 — so there is no
+// read-then-write gap for a concurrent GenerateNextDocumentNumberTx to be
+// overwritten through. With req.Counter set the caller has explicitly asked
+// to set the counter, so writing it is intended, not a stale-snapshot
+// hazard.
 func (d *Database) UpdateDocumentNumberSetting(organizationID, documentType string, req UpdateDocumentNumberSettingRequest) (*DocumentNumberSetting, error) {
 	if !IsKnownDocumentNumberType(documentType) {
 		return nil, newValidationError("unknown document type %q", documentType)
@@ -166,21 +189,30 @@ func (d *Database) UpdateDocumentNumberSetting(organizationID, documentType stri
 	if req.Counter != nil && *req.Counter < 0 {
 		return nil, newValidationError("counter must be 0 or greater")
 	}
-	counter := int64(0)
+
+	var err error
 	if req.Counter != nil {
-		counter = *req.Counter
-	} else if existing, err := d.GetDocumentNumberSetting(organizationID, documentType); err == nil {
-		counter = existing.Counter
+		_, err = d.DB.Exec(`
+			INSERT INTO document_number_settings (organizationId, documentType, format, counter, updatedAt)
+			VALUES (?, ?, ?, ?, strftime('%s', 'now') * 1000)
+			ON CONFLICT(organizationId, documentType) DO UPDATE SET
+				format = excluded.format,
+				counter = excluded.counter,
+				updatedAt = excluded.updatedAt`,
+			organizationID, documentType, req.Format, *req.Counter,
+		)
+	} else {
+		// No counter in the statement: a format-only save can't rewind a
+		// counter advanced concurrently by GenerateNextDocumentNumberTx.
+		_, err = d.DB.Exec(`
+			INSERT INTO document_number_settings (organizationId, documentType, format, counter, updatedAt)
+			VALUES (?, ?, ?, 0, strftime('%s', 'now') * 1000)
+			ON CONFLICT(organizationId, documentType) DO UPDATE SET
+				format = excluded.format,
+				updatedAt = excluded.updatedAt`,
+			organizationID, documentType, req.Format,
+		)
 	}
-	_, err := d.DB.Exec(`
-		INSERT INTO document_number_settings (organizationId, documentType, format, counter, updatedAt)
-		VALUES (?, ?, ?, ?, strftime('%s', 'now') * 1000)
-		ON CONFLICT(organizationId, documentType) DO UPDATE SET
-			format = excluded.format,
-			counter = excluded.counter,
-			updatedAt = excluded.updatedAt`,
-		organizationID, documentType, req.Format, counter,
-	)
 	if err != nil {
 		return nil, fmt.Errorf("update_document_number_setting: %w", err)
 	}
@@ -234,6 +266,13 @@ func GenerateNextDocumentNumberTx(tx *sqlx.Tx, organizationID, documentType stri
 	if err == nil {
 		format = row.Format
 		nextCounter = row.Counter + 1
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		// Only "no row yet" (a never-used type, first counter of 1) is a
+		// legitimate default. Any other failure must abort the caller's
+		// transaction rather than silently starting over at 1 and reissuing
+		// numbers — the caller's document insert shares this tx, so the
+		// error propagating is what rolls the whole thing back.
+		return "", fmt.Errorf("generate_next_document_number: %w", err)
 	}
 	_, err = tx.Exec(`
 		INSERT INTO document_number_settings (organizationId, documentType, format, counter, updatedAt)

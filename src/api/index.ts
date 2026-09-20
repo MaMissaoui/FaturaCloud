@@ -233,6 +233,24 @@ export type OrganizationUsageCount = {
   inboundDeliveries: number;
   incomingInvoices: number;
   stockMovements: number;
+  productionOrders: number;
+  imports: number;
+  cashMovements: number;
+  productSerialNumbers: number;
+  reconciliationGroups: number;
+  fiscalYears: number;
+  fiscalPeriods: number;
+  paymentTerms: number;
+  unitsOfMeasure: number;
+  documentTemplates: number;
+  documentTemplateSettings: number;
+  documentNumberSettings: number;
+  billOfMaterials: number;
+  billOfMaterialsVersions: number;
+  accounts: number;
+  journals: number;
+  journalEntries: number;
+  payments: number;
 };
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
@@ -450,6 +468,11 @@ export interface DocumentNumberSetting {
 export const GetDocumentNumberSetting = (orgId: string, documentType: string) =>
   get<DocumentNumberSetting>(`/organizations/${orgId}/document-number-settings/${documentType}`);
 
+// counter is omitted from the request body entirely by passing undefined —
+// the server treats an absent counter as "leave the counter alone", so a
+// format-only save can't rewind one a document creation advanced in the
+// meantime (see db/document_number.go). Only pass a counter when the user
+// actually changed it.
 export const UpdateDocumentNumberSetting = (
   orgId: string,
   documentType: string,
@@ -458,7 +481,7 @@ export const UpdateDocumentNumberSetting = (
 ) =>
   put<DocumentNumberSetting>(`/organizations/${orgId}/document-number-settings/${documentType}`, {
     format,
-    counter,
+    ...(counter !== undefined ? { counter } : {}),
   });
 
 // ---- Mass Data (Excel download/upload for bulk maintenance) ----

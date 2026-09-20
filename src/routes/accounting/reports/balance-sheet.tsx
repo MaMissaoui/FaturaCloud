@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Col, DatePicker, Row, Space, Table, Tag, Typography } from "antd";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Button, Col, DatePicker, Row, Space, Table, Tag, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -23,15 +23,28 @@ const BalanceSheetReport = () => {
   const [asOfDate, setAsOfDate] = useState<Dayjs>(dayjs());
   const [report, setReport] = useState<BalanceSheet | null>(null);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset report to null, which rendered identically
+  // to a genuinely empty balance sheet — every total 0.00 and the equation
+  // check hidden. Tracked separately so this page shows a real error instead
+  // of a false all-clear.
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     GetBalanceSheet(organizationId, asOfDate.valueOf())
       .then(setReport)
-      .catch(() => setReport(null))
+      .catch(() => {
+        setReport(null);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [organizationId, asOfDate]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
@@ -74,6 +87,20 @@ const BalanceSheetReport = () => {
         }
       />
 
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the balance sheet</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} xl={12}>
           <Typography.Title level={5}>
@@ -93,7 +120,9 @@ const BalanceSheetReport = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Typography.Text strong>{money(report?.totalAssets ?? 0)}</Typography.Text>
+                  <Typography.Text strong>
+                    {failed ? "—" : money(report?.totalAssets ?? 0)}
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}
@@ -117,7 +146,9 @@ const BalanceSheetReport = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Typography.Text strong>{money(report?.totalLiabilities ?? 0)}</Typography.Text>
+                  <Typography.Text strong>
+                    {failed ? "—" : money(report?.totalLiabilities ?? 0)}
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}
@@ -141,7 +172,9 @@ const BalanceSheetReport = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Typography.Text strong>{money(report?.totalEquity ?? 0)}</Typography.Text>
+                  <Typography.Text strong>
+                    {failed ? "—" : money(report?.totalEquity ?? 0)}
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}

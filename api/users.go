@@ -83,6 +83,11 @@ type userRow struct {
 	IsActive        int    `db:"isActive"        json:"isActive"`
 	CreatedAt       string `db:"createdAt"       json:"createdAt"`
 	LastLoginAt     *int64 `db:"lastLoginAt"     json:"lastLoginAt"`
+	// TokenVersion is deliberately never serialized to a client (no json
+	// tag, so it can't leak through userToJSON's explicit map either) — it's
+	// the server-only revocation counter issueTokenWithProvider embeds into
+	// the JWT and authMiddleware compares against the stored column (F109).
+	TokenVersion int `db:"tokenVersion" json:"-"`
 }
 
 // userColumns is an explicit column list for every users query in this file,
@@ -90,7 +95,7 @@ type userRow struct {
 // migration isn't silently loaded into every user lookup by default —
 // PasswordHash itself is already safe (json:"-"), this just keeps that true
 // on purpose rather than by accident.
-const userColumns = `id, email, passwordHash, displayName, role, isPlatformAdmin, isActive, createdAt, lastLoginAt`
+const userColumns = `id, email, passwordHash, displayName, role, isPlatformAdmin, isActive, createdAt, lastLoginAt, tokenVersion`
 
 func userToJSON(u userRow) map[string]any {
 	return map[string]any{
@@ -309,7 +314,11 @@ func (h *handler) updateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if passwordHash != "" {
-		if _, err := tx.Exec(`UPDATE users SET passwordHash = ? WHERE id = ?`, passwordHash, id); err != nil {
+		// F109: a password change bumps tokenVersion, revoking every session
+		// this user already holds. An admin resetting a compromised account's
+		// password, or a user rotating their own, must not leave the old
+		// cookie valid for up to the JWT's remaining 24h lifetime.
+		if _, err := tx.Exec(`UPDATE users SET passwordHash = ?, tokenVersion = tokenVersion + 1 WHERE id = ?`, passwordHash, id); err != nil {
 			writeInternalError(w, err)
 			return
 		}
@@ -491,8 +500,16 @@ func EnsureFirstAdmin(database *db.Database, email, password string) {
 		return
 	}
 	id, _ := nanoid.New()
+	// F96: isPlatformAdmin must be set explicitly here. Migration 0069's
+	// `UPDATE users SET isPlatformAdmin = 1 WHERE role = 'admin'` only
+	// backfills rows that already existed when the migration ran, and on a
+	// fresh install it runs before this insert — so omitting the column left
+	// the seeded admin at its DEFAULT 0, with role 'admin' but none of the
+	// global privileges platformAdminProtected routes require (user
+	// management, backups, restore, countries). The seed would then lock the
+	// operator out of the very routes needed to create the first real users.
 	if _, err := database.DB.Exec(
-		`INSERT INTO users (id, email, passwordHash, displayName, role, createdAt) VALUES (?, ?, ?, 'Administrator', 'admin', ?)`,
+		`INSERT INTO users (id, email, passwordHash, displayName, role, isPlatformAdmin, createdAt) VALUES (?, ?, ?, 'Administrator', 'admin', 1, ?)`,
 		id, email, string(hash), time.Now().Format("2006-01-02 15:04:05"),
 	); err != nil {
 		log.Printf("EnsureFirstAdmin: failed to create initial admin user: %v", err)

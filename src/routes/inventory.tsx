@@ -192,6 +192,11 @@ const Inventory = () => {
         setMovements(res.data);
         setTotal(res.total);
       })
+      .catch((error) => {
+        if (requestId !== requestIdRef.current) return;
+        console.error("Failed to load stock movements:", error);
+        message.error(error instanceof Error ? error.message : t`Failed to load stock movements`);
+      })
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false);
       });
@@ -205,6 +210,7 @@ const Inventory = () => {
     referenceFilter,
     sortField,
     sortOrder,
+    message,
   ]);
 
   useEffect(() => {
