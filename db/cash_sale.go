@@ -34,11 +34,16 @@ type CreateCashSaleRequest struct {
 
 	// AmountReceived is 0 for a pure loan sale (no upfront payment). It may
 	// be less than Total (a deposit) or equal to it (a cash sale).
-	AmountReceived int64   `json:"amountReceived"`
-	PaymentMethod  string  `json:"paymentMethod"` // defaults "cash"
-	BankAccountID  string  `json:"bankAccountId"` // defaults to organizations.defaultCashAccountId
-	Reference      *string `json:"reference"`
-	Notes          *string `json:"notes"`
+	AmountReceived int64  `json:"amountReceived"`
+	PaymentMethod  string `json:"paymentMethod"` // defaults "cash"
+	// BankAccountID is the register/till account the received amount is
+	// debited to. Empty defaults to organizations.defaultCashRegisterAccountId
+	// and 409s if that is unset — deliberately never organizations.
+	// defaultCashAccountId, which every chart template wires to Bank (see
+	// CreateCashSale's doc comment below).
+	BankAccountID string  `json:"bankAccountId"`
+	Reference     *string `json:"reference"`
+	Notes         *string `json:"notes"`
 }
 
 // CashSaleResult is what CreateCashSale returns: the resolved client (new or
@@ -120,21 +125,21 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	bankAccountID := req.BankAccountID
 	if req.AmountReceived > 0 {
 		if bankAccountID == "" {
-			// defaultCashRegisterAccountId (the physical till) takes priority
-			// over defaultCashAccountId, which every chart-of-accounts
-			// template wires to Bank, not the till — see CLAUDE.md's cash
-			// register account note. Falling back to it here only matters
-			// for a caller that omits bankAccountId entirely and hasn't
-			// configured a register account either; the Cash Book screen
-			// itself always sends one explicitly once configured.
-			switch {
-			case org.DefaultCashRegisterAccountID != nil:
-				bankAccountID = *org.DefaultCashRegisterAccountID
-			case org.DefaultCashAccountID != nil:
-				bankAccountID = *org.DefaultCashAccountID
-			default:
-				return nil, newValidationError("cannot record payment: organization has no default cash account configured")
+			// F101: a cash sale must land in the dedicated register/till
+			// account, named by defaultCashRegisterAccountId. It must NOT
+			// fall back to defaultCashAccountId: every chart-of-accounts
+			// template wires the "cash" role to the Bank account
+			// (db/account.go), so that fallback silently credited Bank
+			// while the Cash Book screen's register balance/report watched
+			// the till — a real production report. A register account is a
+			// configuration precondition of this screen, surfaced as a 409
+			// naming the exact column rather than quietly posting to Bank.
+			if org.DefaultCashRegisterAccountID == nil {
+				return nil, newValidationError(
+					"cannot record payment: organization has no default cash register account configured — set defaultCashRegisterAccountId in the organization's Accounting settings",
+				)
 			}
+			bankAccountID = *org.DefaultCashRegisterAccountID
 		}
 		bankAccount, err := d.GetAccount(bankAccountID)
 		if err != nil {
