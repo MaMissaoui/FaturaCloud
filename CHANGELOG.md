@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.31.0] - 2026-09-20
+
+Performance and consistency follow-ups from a UI/database audit.
+
+### Changed
+- Outstanding, AR/AP aging and loan-status queries now use correlated
+  subqueries instead of an unscoped aggregate join, so they no longer scan
+  every organization's payment applications on each call.
+- Every document detail and settings page's sticky footer now shares the
+  `ResponsiveFooter` component, restoring the separator above the bar.
+
+### Fixed
+- Backup settings: a failed load of the backup list or schedule now shows an
+  error with a Retry, instead of rendering as "no backups" / defaults.
+
 ## [3.30.0] - 2026-09-20
 
 Cash Book refinements: a clearer sale button, a more usable loan-status
