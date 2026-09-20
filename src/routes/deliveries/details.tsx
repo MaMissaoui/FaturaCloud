@@ -317,6 +317,17 @@ const DeliveryDetails = () => {
     [allDeliveries, watchedOrderId],
   );
 
+  // Re-runs the async detail read after a failed fetch. Clearing the id and
+  // restoring it on the next tick is what actually invalidates the atom's
+  // cached read — re-setting the same id alone doesn't (jotai skips the
+  // notification when the value is unchanged), the same idiom
+  // orders/details.tsx uses after a status change.
+  const retryLoad = () => {
+    if (!id) return;
+    setDeliveryId(null);
+    setTimeout(() => setDeliveryId(id), 0);
+  };
+
   if (!organization) return null;
   if (!isNew && !delivery) {
     return (
@@ -326,7 +337,20 @@ const DeliveryDetails = () => {
           title={<Trans>Outbound Delivery</Trans>}
           style={{ marginBottom: 24 }}
         />
-        <Skeleton active paragraph={{ rows: 12 }} />
+        {deliveryLoadable.state === "loading" ? (
+          <Skeleton active paragraph={{ rows: 12 }} />
+        ) : (
+          <Alert
+            type="error"
+            showIcon
+            message={<Trans>Couldn't load this delivery</Trans>}
+            action={
+              <Button size="small" onClick={retryLoad}>
+                <Trans>Retry</Trans>
+              </Button>
+            }
+          />
+        )}
       </>
     );
   }

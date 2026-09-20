@@ -239,3 +239,33 @@ func TestCreateUser_ValidatesInput(t *testing.T) {
 		})
 	}
 }
+
+// TestEnsureFirstAdmin_SeedsPlatformAdmin is F96's regression test: on a
+// fresh install migration 0069's `UPDATE users SET isPlatformAdmin = 1 WHERE
+// role = 'admin'` has no rows to backfill (it runs before any user exists),
+// so the first admin's platform-admin bit depends entirely on
+// EnsureFirstAdmin's own INSERT. That INSERT used to omit isPlatformAdmin,
+// leaving the seeded account with role='admin' but isPlatformAdmin=0 — locked
+// out of every platformAdminProtected route (user management, backups,
+// restore, countries), including the ones needed to create the first real
+// users. newTestRouter constructs a real db.NewDatabase(temp file), which is
+// exactly the pre-EnsureFirstAdmin state main.go starts from.
+func TestEnsureFirstAdmin_SeedsPlatformAdmin(t *testing.T) {
+	_, database, _, _ := newTestRouter(t)
+
+	EnsureFirstAdmin(database, "admin@fatura.cloud", "initial-password")
+
+	var seeded struct {
+		Role            string `db:"role"`
+		IsPlatformAdmin int    `db:"isPlatformAdmin"`
+	}
+	if err := database.DB.Get(&seeded, `SELECT role, isPlatformAdmin FROM users WHERE email = ?`, "admin@fatura.cloud"); err != nil {
+		t.Fatalf("query seeded admin: %v", err)
+	}
+	if seeded.IsPlatformAdmin != 1 {
+		t.Fatalf("seeded first admin has isPlatformAdmin=%d, want 1 — it would be locked out of platformAdminProtected routes", seeded.IsPlatformAdmin)
+	}
+	if seeded.Role != "admin" {
+		t.Fatalf("seeded first admin role = %q, want admin", seeded.Role)
+	}
+}

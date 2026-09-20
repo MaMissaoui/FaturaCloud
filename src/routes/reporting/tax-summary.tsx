@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Col, DatePicker, Row, Table, Tooltip, Typography, theme } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -35,9 +35,13 @@ const TaxSummary = () => {
   // other accounting/reporting screens.
   const [failed, setFailed] = useState(false);
   const categoryLabels = useTaxRateCategoryLabels();
+  // requestIdRef guards against an in-flight earlier range's request
+  // overwriting a newer one, the same shape as products.tsx's search guard.
+  const requestIdRef = useRef(0);
 
   const refresh = () => {
     if (!organizationId) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setFailed(false);
     GetTaxSummary(
@@ -45,12 +49,18 @@ const TaxSummary = () => {
       range[0].startOf("day").valueOf(),
       range[1].endOf("day").valueOf(),
     )
-      .then(setSummary)
+      .then((data) => {
+        if (requestId !== requestIdRef.current) return;
+        setSummary(data);
+      })
       .catch(() => {
+        if (requestId !== requestIdRef.current) return;
         setSummary(null);
         setFailed(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (requestId === requestIdRef.current) setLoading(false);
+      });
   };
 
   useEffect(refresh, [organizationId, range]);

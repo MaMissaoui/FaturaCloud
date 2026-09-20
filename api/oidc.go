@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
@@ -48,37 +49,72 @@ type oidcStateCookiePayload struct {
 	CodeVerifier string `json:"codeVerifier"`
 }
 
+// oidcDiscoveryTimeout bounds the outbound discovery request to the IdP.
+// Without it a hung (not merely unreachable) issuer pins the calling
+// goroutine forever — the server's WriteTimeout cannot cancel it — and, when
+// discovery ran under oidcMu, blocked every subsequent SSO request behind the
+// lock on the public /api/auth/oidc/login and /callback routes.
+// A var (not a const) only so tests can drive the timeout down.
+var oidcDiscoveryTimeout = 10 * time.Second
+
 // ensureOIDC lazily builds the provider/verifier/oauth2 config from the
 // issuer's discovery document. Lazy + retried (rather than only attempted
 // once at startup) so a temporarily-unreachable IdP doesn't permanently
 // disable SSO until the process restarts — local login is never affected
 // either way.
+//
+// Concurrency: the outbound discovery call is deliberately made *without*
+// oidcMu held (double-checked init). The fast path takes the lock only long
+// enough to copy the cached pointers; on a miss the lock is released, the
+// bounded discovery call runs, then the lock is re-acquired to store the
+// result only if another request hasn't already populated it. Concurrent
+// first-time callers may each perform their own discovery, which is wasteful
+// but harmless — a slow IdP no longer wedges every other SSO request, and the
+// "last write wins" on an identical discovery result is benign. h.oidcMu is a
+// plain sync.Mutex (see router.go), so all reads of the pointer fields must
+// happen under it.
 func (h *handler) ensureOIDC() (*oidc.IDTokenVerifier, *oauth2.Config, error) {
 	if h.oidcCfg.IssuerURL == "" {
 		return nil, nil, errOIDCNotConfigured
 	}
 
+	// Fast path: already initialized.
 	h.oidcMu.Lock()
-	defer h.oidcMu.Unlock()
-
-	if h.oidcVerifier != nil && h.oidcOAuth2 != nil {
-		return h.oidcVerifier, h.oidcOAuth2, nil
+	verifier, oauth2Cfg := h.oidcVerifier, h.oidcOAuth2
+	h.oidcMu.Unlock()
+	if verifier != nil && oauth2Cfg != nil {
+		return verifier, oauth2Cfg, nil
 	}
 
-	provider, err := oidc.NewProvider(context.Background(), h.oidcCfg.IssuerURL)
+	// Discovery runs unlocked, on a bounded context so a hung IdP can't pin
+	// this goroutine or the lock indefinitely.
+	ctx, cancel := context.WithTimeout(context.Background(), oidcDiscoveryTimeout)
+	defer cancel()
+	provider, err := oidc.NewProvider(ctx, h.oidcCfg.IssuerURL)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	h.oidcVerifier = provider.Verifier(&oidc.Config{ClientID: h.oidcCfg.ClientID})
-	h.oidcOAuth2 = &oauth2.Config{
+	newVerifier := provider.Verifier(&oidc.Config{ClientID: h.oidcCfg.ClientID})
+	newOAuth2 := &oauth2.Config{
 		ClientID:     h.oidcCfg.ClientID,
 		ClientSecret: h.oidcCfg.ClientSecret,
 		RedirectURL:  h.oidcCfg.RedirectURL,
 		Endpoint:     provider.Endpoint(),
 		Scopes:       h.oidcCfg.Scopes,
 	}
-	return h.oidcVerifier, h.oidcOAuth2, nil
+
+	h.oidcMu.Lock()
+	// Store only if a concurrent caller hasn't already populated the cache;
+	// either set of pointers is equivalent, so keeping the existing one avoids
+	// needless churn.
+	if h.oidcVerifier == nil || h.oidcOAuth2 == nil {
+		h.oidcVerifier, h.oidcOAuth2 = newVerifier, newOAuth2
+	}
+	verifier, oauth2Cfg = h.oidcVerifier, h.oidcOAuth2
+	h.oidcMu.Unlock()
+
+	return verifier, oauth2Cfg, nil
 }
 
 func (h *handler) oidcEnabled(w http.ResponseWriter, _ *http.Request) {
@@ -195,7 +231,22 @@ func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	// itself is telling us not to trust this email; JIT-provisioning a
 	// FaturaCloud user against it anyway would be handing out an account
 	// keyed on an address the IdP hasn't confirmed the person controls.
-	if verified, ok := claims["email_verified"].(bool); ok && !verified {
+	//
+	// F108 (audit): the claim is only actually checked when it parses. Some
+	// IdPs (and the OIDC spec's own examples) emit the JSON string "true"/
+	// "false" rather than a boolean, which the old bool type assertion
+	// silently dropped, skipping the guard entirely. oidcEmailVerified
+	// accepts both spellings and treats a present-but-unparseable value as
+	// unverified (fail closed).
+	//
+	// Account linking is by email: an incoming OIDC identity is matched to an
+	// existing FaturaCloud user (or JIT-provisions a new one) purely on this
+	// email claim, and email_verified is the *only* guard against a provider
+	// asserting an address the person doesn't control. If the IdP is
+	// untrusted or emits unverified emails, there is no second factor here by
+	// design — the decision was to tighten only the type handling, not to add
+	// an account-linking policy.
+	if !oidcEmailVerified(claims) {
 		fail("id token's email is not verified")
 		return
 	}
@@ -221,6 +272,32 @@ func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	// the browser sending an existing cookie cross-site that SameSite governs.
 	h.setAuthCookie(w, r, jwtToken)
 	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+// oidcEmailVerified reports whether the ID token's "email_verified" claim
+// permits treating the email as verified. Absent means "nothing to check"
+// (Authelia doesn't always emit it) and returns true. A boolean, or the
+// string spellings "true"/"false" (case-insensitive, trimmed) that some IdPs
+// emit instead, is honored: explicit false is rejected. Any other present
+// value is unparseable and rejected too — silently skipping the check is the
+// exact failure F108 fixed, so this fails closed rather than open.
+func oidcEmailVerified(claims map[string]any) bool {
+	raw, present := claims["email_verified"]
+	if !present {
+		return true
+	}
+	switch v := raw.(type) {
+	case bool:
+		return v
+	case string:
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "true":
+			return true
+		case "false":
+			return false
+		}
+	}
+	return false
 }
 
 // oidcClaimHasGroup checks a claims map's group-list claim (a flat array of

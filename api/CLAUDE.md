@@ -10,6 +10,9 @@ Loaded only when working under `api/`. The authoritative route list is `api/rout
 
 Routes with a behavior worth knowing before calling or changing them (every other route is plain CRUD — read `api/router.go`).
 
+**Auth**
+- `POST /api/auth/logout` — clears the cookie AND revokes every session for that user by bumping `users.tokenVersion`, so all previously-issued JWTs (including one held elsewhere) fail `authMiddleware`'s `claims.TokenVersion != stored` check on their next use instead of staying valid until expiry. Password change (`PUT /api/users/{id}` with `password`) bumps it too.
+
 **Users (platform admin only)**
 - `DELETE /api/users/{id}` — refused with 409 if the target is the sole admin member of any organization
 
@@ -84,6 +87,9 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 **Outbound Deliveries**
 - `GET /api/deliveries/{id}/export` — fills the org's Excel template (upload or embedded default) and returns .xlsx; ?format=pdf converts it with headless LibreOffice — same mechanism and same "not wrapped in withDB" reasoning as the invoice export above. No price columns at all — a delivery note never shows prices, so there is no totals block
 
+**Payments (F104)**
+- `POST /api/payments` and `POST /api/payments/{id}/void` — require the `accounting` organization role (admin/general/accounting pass, via the standard role helpers). Deliberate boundary decision: a payment settles AR/AP and a void reverses a posted GL entry, so both are accounting actions, the same tier as journal-entry post/reverse.
+
 **Accounting — Fiscal Years / Periods**
 - `POST /api/fiscal-years/{id}/close` — org admin only, irreversible — see Database section
 
@@ -94,12 +100,15 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/organizations/{orgId}/gl-export/fec` — org admin only — France FEC
 - `GET /api/organizations/{orgId}/gl-export/datev` — org admin only — Germany DATEV Buchungsstapel EXTF
 
+**Cash Book**
+- `POST /api/cash-sales` — role-gated to `admin` | `general` | `cashbook` (`requireOrgRole`, `api/cash_sale.go`). Deliberately NOT a pure invoice write: a cash-sale request may carry a `newClient` (the walk-in customer, who doesn't exist as a client yet) and the handler creates that client as part of issuing the invoice, in the same transaction. That is an accepted cross-domain write for the `cashbook` role — a cashier taking a counter sale otherwise couldn't record it at all, since the `sales`-gated `POST /api/clients` would 403 them. Do not "tighten" this to `sales` without deciding where the walk-in client gets created instead.
+
 ## Files
 
 - `api/router.go` — wires all routes onto `*http.ServeMux`; wraps protected routes in `authMiddleware`. `platformAdminProtected` gates the global-admin routes (users, backups, restore, countries); `orgAdminProtected(method, pattern, resolve orgIDResolver, handlerFn)` gates the org-scoped admin routes (org delete/reset, fiscal-year close, GL exports, organization members) — `resolve` is either `pathOrgID(param)` (orgId is already in the path) or a DB-lookup closure like `fiscalYearOrgID` for a route that doesn't carry it directly
 - `api/helpers.go` — `writeJSON`, `writeError`, `decodeJSON`
-- `api/middleware.go` — JWT `authMiddleware` re-derives `isActive` **and** `isPlatformAdmin` fresh from the DB on every request (so deactivating/deleting a user, or revoking their platform-admin flag, takes effect immediately rather than waiting for their token to expire — neither is trusted from the JWT, which carries only `UserID`/`Email`/`Provider`). `platformAdmin` middleware checks `isPlatformAdmin`; `orgAdmin(resolve orgIDResolver)` resolves the target organization and checks `GetOrganizationRole` for an `admin` membership — both take one short-lived `dbMu.RLock()` (the resolve and the role check share it, since a resolver like `fiscalYearOrgID` also hits the DB and running it unprotected would race a concurrent `/api/restore` swap), unlike `withDB`-wrapped handlers which hold theirs for the whole request. Per-IP login rate limiter also lives here
-- `api/auth.go` — login, logout, me handlers
+- `api/middleware.go` — JWT `authMiddleware` re-derives `isActive` **and** `isPlatformAdmin` fresh from the DB on every request (so deactivating/deleting a user, or revoking their platform-admin flag, takes effect immediately rather than waiting for their token to expire — neither is trusted from the JWT, which carries only `UserID`/`Email`/`Provider`). It also re-reads `users.tokenVersion` and rejects a token whose embedded `claims.TokenVersion` no longer matches (F109) — that value *is* carried in the token (unlike `isPlatformAdmin`), since revocation is only meaningful if the minted version can be compared against the stored one. `platformAdmin` middleware checks `isPlatformAdmin`; `orgAdmin(resolve orgIDResolver)` resolves the target organization and checks `GetOrganizationRole` for an `admin` membership — both take one short-lived `dbMu.RLock()` (the resolve and the role check share it, since a resolver like `fiscalYearOrgID` also hits the DB and running it unprotected would race a concurrent `/api/restore` swap), unlike `withDB`-wrapped handlers which hold theirs for the whole request. Per-IP login rate limiter also lives here
+- `api/auth.go` — login, logout, me handlers. `clientIP` (rate-limit key) walks `X-Forwarded-For` from the RIGHT, skipping configured trusted-proxy hops, and returns the first non-trusted address (F110) — reading the leftmost entry was spoofable because proxies append rather than replace. `logout` parses the session cookie best-effort and bumps `users.tokenVersion`, revoking every session for the user; `issueTokenWithProvider` embeds the current `user.TokenVersion` (F109)
 - `api/oidc.go` — OIDC SSO: login redirect (Authorization Code + PKCE), callback (ID token verification, JIT provisioning), issues the same JWT local login does. `oidcCallback` also checks the standard `email_verified` claim — rejects only when it's present and `false`; absent is treated as "nothing to check" since Authelia doesn't always emit it
 - `api/users.go` — user CRUD handlers (platform admin only); also `provisionOrSyncUser`, the JIT-provision/role-resync used by OIDC login. the JIT-provisioning branch's `bcrypt.GenerateFromPassword` (~50-100ms at DefaultCost, via the new `hashRandomPassword` helper) runs with **no** `dbMu` held — a brief `RLock`'d pre-check decides whether hashing is even needed (returning user vs. first login), then the write section re-checks under the write lock regardless. Before this, the hash ran inside `dbMu`'s write lock, and since `dbMu` is the global RWMutex every `withDB`-wrapped handler RLocks for its whole request, every OIDC first-login stalled all other API traffic for that duration
 - `api/{domain}.go` — HTTP handlers per domain (clients, vendors, invoices, organizations, orders, deliveries, …)

@@ -598,9 +598,50 @@ func (d *Database) DeleteIncomingInvoice(id string) (bool, error) {
 		return false, newValidationError("cannot delete a bill with a posted GL entry — cancel it instead")
 	}
 
-	res, err := d.DB.Exec(`DELETE FROM incoming_invoices WHERE id = ?`, id)
+	// F103: this delete previously ran with no transaction at all. The
+	// pre-checks above and the DELETE now share one transaction (holding the
+	// only connection under SetMaxOpenConns(1)), and the same predicates are
+	// repeated in the DELETE itself, so a concurrent PATCH .../state that
+	// posted a GL entry between the reads and the delete can no longer orphan
+	// it. Same guard shape as DeleteJournalEntry/DeleteInvoice.
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return false, fmt.Errorf("delete_incoming_invoice begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var liveState string
+	if err := tx.Get(&liveState, `SELECT state FROM incoming_invoices WHERE id = ?`, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("delete_incoming_invoice state_check: %w", err)
+	}
+	if liveState == "paid" {
+		return false, newValidationError("cannot delete a paid incoming invoice — cancel it instead")
+	}
+	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, "incoming_invoice", id)
+	if err != nil {
+		return false, err
+	}
+	if liveEntry != nil {
+		return false, newValidationError("cannot delete a bill with a posted GL entry — cancel it instead")
+	}
+
+	res, err := tx.Exec(`
+		DELETE FROM incoming_invoices
+		WHERE id = ? AND state <> 'paid'
+		  AND NOT EXISTS (
+			SELECT 1 FROM journal_entries
+			WHERE sourceDocumentType = 'incoming_invoice' AND sourceDocumentId = ?
+			  AND status = 'posted' AND reversalOfEntryId IS NULL
+		  )`, id, id)
 	if err != nil {
 		return false, fmt.Errorf("delete_incoming_invoice: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("delete_incoming_invoice commit: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n > 0, nil

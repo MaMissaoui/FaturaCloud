@@ -130,6 +130,52 @@ func TestGetCashMovementDetailsIncludesWithdrawals(t *testing.T) {
 	}
 }
 
+// TestGetCashMovementDetailsIncludesNonMidnightMovement is F100's
+// regression test: every caller passes the same UTC-midnight value as both
+// endpoints to mean "this whole day", but a withdrawal/sale is stamped at
+// the moment it actually happened, so the old literal `date >= start AND
+// date <= end` matched nothing and the detail table looked empty while the
+// day-summary above it (floored to UTC day) showed non-zero totals. A
+// movement created at 14:37 must come back for its day.
+func TestGetCashMovementDetailsIncludesNonMidnightMovement(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-movement-details-time")
+	register := accountByCode(t, d, fx.orgID, "1010")
+	bank := accountByCode(t, d, fx.orgID, "1020")
+
+	// fx.date is 2025-02-01 00:00:00 UTC; stamp the movement well inside
+	// that same UTC day, not on its midnight boundary.
+	at := fx.date + 14*60*60*1000 + 37*60*1000 // 14:37 UTC
+	note := "Afternoon deposit"
+	movement, err := d.CreateCashMovement(CreateCashMovementRequest{
+		OrganizationID: fx.orgID, AccountID: register.ID, Date: at,
+		CounterAccountType: "bank", CounterAccountID: bank.ID, Amount: 1234, Note: &note,
+	})
+	if err != nil {
+		t.Fatalf("CreateCashMovement: %v", err)
+	}
+
+	// Same UTC-midnight value twice — exactly what cash-book.tsx /
+	// report_export.go send for one day.
+	details, err := d.GetCashMovementDetails(fx.orgID, register.ID, fx.date, fx.date)
+	if err != nil {
+		t.Fatalf("GetCashMovementDetails: %v", err)
+	}
+	found := false
+	for _, row := range details {
+		if row.ID == movement.CashMovement.ID {
+			found = true
+			if row.Direction != "out" || row.Kind != "withdrawal" || row.Amount != 1234 {
+				t.Fatalf("non-midnight row = %+v, want direction=out kind=withdrawal amount=1234", row)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("movement stamped %d (14:37 UTC) was not returned for its UTC day [%d, %d]", at, fx.date, fx.date)
+	}
+}
+
 func TestGetLoanStatusExcludesCashSaleIncludesSettledLoan(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)

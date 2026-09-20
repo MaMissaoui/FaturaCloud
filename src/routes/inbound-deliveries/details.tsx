@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
+  Alert,
   Button,
   Col,
   DatePicker,
@@ -138,6 +139,11 @@ const InboundDeliveryDetails = () => {
     pendingStatus: null,
   });
   const [isDirty, setIsDirty] = useState(false);
+  // Without this the modal's OK stayed enabled through the await below, so a
+  // second click fired a second PATCH — which 409s (draft -> received has
+  // already added the goods to stock) and toasts an error on top of the
+  // success (F112, mirroring production-orders/details.tsx's F86 fix).
+  const [confirmingSerials, setConfirmingSerials] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
@@ -293,10 +299,26 @@ const InboundDeliveryDetails = () => {
     await applyStatusChange(next);
   };
 
+  // Re-runs the async detail read after a failed fetch. Clearing the id and
+  // restoring it on the next tick is what actually invalidates the atom's
+  // cached read — re-setting the same id alone doesn't (jotai skips the
+  // notification when the value is unchanged), the same idiom
+  // orders/details.tsx uses after a status change.
+  const retryLoad = () => {
+    if (!id) return;
+    setDeliveryId(null);
+    setTimeout(() => setDeliveryId(id), 0);
+  };
+
   const handleSerialCaptureConfirm = async (serialNumbers: Record<string, string[]>) => {
-    if (!serialCapture.pendingStatus) return;
-    await applyStatusChange(serialCapture.pendingStatus, serialNumbers);
-    setSerialCapture({ open: false, pendingStatus: null });
+    if (confirmingSerials || !serialCapture.pendingStatus) return;
+    setConfirmingSerials(true);
+    try {
+      await applyStatusChange(serialCapture.pendingStatus, serialNumbers);
+      setSerialCapture({ open: false, pendingStatus: null });
+    } finally {
+      setConfirmingSerials(false);
+    }
   };
 
   const watchedCurrency = Form.useWatch("currency", form);
@@ -330,7 +352,20 @@ const InboundDeliveryDetails = () => {
           title={<Trans>Goods Receipt</Trans>}
           style={{ marginBottom: 24 }}
         />
-        <Skeleton active paragraph={{ rows: 12 }} />
+        {deliveryLoadable.state === "loading" ? (
+          <Skeleton active paragraph={{ rows: 12 }} />
+        ) : (
+          <Alert
+            type="error"
+            showIcon
+            message={<Trans>Couldn't load this goods receipt</Trans>}
+            action={
+              <Button size="small" onClick={retryLoad}>
+                <Trans>Retry</Trans>
+              </Button>
+            }
+          />
+        )}
       </>
     );
   }
@@ -634,6 +669,7 @@ const InboundDeliveryDetails = () => {
           open={serialCapture.open}
           mode="receive"
           lines={serializedReceiveLines}
+          confirming={confirmingSerials}
           onCancel={() => setSerialCapture({ open: false, pendingStatus: null })}
           onConfirm={handleSerialCaptureConfirm}
         />

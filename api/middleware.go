@@ -53,6 +53,15 @@ type Claims struct {
 	// (see GetOrganizationRole) — nothing authorization-relevant survives in
 	// the token itself beyond identity.
 	IsPlatformAdmin bool `json:"-"`
+	// TokenVersion is the users.tokenVersion value at issue time (F109).
+	// Unlike IsPlatformAdmin it MUST round-trip through the signed JWT (it
+	// carries a json tag, not json:"-", for the same reason Provider does):
+	// authMiddleware can only compare "the version this token was minted
+	// with" against "the version stored now" if the minted value is actually
+	// in the token. Logout and password change bump the stored column, which
+	// makes every token carrying an older value fail this check — revoking
+	// all of that user's sessions at once.
+	TokenVersion int `json:"tokenVersion"`
 	jwt.RegisteredClaims
 }
 
@@ -76,15 +85,18 @@ func (h *handler) authMiddleware(next http.Handler) http.Handler {
 		// Re-check the user on every request rather than trusting the JWT
 		// alone — otherwise deactivating or deleting a user (or revoking
 		// platform-admin) leaves their token effective for up to its full
-		// 24h lifetime. Acquired and released here (not deferred past
+		// 24h lifetime. The stored tokenVersion is re-read here too (F109):
+		// logout and password change bump it, so every token minted before
+		// that bump now fails the claims.TokenVersion != tokenVersion check
+		// below. Acquired and released here (not deferred past
 		// next.ServeHTTP) so this never nests under a route's own withDB
 		// read lock (api/router.go).
 		h.dbMu.RLock()
-		var isActive, isPlatformAdmin int
-		err = h.db.DB.QueryRow(`SELECT isActive, isPlatformAdmin FROM users WHERE id = ?`, claims.UserID).
-			Scan(&isActive, &isPlatformAdmin)
+		var isActive, isPlatformAdmin, tokenVersion int
+		err = h.db.DB.QueryRow(`SELECT isActive, isPlatformAdmin, tokenVersion FROM users WHERE id = ?`, claims.UserID).
+			Scan(&isActive, &isPlatformAdmin, &tokenVersion)
 		h.dbMu.RUnlock()
-		if err != nil || isActive == 0 {
+		if err != nil || isActive == 0 || claims.TokenVersion != tokenVersion {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}

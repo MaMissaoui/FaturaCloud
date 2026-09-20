@@ -417,6 +417,10 @@ var domainRouteRoles = map[routeKey][]string{
 	{"POST", "/api/journal-entries/{id}/reverse"}: {"accounting"},
 	{"DELETE", "/api/journal-entries/{id}"}:       {"accounting"},
 
+	// F104 — voiding a payment reverses its posted GL entry, so it's gated
+	// the same as journal-entry reversal.
+	{"POST", "/api/payments/{id}/void"}: {"accounting"},
+
 	{"GET", "/api/organizations/{orgId}/gl-export/fec"}:   {"accounting"},
 	{"GET", "/api/organizations/{orgId}/gl-export/datev"}: {"accounting"},
 }
@@ -443,6 +447,9 @@ var createRouteDomainRoles = map[routeKey][]string{
 	{"POST", "/api/fiscal-years"}:    {"accounting"},
 	{"POST", "/api/fiscal-periods"}:  {"accounting"},
 	{"POST", "/api/journal-entries"}: {"accounting"},
+	// F104 — payments settle AR/AP (body-carried organizationId, so the
+	// check is the inline requireOrgRole in createPayment).
+	{"POST", "/api/payments"}: {"accounting"},
 
 	{"POST", "/api/cash-sales"}:     {"cashbook"},
 	{"POST", "/api/cash-movements"}: {"cashbook"},

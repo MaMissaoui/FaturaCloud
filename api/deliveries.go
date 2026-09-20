@@ -46,7 +46,10 @@ func (h *handler) createDelivery(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := h.db.CreateDelivery(req)
 	if err != nil {
-		writeInternalError(w, err)
+		// CreateDelivery returns a *db.ValidationError for real user errors
+		// (e.g. an unknown order reference) — same treatment as updateDelivery
+		// below, a 409 rather than a logged 500.
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, row)

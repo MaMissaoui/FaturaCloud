@@ -2386,6 +2386,171 @@ func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 	}
 }
 
+// TestOrganizationUsageCountCoversEveryOrganizationScopedTable is the tripwire
+// for F125: OrganizationUsageCount is what the delete/reset confirmation reads
+// to show the blast radius, and it had gone stale — every org-scoped table
+// added since it was written (production_orders, imports, cash_movements,
+// product_serial_numbers, document_number_settings, the BOM/version tables, …)
+// was missing. The authoritative org-scoped table list is db/reset.go's
+// transactionalDataTables + masterDataTables (itself guarded by
+// TestResetOrganizationDataCoversEveryOrganizationScopedTable), so this
+// requires the usage-count query to cover exactly that set — nothing missing
+// (which understates the blast radius) and nothing extra (which would report
+// rows a reset/delete never touches).
+func TestOrganizationUsageCountCoversEveryOrganizationScopedTable(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+
+	// A duplicate alias would make sqlx map two subqueries onto one struct
+	// field (or none), so catch it here rather than as a scan error at call
+	// time.
+	aliases := map[string]bool{}
+	counted := map[string]bool{}
+	for _, entry := range organizationUsageCountTables {
+		if aliases[entry.Alias] {
+			t.Errorf("organizationUsageCountTables has duplicate alias %q", entry.Alias)
+		}
+		aliases[entry.Alias] = true
+		counted[entry.Table] = true
+	}
+
+	expected := map[string]bool{}
+	for _, table := range transactionalDataTables {
+		expected[table] = true
+	}
+	for _, table := range masterDataTables {
+		expected[table] = true
+	}
+
+	for table := range expected {
+		if !counted[table] {
+			t.Errorf(
+				"table %q is in db/reset.go's transactionalDataTables/masterDataTables but not in "+
+					"organizationUsageCountTables — the delete/reset confirmation would understate the blast radius",
+				table,
+			)
+		}
+	}
+	for table := range counted {
+		if !expected[table] {
+			t.Errorf(
+				"organizationUsageCountTables lists %q, which is not in transactionalDataTables/masterDataTables",
+				table,
+			)
+		}
+	}
+
+	// Every counted table must actually carry an organizationId column, or its
+	// subquery would fail at runtime.
+	for _, entry := range organizationUsageCountTables {
+		columns := []struct {
+			Name string `db:"name"`
+		}{}
+		if err := d.DB.Select(&columns, `SELECT name FROM pragma_table_info(?)`, entry.Table); err != nil {
+			t.Fatalf("pragma_table_info(%s): %v", entry.Table, err)
+		}
+		found := false
+		for _, col := range columns {
+			if col.Name == "organizationId" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("organizationUsageCountTables lists %q, which has no organizationId column", entry.Table)
+		}
+	}
+}
+
+// TestOrganizationUsageCountCountsNewTables seeds rows in a representative set
+// of the org-scoped tables F125 added to the count and confirms each is
+// reported — the tripwire above proves the list is complete, this proves the
+// subqueries actually count what they claim to.
+func TestOrganizationUsageCountCountsNewTables(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-usage-new"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+
+	// CreateOrganization seeds default payment terms/units of measure, so
+	// compare the delta rather than an absolute count.
+	before, err := d.GetOrganizationUsageCount(org.ID)
+	if err != nil {
+		t.Fatalf("GetOrganizationUsageCount (before): %v", err)
+	}
+
+	if _, err := d.CreateImport(CreateImportRequest{
+		ID: "imp-usage", OrganizationID: org.ID, ImportNumber: "IMP-0001", Date: 1700000000000,
+	}); err != nil {
+		t.Fatalf("CreateImport: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		ID: "fy-usage", OrganizationID: org.ID, Name: "2024",
+		StartDate: 1704067200000, EndDate: 1735689599000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	if _, err := d.CreatePaymentTerm(CreatePaymentTermRequest{
+		ID: "pt-usage", OrganizationID: org.ID, Name: "Net 123", IsDefault: ptr(int64(0)),
+	}); err != nil {
+		t.Fatalf("CreatePaymentTerm: %v", err)
+	}
+	if _, err := d.CreateUnitOfMeasure(CreateUnitOfMeasureRequest{
+		ID: "uom-usage", OrganizationID: org.ID, Name: "crate",
+	}); err != nil {
+		t.Fatalf("CreateUnitOfMeasure: %v", err)
+	}
+	if err := d.SetDocumentTemplateOrientation(org.ID, "invoice", "landscape"); err != nil {
+		t.Fatalf("SetDocumentTemplateOrientation: %v", err)
+	}
+
+	finished, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-finished", OrganizationID: org.ID, Name: "Assembled Widget",
+		Type: "product", Category: ptr("finished"), StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct(finished): %v", err)
+	}
+	component, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-component", OrganizationID: org.ID, Name: "Bolt",
+		Type: "product", Category: ptr("component"), StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct(component): %v", err)
+	}
+	if _, err := d.ReplaceBillOfMaterials(finished.ID, []CreateBillOfMaterialsLineRequest{
+		{ComponentProductID: component.ID, QuantityPerUnit: 4},
+	}, 1); err != nil {
+		t.Fatalf("ReplaceBillOfMaterials: %v", err)
+	}
+
+	after, err := d.GetOrganizationUsageCount(org.ID)
+	if err != nil {
+		t.Fatalf("GetOrganizationUsageCount (after): %v", err)
+	}
+
+	for _, tc := range []struct {
+		name string
+		got  int64
+		want int64
+	}{
+		{"imports", after.Imports - before.Imports, 1},
+		{"fiscalYears", after.FiscalYears - before.FiscalYears, 1},
+		{"paymentTerms", after.PaymentTerms - before.PaymentTerms, 1},
+		{"unitsOfMeasure", after.UnitsOfMeasure - before.UnitsOfMeasure, 1},
+		{"documentTemplateSettings", after.DocumentTemplateSettings - before.DocumentTemplateSettings, 1},
+		{"billOfMaterials", after.BillOfMaterials - before.BillOfMaterials, 1},
+		{"billOfMaterialsVersions", after.BillOfMaterialsVersions - before.BillOfMaterialsVersions, 1},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s: got delta %d, want %d", tc.name, tc.got, tc.want)
+		}
+	}
+}
+
 // TestResetOrganizationData exercises all three modes: transactional-only
 // (master data survives untouched), the neither-checked validation error, and
 // master data forcing transactional data along with it (the referential-
@@ -3258,9 +3423,18 @@ func TestInboundDeliveryStatusTransitions(t *testing.T) {
 // ON DELETE CASCADE — a table missing from taxRateReferencingTables would let
 // an in-use rate be deleted and silently strip line items off existing
 // invoices, which is exactly what DeleteTaxRate exists to prevent.
+//
+// The matcher accepts both naming shapes a reference has in the schema:
+// "taxRate" (the line-item tables) and "taxRateId" (products, journal_lines).
+// It is an exact match, so invoices.withholdingTaxRate — a percentage, not a
+// foreign key — is not mistaken for a reference.
 func TestTaxRateUsageCountCoversEveryReference(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
+
+	isTaxRateColumn := func(name string) bool {
+		return name == "taxRate" || name == "taxRateId"
+	}
 
 	tables := []string{}
 	if err := d.DB.Select(&tables,
@@ -3270,10 +3444,11 @@ func TestTaxRateUsageCountCoversEveryReference(t *testing.T) {
 	}
 
 	covered := map[string]bool{}
-	for _, name := range taxRateReferencingTables {
-		covered[name] = true
+	for _, ref := range taxRateReferencingTables {
+		covered[ref.Table+"."+ref.Column] = true
 	}
 
+	existing := map[string]map[string]bool{}
 	for _, table := range tables {
 		columns := []struct {
 			Name string `db:"name"`
@@ -3281,14 +3456,35 @@ func TestTaxRateUsageCountCoversEveryReference(t *testing.T) {
 		if err := d.DB.Select(&columns, `SELECT name FROM pragma_table_info(?)`, table); err != nil {
 			t.Fatalf("pragma_table_info(%s): %v", table, err)
 		}
+		set := map[string]bool{}
 		for _, col := range columns {
-			if col.Name == "taxRate" && !covered[table] {
+			set[col.Name] = true
+		}
+		existing[table] = set
+
+		for _, col := range columns {
+			if !isTaxRateColumn(col.Name) {
+				continue
+			}
+			if !covered[table+"."+col.Name] {
 				t.Errorf(
-					"table %q has a taxRate column but is not in taxRateReferencingTables — "+
-						"DeleteTaxRate's guard would not see its rows; add it in db/tax_rate.go",
-					table,
+					"table %q column %q references taxRates but is not in "+
+						"taxRateReferencingTables — DeleteTaxRate's guard would not see "+
+						"its rows; add {%q, %q} in db/tax_rate.go",
+					table, col.Name, table, col.Name,
 				)
 			}
+		}
+	}
+
+	// The converse: a listed table+column that no longer exists would make the
+	// count subquery fail at runtime.
+	for _, ref := range taxRateReferencingTables {
+		if !existing[ref.Table][ref.Column] {
+			t.Errorf(
+				"taxRateReferencingTables lists {%q, %q}, which is not a table/column in the schema",
+				ref.Table, ref.Column,
+			)
 		}
 	}
 }
@@ -3787,6 +3983,45 @@ func TestTaxRateUsedOnlyByIncomingInvoiceCannotBeDeleted(t *testing.T) {
 	}
 }
 
+// A tax rate referenced only by a manual journal line must not be deletable —
+// journal_lines.taxRateId is a real (ON DELETE SET NULL) foreign key, so
+// deleting the rate would silently null the historical link (and with it the
+// DATEV export's BU-key join) rather than failing loudly.
+func TestTaxRateUsedOnlyByManualJournalLineCannotBeDeleted(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newJournalEntryTestFixture(t, d)
+
+	rate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-journal-1", OrganizationID: fx.orgID, Name: "VAT 19%", Percentage: 19,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	if _, err := d.CreateJournalEntry(CreateJournalEntryRequest{
+		OrganizationID: fx.orgID, JournalID: fx.journalID, Date: fx.date,
+		Description: "Manual VAT entry",
+		Lines: []CreateJournalLineRequest{
+			{AccountID: fx.cashAccountID, Debit: 1190, TaxRateID: &rate.ID},
+			{AccountID: fx.salesAccountID, Credit: 1190},
+		},
+	}); err != nil {
+		t.Fatalf("CreateJournalEntry: %v", err)
+	}
+
+	count, err := d.GetTaxRateUsageCount(rate.ID)
+	if err != nil {
+		t.Fatalf("GetTaxRateUsageCount: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("usage count: got %d, want 1 — journal_lines.taxRateId is not being counted", count)
+	}
+	if _, err := d.DeleteTaxRate(rate.ID); !errors.Is(err, ErrTaxRateInUse) {
+		t.Fatalf("expected ErrTaxRateInUse, got %v", err)
+	}
+}
+
 // An unknown BT-118 category code would produce invalid XRechnung/ZUGFeRD
 // XML at export time, so it's rejected up front on both create and update.
 func TestTaxRateRejectsUnknownCategoryCode(t *testing.T) {
@@ -3915,6 +4150,200 @@ func TestReceivedQuantityAgreesBetweenOrderAndMatch(t *testing.T) {
 		t.Fatalf("cancel: %v", err)
 	}
 	assertAgrees("cancelled", 0)
+}
+
+// F122: the set-based GetIncomingInvoiceMatchSummaries must produce, for every
+// PO-linked invoice, exactly the boolean GetIncomingInvoiceMatch's per-line
+// result would — including a bill with several PO-linked lines, one with none,
+// a PO-linked bill whose only line is unlinked, and a bill with no purchase
+// order at all (which must not appear in the map). The equivalence is checked
+// again after approvals, since Approved/Paid bills feed the PreviouslyInvoiced
+// term the batch query subtracts per invoice.
+func TestGetIncomingInvoiceMatchSummariesMatchesPerInvoice(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-match-summaries"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "FY2023", StartDate: 1690000000000, EndDate: 1710000000000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	vendor, err := d.CreateVendor(CreateVendorRequest{OrganizationID: org.ID, Name: ptr("Supplier Ltd")})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget A", SKU: ptr("WID-A"), Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct A: %v", err)
+	}
+	productB, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: org.ID, Name: "Widget B", SKU: ptr("WID-B"), Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct B: %v", err)
+	}
+
+	// A purchase order with two lines: A ordered 10 @ 250 and B ordered 5 @ 100.
+	po, err := d.CreatePurchaseOrder(CreatePurchaseOrderRequest{
+		OrganizationID: org.ID, VendorID: &vendor.ID, OrderNumber: "PO-0001", OrderDate: 1700000000000,
+		LineItems: []CreatePurchaseOrderLineItemRequest{
+			{ProductID: &productA.ID, Description: "Widget A", Quantity: 10, UnitPrice: 250},
+			{ProductID: &productB.ID, Description: "Widget B", Quantity: 5, UnitPrice: 100},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePurchaseOrder: %v", err)
+	}
+	poItems, err := d.GetPurchaseOrderLineItems(po.ID)
+	if err != nil {
+		t.Fatalf("GetPurchaseOrderLineItems: %v", err)
+	}
+	if len(poItems) != 2 {
+		t.Fatalf("expected two purchase order lines, got %d", len(poItems))
+	}
+	lineA, lineB := poItems[0], poItems[1]
+
+	// Only line A's goods actually arrive.
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		OrganizationID: org.ID, PurchaseOrderID: &po.ID, VendorID: &vendor.ID,
+		DeliveryNumber: "GR-0001", DeliveryDate: 1700000000000,
+		LineItems: []CreateInboundDeliveryLineItemRequest{
+			{PurchaseOrderLineItemID: &lineA.ID, Description: "Widget A", Quantity: 10},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery: %v", err)
+	}
+	if _, err := d.UpdateInboundDeliveryStatus(receipt.ID, "received", nil); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	createInv := func(number string, poID *string, subTotal int64, items []CreateInvoiceLineItemRequest) *IncomingInvoice {
+		t.Helper()
+		inv, err := d.CreateIncomingInvoice(CreateIncomingInvoiceRequest{
+			OrganizationID: org.ID, VendorID: vendor.ID, PurchaseOrderID: poID,
+			VendorInvoiceNumber: number, Date: 1700000000000, Currency: "EUR",
+			SubTotal: subTotal, TaxTotal: 0, Total: subTotal,
+			LineItems: items,
+		})
+		if err != nil {
+			t.Fatalf("CreateIncomingInvoice(%s): %v", number, err)
+		}
+		return inv
+	}
+
+	// Matched: line A fully ordered, fully received, at the ordered price.
+	invMatched := createInv("V-001", &po.ID, 2500, []CreateInvoiceLineItemRequest{
+		{Description: ptr("Widget A"), Quantity: 10, UnitPrice: 250, PurchaseOrderLineItemID: &lineA.ID},
+	})
+	// Multiple PO-linked lines, one of them over-billed against an unreceived
+	// order line — the multi-line case the old N+1 loop had to aggregate.
+	invMulti := createInv("V-002", &po.ID, 2900, []CreateInvoiceLineItemRequest{
+		{Description: ptr("Widget A"), Quantity: 10, UnitPrice: 250, PurchaseOrderLineItemID: &lineA.ID},
+		{Description: ptr("Widget B"), Quantity: 4, UnitPrice: 100, PurchaseOrderLineItemID: &lineB.ID},
+	})
+	// PO-linked but with no line items at all.
+	invNone := createInv("V-003", &po.ID, 0, nil)
+	// PO-linked, but its only line is not linked to any order line.
+	invUnlinked := createInv("V-004", &po.ID, 500, []CreateInvoiceLineItemRequest{
+		{Description: ptr("Freight"), Quantity: 1, UnitPrice: 500},
+	})
+	// No purchase order at all — must be absent from the summaries map.
+	createInv("V-005", nil, 100, []CreateInvoiceLineItemRequest{
+		{Description: ptr("Ad hoc"), Quantity: 1, UnitPrice: 100},
+	})
+
+	// Direct equivalence against the existing per-invoice function: the
+	// strongest form, since it makes no assumption about which statuses are
+	// correct for a given fixture.
+	assertEquivalent := func(stage string) {
+		t.Helper()
+		batch, err := d.GetIncomingInvoiceMatchSummaries(org.ID)
+		if err != nil {
+			t.Fatalf("%s: GetIncomingInvoiceMatchSummaries: %v", stage, err)
+		}
+		all, err := d.GetIncomingInvoices(org.ID)
+		if err != nil {
+			t.Fatalf("%s: GetIncomingInvoices: %v", stage, err)
+		}
+		poLinked := map[string]bool{}
+		for _, inv := range all {
+			if inv.PurchaseOrderID == nil {
+				if _, ok := batch[inv.ID]; ok {
+					t.Fatalf("%s: non-PO-linked invoice %s (%s) must not appear in summaries",
+						stage, inv.ID, inv.VendorInvoiceNumber)
+				}
+				continue
+			}
+			poLinked[inv.ID] = true
+			lines, err := d.GetIncomingInvoiceMatch(inv.ID)
+			if err != nil {
+				t.Fatalf("%s: GetIncomingInvoiceMatch(%s): %v", stage, inv.ID, err)
+			}
+			want := hasBlockingVariance(lines)
+			got, ok := batch[inv.ID]
+			if !ok {
+				t.Fatalf("%s: PO-linked invoice %s (%s) missing from summaries",
+					stage, inv.ID, inv.VendorInvoiceNumber)
+			}
+			if got != want {
+				t.Fatalf("%s: invoice %s (%s): summary=%v, per-invoice match=%v",
+					stage, inv.ID, inv.VendorInvoiceNumber, got, want)
+			}
+		}
+		if len(batch) != len(poLinked) {
+			t.Fatalf("%s: summaries has %d entries, want the %d PO-linked invoices",
+				stage, len(batch), len(poLinked))
+		}
+	}
+
+	assertEquivalent("fresh")
+
+	// Sanity-check the expected statuses on top of the equivalence assertion —
+	// equivalence alone could pass if both paths were wrong in the same way.
+	fresh, err := d.GetIncomingInvoiceMatchSummaries(org.ID)
+	if err != nil {
+		t.Fatalf("GetIncomingInvoiceMatchSummaries: %v", err)
+	}
+	if fresh[invMatched.ID] {
+		t.Fatal("a fully matched bill should not be flagged as having a variance")
+	}
+	if !fresh[invMulti.ID] {
+		t.Fatal("a bill over-billing an unreceived order line should be flagged")
+	}
+	if fresh[invNone.ID] {
+		t.Fatal("a PO-linked bill with no line items has no variance")
+	}
+	if fresh[invUnlinked.ID] {
+		t.Fatal("an unlinked line is informational and must not be flagged")
+	}
+
+	// Approve the matched single-line bill, then re-check: its own 10 units now
+	// appear in the org-wide billed totals, and must be subtracted back out for
+	// its own row while counting against the multi-line bill's line A.
+	if _, err := d.UpdateIncomingInvoiceState(invMatched.ID, "approved"); err != nil {
+		t.Fatalf("approve matched bill: %v", err)
+	}
+	assertEquivalent("after approving the matched bill")
+
+	// Approve the multi-line bill (overriding its variance) so the batch
+	// query's per-invoice subtraction is exercised against a bill with more
+	// than one billed line.
+	if _, err := d.UpdateIncomingInvoice(invMulti.ID, UpdateIncomingInvoiceRequest{
+		MatchOverride: ptr(1), MatchOverrideReason: ptr("test fixture"),
+	}); err != nil {
+		t.Fatalf("set multi-line bill override: %v", err)
+	}
+	if _, err := d.UpdateIncomingInvoiceState(invMulti.ID, "approved"); err != nil {
+		t.Fatalf("approve multi-line bill: %v", err)
+	}
+	assertEquivalent("after approving the multi-line bill")
 }
 
 // An override justifies one specific variance. Editing the financials can turn

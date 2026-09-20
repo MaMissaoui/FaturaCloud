@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Badge, Button, Col, Row, Table, Tooltip } from "antd";
+import { Alert, Badge, Button, Col, Row, Table, Tooltip } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -32,6 +32,13 @@ const BillOfMaterials = () => {
   const [summaries, setSummaries] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  // A failed summaries fetch used to leave summaries as {} and let every
+  // finished product fall through to the "None / no recipe defined yet"
+  // warning badge — telling the user correct recipes are missing (the F85
+  // failure mode). Tracked separately so a failed load shows a real error
+  // instead of a per-row false claim, while a genuinely-zero-count product
+  // still keeps its true empty-state badge.
+  const [failed, setFailed] = useState(false);
 
   const finishedProducts = useMemo(
     () => products.filter((p) => p.category === "finished"),
@@ -54,9 +61,14 @@ const BillOfMaterials = () => {
   const refresh = useCallback(() => {
     if (!organizationId) return;
     setLoading(true);
+    setFailed(false);
     Promise.all([setProducts(), GetBOMSummaries(organizationId)])
       .then(([, rows]) => {
         setSummaries(Object.fromEntries(rows.map((r) => [r.finishedProductId, r.componentCount])));
+      })
+      .catch(() => {
+        setSummaries({});
+        setFailed(true);
       })
       .finally(() => setLoading(false));
   }, [organizationId, setProducts]);
@@ -86,6 +98,21 @@ const BillOfMaterials = () => {
           </Button>
         }
       />
+
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the bill-of-materials summaries</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
@@ -152,6 +179,9 @@ const BillOfMaterials = () => {
               key="components"
               align="center"
               render={(p: Product) => {
+                // A failed summaries load must not read as "this product has
+                // no recipe" — show nothing rather than the warning badge.
+                if (failed) return "—";
                 const count = summaries[p.id] ?? 0;
                 return count > 0 ? (
                   <Badge status="success" text={count} />

@@ -623,11 +623,43 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// F103: re-verify both deletability conditions (state, and no live posted
+	// entry) against this transaction, which holds the only connection under
+	// SetMaxOpenConns(1) — a concurrent PATCH .../state could otherwise have
+	// committed in the gap between the pre-tx reads above and this Beginx,
+	// posting a GL entry that the delete would then orphan. The same
+	// predicates are repeated in the DELETE itself as the atomic backstop,
+	// mirroring DeleteJournalEntry/DeleteProductionOrder.
+	var liveState string
+	if err := tx.Get(&liveState, `SELECT state FROM invoices WHERE id = ?`, invoiceID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("delete_invoice state_check: %w", err)
+	}
+	if liveState == "paid" {
+		return false, newValidationError("cannot delete a paid invoice — cancel it instead")
+	}
+	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, "invoice", invoiceID)
+	if err != nil {
+		return false, err
+	}
+	if liveEntry != nil {
+		return false, newValidationError("cannot delete an invoice with a posted GL entry — cancel it instead")
+	}
+
 	if _, err = tx.Exec(`DELETE FROM invoiceLineItems WHERE invoiceId = ?`, invoiceID); err != nil {
 		return false, fmt.Errorf("delete_invoice items: %w", err)
 	}
 
-	res, err := tx.Exec(`DELETE FROM invoices WHERE id = ?`, invoiceID)
+	res, err := tx.Exec(`
+		DELETE FROM invoices
+		WHERE id = ? AND state <> 'paid'
+		  AND NOT EXISTS (
+			SELECT 1 FROM journal_entries
+			WHERE sourceDocumentType = 'invoice' AND sourceDocumentId = ?
+			  AND status = 'posted' AND reversalOfEntryId IS NULL
+		  )`, invoiceID, invoiceID)
 	if err != nil {
 		return false, fmt.Errorf("delete_invoice: %w", err)
 	}

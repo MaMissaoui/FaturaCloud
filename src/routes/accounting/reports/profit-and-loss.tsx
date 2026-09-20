@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Card, Col, Row, Select, Table, Typography, theme } from "antd";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Button, Card, Col, Row, Select, Table, Typography, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -24,6 +24,11 @@ const ProfitAndLossReport = () => {
   const [fiscalYearId, setFiscalYearId] = useState<string>("");
   const [report, setReport] = useState<ProfitAndLoss | null>(null);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset report to null, which rendered identically
+  // to a genuinely empty period — every total 0.00 and a green Net income
+  // card. Tracked separately so this page shows a real error instead of a
+  // false all-clear.
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     setFiscalYears();
@@ -45,14 +50,22 @@ const ProfitAndLossReport = () => {
     [fiscalYears, fiscalYearId],
   );
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     if (!organizationId || !selectedYear) return;
     setLoading(true);
+    setFailed(false);
     GetProfitAndLoss(organizationId, selectedYear.startDate, selectedYear.endDate)
       .then(setReport)
-      .catch(() => setReport(null))
+      .catch(() => {
+        setReport(null);
+        setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [organizationId, selectedYear]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
@@ -84,6 +97,20 @@ const ProfitAndLossReport = () => {
         }
       />
 
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the profit &amp; loss report</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
+
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} xl={12}>
           <Typography.Title level={5}>
@@ -103,7 +130,9 @@ const ProfitAndLossReport = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Typography.Text strong>{money(report?.totalRevenue ?? 0)}</Typography.Text>
+                  <Typography.Text strong>
+                    {failed ? "—" : money(report?.totalRevenue ?? 0)}
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}
@@ -127,7 +156,9 @@ const ProfitAndLossReport = () => {
                   </Typography.Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Typography.Text strong>{money(report?.totalExpenses ?? 0)}</Typography.Text>
+                  <Typography.Text strong>
+                    {failed ? "—" : money(report?.totalExpenses ?? 0)}
+                  </Typography.Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}
@@ -139,7 +170,11 @@ const ProfitAndLossReport = () => {
         <Col span={24}>
           <Card
             style={{
-              background: (report?.netIncome ?? 0) >= 0 ? token.colorSuccessBg : token.colorErrorBg,
+              background: failed
+                ? undefined
+                : (report?.netIncome ?? 0) >= 0
+                  ? token.colorSuccessBg
+                  : token.colorErrorBg,
             }}
           >
             <Row justify="space-between" align="middle">
@@ -153,10 +188,14 @@ const ProfitAndLossReport = () => {
                   level={3}
                   style={{
                     margin: 0,
-                    color: (report?.netIncome ?? 0) >= 0 ? token.colorSuccess : token.colorError,
+                    color: failed
+                      ? undefined
+                      : (report?.netIncome ?? 0) >= 0
+                        ? token.colorSuccess
+                        : token.colorError,
                   }}
                 >
-                  {money(report?.netIncome ?? 0)}
+                  {failed ? "—" : money(report?.netIncome ?? 0)}
                 </Typography.Title>
               </Col>
             </Row>

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -134,12 +135,26 @@ func (d *Database) GetUserOrganizationRoles(userID string) (map[string]string, e
 // existing admin exactly like UpdateOrganizationUserRole can, so it needs the
 // same last-org-admin guard or re-adding the sole admin at role "user" would
 // silently leave the organization with none.
+//
+// F98: the guard and the write run in one transaction. Reading the admin
+// count and then writing as two separate d.DB statements is a TOCTOU — two
+// concurrent demotions of an organization's last two admins can each read
+// "another admin exists" before either writes, and both commit, leaving zero.
+// There is no single-row index that can express this invariant (it's an
+// aggregate over the org's members), so the transaction is what makes the
+// guard race-free.
 func (d *Database) AddOrganizationUser(organizationID, userID, role string) (*OrganizationUser, error) {
 	if !validOrganizationUserRoles[role] {
 		return nil, newValidationError("role must be one of %q, %q, %q, %q, %q, %q", "admin", "general", "sales", "purchasing", "accounting", "cashbook")
 	}
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("add_organization_user begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op once committed
+
 	if role != "admin" {
-		isLast, err := d.isLastOrgAdmin(organizationID, userID)
+		isLast, err := isLastOrgAdminTx(tx, organizationID, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -148,33 +163,43 @@ func (d *Database) AddOrganizationUser(organizationID, userID, role string) (*Or
 		}
 	}
 	id, _ := gonanoid.New()
-	_, err := d.DB.Exec(
+	if _, err := tx.Exec(
 		`INSERT INTO organization_users (id, organizationId, userId, role)
 		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT(organizationId, userId) DO UPDATE SET role = excluded.role`,
 		id, organizationID, userID, role,
-	)
-	if err != nil {
+	); err != nil {
 		return nil, fmt.Errorf("add_organization_user: %w", err)
 	}
 	var ou OrganizationUser
-	if err := d.DB.Get(&ou,
+	if err := tx.Get(&ou,
 		`SELECT * FROM organization_users WHERE organizationId = ? AND userId = ?`,
 		organizationID, userID,
 	); err != nil {
 		return nil, fmt.Errorf("add_organization_user reload: %w", err)
 	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("add_organization_user commit: %w", err)
+	}
 	return &ou, nil
 }
 
 // UpdateOrganizationUserRole changes an existing member's role, refusing a
-// change that would demote the organization's last remaining admin.
+// change that would demote the organization's last remaining admin. The
+// guard and the UPDATE share one transaction (F98) — see AddOrganizationUser
+// for why the read-then-write shape it replaces was racy.
 func (d *Database) UpdateOrganizationUserRole(organizationID, userID, role string) error {
 	if !validOrganizationUserRoles[role] {
 		return newValidationError("role must be one of %q, %q, %q, %q, %q, %q", "admin", "general", "sales", "purchasing", "accounting", "cashbook")
 	}
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return fmt.Errorf("update_organization_user_role begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op once committed
+
 	if role != "admin" {
-		isLast, err := d.isLastOrgAdmin(organizationID, userID)
+		isLast, err := isLastOrgAdminTx(tx, organizationID, userID)
 		if err != nil {
 			return err
 		}
@@ -182,7 +207,7 @@ func (d *Database) UpdateOrganizationUserRole(organizationID, userID, role strin
 			return ErrLastOrgAdmin
 		}
 	}
-	result, err := d.DB.Exec(
+	result, err := tx.Exec(
 		`UPDATE organization_users SET role = ? WHERE organizationId = ? AND userId = ?`,
 		role, organizationID, userID,
 	)
@@ -192,20 +217,31 @@ func (d *Database) UpdateOrganizationUserRole(organizationID, userID, role strin
 	if n, _ := result.RowsAffected(); n == 0 {
 		return sql.ErrNoRows
 	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("update_organization_user_role commit: %w", err)
+	}
 	return nil
 }
 
 // RemoveOrganizationUser revokes userID's membership in organizationID,
-// refusing to remove the organization's last remaining admin.
+// refusing to remove the organization's last remaining admin. The guard and
+// the DELETE share one transaction (F98) — see AddOrganizationUser for why
+// the read-then-write shape it replaces was racy.
 func (d *Database) RemoveOrganizationUser(organizationID, userID string) error {
-	isLast, err := d.isLastOrgAdmin(organizationID, userID)
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return fmt.Errorf("remove_organization_user begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op once committed
+
+	isLast, err := isLastOrgAdminTx(tx, organizationID, userID)
 	if err != nil {
 		return err
 	}
 	if isLast {
 		return ErrLastOrgAdmin
 	}
-	result, err := d.DB.Exec(
+	result, err := tx.Exec(
 		`DELETE FROM organization_users WHERE organizationId = ? AND userId = ?`,
 		organizationID, userID,
 	)
@@ -214,6 +250,9 @@ func (d *Database) RemoveOrganizationUser(organizationID, userID string) error {
 	}
 	if n, _ := result.RowsAffected(); n == 0 {
 		return sql.ErrNoRows
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("remove_organization_user commit: %w", err)
 	}
 	return nil
 }
@@ -249,19 +288,31 @@ func (d *Database) GetOrganizationsWhereSoleAdmin(userID string) ([]Organization
 	return orgs, nil
 }
 
-// isLastOrgAdmin reports whether userID is currently an admin member of
+// isLastOrgAdminTx reports whether userID is currently an admin member of
 // organizationID and no other active admin member exists — i.e. whether
-// removing or demoting them would leave the organization with none.
-func (d *Database) isLastOrgAdmin(organizationID, userID string) (bool, error) {
-	role, isMember, err := d.GetOrganizationRole(organizationID, userID)
-	if err != nil {
-		return false, err
+// removing or demoting them would leave the organization with none. It takes
+// the caller's *sqlx.Tx and must be called after Beginx and before Commit:
+// this is the whole point of F98 — the same read under the same transaction
+// as the write it guards is what closes the concurrent-demotion race. It
+// deliberately does NOT touch d.DB (a d.DB read while a tx is open deadlocks
+// under db.SetMaxOpenConns(1), it doesn't error).
+func isLastOrgAdminTx(tx *sqlx.Tx, organizationID, userID string) (bool, error) {
+	var role string
+	err := tx.Get(&role,
+		`SELECT role FROM organization_users WHERE organizationId = ? AND userId = ?`,
+		organizationID, userID,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
 	}
-	if !isMember || role != "admin" {
+	if err != nil {
+		return false, fmt.Errorf("get_organization_role: %w", err)
+	}
+	if role != "admin" {
 		return false, nil
 	}
 	var otherAdmins int
-	err = d.DB.Get(&otherAdmins,
+	err = tx.Get(&otherAdmins,
 		`SELECT COUNT(*) FROM organization_users ou
 		 JOIN users u ON u.id = ou.userId
 		 WHERE ou.organizationId = ? AND ou.userId != ? AND ou.role = 'admin' AND u.isActive = 1`,

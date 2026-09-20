@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Account } from "src/types/models";
-import { App, Button, Form } from "antd";
+import { Alert, App, Button, Form } from "antd";
 import { useAtom, useSetAtom } from "jotai";
 import { ApartmentOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
@@ -79,6 +79,11 @@ export default function Organizations() {
 
   const [orgs, setOrgs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // A failed list fetch used to leave the table silently empty while loading
+  // cleared (the old try/finally had no catch, so the rejection was
+  // unhandled). Tracked separately so the page can show a real error with a
+  // Retry instead of an indistinguishable empty list.
+  const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -114,8 +119,14 @@ export default function Organizations() {
   const refreshGlobalOrgs = useSetAtom(setOrganizationsAtom);
   const reloadActiveOrganization = useSetAtom(reloadOrganizationAtom);
 
+  // Invalidates an in-flight openEdit if the user opens a different record
+  // (or "New organization") before its GetOrganization resolves, so a slow
+  // response can't populate or pop open a drawer out of turn.
+  const editRequestIdRef = useRef(0);
+
   const fetchOrgs = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const list = await GetOrganizations();
       setOrgs(list);
@@ -125,6 +136,9 @@ export default function Organizations() {
         () => ({}) as Record<string, OrganizationRole>,
       );
       setMyOrgAdminIds(new Set(Object.keys(roles).filter((orgId) => roles[orgId] === "admin")));
+    } catch (error) {
+      console.error("Failed to load organizations:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -143,6 +157,7 @@ export default function Organizations() {
     : orgs;
 
   const openNew = () => {
+    editRequestIdRef.current++;
     setEditingId(null);
     form.resetFields();
     form.setFieldsValue({ minimum_fraction_digits: 2, currency: "EUR" });
@@ -162,7 +177,7 @@ export default function Organizations() {
   };
 
   const openEdit = async (id: string) => {
-    setEditingId(id);
+    const requestId = ++editRequestIdRef.current;
     form.resetFields();
     setHasLogo(true);
     setLogoKey((k) => k + 1);
@@ -173,15 +188,14 @@ export default function Organizations() {
     setMembers([]);
     setNewMemberEmail("");
     setNewMemberRole("general");
-    setDrawerOpen(true);
-    // Listing members is org-admin gated — only fetch if this actor is known
-    // to administer this organization, to avoid a noisy 403 for everyone
-    // else opening the drawer to view/edit other fields.
-    if (myOrgAdminIds.has(id)) {
-      fetchMembers(id);
-    }
+    // Fetch the record before opening the drawer: on failure a blank edit
+    // form would be indistinguishable from a record with no data and a save
+    // from it could overwrite real fields with empty ones (F119), so surface
+    // the error and leave the drawer closed instead.
     try {
       const org = await GetOrganization(id);
+      if (requestId !== editRequestIdRef.current) return;
+      setEditingId(id);
       // Convert null date_format to undefined so the Select shows placeholder
       form.setFieldsValue({
         ...org,
@@ -195,11 +209,21 @@ export default function Organizations() {
             ? centsToUnits(org.defaultFiscalStampAmount)
             : undefined,
       });
-    } catch {}
-    try {
-      setEditingAccounts(await GetAccounts(id));
-    } catch {
-      // Accounting selects just render empty if this fails.
+      setDrawerOpen(true);
+      // Listing members is org-admin gated — only fetch if this actor is known
+      // to administer this organization, to avoid a noisy 403 for everyone
+      // else opening the drawer to view/edit other fields.
+      if (myOrgAdminIds.has(id)) {
+        fetchMembers(id);
+      }
+      try {
+        setEditingAccounts(await GetAccounts(id));
+      } catch {
+        // Accounting selects just render empty if this fails.
+      }
+    } catch (error) {
+      console.error("Failed to load organization:", error);
+      message.error(error instanceof Error ? error.message : t`Failed to load organization`);
     }
   };
 
@@ -341,7 +365,12 @@ export default function Organizations() {
       await fetchOrgs();
       refreshGlobalOrgs();
       handleClose();
-    } catch {
+    } catch (error) {
+      // Keep the drawer open with the user's input intact (handleClose is
+      // only reached on success above) and surface why the save failed —
+      // this catch previously swallowed the error with no toast at all.
+      console.error("Failed to save organization:", error);
+      message.error(error instanceof Error ? error.message : t`Failed to save organization`);
     } finally {
       setSubmitting(false);
     }
@@ -460,6 +489,20 @@ export default function Organizations() {
           </Button>
         }
       />
+
+      {loadError && (
+        <Alert
+          style={{ marginBottom: 12 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load organizations</Trans>}
+          action={
+            <Button size="small" onClick={fetchOrgs}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
 
       <OrganizationsTable
         dataSource={filteredOrgs}

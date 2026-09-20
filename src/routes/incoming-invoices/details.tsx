@@ -318,6 +318,17 @@ const IncomingInvoiceDetails = () => {
       }
     : undefined;
 
+  // Re-runs the async detail read after a failed fetch. Clearing the id and
+  // restoring it on the next tick is what actually invalidates the atom's
+  // cached read — re-setting the same id alone doesn't (jotai skips the
+  // notification when the value is unchanged), the same idiom
+  // orders/details.tsx uses after a status change.
+  const retryLoad = () => {
+    if (!id) return;
+    setInvoiceId(null);
+    setTimeout(() => setInvoiceId(id), 0);
+  };
+
   if (!organization) return null;
   if (!isNew && !invoice) {
     return (
@@ -327,7 +338,20 @@ const IncomingInvoiceDetails = () => {
           title={<Trans>Incoming Invoice</Trans>}
           style={{ marginBottom: 24 }}
         />
-        <Skeleton active paragraph={{ rows: 12 }} />
+        {invoiceLoadable.state === "loading" ? (
+          <Skeleton active paragraph={{ rows: 12 }} />
+        ) : (
+          <Alert
+            type="error"
+            showIcon
+            message={<Trans>Couldn't load this incoming invoice</Trans>}
+            action={
+              <Button size="small" onClick={retryLoad}>
+                <Trans>Retry</Trans>
+              </Button>
+            }
+          />
+        )}
       </>
     );
   }
