@@ -87,6 +87,7 @@ export const ProductSelectCell = ({
   disabled,
   rules,
   onSelect,
+  optionLabel,
 }: {
   fieldName: number;
   form: FormInstance;
@@ -95,6 +96,9 @@ export const ProductSelectCell = ({
   disabled?: boolean;
   rules?: any[];
   onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
+  // Custom option/selected label. Defaults to the SKU (falling back to the
+  // name) — pages that want the name visible too pass one.
+  optionLabel?: (product: any) => string;
 }) => {
   const currentId = Form.useWatch(["lineItems", fieldName, "productId"], form);
   const pool = all ?? offered;
@@ -125,7 +129,7 @@ export const ProductSelectCell = ({
       >
         {map(options, (p: any) => (
           <Option key={p.id} value={p.id}>
-            {p.sku || p.name}
+            {optionLabel ? optionLabel(p) : p.sku || p.name}
           </Option>
         ))}
       </Select>
@@ -141,6 +145,8 @@ export type LineItemColumn =
       // Unfiltered product list, used only to resolve the label of a selected
       // product the `products` filter excludes (see ProductSelectCell).
       allProducts?: any[];
+      // Custom option/selected label; defaults to SKU (falling back to name).
+      optionLabel?: (product: any) => string;
       width?: number;
       required?: boolean;
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
@@ -307,6 +313,7 @@ const LineItemsTable = ({
                               : []
                           }
                           onSelect={col.onSelect}
+                          optionLabel={col.optionLabel}
                         />
                       )}
                     />

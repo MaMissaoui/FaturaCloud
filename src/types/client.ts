@@ -29,4 +29,11 @@ export interface Client {
   // identity documents). iban is search/reference only.
   identity_number?: string | null;
   iban?: string | null;
+  // Cash Book counter fields (migration 0087): a single free-text address
+  // for the quick "New customer" modal, two extra phone numbers, and a
+  // guarantor (French: garant).
+  phone2?: string | null;
+  phone3?: string | null;
+  guarantor?: string | null;
+  address?: string | null;
 }

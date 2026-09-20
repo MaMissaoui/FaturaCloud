@@ -91,9 +91,14 @@ const { TextArea } = Input;
 // comment) rather than a client-creation call followed by a separate sale.
 interface NewClientDraft {
   name: string;
-  phone?: string;
+  // Mandatory, like the modal field (a walk-in is identified by phone).
+  phone: string;
+  phone2?: string;
+  phone3?: string;
+  address?: string;
   identity_number?: string;
   iban?: string;
+  guarantor?: string;
 }
 
 // Labels/colors for CashMovementDetail.kind — see
@@ -123,6 +128,31 @@ const movementKindColor = (kind: CashMovementDetail["kind"]) => {
     case "withdrawal":
       return "default";
   }
+};
+
+// One-line customer summary — the same identifying fields the search results
+// show (customer no., phone, CIN, IBAN, address). Shared by the search list
+// and the loan-status customer filter so a cashier can tell two same-named
+// customers apart without leaving the report.
+const clientDetailLine = (c: any): string => {
+  const address =
+    c.address ||
+    [
+      [c.house_number, c.street].filter(Boolean).join(" "),
+      [c.postal_code, c.city].filter(Boolean).join(" "),
+    ]
+      .filter(Boolean)
+      .join(", ");
+  return [
+    c.code ? `${t`Customer no.`} ${c.code}` : null,
+    [c.phone, c.phone2, c.phone3].filter(Boolean).join(" / ") || null,
+    c.identity_number ? `${t`CIN`} ${c.identity_number}` : null,
+    c.iban,
+    address || null,
+    c.guarantor ? `${t`Guarantor`}: ${c.guarantor}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 };
 
 // Cash Book: a single fast-entry screen for a walk-in retail counter —
@@ -466,9 +496,13 @@ const CashBook = () => {
     setLoanStatusClientId("");
     setNewClientDraft({
       name: values.name,
-      phone: phone || undefined,
+      phone,
+      phone2: values.phone2?.trim() || undefined,
+      phone3: values.phone3?.trim() || undefined,
+      address: values.address?.trim() || undefined,
       identity_number: values.identity_number || undefined,
       iban: values.iban || undefined,
+      guarantor: values.guarantor?.trim() || undefined,
     });
     resetSaleForm();
   };
@@ -709,23 +743,7 @@ const CashBook = () => {
           locale={{ emptyText: <Trans>No matching customers</Trans> }}
           style={{ marginBottom: 16 }}
           renderItem={(client: any) => {
-            const codeLabel = t`Customer no.`;
-            const cinLabel = t`CIN`;
-            const address = [
-              [client.house_number, client.street].filter(Boolean).join(" "),
-              [client.postal_code, client.city].filter(Boolean).join(" "),
-            ]
-              .filter(Boolean)
-              .join(", ");
-            const details = [
-              client.code ? `${codeLabel} ${client.code}` : null,
-              client.phone,
-              client.identity_number ? `${cinLabel} ${client.identity_number}` : null,
-              client.iban,
-              address || null,
-            ]
-              .filter(Boolean)
-              .join(" · ");
+            const details = clientDetailLine(client);
             const openLoan = openLoanByClient.get(client.id);
             return (
               <List.Item
@@ -853,6 +871,10 @@ const CashBook = () => {
                     kind: "product",
                     products: sellableProducts,
                     allProducts: products,
+                    // The counter picker shows the product name (with the SKU
+                    // as a suffix when it has one) rather than the SKU alone —
+                    // a cashier picks by name.
+                    optionLabel: (p: any) => (p.sku ? `${p.name} · ${p.sku}` : p.name),
                     onSelect: (productId, fieldName, formInstance) => {
                       const product = find(products, { id: productId }) as any;
                       if (product) {
@@ -1251,11 +1273,17 @@ const CashBook = () => {
               allowClear
               showSearch
               optionFilterProp="children"
-              style={{ minWidth: 220 }}
+              style={{ minWidth: 260 }}
+              popupMatchSelectWidth={360}
             >
               {(clients as any[]).map((c) => (
-                <Option key={c.id} value={c.id}>
-                  {c.name}
+                <Option key={c.id} value={c.id} label={c.name}>
+                  <div>{c.name}</div>
+                  {clientDetailLine(c) && (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {clientDetailLine(c)}
+                    </Typography.Text>
+                  )}
                 </Option>
               ))}
             </Select>
@@ -1343,13 +1371,29 @@ const CashBook = () => {
           >
             <Input autoFocus />
           </Form.Item>
-          <Form.Item label={t`Mobile number`} name="phone">
+          <Form.Item
+            label={t`Mobile number`}
+            name="phone"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item label={t`Phone 2`} name="phone2">
+            <Input />
+          </Form.Item>
+          <Form.Item label={t`Phone 3`} name="phone3">
+            <Input />
+          </Form.Item>
+          <Form.Item label={t`Address`} name="address">
             <Input />
           </Form.Item>
           <Form.Item label={t`Identity number`} name="identity_number">
             <Input />
           </Form.Item>
           <Form.Item label={t`IBAN`} name="iban">
+            <Input />
+          </Form.Item>
+          <Form.Item label={t`Guarantor`} name="guarantor">
             <Input />
           </Form.Item>
         </Form>
