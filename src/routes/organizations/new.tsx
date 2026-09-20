@@ -3,6 +3,7 @@ import { CloseOutlined } from "@ant-design/icons";
 import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
+import { nanoid } from "nanoid";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import compact from "lodash/compact";
@@ -10,13 +11,15 @@ import map from "lodash/map";
 import uniq from "lodash/uniq";
 
 import {
-  organizationAtom,
   organizationsAtom,
   organizationIdAtom,
+  setOrganizationsAtom,
   isCashbookAtom,
 } from "src/atoms/organization";
+import { CreateOrganization } from "src/api";
 import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
+import { message } from "src/utils/message";
 
 const { Title, Text } = Typography;
 
@@ -28,9 +31,9 @@ const NewOrganization = () => {
   const [form] = Form.useForm();
 
   // Atoms
-  const setOrganization = useSetAtom(organizationAtom);
   const organizations = useAtomValue(organizationsAtom);
   const [submitting, setSubmitting] = useAtom(submittingAtom);
+  const setOrganizations = useSetAtom(setOrganizationsAtom);
   const setOrganizationId = useSetAtom(organizationIdAtom);
 
   // The restricted cashbook role has no business creating organizations —
@@ -41,14 +44,35 @@ const NewOrganization = () => {
     if (isCashbook) navigate("/cash-book", { replace: true });
   }, [isCashbook, navigate]);
 
+  // Calls the API directly rather than going through organizationAtom:
+  // that atom swallows a failed save (it toasts and returns), so this page
+  // would navigate to the settings screen even when nothing was created.
+  // Keeping the error here lets it stay on the form and surface the reason,
+  // the same shape the organizations list's edit drawer uses.
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
-    // Clear organizationId to ensure we create a new organization
-    setOrganizationId(null);
-    await setOrganization(values);
-    setSubmitting(false);
-    // Navigate to the organization settings page after creation
-    navigate("/settings/organization");
+    try {
+      const newOrg = await CreateOrganization({
+        ...values,
+        id: nanoid(),
+        currency: values.currency || "EUR",
+        minimum_fraction_digits: values.minimum_fraction_digits ?? 2,
+        due_days: 7,
+        overdueCharge: 0,
+        invoiceNumberFormat: "#{number}",
+        invoiceNumberCounter: 0,
+      });
+      setOrganizations();
+      setOrganizationId(newOrg.id);
+      message.success(t`Organization created`);
+      // Navigate to the organization settings page after creation
+      navigate("/settings/organization");
+    } catch (error) {
+      console.error("Failed to create organization:", error);
+      message.error(error instanceof Error ? error.message : t`Organization creation failed`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
@@ -57,8 +81,8 @@ const NewOrganization = () => {
 
   return (
     <>
-      <Row style={{ marginTop: 100 }}>
-        <Col span={12} offset={6}>
+      <Row style={{ marginTop: 100 }} justify="center">
+        <Col xs={24} md={16} lg={12} style={{ padding: "0 16px" }}>
           <Card>
             <Text type="secondary" style={{ fontWeight: 400 }}>
               <Trans>Add a new organization to your account</Trans>
@@ -73,7 +97,11 @@ const NewOrganization = () => {
               style={{ marginTop: 24 }}
               initialValues={{ minimum_fraction_digits: 2 }}
             >
-              <Form.Item name="name" rules={[{ required: true, message: t`Please input name!` }]}>
+              <Form.Item
+                name="name"
+                label={t`Name`}
+                rules={[{ required: true, message: t`Please input name!` }]}
+              >
                 <Input placeholder={t`Name`} />
               </Form.Item>
               <Row gutter={16}>
