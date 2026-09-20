@@ -233,6 +233,24 @@ export type OrganizationUsageCount = {
   inboundDeliveries: number;
   incomingInvoices: number;
   stockMovements: number;
+  productionOrders: number;
+  imports: number;
+  cashMovements: number;
+  productSerialNumbers: number;
+  reconciliationGroups: number;
+  fiscalYears: number;
+  fiscalPeriods: number;
+  paymentTerms: number;
+  unitsOfMeasure: number;
+  documentTemplates: number;
+  documentTemplateSettings: number;
+  documentNumberSettings: number;
+  billOfMaterials: number;
+  billOfMaterialsVersions: number;
+  accounts: number;
+  journals: number;
+  journalEntries: number;
+  payments: number;
 };
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);
