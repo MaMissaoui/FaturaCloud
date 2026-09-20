@@ -1,3 +1,5 @@
+import { i18n } from "@lingui/core";
+
 export interface InvoiceFormatValidationResult {
   isValid: boolean;
   error?: string;
@@ -53,7 +55,7 @@ export const generateInvoiceNumber = (
   preview = preview.replace("{year}", date.getFullYear().toString());
   preview = preview.replace("{y}", String(date.getFullYear() % 100).padStart(2, "0"));
   preview = preview.replace("{month}", String(date.getMonth() + 1).padStart(2, "0"));
-  preview = preview.replace("{m}", date.toLocaleString("en", { month: "short" }));
+  preview = preview.replace("{m}", date.toLocaleString(i18n.locale || "en", { month: "short" }));
   preview = preview.replace("{day}", String(date.getDate()).padStart(2, "0"));
 
   // Replace client code variable

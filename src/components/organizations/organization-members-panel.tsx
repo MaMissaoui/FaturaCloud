@@ -73,16 +73,20 @@ export default function OrganizationMembersPanel({
             title={<Trans>Role</Trans>}
             key="role"
             width={160}
-            render={(_: unknown, record: OrganizationMember) => (
-              <Select
-                size="small"
-                value={record.role}
-                style={{ width: 140 }}
-                disabled={memberActionId === record.userId}
-                onChange={(role) => onMemberRoleChange(record.userId, role)}
-                options={roleOptions()}
-              />
-            )}
+            render={(_: unknown, record: OrganizationMember) => {
+              const memberLabel = record.displayName || record.email;
+              return (
+                <Select
+                  size="small"
+                  value={record.role}
+                  style={{ width: 140 }}
+                  disabled={memberActionId === record.userId}
+                  onChange={(role) => onMemberRoleChange(record.userId, role)}
+                  options={roleOptions()}
+                  aria-label={t`Role for ${memberLabel}`}
+                />
+              );
+            }}
           />
           <Table.Column
             title=""
@@ -109,6 +113,7 @@ export default function OrganizationMembersPanel({
         <Space.Compact style={{ width: "100%" }}>
           <Input
             placeholder={t`Email of an existing user`}
+            aria-label={t`Email of an existing user`}
             value={newMemberEmail}
             onChange={(e) => onNewMemberEmailChange(e.target.value)}
             onPressEnter={onAddMember}
@@ -118,6 +123,7 @@ export default function OrganizationMembersPanel({
             style={{ width: 140 }}
             onChange={onNewMemberRoleChange}
             options={roleOptions()}
+            aria-label={t`New member role`}
           />
           <Button
             type="primary"
