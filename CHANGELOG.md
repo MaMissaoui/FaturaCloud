@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.33.0] - 2026-09-20
+
+Third audit follow-up, plus a navigation change.
+
+### Changed
+- Organizations moved from the sidebar's Master Data group into the header
+  Settings menu (it's organization configuration, not day-to-day master
+  data); the Settings gear now highlights on the Organizations screen too.
+- Displayed timestamps (inventory movements, user last-login, backup times
+  and schedule) now follow the organization's date format instead of a
+  hardcoded pattern or the browser's own locale.
+
+### Fixed
+- The user edit drawer now surfaces a failed user load and closes, instead
+  of silently staying open on a blank form.
+
+### Performance
+- Stock writes batch their reads/inserts: one `IN (...)` query for the
+  inserted movements and one multi-row insert for new serial numbers, rather
+  than one statement per row/unit.
+
 ## [3.32.0] - 2026-09-20
 
 Second audit follow-up: database indexes/pragmas and UI/accessibility polish.
