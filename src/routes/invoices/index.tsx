@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button, Table, Typography, Dropdown, MenuProps, Popconfirm, Tooltip } from "antd";
+import { Button, Empty, Table, Typography, Dropdown, MenuProps, Popconfirm, Tooltip } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   FileTextOutlined,
@@ -150,6 +150,19 @@ const Invoices = () => {
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         rowKey="id"
         loading={loading}
+        locale={{
+          emptyText: search ? (
+            <Empty description={<Trans>No invoices match your search</Trans>} />
+          ) : (
+            <Empty description={<Trans>No invoices yet</Trans>}>
+              <Link to="/invoices/new">
+                <Button type="primary">
+                  <Trans>Create your first invoice</Trans>
+                </Button>
+              </Link>
+            </Empty>
+          ),
+        }}
         onRow={(record: InvoiceDisplay) => ({
           onClick: () => navigate(`/invoices/${record.id}`),
           onKeyDown: (e) => {
