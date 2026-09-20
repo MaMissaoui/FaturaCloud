@@ -324,11 +324,13 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		_, err = tx.Exec(`INSERT INTO clients (
 			id, organizationId, name, code, emails, phone, website,
 			registration_number, vatin, defaultCurrency, street, house_number, postal_code, city,
-			country_code, tax_number, default_buyer_reference, identity_number, iban
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			country_code, tax_number, default_buyer_reference, identity_number, iban,
+			phone2, phone3, guarantor, address
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			nc.ID, req.OrganizationID, nc.Name, nc.Code, nc.Emails, nc.Phone, nc.Website,
 			nc.RegistrationNumber, nc.Vatin, nc.DefaultCurrency, nc.Street, nc.HouseNumber, nc.PostalCode, nc.City,
 			nc.CountryCode, nc.TaxNumber, nc.DefaultBuyerReference, nc.IdentityNumber, nc.Iban,
+			nc.Phone2, nc.Phone3, nc.Guarantor, nc.Address,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("create_cash_sale insert_client: %w", err)

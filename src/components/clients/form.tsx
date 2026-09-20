@@ -241,6 +241,21 @@ const ClientForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
+                <Form.Item name="phone2" label={<Trans>Phone 2</Trans>}>
+                  <Input placeholder={t`Phone 2`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="phone3" label={<Trans>Phone 3</Trans>}>
+                  <Input placeholder={t`Phone 3`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="guarantor" label={<Trans>Guarantor</Trans>}>
+                  <Input placeholder={t`Guarantor`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
                 <Form.Item name="website" label={<Trans>Website</Trans>}>
                   <Input placeholder={t`Website`} />
                 </Form.Item>
@@ -293,6 +308,20 @@ const ClientForm = () => {
 
           <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
+              <Col xs={24}>
+                <Form.Item
+                  name="address"
+                  label={<Trans>Address</Trans>}
+                  tooltip={
+                    <Trans>
+                      Free-text address for the Cash Book's quick "New customer" form. The
+                      structured fields below are what appears on documents.
+                    </Trans>
+                  }
+                >
+                  <Input placeholder={t`Address`} />
+                </Form.Item>
+              </Col>
               <Col xs={24} md={12}>
                 <Form.Item name="country_code" label={<Trans>Country</Trans>}>
                   <Select
