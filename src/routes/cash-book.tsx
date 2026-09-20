@@ -138,7 +138,7 @@ const CashBook = () => {
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
   const {
-    token: { colorBgContainer },
+    token: { colorBgContainer, colorSuccess, colorError },
   } = theme.useToken();
 
   const organizationId = useAtomValue(organizationIdAtom);
@@ -910,7 +910,7 @@ const CashBook = () => {
         <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
           <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
             <Col>
-              <Typography.Text type="secondary">
+              <Typography.Text strong style={{ fontSize: 15 }}>
                 <Trans>Cash register</Trans>
               </Typography.Text>
               <div>
@@ -947,43 +947,59 @@ const CashBook = () => {
 
           {registerAccountId ? (
             <>
-              <Row gutter={16}>
+              <Row gutter={[16, 16]}>
                 <Col xs={12} sm={6}>
-                  <Typography.Text type="secondary">
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
                     <Trans>Opening</Trans>
                   </Typography.Text>
                   <div>
-                    <Typography.Title level={5} style={{ margin: 0 }}>
+                    <Typography.Title
+                      level={4}
+                      style={{ margin: 0, fontVariantNumeric: "tabular-nums" }}
+                    >
                       {dailyMovement ? money(dailyMovement.opening) : "—"}
                     </Typography.Title>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Typography.Text type="secondary">
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
                     <Trans>In</Trans>
                   </Typography.Text>
                   <div>
-                    <Typography.Title level={5} style={{ margin: 0 }}>
+                    <Typography.Title
+                      level={4}
+                      style={{
+                        margin: 0,
+                        fontVariantNumeric: "tabular-nums",
+                        color: colorSuccess,
+                      }}
+                    >
                       {dailyMovement ? money(dailyMovement.in) : "—"}
                     </Typography.Title>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Typography.Text type="secondary">
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
                     <Trans>Out</Trans>
                   </Typography.Text>
                   <div>
-                    <Typography.Title level={5} style={{ margin: 0 }}>
+                    <Typography.Title
+                      level={4}
+                      style={{ margin: 0, fontVariantNumeric: "tabular-nums", color: colorError }}
+                    >
                       {dailyMovement ? money(dailyMovement.out) : "—"}
                     </Typography.Title>
                   </div>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Typography.Text type="secondary">
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
                     <Trans>Closing</Trans>
                   </Typography.Text>
                   <div>
-                    <Typography.Title level={5} style={{ margin: 0 }}>
+                    <Typography.Title
+                      level={4}
+                      style={{ margin: 0, fontVariantNumeric: "tabular-nums" }}
+                    >
                       {dailyMovement ? money(dailyMovement.closing) : "—"}
                     </Typography.Title>
                   </div>
@@ -994,7 +1010,10 @@ const CashBook = () => {
             calendar date, this would visibly disagree with the picker
             instead of silently hiding the mismatch. */}
               {dailyMovement && (
-                <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", marginTop: 8, fontSize: 13 }}
+                >
                   <Trans>Movements for {dayjs(dailyMovement.date).format(dateFormat)}</Trans>
                 </Typography.Text>
               )}
@@ -1029,7 +1048,11 @@ const CashBook = () => {
                   key="amount"
                   align="right"
                   render={(row: CashMovementDetail) => (
-                    <Typography.Text type={row.direction === "in" ? "success" : "danger"}>
+                    <Typography.Text
+                      strong
+                      type={row.direction === "in" ? "success" : "danger"}
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
                       {row.direction === "in" ? "+" : "−"}
                       {money(row.amount)}
                     </Typography.Text>
