@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Alert,
@@ -9,14 +8,12 @@ import {
   Divider,
   Form,
   Input,
-  Layout,
   Popconfirm,
   Row,
   Select,
   Skeleton,
   Space,
   Tag,
-  theme,
   Tooltip,
   message,
 } from "antd";
@@ -40,6 +37,7 @@ import isString from "lodash/isString";
 import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import PageHeader from "src/components/page-header";
+import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 
@@ -80,7 +78,6 @@ import {
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Footer } = Layout;
 
 // Module-level so it's referentially stable across renders — StatusFlow is
 // memoized and an inline arrow here would defeat that on every keystroke.
@@ -99,9 +96,6 @@ const InboundDeliveryDetails = () => {
   const { id } = useParams<string>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
   const dateFormat = useDatePickerFormat();
 
   const isNew = id === "new";
@@ -574,97 +568,85 @@ const InboundDeliveryDetails = () => {
           ]}
         />
 
-        {document.getElementById("footer") &&
-          createPortal(
-            <Footer
-              style={{
-                position: "sticky",
-                bottom: 0,
-                zIndex: 1,
-                padding: "0 16px",
-                background: colorBgContainer,
-              }}
-            >
-              <Row align="middle" justify="space-between" style={{ height: 64 }}>
-                <Col>
-                  {!isNew && currentStatus !== "received" && (
-                    <Popconfirm
-                      title={t`Delete this goods receipt?`}
-                      onConfirm={handleDelete}
-                      okText={t`Yes`}
-                      cancelText={t`No`}
-                    >
-                      <Button type="dashed" danger>
-                        <DeleteOutlined /> <Trans>Delete</Trans>
-                      </Button>
-                    </Popconfirm>
-                  )}
-                </Col>
-                <Col>
-                  <Space>
-                    {transitions.map((transition) => (
-                      <Popconfirm
-                        key={transition.next}
-                        title={t`This will add the received quantities to stock. Continue?`}
-                        onConfirm={() => handleStatusChange(transition.next)}
-                        okText={t`Yes`}
-                        cancelText={t`No`}
-                      >
-                        <Button type={transition.type ?? "default"}>{transition.label}</Button>
-                      </Popconfirm>
-                    ))}
-                    {!isNew && currentStatus !== "cancelled" && (
-                      <Popconfirm
-                        title={
-                          currentStatus === "received"
-                            ? t`This will reverse the stock this receipt added. Continue?`
-                            : t`Cancel this goods receipt?`
-                        }
-                        onConfirm={() => handleStatusChange("cancelled")}
-                        okText={t`Yes`}
-                        cancelText={t`No`}
-                      >
-                        <Button type="dashed" danger>
-                          <Trans>Cancel receipt</Trans>
-                        </Button>
-                      </Popconfirm>
-                    )}
-                    {!isNew && (
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingPdf}
-                          onClick={handleServerExport("pdf")}
-                        >
-                          <FilePdfOutlined /> PDF
-                        </Button>
-                      </Tooltip>
-                    )}
-                    {!isNew && (
-                      // Always the server fill-and-convert path
-                      // (db/xlsx_export_inbound_delivery.go) — every receipt
-                      // has an embedded fallback template
-                      // (resolveTemplateBytes) to fill even with no org
-                      // override, so both buttons always work.
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingExcel}
-                          onClick={handleServerExport("xlsx")}
-                        >
-                          <FileExcelOutlined /> <Trans>Excel</Trans>
-                        </Button>
-                      </Tooltip>
-                    )}
-                    <Button type="primary" onClick={() => form.submit()}>
-                      <SaveOutlined /> <Trans>Save</Trans>
+        <ResponsiveFooter>
+          <Row align="middle" justify="space-between" style={{ height: 64 }}>
+            <Col>
+              {!isNew && currentStatus !== "received" && (
+                <Popconfirm
+                  title={t`Delete this goods receipt?`}
+                  onConfirm={handleDelete}
+                  okText={t`Yes`}
+                  cancelText={t`No`}
+                >
+                  <Button type="dashed" danger>
+                    <DeleteOutlined /> <Trans>Delete</Trans>
+                  </Button>
+                </Popconfirm>
+              )}
+            </Col>
+            <Col>
+              <Space>
+                {transitions.map((transition) => (
+                  <Popconfirm
+                    key={transition.next}
+                    title={t`This will add the received quantities to stock. Continue?`}
+                    onConfirm={() => handleStatusChange(transition.next)}
+                    okText={t`Yes`}
+                    cancelText={t`No`}
+                  >
+                    <Button type={transition.type ?? "default"}>{transition.label}</Button>
+                  </Popconfirm>
+                ))}
+                {!isNew && currentStatus !== "cancelled" && (
+                  <Popconfirm
+                    title={
+                      currentStatus === "received"
+                        ? t`This will reverse the stock this receipt added. Continue?`
+                        : t`Cancel this goods receipt?`
+                    }
+                    onConfirm={() => handleStatusChange("cancelled")}
+                    okText={t`Yes`}
+                    cancelText={t`No`}
+                  >
+                    <Button type="dashed" danger>
+                      <Trans>Cancel receipt</Trans>
                     </Button>
-                  </Space>
-                </Col>
-              </Row>
-            </Footer>,
-            document.getElementById("footer") as HTMLElement,
-          )}
+                  </Popconfirm>
+                )}
+                {!isNew && (
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingPdf}
+                      onClick={handleServerExport("pdf")}
+                    >
+                      <FilePdfOutlined /> PDF
+                    </Button>
+                  </Tooltip>
+                )}
+                {!isNew && (
+                  // Always the server fill-and-convert path
+                  // (db/xlsx_export_inbound_delivery.go) — every receipt
+                  // has an embedded fallback template
+                  // (resolveTemplateBytes) to fill even with no org
+                  // override, so both buttons always work.
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingExcel}
+                      onClick={handleServerExport("xlsx")}
+                    >
+                      <FileExcelOutlined /> <Trans>Excel</Trans>
+                    </Button>
+                  </Tooltip>
+                )}
+                <Button type="primary" onClick={() => form.submit()}>
+                  <SaveOutlined /> <Trans>Save</Trans>
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </ResponsiveFooter>
         <SerialCaptureModal
           open={serialCapture.open}
           mode="receive"

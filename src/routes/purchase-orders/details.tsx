@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import {
   Alert,
@@ -11,7 +10,6 @@ import {
   Divider,
   Form,
   Input,
-  Layout,
   message,
   Popconfirm,
   Row,
@@ -20,7 +18,6 @@ import {
   Space,
   Table,
   Tag,
-  theme,
   Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -48,6 +45,7 @@ import sum from "lodash/sum";
 
 import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from "src/api";
 import PageHeader from "src/components/page-header";
+import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
@@ -94,7 +92,6 @@ import {
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Footer } = Layout;
 
 // Module-level so it's referentially stable across renders — StatusFlow is
 // memoized and an inline arrow here would defeat that on every keystroke.
@@ -114,9 +111,6 @@ const PurchaseOrderDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { i18n } = useLingui();
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
   const dateFormat = useDatePickerFormat();
   const formatDate = useDateFormatter();
 
@@ -726,108 +720,92 @@ const PurchaseOrderDetails = () => {
         )}
 
         {/* Footer bar — portaled into the slot BaseLayout renders */}
-        {document.getElementById("footer") &&
-          createPortal(
-            <Footer
-              style={{
-                position: "sticky",
-                bottom: 0,
-                zIndex: 1,
-                padding: "0 16px",
-                background: colorBgContainer,
-              }}
-            >
-              <Row align="middle" justify="space-between" style={{ height: 64 }}>
-                <Col>
-                  {!isNew && currentStatus !== "received" && !lineItemsFrozen && (
+        <ResponsiveFooter>
+          <Row align="middle" justify="space-between" style={{ height: 64 }}>
+            <Col>
+              {!isNew && currentStatus !== "received" && !lineItemsFrozen && (
+                <Popconfirm
+                  title={t`Delete this purchase order?`}
+                  onConfirm={handleDelete}
+                  okText={t`Yes`}
+                  cancelText={t`No`}
+                >
+                  <Button type="dashed" danger>
+                    <DeleteOutlined /> <Trans>Delete</Trans>
+                  </Button>
+                </Popconfirm>
+              )}
+            </Col>
+            <Col>
+              <Space>
+                {transitions.map((transition) => (
+                  <Button
+                    key={transition.next}
+                    type={transition.type ?? "default"}
+                    onClick={() => handleStatusChange(transition.next)}
+                  >
+                    {transition.label}
+                  </Button>
+                ))}
+                {!isNew &&
+                  purchaseOrderStatusTransitionMatrix[
+                    currentStatus as PurchaseOrderStatus
+                  ]?.includes("cancelled") && (
                     <Popconfirm
-                      title={t`Delete this purchase order?`}
-                      onConfirm={handleDelete}
+                      title={t`Cancel this purchase order?`}
+                      onConfirm={() => handleStatusChange("cancelled")}
                       okText={t`Yes`}
                       cancelText={t`No`}
                     >
                       <Button type="dashed" danger>
-                        <DeleteOutlined /> <Trans>Delete</Trans>
+                        <Trans>Cancel order</Trans>
                       </Button>
                     </Popconfirm>
                   )}
-                </Col>
-                <Col>
-                  <Space>
-                    {transitions.map((transition) => (
-                      <Button
-                        key={transition.next}
-                        type={transition.type ?? "default"}
-                        onClick={() => handleStatusChange(transition.next)}
-                      >
-                        {transition.label}
-                      </Button>
-                    ))}
-                    {!isNew &&
-                      purchaseOrderStatusTransitionMatrix[
-                        currentStatus as PurchaseOrderStatus
-                      ]?.includes("cancelled") && (
-                        <Popconfirm
-                          title={t`Cancel this purchase order?`}
-                          onConfirm={() => handleStatusChange("cancelled")}
-                          okText={t`Yes`}
-                          cancelText={t`No`}
-                        >
-                          <Button type="dashed" danger>
-                            <Trans>Cancel order</Trans>
-                          </Button>
-                        </Popconfirm>
-                      )}
-                    {!isNew && (
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingPdf}
-                          onClick={handleServerExport("pdf")}
-                        >
-                          <FilePdfOutlined /> PDF
-                        </Button>
-                      </Tooltip>
-                    )}
-                    {!isNew && (
-                      // Always the server fill-and-convert path
-                      // (db/xlsx_export_purchase_order.go) — every purchase
-                      // order has an embedded fallback template
-                      // (resolveTemplateBytes) to fill even with no org
-                      // override, so both buttons always work.
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingExcel}
-                          onClick={handleServerExport("xlsx")}
-                        >
-                          <FileExcelOutlined /> <Trans>Excel</Trans>
-                        </Button>
-                      </Tooltip>
-                    )}
-                    {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
-                      <Button
-                        onClick={() => navigate(`/inbound-deliveries/new?purchaseOrderId=${id}`)}
-                      >
-                        <PlusOutlined /> <Trans>New goods receipt</Trans>
-                      </Button>
-                    )}
-                    {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
-                      <Button
-                        onClick={() => navigate(`/incoming-invoices/new?purchaseOrderId=${id}`)}
-                      >
-                        <PlusOutlined /> <Trans>New incoming invoice</Trans>
-                      </Button>
-                    )}
-                    <Button type="primary" onClick={() => form.submit()}>
-                      <SaveOutlined /> <Trans>Save</Trans>
+                {!isNew && (
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingPdf}
+                      onClick={handleServerExport("pdf")}
+                    >
+                      <FilePdfOutlined /> PDF
                     </Button>
-                  </Space>
-                </Col>
-              </Row>
-            </Footer>,
-            document.getElementById("footer") as HTMLElement,
-          )}
+                  </Tooltip>
+                )}
+                {!isNew && (
+                  // Always the server fill-and-convert path
+                  // (db/xlsx_export_purchase_order.go) — every purchase
+                  // order has an embedded fallback template
+                  // (resolveTemplateBytes) to fill even with no org
+                  // override, so both buttons always work.
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingExcel}
+                      onClick={handleServerExport("xlsx")}
+                    >
+                      <FileExcelOutlined /> <Trans>Excel</Trans>
+                    </Button>
+                  </Tooltip>
+                )}
+                {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
+                  <Button onClick={() => navigate(`/inbound-deliveries/new?purchaseOrderId=${id}`)}>
+                    <PlusOutlined /> <Trans>New goods receipt</Trans>
+                  </Button>
+                )}
+                {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
+                  <Button onClick={() => navigate(`/incoming-invoices/new?purchaseOrderId=${id}`)}>
+                    <PlusOutlined /> <Trans>New incoming invoice</Trans>
+                  </Button>
+                )}
+                <Button type="primary" onClick={() => form.submit()}>
+                  <SaveOutlined /> <Trans>Save</Trans>
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </ResponsiveFooter>
       </Form>
     </>
   );

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Alert,
@@ -12,7 +11,6 @@ import {
   Dropdown,
   Form,
   Input,
-  Layout,
   Popconfirm,
   Row,
   Select,
@@ -20,7 +18,6 @@ import {
   Space,
   Table,
   Tag,
-  theme,
   Tooltip,
   message,
 } from "antd";
@@ -48,6 +45,7 @@ import {
   GetPurchaseOrderLineItems,
 } from "src/api";
 import PageHeader from "src/components/page-header";
+import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat } from "src/utils/date";
@@ -89,7 +87,6 @@ import {
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Footer } = Layout;
 
 // incomingInvoiceAtom is async; reading it with plain useAtom throws to the
 // app's single top-level Suspense boundary whenever incomingInvoiceIdAtom
@@ -105,9 +102,6 @@ const IncomingInvoiceDetails = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { i18n } = useLingui();
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
   const dateFormat = useDatePickerFormat();
 
   const isNew = id === "new";
@@ -686,70 +680,58 @@ const IncomingInvoiceDetails = () => {
           />
         )}
 
-        {document.getElementById("footer") &&
-          createPortal(
-            <Footer
-              style={{
-                position: "sticky",
-                bottom: 0,
-                zIndex: 1,
-                padding: "0 16px",
-                background: colorBgContainer,
-              }}
-            >
-              <Row align="middle" justify="space-between" style={{ height: 64 }}>
-                <Col>
-                  {!isNew && (
-                    <Popconfirm
-                      title={t`Delete this incoming invoice?`}
-                      onConfirm={handleDelete}
-                      okText={t`Yes`}
-                      cancelText={t`No`}
+        <ResponsiveFooter>
+          <Row align="middle" justify="space-between" style={{ height: 64 }}>
+            <Col>
+              {!isNew && (
+                <Popconfirm
+                  title={t`Delete this incoming invoice?`}
+                  onConfirm={handleDelete}
+                  okText={t`Yes`}
+                  cancelText={t`No`}
+                >
+                  <Button type="dashed" danger>
+                    <DeleteOutlined /> <Trans>Delete</Trans>
+                  </Button>
+                </Popconfirm>
+              )}
+            </Col>
+            <Col>
+              <Space>
+                {!isNew && (
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingPdf}
+                      onClick={handleServerExport("pdf")}
                     >
-                      <Button type="dashed" danger>
-                        <DeleteOutlined /> <Trans>Delete</Trans>
-                      </Button>
-                    </Popconfirm>
-                  )}
-                </Col>
-                <Col>
-                  <Space>
-                    {!isNew && (
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingPdf}
-                          onClick={handleServerExport("pdf")}
-                        >
-                          <FilePdfOutlined /> PDF
-                        </Button>
-                      </Tooltip>
-                    )}
-                    {!isNew && (
-                      // Always the server fill-and-convert path
-                      // (db/xlsx_export_incoming_invoice.go) — every incoming
-                      // invoice has an embedded fallback template
-                      // (resolveTemplateBytes) to fill even with no org
-                      // override, so both buttons always work.
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingExcel}
-                          onClick={handleServerExport("xlsx")}
-                        >
-                          <FileExcelOutlined /> <Trans>Excel</Trans>
-                        </Button>
-                      </Tooltip>
-                    )}
-                    <Button type="primary" onClick={() => form.submit()}>
-                      <SaveOutlined /> <Trans>Save</Trans>
+                      <FilePdfOutlined /> PDF
                     </Button>
-                  </Space>
-                </Col>
-              </Row>
-            </Footer>,
-            document.getElementById("footer") as HTMLElement,
-          )}
+                  </Tooltip>
+                )}
+                {!isNew && (
+                  // Always the server fill-and-convert path
+                  // (db/xlsx_export_incoming_invoice.go) — every incoming
+                  // invoice has an embedded fallback template
+                  // (resolveTemplateBytes) to fill even with no org
+                  // override, so both buttons always work.
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingExcel}
+                      onClick={handleServerExport("xlsx")}
+                    >
+                      <FileExcelOutlined /> <Trans>Excel</Trans>
+                    </Button>
+                  </Tooltip>
+                )}
+                <Button type="primary" onClick={() => form.submit()}>
+                  <SaveOutlined /> <Trans>Save</Trans>
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </ResponsiveFooter>
       </Form>
     </>
   );

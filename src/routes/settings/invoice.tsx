@@ -6,7 +6,6 @@ import {
   Form,
   Input,
   InputNumber,
-  Layout,
   Row,
   Space,
   Typography,
@@ -20,17 +19,16 @@ import {
   SaveOutlined,
 } from "@ant-design/icons";
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import isEmpty from "lodash/isEmpty";
 
 import { organizationAtom, setOrganizationsAtom } from "src/atoms/organization";
+import ResponsiveFooter from "src/components/responsive-footer";
 import { validateInvoiceFormat, generateInvoiceNumber } from "src/utils/invoice";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
-const { Footer } = Layout;
 
 const submittingAtom = atom(false);
 
@@ -251,32 +249,20 @@ function SettingsInvoice() {
           stays reachable regardless of viewport height or scroll position,
           matching the document detail pages (e.g. purchase-orders/details.tsx)
           rather than scrolling out of view as a trailing in-flow button. */}
-      {document.getElementById("footer") &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: token.colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="end" style={{ height: 64 }}>
-              <Col>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  loading={submitting}
-                  onClick={() => form.submit()}
-                >
-                  <Trans>Save</Trans>
-                </Button>
-              </Col>
-            </Row>
-          </Footer>,
-          document.getElementById("footer") as HTMLElement,
-        )}
+      <ResponsiveFooter>
+        <Row align="middle" justify="end" style={{ height: 64 }}>
+          <Col>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={submitting}
+              onClick={() => form.submit()}
+            >
+              <Trans>Save</Trans>
+            </Button>
+          </Col>
+        </Row>
+      </ResponsiveFooter>
     </div>
   );
 }

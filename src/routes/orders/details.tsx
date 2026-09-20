@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   Alert,
@@ -11,7 +10,6 @@ import {
   Divider,
   Form,
   Input,
-  Layout,
   message,
   Popconfirm,
   Row,
@@ -20,7 +18,6 @@ import {
   Space,
   Table,
   Tag,
-  theme,
   Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -47,6 +44,7 @@ import map from "lodash/map";
 import sum from "lodash/sum";
 import { ExportOrderDocument, GetOrderDeliveredQuantities } from "src/api";
 import PageHeader from "src/components/page-header";
+import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
@@ -81,7 +79,6 @@ import { deliveryStatusColor, deliveryStatusLabel, type DeliveryStatus } from "s
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Footer } = Layout;
 
 // Module-level so it's referentially stable across renders — StatusFlow is
 // memoized and an inline arrow here would defeat that on every keystroke.
@@ -99,9 +96,6 @@ const OrderDetails = () => {
   const { id } = useParams<string>();
   const navigate = useNavigate();
   const { i18n } = useLingui();
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
   const dateFormat = useDatePickerFormat();
   const formatDate = useDateFormatter();
 
@@ -570,100 +564,88 @@ const OrderDetails = () => {
         )}
 
         {/* Footer bar */}
-        {document.getElementById("footer") &&
-          createPortal(
-            <Footer
-              style={{
-                position: "sticky",
-                bottom: 0,
-                zIndex: 1,
-                padding: "0 16px",
-                background: colorBgContainer,
-              }}
-            >
-              <Row align="middle" justify="space-between" style={{ height: 64 }}>
-                <Col>
-                  {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
+        <ResponsiveFooter>
+          <Row align="middle" justify="space-between" style={{ height: 64 }}>
+            <Col>
+              {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
+                <Popconfirm
+                  title={t`Delete this order?`}
+                  onConfirm={handleDelete}
+                  okText={t`Yes`}
+                  cancelText={t`No`}
+                >
+                  <Button type="dashed" danger>
+                    <DeleteOutlined /> <Trans>Delete</Trans>
+                  </Button>
+                </Popconfirm>
+              )}
+            </Col>
+            <Col>
+              <Space>
+                {!isNew &&
+                  transitions.map((t2) => (
+                    <Button
+                      key={t2.next}
+                      type={t2.type ?? "default"}
+                      onClick={() => handleStatusChange(t2.next)}
+                    >
+                      {t2.label}
+                    </Button>
+                  ))}
+                {!isNew &&
+                  orderStatusTransitionMatrix[currentStatus as OrderStatus]?.includes(
+                    "cancelled",
+                  ) && (
                     <Popconfirm
-                      title={t`Delete this order?`}
-                      onConfirm={handleDelete}
+                      title={t`Cancel this order?`}
+                      onConfirm={() => handleStatusChange("cancelled")}
                       okText={t`Yes`}
                       cancelText={t`No`}
                     >
                       <Button type="dashed" danger>
-                        <DeleteOutlined /> <Trans>Delete</Trans>
+                        <Trans>Cancel order</Trans>
                       </Button>
                     </Popconfirm>
                   )}
-                </Col>
-                <Col>
-                  <Space>
-                    {!isNew &&
-                      transitions.map((t2) => (
-                        <Button
-                          key={t2.next}
-                          type={t2.type ?? "default"}
-                          onClick={() => handleStatusChange(t2.next)}
-                        >
-                          {t2.label}
-                        </Button>
-                      ))}
-                    {!isNew &&
-                      orderStatusTransitionMatrix[currentStatus as OrderStatus]?.includes(
-                        "cancelled",
-                      ) && (
-                        <Popconfirm
-                          title={t`Cancel this order?`}
-                          onConfirm={() => handleStatusChange("cancelled")}
-                          okText={t`Yes`}
-                          cancelText={t`No`}
-                        >
-                          <Button type="dashed" danger>
-                            <Trans>Cancel order</Trans>
-                          </Button>
-                        </Popconfirm>
-                      )}
-                    {!isNew && (
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingPdf}
-                          onClick={handleServerExport("pdf")}
-                        >
-                          <FilePdfOutlined /> PDF
-                        </Button>
-                      </Tooltip>
-                    )}
-                    {!isNew && (
-                      // Always the server fill-and-convert path
-                      // (db/xlsx_export_order.go) — every order has an
-                      // embedded fallback template (resolveTemplateBytes) to
-                      // fill even with no org override, so both buttons
-                      // always work.
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingExcel}
-                          onClick={handleServerExport("xlsx")}
-                        >
-                          <FileExcelOutlined /> <Trans>Excel</Trans>
-                        </Button>
-                      </Tooltip>
-                    )}
-                    {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
-                      <Button onClick={() => navigate(`/deliveries/new?orderId=${id}`)}>
-                        <PlusOutlined /> <Trans>New delivery</Trans>
-                      </Button>
-                    )}
-                    <Button type="primary" onClick={() => form.submit()}>
-                      <SaveOutlined /> <Trans>Save</Trans>
+                {!isNew && (
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingPdf}
+                      onClick={handleServerExport("pdf")}
+                    >
+                      <FilePdfOutlined /> PDF
                     </Button>
-                  </Space>
-                </Col>
-              </Row>
-            </Footer>,
-            document.getElementById("footer") as HTMLElement,
-          )}
+                  </Tooltip>
+                )}
+                {!isNew && (
+                  // Always the server fill-and-convert path
+                  // (db/xlsx_export_order.go) — every order has an
+                  // embedded fallback template (resolveTemplateBytes) to
+                  // fill even with no org override, so both buttons
+                  // always work.
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingExcel}
+                      onClick={handleServerExport("xlsx")}
+                    >
+                      <FileExcelOutlined /> <Trans>Excel</Trans>
+                    </Button>
+                  </Tooltip>
+                )}
+                {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
+                  <Button onClick={() => navigate(`/deliveries/new?orderId=${id}`)}>
+                    <PlusOutlined /> <Trans>New delivery</Trans>
+                  </Button>
+                )}
+                <Button type="primary" onClick={() => form.submit()}>
+                  <SaveOutlined /> <Trans>Save</Trans>
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </ResponsiveFooter>
       </Form>
     </>
   );
