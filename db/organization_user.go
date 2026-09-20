@@ -16,14 +16,14 @@ import (
 var ErrLastOrgAdmin = errors.New("organization must keep at least one admin member")
 
 // validOrganizationUserRoles are the only values organization_users.role may
-// take (also enforced by a DB-level CHECK constraint, migration 0081).
-// "admin" and "general" (a straight rename of the old "user") can read/write
-// everything non-admin-gated; the other four are narrow domain roles —
-// write access to their own domain only, read access to everything, same as
-// every member already had — enforced in api/router.go and the Create*
-// handlers, not here.
+// take (also enforced by a DB-level CHECK constraint, migration 0086).
+// "admin", "power_user" and "general" can read/write everything
+// non-admin-gated; the other four are narrow domain roles — write access to
+// their own domain only, read access to everything, same as every member
+// already had — enforced in api/router.go and the Create* handlers, not here.
 var validOrganizationUserRoles = map[string]bool{
 	"admin":      true,
+	"power_user": true,
 	"general":    true,
 	"sales":      true,
 	"purchasing": true,
@@ -145,7 +145,7 @@ func (d *Database) GetUserOrganizationRoles(userID string) (map[string]string, e
 // guard race-free.
 func (d *Database) AddOrganizationUser(organizationID, userID, role string) (*OrganizationUser, error) {
 	if !validOrganizationUserRoles[role] {
-		return nil, newValidationError("role must be one of %q, %q, %q, %q, %q, %q", "admin", "general", "sales", "purchasing", "accounting", "cashbook")
+		return nil, newValidationError("role must be one of %q, %q, %q, %q, %q, %q, %q", "admin", "power_user", "general", "sales", "purchasing", "accounting", "cashbook")
 	}
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -190,7 +190,7 @@ func (d *Database) AddOrganizationUser(organizationID, userID, role string) (*Or
 // for why the read-then-write shape it replaces was racy.
 func (d *Database) UpdateOrganizationUserRole(organizationID, userID, role string) error {
 	if !validOrganizationUserRoles[role] {
-		return newValidationError("role must be one of %q, %q, %q, %q, %q, %q", "admin", "general", "sales", "purchasing", "accounting", "cashbook")
+		return newValidationError("role must be one of %q, %q, %q, %q, %q, %q, %q", "admin", "power_user", "general", "sales", "purchasing", "accounting", "cashbook")
 	}
 	tx, err := d.DB.Beginx()
 	if err != nil {

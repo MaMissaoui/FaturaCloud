@@ -82,6 +82,7 @@ import {
   organizationAtom,
   isOrgAdminOrAccountingAtom,
   isCashbookAtom,
+  isGeneralRoleAtom,
 } from "src/atoms/organization";
 import { currentUserAtom, isPlatformAdminAtom } from "src/atoms/auth";
 import { GetVersion, Logout } from "src/api";
@@ -150,6 +151,7 @@ export default function BaseLayout() {
   const isPlatformAdmin = useAtomValue(isPlatformAdminAtom);
   const canAccessGLExport = useAtomValue(isOrgAdminOrAccountingAtom);
   const isCashbook = useAtomValue(isCashbookAtom);
+  const isGeneral = useAtomValue(isGeneralRoleAtom);
 
   // The cashbook (counter/till) role gets a deliberately reduced view: only
   // Cash Book and Clients are reachable. Enforced here rather than only by
@@ -165,6 +167,17 @@ export default function BaseLayout() {
       location.pathname.startsWith("/clients/");
     if (!allowed) navigate("/cash-book", { replace: true });
   }, [isCashbook, location.pathname, navigate]);
+
+  // The "general" role also loses three sections (Accounting, Imports, Bill
+  // of Materials) — hidden in the menu below and enforced here for direct
+  // URLs. Same UI-only caveat as above.
+  useEffect(() => {
+    if (!isGeneral) return;
+    const blocked = ["/accounting", "/imports", "/bill-of-materials"];
+    if (blocked.some((p) => location.pathname === p || location.pathname.startsWith(p + "/"))) {
+      navigate("/invoices", { replace: true });
+    }
+  }, [isGeneral, location.pathname, navigate]);
 
   const handleLogout = () => {
     Logout();
@@ -777,6 +790,21 @@ export default function BaseLayout() {
                     ],
                   },
                 ]
+                  // The "general" role has no Accounting group, no Imports
+                  // (a Purchasing child) and no Bill of Materials (a Master
+                  // Data child). Applied to the literal rather than moving it
+                  // to a variable so the menu's indentation doesn't churn.
+                  .filter((item) => !isGeneral || item?.key !== "group-accounting")
+                  .map((item) =>
+                    !isGeneral || !item || !("children" in item) || !item.children
+                      ? item
+                      : {
+                          ...item,
+                          children: item.children.filter(
+                            (c) => c?.key !== "imports" && c?.key !== "bill-of-materials",
+                          ),
+                        },
+                  )
           }
         />
       </Sider>

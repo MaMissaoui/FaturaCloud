@@ -306,6 +306,7 @@ export const DeleteOrganizationLogo = (id: string) => del<void>(`/organizations/
 // still reading everything, same as every member always could.
 export type OrganizationRole =
   | "admin"
+  | "power_user"
   | "general"
   | "sales"
   | "purchasing"
