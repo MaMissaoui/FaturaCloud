@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.29.1] - 2026-09-20
+
+Cash Book UI polish and a fix for its PDF report exports.
+
+### Added
+- Cash Book: each search result's detail line now shows the customer's
+  number, phone, CIN, IBAN and address, plus their total open loan
+  highlighted at the end — so the right customer can be picked without
+  opening each one.
+
+### Changed
+- Cash Book: larger section titles and card borders, and a reworked sale
+  header layout.
+
+### Fixed
+- Cash Book report exports (Daily cash movements, Loan status): the PDF
+  now fits one page wide with minimal print margins, instead of
+  overflowing the printable width and spilling the Loan status table's
+  columns onto a second page.
+
 ## [3.29.0] - 2026-09-20
 
 Remediation of the 2026-09-19 full-repo audit (F96–F139), plus Cash Book
