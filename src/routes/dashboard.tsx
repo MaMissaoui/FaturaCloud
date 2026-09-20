@@ -20,7 +20,17 @@ import type {
   ProductRevenue,
 } from "src/api";
 import PageHeader from "src/components/page-header";
-import { formatOrgCents } from "src/utils/currencies";
+import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
+
+// Stock quantities are a display concern only — the organization's
+// country-derived locale (falling back to the viewer's UI language) renders
+// "2,5" not a hardcoded "."; whole values stay clean and fractions are capped
+// at 2 decimals.
+const formatQty = (qty: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(qty);
 
 const MONTH_OPTIONS = [3, 6, 12, 24];
 
@@ -92,6 +102,7 @@ const Dashboard = () => {
   }, [fetchDashboard]);
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
+  const qtyLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;
 
   const revenueTotal = (data?.revenueByMonth ?? []).reduce((sum, m) => sum + m.revenue, 0);
 
@@ -355,7 +366,7 @@ const Dashboard = () => {
                 dataIndex="quantity"
                 key="quantity"
                 align="right"
-                render={(qty: number) => (qty % 1 === 0 ? qty : qty.toFixed(2))}
+                render={(qty: number) => formatQty(qty, qtyLocale)}
               />
               <Table.Column
                 title={<Trans>Value</Trans>}

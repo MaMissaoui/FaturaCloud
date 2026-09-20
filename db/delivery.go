@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -743,9 +744,43 @@ func (d *Database) DeleteDelivery(id string) (bool, error) {
 		return false, newValidationError("cannot delete a %s delivery — cancel it instead", current.Status)
 	}
 
-	res, err := d.DB.Exec(`DELETE FROM outbound_deliveries WHERE id = ?`, id)
+	// F103: previously no transaction at all — the pre-check read and the
+	// unconditional DELETE left a window in which a concurrent draft->shipped
+	// PATCH could commit, after which deleting the delivery would orphan the
+	// stockMovements and COGS entry it had just posted. Both now share one
+	// transaction (holding the only connection under SetMaxOpenConns(1)), the
+	// status is re-read through tx, and the DELETE repeats the predicate as
+	// the atomic backstop — same guard shape as DeleteJournalEntry/
+	// DeleteProductionOrder.
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return false, fmt.Errorf("delete_delivery begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var liveStatus string
+	err = tx.Get(&liveStatus, `SELECT status FROM outbound_deliveries WHERE id = ?`, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Deleted by another request between the pre-tx read and Beginx —
+		// same terminal state as the original's 0-rows-affected result.
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("delete_delivery status_check: %w", err)
+	}
+	if liveStatus == "shipped" || liveStatus == "delivered" {
+		return false, newValidationError("cannot delete a %s delivery — cancel it instead", liveStatus)
+	}
+
+	res, err := tx.Exec(
+		`DELETE FROM outbound_deliveries WHERE id = ? AND status NOT IN ('shipped', 'delivered')`, id,
+	)
 	if err != nil {
 		return false, fmt.Errorf("delete_delivery: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("delete_delivery commit: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n > 0, nil

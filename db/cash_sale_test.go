@@ -1,11 +1,15 @@
 package db
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCreateCashSaleFullCashSaleMarksInvoicePaid(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-full")
+	register := accountByCode(t, d, fx.orgID, "1010")
 
 	result, err := d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
@@ -13,7 +17,7 @@ func TestCreateCashSaleFullCashSaleMarksInvoicePaid(t *testing.T) {
 			{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 2000, TaxTotal: 400, Total: 2400,
-		AmountReceived: 2400, PaymentMethod: "cash",
+		AmountReceived: 2400, PaymentMethod: "cash", BankAccountID: register.ID,
 	})
 	if err != nil {
 		t.Fatalf("CreateCashSale: %v", err)
@@ -72,6 +76,7 @@ func TestCreateCashSaleLoanPartialPaymentStaysOpen(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-partial")
+	register := accountByCode(t, d, fx.orgID, "1010")
 
 	result, err := d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
@@ -79,7 +84,7 @@ func TestCreateCashSaleLoanPartialPaymentStaysOpen(t *testing.T) {
 			{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 2000, TaxTotal: 400, Total: 2400,
-		AmountReceived: 900, PaymentMethod: "cash",
+		AmountReceived: 900, PaymentMethod: "cash", BankAccountID: register.ID,
 	})
 	if err != nil {
 		t.Fatalf("CreateCashSale: %v", err)
@@ -167,6 +172,7 @@ func TestCreateCashSaleInlineClientCreation(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-newclient")
+	register := accountByCode(t, d, fx.orgID, "1010")
 
 	result, err := d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID,
@@ -176,7 +182,7 @@ func TestCreateCashSaleInlineClientCreation(t *testing.T) {
 			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 1000, TaxTotal: 200, Total: 1200,
-		AmountReceived: 1200,
+		AmountReceived: 1200, BankAccountID: register.ID,
 	})
 	if err != nil {
 		t.Fatalf("CreateCashSale: %v", err)
@@ -254,6 +260,7 @@ func TestCreateCashSaleSequentialInvoiceNumbersDoNotCollide(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-numbering")
+	register := accountByCode(t, d, fx.orgID, "1010")
 	// newGLPostingTestFixture's CreateOrganization call doesn't set a number
 	// format (an explicit NULL in the INSERT, bypassing the schema's own
 	// DEFAULT 'INV-{year}-{number}' — SQLite only applies a column DEFAULT
@@ -271,7 +278,7 @@ func TestCreateCashSaleSequentialInvoiceNumbersDoNotCollide(t *testing.T) {
 			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 1000, TaxTotal: 200, Total: 1200,
-		AmountReceived: 1200,
+		AmountReceived: 1200, BankAccountID: register.ID,
 	}
 
 	first, err := d.CreateCashSale(req)
@@ -355,16 +362,24 @@ func TestCreateCashSaleInvalidPaymentMethodRejected(t *testing.T) {
 	}
 }
 
-func TestCreateCashSaleNoDefaultCashAccountRejected(t *testing.T) {
+// F101: the counter account must be the dedicated register/till account, not
+// defaultCashAccountId — every chart-of-accounts template wires the "cash"
+// role to Bank (db/account.go), so falling back to it silently credited Bank
+// while the Cash Book register balance/report watched the till. A sale with
+// no register account configured and no explicit bankAccountId must be
+// rejected with a clear error naming defaultCashRegisterAccountId, even when
+// defaultCashAccountId *is* set (which it is by every seeded chart).
+func TestCreateCashSaleNoRegisterAccountRejected(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
-	fx := newGLPostingTestFixture(t, d, "org-cash-sale-nocashacct")
+	fx := newGLPostingTestFixture(t, d, "org-cash-sale-noregister")
 
-	// "" clears a default*AccountId column — see UpdateOrganization's
-	// three-way convention (db/organization.go) — unlike nil, which means
-	// "leave it alone" and wouldn't actually remove the seeded default.
+	// The org is seeded with defaultCashAccountId wired to Bank. Leave it
+	// set deliberately, and make sure no register account is configured —
+	// "" clears a default*AccountId column (see UpdateOrganization's
+	// three-way convention), unlike nil which means "leave it alone".
 	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
-		DefaultCashAccountID: ptr(""),
+		DefaultCashRegisterAccountID: ptr(""),
 	}); err != nil {
 		t.Fatalf("UpdateOrganization: %v", err)
 	}
@@ -378,7 +393,40 @@ func TestCreateCashSaleNoDefaultCashAccountRejected(t *testing.T) {
 		AmountReceived: 1200, // BankAccountID deliberately left empty
 	})
 	if err == nil {
-		t.Fatal("expected a payment with no default and no explicit cash/bank account to be rejected")
+		t.Fatal("expected a cash sale with no register account configured to be rejected")
+	}
+	if !strings.Contains(err.Error(), "defaultCashRegisterAccountId") {
+		t.Fatalf("error = %q, want it to name defaultCashRegisterAccountId", err.Error())
+	}
+}
+
+// F101's positive counterpart: a zero-deposit loan sale has no payment to
+// post, so it must still work with no register account configured — the new
+// requirement applies only to the cash-sale (amount received > 0) path.
+func TestCreateCashSaleZeroDepositLoanNeedsNoRegisterAccount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-sale-noregister-loan")
+
+	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
+		DefaultCashRegisterAccountID: ptr(""),
+	}); err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
+
+	result, err := d.CreateCashSale(CreateCashSaleRequest{
+		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+		SubTotal: 1000, TaxTotal: 200, Total: 1200,
+		AmountReceived: 0,
+	})
+	if err != nil {
+		t.Fatalf("CreateCashSale (zero-deposit loan): %v", err)
+	}
+	if result.Payment != nil {
+		t.Fatal("expected no payment for a zero-deposit loan sale")
 	}
 }
 
@@ -387,6 +435,7 @@ func TestCreateCashSaleCrossOrgClientRejected(t *testing.T) {
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-crossorg-a")
 	other := newGLPostingTestFixture(t, d, "org-cash-sale-crossorg-b")
+	register := accountByCode(t, d, fx.orgID, "1010")
 
 	_, err := d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID, ClientID: other.clientID, Date: fx.date, Currency: "EUR",
@@ -394,7 +443,7 @@ func TestCreateCashSaleCrossOrgClientRejected(t *testing.T) {
 			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 1000, TaxTotal: 200, Total: 1200,
-		AmountReceived: 1200,
+		AmountReceived: 1200, BankAccountID: register.ID,
 	})
 	if err == nil {
 		t.Fatal("expected a client belonging to a different organization to be rejected")
@@ -424,6 +473,7 @@ func TestCreateCashSaleForeignCurrencyRejected(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-forex")
+	register := accountByCode(t, d, fx.orgID, "1010")
 
 	// newGLPostingTestFixture's org never sets a currency, so
 	// orgCurrencyOrDefault falls back to "EUR" (db/exchange_rate.go) — any
@@ -435,7 +485,7 @@ func TestCreateCashSaleForeignCurrencyRejected(t *testing.T) {
 			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 1000, TaxTotal: 200, Total: 1200,
-		AmountReceived: 1200,
+		AmountReceived: 1200, BankAccountID: register.ID,
 	})
 	if err == nil {
 		t.Fatal("expected a non-organization currency to be rejected")
@@ -453,6 +503,7 @@ func TestCreateCashSaleInvoiceNumberDoesNotCollideWithCreateInvoice(t *testing.T
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-numbering-cross")
+	register := accountByCode(t, d, fx.orgID, "1010")
 	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
 		InvoiceNumberFormat: ptr("INV-{year}-{number}"),
 	}); err != nil {
@@ -477,7 +528,7 @@ func TestCreateCashSaleInvoiceNumberDoesNotCollideWithCreateInvoice(t *testing.T
 			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 1000, TaxTotal: 200, Total: 1200,
-		AmountReceived: 1200,
+		AmountReceived: 1200, BankAccountID: register.ID,
 	})
 	if err != nil {
 		t.Fatalf("CreateCashSale: %v", err)
@@ -609,6 +660,7 @@ func TestCreateCashSaleDueDateDefaultsToSaleDate(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-due-date")
+	register := accountByCode(t, d, fx.orgID, "1010")
 
 	result, err := d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
@@ -616,7 +668,7 @@ func TestCreateCashSaleDueDateDefaultsToSaleDate(t *testing.T) {
 			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 1000, TaxTotal: 200, Total: 1200,
-		AmountReceived: 1200, PaymentMethod: "cash",
+		AmountReceived: 1200, PaymentMethod: "cash", BankAccountID: register.ID,
 	})
 	if err != nil {
 		t.Fatalf("CreateCashSale: %v", err)
@@ -669,5 +721,22 @@ func TestCreateCashSaleDefaultsToRegisterAccountNotBank(t *testing.T) {
 	}
 	if result.Payment.BankAccountID != registerAccountID {
 		t.Fatalf("payment posted to account %q, want the register account %q (not Bank)", result.Payment.BankAccountID, registerAccountID)
+	}
+
+	// The GL settlement entry must actually debit the register, not just
+	// carry it on the payments row — this is the number the register
+	// balance/report is built from (GetAccountBalance), so a mismatch here
+	// is exactly the production bug F101 names.
+	payEntry, err := d.FindPostedEntryForSourceDocument("payment", result.Payment.ID)
+	if err != nil || payEntry == nil {
+		t.Fatalf("expected a posted entry for the payment, err=%v entry=%v", err, payEntry)
+	}
+	payLines, err := d.GetJournalEntryLines(payEntry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	registerDebit, registerCredit := sumLines(payLines, registerAccountID)
+	if registerDebit-registerCredit != 1200 {
+		t.Fatalf("register net debit = %d, want 1200 (Dr register on a cash sale)", registerDebit-registerCredit)
 	}
 }

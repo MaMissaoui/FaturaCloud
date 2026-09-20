@@ -36,8 +36,8 @@ import {
   type PurchaseOrderStatus,
 } from "src/types/purchase-order";
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
-import { centsToUnits, unitsToCents, formatCents } from "src/utils/currency";
-import { numberFormatLocale } from "src/utils/currencies";
+import { centsToUnits, unitsToCents } from "src/utils/currency";
+import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 import ExchangeRateFields, {
   CurrencySelect,
@@ -47,6 +47,17 @@ import ScrollShadow from "src/components/scroll-shadow";
 
 const { TextArea } = Input;
 const { Option } = Select;
+
+// The landed-cost rate is a percentage, not money — style: "percent" applies
+// the ×100 and locale-correct "%"/separator itself, so a French/German
+// organization sees "1,5 %" rather than the hardcoded "1.5%". One fraction
+// digit matches the old toFixed(1) display.
+const formatPercent = (rate: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(rate);
 
 const ImportForm = () => {
   const { i18n } = useLingui();
@@ -64,6 +75,9 @@ const ImportForm = () => {
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
   const orgCurrency = organization?.currency ?? "EUR";
+  // The org's own country drives the decimal separator, not the viewer's UI
+  // language — same precedence as the money formatter in utils/currencies.tsx.
+  const numberLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;
 
   const [submitting, setSubmitting] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -467,17 +481,13 @@ const ImportForm = () => {
                 <Col xs={12}>
                   <Statistic
                     title={<Trans>Committed value</Trans>}
-                    value={formatCents(
-                      summary.totalCommittedValue,
-                      orgCurrency,
-                      numberFormatLocale(organization?.country_code) ?? i18n.locale,
-                    )}
+                    value={formatOrgCents(summary.totalCommittedValue, organization, i18n.locale)}
                   />
                 </Col>
                 <Col xs={12}>
                   <Statistic
                     title={<Trans>Landed cost rate</Trans>}
-                    value={`${(summary.landedCostRate * 100).toFixed(1)}%`}
+                    value={formatPercent(summary.landedCostRate, numberLocale)}
                   />
                 </Col>
                 <Col xs={24}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
   Alert,
@@ -84,6 +84,11 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [viewedVersion, setViewedVersion] = useState<BOMVersionDetail | null>(null);
   const [restoring, setRestoring] = useState(false);
+
+  // Guards against a stale version load landing in the drawer: selecting
+  // version A then B could otherwise leave A's lines rendered under B's
+  // chip if A's response resolved last.
+  const versionRequestIdRef = useRef(0);
 
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
@@ -212,12 +217,20 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   };
 
   const handleSelectVersion = (versionId: string | null) => {
+    // Bump on every selection (including back to "current") so any request
+    // still in flight for a previously-selected chip is ignored when it
+    // resolves.
+    const requestId = ++versionRequestIdRef.current;
     setSelectedVersionId(versionId);
     setViewedVersion(null);
     if (versionId && productId) {
       GetBOMVersion(productId, versionId)
-        .then(setViewedVersion)
+        .then((version) => {
+          if (requestId !== versionRequestIdRef.current) return;
+          setViewedVersion(version);
+        })
         .catch((error) => {
+          if (requestId !== versionRequestIdRef.current) return;
           // Without this the drawer sat on loading={!viewedVersion} forever
           // with Restore disabled and no way out but closing (F84).
           message.error(error instanceof Error ? error.message : t`Failed to load version`);

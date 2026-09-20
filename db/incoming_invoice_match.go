@@ -259,27 +259,202 @@ func hasBlockingVariance(lines []MatchLine) bool {
 // GetIncomingInvoiceMatchSummaries reports, for every purchase-order-linked
 // incoming invoice in the organization, whether it currently has a blocking
 // 3-way-match variance — the list page's only way to surface this without
-// opening every invoice individually. Reuses GetIncomingInvoiceMatch's
-// well-tested per-line logic rather than re-deriving it as a set-based query;
-// scoped to PO-linked invoices only (an invoice with no purchase order has
-// every line "unlinked", which is informational and never a variance).
+// opening every invoice individually. Scoped to PO-linked invoices only (an
+// invoice with no purchase order has every line "unlinked", which is
+// informational and never a variance).
+//
+// F122: this is now set-based. It used to load every PO-linked invoice id and
+// call GetIncomingInvoiceMatch once per invoice — and that function runs ~2
+// queries plus ~3 per linked line, so the list page (which calls this on every
+// load) paid ≈ N·(2+3L) serialized round-trips. It now fetches every invoice's
+// lines plus the received/previously-invoiced aggregates for the whole
+// organization in a small constant number of queries, then reuses the exact
+// same classifyMatch/hasBlockingVariance helpers the per-invoice path uses, so
+// each invoice's boolean is identical to GetIncomingInvoiceMatch's own result
+// (see TestGetIncomingInvoiceMatchSummariesMatchesPerInvoice). GetIncomingInvoiceMatch
+// itself is untouched — the single-invoice view still uses it.
 func (d *Database) GetIncomingInvoiceMatchSummaries(organizationID string) (map[string]bool, error) {
-	var ids []string
-	if err := d.DB.Select(&ids, `
-		SELECT id FROM incoming_invoices
-		WHERE organizationId = ? AND purchaseOrderId IS NOT NULL`,
+	org, err := d.GetOrganization(organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("get_incoming_invoice_match_summaries organization: %w", err)
+	}
+	priceTolerance := valueOrZero(org.MatchPriceTolerancePercent)
+	quantityTolerance := valueOrZero(org.MatchQuantityTolerancePercent)
+
+	// Query 1: one row per PO-linked invoice. The vendors join mirrors
+	// GetIncomingInvoice's own select (an invoice is only ever returned, and
+	// so only ever matched, if its vendor still exists).
+	var invoices []struct {
+		ID           string  `db:"id"`
+		State        string  `db:"state"`
+		ExchangeRate *string `db:"exchangeRate"`
+	}
+	if err := d.DB.Select(&invoices, `
+		SELECT ii.id AS id, ii.state AS state, ii.exchangeRate AS exchangeRate
+		FROM incoming_invoices ii
+		INNER JOIN vendors v ON ii.vendorId = v.id
+		WHERE ii.organizationId = ? AND ii.purchaseOrderId IS NOT NULL`,
 		organizationID,
 	); err != nil {
-		return nil, fmt.Errorf("get_incoming_invoice_match_summaries: %w", err)
+		return nil, fmt.Errorf("get_incoming_invoice_match_summaries invoices: %w", err)
 	}
 
-	summaries := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		lines, err := d.GetIncomingInvoiceMatch(id)
-		if err != nil {
-			return nil, err
+	// Query 2: every line of those invoices, left-joined to its linked PO line
+	// and PO. A line whose PO line (or PO) is missing comes back with
+	// poLineFound = 0 — the same "the linked purchase order line no longer
+	// exists" unlinked result the per-invoice lookup produces for that case.
+	type summaryLineRow struct {
+		InvoiceID               string   `db:"invoiceId"`
+		LineItemID              string   `db:"lineItemId"`
+		PurchaseOrderLineItemID *string  `db:"purchaseOrderLineItemId"`
+		Description             string   `db:"description"`
+		Quantity                float64  `db:"quantity"`
+		UnitPrice               int64    `db:"unitPrice"`
+		OrderedQuantity         *float64 `db:"orderedQuantity"`
+		OrderedUnitPrice        *int64   `db:"orderedUnitPrice"`
+		OrderExchangeRate       *string  `db:"orderExchangeRate"`
+		POLineFound             int      `db:"poLineFound"`
+	}
+	var lineRows []summaryLineRow
+	if err := d.DB.Select(&lineRows, `
+		SELECT li.incomingInvoiceId AS invoiceId,
+		       li.id AS lineItemId,
+		       li.purchaseOrderLineItemId AS purchaseOrderLineItemId,
+		       li.description AS description,
+		       li.quantity AS quantity,
+		       li.unitPrice AS unitPrice,
+		       poli.quantity AS orderedQuantity,
+		       poli.unitPrice AS orderedUnitPrice,
+		       po.exchangeRate AS orderExchangeRate,
+		       CASE WHEN poli.id IS NULL OR po.id IS NULL THEN 0 ELSE 1 END AS poLineFound
+		FROM incoming_invoice_line_items li
+		JOIN incoming_invoices inv ON li.incomingInvoiceId = inv.id
+		LEFT JOIN purchase_order_line_items poli ON li.purchaseOrderLineItemId = poli.id
+		LEFT JOIN purchase_orders po ON poli.purchaseOrderId = po.id
+		WHERE inv.organizationId = ? AND inv.purchaseOrderId IS NOT NULL
+		ORDER BY li.incomingInvoiceId, li.position ASC`,
+		organizationID,
+	); err != nil {
+		return nil, fmt.Errorf("get_incoming_invoice_match_summaries lines: %w", err)
+	}
+
+	// Query 3: what has actually been received, per order line.
+	var receivedRows []struct {
+		POLineID string  `db:"poLineId"`
+		Quantity float64 `db:"quantity"`
+	}
+	if err := d.DB.Select(&receivedRows, `
+		SELECT dli.purchaseOrderLineItemId AS poLineId, COALESCE(SUM(dli.quantity), 0) AS quantity
+		FROM inbound_delivery_line_items dli
+		JOIN inbound_deliveries idl ON dli.deliveryId = idl.id
+		WHERE dli.purchaseOrderLineItemId IS NOT NULL AND idl.status = 'received'
+		  AND idl.organizationId = ?
+		GROUP BY dli.purchaseOrderLineItemId`,
+		organizationID,
+	); err != nil {
+		return nil, fmt.Errorf("get_incoming_invoice_match_summaries received: %w", err)
+	}
+	receivedByPOLine := make(map[string]float64, len(receivedRows))
+	for _, r := range receivedRows {
+		receivedByPOLine[r.POLineID] = r.Quantity
+	}
+
+	// Query 4: what every approved/paid bill has already billed per order
+	// line. The per-invoice path excludes the invoice under test with
+	// `inv.id != ?`; that subtraction happens in Go below, where each
+	// invoice's own billed quantities are already in hand.
+	var billedRows []struct {
+		POLineID string  `db:"poLineId"`
+		Quantity float64 `db:"quantity"`
+	}
+	if err := d.DB.Select(&billedRows, `
+		SELECT li.purchaseOrderLineItemId AS poLineId, COALESCE(SUM(li.quantity), 0) AS quantity
+		FROM incoming_invoice_line_items li
+		JOIN incoming_invoices inv ON li.incomingInvoiceId = inv.id
+		WHERE li.purchaseOrderLineItemId IS NOT NULL AND inv.state IN ('approved', 'paid')
+		  AND inv.organizationId = ?
+		GROUP BY li.purchaseOrderLineItemId`,
+		organizationID,
+	); err != nil {
+		return nil, fmt.Errorf("get_incoming_invoice_match_summaries previously_invoiced: %w", err)
+	}
+	billedByPOLine := make(map[string]float64, len(billedRows))
+	for _, r := range billedRows {
+		billedByPOLine[r.POLineID] = r.Quantity
+	}
+
+	// Group the line rows by invoice, and tally each invoice's own billed
+	// quantity per order line (the term Query 4 can't exclude, since it isn't
+	// scoped to one invoice).
+	linesByInvoice := make(map[string][]summaryLineRow, len(invoices))
+	ownQtyByInvoice := make(map[string]map[string]float64, len(invoices))
+	for _, r := range lineRows {
+		linesByInvoice[r.InvoiceID] = append(linesByInvoice[r.InvoiceID], r)
+		if r.PurchaseOrderLineItemID != nil {
+			own := ownQtyByInvoice[r.InvoiceID]
+			if own == nil {
+				own = map[string]float64{}
+				ownQtyByInvoice[r.InvoiceID] = own
+			}
+			own[*r.PurchaseOrderLineItemID] += r.Quantity
 		}
-		summaries[id] = hasBlockingVariance(lines)
+	}
+
+	summaries := make(map[string]bool, len(invoices))
+	for _, inv := range invoices {
+		// Parsed for every invoice even when it has no lines, matching
+		// GetIncomingInvoiceMatch's own unconditional parse.
+		invoiceRate, err := parseExchangeRate(inv.ExchangeRate)
+		if err != nil {
+			return nil, fmt.Errorf("get_incoming_invoice_match_summaries invoice rate: %w", err)
+		}
+
+		rows := linesByInvoice[inv.ID]
+		lines := make([]MatchLine, 0, len(rows))
+		for _, r := range rows {
+			line := MatchLine{
+				LineItemID:          r.LineItemID,
+				PurchaseOrderLineID: r.PurchaseOrderLineItemID,
+				Description:         r.Description,
+				InvoicedQuantity:    r.Quantity,
+				InvoicedUnitPrice:   r.UnitPrice,
+				Status:              MatchUnlinked,
+			}
+
+			if r.PurchaseOrderLineItemID == nil {
+				line.Message = "not linked to a purchase order line"
+				lines = append(lines, line)
+				continue
+			}
+			if r.POLineFound == 0 {
+				line.Message = "the linked purchase order line no longer exists"
+				lines = append(lines, line)
+				continue
+			}
+			poLineID := *r.PurchaseOrderLineItemID
+
+			orderedRate, err := parseExchangeRate(r.OrderExchangeRate)
+			if err != nil {
+				return nil, fmt.Errorf("get_incoming_invoice_match_summaries order rate: %w", err)
+			}
+			orderedQuantity := *r.OrderedQuantity
+			orderedUnitPrice := *r.OrderedUnitPrice
+			line.OrderedQuantity = &orderedQuantity
+			line.OrderedUnitPrice = &orderedUnitPrice
+
+			received := receivedByPOLine[poLineID]
+			line.ReceivedQuantity = &received
+
+			previouslyInvoiced := billedByPOLine[poLineID]
+			if inv.State == "approved" || inv.State == "paid" {
+				previouslyInvoiced -= ownQtyByInvoice[inv.ID][poLineID]
+			}
+			line.PreviouslyInvoiced = previouslyInvoiced
+
+			line.Status, line.Message = classifyMatch(line, quantityTolerance, priceTolerance, orderedRate, invoiceRate)
+			lines = append(lines, line)
+		}
+		summaries[inv.ID] = hasBlockingVariance(lines)
 	}
 	return summaries, nil
 }

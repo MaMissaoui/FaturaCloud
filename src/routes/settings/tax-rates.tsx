@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TaxRate } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, Col, Row, Space, Table } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { CalculatorOutlined, CheckSquareOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -18,8 +18,6 @@ import { organizationIdAtom } from "src/atoms/organization";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 
-const searchAtom = atom<string>("");
-
 function SettingsTaxRates() {
   useLingui();
   const location = useLocation();
@@ -28,7 +26,7 @@ function SettingsTaxRates() {
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
   const organizationId = useAtomValue(organizationIdAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (location.pathname === "/settings/tax-rates") {
@@ -36,20 +34,22 @@ function SettingsTaxRates() {
     }
   }, [location, setTaxRates]);
 
-  const filtered = search
-    ? filter(taxRates, (tr: TaxRate) =>
+  const filtered = useMemo(
+    () =>
+      filter(taxRates, (tr: TaxRate) =>
         some(["name", "description", "percentage"], (field) =>
           includes(toString(get(tr, field)).toLowerCase(), search.toLowerCase()),
         ),
-      )
-    : taxRates;
+      ),
+    [taxRates, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<CalculatorOutlined />}
         title={<Trans>Tax rates</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Space wrap>
             {organizationId && (

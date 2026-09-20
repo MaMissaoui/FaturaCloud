@@ -41,7 +41,13 @@ export const createStockMovementAtom = atom(
     } catch (error) {
       console.error("Failed to create stock movement:", error);
       message.error(error instanceof Error ? error.message : t`Failed to record stock movement`);
-      return null;
+      // Rethrow so the caller can tell a failed movement apart from a
+      // successful one (F113) instead of an unconditional `return null` —
+      // movement-form.tsx only closes the drawer on success, so a 409
+      // (insufficient stock, no cost basis, serialized validation) keeps the
+      // user's entry intact. Same rethrow-after-toast convention as
+      // src/atoms/product.ts, tax-rate.ts, client.ts, etc. (see src/CLAUDE.md).
+      throw error;
     }
   },
 );

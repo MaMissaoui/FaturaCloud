@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
+  Alert,
   Button,
   Card,
   Col,
@@ -98,6 +99,26 @@ const ProductForm = () => {
     [products],
   );
 
+  // Bill of materials load state (F111). `form.bom` is empty whether the
+  // recipe genuinely has no components, is still being fetched, or failed to
+  // fetch — and handleSubmit replaces the whole resource, so treating
+  // "unknown" as "known-empty" would overwrite a real recipe with nothing on
+  // the next save of any field. This records which product the state belongs
+  // to (so a stale status can't green-light a write to a different product)
+  // and whether the empty-looking form is actually trustworthy:
+  //   null                                   -> not an existing finished
+  //                                             product: no recipe to fetch,
+  //                                             so [] is the real value
+  //   { productId, status: "loaded" }        -> successfully loaded (an
+  //                                             empty list is a real,
+  //                                             user-clearable recipe)
+  //   { productId, status: "loading" }       -> unknown, must not write
+  //   { productId, status: "failed" }        -> unknown, must not write
+  const [bomLoad, setBomLoad] = useState<{
+    productId: string;
+    status: "loading" | "loaded" | "failed";
+  } | null>(null);
+
   // Bill of materials is a separate resource server-side (PUT
   // /api/products/{id}/bom), not a field on the product itself — loaded
   // into the same antd Form via Form.List("bom") once we know which
@@ -105,18 +126,40 @@ const ProductForm = () => {
   // own it" shape as every other field here.
   useEffect(() => {
     if (isVisible && productId && product?.category === "finished") {
-      GetProductBOM(productId).then((lines) => {
-        form.setFieldValue(
-          "bom",
-          lines.map((l) => ({
-            componentProductId: l.componentProductId,
-            quantityPerUnit: l.quantityPerUnit,
-          })),
-        );
-      });
-    } else {
-      form.setFieldValue("bom", []);
+      // Switching product mid-flight must not let the previous product's
+      // recipe (or its failure) land on the one now open (F111).
+      let cancelled = false;
+      setBomLoad({ productId, status: "loading" });
+      GetProductBOM(productId)
+        .then((lines) => {
+          if (cancelled) return;
+          form.setFieldValue(
+            "bom",
+            lines.map((l) => ({
+              componentProductId: l.componentProductId,
+              quantityPerUnit: l.quantityPerUnit,
+            })),
+          );
+          setBomLoad({ productId, status: "loaded" });
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          // Leave the form empty rather than showing a previous product's
+          // lines, but mark the state unknown so handleSubmit skips the PUT.
+          form.setFieldValue("bom", []);
+          setBomLoad({ productId, status: "failed" });
+          message.error(
+            error instanceof Error ? error.message : t`Failed to load bill of materials`,
+          );
+        });
+      return () => {
+        cancelled = true;
+      };
     }
+    // New product, service, or component: there is no recipe to fetch, so
+    // [] is the real value, not an unknown one.
+    setBomLoad(null);
+    form.setFieldValue("bom", []);
   }, [isVisible, productId, product?.category, form]);
 
   // The full (unpaginated) product catalog is only needed while this drawer
@@ -209,13 +252,27 @@ const ProductForm = () => {
       // ReplaceProductBOM is a raw API call, not atom-wrapped, so it needs
       // its own toast on failure — setProduct's atom already has one built in.
       if (productId && values.category === "finished") {
-        try {
-          await ReplaceProductBOM(productId, values.bom ?? []);
-        } catch (error) {
-          message.error(
-            error instanceof Error ? error.message : t`Failed to save bill of materials`,
+        // F111: only replace the recipe when this product's BOM is actually
+        // known. `bomLoad === null` means "not an existing finished product"
+        // ([] is the real value); a `loading`/`failed` status — or one left
+        // over from a *different* product — means unknown, and sending []
+        // would wipe a real recipe. The rest of the product still saves
+        // either way; only this one write is skipped, with a clear toast.
+        const bomUnknown =
+          bomLoad !== null && (bomLoad.productId !== productId || bomLoad.status !== "loaded");
+        if (bomUnknown) {
+          message.warning(
+            t`Bill of materials couldn't be loaded, so it was left unchanged. Reopen this product to edit its recipe.`,
           );
-          throw error;
+        } else {
+          try {
+            await ReplaceProductBOM(productId, values.bom ?? []);
+          } catch (error) {
+            message.error(
+              error instanceof Error ? error.message : t`Failed to save bill of materials`,
+            );
+            throw error;
+          }
         }
       }
       handleClose();
@@ -532,16 +589,53 @@ const ProductForm = () => {
                   size="small"
                   title={<Trans>Bill of Materials</Trans>}
                   extra={
+                    // Same F88 guard as the units-of-measure link above: this
+                    // drawer's visibility is router state, so navigating away
+                    // unmounts it and silently discards everything typed so
+                    // far. Ask first when there is something to lose (F117).
                     <Link
                       to="/bill-of-materials"
                       state={{ bomModal: true, productId }}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (!form.isFieldsTouched()) {
+                          navigate("/bill-of-materials", {
+                            state: { bomModal: true, productId },
+                          });
+                          return;
+                        }
+                        Modal.confirm({
+                          title: t`Leave without saving?`,
+                          content: t`Opening the Bill of Materials screen closes this product and discards your unsaved changes.`,
+                          okText: t`Discard and continue`,
+                          cancelText: t`Stay here`,
+                          onOk: () =>
+                            navigate("/bill-of-materials", {
+                              state: { bomModal: true, productId },
+                            }),
+                        });
+                      }}
                     >
                       <Trans>Open in Bill of Materials screen</Trans>
                     </Link>
                   }
                   style={{ marginBottom: 12 }}
                 >
+                  {bomLoad?.productId === productId && bomLoad.status === "failed" && (
+                    <Alert
+                      type="error"
+                      showIcon
+                      style={{ marginBottom: 12 }}
+                      message={<Trans>Couldn't load this bill of materials</Trans>}
+                      description={
+                        <Trans>
+                          The recipe is unknown, so saving this product won't change it. Reopen the
+                          product to try again.
+                        </Trans>
+                      }
+                    />
+                  )}
                   <BOMFields fieldName="bom" componentOptions={componentOptions} />
                 </Card>
               ) : null

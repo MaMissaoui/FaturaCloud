@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router";
 import { Col, Input, Row, Space, Switch, Table, Typography } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { GlobalOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -19,8 +19,6 @@ import { COUNTRY_CODES, getCountryName } from "src/utils/country-codes";
 
 const { Title, Text } = Typography;
 
-const searchAtom = atom<string>("");
-
 function SettingsCountries() {
   useLingui();
   const location = useLocation();
@@ -29,7 +27,7 @@ function SettingsCountries() {
   const setActiveCountries = useSetAtom(setActiveCountriesAtom);
   const toggleCountryActive = useSetAtom(toggleCountryActiveAtom);
   const locale = useAtomValue(localeAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (location.pathname === "/settings/countries") {
@@ -44,14 +42,16 @@ function SettingsCountries() {
     [locale],
   );
 
-  const filtered = search
-    ? filter(
+  const filtered = useMemo(
+    () =>
+      filter(
         rows,
         (row) =>
           includes(row.name.toLowerCase(), search.toLowerCase()) ||
           includes(row.code.toLowerCase(), search.toLowerCase()),
-      )
-    : rows;
+      ),
+    [rows, search],
+  );
 
   return (
     <>
@@ -64,7 +64,11 @@ function SettingsCountries() {
         </Col>
         <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
           <Space style={{ alignItems: "start" }}>
-            <Input.Search placeholder={t`Search`} onChange={(e) => setSearch(e.target.value)} />
+            <Input.Search
+              placeholder={t`Search`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </Space>
         </Col>
       </Row>

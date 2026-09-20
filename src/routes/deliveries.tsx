@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Delivery } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -20,8 +20,6 @@ import {
 import PageHeader from "src/components/page-header";
 import { useDateFormatter } from "src/utils/date";
 
-const searchAtom = atom<string>("");
-
 const statusTag = (status: string) => (
   <Tag color={deliveryStatusColor[status as DeliveryStatus]}>{deliveryStatusLabel(status)}</Tag>
 );
@@ -32,7 +30,7 @@ const Deliveries = () => {
   const navigate = useNavigate();
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const formatDate = useDateFormatter();
   const [loading, setLoading] = useState(false);
 
@@ -43,22 +41,24 @@ const Deliveries = () => {
     }
   }, [location, setDeliveries]);
 
-  const filtered = search
-    ? filter(
+  const filtered = useMemo(
+    () =>
+      filter(
         deliveries,
         (d: Delivery) =>
           includes((d.deliveryNumber ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((d.clientName ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((d.orderNumber ?? "").toLowerCase(), search.toLowerCase()),
-      )
-    : deliveries;
+      ),
+    [deliveries, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<SendOutlined />}
         title={<Trans>Outbound Deliveries</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Button type="primary" onClick={() => navigate("/deliveries/new")}>
             <Trans>New delivery</Trans>

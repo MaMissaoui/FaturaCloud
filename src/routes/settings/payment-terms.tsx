@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PaymentTerm } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Row, Space, Table } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -16,8 +16,6 @@ import PaymentTermForm from "src/components/payment-terms/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 
-const searchAtom = atom<string>("");
-
 function SettingsPaymentTerms() {
   useLingui();
   const location = useLocation();
@@ -26,7 +24,7 @@ function SettingsPaymentTerms() {
   const paymentTerms = useAtomValue(paymentTermsAtom);
   const setPaymentTerms = useSetAtom(setPaymentTermsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -36,18 +34,20 @@ function SettingsPaymentTerms() {
     }
   }, [location, setPaymentTerms]);
 
-  const filtered = search
-    ? filter(paymentTerms, (pt: PaymentTerm) =>
+  const filtered = useMemo(
+    () =>
+      filter(paymentTerms, (pt: PaymentTerm) =>
         includes(pt.name.toLowerCase(), search.toLowerCase()),
-      )
-    : paymentTerms;
+      ),
+    [paymentTerms, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<ScheduleOutlined />}
         title={<Trans>Payment terms</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Space wrap>
             {organizationId && (

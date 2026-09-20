@@ -592,36 +592,87 @@ type OrganizationUsageCount struct {
 	IncomingInvoices  int64 `db:"incomingInvoices"  json:"incomingInvoices"`
 	StockMovements    int64 `db:"stockMovements"    json:"stockMovements"`
 
+	// These were added to the schema after this count was first written and
+	// were being omitted, understating the blast radius shown in the
+	// delete/reset confirmation. Kept in sync with db/reset.go's
+	// transactionalDataTables/masterDataTables — the authoritative
+	// org-scoped table list — and guarded by
+	// TestOrganizationUsageCountCoversEveryOrganizationScopedTable.
+	ProductionOrders     int64 `db:"productionOrders"     json:"productionOrders"`
+	Imports              int64 `db:"imports"              json:"imports"`
+	CashMovements        int64 `db:"cashMovements"        json:"cashMovements"`
+	ProductSerialNumbers int64 `db:"productSerialNumbers" json:"productSerialNumbers"`
+	ReconciliationGroups int64 `db:"reconciliationGroups" json:"reconciliationGroups"`
+
+	FiscalYears              int64 `db:"fiscalYears"              json:"fiscalYears"`
+	FiscalPeriods            int64 `db:"fiscalPeriods"            json:"fiscalPeriods"`
+	PaymentTerms             int64 `db:"paymentTerms"             json:"paymentTerms"`
+	UnitsOfMeasure           int64 `db:"unitsOfMeasure"           json:"unitsOfMeasure"`
+	DocumentTemplates        int64 `db:"documentTemplates"        json:"documentTemplates"`
+	DocumentTemplateSettings int64 `db:"documentTemplateSettings" json:"documentTemplateSettings"`
+	DocumentNumberSettings   int64 `db:"documentNumberSettings"   json:"documentNumberSettings"`
+	BillOfMaterials          int64 `db:"billOfMaterials"          json:"billOfMaterials"`
+	BillOfMaterialsVersions  int64 `db:"billOfMaterialsVersions"  json:"billOfMaterialsVersions"`
+
 	Accounts       int64 `db:"accounts"      json:"accounts"`
 	Journals       int64 `db:"journals"      json:"journals"`
 	JournalEntries int64 `db:"journalEntries" json:"journalEntries"`
 	Payments       int64 `db:"payments"      json:"payments"`
 }
 
+// organizationUsageCountTables is every org-scoped table GetOrganizationUsageCount
+// counts, as an {alias, table} pair. The alias is the SELECT column that sqlx
+// maps to the matching `db` tag on OrganizationUsageCount. This is exactly
+// db/reset.go's transactionalDataTables + masterDataTables (the authoritative
+// list, itself tripwire-enforced) — keeping the two aligned is what
+// TestOrganizationUsageCountCoversEveryOrganizationScopedTable checks, so the
+// delete/reset confirmation can never silently understate the blast radius
+// when a new org-scoped table is added.
+var organizationUsageCountTables = []struct{ Alias, Table string }{
+	{"clients", "clients"},
+	{"vendors", "vendors"},
+	{"invoices", "invoices"},
+	{"products", "products"},
+	{"orders", "orders"},
+	{"deliveries", "outbound_deliveries"},
+	{"taxRates", "taxRates"},
+	{"purchaseOrders", "purchase_orders"},
+	{"inboundDeliveries", "inbound_deliveries"},
+	{"incomingInvoices", "incoming_invoices"},
+	{"stockMovements", "stockMovements"},
+	{"productionOrders", "production_orders"},
+	{"imports", "imports"},
+	{"cashMovements", "cash_movements"},
+	{"productSerialNumbers", "product_serial_numbers"},
+	{"reconciliationGroups", "reconciliation_groups"},
+	{"fiscalYears", "fiscal_years"},
+	{"fiscalPeriods", "fiscal_periods"},
+	{"paymentTerms", "payment_terms"},
+	{"unitsOfMeasure", "units_of_measure"},
+	{"documentTemplates", "document_templates"},
+	{"documentTemplateSettings", "document_template_settings"},
+	{"documentNumberSettings", "document_number_settings"},
+	{"billOfMaterials", "bill_of_materials"},
+	{"billOfMaterialsVersions", "bill_of_materials_versions"},
+	{"accounts", "accounts"},
+	{"journals", "journals"},
+	{"journalEntries", "journal_entries"},
+	{"payments", "payments"},
+}
+
 func (d *Database) GetOrganizationUsageCount(organizationID string) (*OrganizationUsageCount, error) {
+	subqueries := make([]string, len(organizationUsageCountTables))
+	args := make([]any, len(organizationUsageCountTables))
+	for i, t := range organizationUsageCountTables {
+		// Table/alias names come from the package-level slice above, never from input.
+		subqueries[i] = fmt.Sprintf(
+			"(SELECT COUNT(*) FROM %s WHERE organizationId = ?) AS %s", t.Table, t.Alias,
+		)
+		args[i] = organizationID
+	}
+
 	var counts OrganizationUsageCount
-	err := d.DB.Get(&counts, `
-		SELECT
-			(SELECT COUNT(*) FROM clients WHERE organizationId = ?) AS clients,
-			(SELECT COUNT(*) FROM vendors WHERE organizationId = ?) AS vendors,
-			(SELECT COUNT(*) FROM invoices WHERE organizationId = ?) AS invoices,
-			(SELECT COUNT(*) FROM products WHERE organizationId = ?) AS products,
-			(SELECT COUNT(*) FROM orders WHERE organizationId = ?) AS orders,
-			(SELECT COUNT(*) FROM outbound_deliveries WHERE organizationId = ?) AS deliveries,
-			(SELECT COUNT(*) FROM taxRates WHERE organizationId = ?) AS taxRates,
-			(SELECT COUNT(*) FROM purchase_orders WHERE organizationId = ?) AS purchaseOrders,
-			(SELECT COUNT(*) FROM inbound_deliveries WHERE organizationId = ?) AS inboundDeliveries,
-			(SELECT COUNT(*) FROM incoming_invoices WHERE organizationId = ?) AS incomingInvoices,
-			(SELECT COUNT(*) FROM stockMovements WHERE organizationId = ?) AS stockMovements,
-			(SELECT COUNT(*) FROM accounts WHERE organizationId = ?) AS accounts,
-			(SELECT COUNT(*) FROM journals WHERE organizationId = ?) AS journals,
-			(SELECT COUNT(*) FROM journal_entries WHERE organizationId = ?) AS journalEntries,
-			(SELECT COUNT(*) FROM payments WHERE organizationId = ?) AS payments`,
-		organizationID, organizationID, organizationID, organizationID, organizationID,
-		organizationID, organizationID, organizationID, organizationID, organizationID,
-		organizationID, organizationID, organizationID, organizationID, organizationID,
-	)
-	if err != nil {
+	if err := d.DB.Get(&counts, "SELECT "+strings.Join(subqueries, ", "), args...); err != nil {
 		return nil, fmt.Errorf("get_organization_usage_count: %w", err)
 	}
 	return &counts, nil

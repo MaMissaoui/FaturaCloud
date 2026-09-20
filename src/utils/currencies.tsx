@@ -66,15 +66,19 @@ export const numberFormatLocale = (countryCode?: string | null): string | null =
 
 // Several CLDR locales (fr-*, and others) legitimately use a narrow/thin
 // no-break space (U+202F, occasionally U+2009) as Intl.NumberFormat's
-// thousands grouping separator — real, correct Unicode. But it's a
-// reproducible browser rendering bug (confirmed live in this app: same
-// font/size, only the text color differs) that collapses it to zero
+// thousands grouping separator — real, correct Unicode. pt-PT/pl-PL/ru-RU
+// instead use a plain no-break space (U+00A0), which drifts from the
+// server's db/format_money.go table (it stores an ASCII space) if left
+// alone — the F123 grouping-glyph mismatch. On top of the drift, the narrow
+// space is a reproducible browser rendering bug (confirmed live in this app:
+// same font/size, only the text color differs) that collapses it to zero
 // visible width in some contexts (e.g. antd's colorError red used for
 // overdue/outstanding amounts), making a grouped amount look ungrouped —
 // "82 119 214" renders fine, "7 151 753" in red renders as "7151753".
-// Normalizing to an ordinary space sidesteps the bug entirely and is
-// visually identical wherever the narrow space already rendered fine.
-const normalizeGroupingSpace = (s: string) => s.replace(/[  ]/g, " ");
+// Normalizing every one of these glyphs to an ordinary space sidesteps the
+// bug and matches the server's own plain space, and is visually identical
+// wherever the narrow/NBSP space already rendered fine.
+const normalizeGroupingSpace = (s: string) => s.replace(/[\u00A0\u202F\u2009]/g, " ");
 
 /**
  * The single low-level currency formatter every money display in this app
@@ -178,6 +182,6 @@ export const getFormattedNumber = (
     number,
     effectiveCurrency,
     effectiveLocale,
-    organization.minimum_fraction_digits,
+    organization?.minimum_fraction_digits,
   );
 };

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Order } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -20,8 +20,6 @@ import {
 import PageHeader from "src/components/page-header";
 import { useDateFormatter } from "src/utils/date";
 
-const searchAtom = atom<string>("");
-
 const statusTag = (status: string) => (
   <Tag color={orderStatusColor[status as OrderStatus]}>{orderStatusLabel(status)}</Tag>
 );
@@ -32,7 +30,7 @@ const Orders = () => {
   const navigate = useNavigate();
   const orders = useAtomValue(ordersAtom);
   const setOrders = useSetAtom(setOrdersAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const formatDate = useDateFormatter();
 
@@ -43,21 +41,23 @@ const Orders = () => {
     }
   }, [location, setOrders]);
 
-  const filtered = search
-    ? filter(
+  const filtered = useMemo(
+    () =>
+      filter(
         orders,
         (o: Order) =>
           includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((o.clientName ?? "").toLowerCase(), search.toLowerCase()),
-      )
-    : orders;
+      ),
+    [orders, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<ShoppingOutlined />}
         title={<Trans>Orders</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Button type="primary" onClick={() => navigate("/orders/new")}>
             <Trans>New order</Trans>

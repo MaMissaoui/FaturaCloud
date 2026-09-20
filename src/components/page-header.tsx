@@ -38,6 +38,7 @@ const PageHeader = ({ icon, title, search, extra, actions, style }: PageHeaderPr
         {search && (
           <Input.Search
             placeholder={search.placeholder}
+            aria-label={search.placeholder}
             value={search.value}
             onChange={(e) => search.onChange(e.target.value)}
             onSearch={search.onSearch}

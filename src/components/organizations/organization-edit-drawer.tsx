@@ -28,7 +28,6 @@ import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import BrandColorPicker from "src/components/organizations/brand-color-picker";
-import { invoicePDFLayoutOptions } from "src/components/invoices/layouts";
 import OrganizationMembersPanel, {
   type OrganizationMembersPanelProps,
 } from "src/components/organizations/organization-members-panel";
@@ -37,6 +36,26 @@ import OrganizationDangerZone, {
 } from "src/components/organizations/organization-danger-zone";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
+
+// The invoice PDF layout choices for the Formatting section. Deliberately
+// local here rather than imported from src/components/invoices/layouts.ts:
+// that module statically imports pdf.tsx / pdf-tunisia.tsx, so importing it
+// dragged the entire @react-pdf/renderer engine (~460 KB gzip) into the
+// /organizations route chunk just for these three labels (audit F131). The
+// registry (and the React-PDF components) still live there, orphaned since
+// the 2026-09-08 PDF unification made invoiceLayout inert for invoice output.
+//
+// Labels are a function (not a module-scope const) so they re-evaluate
+// against the active locale — same reasoning as invoiceStateLabel in
+// src/types/invoice.ts.
+const invoicePDFLayoutOptions = (): {
+  value: "default" | "tunisia" | "custom";
+  label: string;
+}[] => [
+  { value: "default", label: t`Default` },
+  { value: "tunisia", label: t`Tunisia` },
+  { value: "custom", label: t`Custom (uploaded template)` },
+];
 
 interface AccountOption {
   value: string;

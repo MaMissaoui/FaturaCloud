@@ -47,14 +47,26 @@ type CashMovementDetail struct {
 }
 
 // GetCashMovementDetails is GetDailyCashMovements' per-transaction drill
-// down for accountID over [startDate, endDate] (inclusive, plain
-// timestamps — unlike GetDailyCashMovements this doesn't bucket by UTC
-// day, since a transaction list has no day-boundary ambiguity to resolve,
-// only the caller's own range). Two sources, merged and sorted by date:
-// inbound payments applied to an invoice (the "in" side — a withdrawal is
-// never an application, see CreateCashMovement) and cash_movements
-// withdrawals (the "out" side, always kind "withdrawal" — cash_movements
-// has no client and no invoice to attach).
+// down for accountID covering the UTC calendar days that startDate and
+// endDate fall in, inclusive of both. Two sources, merged and sorted by
+// date: inbound payments applied to an invoice (the "in" side — a
+// withdrawal is never an application, see CreateCashMovement) and
+// cash_movements withdrawals (the "out" side, always kind "withdrawal" —
+// cash_movements has no client and no invoice to attach).
+//
+// Both endpoints are interpreted as *days*, not as literal instants: each
+// is floored to its UTC day (floorToUTCDay, the same bucketing
+// GetDailyCashMovements uses) and the filter is
+// [floor(startDate), floor(endDate) + 24h). This is deliberate, because
+// every caller today passes the same UTC-midnight value twice to mean "this
+// whole day" (src/routes/cash-book.tsx and db/report_export.go), while the
+// stored timestamps carry real time-of-day — a live sale or withdrawal is
+// stamped at the moment it happened — so a literal >= / <= on that instant
+// silently matched only a row stamped exactly 00:00:00.000. Flooring here
+// instead of expanding at the call site keeps that same-day call working and
+// also treats a genuine multi-day range as covering every day from start's
+// day through end's day, rather than degrading to a zero-width window
+// whenever both endpoints share an instant.
 func (d *Database) GetCashMovementDetails(organizationID, accountID string, startDate, endDate int64) ([]CashMovementDetail, error) {
 	if _, err := d.resolveCashReportAccount(organizationID, accountID); err != nil {
 		return nil, err
@@ -62,6 +74,9 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 	if endDate < startDate {
 		return nil, newValidationError("endDate must not be before startDate")
 	}
+
+	startMs := floorToUTCDay(startDate).UnixMilli()
+	endExclusiveMs := floorToUTCDay(endDate).AddDate(0, 0, 1).UnixMilli()
 
 	type paymentRow struct {
 		ID            string  `db:"id"`
@@ -98,9 +113,9 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 		JOIN payments p ON p.id = r.paymentId
 		JOIN invoices i ON i.id = r.invoiceId
 		LEFT JOIN clients c ON c.id = p.clientId
-		WHERE p.bankAccountId = ? AND p.date >= ? AND p.date <= ?
+		WHERE p.bankAccountId = ? AND p.date >= ? AND p.date < ?
 		ORDER BY p.date ASC`,
-		organizationID, accountID, startDate, endDate,
+		organizationID, accountID, startMs, endExclusiveMs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_cash_movement_details payments: %w", err)
@@ -116,9 +131,9 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 	err = d.DB.Select(&withdrawals, `
 		SELECT id, date, amount, note
 		FROM cash_movements
-		WHERE organizationId = ? AND accountId = ? AND date >= ? AND date <= ?
+		WHERE organizationId = ? AND accountId = ? AND date >= ? AND date < ?
 		ORDER BY date ASC`,
-		organizationID, accountID, startDate, endDate,
+		organizationID, accountID, startMs, endExclusiveMs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_cash_movement_details withdrawals: %w", err)

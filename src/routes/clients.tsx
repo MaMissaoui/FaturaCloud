@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Client } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, Col, Empty, Space, Table, Row, Tag, Tooltip } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -21,8 +21,6 @@ import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actio
 import PageHeader from "src/components/page-header";
 import { formatAddressOneLine } from "src/utils/address";
 
-const searchAtom = atom<string>("");
-
 const Clients = () => {
   useLingui();
   const location = useLocation();
@@ -30,7 +28,7 @@ const Clients = () => {
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -40,27 +38,29 @@ const Clients = () => {
     }
   }, [location, setClients]);
 
-  const searchClients = () => {
-    return filter(clients, (client: Client) => {
-      const fieldsMatch = some(
-        ["name", "code", "registration_number", "emails", "phone", "vatin", "website"],
-        (field) => {
-          const value = get(client, field);
-          return includes(toString(value).toLowerCase(), search.toLowerCase());
-        },
-      );
-      return (
-        fieldsMatch || includes(formatAddressOneLine(client).toLowerCase(), search.toLowerCase())
-      );
-    });
-  };
+  const filtered = useMemo(
+    () =>
+      filter(clients, (client: Client) => {
+        const fieldsMatch = some(
+          ["name", "code", "registration_number", "emails", "phone", "vatin", "website"],
+          (field) => {
+            const value = get(client, field);
+            return includes(toString(value).toLowerCase(), search.toLowerCase());
+          },
+        );
+        return (
+          fieldsMatch || includes(formatAddressOneLine(client).toLowerCase(), search.toLowerCase())
+        );
+      }),
+    [clients, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<TeamOutlined />}
         title={<Trans>Clients</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Space wrap>
             {organizationId && (
@@ -82,7 +82,7 @@ const Clients = () => {
       <Row>
         <Col span={24}>
           <Table
-            dataSource={search ? searchClients() : clients}
+            dataSource={filtered}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}

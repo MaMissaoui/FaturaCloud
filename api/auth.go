@@ -79,6 +79,19 @@ func sweepLoginBuckets() {
 	}
 }
 
+// isTrustedProxyAddr reports whether addr falls inside any configured trusted
+// proxy prefix. Shared by IsTrustedProxyPeer (which parses the direct peer
+// out of RemoteAddr first) and clientIP (which tests each X-Forwarded-For hop
+// against it) so the two can't drift on what "trusted" means.
+func isTrustedProxyAddr(addr netip.Addr, trustedProxies []netip.Prefix) bool {
+	for _, p := range trustedProxies {
+		if p.Contains(addr) {
+			return true
+		}
+	}
+	return false
+}
+
 // IsTrustedProxyPeer reports whether the request's direct TCP peer matches
 // one of the configured trusted-proxy prefixes. Shared by clientIP (decides
 // whether to honor X-Forwarded-For) and IsHTTPS below (decides whether to
@@ -97,12 +110,7 @@ func IsTrustedProxyPeer(r *http.Request, trustedProxies []netip.Prefix) bool {
 	if err != nil {
 		return false
 	}
-	for _, p := range trustedProxies {
-		if p.Contains(peer) {
-			return true
-		}
-	}
-	return false
+	return isTrustedProxyAddr(peer, trustedProxies)
 }
 
 // IsHTTPS reports whether the original client request was HTTPS, accounting
@@ -127,10 +135,23 @@ func IsHTTPS(r *http.Request, trustedProxies []netip.Prefix) bool {
 // (h.trustedProxies empty) it's always the direct TCP peer — safe with no
 // reverse proxy in front, but every client sharing that proxy then shares one
 // bucket. When the peer matches a configured trusted proxy, the real client
-// address is instead read from the leftmost X-Forwarded-For entry, which
-// only that proxy is trusted to have set truthfully; an untrusted peer can
-// send any X-Forwarded-For value it likes, so this only takes effect once
-// the peer itself is verified.
+// address is read from X-Forwarded-For; an untrusted peer can send any value
+// it likes, so this only takes effect once the peer itself is verified.
+//
+// F110 (2026-08-13 audit): the X-Forwarded-For list is walked from the RIGHT,
+// skipping any entry that is itself a trusted proxy, and the first remaining
+// (non-trusted) address is returned. The old leftmost-entry read was
+// attacker-controlled: nginx (and most proxies) *append* to an incoming
+// X-Forwarded-For rather than replacing it, so a client sending
+// "X-Forwarded-For: 1.2.3.4" produced "1.2.3.4, <real client>" and the
+// spoofed 1.2.3.4 became the rate-limit key — letting one attacker rotate
+// fake keys to dodge the limiter while a legitimate client's real address was
+// never seen. Which of the trailing hops are proxies is unavoidably a guess
+// (X-Forwarded-For can't distinguish a client from a proxy), so the trusted
+// list bounds the guess: every trusted hop on the way in is skipped, and the
+// first address after them is as close to the real client as this header
+// permits. Falls back to the direct peer when the header is absent, empty, or
+// contains nothing but trusted proxies.
 func (h *handler) clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -143,11 +164,20 @@ func (h *handler) clientIP(r *http.Request) string {
 	if xff == "" {
 		return host
 	}
-	real := strings.TrimSpace(strings.SplitN(xff, ",", 2)[0])
-	if real == "" {
-		return host
+	parts := strings.Split(xff, ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		candidate := strings.TrimSpace(parts[i])
+		if candidate == "" {
+			continue
+		}
+		// An unparseable entry can't be a trusted proxy, so it's returned as
+		// the client — the same "first non-trusted value wins" rule.
+		if addr, parseErr := netip.ParseAddr(candidate); parseErr == nil && isTrustedProxyAddr(addr, h.trustedProxies) {
+			continue
+		}
+		return candidate
 	}
-	return real
+	return host
 }
 
 // dummyPasswordHash is a fixed bcrypt hash that no real password will ever
@@ -233,6 +263,24 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) logout(w http.ResponseWriter, r *http.Request) {
+	// F109: logout revokes every session for the user, not just this cookie.
+	// The cookie is httpOnly so the browser (and page JS) can't clear another
+	// copy of it, and a JWT is otherwise valid until its 24h exp — bumping
+	// users.tokenVersion makes every previously-issued token fail
+	// authMiddleware's claims.TokenVersion != stored check on its next use.
+	// logout is intentionally NOT behind authMiddleware (the route has to
+	// work for an expired/invalid cookie too), so parse the token here,
+	// best-effort: an absent or invalid token simply has nothing to revoke.
+	if cookie, err := r.Cookie(authCookieName); err == nil && cookie.Value != "" {
+		claims := &Claims{}
+		if _, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (any, error) {
+			return []byte(h.jwtSecret), nil
+		}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience)); err == nil && claims.UserID != "" {
+			h.dbMu.RLock()
+			_, _ = h.db.DB.Exec(`UPDATE users SET tokenVersion = tokenVersion + 1 WHERE id = ?`, claims.UserID)
+			h.dbMu.RUnlock()
+		}
+	}
 	// The cookie is httpOnly, so the client can't clear it itself — the server
 	// must expire it here.
 	h.clearAuthCookie(w, r)
@@ -301,9 +349,10 @@ func (h *handler) issueToken(user userRow) (string, error) {
 
 func (h *handler) issueTokenWithProvider(user userRow, provider string) (string, error) {
 	claims := Claims{
-		UserID:   user.ID,
-		Email:    user.Email,
-		Provider: provider,
+		UserID:       user.ID,
+		Email:        user.Email,
+		Provider:     provider,
+		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
 			Audience:  jwt.ClaimStrings{jwtAudience},

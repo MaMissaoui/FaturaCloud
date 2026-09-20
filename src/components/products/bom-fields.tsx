@@ -56,7 +56,14 @@ const BOMFields = ({
               </Form.Item>
             </Col>
             <Col flex="32px">
-              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} />
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => remove(name)}
+                aria-label={t`Remove component`}
+                title={t`Remove component`}
+              />
             </Col>
           </Row>
         ))}
