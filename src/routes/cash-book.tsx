@@ -142,7 +142,7 @@ const CashBook = () => {
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
   const {
-    token: { colorBgContainer, colorSuccess, colorError },
+    token: { colorBgContainer, colorSuccess, colorError, colorBorder },
   } = theme.useToken();
 
   const organizationId = useAtomValue(organizationIdAtom);
@@ -306,6 +306,20 @@ const CashBook = () => {
     () => (openLoansOnly ? loanStatusRows.filter((row) => row.outstanding !== 0) : loanStatusRows),
     [loanStatusRows, openLoansOnly],
   );
+
+  // Per-customer open-loan total, derived from the loan-status rows already
+  // fetched for the report below (the screen's standing "who owes what"
+  // query, unfiltered by client on the search screen) — so the search result
+  // can show what a returning customer still owes without a second request.
+  const openLoanByClient = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of loanStatusRows) {
+      if (row.outstanding) {
+        totals.set(row.clientId, (totals.get(row.clientId) ?? 0) + row.outstanding);
+      }
+    }
+    return totals;
+  }, [loanStatusRows]);
 
   const handleExportDailyMovements = (format: "xlsx" | "pdf") => async () => {
     if (!organizationId || !registerAccountId) return;
@@ -518,6 +532,18 @@ const CashBook = () => {
   const currency = organization?.currency || "EUR";
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
+  // A stronger border than antd's default (`colorBorderSecondary`, which is
+  // nearly invisible in both themes) so the stacked Cash Book panels read as
+  // distinct cards, plus one consistent gap between them. Shared by the
+  // Cash register, New sale and Loan status cards.
+  const sectionCardStyle = {
+    marginBottom: 16,
+    borderColor: colorBorder,
+  };
+  // The two section cards that use a Card `title` get a larger, bolder
+  // heading than antd's default so they stand out on the counter screen.
+  const sectionCardStyles = { header: { fontSize: 18, fontWeight: 600 } };
+
   const handleSubmitSale = async (values: any) => {
     if (!organizationId || !isToday) return;
     if (!selectedClient && !newClientDraft) {
@@ -675,47 +701,77 @@ const CashBook = () => {
           dataSource={searchResults}
           locale={{ emptyText: <Trans>No matching customers</Trans> }}
           style={{ marginBottom: 16 }}
-          renderItem={(client: any) => (
-            <List.Item
-              onClick={() => selectClient(client)}
-              onKeyDown={(e) => {
-                // Only the row itself handles the key — a nested control (the
-                // "Select" button below) fires its own click on Enter/Space,
-                // and letting that bubble here too would select the client
-                // twice.
-                if (e.target !== e.currentTarget) return;
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  selectClient(client);
-                }
-              }}
-              style={{ cursor: "pointer" }}
-              tabIndex={0}
-              role="button"
-              actions={[
-                <Button
-                  type="link"
-                  onClick={(e) => {
-                    // The row's onClick already covers clicking anywhere in
-                    // the item — without this the button's click bubbled and
-                    // fired selectClient a second time (a duplicate fetch).
-                    e.stopPropagation();
+          renderItem={(client: any) => {
+            const codeLabel = t`Customer no.`;
+            const cinLabel = t`CIN`;
+            const address = [
+              [client.house_number, client.street].filter(Boolean).join(" "),
+              [client.postal_code, client.city].filter(Boolean).join(" "),
+            ]
+              .filter(Boolean)
+              .join(", ");
+            const details = [
+              client.code ? `${codeLabel} ${client.code}` : null,
+              client.phone,
+              client.identity_number ? `${cinLabel} ${client.identity_number}` : null,
+              client.iban,
+              address || null,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const openLoan = openLoanByClient.get(client.id);
+            return (
+              <List.Item
+                onClick={() => selectClient(client)}
+                onKeyDown={(e) => {
+                  // Only the row itself handles the key — a nested control (the
+                  // "Select" button below) fires its own click on Enter/Space,
+                  // and letting that bubble here too would select the client
+                  // twice.
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     selectClient(client);
-                  }}
-                  key="select"
-                >
-                  <Trans>Select</Trans>
-                </Button>,
-              ]}
-            >
-              <List.Item.Meta
-                title={client.name}
-                description={[client.phone, client.identity_number, client.iban]
-                  .filter(Boolean)
-                  .join(" · ")}
-              />
-            </List.Item>
-          )}
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+                tabIndex={0}
+                role="button"
+                actions={[
+                  <Button
+                    type="link"
+                    onClick={(e) => {
+                      // The row's onClick already covers clicking anywhere in
+                      // the item — without this the button's click bubbled and
+                      // fired selectClient a second time (a duplicate fetch).
+                      e.stopPropagation();
+                      selectClient(client);
+                    }}
+                    key="select"
+                  >
+                    <Trans>Select</Trans>
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={client.name}
+                  description={
+                    <>
+                      <Typography.Text type="secondary">{details}</Typography.Text>
+                      {openLoan ? (
+                        <>
+                          {" · "}
+                          <Typography.Text strong type="warning">
+                            {t`Open loan`}: {money(openLoan)}
+                          </Typography.Text>
+                        </>
+                      ) : null}
+                    </>
+                  }
+                />
+              </List.Item>
+            );
+          }}
         />
       )}
 
@@ -725,21 +781,26 @@ const CashBook = () => {
       prefiltered to this customer's open loans. */}
       {isToday && inSale && (
         <>
-          <Space style={{ marginBottom: 16 }}>
+          <Space align="center" size={12} style={{ marginBottom: 16 }}>
             <Button icon={<ArrowLeftOutlined />} onClick={backToSearch}>
               <Trans>Back to search</Trans>
             </Button>
-            <Typography.Text strong>
+            <Typography.Title level={4} style={{ margin: 0 }}>
               {clientName}
-              {newClientDraft && (
-                <Tag color="blue" style={{ marginLeft: 8 }}>
-                  <Trans>New customer</Trans>
-                </Tag>
-              )}
-            </Typography.Text>
+            </Typography.Title>
+            {newClientDraft && (
+              <Tag color="blue" style={{ marginInlineStart: 0 }}>
+                <Trans>New customer</Trans>
+              </Tag>
+            )}
           </Space>
 
-          <Card size="small" title={<Trans>New sale</Trans>}>
+          <Card
+            size="small"
+            title={<Trans>New sale</Trans>}
+            style={sectionCardStyle}
+            styles={sectionCardStyles}
+          >
             {!registerAccountId && (
               // F101: every sale that receives an amount posts it to the
               // register/till account; with none configured the server now
@@ -1004,7 +1065,7 @@ const CashBook = () => {
       )}
 
       {!inSale && (
-        <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
+        <Card size="small" style={sectionCardStyle} loading={loadingDailyMovement}>
           <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
             <Col>
               <Typography.Text strong style={{ fontSize: 15 }}>
@@ -1181,7 +1242,8 @@ const CashBook = () => {
       <Card
         size="small"
         title={<Trans>Loan status</Trans>}
-        style={{ marginBottom: 16 }}
+        style={sectionCardStyle}
+        styles={sectionCardStyles}
         loading={loadingLoanStatus}
         extra={
           <Space>
