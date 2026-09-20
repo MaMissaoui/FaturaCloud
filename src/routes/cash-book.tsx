@@ -792,7 +792,7 @@ const CashBook = () => {
       {isToday && inSale && (
         <>
           <Space align="center" size={12} style={{ marginBottom: 16 }}>
-            <Button icon={<ArrowLeftOutlined />} onClick={backToSearch}>
+            <Button type="primary" icon={<ArrowLeftOutlined />} onClick={backToSearch}>
               <Trans>Back to search</Trans>
             </Button>
             <Typography.Title level={4} style={{ margin: 0 }}>
