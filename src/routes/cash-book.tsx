@@ -21,6 +21,7 @@ import {
   Table,
   Tag,
   theme,
+  Tooltip,
   Typography,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -55,7 +56,9 @@ import {
   GetAccounts,
   GetCashMovementDetails,
   GetDailyCashMovements,
+  GetInvoice,
   GetLoanStatus,
+  UpdateInvoiceState,
 } from "src/api";
 import type {
   CashMovementDetail,
@@ -63,9 +66,10 @@ import type {
   DailyCashMovementRow,
   LoanStatusRow,
 } from "src/api";
-import type { Account, Client } from "src/types/models";
+import type { Account, Client, Invoice } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
+import PaymentPanel from "src/components/payments/payment-panel";
 import { useDatePickerFormat } from "src/utils/date";
 import {
   addDecimal,
@@ -203,6 +207,9 @@ const CashBook = () => {
   const [loanStatusRows, setLoanStatusRows] = useState<LoanStatusRow[]>([]);
   const [loadingLoanStatus, setLoadingLoanStatus] = useState(false);
   const [openLoansOnly, setOpenLoansOnly] = useState(true);
+  // The invoice whose "Record payment" panel is open, resolved from the loan
+  // report's invoiceId when the button is clicked.
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
   const [downloadingLoanPdf, setDownloadingLoanPdf] = useState(false);
   const [downloadingLoanExcel, setDownloadingLoanExcel] = useState(false);
 
@@ -563,6 +570,40 @@ const CashBook = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openPayment = async (invoiceId: string) => {
+    try {
+      setPayingInvoice(await GetInvoice(invoiceId));
+    } catch (error) {
+      console.error("Failed to load invoice:", error);
+      message.error(t`Failed to load invoice`);
+    }
+  };
+
+  const closePayment = async () => {
+    setPayingInvoice(null);
+    await refreshLoanStatus();
+  };
+
+  // Auto-progresses the invoice to "paid" once its balance clears — see
+  // db/cash_sale.go's CreateCashSale doc comment for why this Cash-Book-only
+  // follow-up call is the right scope rather than a change to PaymentPanel's
+  // shared, otherwise-manual-state convention. Refreshing the loan report
+  // here is what makes a just-settled loan drop out of the open-only view.
+  const handleSettled = async () => {
+    if (payingInvoice) {
+      try {
+        await UpdateInvoiceState(payingInvoice.id, "paid");
+      } catch (error) {
+        console.error("Failed to mark invoice paid:", error);
+        message.error(
+          t`Payment recorded, but the invoice status couldn't be updated to Paid — update it manually from the invoice page`,
+        );
+      }
+    }
+    await closePayment();
+    await refreshDailyMovement();
   };
 
   const clientName = selectedClient?.name || newClientDraft?.name || "";
@@ -1151,6 +1192,25 @@ const CashBook = () => {
               </Typography.Text>
             )}
           />
+          <Table.Column
+            key="actions"
+            align="right"
+            render={(row: LoanStatusRow) =>
+              row.outstanding > 0 ? (
+                <Tooltip title={!isToday ? t`Switch to today to record a payment` : undefined}>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<DollarOutlined />}
+                    disabled={!isToday}
+                    onClick={() => openPayment(row.invoiceId)}
+                  >
+                    <Trans>Record payment</Trans>
+                  </Button>
+                </Tooltip>
+              ) : null
+            }
+          />
         </Table>
       </Card>
 
@@ -1241,6 +1301,31 @@ const CashBook = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {payingInvoice && organizationId && (
+        <PaymentPanel
+          organizationId={organizationId}
+          documentType="invoice"
+          documentId={payingInvoice.id}
+          direction="inbound"
+          clientId={payingInvoice.clientId}
+          currency={payingInvoice.currency}
+          orgCurrency={organization?.currency || "EUR"}
+          total={payingInvoice.total}
+          hasPostedEntry
+          embedded
+          onClose={closePayment}
+          onSettled={handleSettled}
+          defaultMethod="cash"
+          defaultBankAccountId={
+            organization?.defaultCashRegisterAccountId ??
+            organization?.defaultCashAccountId ??
+            undefined
+          }
+          minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
+          countryCode={organization?.country_code}
+        />
+      )}
     </>
   );
 };
