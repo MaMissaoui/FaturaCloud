@@ -142,7 +142,7 @@ const CashBook = () => {
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
   const {
-    token: { colorBgContainer, colorSuccess, colorError },
+    token: { colorBgContainer, colorSuccess, colorError, colorBorder },
   } = theme.useToken();
 
   const organizationId = useAtomValue(organizationIdAtom);
@@ -518,6 +518,18 @@ const CashBook = () => {
   const currency = organization?.currency || "EUR";
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
+  // A stronger border than antd's default (`colorBorderSecondary`, which is
+  // nearly invisible in both themes) so the stacked Cash Book panels read as
+  // distinct cards, plus one consistent gap between them. Shared by the
+  // Cash register, New sale and Loan status cards.
+  const sectionCardStyle = {
+    marginBottom: 16,
+    borderColor: colorBorder,
+  };
+  // The two section cards that use a Card `title` get a larger, bolder
+  // heading than antd's default so they stand out on the counter screen.
+  const sectionCardStyles = { header: { fontSize: 18, fontWeight: 600 } };
+
   const handleSubmitSale = async (values: any) => {
     if (!organizationId || !isToday) return;
     if (!selectedClient && !newClientDraft) {
@@ -739,7 +751,12 @@ const CashBook = () => {
             </Typography.Text>
           </Space>
 
-          <Card size="small" title={<Trans>New sale</Trans>}>
+          <Card
+            size="small"
+            title={<Trans>New sale</Trans>}
+            style={sectionCardStyle}
+            styles={sectionCardStyles}
+          >
             {!registerAccountId && (
               // F101: every sale that receives an amount posts it to the
               // register/till account; with none configured the server now
@@ -1004,7 +1021,7 @@ const CashBook = () => {
       )}
 
       {!inSale && (
-        <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
+        <Card size="small" style={sectionCardStyle} loading={loadingDailyMovement}>
           <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
             <Col>
               <Typography.Text strong style={{ fontSize: 15 }}>
@@ -1181,7 +1198,8 @@ const CashBook = () => {
       <Card
         size="small"
         title={<Trans>Loan status</Trans>}
-        style={{ marginBottom: 16 }}
+        style={sectionCardStyle}
+        styles={sectionCardStyles}
         loading={loadingLoanStatus}
         extra={
           <Space>
