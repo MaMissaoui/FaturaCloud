@@ -33,6 +33,7 @@ import { GetStockMovements } from "src/api";
 import MovementForm from "src/components/stock/movement-form";
 import PageHeader from "src/components/page-header";
 import { numberFormatLocale } from "src/utils/currencies";
+import { useDateTimeFormatter } from "src/utils/date";
 import { unitLabel } from "src/utils/units";
 
 const movementTypeTag = (type: string) => {
@@ -96,6 +97,7 @@ const Inventory = () => {
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
   const deleteMovement = useSetAtom(deleteStockMovementAtom);
+  const formatDateTime = useDateTimeFormatter();
 
   // The organization's own country drives the decimal separator (comma vs.
   // period) for quantities, not the viewer's UI language — the same
@@ -544,7 +546,7 @@ const Inventory = () => {
               dataIndex="createdAt"
               key="date"
               sorter
-              render={(v: string) => (v ? new Date(v).toLocaleString() : "—")}
+              render={(v: string) => (v ? formatDateTime(v) : "—")}
             />
             <Table.Column
               title={<Trans>Product</Trans>}

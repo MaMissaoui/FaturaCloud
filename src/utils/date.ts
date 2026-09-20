@@ -83,6 +83,25 @@ export function useDateTimePickerFormat() {
 }
 
 /**
+ * Hook to get a date+time formatter function that uses organization
+ * preferences — the display counterpart to useDateTimePickerFormat, for
+ * read-only timestamps (audit logs, backup timestamps, movement times) that
+ * were previously formatted with a hardcoded "DD/MM/YYYY HH:mm" or the
+ * browser's own locale, ignoring the organization's date_format setting.
+ */
+export function useDateTimeFormatter() {
+  const organization = useAtomValue(organizationAtom);
+
+  return (date: string | number | Date | dayjs.Dayjs) => {
+    const custom = organization?.date_format;
+    if (custom && custom !== "AUTO") {
+      return dayjs(date).format(`${custom} HH:mm`);
+    }
+    return dayjs(date).format("L HH:mm");
+  };
+}
+
+/**
  * Get display label for date format
  * @param format - The date format key
  * @returns Display label with example

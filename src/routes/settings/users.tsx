@@ -19,17 +19,18 @@ import { DeleteOutlined, TeamOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import dayjs from "dayjs";
 
 import { type UserRecord, CreateUser, DeleteUser, GetUser, ListUsers, UpdateUser } from "src/api";
 import { currentUserAtom } from "src/atoms/auth";
 import PageHeader from "src/components/page-header";
+import { useDateTimeFormatter } from "src/utils/date";
 
 export default function SettingsUsers() {
   useLingui();
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const me = useAtomValue(currentUserAtom);
+  const formatDateTime = useDateTimeFormatter();
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +69,13 @@ export default function SettingsUsers() {
     try {
       const user = await GetUser(id);
       form.setFieldsValue({ ...user, password: "", passwordConfirm: "" });
-    } catch {}
+    } catch (error) {
+      // Previously an empty catch — the drawer stayed open on a blank form
+      // with no explanation. Surface why and close it.
+      console.error("Failed to load user:", error);
+      message.error(error instanceof Error ? error.message : t`Failed to load user`);
+      handleClose();
+    }
   };
 
   const handleClose = () => {
@@ -233,7 +240,7 @@ export default function SettingsUsers() {
           dataIndex="lastLoginAt"
           key="lastLoginAt"
           sorter={(a, b) => (a.lastLoginAt ?? 0) - (b.lastLoginAt ?? 0)}
-          render={(v) => (v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—")}
+          render={(v) => (v ? formatDateTime(v) : "—")}
         />
         <Table.Column<UserRecord>
           title=""

@@ -28,7 +28,6 @@ import {
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import dayjs from "dayjs";
 
 import {
   type BackupConfig,
@@ -40,6 +39,7 @@ import {
   SetBackupConfig,
   TriggerBackup,
 } from "src/api";
+import { useDateTimeFormatter } from "src/utils/date";
 
 const { Title, Text } = Typography;
 
@@ -54,6 +54,7 @@ function SettingsBackup() {
   const [messageApi, contextHolder] = message.useMessage();
   const [modalApi, modalContextHolder] = Modal.useModal();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formatDateTime = useDateTimeFormatter();
 
   const [backups, setBackups] = useState<BackupEntry[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -111,7 +112,7 @@ function SettingsBackup() {
   const nextRun = new Date();
   nextRun.setUTCHours(config.scheduleHour, 0, 0, 0);
   if (nextRun.getTime() <= now) nextRun.setUTCDate(nextRun.getUTCDate() + 1);
-  const nextRunLabel = dayjs(nextRun).format("DD/MM/YYYY HH:mm");
+  const nextRunLabel = formatDateTime(nextRun);
 
   const handleSaveConfig = async () => {
     setSavingConfig(true);
@@ -424,7 +425,7 @@ function SettingsBackup() {
               dataIndex="createdAt"
               key="createdAt"
               width={150}
-              render={(v) => dayjs(v).format("DD/MM/YYYY HH:mm")}
+              render={(v) => formatDateTime(v)}
             />
             <Table.Column<BackupEntry>
               title=""
