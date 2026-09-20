@@ -1044,7 +1044,7 @@ const CashBook = () => {
                   // A zero-deposit loan sale (amount 0) is still allowed.
                   disabled={amountReceivedWatched > 0 && !registerAccountId}
                 >
-                  {amountReceivedWatched >= total ? (
+                  {saleMode === "cash" ? (
                     <Trans>Record cash sale</Trans>
                   ) : (
                     <Trans>Record loan sale</Trans>
