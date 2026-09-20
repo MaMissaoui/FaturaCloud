@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   Alert,
+  App,
   Button,
   Card,
   Col,
@@ -9,12 +10,12 @@ import {
   Form,
   Input,
   InputNumber,
-  Modal,
   Popconfirm,
   Row,
   Select,
   Space,
   Switch,
+  theme,
   Tooltip,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -58,6 +59,10 @@ const ProductForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  // Themed modal/message from the app's AntApp context — a static
+  // Modal.confirm would render light-styled even in dark mode.
+  const { modal } = App.useApp();
+  const { token } = theme.useToken();
 
   const [productId, setProductId] = useAtom(productIdAtom);
   const products = useAtomValue(productsAtom);
@@ -537,7 +542,7 @@ const ProductForm = () => {
                     popupRender={(menu) => (
                       <>
                         {menu}
-                        <div style={{ borderTop: "1px solid #f0f0f0", padding: 8 }}>
+                        <div style={{ borderTop: `1px solid ${token.colorSplit}`, padding: 8 }}>
                           {/* Not a plain <Link>: this drawer's visibility is
                               router state, so navigating away unmounts it and
                               silently discards everything typed so far. Ask
@@ -551,7 +556,7 @@ const ProductForm = () => {
                                 navigate("/settings/units-of-measure");
                                 return;
                               }
-                              Modal.confirm({
+                              modal.confirm({
                                 title: t`Leave without saving?`,
                                 content: t`Managing units of measure closes this product and discards your unsaved changes.`,
                                 okText: t`Discard and continue`,
@@ -605,7 +610,7 @@ const ProductForm = () => {
                           });
                           return;
                         }
-                        Modal.confirm({
+                        modal.confirm({
                           title: t`Leave without saving?`,
                           content: t`Opening the Bill of Materials screen closes this product and discards your unsaved changes.`,
                           okText: t`Discard and continue`,

@@ -55,17 +55,18 @@ function SettingsCountries() {
 
   return (
     <>
-      <Row>
-        <Col span={12}>
+      <Row gutter={[8, 8]}>
+        <Col xs={24} md={12}>
           <Title level={3} style={{ marginTop: 0, marginBottom: 0 }}>
             <GlobalOutlined style={{ marginRight: 8 }} />
             <Trans>Countries</Trans>
           </Title>
         </Col>
-        <Col span={12} style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Col xs={24} md={12} style={{ display: "flex", justifyContent: "flex-end" }}>
           <Space style={{ alignItems: "start" }}>
             <Input.Search
               placeholder={t`Search`}
+              aria-label={t`Search countries`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />

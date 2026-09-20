@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Popover, Space, Tag, Typography } from "antd";
+import { Popover, Space, Tag, Typography, theme } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -30,6 +30,8 @@ function StatusFlowInner<S extends string>({
   getLabel,
   getColor,
 }: StatusFlowProps<S>) {
+  const { token } = theme.useToken();
+
   // A status with no outgoing moves adds nothing on its own row — it's
   // already visible as an arrow target wherever it's reachable from, so
   // spelling out "(final)" for it again is pure repetition. The one
@@ -94,7 +96,7 @@ function StatusFlowInner<S extends string>({
       }
     >
       <QuestionCircleOutlined
-        style={{ marginLeft: 8, color: "#999", cursor: "pointer" }}
+        style={{ marginLeft: 8, color: token.colorTextTertiary, cursor: "pointer" }}
         role="button"
         tabIndex={0}
         aria-label={t`Show status flow`}

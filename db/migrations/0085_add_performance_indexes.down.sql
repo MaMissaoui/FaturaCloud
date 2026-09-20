@@ -1,0 +1,13 @@
+DROP INDEX IF EXISTS journal_lines_taxRateId;
+DROP INDEX IF EXISTS incoming_invoice_line_items_taxRate;
+DROP INDEX IF EXISTS purchase_order_line_items_taxRate;
+DROP INDEX IF EXISTS products_taxRateId;
+DROP INDEX IF EXISTS products_expenseAccountId;
+DROP INDEX IF EXISTS products_revenueAccountId;
+DROP INDEX IF EXISTS payments_bankAccountId;
+DROP INDEX IF EXISTS inbound_deliveries_organizationId_status;
+DROP INDEX IF EXISTS idx_taxRates_organizationId_name;
+DROP INDEX IF EXISTS idx_vendors_organizationId_name;
+DROP INDEX IF EXISTS idx_clients_organizationId_name;
+DROP INDEX IF EXISTS idx_products_organizationId_name;
+DROP INDEX IF EXISTS idx_stockMovements_productId_createdAt;

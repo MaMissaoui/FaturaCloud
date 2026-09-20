@@ -1246,6 +1246,7 @@ const CashBook = () => {
               value={loanStatusClientId || undefined}
               onChange={(value) => setLoanStatusClientId(value ?? "")}
               placeholder={t`All customers`}
+              aria-label={t`Customer`}
               allowClear
               showSearch
               optionFilterProp="children"

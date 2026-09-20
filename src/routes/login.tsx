@@ -112,13 +112,25 @@ export default function LoginPage() {
               name="email"
               rules={[{ required: true, type: "email", message: t`Please enter a valid email` }]}
             >
-              <Input prefix={<UserOutlined />} placeholder={t`Email`} size="large" />
+              <Input
+                prefix={<UserOutlined />}
+                placeholder={t`Email`}
+                aria-label={t`Email`}
+                autoComplete="email"
+                size="large"
+              />
             </Form.Item>
             <Form.Item
               name="password"
               rules={[{ required: true, message: t`Please enter your password` }]}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder={t`Password`} size="large" />
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder={t`Password`}
+                aria-label={t`Password`}
+                autoComplete="current-password"
+                size="large"
+              />
             </Form.Item>
             <Form.Item style={{ marginBottom: 0 }}>
               <Button type="primary" htmlType="submit" block size="large" loading={loading}>

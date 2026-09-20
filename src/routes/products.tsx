@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, TaxRate } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { App, Badge, Button, Col, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import {
+  App,
+  Badge,
+  Button,
+  Col,
+  Empty,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import type { TableProps } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -217,6 +230,20 @@ const Products = () => {
             onChange={handleTableChange}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText:
+                search || typeFilter || categoryFilter ? (
+                  <Empty description={<Trans>No products match your filters</Trans>} />
+                ) : (
+                  <Empty description={<Trans>No products yet</Trans>}>
+                    <Link to="/products" state={{ productModal: true }}>
+                      <Button type="primary">
+                        <Trans>Create your first product</Trans>
+                      </Button>
+                    </Link>
+                  </Empty>
+                ),
+            }}
             onRow={(record: Product) => ({
               onClick: () =>
                 navigate("/products", { state: { productModal: true, productId: record.id } }),

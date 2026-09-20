@@ -319,6 +319,7 @@ const Inventory = () => {
                 <Select
                   allowClear
                   placeholder={t`Filter by product type`}
+                  aria-label={t`Filter by product type`}
                   style={{ width: 180 }}
                   onChange={(val) => {
                     setCategoryFilter(val ?? null);
@@ -478,6 +479,7 @@ const Inventory = () => {
             <Select
               allowClear
               placeholder={t`Filter by product`}
+              aria-label={t`Filter by product`}
               style={{ width: 220 }}
               showSearch
               optionFilterProp="label"
@@ -497,6 +499,7 @@ const Inventory = () => {
             <Select
               allowClear
               placeholder={t`Filter by movement type`}
+              aria-label={t`Filter by movement type`}
               style={{ width: 200 }}
               onChange={(val) => {
                 setMovementTypeFilter(val ?? null);

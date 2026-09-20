@@ -189,6 +189,7 @@ function DocumentTemplateCard({
             onChange={handleOrientationChange}
             loading={orientationSaving}
             disabled={orientationSaving}
+            aria-label={t`Page orientation`}
             style={{ width: 140 }}
             options={[
               { value: "portrait", label: t`Portrait` },

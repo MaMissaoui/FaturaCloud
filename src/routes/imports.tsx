@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Import, ImportSummary, PurchaseOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Empty, Table, Row, Tag, Tooltip } from "antd";
+import { Button, Col, Empty, Table, Row, Tag, Tooltip, Typography } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -163,7 +163,7 @@ const Imports = () => {
               render={(imp: Import) => {
                 const linked = ordersByImport.get(imp.id) ?? [];
                 if (linked.length === 0) {
-                  return <span style={{ color: "#999" }}>—</span>;
+                  return <Typography.Text type="secondary">—</Typography.Text>;
                 }
                 const shown = linked.slice(0, 3);
                 const rest = linked.length - shown.length;
