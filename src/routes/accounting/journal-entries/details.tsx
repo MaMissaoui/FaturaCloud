@@ -249,6 +249,7 @@ const JournalEntryDetails = () => {
                   pagination={false}
                   rowKey="key"
                   size="small"
+                  scroll={{ x: "max-content" }}
                   footer={() => (
                     <Button size="small" icon={<PlusOutlined />} onClick={() => add({})}>
                       <Trans>Add line</Trans>
