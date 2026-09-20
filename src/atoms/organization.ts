@@ -158,6 +158,16 @@ export const isOrgAdminOrAccountingAtom = atom(async (get) => {
 });
 isOrgAdminOrAccountingAtom.debugLabel = "isOrgAdminOrAccountingAtom";
 
+// isCashbookAtom reports whether the current user's role in the selected
+// organization is the narrow "cashbook" (counter/till) role. Used purely as
+// a UI restriction: the sidebar shows only Cash Book and Clients, and
+// BaseLayout bounces any other route back to /cash-book. This is deliberate
+// frontend-only gating — reads stay membership-level server-side for every
+// role (api/CLAUDE.md), so a cashbook user can still read an invoice they
+// navigate to directly; hiding it just keeps the counter workflow focused.
+export const isCashbookAtom = atom(async (get) => (await get(myOrgRoleAtom)) === "cashbook");
+isCashbookAtom.debugLabel = "isCashbookAtom";
+
 // Forces organizationAtom to refetch the currently selected organization
 // (including its logo) without going through a create/update. Used after a
 // logo upload/removal, which happens through the dedicated /logo endpoints

@@ -17,6 +17,8 @@ Uses Jotai atoms pattern with:
 
 Apart from two top-level items — **Dashboard** and **Cash Book** (`/cash-book`), in that order, before the groups — the sidebar is grouped into collapsible submenus (click the group to expand/collapse, same behavior for all groups — the active group auto-expands based on the current route via `defaultOpenKeys` in `src/layouts/base.tsx`):
 
+**The `cashbook` role sees a deliberately reduced view** (2026-09-20): only **Cash Book** and **Clients** in the sidebar, no Settings gear, no "New organization" option in the org switcher. It is enforced, not just hidden — `src/layouts/base.tsx` bounces any other route back to `/cash-book`, `src/routes/organizations/new.tsx` does the same for the one page outside that layout, and `src/routes/index.tsx` lands a cashbook user on `/cash-book` instead of `/invoices`. Both read `isCashbookAtom` (`src/atoms/organization.ts`, `myOrgRoleAtom === "cashbook"`). Purely a UI restriction: reads stay membership-level server-side, so this is not an authorization boundary.
+
 - **Sales**: Invoices → Outbound Deliveries → Orders
 - **Purchasing**: Imports → Purchase Orders → Goods Receipts → Incoming Invoices
 - **Inventory**: Inventory → Production Orders

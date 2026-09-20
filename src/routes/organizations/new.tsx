@@ -1,6 +1,7 @@
 import { Form, Input, InputNumber, Select, Typography, Row, Col, Button, Card } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
+import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -8,7 +9,12 @@ import compact from "lodash/compact";
 import map from "lodash/map";
 import uniq from "lodash/uniq";
 
-import { organizationAtom, organizationsAtom, organizationIdAtom } from "src/atoms/organization";
+import {
+  organizationAtom,
+  organizationsAtom,
+  organizationIdAtom,
+  isCashbookAtom,
+} from "src/atoms/organization";
 import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
 
@@ -26,6 +32,14 @@ const NewOrganization = () => {
   const organizations = useAtomValue(organizationsAtom);
   const [submitting, setSubmitting] = useAtom(submittingAtom);
   const setOrganizationId = useSetAtom(organizationIdAtom);
+
+  // The restricted cashbook role has no business creating organizations —
+  // bounce it back to the counter screen (the org switcher's "New
+  // organization" entry is already hidden for it).
+  const isCashbook = useAtomValue(isCashbookAtom);
+  useEffect(() => {
+    if (isCashbook) navigate("/cash-book", { replace: true });
+  }, [isCashbook, navigate]);
 
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
