@@ -679,7 +679,9 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("POST", "/api/cash-movements", h.createCashMovement)
 	orgMemberProtected("GET", "/api/payments/{id}", paymentOrgID, h.getPayment)
 	orgMemberProtected("GET", "/api/payments/{id}/applications", paymentOrgID, h.getPaymentApplications)
-	orgMemberProtected("POST", "/api/payments/{id}/void", paymentOrgID, h.voidPayment)
+	// Voiding a payment reverses its posted GL entry, so it's an accounting
+	// action (F104) — role-gated the same tier as journal-entry reversal.
+	orgRoleProtected("POST", "/api/payments/{id}/void", paymentOrgID, []string{"accounting"}, h.voidPayment)
 	orgMemberProtected("GET", "/api/invoices/{id}/payments", invoiceOrgID, h.getInvoicePayments)
 	orgMemberProtected("GET", "/api/incoming-invoices/{id}/payments", incomingInvoiceOrgID, h.getIncomingInvoicePayments)
 
