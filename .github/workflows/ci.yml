@@ -212,3 +212,34 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # F137: until this job existed, nothing on a PR ever touched the
+  # Dockerfile — docker.yml only runs on `push: tags: v*`, so Dockerfile or
+  # compose breakage was found at release time instead of on the PR that
+  # introduced it. Only the `backend` target is built here, deliberately:
+  # the full runtime stage installs libreoffice-calc (~630MB) and would make
+  # every PR unusably slow. The backend target still exercises everything in
+  # the Dockerfile a code change can break — the frontend pnpm build, the Go
+  # compile (including the `dist/` embed) — so Dockerfile rot is caught
+  # without paying for the runtime stage.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build backend image target
+        run: docker build --target backend -t fatura-cloud-ci:test --build-arg VERSION=ci .
+
+      # Both compose files are validated here too — `config` parses,
+      # interpolates and resolves them without building or pulling anything,
+      # so a broken compose change (bad YAML, dropped service, a merge that
+      # no longer type-checks) fails on the PR. Warnings about unset
+      # JWT_SECRET/ADMIN_PASSWORD/DOMAIN etc. are expected and not errors.
+      - name: Validate compose files
+        run: |
+          docker compose config > /dev/null
+          docker compose -f docker-compose.yml -f docker-compose.oidc.yml config > /dev/null

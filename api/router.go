@@ -716,10 +716,12 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	mux.Handle("GET /api/organizations/{orgId}/reports/daily-cash-movements/export", auth(h.orgMember(pathOrgID("orgId"))(csrf(limitBody(defaultMaxBody, h.getDailyCashMovementsExport)))))
 	mux.Handle("GET /api/organizations/{orgId}/reports/loan-status/export", auth(h.orgMember(pathOrgID("orgId"))(csrf(limitBody(defaultMaxBody, h.getLoanStatusExport)))))
 
-	// GL export — France FEC only; DATEV is deliberately not implemented
-	// yet (see db/export_fec.go and the GL Export settings page). Admin-only,
-	// same sensitivity class as the database backup download: a full ledger
-	// dump for the fiscal year, not a single document.
+	// GL export — France FEC and Germany DATEV Buchungsstapel EXTF, both
+	// implemented (see db/export_fec.go and db/export_datev.go; the GL Export
+	// settings page drives them, and each refuses with a validation error when
+	// its country-specific identifiers/account numbers are missing).
+	// Admin-only, same sensitivity class as the database backup download: a
+	// full ledger dump for the fiscal year, not a single document.
 	orgRoleAdminProtected("GET", "/api/organizations/{orgId}/gl-export/fec", pathOrgID("orgId"), []string{"accounting"}, h.getFECExport)
 	orgRoleAdminProtected("GET", "/api/organizations/{orgId}/gl-export/datev", pathOrgID("orgId"), []string{"accounting"}, h.getDATEVExport)
 

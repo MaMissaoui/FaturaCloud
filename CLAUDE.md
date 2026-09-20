@@ -13,11 +13,11 @@ FaturaCloud is a web-based invoicing application. It runs as a single Docker ima
 - **Database**: SQLite via `modernc.org/sqlite` + `jmoiron/sqlx`
 - **Styling**: SCSS with Ant Design theming
 - **Internationalization**: LinguiJS with .po files in src/locales/
-- **PDF Generation**: @react-pdf/renderer (client-side, no server involvement)
+- **PDF Generation**: server-side — a document's PDF is its organization's Excel template (an uploaded override or the embedded default) filled by `db/xlsx_export*.go` and converted with headless LibreOffice (`db/pdf_convert.go`; `libreoffice-calc` in the Docker runtime stage). The old client-side `@react-pdf/renderer` path no longer produces an exported document — see `src/CLAUDE.md` for the two legacy components that remain in the tree
 
 ## Key Technologies
 - Go `net/http` with Go 1.26 enhanced mux (method + path variables, e.g. `GET /api/clients/{id}`)
-- React Router 7 (BrowserRouter) for client-side navigation with SPA fallback in the Go server
+- React Router 8 (BrowserRouter) for client-side navigation with SPA fallback in the Go server
 - Jotai for state management with atoms in src/atoms/
 - LinguiJS for i18n with macros for translations
 - SQLite with migrations in db/migrations/ (auto-applied on startup via golang-migrate)
@@ -91,8 +91,13 @@ These apply on both sides of the stack; the detail lives in the subdirectory fil
 - **Dates** are Unix timestamps in milliseconds; **ids** are 21-char nanoids (every `Create*` generates one when `req.ID == ""`).
 - **Document statuses/states** are defined twice and must stay in sync: the Go set/transition map in `db/<doc>.go` and the frontend source of truth in `src/types/<doc>.ts`. Status changes go through `PATCH …/status` (or `/state`) only, never `PUT`.
 - **Posted journal entries are immutable** — reversed, never edited or deleted; every posting path goes through `allocateAndFinalizeEntryTx`.
-- **Authorization gap (Phase C deferred):** any authenticated user can read/write every organization's data through the ~130 `protected()` routes. Only global actions (`platformAdminProtected`) and org-admin actions (`orgAdminProtected`) are gated. Full model: `api/CLAUDE.md`.
+- **Authorization is org-scoped.** Most routes are gated on the caller's membership/role in a specific organization (the enforced route gating is `api/router.go` + `api/middleware.go`; per-file notes are in `api/CLAUDE.md`). `orgMemberProtected` requires any membership in the resolved org (the bulk of the table); `orgRoleProtected` narrows an org-scoped *mutation* to `admin`/`general` or one of the domain roles listed at the call site; `orgRoleAdminProtected` is the admin-tier variant (`admin` plus the listed role — fiscal-year close and the GL exports). Roles are the six from migration `0081`: `admin`, `general` (the renamed old `user`, full read/write everywhere non-admin-gated), and the narrow writers `sales`/`purchasing`/`accounting`/`cashbook`; **reads stay membership-level for every role**. `platformAdminProtected` gates only genuinely global actions (user management, backups/restore, countries) and is orthogonal to org roles; `orgAdminProtected` gates org-admin actions (delete/reset an org, manage members). `users.isPlatformAdmin` is not an org role and grants no organization access, and `GET /api/organizations` returns only the caller's memberships (`GetUserOrganizations`). What a wrapper does not cover: the 29 plain `protected()` routes — the body-organization `POST` create routes (organizationId in the JSON body, gated inline by `requireOrgMember`/`requireOrgRole` after `decodeJSON`) plus self-limiting/global routes (`GET /api/auth/me`, `GET`/`POST /api/organizations`, `.../my-role`, `.../my-roles`, `GET /api/countries/active`) — and the 10 routes registered directly via `mux.Handle` (the 8 document/report export routes, which still call `h.orgMember(...)` inline so a LibreOffice conversion never runs under `withDB`'s request-long read lock, and the 2 restore routes, which call `platformAdmin` inline). The route-coverage tests in `api/cross_org_test.go` fail the build for any new route that lands in none of these buckets, so every route must use a wrapper or be explicitly classified.
 - **Modal/Drawer forms** never use module-level Jotai atoms for local state — use `useState` (the mask gets orphaned and freezes the UI).
+
+## Features
+- **Cash Book** — counter-side point-of-sale screen (`src/routes/cash-book.tsx`): search or create a client, then settle one of their open loan-sale invoices or record a new sale. `POST /api/cash-sales` (`db/cash_sale.go`, `api/cash_sale.go`) is the single atomic write — resolve-or-create client, invoice, its GL entry, and the upfront payment all in one transaction, because chaining the separate endpoints could strand an unbalanced AR entry. Counter prices are entered **gross/tax-inclusive** (every other document's `unitPrice` is net), and a sale ends up `paid` iff `amountReceived == total`, otherwise it's a loan settled later through the ordinary payment flow. `POST /api/cash-movements` (`db/cash_movement.go`, `api/cash_movement.go`) records money *leaving* the register — a bank deposit or a document-less expense the `payments` table can't represent. Both write routes sit on plain `protected()` and check the `cashbook` role inline. The register defaults to `organizations.defaultCashRegisterAccountId` (migration `0079`, the physical till — deliberately distinct from `defaultCashAccountId`, which templates wire to Bank); register/loan reports (`GetDailyCashMovements`, `GetLoanStatus`, `GetCashMovementDetails`) and their exports are described in `db/CLAUDE.md`
+- **Document Numbering** — per-organization, per-document-type number format + persistent counter for the five types that previously had a hardcoded prefix (orders, purchase orders, outbound/inbound deliveries, production orders); migration `0082`/`document_number_settings` (`db/document_number.go`, `api/document_number_settings.go`, `src/routes/settings/document-numbering.tsx`). Tokens are `{number}`, zero-padded `{number:N}`, date parts (`{year}`/`{y}`/`{month}`/`{m}`/`{day}`) and `{clientCode}`; the counter advances once per created document inside that document's own transaction, instead of the old `MAX(...)+1` scan, so a deleted document's number isn't reissued. Defaults reproduce the previous hardcoded prefixes byte-for-byte, and invoices are deliberately **not** in this table (invoice numbering stays on the `organizations` columns)
+- **Per-organization roles (six-role model, migration `0081`)** — `organization_users.role` is one of `admin`, `general`, `sales`, `purchasing`, `accounting`, `cashbook` (`general` is the renamed `user` role, with unchanged access). `admin`/`general` may write everywhere non-admin-gated; the four domain roles add write access only within their own area, while **reads stay membership-level for everyone**. Enforced by `orgRoleProtected`/`orgRoleAdminProtected` and the inline `requireOrgRole` on create routes (`api/middleware.go`); membership CRUD, last-admin protection, and `GetOrganizationRole` live in `db/organization_user.go`. Details in `api/CLAUDE.md`/`db/CLAUDE.md`
 
 ## Where the Rest of the Rules Live
 Subdirectory `CLAUDE.md` files load automatically once Claude reads a file in that directory. For planning work that touches no files yet, read the relevant one explicitly.
@@ -157,12 +162,19 @@ See `docs/oidc-sso.md` for the full design, security model, and the matching Aut
 
 **Go side** — add a handler method in the relevant `api/{domain}.go` file, then register the route in `api/router.go`:
 ```go
-protected("GET", "/api/things/{id}", h.getThing)
+// an ordinary org-scoped route — any member of the resolved organization:
+orgMemberProtected("GET", "/api/organizations/{orgId}/things", pathOrgID("orgId"), h.listThings)
+// an org-scoped mutation limited to admin/general or one of the given domain roles:
+orgRoleProtected("PUT", "/api/things/{id}", thingOrgID, []string{"sales"}, h.updateThing)
+// an org-scoped admin-tier action (admin plus the given role):
+orgRoleAdminProtected("POST", "/api/fiscal-years/{id}/close", fiscalYearOrgID, []string{"accounting"}, h.closeFiscalYear)
 // or for a genuinely global admin-only action (no natural per-org owner):
 platformAdminProtected("DELETE", "/api/things/{id}", h.deleteThing)
 // or for an org-scoped admin action:
 orgAdminProtected("DELETE", "/api/organizations/{orgId}/things/{id}", pathOrgID("orgId"), h.deleteThing)
 ```
+
+An org-scoped **`POST` create** route whose `organizationId` lives in the JSON body can't use an org resolver (it would run before `decodeJSON`), so it uses plain `protected()` plus an inline `h.requireOrgMember(...)` / `h.requireOrgRole(..., "<role>")` in the handler. The route-coverage tripwires in `api/cross_org_test.go` (`TestPhaseCRouteCoverage`, `TestDomainRoleRouteCoverage`, `TestCreateRouteOrgChecksArePresent`) parse `router.go` and fail the build for any new route that uses none of the wrappers or isn't explicitly classified — so following this recipe is required, not optional.
 
 **Frontend side** — add a typed function in `src/api/index.ts`:
 ```ts

@@ -1,11 +1,19 @@
 # syntax=docker/dockerfile:1
 
+# Base images are pinned to their multi-arch manifest-list digests (resolved
+# 2026-09-20 via `docker buildx imagetools inspect <image>`) so a rebuild can
+# never silently pick up a different base underneath a moving tag. The
+# human-readable tag is kept alongside the digest for readability; refresh
+# both together by re-running that command and pasting the top-level
+# `Digest:` line (make sure it's the index digest, not a per-arch one, so
+# amd64 + arm64 builds both keep working).
+
 # ---- Stage 1: Build the React frontend ----
 # Pinned to the build host's own platform, not the target one: this stage's
 # output (static JS/CSS/HTML) is architecture-independent, so building it
 # under arm64 QEMU emulation on a multi-arch buildx run would just be a much
 # slower way to produce the exact same files.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend
+FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS frontend
 WORKDIR /app
 
 # corepack (bundled with Node 22) reads package.json's own "packageManager"
@@ -47,7 +55,7 @@ RUN --mount=type=secret,id=sentry_auth_token \
 # mattn/go-sqlite3, and this app uses modernc.org/sqlite (pure Go, no cgo)
 # instead — see db/db.go. With CGO_ENABLED=0, `go build` cross-compiles for
 # TARGETARCH natively, no QEMU emulation needed here either.
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS backend
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:51a7c389a5ddaf82f527191a1e9bff9928655130a44e4975dd1d7e0acf59f1ae AS backend
 WORKDIR /app
 
 COPY go.mod go.sum ./
@@ -75,7 +83,7 @@ RUN CGO_ENABLED=0 GOARCH=$TARGETARCH GOOS=linux go build -ldflags="-X main.versi
 # ~80MB on Alpine, almost entirely libreoffice-calc and its own
 # dependencies — accepted deliberately so PDF export actually works in the
 # shipped image instead of always 503ing.
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
 WORKDIR /app
 
 # --no-install-recommends keeps this to libreoffice-calc's own dependency
