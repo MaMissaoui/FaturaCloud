@@ -14,13 +14,14 @@ import {
   Layout,
   List,
   Modal,
+  Radio,
   Row,
-  Segmented,
   Select,
   Space,
   Table,
   Tag,
   theme,
+  Tooltip,
   Typography,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -30,6 +31,7 @@ import { useLingui } from "@lingui/react";
 import {
   ArrowLeftOutlined,
   DollarOutlined,
+  FieldTimeOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
   UserAddOutlined,
@@ -53,7 +55,6 @@ import {
   ExportLoanStatus,
   GetAccounts,
   GetCashMovementDetails,
-  GetClientOpenInvoices,
   GetDailyCashMovements,
   GetInvoice,
   GetLoanStatus,
@@ -64,7 +65,6 @@ import type {
   CreateCashSaleRequest,
   DailyCashMovementRow,
   LoanStatusRow,
-  OutstandingInvoiceSummary,
 } from "src/api";
 import type { Account, Client, Invoice } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
@@ -142,7 +142,7 @@ const CashBook = () => {
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
   const {
-    token: { colorBgContainer },
+    token: { colorBgContainer, colorSuccess, colorError },
   } = theme.useToken();
 
   const organizationId = useAtomValue(organizationIdAtom);
@@ -165,9 +165,6 @@ const CashBook = () => {
   const [newClientDraft, setNewClientDraft] = useState<NewClientDraft | null>(null);
   const [newClientModalOpen, setNewClientModalOpen] = useState(false);
   const [newClientForm] = Form.useForm();
-  const [openInvoices, setOpenInvoices] = useState<OutstandingInvoiceSummary[]>([]);
-  const [loadingOpenInvoices, setLoadingOpenInvoices] = useState(false);
-  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
   const [amountReceivedTouched, setAmountReceivedTouched] = useState(false);
   // Sale type is an explicit choice, not inferred from whatever happens to
   // be in the amount field — the old design defaulted that field to the
@@ -204,10 +201,15 @@ const CashBook = () => {
   // Loan status — a standing report of who owes what, not scoped to
   // selectedDate/isToday at all (unlike everything else on this screen):
   // it should stay visible and useful while glancing at a past day above.
+  // Defaults to open loans only, and is prefiltered to the customer being
+  // served while a sale is in progress (see selectClient/handleSubmitSale).
   const [loanStatusClientId, setLoanStatusClientId] = useState<string>("");
   const [loanStatusRows, setLoanStatusRows] = useState<LoanStatusRow[]>([]);
   const [loadingLoanStatus, setLoadingLoanStatus] = useState(false);
-  const [openLoansOnly, setOpenLoansOnly] = useState(false);
+  const [openLoansOnly, setOpenLoansOnly] = useState(true);
+  // The invoice whose "Record payment" panel is open, resolved from the loan
+  // report's invoiceId when the button is clicked.
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
   const [downloadingLoanPdf, setDownloadingLoanPdf] = useState(false);
   const [downloadingLoanExcel, setDownloadingLoanExcel] = useState(false);
 
@@ -399,31 +401,20 @@ const CashBook = () => {
     setSaleMode("loan");
   };
 
-  const refreshOpenInvoices = async (clientId: string) => {
-    setLoadingOpenInvoices(true);
-    try {
-      setOpenInvoices(await GetClientOpenInvoices(clientId));
-    } catch (error) {
-      console.error("Failed to fetch open invoices:", error);
-      message.error(t`Failed to load this customer's open invoices`);
-      setOpenInvoices([]);
-    } finally {
-      setLoadingOpenInvoices(false);
-    }
-  };
-
-  const selectClient = async (client: Client) => {
+  const selectClient = (client: Client) => {
     setSelectedClient(client);
     setNewClientDraft(null);
     setSearch("");
     resetSaleForm();
-    await refreshOpenInvoices(client.id);
+    // Serving this customer: scope the loan-status report to them so the
+    // cashier sees what they still owe without re-picking them.
+    setLoanStatusClientId(client.id);
   };
 
   const backToSearch = () => {
     setSelectedClient(null);
     setNewClientDraft(null);
-    setOpenInvoices([]);
+    setLoanStatusClientId("");
     setSearch("");
   };
 
@@ -461,7 +452,7 @@ const CashBook = () => {
     }
     setNewClientModalOpen(false);
     setSelectedClient(null);
-    setOpenInvoices([]);
+    setLoanStatusClientId("");
     setNewClientDraft({
       name: values.name,
       phone: phone || undefined,
@@ -583,8 +574,8 @@ const CashBook = () => {
       );
       setSelectedClient(result.client);
       setNewClientDraft(null);
+      setLoanStatusClientId(result.client.id);
       await setClients();
-      await refreshOpenInvoices(result.client.id);
       await refreshDailyMovement();
       await refreshLoanStatus();
       resetSaleForm();
@@ -607,13 +598,14 @@ const CashBook = () => {
 
   const closePayment = async () => {
     setPayingInvoice(null);
-    if (selectedClient) await refreshOpenInvoices(selectedClient.id);
+    await refreshLoanStatus();
   };
 
   // Auto-progresses the invoice to "paid" once its balance clears — see
   // db/cash_sale.go's CreateCashSale doc comment for why this Cash-Book-only
-  // follow-up call is the right scope for this behavior rather than a change
-  // to PaymentPanel's shared, otherwise-manual-state convention.
+  // follow-up call is the right scope rather than a change to PaymentPanel's
+  // shared, otherwise-manual-state convention. Refreshing the loan report
+  // here is what makes a just-settled loan drop out of the open-only view.
   const handleSettled = async () => {
     if (payingInvoice) {
       try {
@@ -627,7 +619,6 @@ const CashBook = () => {
     }
     await closePayment();
     await refreshDailyMovement();
-    await refreshLoanStatus();
   };
 
   const clientName = selectedClient?.name || newClientDraft?.name || "";
@@ -728,10 +719,10 @@ const CashBook = () => {
         />
       )}
 
-      {/* The sale-in-progress flow (below) renders before the register/loan
-      reports — those are standing back-office panels a cashier doesn't need
-      mid-transaction, so they'd otherwise sit between "customer picked" and
-      the form that actually rings up the sale on every single sale. */}
+      {/* Sale-in-progress flow. The cash-register report is hidden while a
+      sale is in progress (a standing back-office panel a cashier doesn't
+      need mid-transaction); the loan-status report below stays visible,
+      prefiltered to this customer's open loans. */}
       {isToday && inSale && (
         <>
           <Space style={{ marginBottom: 16 }}>
@@ -747,44 +738,6 @@ const CashBook = () => {
               )}
             </Typography.Text>
           </Space>
-
-          {selectedClient && (
-            <Card
-              size="small"
-              title={<Trans>Open invoices</Trans>}
-              style={{ marginBottom: 16 }}
-              loading={loadingOpenInvoices}
-            >
-              <Table
-                dataSource={openInvoices}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                locale={{ emptyText: <Trans>No open invoices for this customer</Trans> }}
-              >
-                <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
-                <Table.Column
-                  title={<Trans>Balance due</Trans>}
-                  key="total"
-                  align="right"
-                  render={(inv: OutstandingInvoiceSummary) => money(inv.total)}
-                />
-                <Table.Column
-                  key="actions"
-                  align="right"
-                  render={(inv: OutstandingInvoiceSummary) => (
-                    <Button
-                      type="primary"
-                      icon={<DollarOutlined />}
-                      onClick={() => openPayment(inv.id)}
-                    >
-                      <Trans>Pay</Trans>
-                    </Button>
-                  )}
-                />
-              </Table>
-            </Card>
-          )}
 
           <Card size="small" title={<Trans>New sale</Trans>}>
             {!registerAccountId && (
@@ -884,15 +837,31 @@ const CashBook = () => {
               defaulting effect above); it only changes which default this
               field would have started at. */}
               <Form.Item label={<Trans>Sale type</Trans>}>
-                <Segmented
-                  block
+                {/* Solid radio buttons, not a Segmented — the selected
+                button is filled with the primary color, which is far more
+                legible at a glance than a Segmented's subtle raised thumb,
+                and the line below states the active mode in words. */}
+                <Radio.Group
                   value={saleMode}
-                  onChange={(value) => setSaleMode(value as "cash" | "loan")}
-                  options={[
-                    { label: t`Cash sale`, value: "cash" },
-                    { label: t`Loan sale`, value: "loan" },
-                  ]}
-                />
+                  onChange={(e) => setSaleMode(e.target.value as "cash" | "loan")}
+                  optionType="button"
+                  buttonStyle="solid"
+                  style={{ width: "100%", display: "flex" }}
+                >
+                  <Radio.Button value="cash" style={{ flex: 1, textAlign: "center" }}>
+                    <DollarOutlined /> <Trans>Cash sale</Trans>
+                  </Radio.Button>
+                  <Radio.Button value="loan" style={{ flex: 1, textAlign: "center" }}>
+                    <FieldTimeOutlined /> <Trans>Loan sale</Trans>
+                  </Radio.Button>
+                </Radio.Group>
+                <Typography.Text type="secondary" style={{ display: "block", marginTop: 8 }}>
+                  {saleMode === "cash" ? (
+                    <Trans>Cash sale selected — the full amount is collected now.</Trans>
+                  ) : (
+                    <Trans>Loan sale selected — collect a deposit now, the balance later.</Trans>
+                  )}
+                </Typography.Text>
               </Form.Item>
 
               <Row gutter={16}>
@@ -1034,153 +1003,178 @@ const CashBook = () => {
         </>
       )}
 
-      <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
-        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
-          <Col>
-            <Typography.Text type="secondary">
-              <Trans>Cash register</Trans>
-            </Typography.Text>
-            <div>
-              <DatePicker
-                value={selectedDate}
-                onChange={(d) => d && setSelectedDate(d)}
-                format={dateFormat}
-                allowClear={false}
-                disabledDate={(d) => d.isAfter(dayjs(), "day")}
-              />
-            </div>
-          </Col>
-          {registerAccountId && (
+      {!inSale && (
+        <Card size="small" style={{ marginBottom: 16 }} loading={loadingDailyMovement}>
+          <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
             <Col>
-              <Space>
-                {isToday && (
-                  <Button onClick={openWithdrawModal}>
-                    <Trans>Withdraw</Trans>
-                  </Button>
-                )}
-                <Button loading={downloadingDailyPdf} onClick={handleExportDailyMovements("pdf")}>
-                  <FilePdfOutlined /> PDF
-                </Button>
-                <Button
-                  loading={downloadingDailyExcel}
-                  onClick={handleExportDailyMovements("xlsx")}
-                >
-                  <FileExcelOutlined /> <Trans>Excel</Trans>
-                </Button>
-              </Space>
+              <Typography.Text strong style={{ fontSize: 15 }}>
+                <Trans>Cash register</Trans>
+              </Typography.Text>
+              <div>
+                <DatePicker
+                  value={selectedDate}
+                  onChange={(d) => d && setSelectedDate(d)}
+                  format={dateFormat}
+                  allowClear={false}
+                  disabledDate={(d) => d.isAfter(dayjs(), "day")}
+                />
+              </div>
             </Col>
-          )}
-        </Row>
+            {registerAccountId && (
+              <Col>
+                <Space>
+                  {isToday && (
+                    <Button onClick={openWithdrawModal}>
+                      <Trans>Withdraw</Trans>
+                    </Button>
+                  )}
+                  <Button loading={downloadingDailyPdf} onClick={handleExportDailyMovements("pdf")}>
+                    <FilePdfOutlined /> PDF
+                  </Button>
+                  <Button
+                    loading={downloadingDailyExcel}
+                    onClick={handleExportDailyMovements("xlsx")}
+                  >
+                    <FileExcelOutlined /> <Trans>Excel</Trans>
+                  </Button>
+                </Space>
+              </Col>
+            )}
+          </Row>
 
-        {registerAccountId ? (
-          <>
-            <Row gutter={16}>
-              <Col xs={12} sm={6}>
-                <Typography.Text type="secondary">
-                  <Trans>Opening</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.opening) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Typography.Text type="secondary">
-                  <Trans>In</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.in) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Typography.Text type="secondary">
-                  <Trans>Out</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.out) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-              <Col xs={12} sm={6}>
-                <Typography.Text type="secondary">
-                  <Trans>Closing</Trans>
-                </Typography.Text>
-                <div>
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    {dailyMovement ? money(dailyMovement.closing) : "—"}
-                  </Typography.Title>
-                </div>
-              </Col>
-            </Row>
-            {/* Labeled from the fetched row's own date, not the picker's
+          {registerAccountId ? (
+            <>
+              <Row gutter={[16, 16]}>
+                <Col xs={12} sm={6}>
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
+                    <Trans>Opening</Trans>
+                  </Typography.Text>
+                  <div>
+                    <Typography.Title
+                      level={4}
+                      style={{ margin: 0, fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {dailyMovement ? money(dailyMovement.opening) : "—"}
+                    </Typography.Title>
+                  </div>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
+                    <Trans>In</Trans>
+                  </Typography.Text>
+                  <div>
+                    <Typography.Title
+                      level={4}
+                      style={{
+                        margin: 0,
+                        fontVariantNumeric: "tabular-nums",
+                        color: colorSuccess,
+                      }}
+                    >
+                      {dailyMovement ? money(dailyMovement.in) : "—"}
+                    </Typography.Title>
+                  </div>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
+                    <Trans>Out</Trans>
+                  </Typography.Text>
+                  <div>
+                    <Typography.Title
+                      level={4}
+                      style={{ margin: 0, fontVariantNumeric: "tabular-nums", color: colorError }}
+                    >
+                      {dailyMovement ? money(dailyMovement.out) : "—"}
+                    </Typography.Title>
+                  </div>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Typography.Text type="secondary" style={{ fontSize: 13, fontWeight: 600 }}>
+                    <Trans>Closing</Trans>
+                  </Typography.Text>
+                  <div>
+                    <Typography.Title
+                      level={4}
+                      style={{ margin: 0, fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {dailyMovement ? money(dailyMovement.closing) : "—"}
+                    </Typography.Title>
+                  </div>
+                </Col>
+              </Row>
+              {/* Labeled from the fetched row's own date, not the picker's
             value — if utcDayMs above ever drifted from the picked
             calendar date, this would visibly disagree with the picker
             instead of silently hiding the mismatch. */}
-            {dailyMovement && (
-              <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
-                <Trans>Movements for {dayjs(dailyMovement.date).format(dateFormat)}</Trans>
-              </Typography.Text>
-            )}
-            <Table
-              dataSource={movementDetails}
-              rowKey="id"
-              size="small"
-              pagination={false}
-              style={{ marginTop: 8 }}
-              locale={{ emptyText: <Trans>No movements on this date</Trans> }}
-            >
-              <Table.Column
-                title={<Trans>Time</Trans>}
-                key="time"
-                width={70}
-                render={(row: CashMovementDetail) => dayjs(row.date).format("HH:mm")}
-              />
-              <Table.Column
-                title={<Trans>Type</Trans>}
-                key="kind"
-                render={(row: CashMovementDetail) => (
-                  <Tag color={movementKindColor(row.kind)}>{movementKindLabel(row.kind)}</Tag>
-                )}
-              />
-              <Table.Column
-                title={<Trans>Customer</Trans>}
-                key="clientName"
-                render={(row: CashMovementDetail) => row.clientName ?? row.note ?? "—"}
-              />
-              <Table.Column
-                title={<Trans>Amount</Trans>}
-                key="amount"
-                align="right"
-                render={(row: CashMovementDetail) => (
-                  <Typography.Text type={row.direction === "in" ? "success" : "danger"}>
-                    {row.direction === "in" ? "+" : "−"}
-                    {money(row.amount)}
-                  </Typography.Text>
-                )}
-              />
-            </Table>
-            {!isToday && (
-              <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
-                <Trans>
-                  Viewing past movements, read-only. Switch to today to record a sale, payment, or
-                  withdrawal.
-                </Trans>
-              </Typography.Text>
-            )}
-          </>
-        ) : (
-          <Typography.Text type="secondary">
-            <Trans>
-              No cash register account configured — set one in Organization settings to see
-              movements here.
-            </Trans>
-          </Typography.Text>
-        )}
-      </Card>
+              {dailyMovement && (
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", marginTop: 8, fontSize: 13 }}
+                >
+                  <Trans>Movements for {dayjs(dailyMovement.date).format(dateFormat)}</Trans>
+                </Typography.Text>
+              )}
+              <Table
+                dataSource={movementDetails}
+                rowKey="id"
+                size="small"
+                pagination={false}
+                style={{ marginTop: 8 }}
+                locale={{ emptyText: <Trans>No movements on this date</Trans> }}
+              >
+                <Table.Column
+                  title={<Trans>Time</Trans>}
+                  key="time"
+                  width={70}
+                  render={(row: CashMovementDetail) => dayjs(row.date).format("HH:mm")}
+                />
+                <Table.Column
+                  title={<Trans>Type</Trans>}
+                  key="kind"
+                  render={(row: CashMovementDetail) => (
+                    <Tag color={movementKindColor(row.kind)}>{movementKindLabel(row.kind)}</Tag>
+                  )}
+                />
+                <Table.Column
+                  title={<Trans>Customer</Trans>}
+                  key="clientName"
+                  render={(row: CashMovementDetail) => row.clientName ?? row.note ?? "—"}
+                />
+                <Table.Column
+                  title={<Trans>Amount</Trans>}
+                  key="amount"
+                  align="right"
+                  render={(row: CashMovementDetail) => (
+                    <Typography.Text
+                      strong
+                      type={row.direction === "in" ? "success" : "danger"}
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {row.direction === "in" ? "+" : "−"}
+                      {money(row.amount)}
+                    </Typography.Text>
+                  )}
+                />
+              </Table>
+              {!isToday && (
+                <Typography.Text type="warning" style={{ display: "block", marginTop: 8 }}>
+                  <Trans>
+                    Viewing past movements, read-only. Switch to today to record a sale, payment, or
+                    withdrawal.
+                  </Trans>
+                </Typography.Text>
+              )}
+            </>
+          ) : (
+            <Typography.Text type="secondary">
+              <Trans>
+                No cash register account configured — set one in Organization settings to see
+                movements here.
+              </Trans>
+            </Typography.Text>
+          )}
+        </Card>
+      )}
 
       {/* Not isToday-gated — a standing report of who owes what, not tied
       to whichever day the panel above happens to be showing. */}
@@ -1253,6 +1247,25 @@ const CashBook = () => {
                 {money(row.outstanding)}
               </Typography.Text>
             )}
+          />
+          <Table.Column
+            key="actions"
+            align="right"
+            render={(row: LoanStatusRow) =>
+              row.outstanding > 0 ? (
+                <Tooltip title={!isToday ? t`Switch to today to record a payment` : undefined}>
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<DollarOutlined />}
+                    disabled={!isToday}
+                    onClick={() => openPayment(row.invoiceId)}
+                  >
+                    <Trans>Record payment</Trans>
+                  </Button>
+                </Tooltip>
+              ) : null
+            }
           />
         </Table>
       </Card>
@@ -1345,13 +1358,13 @@ const CashBook = () => {
         </Form>
       </Modal>
 
-      {isToday && payingInvoice && organizationId && selectedClient && (
+      {payingInvoice && organizationId && (
         <PaymentPanel
           organizationId={organizationId}
           documentType="invoice"
           documentId={payingInvoice.id}
           direction="inbound"
-          clientId={selectedClient.id}
+          clientId={payingInvoice.clientId}
           currency={payingInvoice.currency}
           orgCurrency={organization?.currency || "EUR"}
           total={payingInvoice.total}
