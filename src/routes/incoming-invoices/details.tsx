@@ -78,6 +78,7 @@ import { organizationAtom } from "src/atoms/organization";
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-order";
+import { productsAtom } from "src/atoms/product";
 import {
   incomingInvoiceIdAtom,
   incomingInvoiceAtom,
@@ -114,6 +115,7 @@ const IncomingInvoiceDetails = () => {
   const setTaxRates = useSetAtom(setTaxRatesAtom);
   const purchaseOrders = useAtomValue(purchaseOrdersAtom);
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
+  const products = useAtomValue(productsAtom);
 
   const [invoiceId, setInvoiceId] = useAtom(incomingInvoiceIdAtom);
   const invoiceLoadable = useAtomValue(loadableIncomingInvoiceAtom);
@@ -492,6 +494,24 @@ const IncomingInvoiceDetails = () => {
         <LineItemsTable
           columns={[
             { kind: "index" },
+            {
+              kind: "product",
+              products,
+              allProducts: products,
+              onSelect: (productId, fieldName, formInstance) => {
+                const product = find(products, { id: productId });
+                if (product) {
+                  const items = formInstance.getFieldValue("lineItems");
+                  items[fieldName] = {
+                    ...items[fieldName],
+                    description: (product as any).name,
+                    // A bill is priced at cost, not at the product's sale price.
+                    unitPrice: centsToUnits((product as any).unitCost ?? 0),
+                  };
+                  formInstance.setFieldValue("lineItems", [...items]);
+                }
+              },
+            },
             { kind: "description", required: true },
             { kind: "quantity", width: 90 },
             { kind: "unitPrice" },

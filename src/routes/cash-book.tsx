@@ -852,6 +852,7 @@ const CashBook = () => {
                   {
                     kind: "product",
                     products: sellableProducts,
+                    allProducts: products,
                     onSelect: (productId, fieldName, formInstance) => {
                       const product = find(products, { id: productId }) as any;
                       if (product) {

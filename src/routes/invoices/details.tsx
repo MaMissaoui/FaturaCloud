@@ -36,7 +36,7 @@ import {
   SaveOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
-import LineItemsTable from "src/components/line-items/table";
+import LineItemsTable, { ProductSelectCell } from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
@@ -771,59 +771,33 @@ const InvoiceDetails: React.FC = () => {
                         title: t`Product`,
                         width: 180,
                         render: (field) => (
-                          <Form.Item
-                            name={[field.name, "productId"]}
+                          <ProductSelectCell
+                            fieldName={field.name}
+                            form={form}
+                            offered={sellableProducts}
+                            all={products}
                             rules={[
                               requiredForNewLineItem(form, field.name, t`This field is required!`),
                             ]}
-                            noStyle
-                          >
-                            <Select
-                              showSearch
-                              style={{ width: "100%" }}
-                              placeholder={t`Select product`}
-                              // Shows the SKU, not the name, once picked —
-                              // see the matching comment in
-                              // src/components/line-items/table.tsx's
-                              // "product" case for why (Description right
-                              // next to it already carries the name).
-                              filterOption={(input, option) => {
-                                const p = find(sellableProducts, { id: option?.value });
-                                const needle = input.toLowerCase();
-                                return (
-                                  !!p &&
-                                  ((p as any).name.toLowerCase().includes(needle) ||
-                                    String((p as any).sku ?? "")
-                                      .toLowerCase()
-                                      .includes(needle))
-                                );
-                              }}
-                              onChange={(productId) => {
-                                const product = find(products, { id: productId });
-                                if (product) {
-                                  const lineItems = form.getFieldValue("lineItems");
-                                  const quantity = get(lineItems[field.name], "quantity") || 1;
-                                  const unitPrice = centsToUnits((product as any).price ?? 0);
-                                  lineItems[field.name] = {
-                                    ...lineItems[field.name],
-                                    description: (product as any).name,
-                                    unitPrice,
-                                    total: multiplyDecimal(quantity, unitPrice),
-                                    ...((product as any).taxRateId
-                                      ? { taxRate: (product as any).taxRateId }
-                                      : {}),
-                                  };
-                                  form.setFieldValue("lineItems", [...lineItems]);
-                                }
-                              }}
-                            >
-                              {map(sellableProducts, (p: any) => (
-                                <Option key={p.id} value={p.id}>
-                                  {p.sku || p.name}
-                                </Option>
-                              ))}
-                            </Select>
-                          </Form.Item>
+                            onSelect={(productId, fieldName, formInstance) => {
+                              const product = find(products, { id: productId });
+                              if (product) {
+                                const lineItems = formInstance.getFieldValue("lineItems");
+                                const quantity = get(lineItems[fieldName], "quantity") || 1;
+                                const unitPrice = centsToUnits((product as any).price ?? 0);
+                                lineItems[fieldName] = {
+                                  ...lineItems[fieldName],
+                                  description: (product as any).name,
+                                  unitPrice,
+                                  total: multiplyDecimal(quantity, unitPrice),
+                                  ...((product as any).taxRateId
+                                    ? { taxRate: (product as any).taxRateId }
+                                    : {}),
+                                };
+                                formInstance.setFieldValue("lineItems", [...lineItems]);
+                              }
+                            }}
+                          />
                         ),
                       },
                       { kind: "description", required: true },

@@ -521,6 +521,7 @@ const InboundDeliveryDetails = () => {
             {
               kind: "product",
               products: purchasableProducts,
+              allProducts: products,
               required: true,
               onSelect: (productId, fieldName, formInstance) => {
                 const product = find(products, { id: productId });

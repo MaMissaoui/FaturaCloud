@@ -70,11 +70,77 @@ const IndexCell = ({ index }: { index: number }) => {
   );
 };
 
+// The product picker cell, extracted so it can use Form.useWatch on the
+// row's current productId. `offered` is usually a filtered subset of all
+// products (purchase orders/inbound deliveries exclude finished goods,
+// orders/deliveries/invoices/cash-book exclude components), and a saved line
+// can reference a product that filter now excludes — e.g. a product
+// reclassified after the document was created. Without re-adding the current
+// value as an option, antd's Select has no label to show and falls back to
+// rendering the raw product id. `all` is the unfiltered list used only to
+// resolve that one selected value; the dropdown still offers just `offered`.
+export const ProductSelectCell = ({
+  fieldName,
+  form,
+  offered,
+  all,
+  disabled,
+  rules,
+  onSelect,
+}: {
+  fieldName: number;
+  form: FormInstance;
+  offered: any[];
+  all?: any[];
+  disabled?: boolean;
+  rules?: any[];
+  onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
+}) => {
+  const currentId = Form.useWatch(["lineItems", fieldName, "productId"], form);
+  const pool = all ?? offered;
+  const current = currentId ? find(pool, { id: currentId }) : undefined;
+  const options = current && !find(offered, { id: current.id }) ? [...offered, current] : offered;
+
+  return (
+    <Form.Item name={[fieldName, "productId"]} rules={rules} noStyle>
+      <Select
+        showSearch
+        style={{ width: "100%" }}
+        placeholder={t`Select product`}
+        // Search matches on name (what someone remembers) as well as SKU,
+        // even though the option label shows the SKU.
+        filterOption={(input, option) => {
+          const p = find(options, { id: option?.value });
+          const needle = input.toLowerCase();
+          return (
+            !!p &&
+            (String(p.name).toLowerCase().includes(needle) ||
+              String(p.sku ?? "")
+                .toLowerCase()
+                .includes(needle))
+          );
+        }}
+        disabled={disabled}
+        onChange={(productId) => onSelect?.(productId, fieldName, form)}
+      >
+        {map(options, (p: any) => (
+          <Option key={p.id} value={p.id}>
+            {p.sku || p.name}
+          </Option>
+        ))}
+      </Select>
+    </Form.Item>
+  );
+};
+
 export type LineItemColumn =
   | { kind: "index" }
   | {
       kind: "product";
       products: any[];
+      // Unfiltered product list, used only to resolve the label of a selected
+      // product the `products` filter excludes (see ProductSelectCell).
+      allProducts?: any[];
       width?: number;
       required?: boolean;
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
@@ -223,8 +289,12 @@ const LineItemsTable = ({
                       key="productId"
                       width={col.width ?? 180}
                       render={(field) => (
-                        <Form.Item
-                          name={[field.name, "productId"]}
+                        <ProductSelectCell
+                          fieldName={field.name}
+                          form={form}
+                          offered={col.products}
+                          all={col.allProducts}
+                          disabled={disabled}
                           rules={
                             col.required
                               ? [
@@ -236,42 +306,8 @@ const LineItemsTable = ({
                                 ]
                               : []
                           }
-                          noStyle
-                        >
-                          <Select
-                            showSearch
-                            style={{ width: "100%" }}
-                            placeholder={t`Select product`}
-                            // Shows the SKU, not the name, once a product is
-                            // picked — the Description column right next to
-                            // it is auto-filled with the name (every
-                            // onSelect handler across the document pages
-                            // does this), so showing the name here too just
-                            // duplicated it verbatim in both columns. SKU is
-                            // the one thing Description doesn't already
-                            // carry. Search still matches on name (what
-                            // someone actually remembers) as well as SKU.
-                            filterOption={(input, option) => {
-                              const p = find(col.products, { id: option?.value });
-                              const needle = input.toLowerCase();
-                              return (
-                                !!p &&
-                                (String(p.name).toLowerCase().includes(needle) ||
-                                  String(p.sku ?? "")
-                                    .toLowerCase()
-                                    .includes(needle))
-                              );
-                            }}
-                            disabled={disabled}
-                            onChange={(productId) => col.onSelect?.(productId, field.name, form)}
-                          >
-                            {map(col.products, (p: any) => (
-                              <Option key={p.id} value={p.id}>
-                                {p.sku || p.name}
-                              </Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
+                          onSelect={col.onSelect}
+                        />
                       )}
                     />
                   );
