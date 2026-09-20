@@ -672,9 +672,32 @@ const CashBook = () => {
           renderItem={(client: any) => (
             <List.Item
               onClick={() => selectClient(client)}
+              onKeyDown={(e) => {
+                // Only the row itself handles the key — a nested control (the
+                // "Select" button below) fires its own click on Enter/Space,
+                // and letting that bubble here too would select the client
+                // twice.
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  selectClient(client);
+                }
+              }}
               style={{ cursor: "pointer" }}
+              tabIndex={0}
+              role="button"
               actions={[
-                <Button type="link" onClick={() => selectClient(client)} key="select">
+                <Button
+                  type="link"
+                  onClick={(e) => {
+                    // The row's onClick already covers clicking anywhere in
+                    // the item — without this the button's click bubbled and
+                    // fired selectClient a second time (a duplicate fetch).
+                    e.stopPropagation();
+                    selectClient(client);
+                  }}
+                  key="select"
+                >
                   <Trans>Select</Trans>
                 </Button>,
               ]}

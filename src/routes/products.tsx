@@ -16,6 +16,7 @@ import { GetProducts } from "src/api";
 import ProductForm from "src/components/products/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
+import { numberFormatLocale } from "src/utils/currencies";
 import { unitLabel } from "src/utils/units";
 
 // Decimals are a display concern only — storage stays cents regardless (see
@@ -47,6 +48,17 @@ const formatPrice = (cents: number, currency: string, locale: string, fractionDi
     .format(cents / 100)
     .replace(/[  ]/g, " ");
 
+// Stock quantities are displayed with the organization's country-derived
+// locale (falling back to the viewer's UI language) so a fractional value
+// renders "2,5" not "2.5" on French/German organizations; whole numbers stay
+// clean ("5") and fractions are capped at 2 decimals, matching the old
+// `qty % 1 === 0 ? String(qty) : qty.toFixed(2)` display.
+const formatQuantity = (qty: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(qty);
+
 const DEFAULT_PAGE_SIZE = 25;
 
 const Products = () => {
@@ -57,6 +69,9 @@ const Products = () => {
   const organization = useAtomValue(organizationAtom);
   const fractionDigits = organization?.minimum_fraction_digits ?? 2;
   const currency = organization?.currency ?? "EUR";
+  // Quantities use the organization's country-derived locale, not the
+  // browser's — see formatQuantity above.
+  const qtyLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;
   // The table itself no longer reads the shared productsAtom — it fetches
   // its own paginated page below. ProductForm still reads productsAtom (to
   // look up the product being edited, populate the BOM component picker,
@@ -220,7 +235,15 @@ const Products = () => {
             onRow={(record: Product) => ({
               onClick: () =>
                 navigate("/products", { state: { productModal: true, productId: record.id } }),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/products", { state: { productModal: true, productId: record.id } });
+                }
+              },
               style: { cursor: "pointer" },
+              tabIndex: 0,
+              role: "link",
             })}
           >
             <Table.Column
@@ -312,8 +335,10 @@ const Products = () => {
                 const qty: number = p.stockQuantity ?? 0;
                 const status = qty <= 0 ? "error" : qty <= 5 ? "warning" : "success";
                 return (
-                  <Tooltip title={`${qty} ${p.unit ? unitLabel(p.unit) : t`units`}`}>
-                    <Badge status={status} text={qty % 1 === 0 ? String(qty) : qty.toFixed(2)} />
+                  <Tooltip
+                    title={`${formatQuantity(qty, qtyLocale)} ${p.unit ? unitLabel(p.unit) : t`units`}`}
+                  >
+                    <Badge status={status} text={formatQuantity(qty, qtyLocale)} />
                   </Tooltip>
                 );
               }}

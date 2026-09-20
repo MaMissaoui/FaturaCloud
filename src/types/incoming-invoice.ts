@@ -1,3 +1,4 @@
+import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 
 export type IncomingInvoiceState = "draft" | "approved" | "paid" | "cancelled";
@@ -73,7 +74,17 @@ export function matchStatusLabel(status: string): string {
 // rather than in a toast, so build the explanation here from the structured
 // numbers instead, which keeps it in the user's language.
 export function matchStatusDetail(line: MatchLine): string {
-  const qty = (n: number | null) => (n ?? 0).toFixed(2);
+  // Quantities are formatted with the active UI locale (comma vs. period)
+  // rather than a hardcoded "." via toFixed. This module has no access to the
+  // selected organization's country, so it falls back to the viewer's own
+  // locale — the same fallback src/utils/currencies.tsx uses for a country
+  // outside its curated table. Whole values stay clean; fractions cap at 2
+  // decimals, matching the old toFixed(2).
+  const qty = (n: number | null) =>
+    new Intl.NumberFormat(i18n.locale, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(n ?? 0);
   switch (line.status) {
     case "over_received":
       return t`Billing ${qty(line.invoicedQuantity)} but only ${qty(line.receivedQuantity)} received (${qty(line.previouslyInvoicedQuantity)} already invoiced).`;

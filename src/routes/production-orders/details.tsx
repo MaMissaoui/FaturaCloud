@@ -26,6 +26,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react";
 import { DeleteOutlined, DeploymentUnitOutlined, SaveOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
@@ -54,6 +55,8 @@ import {
 } from "src/types/production-order";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { importsAtom, setImportsAtom } from "src/atoms/import";
+import { organizationAtom } from "src/atoms/organization";
+import { numberFormatLocale } from "src/utils/currencies";
 import {
   productionOrderIdAtom,
   productionOrderAtom,
@@ -72,6 +75,16 @@ const { Footer } = Layout;
 // (Math.round(q * 10000) / 10000), not db/product_bom.go's roundBOMQuantity
 // (the stored-value authority), just to avoid ugly floats on screen.
 const roundDisplay = (q: number) => Math.round(q * 10000) / 10000;
+
+// Quantities displayed in the BOM preview and the component table are a
+// display concern only — the org's country-derived locale (falling back to
+// the viewer's UI language) renders "2,5" not a hardcoded "."; whole values
+// stay clean and fractions are capped at 2 decimals.
+const formatQty = (q: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(q);
 
 // Module-level so it's referentially stable across renders — StatusFlow is
 // memoized and an inline arrow here would defeat that on every keystroke.
@@ -100,6 +113,7 @@ const CreateProductionOrderForm = ({
   createOrder,
   dateFormat,
   colorBgContainer,
+  qtyLocale,
 }: {
   finishedProducts: Product[];
   products: Product[];
@@ -108,6 +122,7 @@ const CreateProductionOrderForm = ({
   createOrder: (values: Partial<ProductionOrder>) => Promise<unknown>;
   dateFormat: string;
   colorBgContainer: string;
+  qtyLocale: string;
 }) => {
   const { token } = theme.useToken();
   const [form] = Form.useForm();
@@ -337,10 +352,10 @@ const CreateProductionOrderForm = ({
             const short = onHand < required;
             return (
               <span style={{ color: short ? token.colorError : undefined, fontWeight: 600 }}>
-                {onHand % 1 === 0 ? onHand : onHand.toFixed(2)}
+                {formatQty(onHand, qtyLocale)}
                 {short && (
                   <Typography.Text type="danger" style={{ marginLeft: 4, fontSize: 12 }}>
-                    (−{(required - onHand).toFixed(2)})
+                    (−{formatQty(required - onHand, qtyLocale)})
                   </Typography.Text>
                 )}
               </span>
@@ -392,10 +407,14 @@ const CreateProductionOrderForm = ({
 const ProductionOrderDetails = () => {
   const { id } = useParams<string>();
   const navigate = useNavigate();
+  const { i18n } = useLingui();
   const { token } = theme.useToken();
   const { colorBgContainer } = token;
   const dateFormat = useDatePickerFormat();
   const formatDate = useDateFormatter();
+
+  const organization = useAtomValue(organizationAtom);
+  const qtyLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;
 
   const isNew = id === "new";
 
@@ -540,6 +559,7 @@ const ProductionOrderDetails = () => {
           createOrder={createOrder}
           dateFormat={dateFormat}
           colorBgContainer={colorBgContainer}
+          qtyLocale={qtyLocale}
         />
       ) : (
         currentOrder && (
@@ -620,7 +640,7 @@ const ProductionOrderDetails = () => {
                   const short = onHand < l.totalQuantity;
                   return (
                     <span style={{ color: short ? token.colorError : undefined, fontWeight: 600 }}>
-                      {onHand % 1 === 0 ? onHand : onHand.toFixed(2)}
+                      {formatQty(onHand, qtyLocale)}
                     </span>
                   );
                 }}
