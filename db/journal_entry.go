@@ -291,6 +291,8 @@ func insertJournalLinesTx(exec sqlExecer, journalEntryID string, lines []CreateJ
 }
 
 // PostJournalEntry moves a draft entry to posted via allocateAndFinalizeEntryTx.
+// A manual post is a genuinely new posting, so the active-account check
+// applies (enforceActiveAccounts = true).
 func (d *Database) PostJournalEntry(entryID string) (*JournalEntry, error) {
 	tx, err := d.DB.Beginx()
 	if err != nil {
@@ -306,7 +308,7 @@ func (d *Database) PostJournalEntry(entryID string) (*JournalEntry, error) {
 		return nil, newValidationError("only a draft journal entry can be posted")
 	}
 
-	if err := allocateAndFinalizeEntryTx(tx, entryID, entry.OrganizationID, entry.FiscalYearID, entry.JournalID); err != nil {
+	if err := allocateAndFinalizeEntryTx(tx, entryID, entry.OrganizationID, entry.FiscalYearID, entry.JournalID, true); err != nil {
 		return nil, err
 	}
 
@@ -321,7 +323,18 @@ func (d *Database) PostJournalEntry(entryID string) (*JournalEntry, error) {
 // Phase 2, payments in Phase 3, reversal, closing, revaluation) must funnel
 // through it. Mirrors insertStockMovementTx being the sole place stock
 // actually moves.
-func allocateAndFinalizeEntryTx(tx *sqlx.Tx, entryID, organizationID, fiscalYearID, journalID string) error {
+//
+// enforceActiveAccounts controls the isActive=0 rejection (F97). It is true
+// for genuinely new postings — a manual post, an auto-post, a payment — where
+// choosing a retired account is a live mistake worth blocking. It is false
+// on the two paths that must replay accounts already carrying posted history:
+// reverseEntryTx mirrors the original entry's own accountIds, and
+// CloseFiscalYear zeroes whatever accounts had activity in the year. Gating
+// those on isActive would let deactivating one account permanently strand a
+// posted entry unreversible and make a year impossible to close. The other
+// checks (group-account non-postable, fiscal-year-open, balanced) apply on
+// every path regardless.
+func allocateAndFinalizeEntryTx(tx *sqlx.Tx, entryID, organizationID, fiscalYearID, journalID string, enforceActiveAccounts bool) error {
 	// A draft entry created while the year was open carries the fiscalYearId
 	// it resolved at creation time (see CreateJournalEntry) and is never
 	// re-resolved on post — so without this check, posting a stranded draft
@@ -357,19 +370,24 @@ func allocateAndFinalizeEntryTx(tx *sqlx.Tx, entryID, organizationID, fiscalYear
 	}
 
 	// A deactivated account shouldn't receive new postings, from any path —
-	// manual entry, auto-post, payments, or a fiscal-year close — not just
-	// the one Chart of Accounts screen that shows the isActive toggle.
-	var inactiveLineCount int64
-	if err := tx.Get(&inactiveLineCount, `
-		SELECT COUNT(*) FROM journal_lines jl
-		JOIN accounts a ON a.id = jl.accountId
-		WHERE jl.journalEntryId = ? AND a.isActive = 0`,
-		entryID,
-	); err != nil {
-		return fmt.Errorf("allocate_and_finalize_entry inactive_check: %w", err)
-	}
-	if inactiveLineCount > 0 {
-		return newValidationError("cannot post to an inactive account")
+	// manual entry, auto-post, payments — not just the one Chart of Accounts
+	// screen that shows the isActive toggle. Skipped for reversals and the
+	// fiscal-year close (see the doc comment above): both necessarily touch
+	// accounts that already have history, and a mere isActive flip must not
+	// strand that history.
+	if enforceActiveAccounts {
+		var inactiveLineCount int64
+		if err := tx.Get(&inactiveLineCount, `
+			SELECT COUNT(*) FROM journal_lines jl
+			JOIN accounts a ON a.id = jl.accountId
+			WHERE jl.journalEntryId = ? AND a.isActive = 0`,
+			entryID,
+		); err != nil {
+			return fmt.Errorf("allocate_and_finalize_entry inactive_check: %w", err)
+		}
+		if inactiveLineCount > 0 {
+			return newValidationError("cannot post to an inactive account")
+		}
 	}
 
 	// The per-line CHECK (debit=0)<>(credit=0) only guarantees one side per
