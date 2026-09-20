@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, TaxRate } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Badge, Button, Col, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { App, Badge, Button, Col, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import type { TableProps } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -17,46 +17,17 @@ import ProductForm from "src/components/products/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 import { unitLabel } from "src/utils/units";
-
-// Decimals are a display concern only — storage stays cents regardless (see
-// db/exchange_rate.go's decimals note) — so this takes the organization's
-// configured precision rather than hardcoding 2, matching every other money
-// formatter in the app (getFormattedNumber, invoice/PDF totals, …).
-//
-// `locale` must be the app's own selected locale (i18n.locale), not
-// `undefined` — passing `undefined` to toLocaleString/Intl.NumberFormat
-// resolves to the *browser's* locale, which varies per viewer's OS/browser
-// settings independently of the language the app is actually showing (this
-// page previously did exactly that, producing "8.409,53"-style separators
-// on an English-language screen for anyone with a European system locale).
-// This also switches to currency style so the organization's currency code
-// shows here the same way it does on every other money display in the app.
-// The narrow no-break space (U+202F) some locales use as a grouping
-// separator renders with zero visible width in some contexts in this app
-// (a confirmed browser rendering bug, not a data bug) — see
-// src/utils/currencies.tsx's formatMoneyUnits for the full explanation.
-// Normalized here too since this formatter isn't a formatMoneyUnits caller
-// (it needs maximumFractionDigits, which that shared helper doesn't take).
-const formatPrice = (cents: number, currency: string, locale: string, fractionDigits: number) =>
-  new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  })
-    .format(cents / 100)
-    .replace(/[  ]/g, " ");
+import { formatOrgCents } from "src/utils/currencies";
 
 const DEFAULT_PAGE_SIZE = 25;
 
 const Products = () => {
   const { i18n } = useLingui();
+  const { message } = App.useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
-  const fractionDigits = organization?.minimum_fraction_digits ?? 2;
-  const currency = organization?.currency ?? "EUR";
   // The table itself no longer reads the shared productsAtom — it fetches
   // its own paginated page below. ProductForm still reads productsAtom (to
   // look up the product being edited, populate the BOM component picker,
@@ -111,10 +82,25 @@ const Products = () => {
         setPageProducts(res.data);
         setTotal(res.total);
       })
+      .catch((error) => {
+        if (requestId !== requestIdRef.current) return;
+        console.error("Failed to load products:", error);
+        message.error(error instanceof Error ? error.message : t`Failed to load products`);
+      })
       .finally(() => {
         if (requestId === requestIdRef.current) setLoading(false);
       });
-  }, [organizationId, page, pageSize, search, typeFilter, categoryFilter, sortField, sortOrder]);
+  }, [
+    organizationId,
+    page,
+    pageSize,
+    search,
+    typeFilter,
+    categoryFilter,
+    sortField,
+    sortOrder,
+    message,
+  ]);
 
   useEffect(() => {
     if (location.pathname === "/products") {
@@ -278,7 +264,7 @@ const Products = () => {
               align="right"
               sorter
               render={(price: number, p: Product) =>
-                `${formatPrice(price, currency, i18n.locale, fractionDigits)}${p.unit ? ` / ${unitLabel(p.unit)}` : ""}`
+                `${formatOrgCents(price, organization, i18n.locale)}${p.unit ? ` / ${unitLabel(p.unit)}` : ""}`
               }
             />
             <Table.Column
@@ -288,7 +274,7 @@ const Products = () => {
               align="right"
               sorter
               render={(cost: number | null) =>
-                cost != null ? formatPrice(cost, currency, i18n.locale, fractionDigits) : "—"
+                cost != null ? formatOrgCents(cost, organization, i18n.locale) : "—"
               }
             />
             <Table.Column
