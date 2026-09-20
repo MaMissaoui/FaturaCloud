@@ -3265,7 +3265,7 @@ msgid "New client"
 msgstr "Nouveau client"
 
 #: src/routes/cash-book.tsx:679
-#: src/routes/cash-book.tsx:748
+#: src/routes/cash-book.tsx:749
 #: src/routes/cash-book.tsx:1292
 msgid "New customer"
 msgstr "Nouveau client"

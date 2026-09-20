@@ -737,18 +737,18 @@ const CashBook = () => {
       prefiltered to this customer's open loans. */}
       {isToday && inSale && (
         <>
-          <Space style={{ marginBottom: 16 }}>
+          <Space align="center" size={12} style={{ marginBottom: 16 }}>
             <Button icon={<ArrowLeftOutlined />} onClick={backToSearch}>
               <Trans>Back to search</Trans>
             </Button>
-            <Typography.Text strong>
+            <Typography.Title level={4} style={{ margin: 0 }}>
               {clientName}
-              {newClientDraft && (
-                <Tag color="blue" style={{ marginLeft: 8 }}>
-                  <Trans>New customer</Trans>
-                </Tag>
-              )}
-            </Typography.Text>
+            </Typography.Title>
+            {newClientDraft && (
+              <Tag color="blue" style={{ marginInlineStart: 0 }}>
+                <Trans>New customer</Trans>
+              </Tag>
+            )}
           </Space>
 
           <Card
