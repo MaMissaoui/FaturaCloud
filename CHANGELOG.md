@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.32.0] - 2026-09-20
+
+Second audit follow-up: database indexes/pragmas and UI/accessibility polish.
+
+### Added
+- Invoices and Products lists now show a proper empty state with a create
+  action.
+
+### Changed
+- Added hot-path database indexes (stock movement history, name-ordered
+  lists, inbound-delivery status, and FK columns used by delete guards) and
+  tuned SQLite pragmas (`synchronous=NORMAL`, in-memory temp store, larger
+  cache, `mmap_size`) for speed.
+
+### Fixed
+- Theme-corrected hardcoded colors and the product form's leave-confirmation
+  modals; added missing `aria-label`s and login `autoComplete` hints.
+- New Organization: a failed create now surfaces an error instead of
+  navigating away, and the form is responsive with a labeled Name field.
+- Journal entry lines table scrolls horizontally on narrow screens.
+
 ## [3.31.0] - 2026-09-20
 
 Performance and consistency follow-ups from a UI/database audit.
