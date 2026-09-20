@@ -37,17 +37,23 @@ var defaultSeparators = separators{decimal: ".", group: ","}
 // convention, exports' counterpart to src/utils/currencies.tsx's
 // countryNumberLocale — same curated scope, and each entry's characters
 // were read directly off a real Intl.NumberFormat run for that locale
-// (formatToParts, not guessed) so the two tables agree. They can still
-// drift: this is a hand-maintained table because Go's standard library has
-// no ICU/CLDR equivalent (see this file's top comment), while the frontend
-// asks the browser's own ICU directly — a future ICU update changing a
-// locale's convention updates the frontend automatically and this table
-// not at all. A country not listed here returns defaultSeparators, the
-// same "," / "." this function has always used.
+// (formatToParts, not guessed) so the two tables agree. Space-grouping
+// locales store a plain ASCII space rather than ICU's U+202F/U+00A0 so the
+// server matches what the frontend renders after normalizeGroupingSpace
+// collapses those glyphs to a plain space. They can still drift: this is a
+// hand-maintained table because Go's standard library has no ICU/CLDR
+// equivalent (see this file's top comment), while the frontend asks the
+// browser's own ICU directly — a future ICU update changing a locale's
+// convention updates the frontend automatically and this table not at all.
+// AT was exactly that drift (stored group " " where ICU de-AT uses "."),
+// making an Austrian org's exports disagree with every on-screen amount;
+// re-audited against Intl for every entry below (F123). A country not
+// listed here returns defaultSeparators, the same "," / "." this function
+// has always used.
 var countryDecimalSeparators = map[string]separators{
 	// German-speaking
 	"DE": {decimal: ",", group: "."},
-	"AT": {decimal: ",", group: " "},
+	"AT": {decimal: ",", group: "."},
 	"CH": {decimal: ".", group: "'"},
 	// French-speaking (Europe)
 	"FR": {decimal: ",", group: " "},
@@ -88,22 +94,39 @@ func resolveSeparators(countryCode *string) separators {
 // money placeholder in the fill engine funnels through — replacing the four
 // inconsistent approaches found across the existing React-PDF components
 // (raw cents into a shared helper in some, a local /100 float division in
-// others, mismatched rounding). Output is grouped, fixed-decimal, and
-// currency-code-suffixed (e.g. "1,234.56 EUR") rather than symbol-prefixed:
-// there's no per-export UI locale to key a symbol/placement choice off on
-// the server, unlike the frontend's Intl.NumberFormat(locale, ...) calls.
+// others, mismatched rounding). Output is grouped, currency-code-suffixed
+// (e.g. "1,234.56 EUR") rather than symbol-prefixed: there's no per-export
+// UI locale to key a symbol/placement choice off on the server, unlike the
+// frontend's Intl.NumberFormat(locale, ...) calls.
 // Distinct from einvoice.go's formatCents, a plain unlocalized 2-decimal
 // string for XML numeric fields — a different domain with no grouping/
 // currency-suffix/configurable-digits needs.
 //
+// minimumFractionDigits is honored the way Intl.NumberFormat honors it — as
+// a true MINIMUM, not an exact digit count. The frontend's formatOrgCents
+// passes the org's "Decimal places" straight through to Intl, which resolves
+// minimumFractionDigits = m and maximumFractionDigits = max(m, the
+// currency's own default); this mirrors that resolution so an org set to
+// 0 decimals renders 12.5, not 13, in both the UI and its exports (F121).
+// With no override (min == max == the currency default) the output is
+// byte-identical to the old fixed-digit behavior.
+//
 // cents is always stored as exact hundredths regardless of what the
 // currency's own minor unit is (see CLAUDE.md's Database section on TND's
 // millime) — digits beyond that stored precision are zero-padding, not
-// invented precision.
+// invented precision. Rounding therefore only ever happens when the
+// resolved maximum is below 2.
 func formatMoneyCents(cents int64, currencyCode string, minimumFractionDigits *int64, countryCode *string) string {
-	digits := currencyDefaultDigits(currencyCode)
+	currencyDigits := currencyDefaultDigits(currencyCode)
+	minDigits := currencyDigits
 	if minimumFractionDigits != nil && *minimumFractionDigits >= 0 {
-		digits = int(*minimumFractionDigits)
+		minDigits = int(*minimumFractionDigits)
+	}
+	// Intl's resolved maximumFractionDigits for a currency — the org can
+	// raise the minimum, but never beyond the currency's own minor unit.
+	maxDigits := minDigits
+	if currencyDigits > maxDigits {
+		maxDigits = currencyDigits
 	}
 	sep := resolveSeparators(countryCode)
 
@@ -114,29 +137,36 @@ func formatMoneyCents(cents int64, currencyCode string, minimumFractionDigits *i
 	whole := cents / 100
 	frac2 := cents % 100 // exact hundredths; storage never carries finer precision
 
-	var fracDigits string
+	// Render to maxDigits first, then trim trailing zeros down to minDigits
+	// (Intl strips trailing zeros above the minimum; an empty fraction drops
+	// the separator entirely).
+	var frac string
 	switch {
-	case digits <= 0:
-		digits = 0
+	case maxDigits <= 0:
 		if frac2 >= 50 {
 			whole++
 		}
-	case digits == 1:
+	case maxDigits == 1:
 		tenths := (frac2 + 5) / 10
 		if tenths == 10 {
 			tenths = 0
 			whole++
 		}
-		fracDigits = strconv.FormatInt(tenths, 10)
+		frac = strconv.FormatInt(tenths, 10)
 	default:
-		fracDigits = pad2(frac2) + strings.Repeat("0", digits-2)
+		frac = pad2(frac2) + strings.Repeat("0", maxDigits-2)
+	}
+	for len(frac) > minDigits && strings.HasSuffix(frac, "0") {
+		frac = frac[:len(frac)-1]
 	}
 
 	out := groupThousands(strconv.FormatInt(whole, 10), sep.group)
-	if digits > 0 {
-		out += sep.decimal + fracDigits
+	if frac != "" {
+		out += sep.decimal + frac
 	}
-	if negative && (whole != 0 || frac2 != 0) {
+	// Sign from the DISPLAYED value: a sub-unit negative that rounds to zero
+	// displayed digits renders "0", not "-0" (fixes the "-0 JPY" case).
+	if negative && !(whole == 0 && strings.Trim(frac, "0") == "") {
 		out = "-" + out
 	}
 	if currencyCode != "" {
