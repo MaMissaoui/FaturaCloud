@@ -251,27 +251,46 @@ func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest)
 	return d.GetTaxRate(taxRateID)
 }
 
-// GetTaxRateUsageCount returns how many invoice line items reference this
-// tax rate, so callers can decide whether it's safe to delete.
-// Every line-item table that references taxRates must be counted here.
+// taxRateReference is one table+column pair that points at taxRates(id). The
+// column is carried explicitly because the FK column is not named the same
+// everywhere: the line-item tables use a column literally named "taxRate",
+// while products and journal_lines use "taxRateId".
+type taxRateReference struct {
+	Table  string
+	Column string
+}
+
+// GetTaxRateUsageCount returns how many rows reference this tax rate, so
+// callers can decide whether it's safe to delete.
+// Every table that references taxRates must be counted here.
 // invoiceLineItems and incoming_invoice_line_items cascade on delete, so a rate
 // missing from this count could be deleted and silently strip line items off
-// existing invoices; purchase_order_line_items merely null out, but a rate
-// vanishing from a live order is just as unwanted.
+// existing invoices; purchase_order_line_items, products and journal_lines
+// merely null out, but a rate vanishing from a live order, a product's default,
+// or a manual journal line's historical tax link is just as unwanted (the
+// DATEV export's BU-key join silently loses the journal_lines link).
 // TestTaxRateUsageCountCoversEveryReference reads the live schema and fails if
-// a table gains a taxRate column without being listed.
-var taxRateReferencingTables = []string{
-	"invoiceLineItems",
-	"incoming_invoice_line_items",
-	"purchase_order_line_items",
+// a table gains a taxRate/taxRateId column without being listed.
+var taxRateReferencingTables = []taxRateReference{
+	{"invoiceLineItems", "taxRate"},
+	{"incoming_invoice_line_items", "taxRate"},
+	{"purchase_order_line_items", "taxRate"},
+	// journal_lines.taxRateId (migration 0052) is set by manual journal
+	// entries. ON DELETE SET NULL, so without this the historical link is
+	// silently nulled rather than blocking the delete.
+	{"journal_lines", "taxRateId"},
+	// products.taxRateId (migration 0020) is a product's default tax rate,
+	// also ON DELETE SET NULL — the same "a rate vanishing from a live
+	// record is unwanted" reasoning purchase_order_line_items gets above.
+	{"products", "taxRateId"},
 }
 
 func (d *Database) GetTaxRateUsageCount(taxRateID string) (int64, error) {
 	subqueries := make([]string, len(taxRateReferencingTables))
 	args := make([]any, len(taxRateReferencingTables))
-	for i, table := range taxRateReferencingTables {
-		// Table names come from the package-level slice above, never from input.
-		subqueries[i] = fmt.Sprintf("(SELECT COUNT(*) FROM %s WHERE taxRate = ?)", table)
+	for i, ref := range taxRateReferencingTables {
+		// Table/column names come from the package-level slice above, never from input.
+		subqueries[i] = fmt.Sprintf("(SELECT COUNT(*) FROM %s WHERE %s = ?)", ref.Table, ref.Column)
 		args[i] = taxRateID
 	}
 
