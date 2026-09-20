@@ -56,6 +56,7 @@ import {
   GetDailyCashMovements,
   GetInvoice,
   GetLoanStatus,
+  GetPayments,
   UpdateInvoiceState,
 } from "src/api";
 import type {
@@ -64,7 +65,7 @@ import type {
   DailyCashMovementRow,
   LoanStatusRow,
 } from "src/api";
-import type { Account, Client, Invoice } from "src/types/models";
+import type { Account, Client, Invoice, Payment } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
 import PaymentPanel from "src/components/payments/payment-panel";
@@ -240,6 +241,11 @@ const CashBook = () => {
   const [downloadingLoanPdf, setDownloadingLoanPdf] = useState(false);
   const [downloadingLoanExcel, setDownloadingLoanExcel] = useState(false);
 
+  // Payment history — every inbound payment for the organization (or the
+  // customer being served), shown in its own card below the loan report.
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
   // Guards against an in-flight earlier request overwriting a newer one —
   // rapid date picker changes (daily movement) or customer-filter changes
   // (loan status) could otherwise apply whichever response resolved last,
@@ -329,6 +335,25 @@ const CashBook = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, loanStatusClientId]);
 
+  const refreshPayments = async () => {
+    if (!organizationId) return;
+    setLoadingPayments(true);
+    try {
+      setPayments(await GetPayments(organizationId));
+    } catch (error) {
+      console.error("Failed to fetch payments:", error);
+      message.error(t`Failed to load payment history`);
+      setPayments([]);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId]);
+
   const filteredLoanStatusRows = useMemo(
     () => (openLoansOnly ? loanStatusRows.filter((row) => row.outstanding !== 0) : loanStatusRows),
     [loanStatusRows, openLoansOnly],
@@ -347,6 +372,21 @@ const CashBook = () => {
     }
     return totals;
   }, [loanStatusRows]);
+
+  // Payment history: inbound payments, scoped to the customer being served
+  // (or the loan-report filter) when one is selected, newest first (GetPayments
+  // already orders by date DESC).
+  const clientNameById = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const c of clients as any[]) names.set(c.id, c.name);
+    return names;
+  }, [clients]);
+  const paymentHistory = useMemo(() => {
+    const scopeId = selectedClient?.id || loanStatusClientId || "";
+    return payments.filter(
+      (p) => p.direction === "inbound" && (!scopeId || p.clientId === scopeId),
+    );
+  }, [payments, selectedClient, loanStatusClientId]);
 
   const handleExportDailyMovements = (format: "xlsx" | "pdf") => async () => {
     if (!organizationId || !registerAccountId) return;
@@ -635,6 +675,7 @@ const CashBook = () => {
       await setClients();
       await refreshDailyMovement();
       await refreshLoanStatus();
+      await refreshPayments();
       resetSaleForm();
     } catch (error) {
       console.error("Failed to record sale:", error);
@@ -665,6 +706,7 @@ const CashBook = () => {
     // stayed missing from the movements list after returning to the search
     // screen, since nothing else re-runs refreshDailyMovement.
     await refreshDailyMovement();
+    await refreshPayments();
   };
 
   // Auto-progresses the invoice to "paid" once its balance clears — see
@@ -1298,23 +1340,35 @@ const CashBook = () => {
       >
         <Table
           dataSource={filteredLoanStatusRows}
-          rowKey="invoiceId"
+          rowKey="lineId"
           size="small"
           pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
           locale={{ emptyText: <Trans>No loan sales</Trans> }}
         >
           <Table.Column title={<Trans>Customer</Trans>} dataIndex="clientName" key="clientName" />
-          <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
           <Table.Column
             title={<Trans>Date</Trans>}
             key="date"
             render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
           />
           <Table.Column
-            title={<Trans>Original</Trans>}
-            key="original"
+            title={<Trans>Product</Trans>}
+            key="product"
+            render={(row: LoanStatusRow) =>
+              row.sku ? `${row.productName} · ${row.sku}` : row.productName || "—"
+            }
+          />
+          <Table.Column
+            title={<Trans>Qty</Trans>}
+            key="quantity"
             align="right"
-            render={(row: LoanStatusRow) => money(row.original)}
+            render={(row: LoanStatusRow) => row.quantity}
+          />
+          <Table.Column
+            title={<Trans>Amount</Trans>}
+            key="amount"
+            align="right"
+            render={(row: LoanStatusRow) => money(row.amount)}
           />
           <Table.Column
             title={<Trans>Paid</Trans>}
@@ -1350,6 +1404,52 @@ const CashBook = () => {
                 </Tooltip>
               ) : null
             }
+          />
+        </Table>
+      </Card>
+
+      {/* Payment history — the counterpart to the loan report above: what has
+      actually been collected, newest first, scoped to the customer being
+      served when one is selected. */}
+      <Card
+        size="small"
+        title={<Trans>Payment history</Trans>}
+        style={sectionCardStyle}
+        styles={sectionCardStyles}
+        loading={loadingPayments}
+      >
+        <Table
+          dataSource={paymentHistory}
+          rowKey="id"
+          size="small"
+          pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
+          locale={{ emptyText: <Trans>No payments yet</Trans> }}
+        >
+          <Table.Column
+            title={<Trans>Date</Trans>}
+            key="date"
+            render={(p: Payment) => dayjs(p.date).format(dateFormat)}
+          />
+          <Table.Column
+            title={<Trans>Customer</Trans>}
+            key="customer"
+            render={(p: Payment) => (p.clientId && clientNameById.get(p.clientId)) || "—"}
+          />
+          <Table.Column
+            title={<Trans>Method</Trans>}
+            key="method"
+            render={(p: Payment) => paymentMethodLabel(p.method)}
+          />
+          <Table.Column
+            title={<Trans>Reference</Trans>}
+            key="reference"
+            render={(p: Payment) => p.reference || "—"}
+          />
+          <Table.Column
+            title={<Trans>Amount</Trans>}
+            key="amount"
+            align="right"
+            render={(p: Payment) => money(p.amount)}
           />
         </Table>
       </Card>

@@ -152,7 +152,7 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 		t.Errorf("Print_Titles = %q, want it to repeat row 4", printTitles)
 	}
 
-	// Two data rows (5, 6) then the totals row (7).
+	// Two data rows (5, 6) then the totals row (7). Amount is column F.
 	if total, _ := f.GetCellValue(sheet, "A7"); total != "Total" {
 		t.Fatalf("A7 = %q, want the totals row", total)
 	}
@@ -160,9 +160,9 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 	if org.Currency != nil {
 		currency = *org.Currency
 	}
-	wantOriginal := formatMoneyCents(1800, currency, org.MinimumFractionDigits, org.CountryCode)
-	if got, _ := f.GetCellValue(sheet, "D7"); got != wantOriginal {
-		t.Errorf("total original = %q, want %q", got, wantOriginal)
+	wantAmount := formatMoneyCents(1800, currency, org.MinimumFractionDigits, org.CountryCode)
+	if got, _ := f.GetCellValue(sheet, "F7"); got != wantAmount {
+		t.Errorf("total amount = %q, want %q", got, wantAmount)
 	}
 
 	// A customer-scoped export names that customer in the first-page header.

@@ -243,15 +243,15 @@ func TestGetLoanStatusExcludesCashSaleIncludesSettledLoan(t *testing.T) {
 	if !present {
 		t.Fatalf("a since-settled loan should still appear in loan status")
 	}
-	if settled.Original != 2400 || settled.Paid != 2400 || settled.Outstanding != 0 {
-		t.Fatalf("settled loan row = %+v, want original=2400 paid=2400 outstanding=0", settled)
+	if settled.Amount != 2400 || settled.Paid != 2400 || settled.Outstanding != 0 {
+		t.Fatalf("settled loan row = %+v, want amount=2400 paid=2400 outstanding=0", settled)
 	}
 	open, present := byInvoiceID[openLoan.Invoice.ID]
 	if !present {
 		t.Fatalf("a still-open loan should appear in loan status")
 	}
-	if open.Original != 2400 || open.Paid != 400 || open.Outstanding != 2000 {
-		t.Fatalf("open loan row = %+v, want original=2400 paid=400 outstanding=2000", open)
+	if open.Amount != 2400 || open.Paid != 400 || open.Outstanding != 2000 {
+		t.Fatalf("open loan row = %+v, want amount=2400 paid=400 outstanding=2000", open)
 	}
 
 	filtered, err := d.GetLoanStatus(fx.orgID, fx.clientID)
