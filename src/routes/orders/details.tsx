@@ -454,6 +454,7 @@ const OrderDetails = () => {
             {
               kind: "product",
               products: sellableProducts,
+              allProducts: products,
               required: true,
               onSelect: (productId, fieldName, formInstance) => {
                 const product = find(products, { id: productId });

@@ -230,17 +230,17 @@ func (h *handler) orgMember(resolve orgIDResolver) func(http.Handler) http.Handl
 	})
 }
 
-// orgRole gates an org-scoped mutation to "admin", "general" (the org-wide
-// non-admin role — full read/write everywhere non-admin-gated, unchanged
-// from before per-domain roles existed), or one of the listed domain roles
-// (org role redesign, migration 0081). Uses modeMemberCollapse — the same
+// orgRole gates an org-scoped mutation to "admin", "power_user" or "general"
+// (the org-wide non-admin roles — full read/write everywhere non-admin-gated),
+// or one of the listed domain roles (org role redesign, migration 0081/0086).
+// Uses modeMemberCollapse — the same
 // resource-id resolvers (clientOrgID, invoiceOrgID, …) already protect
 // these routes' own GET counterparts via orgMember, so a member-but-wrong-
 // domain caller learns nothing a non-member wouldn't already be told by the
 // read route; only genuinely new information (this org has this resource,
 // and I'm a member) is gated as 403 instead of 404.
 func (h *handler) orgRole(resolve orgIDResolver, roles ...string) func(http.Handler) http.Handler {
-	allowed := map[string]bool{"admin": true, "general": true}
+	allowed := map[string]bool{"admin": true, "power_user": true, "general": true}
 	for _, role := range roles {
 		allowed[role] = true
 	}
@@ -302,7 +302,8 @@ func (h *handler) requireOrgMember(w http.ResponseWriter, r *http.Request, orgID
 // requireOrgRole is requireOrgMember's domain-role-checking sibling — same
 // "runs from inside an already-withDB'd Create* handler, after decodeJSON,
 // 403 not 404" reasoning, but also requires the caller's role to be
-// "admin", "general", or one of roles (org role redesign, migration 0081).
+// "admin", "power_user", "general", or one of roles (org role redesign,
+// migration 0081/0086).
 func (h *handler) requireOrgRole(w http.ResponseWriter, r *http.Request, orgID string, roles ...string) bool {
 	claims := getClaims(r)
 	if claims == nil || orgID == "" {
@@ -318,7 +319,7 @@ func (h *handler) requireOrgRole(w http.ResponseWriter, r *http.Request, orgID s
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
 	}
-	allowed := role == "admin" || role == "general"
+	allowed := role == "admin" || role == "power_user" || role == "general"
 	for _, want := range roles {
 		if role == want {
 			allowed = true

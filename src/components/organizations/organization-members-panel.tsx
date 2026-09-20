@@ -5,9 +5,10 @@ import { t } from "@lingui/core/macro";
 import type { OrganizationMember, OrganizationRole } from "src/api";
 
 // Shared by both the member-list role Select and the "add member" Select
-// below — one place naming the six roles and their labels.
+// below — one place naming the seven roles and their labels.
 const roleOptions = (): { value: OrganizationRole; label: string }[] => [
   { value: "admin", label: t`Admin` },
+  { value: "power_user", label: t`Power User` },
   { value: "general", label: t`General` },
   { value: "sales", label: t`Sales` },
   { value: "purchasing", label: t`Purchasing` },

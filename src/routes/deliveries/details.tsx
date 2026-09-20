@@ -501,6 +501,7 @@ const DeliveryDetails = () => {
             {
               kind: "product",
               products: sellableProducts,
+              allProducts: products,
               required: true,
               onSelect: (productId, fieldName, formInstance) => {
                 const lineItems = formInstance.getFieldValue("lineItems");

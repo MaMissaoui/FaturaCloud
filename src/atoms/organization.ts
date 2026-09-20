@@ -168,6 +168,14 @@ isOrgAdminOrAccountingAtom.debugLabel = "isOrgAdminOrAccountingAtom";
 export const isCashbookAtom = atom(async (get) => (await get(myOrgRoleAtom)) === "cashbook");
 isCashbookAtom.debugLabel = "isCashbookAtom";
 
+// isGeneralRoleAtom reports whether the current user's role in the selected
+// organization is the "general" role. Used to hide and redirect away from the
+// sections a general user no longer has access to (Accounting, Imports, Bill
+// of Materials) — the same UI-only enforced-view pattern as isCashbookAtom,
+// not a server-side authorization boundary.
+export const isGeneralRoleAtom = atom(async (get) => (await get(myOrgRoleAtom)) === "general");
+isGeneralRoleAtom.debugLabel = "isGeneralRoleAtom";
+
 // Forces organizationAtom to refetch the currently selected organization
 // (including its logo) without going through a create/update. Used after a
 // logo upload/removal, which happens through the dedicated /logo endpoints
