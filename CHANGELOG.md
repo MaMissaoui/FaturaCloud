@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.29.2] - 2026-09-20
+
+Cash Book follow-ups: a payment-refresh fix and two layout tweaks.
+
+### Changed
+- Cash Book: the sale's submit button now sits at the foot of the "New sale"
+  card instead of a sticky footer below the loan-status report, so it reads
+  as part of the sale it records.
+- Cash Book: the "Back to search" button is now a primary button, matching
+  the other action buttons on the screen.
+
+### Fixed
+- Cash Book: the cash register's movement list now refreshes after a payment
+  is recorded — partial or full — and the user returns to the search screen.
+  A partial payment closes the embedded payment panel through `onClose`
+  rather than `onSettled`, so the register kept its pre-payment rows while a
+  sale was in progress and the stale list only surfaced on the way back.
+
 ## [3.29.1] - 2026-09-20
 
 Cash Book UI polish and a fix for its PDF report exports.
