@@ -12,6 +12,7 @@ import {
   Row,
   Select,
   Space,
+  theme,
 } from "antd";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -35,6 +36,7 @@ const ClientForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const { token } = theme.useToken();
 
   const [clientId, setClientId] = useAtom(clientIdAtom);
   const clients = useAtomValue(clientsAtom);
@@ -150,7 +152,7 @@ const ClientForm = () => {
                       <Trans>Are you sure you want to delete this client?</Trans>
                     </div>
                     {invoiceCount !== null && invoiceCount > 0 && (
-                      <div style={{ color: "#ff4d4f", marginTop: 4 }}>
+                      <div style={{ color: token.colorError, marginTop: 4 }}>
                         <Trans>
                           Warning: This will also delete {invoiceCount} related invoice(s).
                         </Trans>
