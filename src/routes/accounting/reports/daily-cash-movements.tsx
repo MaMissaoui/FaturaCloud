@@ -1,5 +1,17 @@
-import { useEffect, useState } from "react";
-import { Card, Col, DatePicker, Row, Select, Space, Statistic, Table, Typography } from "antd";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Typography,
+} from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -35,6 +47,11 @@ const DailyCashMovements = () => {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(6, "day"), dayjs()]);
   const [rows, setRows] = useState<DailyCashMovementRow[]>([]);
   const [loading, setLoading] = useState(false);
+  // A failed fetch used to reset rows to [], which rendered identically to a
+  // genuinely activity-free range ("No activity in this range") — a
+  // transient 500 told an accountant there were no movements. Tracked
+  // separately so this page shows a real error instead of a false all-clear.
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -54,9 +71,10 @@ const DailyCashMovements = () => {
     setDefaulted(true);
   }, [defaulted, organization, accounts]);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     if (!organizationId || !accountId) return;
     setLoading(true);
+    setFailed(false);
     GetDailyCashMovements(
       organizationId,
       accountId,
@@ -67,15 +85,34 @@ const DailyCashMovements = () => {
       .catch((error) => {
         console.error("Failed to fetch daily cash movements:", error);
         setRows([]);
+        setFailed(true);
       })
       .finally(() => setLoading(false));
   }, [organizationId, accountId, range]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   return (
     <>
       <PageHeader icon={<WalletOutlined />} title={<Trans>Daily Cash Movements</Trans>} />
+
+      {failed && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          message={<Trans>Couldn't load the daily cash movements</Trans>}
+          action={
+            <Button size="small" onClick={refresh}>
+              <Trans>Retry</Trans>
+            </Button>
+          }
+        />
+      )}
 
       <Space style={{ marginTop: 16, marginBottom: 16 }} wrap>
         <Select
@@ -147,7 +184,7 @@ const DailyCashMovements = () => {
             rowKey="date"
             loading={loading}
             pagination={{ hideOnSinglePage: true, defaultPageSize: 31 }}
-            locale={{ emptyText: <Trans>No activity in this range</Trans> }}
+            locale={{ emptyText: failed ? "—" : <Trans>No activity in this range</Trans> }}
           >
             <Table.Column
               title={<Trans>Date</Trans>}
