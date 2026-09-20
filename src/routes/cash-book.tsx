@@ -625,6 +625,15 @@ const CashBook = () => {
   const closePayment = async () => {
     setPayingInvoice(null);
     await refreshLoanStatus();
+    // A payment posts to the cash register as well as against the invoice, so
+    // refresh the register's movements here too. This runs for every way the
+    // panel closes — a partial payment (PaymentPanel calls onClose, not
+    // onSettled), a full settlement (handleSettled → closePayment), and a
+    // plain dismissal. Without it, a payment recorded while a sale is in
+    // progress (the register card is hidden then — see the !inSale gate)
+    // stayed missing from the movements list after returning to the search
+    // screen, since nothing else re-runs refreshDailyMovement.
+    await refreshDailyMovement();
   };
 
   // Auto-progresses the invoice to "paid" once its balance clears — see
@@ -643,8 +652,9 @@ const CashBook = () => {
         );
       }
     }
+    // closePayment also refreshes the register movements, so no separate
+    // refreshDailyMovement call is needed here.
     await closePayment();
-    await refreshDailyMovement();
   };
 
   const clientName = selectedClient?.name || newClientDraft?.name || "";
