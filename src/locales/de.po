@@ -147,6 +147,10 @@ msgstr "Speichern des Kontos fehlgeschlagen"
 msgid "Account updated"
 msgstr "Konto aktualisiert"
 
+#: src/components/organizations/organizations-table.tsx:134
+msgid "account(s)"
+msgstr "Konto/Konten"
+
 #: src/components/organizations/organization-edit-drawer.tsx:465
 #: src/components/organizations/organization-members-panel.tsx:14
 #: src/components/products/form.tsx:551
@@ -518,6 +522,10 @@ msgstr "Stückliste gespeichert"
 msgid "Bill To"
 msgstr "Rechnung an"
 
+#: src/components/organizations/organizations-table.tsx:143
+msgid "bill(s) of materials"
+msgstr "Stückliste(n)"
+
 #: src/types/incoming-invoice.ts:83
 msgid "Billed at a different unit price than ordered."
 msgstr "Zu einem anderen Stückpreis als bestellt abgerechnet."
@@ -534,6 +542,10 @@ msgstr "{0} abgerechnet, aber nur {1} bestellt."
 #: src/types/incoming-invoice.ts:79
 msgid "Billing {0} but only {1} received ({2} already invoiced)."
 msgstr "{0} abgerechnet, aber nur {1} erhalten ({2} bereits abgerechnet)."
+
+#: src/components/organizations/organizations-table.tsx:144
+msgid "BOM version(s)"
+msgstr "Stücklistenversion(en)"
 
 #: src/components/organizations/organization-edit-drawer.tsx:247
 msgid "Brand color"
@@ -678,6 +690,10 @@ msgstr "Kassenbuch"
 msgid "Cash movement recorded"
 msgstr "Kassenbewegung erfasst"
 
+#: src/components/organizations/organizations-table.tsx:129
+msgid "cash movement(s)"
+msgstr "Kassenbewegung(en)"
+
 #: src/routes/cash-book.tsx:985
 msgid "Cash register"
 msgstr "Kasse"
@@ -782,7 +798,7 @@ msgstr "Kunde-Aktualisierung fehlgeschlagen"
 msgid "Client updated successfully"
 msgstr "Kunde erfolgreich aktualisiert"
 
-#: src/components/organizations/organizations-table.tsx:112
+#: src/components/organizations/organizations-table.tsx:116
 #: src/routes/organizations/index.tsx:417
 msgid "client(s)"
 msgstr "Kunde(n)"
@@ -1317,7 +1333,7 @@ msgstr "Standardmäßig der Gesamtbetrag. Ein höherer Betrag erfasst nur das zu
 #: src/components/accounting/journal-form.tsx:115
 #: src/components/clients/form.tsx:167
 #: src/components/imports/form.tsx:234
-#: src/components/organizations/organizations-table.tsx:158
+#: src/components/organizations/organizations-table.tsx:181
 #: src/components/payment-terms/form.tsx:100
 #: src/components/products/form.tsx:259
 #: src/components/tax-rates/form.tsx:128
@@ -1375,7 +1391,7 @@ msgstr "Diese Rechnung löschen?"
 msgid "Delete this order?"
 msgstr "Diese Bestellung löschen?"
 
-#: src/components/organizations/organizations-table.tsx:126
+#: src/components/organizations/organizations-table.tsx:149
 msgid "Delete this organization?"
 msgstr "Diese Organisation löschen?"
 
@@ -1526,6 +1542,10 @@ msgstr "Ungespeicherte Änderungen an diesem Import verwerfen?"
 #: src/routes/settings/document-numbering.tsx:235
 msgid "Document Numbering"
 msgstr "Belegnummerierung"
+
+#: src/components/organizations/organizations-table.tsx:140
+msgid "document template(s)"
+msgstr "Dokumentvorlage(n)"
 
 #: src/layouts/base.tsx:283
 #: src/routes/settings/document-templates.tsx:236
@@ -2264,6 +2284,10 @@ msgstr "Aktualisieren der Periode fehlgeschlagen"
 msgid "Fiscal period updated"
 msgstr "Periode aktualisiert"
 
+#: src/components/organizations/organizations-table.tsx:137
+msgid "fiscal period(s)"
+msgstr "Geschäftsperiode(n)"
+
 #: src/layouts/base.tsx:622
 #: src/routes/accounting/fiscal-periods.tsx:131
 msgid "Fiscal Periods"
@@ -2295,6 +2319,10 @@ msgstr "Geschäftsjahr für DATEV-Export"
 #: src/routes/settings/gl-export.tsx:80
 msgid "Fiscal year for FEC export"
 msgstr "Geschäftsjahr für FEC-Export"
+
+#: src/components/organizations/organizations-table.tsx:136
+msgid "fiscal year(s)"
+msgstr "Geschäftsjahr(e)"
 
 #: src/components/organizations/organization-edit-drawer.tsx:418
 msgid "Formatting"
@@ -2382,7 +2410,7 @@ msgstr "Status des Wareneingangs aktualisiert"
 msgid "Goods receipt update failed"
 msgstr "Aktualisieren des Wareneingangs fehlgeschlagen"
 
-#: src/components/organizations/organizations-table.tsx:118
+#: src/components/organizations/organizations-table.tsx:124
 #: src/routes/organizations/index.tsx:429
 msgid "goods receipt(s)"
 msgstr "Wareneingang/-eingänge"
@@ -2509,6 +2537,10 @@ msgstr "Import konnte nicht aktualisiert werden"
 msgid "Import updated successfully"
 msgstr "Import erfolgreich aktualisiert"
 
+#: src/components/organizations/organizations-table.tsx:127
+msgid "import(s)"
+msgstr "Import(e)"
+
 #: src/layouts/base.tsx:484
 #: src/routes/imports.tsx:93
 msgid "Imports"
@@ -2568,7 +2600,7 @@ msgstr "Status der Eingangsrechnung aktualisiert"
 msgid "Incoming invoice update failed"
 msgstr "Aktualisieren der Eingangsrechnung fehlgeschlagen"
 
-#: src/components/organizations/organizations-table.tsx:119
+#: src/components/organizations/organizations-table.tsx:125
 #: src/routes/organizations/index.tsx:430
 msgid "incoming invoice(s)"
 msgstr "Eingangsrechnung(en)"
@@ -2698,7 +2730,7 @@ msgstr "Rechnung-Aktualisierung fehlgeschlagen"
 msgid "Invoice updated successfully"
 msgstr "Rechnung erfolgreich aktualisiert"
 
-#: src/components/organizations/organizations-table.tsx:114
+#: src/components/organizations/organizations-table.tsx:118
 #: src/routes/organizations/index.tsx:425
 msgid "invoice(s)"
 msgstr "Rechnung(en)"
@@ -2737,6 +2769,10 @@ msgstr "Journal gelöscht"
 #: src/atoms/journal.ts:84
 msgid "Journal deletion failed"
 msgstr "Löschen des Journals fehlgeschlagen"
+
+#: src/components/organizations/organizations-table.tsx:132
+msgid "journal entr(y/ies)"
+msgstr "Buchung(en)"
 
 #: src/layouts/base.tsx:631
 #: src/routes/accounting/journal-entries.tsx:53
@@ -2782,6 +2818,10 @@ msgstr "Speichern des Journals fehlgeschlagen"
 #: src/atoms/journal.ts:57
 msgid "Journal updated"
 msgstr "Journal aktualisiert"
+
+#: src/components/organizations/organizations-table.tsx:135
+msgid "journal(s)"
+msgstr "Journal(e)"
 
 #: src/layouts/base.tsx:613
 #: src/routes/accounting/journals.tsx:51
@@ -3571,6 +3611,10 @@ msgstr "Nummer auf dem Lieferschein des Lieferanten"
 msgid "Numbering"
 msgstr "Nummerierung"
 
+#: src/components/organizations/organizations-table.tsx:142
+msgid "numbering setting(s)"
+msgstr "Nummerierungseinstellung(en)"
+
 #: src/routes/settings/document-numbering.tsx:223
 msgid "Numbering settings saved"
 msgstr "Nummerierungseinstellungen gespeichert"
@@ -3726,7 +3770,7 @@ msgstr "Bestellstatus aktualisiert"
 msgid "Order update failed"
 msgstr "Bestellung-Aktualisierung fehlgeschlagen"
 
-#: src/components/organizations/organizations-table.tsx:116
+#: src/components/organizations/organizations-table.tsx:119
 #: src/routes/organizations/index.tsx:426
 msgid "order(s)"
 msgstr "Bestellung(en)"
@@ -3940,6 +3984,10 @@ msgstr "Zahlungsbedingung konnte nicht aktualisiert werden"
 msgid "Payment term updated"
 msgstr "Zahlungsbedingung aktualisiert"
 
+#: src/components/organizations/organizations-table.tsx:138
+msgid "payment term(s)"
+msgstr "Zahlungsbedingung(en)"
+
 #: src/components/invoices/pdf-tunisia.tsx:235
 #: src/layouts/base.tsx:265
 #: src/routes/invoices/details.tsx:522
@@ -3955,6 +4003,10 @@ msgstr "Zahlungsziel (Tage)"
 #: src/components/payments/payment-panel.tsx:225
 msgid "Payment voided"
 msgstr "Zahlung storniert"
+
+#: src/components/organizations/organizations-table.tsx:131
+msgid "payment(s)"
+msgstr "Zahlung(en)"
 
 #: src/components/payments/payment-panel.tsx:347
 msgid "Payments"
@@ -4213,7 +4265,7 @@ msgstr "Produkt-Aktualisierung fehlgeschlagen"
 msgid "Product updated"
 msgstr "Produkt aktualisiert"
 
-#: src/components/organizations/organizations-table.tsx:115
+#: src/components/organizations/organizations-table.tsx:121
 #: src/routes/organizations/index.tsx:419
 msgid "product(s)"
 msgstr "Produkt(e)"
@@ -4248,6 +4300,10 @@ msgstr "Löschen des Fertigungsauftrags fehlgeschlagen"
 #: src/atoms/production-order.ts:117
 msgid "Production order status updated"
 msgstr "Status des Fertigungsauftrags aktualisiert"
+
+#: src/components/organizations/organizations-table.tsx:126
+msgid "production order(s)"
+msgstr "Produktionsauftrag/-aufträge"
 
 #: src/layouts/base.tsx:536
 #: src/routes/production-orders.tsx:60
@@ -4318,7 +4374,7 @@ msgstr "Bestellung getrennt"
 msgid "Purchase order update failed"
 msgstr "Aktualisieren der Bestellung fehlgeschlagen"
 
-#: src/components/organizations/organizations-table.tsx:117
+#: src/components/organizations/organizations-table.tsx:123
 #: src/routes/organizations/index.tsx:428
 msgid "purchase order(s)"
 msgstr "Bestellung(en)"
@@ -4470,6 +4526,10 @@ msgstr "Letzte Lagerbewegungen"
 #: src/routes/reporting/tax-summary.tsx:223
 msgid "Reclaimable — input VAT exceeds output VAT for this period"
 msgstr "Erstattungsfähig — Vorsteuer übersteigt Umsatzsteuer in diesem Zeitraum"
+
+#: src/components/organizations/organizations-table.tsx:133
+msgid "reconciliation group(s)"
+msgstr "Abstimmungsgruppe(n)"
 
 #: src/components/mass-data/mass-data-excel-actions.tsx:110
 #: src/components/payments/payment-panel.tsx:281
@@ -4992,6 +5052,10 @@ msgstr "Gesendet"
 msgid "Sequential number"
 msgstr "Fortlaufende Nummer"
 
+#: src/components/organizations/organizations-table.tsx:130
+msgid "serial number(s)"
+msgstr "Seriennummer(n)"
+
 #: src/components/stock/movement-form.tsx:180
 msgid "Serial numbers"
 msgstr "Seriennummern"
@@ -5192,6 +5256,7 @@ msgstr "Lagerbewegung gelöscht"
 msgid "Stock movement recorded"
 msgstr "Lagerbewegung erfasst"
 
+#: src/components/organizations/organizations-table.tsx:128
 #: src/routes/organizations/index.tsx:431
 msgid "stock movement(s)"
 msgstr "Lagerbewegung(en)"
@@ -5306,7 +5371,7 @@ msgstr "Steuersatz-Aktualisierung fehlgeschlagen"
 msgid "Tax rate updated successfully"
 msgstr "Steuersatz erfolgreich aktualisiert"
 
-#: src/components/organizations/organizations-table.tsx:121
+#: src/components/organizations/organizations-table.tsx:122
 #: src/routes/organizations/index.tsx:420
 msgid "tax rate(s)"
 msgstr "Steuersatz/-sätze"
@@ -5328,6 +5393,10 @@ msgstr "Steuer-/USt-Identifikationsnummer. Erscheint auf Rechnungen. Für den fr
 #: src/components/feedback-modal.tsx:88
 msgid "Tell us what you think, report a bug, or suggest an improvement..."
 msgstr "Teilen Sie uns Ihre Meinung mit, melden Sie einen Fehler oder schlagen Sie eine Verbesserung vor..."
+
+#: src/components/organizations/organizations-table.tsx:141
+msgid "template setting(s)"
+msgstr "Vorlageneinstellung(en)"
 
 #: src/routes/settings/document-templates.tsx:87
 msgid "Template uploaded"
@@ -5358,8 +5427,8 @@ msgid "The shipment this order's goods travel in — drives landed cost (freight
 msgstr "Die Sendung, mit der die Ware dieser Bestellung transportiert wird — steuert nach dem Wareneingang die Verteilung der Einstandskosten (Fracht/Zoll)."
 
 #: src/components/organizations/organization-danger-zone.tsx:102
-#: src/components/organizations/organizations-table.tsx:141
-#: src/components/organizations/organizations-table.tsx:145
+#: src/components/organizations/organizations-table.tsx:164
+#: src/components/organizations/organizations-table.tsx:168
 msgid "This cannot be undone."
 msgstr "Dies kann nicht rückgängig gemacht werden."
 
@@ -5447,7 +5516,7 @@ msgid "This will consume the recipe's components and produce the finished units.
 msgstr "Dadurch werden die Komponenten der Rezeptur verbraucht und die fertigen Einheiten produziert. Fortfahren?"
 
 #: src/components/organizations/organization-danger-zone.tsx:86
-#: src/components/organizations/organizations-table.tsx:131
+#: src/components/organizations/organizations-table.tsx:154
 msgid "This will permanently delete:"
 msgstr "Dies wird dauerhaft löschen:"
 
@@ -5669,6 +5738,10 @@ msgstr "Einzelpreis"
 msgid "Unit price excl. tax"
 msgstr "Einzelpreis netto"
 
+#: src/components/organizations/organizations-table.tsx:139
+msgid "unit(s) of measure"
+msgstr "Maßeinheit(en)"
+
 #: src/routes/products.tsx:315
 msgid "units"
 msgstr "Einheiten"
@@ -5856,7 +5929,7 @@ msgstr "Aktualisieren des Lieferanten fehlgeschlagen"
 msgid "Vendor updated successfully"
 msgstr "Lieferant erfolgreich aktualisiert"
 
-#: src/components/organizations/organizations-table.tsx:113
+#: src/components/organizations/organizations-table.tsx:117
 #: src/routes/organizations/index.tsx:418
 msgid "vendor(s)"
 msgstr "Lieferant(en)"

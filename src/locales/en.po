@@ -147,6 +147,10 @@ msgstr "Account save failed"
 msgid "Account updated"
 msgstr "Account updated"
 
+#: src/components/organizations/organizations-table.tsx:134
+msgid "account(s)"
+msgstr "account(s)"
+
 #: src/components/organizations/organization-edit-drawer.tsx:465
 #: src/components/organizations/organization-members-panel.tsx:14
 #: src/components/products/form.tsx:551
@@ -518,6 +522,10 @@ msgstr "Bill of materials saved"
 msgid "Bill To"
 msgstr "Bill To"
 
+#: src/components/organizations/organizations-table.tsx:143
+msgid "bill(s) of materials"
+msgstr "bill(s) of materials"
+
 #: src/types/incoming-invoice.ts:83
 msgid "Billed at a different unit price than ordered."
 msgstr "Billed at a different unit price than ordered."
@@ -534,6 +542,10 @@ msgstr "Billing {0} but only {1} ordered."
 #: src/types/incoming-invoice.ts:79
 msgid "Billing {0} but only {1} received ({2} already invoiced)."
 msgstr "Billing {0} but only {1} received ({2} already invoiced)."
+
+#: src/components/organizations/organizations-table.tsx:144
+msgid "BOM version(s)"
+msgstr "BOM version(s)"
 
 #: src/components/organizations/organization-edit-drawer.tsx:247
 msgid "Brand color"
@@ -678,6 +690,10 @@ msgstr "Cash Book"
 msgid "Cash movement recorded"
 msgstr "Cash movement recorded"
 
+#: src/components/organizations/organizations-table.tsx:129
+msgid "cash movement(s)"
+msgstr "cash movement(s)"
+
 #: src/routes/cash-book.tsx:985
 msgid "Cash register"
 msgstr "Cash register"
@@ -782,7 +798,7 @@ msgstr "Client update failed"
 msgid "Client updated successfully"
 msgstr "Client updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:112
+#: src/components/organizations/organizations-table.tsx:116
 #: src/routes/organizations/index.tsx:417
 msgid "client(s)"
 msgstr "client(s)"
@@ -1317,7 +1333,7 @@ msgstr "Defaults to the full total. Entering more just records the change given 
 #: src/components/accounting/journal-form.tsx:115
 #: src/components/clients/form.tsx:167
 #: src/components/imports/form.tsx:234
-#: src/components/organizations/organizations-table.tsx:158
+#: src/components/organizations/organizations-table.tsx:181
 #: src/components/payment-terms/form.tsx:100
 #: src/components/products/form.tsx:259
 #: src/components/tax-rates/form.tsx:128
@@ -1375,7 +1391,7 @@ msgstr "Delete this invoice?"
 msgid "Delete this order?"
 msgstr "Delete this order?"
 
-#: src/components/organizations/organizations-table.tsx:126
+#: src/components/organizations/organizations-table.tsx:149
 msgid "Delete this organization?"
 msgstr "Delete this organization?"
 
@@ -1526,6 +1542,10 @@ msgstr "Discard unsaved changes to this import?"
 #: src/routes/settings/document-numbering.tsx:235
 msgid "Document Numbering"
 msgstr "Document Numbering"
+
+#: src/components/organizations/organizations-table.tsx:140
+msgid "document template(s)"
+msgstr "document template(s)"
 
 #: src/layouts/base.tsx:283
 #: src/routes/settings/document-templates.tsx:236
@@ -2264,6 +2284,10 @@ msgstr "Fiscal period update failed"
 msgid "Fiscal period updated"
 msgstr "Fiscal period updated"
 
+#: src/components/organizations/organizations-table.tsx:137
+msgid "fiscal period(s)"
+msgstr "fiscal period(s)"
+
 #: src/layouts/base.tsx:622
 #: src/routes/accounting/fiscal-periods.tsx:131
 msgid "Fiscal Periods"
@@ -2295,6 +2319,10 @@ msgstr "Fiscal year for DATEV export"
 #: src/routes/settings/gl-export.tsx:80
 msgid "Fiscal year for FEC export"
 msgstr "Fiscal year for FEC export"
+
+#: src/components/organizations/organizations-table.tsx:136
+msgid "fiscal year(s)"
+msgstr "fiscal year(s)"
 
 #: src/components/organizations/organization-edit-drawer.tsx:418
 msgid "Formatting"
@@ -2382,7 +2410,7 @@ msgstr "Goods receipt status updated"
 msgid "Goods receipt update failed"
 msgstr "Goods receipt update failed"
 
-#: src/components/organizations/organizations-table.tsx:118
+#: src/components/organizations/organizations-table.tsx:124
 #: src/routes/organizations/index.tsx:429
 msgid "goods receipt(s)"
 msgstr "goods receipt(s)"
@@ -2509,6 +2537,10 @@ msgstr "Import update failed"
 msgid "Import updated successfully"
 msgstr "Import updated successfully"
 
+#: src/components/organizations/organizations-table.tsx:127
+msgid "import(s)"
+msgstr "import(s)"
+
 #: src/layouts/base.tsx:484
 #: src/routes/imports.tsx:93
 msgid "Imports"
@@ -2568,7 +2600,7 @@ msgstr "Incoming invoice state updated"
 msgid "Incoming invoice update failed"
 msgstr "Incoming invoice update failed"
 
-#: src/components/organizations/organizations-table.tsx:119
+#: src/components/organizations/organizations-table.tsx:125
 #: src/routes/organizations/index.tsx:430
 msgid "incoming invoice(s)"
 msgstr "incoming invoice(s)"
@@ -2698,7 +2730,7 @@ msgstr "Invoice update failed"
 msgid "Invoice updated successfully"
 msgstr "Invoice updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:114
+#: src/components/organizations/organizations-table.tsx:118
 #: src/routes/organizations/index.tsx:425
 msgid "invoice(s)"
 msgstr "invoice(s)"
@@ -2737,6 +2769,10 @@ msgstr "Journal deleted"
 #: src/atoms/journal.ts:84
 msgid "Journal deletion failed"
 msgstr "Journal deletion failed"
+
+#: src/components/organizations/organizations-table.tsx:132
+msgid "journal entr(y/ies)"
+msgstr "journal entr(y/ies)"
 
 #: src/layouts/base.tsx:631
 #: src/routes/accounting/journal-entries.tsx:53
@@ -2782,6 +2818,10 @@ msgstr "Journal save failed"
 #: src/atoms/journal.ts:57
 msgid "Journal updated"
 msgstr "Journal updated"
+
+#: src/components/organizations/organizations-table.tsx:135
+msgid "journal(s)"
+msgstr "journal(s)"
 
 #: src/layouts/base.tsx:613
 #: src/routes/accounting/journals.tsx:51
@@ -3571,6 +3611,10 @@ msgstr "Number on the vendor's paperwork"
 msgid "Numbering"
 msgstr "Numbering"
 
+#: src/components/organizations/organizations-table.tsx:142
+msgid "numbering setting(s)"
+msgstr "numbering setting(s)"
+
 #: src/routes/settings/document-numbering.tsx:223
 msgid "Numbering settings saved"
 msgstr "Numbering settings saved"
@@ -3726,7 +3770,7 @@ msgstr "Order status updated"
 msgid "Order update failed"
 msgstr "Order update failed"
 
-#: src/components/organizations/organizations-table.tsx:116
+#: src/components/organizations/organizations-table.tsx:119
 #: src/routes/organizations/index.tsx:426
 msgid "order(s)"
 msgstr "order(s)"
@@ -3940,6 +3984,10 @@ msgstr "Payment term update failed"
 msgid "Payment term updated"
 msgstr "Payment term updated"
 
+#: src/components/organizations/organizations-table.tsx:138
+msgid "payment term(s)"
+msgstr "payment term(s)"
+
 #: src/components/invoices/pdf-tunisia.tsx:235
 #: src/layouts/base.tsx:265
 #: src/routes/invoices/details.tsx:522
@@ -3955,6 +4003,10 @@ msgstr "Payment terms (days)"
 #: src/components/payments/payment-panel.tsx:225
 msgid "Payment voided"
 msgstr "Payment voided"
+
+#: src/components/organizations/organizations-table.tsx:131
+msgid "payment(s)"
+msgstr "payment(s)"
 
 #: src/components/payments/payment-panel.tsx:347
 msgid "Payments"
@@ -4213,7 +4265,7 @@ msgstr "Product update failed"
 msgid "Product updated"
 msgstr "Product updated"
 
-#: src/components/organizations/organizations-table.tsx:115
+#: src/components/organizations/organizations-table.tsx:121
 #: src/routes/organizations/index.tsx:419
 msgid "product(s)"
 msgstr "product(s)"
@@ -4248,6 +4300,10 @@ msgstr "Production order deletion failed"
 #: src/atoms/production-order.ts:117
 msgid "Production order status updated"
 msgstr "Production order status updated"
+
+#: src/components/organizations/organizations-table.tsx:126
+msgid "production order(s)"
+msgstr "production order(s)"
 
 #: src/layouts/base.tsx:536
 #: src/routes/production-orders.tsx:60
@@ -4318,7 +4374,7 @@ msgstr "Purchase order unlinked"
 msgid "Purchase order update failed"
 msgstr "Purchase order update failed"
 
-#: src/components/organizations/organizations-table.tsx:117
+#: src/components/organizations/organizations-table.tsx:123
 #: src/routes/organizations/index.tsx:428
 msgid "purchase order(s)"
 msgstr "purchase order(s)"
@@ -4470,6 +4526,10 @@ msgstr "Recent movements"
 #: src/routes/reporting/tax-summary.tsx:223
 msgid "Reclaimable — input VAT exceeds output VAT for this period"
 msgstr "Reclaimable — input VAT exceeds output VAT for this period"
+
+#: src/components/organizations/organizations-table.tsx:133
+msgid "reconciliation group(s)"
+msgstr "reconciliation group(s)"
 
 #: src/components/mass-data/mass-data-excel-actions.tsx:110
 #: src/components/payments/payment-panel.tsx:281
@@ -4992,6 +5052,10 @@ msgstr "Sent"
 msgid "Sequential number"
 msgstr "Sequential number"
 
+#: src/components/organizations/organizations-table.tsx:130
+msgid "serial number(s)"
+msgstr "serial number(s)"
+
 #: src/components/stock/movement-form.tsx:180
 msgid "Serial numbers"
 msgstr "Serial numbers"
@@ -5192,6 +5256,7 @@ msgstr "Stock movement deleted"
 msgid "Stock movement recorded"
 msgstr "Stock movement recorded"
 
+#: src/components/organizations/organizations-table.tsx:128
 #: src/routes/organizations/index.tsx:431
 msgid "stock movement(s)"
 msgstr "stock movement(s)"
@@ -5306,7 +5371,7 @@ msgstr "Tax rate update failed"
 msgid "Tax rate updated successfully"
 msgstr "Tax rate updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:121
+#: src/components/organizations/organizations-table.tsx:122
 #: src/routes/organizations/index.tsx:420
 msgid "tax rate(s)"
 msgstr "tax rate(s)"
@@ -5328,6 +5393,10 @@ msgstr "Tax/VAT registration number. Appears on invoices. For France FEC export,
 #: src/components/feedback-modal.tsx:88
 msgid "Tell us what you think, report a bug, or suggest an improvement..."
 msgstr "Tell us what you think, report a bug, or suggest an improvement..."
+
+#: src/components/organizations/organizations-table.tsx:141
+msgid "template setting(s)"
+msgstr "template setting(s)"
 
 #: src/routes/settings/document-templates.tsx:87
 msgid "Template uploaded"
@@ -5358,8 +5427,8 @@ msgid "The shipment this order's goods travel in — drives landed cost (freight
 msgstr "The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received."
 
 #: src/components/organizations/organization-danger-zone.tsx:102
-#: src/components/organizations/organizations-table.tsx:141
-#: src/components/organizations/organizations-table.tsx:145
+#: src/components/organizations/organizations-table.tsx:164
+#: src/components/organizations/organizations-table.tsx:168
 msgid "This cannot be undone."
 msgstr "This cannot be undone."
 
@@ -5447,7 +5516,7 @@ msgid "This will consume the recipe's components and produce the finished units.
 msgstr "This will consume the recipe's components and produce the finished units. Continue?"
 
 #: src/components/organizations/organization-danger-zone.tsx:86
-#: src/components/organizations/organizations-table.tsx:131
+#: src/components/organizations/organizations-table.tsx:154
 msgid "This will permanently delete:"
 msgstr "This will permanently delete:"
 
@@ -5669,6 +5738,10 @@ msgstr "Unit price"
 msgid "Unit price excl. tax"
 msgstr "Unit price excl. tax"
 
+#: src/components/organizations/organizations-table.tsx:139
+msgid "unit(s) of measure"
+msgstr "unit(s) of measure"
+
 #: src/routes/products.tsx:315
 msgid "units"
 msgstr "units"
@@ -5856,7 +5929,7 @@ msgstr "Vendor update failed"
 msgid "Vendor updated successfully"
 msgstr "Vendor updated successfully"
 
-#: src/components/organizations/organizations-table.tsx:113
+#: src/components/organizations/organizations-table.tsx:117
 #: src/routes/organizations/index.tsx:418
 msgid "vendor(s)"
 msgstr "vendor(s)"
