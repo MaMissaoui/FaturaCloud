@@ -110,6 +110,51 @@ func (d *Database) GetDashboardData(organizationID string, startDate, endDate in
 	}, nil
 }
 
+// The two payment-status predicates the outstanding/aging/loan queries
+// below filter on. Deliberately spelled as SQL fragments (not placeholders)
+// because they're inlined into the correlated subqueries built by
+// documentPaidAmountExpr — these are fixed internal literals, never user
+// input.
+const (
+	paymentsNonVoided = "p.status != 'voided'"
+	paymentsPosted    = "p.status = 'posted'"
+)
+
+// documentPaidAmountExpr builds a correlated scalar subquery returning the
+// total amount paid against the document row aliased by docAlias (invoices
+// or incoming_invoices) by payments matching statusClause.
+//
+// This replaces the previous `LEFT JOIN (SELECT documentId, SUM(amount) ...
+// GROUP BY documentId)` shape. That derived table had no organization scope
+// (payment_applications carries no organizationId), so SQLite materialized
+// every payment application in every organization on every call, then built
+// a runtime AUTOMATIC COVERING INDEX just to join it back — cost growing
+// with total tenant-wide payments, not the org's own. The correlated form
+// instead seeks the existing payment_applications_document(documentType,
+// documentId) index (migration 0056) once per row. Measured ~16× faster for
+// the outstanding query and ~3.7× for loan status at 20 orgs / 500k
+// invoices / 200k applications (see the 2026-09-20 DB audit).
+func documentPaidAmountExpr(docAlias, documentType, statusClause string) string {
+	return fmt.Sprintf(`(
+		SELECT COALESCE(SUM(pa.amount), 0)
+		FROM payment_applications pa
+		JOIN payments p ON p.id = pa.paymentId
+		WHERE pa.documentType = '%s' AND pa.documentId = %s.id AND %s
+	)`, documentType, docAlias, statusClause)
+}
+
+// documentPaymentAppCountExpr is documentPaidAmountExpr's COUNT(*) twin,
+// used by GetLoanStatus to tell a pure cash sale (exactly one full payment)
+// from a loan.
+func documentPaymentAppCountExpr(docAlias, documentType, statusClause string) string {
+	return fmt.Sprintf(`(
+		SELECT COUNT(*)
+		FROM payment_applications pa
+		JOIN payments p ON p.id = pa.paymentId
+		WHERE pa.documentType = '%s' AND pa.documentId = %s.id AND %s
+	)`, documentType, docAlias, statusClause)
+}
+
 // getOutstandingInvoices keeps the pre-Phase-3 filter of state == 'sent'
 // only — 'paid' is a manual, free-transitioning flag disconnected from real
 // payments (see CLAUDE.md), and second-guessing it here would be a product
@@ -120,22 +165,22 @@ func (d *Database) GetDashboardData(organizationID string, startDate, endDate in
 // dropped off the list at all.
 func (d *Database) getOutstandingInvoices(organizationID string) (OutstandingSummary, error) {
 	invoices := []OutstandingInvoice{}
-	err := d.DB.Select(&invoices, `
-		SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
-		       CAST(ROUND(i.total - COALESCE(paid.amount, 0)) AS INTEGER) AS foreignTotal,
-		       CAST(ROUND((i.total - COALESCE(paid.amount, 0)) * COALESCE(i.exchangeRate, 1)) AS INTEGER) AS total
-		FROM invoices i
-		JOIN clients c ON i.clientId = c.id
-		LEFT JOIN (
-			SELECT pa.documentId, SUM(pa.amount) AS amount
-			FROM payment_applications pa
-			JOIN payments p ON p.id = pa.paymentId
-			WHERE pa.documentType = 'invoice' AND p.status != 'voided'
-			GROUP BY pa.documentId
-		) paid ON paid.documentId = i.id
-		WHERE i.organizationId = ? AND i.state = 'sent'
-		      AND (i.total - COALESCE(paid.amount, 0)) > 0
-		ORDER BY i.dueDate ASC`,
+	err := d.DB.Select(&invoices, fmt.Sprintf(`
+		SELECT id, number, clientName, dueDate, currency,
+		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
+		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
+		FROM (
+			SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
+			       i.exchangeRate, i.total,
+			       %s AS paid
+			FROM invoices i
+			JOIN clients c ON i.clientId = c.id
+			WHERE i.organizationId = ? AND i.state = 'sent'
+		)
+		WHERE (total - paid) > 0
+		ORDER BY dueDate ASC`,
+		documentPaidAmountExpr("i", "invoice", paymentsNonVoided),
+	),
 		organizationID,
 	)
 	if err != nil {
@@ -162,22 +207,22 @@ func (d *Database) GetReceivableAging(organizationID string) (OutstandingSummary
 // through this screen's PaymentPanel and must not be offered a "Pay" button.
 func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice, error) {
 	invoices := []OutstandingInvoice{}
-	err := d.DB.Select(&invoices, `
-		SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
-		       CAST(ROUND(i.total - COALESCE(paid.amount, 0)) AS INTEGER) AS foreignTotal,
-		       CAST(ROUND((i.total - COALESCE(paid.amount, 0)) * COALESCE(i.exchangeRate, 1)) AS INTEGER) AS total
-		FROM invoices i
-		JOIN clients c ON i.clientId = c.id
-		LEFT JOIN (
-			SELECT pa.documentId, SUM(pa.amount) AS amount
-			FROM payment_applications pa
-			JOIN payments p ON p.id = pa.paymentId
-			WHERE pa.documentType = 'invoice' AND p.status != 'voided'
-			GROUP BY pa.documentId
-		) paid ON paid.documentId = i.id
-		WHERE i.clientId = ? AND i.state IN ('sent', 'paid')
-		      AND (i.total - COALESCE(paid.amount, 0)) > 0
-		ORDER BY i.date ASC`,
+	err := d.DB.Select(&invoices, fmt.Sprintf(`
+		SELECT id, number, clientName, dueDate, currency,
+		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
+		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
+		FROM (
+			SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
+			       i.exchangeRate, i.total, i.date AS docDate,
+			       %s AS paid
+			FROM invoices i
+			JOIN clients c ON i.clientId = c.id
+			WHERE i.clientId = ? AND i.state IN ('sent', 'paid')
+		)
+		WHERE (total - paid) > 0
+		ORDER BY docDate ASC`,
+		documentPaidAmountExpr("i", "invoice", paymentsNonVoided),
+	),
 		clientID,
 	)
 	if err != nil {
@@ -220,32 +265,30 @@ type LoanStatusRow struct {
 // the customers who actually owe money surface before ones who've settled
 // up, which the date-only ordering every other report here uses would bury.
 func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusRow, error) {
-	query := `
-		SELECT i.id, i.number, i.clientId, c.name AS clientName, i.date,
-		       i.total AS original,
-		       COALESCE(paid.amount, 0) AS paid,
-		       CAST(ROUND(i.total - COALESCE(paid.amount, 0)) AS INTEGER) AS outstanding
-		FROM invoices i
-		JOIN clients c ON i.clientId = c.id
-		LEFT JOIN (
-			SELECT pa.documentId, SUM(pa.amount) AS amount, COUNT(*) AS appCount
-			FROM payment_applications pa
-			JOIN payments p ON p.id = pa.paymentId
-			WHERE pa.documentType = 'invoice' AND p.status = 'posted'
-			GROUP BY pa.documentId
-		) paid ON paid.documentId = i.id
-		WHERE i.organizationId = ? AND i.state IN ('sent', 'paid')
-		      AND (
-		          COALESCE(paid.appCount, 0) = 0
-		          OR paid.appCount > 1
-		          OR paid.amount < i.total
-		      )`
+	query := fmt.Sprintf(`
+		SELECT id, number, clientId, clientName, docDate AS date,
+		       original,
+		       paid,
+		       CAST(ROUND(original - paid) AS INTEGER) AS outstanding
+		FROM (
+			SELECT i.id, i.number, i.clientId, c.name AS clientName, i.date AS docDate,
+			       i.total AS original,
+			       %s AS paid,
+			       %s AS appCount
+			FROM invoices i
+			JOIN clients c ON i.clientId = c.id
+			WHERE i.organizationId = ? AND i.state IN ('sent', 'paid')
+		)
+		WHERE (appCount = 0 OR appCount > 1 OR paid < original)`,
+		documentPaidAmountExpr("i", "invoice", paymentsPosted),
+		documentPaymentAppCountExpr("i", "invoice", paymentsPosted),
+	)
 	args := []any{organizationID}
 	if clientID != "" {
-		query += " AND i.clientId = ?"
+		query += " AND clientId = ?"
 		args = append(args, clientID)
 	}
-	query += " ORDER BY outstanding DESC, i.date ASC"
+	query += " ORDER BY outstanding DESC, docDate ASC"
 
 	rows := []LoanStatusRow{}
 	if err := d.DB.Select(&rows, query, args...); err != nil {
@@ -288,22 +331,22 @@ type OutstandingBillSummary struct {
 // 'sent'-only filter, not second-guessed here either.
 func (d *Database) GetPayableAging(organizationID string) (OutstandingBillSummary, error) {
 	bills := []OutstandingBill{}
-	err := d.DB.Select(&bills, `
-		SELECT ii.id, ii.vendorInvoiceNumber AS number, v.name AS vendorName, ii.dueDate, ii.currency,
-		       CAST(ROUND(ii.total - COALESCE(paid.amount, 0)) AS INTEGER) AS foreignTotal,
-		       CAST(ROUND((ii.total - COALESCE(paid.amount, 0)) * COALESCE(ii.exchangeRate, 1)) AS INTEGER) AS total
-		FROM incoming_invoices ii
-		JOIN vendors v ON ii.vendorId = v.id
-		LEFT JOIN (
-			SELECT pa.documentId, SUM(pa.amount) AS amount
-			FROM payment_applications pa
-			JOIN payments p ON p.id = pa.paymentId
-			WHERE pa.documentType = 'incoming_invoice' AND p.status != 'voided'
-			GROUP BY pa.documentId
-		) paid ON paid.documentId = ii.id
-		WHERE ii.organizationId = ? AND ii.state = 'approved'
-		      AND (ii.total - COALESCE(paid.amount, 0)) > 0
-		ORDER BY ii.dueDate ASC`,
+	err := d.DB.Select(&bills, fmt.Sprintf(`
+		SELECT id, number, vendorName, dueDate, currency,
+		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
+		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
+		FROM (
+			SELECT ii.id, ii.vendorInvoiceNumber AS number, v.name AS vendorName,
+			       ii.dueDate, ii.currency, ii.exchangeRate, ii.total,
+			       %s AS paid
+			FROM incoming_invoices ii
+			JOIN vendors v ON ii.vendorId = v.id
+			WHERE ii.organizationId = ? AND ii.state = 'approved'
+		)
+		WHERE (total - paid) > 0
+		ORDER BY dueDate ASC`,
+		documentPaidAmountExpr("ii", "incoming_invoice", paymentsNonVoided),
+	),
 		organizationID,
 	)
 	if err != nil {
