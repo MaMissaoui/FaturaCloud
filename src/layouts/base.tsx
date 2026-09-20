@@ -81,6 +81,7 @@ import {
   organizationIdAtom,
   organizationAtom,
   isOrgAdminOrAccountingAtom,
+  isCashbookAtom,
 } from "src/atoms/organization";
 import { currentUserAtom, isPlatformAdminAtom } from "src/atoms/auth";
 import { GetVersion, Logout } from "src/api";
@@ -148,6 +149,23 @@ export default function BaseLayout() {
   const currentUser = useAtomValue(currentUserAtom);
   const isPlatformAdmin = useAtomValue(isPlatformAdminAtom);
   const canAccessGLExport = useAtomValue(isOrgAdminOrAccountingAtom);
+  const isCashbook = useAtomValue(isCashbookAtom);
+
+  // The cashbook (counter/till) role gets a deliberately reduced view: only
+  // Cash Book and Clients are reachable. Enforced here rather than only by
+  // hiding menu entries, so a typed URL bounces back to the counter screen.
+  // Purely a UI restriction — reads stay membership-level server-side, so
+  // this is not an authorization boundary.
+  useEffect(() => {
+    if (!isCashbook) return;
+    const allowed =
+      location.pathname === "/cash-book" ||
+      location.pathname.startsWith("/cash-book/") ||
+      location.pathname === "/clients" ||
+      location.pathname.startsWith("/clients/");
+    if (!allowed) navigate("/cash-book", { replace: true });
+  }, [isCashbook, location.pathname, navigate]);
+
   const handleLogout = () => {
     Logout();
     navigate("/login");
@@ -344,6 +362,28 @@ export default function BaseLayout() {
       : []),
   ];
 
+  // The two entries the restricted cashbook role keeps. Declared once and
+  // reused both in the full menu below and in the cashbook-only menu, so
+  // the two can never drift.
+  const cashBookMenuItem = {
+    icon: <WalletOutlined />,
+    label: (
+      <Link to="/cash-book">
+        <Trans>Cash Book</Trans>
+      </Link>
+    ),
+    key: "cash-book",
+  };
+  const clientsMenuItem = {
+    icon: <TeamOutlined />,
+    label: (
+      <Link to="/clients">
+        <Trans>Clients</Trans>
+      </Link>
+    ),
+    key: "clients",
+  };
+
   return (
     <Layout hasSider style={{ minHeight: "100vh", width: "100%" }}>
       <a
@@ -419,338 +459,326 @@ export default function BaseLayout() {
           defaultOpenKeys={openKeys}
           defaultSelectedKeys={selectedKeys}
           onClick={closeMobileMenu}
-          items={[
-            {
-              icon: <DashboardOutlined />,
-              label: (
-                <Link to="/dashboard">
-                  <Trans>Dashboard</Trans>
-                </Link>
-              ),
-              key: "dashboard",
-            },
-            {
-              icon: <WalletOutlined />,
-              label: (
-                <Link to="/cash-book">
-                  <Trans>Cash Book</Trans>
-                </Link>
-              ),
-              key: "cash-book",
-            },
-            {
-              icon: <ShopOutlined />,
-              label: <Trans>Sales</Trans>,
-              key: "group-sales",
-              children: [
-                {
-                  icon: <FileTextOutlined />,
-                  label: (
-                    <Link to="/invoices">
-                      <Trans>Invoices</Trans>
-                    </Link>
-                  ),
-                  key: "invoices",
-                },
-                {
-                  icon: <SendOutlined />,
-                  label: (
-                    <Link to="/deliveries">
-                      <Trans>Outbound Deliveries</Trans>
-                    </Link>
-                  ),
-                  key: "deliveries",
-                },
-                {
-                  icon: <ShoppingOutlined />,
-                  label: (
-                    <Link to="/orders">
-                      <Trans>Orders</Trans>
-                    </Link>
-                  ),
-                  key: "orders",
-                },
-              ],
-            },
-            {
-              icon: <ShoppingCartOutlined />,
-              label: <Trans>Purchasing</Trans>,
-              key: "group-purchasing",
-              children: [
-                {
-                  icon: <ContainerOutlined />,
-                  label: (
-                    <Link to="/imports">
-                      <Trans>Imports</Trans>
-                    </Link>
-                  ),
-                  key: "imports",
-                },
-                {
-                  icon: <ShoppingCartOutlined />,
-                  label: (
-                    <Link to="/purchase-orders">
-                      <Trans>Purchase Orders</Trans>
-                    </Link>
-                  ),
-                  key: "purchase-orders",
-                },
-                {
-                  icon: <ImportOutlined />,
-                  label: (
-                    <Link to="/inbound-deliveries">
-                      <Trans>Goods Receipts</Trans>
-                    </Link>
-                  ),
-                  key: "inbound-deliveries",
-                },
-                {
-                  icon: <AuditOutlined />,
-                  label: (
-                    <Link to="/incoming-invoices">
-                      <Trans>Incoming Invoices</Trans>
-                    </Link>
-                  ),
-                  key: "incoming-invoices",
-                },
-              ],
-            },
-            {
-              icon: <InboxOutlined />,
-              label: <Trans>Inventory</Trans>,
-              key: "group-inventory",
-              children: [
-                {
-                  icon: <InboxOutlined />,
-                  label: (
-                    <Link to="/inventory">
-                      <Trans>Inventory</Trans>
-                    </Link>
-                  ),
-                  key: "inventory",
-                },
-                {
-                  icon: <DeploymentUnitOutlined />,
-                  label: (
-                    <Link to="/production-orders">
-                      <Trans>Production Orders</Trans>
-                    </Link>
-                  ),
-                  key: "production-orders",
-                },
-              ],
-            },
-            {
-              icon: <FolderOutlined />,
-              label: <Trans>Master Data</Trans>,
-              key: "group-masterdata",
-              children: [
-                {
-                  icon: <TeamOutlined />,
-                  label: (
-                    <Link to="/clients">
-                      <Trans>Clients</Trans>
-                    </Link>
-                  ),
-                  key: "clients",
-                },
-                {
-                  icon: <SolutionOutlined />,
-                  label: (
-                    <Link to="/vendors">
-                      <Trans>Vendors</Trans>
-                    </Link>
-                  ),
-                  key: "vendors",
-                },
-                {
-                  icon: <AppstoreOutlined />,
-                  label: (
-                    <Link to="/products">
-                      <Trans>Products</Trans>
-                    </Link>
-                  ),
-                  key: "products",
-                },
-                {
-                  icon: <BuildOutlined />,
-                  label: (
-                    <Link to="/bill-of-materials">
-                      <Trans>Bill of Materials</Trans>
-                    </Link>
-                  ),
-                  key: "bill-of-materials",
-                },
-                {
-                  icon: <ApartmentOutlined />,
-                  label: (
-                    <Link to="/organizations">
-                      <Trans>Organizations</Trans>
-                    </Link>
-                  ),
-                  key: "organizations",
-                },
-              ],
-            },
-            {
-              icon: <BankOutlined />,
-              label: <Trans>Accounting</Trans>,
-              key: "group-accounting",
-              children: [
-                {
-                  icon: <BankOutlined />,
-                  label: (
-                    <Link to="/accounting/chart-of-accounts">
-                      <Trans>Chart of Accounts</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.chart-of-accounts",
-                },
-                {
-                  icon: <BookOutlined />,
-                  label: (
-                    <Link to="/accounting/journals">
-                      <Trans>Journals</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.journals",
-                },
-                {
-                  icon: <CalendarOutlined />,
-                  label: (
-                    <Link to="/accounting/fiscal-periods">
-                      <Trans>Fiscal Periods</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.fiscal-periods",
-                },
-                {
-                  icon: <UnorderedListOutlined />,
-                  label: (
-                    <Link to="/accounting/journal-entries">
-                      <Trans>Journal Entries</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.journal-entries",
-                },
-                {
-                  icon: <TableOutlined />,
-                  label: (
-                    <Link to="/accounting/trial-balance">
-                      <Trans>Trial Balance</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.trial-balance",
-                },
-                {
-                  icon: <LineChartOutlined />,
-                  label: (
-                    <Link to="/accounting/profit-and-loss">
-                      <Trans>Profit &amp; Loss</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.profit-and-loss",
-                },
-                {
-                  icon: <FundOutlined />,
-                  label: (
-                    <Link to="/accounting/balance-sheet">
-                      <Trans>Balance Sheet</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.balance-sheet",
-                },
-                {
-                  icon: <ClockCircleOutlined />,
-                  label: (
-                    <Link to="/accounting/ar-aging">
-                      <Trans>AR Aging</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.ar-aging",
-                },
-                {
-                  icon: <FieldTimeOutlined />,
-                  label: (
-                    <Link to="/accounting/ap-aging">
-                      <Trans>AP Aging</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.ap-aging",
-                },
-                {
-                  icon: <GoldOutlined />,
-                  label: (
-                    <Link to="/accounting/inventory-valuation">
-                      <Trans>Inventory Valuation</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.inventory-valuation",
-                },
-                {
-                  icon: <WalletOutlined />,
-                  label: (
-                    <Link to="/accounting/daily-cash-movements">
-                      <Trans>Daily Cash Movements</Trans>
-                    </Link>
-                  ),
-                  key: "accounting.daily-cash-movements",
-                },
-              ],
-            },
-            {
-              icon: <BarChartOutlined />,
-              label: <Trans>Reporting</Trans>,
-              key: "group-reporting",
-              children: [
-                {
-                  icon: <LineChartOutlined />,
-                  label: (
-                    <Link to="/reporting/revenue-trend">
-                      <Trans>Revenue Trend</Trans>
-                    </Link>
-                  ),
-                  key: "reporting.revenue-trend",
-                },
-                {
-                  icon: <TeamOutlined />,
-                  label: (
-                    <Link to="/reporting/sales-by-client">
-                      <Trans>Sales by Client</Trans>
-                    </Link>
-                  ),
-                  key: "reporting.sales-by-client",
-                },
-                {
-                  icon: <AppstoreOutlined />,
-                  label: (
-                    <Link to="/reporting/sales-by-product">
-                      <Trans>Sales by Product</Trans>
-                    </Link>
-                  ),
-                  key: "reporting.sales-by-product",
-                },
-                {
-                  icon: <ShoppingCartOutlined />,
-                  label: (
-                    <Link to="/reporting/purchases-by-vendor">
-                      <Trans>Purchases by Vendor</Trans>
-                    </Link>
-                  ),
-                  key: "reporting.purchases-by-vendor",
-                },
-                {
-                  icon: <CalculatorOutlined />,
-                  label: (
-                    <Link to="/reporting/tax-summary">
-                      <Trans>Tax Summary</Trans>
-                    </Link>
-                  ),
-                  key: "reporting.tax-summary",
-                },
-              ],
-            },
-          ]}
+          items={
+            isCashbook
+              ? [cashBookMenuItem, clientsMenuItem]
+              : [
+                  {
+                    icon: <DashboardOutlined />,
+                    label: (
+                      <Link to="/dashboard">
+                        <Trans>Dashboard</Trans>
+                      </Link>
+                    ),
+                    key: "dashboard",
+                  },
+                  cashBookMenuItem,
+                  {
+                    icon: <ShopOutlined />,
+                    label: <Trans>Sales</Trans>,
+                    key: "group-sales",
+                    children: [
+                      {
+                        icon: <FileTextOutlined />,
+                        label: (
+                          <Link to="/invoices">
+                            <Trans>Invoices</Trans>
+                          </Link>
+                        ),
+                        key: "invoices",
+                      },
+                      {
+                        icon: <SendOutlined />,
+                        label: (
+                          <Link to="/deliveries">
+                            <Trans>Outbound Deliveries</Trans>
+                          </Link>
+                        ),
+                        key: "deliveries",
+                      },
+                      {
+                        icon: <ShoppingOutlined />,
+                        label: (
+                          <Link to="/orders">
+                            <Trans>Orders</Trans>
+                          </Link>
+                        ),
+                        key: "orders",
+                      },
+                    ],
+                  },
+                  {
+                    icon: <ShoppingCartOutlined />,
+                    label: <Trans>Purchasing</Trans>,
+                    key: "group-purchasing",
+                    children: [
+                      {
+                        icon: <ContainerOutlined />,
+                        label: (
+                          <Link to="/imports">
+                            <Trans>Imports</Trans>
+                          </Link>
+                        ),
+                        key: "imports",
+                      },
+                      {
+                        icon: <ShoppingCartOutlined />,
+                        label: (
+                          <Link to="/purchase-orders">
+                            <Trans>Purchase Orders</Trans>
+                          </Link>
+                        ),
+                        key: "purchase-orders",
+                      },
+                      {
+                        icon: <ImportOutlined />,
+                        label: (
+                          <Link to="/inbound-deliveries">
+                            <Trans>Goods Receipts</Trans>
+                          </Link>
+                        ),
+                        key: "inbound-deliveries",
+                      },
+                      {
+                        icon: <AuditOutlined />,
+                        label: (
+                          <Link to="/incoming-invoices">
+                            <Trans>Incoming Invoices</Trans>
+                          </Link>
+                        ),
+                        key: "incoming-invoices",
+                      },
+                    ],
+                  },
+                  {
+                    icon: <InboxOutlined />,
+                    label: <Trans>Inventory</Trans>,
+                    key: "group-inventory",
+                    children: [
+                      {
+                        icon: <InboxOutlined />,
+                        label: (
+                          <Link to="/inventory">
+                            <Trans>Inventory</Trans>
+                          </Link>
+                        ),
+                        key: "inventory",
+                      },
+                      {
+                        icon: <DeploymentUnitOutlined />,
+                        label: (
+                          <Link to="/production-orders">
+                            <Trans>Production Orders</Trans>
+                          </Link>
+                        ),
+                        key: "production-orders",
+                      },
+                    ],
+                  },
+                  {
+                    icon: <FolderOutlined />,
+                    label: <Trans>Master Data</Trans>,
+                    key: "group-masterdata",
+                    children: [
+                      clientsMenuItem,
+                      {
+                        icon: <SolutionOutlined />,
+                        label: (
+                          <Link to="/vendors">
+                            <Trans>Vendors</Trans>
+                          </Link>
+                        ),
+                        key: "vendors",
+                      },
+                      {
+                        icon: <AppstoreOutlined />,
+                        label: (
+                          <Link to="/products">
+                            <Trans>Products</Trans>
+                          </Link>
+                        ),
+                        key: "products",
+                      },
+                      {
+                        icon: <BuildOutlined />,
+                        label: (
+                          <Link to="/bill-of-materials">
+                            <Trans>Bill of Materials</Trans>
+                          </Link>
+                        ),
+                        key: "bill-of-materials",
+                      },
+                      {
+                        icon: <ApartmentOutlined />,
+                        label: (
+                          <Link to="/organizations">
+                            <Trans>Organizations</Trans>
+                          </Link>
+                        ),
+                        key: "organizations",
+                      },
+                    ],
+                  },
+                  {
+                    icon: <BankOutlined />,
+                    label: <Trans>Accounting</Trans>,
+                    key: "group-accounting",
+                    children: [
+                      {
+                        icon: <BankOutlined />,
+                        label: (
+                          <Link to="/accounting/chart-of-accounts">
+                            <Trans>Chart of Accounts</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.chart-of-accounts",
+                      },
+                      {
+                        icon: <BookOutlined />,
+                        label: (
+                          <Link to="/accounting/journals">
+                            <Trans>Journals</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.journals",
+                      },
+                      {
+                        icon: <CalendarOutlined />,
+                        label: (
+                          <Link to="/accounting/fiscal-periods">
+                            <Trans>Fiscal Periods</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.fiscal-periods",
+                      },
+                      {
+                        icon: <UnorderedListOutlined />,
+                        label: (
+                          <Link to="/accounting/journal-entries">
+                            <Trans>Journal Entries</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.journal-entries",
+                      },
+                      {
+                        icon: <TableOutlined />,
+                        label: (
+                          <Link to="/accounting/trial-balance">
+                            <Trans>Trial Balance</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.trial-balance",
+                      },
+                      {
+                        icon: <LineChartOutlined />,
+                        label: (
+                          <Link to="/accounting/profit-and-loss">
+                            <Trans>Profit &amp; Loss</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.profit-and-loss",
+                      },
+                      {
+                        icon: <FundOutlined />,
+                        label: (
+                          <Link to="/accounting/balance-sheet">
+                            <Trans>Balance Sheet</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.balance-sheet",
+                      },
+                      {
+                        icon: <ClockCircleOutlined />,
+                        label: (
+                          <Link to="/accounting/ar-aging">
+                            <Trans>AR Aging</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.ar-aging",
+                      },
+                      {
+                        icon: <FieldTimeOutlined />,
+                        label: (
+                          <Link to="/accounting/ap-aging">
+                            <Trans>AP Aging</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.ap-aging",
+                      },
+                      {
+                        icon: <GoldOutlined />,
+                        label: (
+                          <Link to="/accounting/inventory-valuation">
+                            <Trans>Inventory Valuation</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.inventory-valuation",
+                      },
+                      {
+                        icon: <WalletOutlined />,
+                        label: (
+                          <Link to="/accounting/daily-cash-movements">
+                            <Trans>Daily Cash Movements</Trans>
+                          </Link>
+                        ),
+                        key: "accounting.daily-cash-movements",
+                      },
+                    ],
+                  },
+                  {
+                    icon: <BarChartOutlined />,
+                    label: <Trans>Reporting</Trans>,
+                    key: "group-reporting",
+                    children: [
+                      {
+                        icon: <LineChartOutlined />,
+                        label: (
+                          <Link to="/reporting/revenue-trend">
+                            <Trans>Revenue Trend</Trans>
+                          </Link>
+                        ),
+                        key: "reporting.revenue-trend",
+                      },
+                      {
+                        icon: <TeamOutlined />,
+                        label: (
+                          <Link to="/reporting/sales-by-client">
+                            <Trans>Sales by Client</Trans>
+                          </Link>
+                        ),
+                        key: "reporting.sales-by-client",
+                      },
+                      {
+                        icon: <AppstoreOutlined />,
+                        label: (
+                          <Link to="/reporting/sales-by-product">
+                            <Trans>Sales by Product</Trans>
+                          </Link>
+                        ),
+                        key: "reporting.sales-by-product",
+                      },
+                      {
+                        icon: <ShoppingCartOutlined />,
+                        label: (
+                          <Link to="/reporting/purchases-by-vendor">
+                            <Trans>Purchases by Vendor</Trans>
+                          </Link>
+                        ),
+                        key: "reporting.purchases-by-vendor",
+                      },
+                      {
+                        icon: <CalculatorOutlined />,
+                        label: (
+                          <Link to="/reporting/tax-summary">
+                            <Trans>Tax Summary</Trans>
+                          </Link>
+                        ),
+                        key: "reporting.tax-summary",
+                      },
+                    ],
+                  },
+                ]
+          }
         />
       </Sider>
       <Layout
@@ -809,18 +837,24 @@ export default function BaseLayout() {
                     popupRender={(menu) => (
                       <>
                         {menu}
-                        <Divider style={{ margin: "8px 0" }} />
-                        <Menu
-                          onClick={() => navigate("/organizations/new")}
-                          items={[
-                            {
-                              key: "new-org",
-                              icon: <PlusOutlined />,
-                              label: <Trans>New organization</Trans>,
-                              style: { height: 32, lineHeight: "32px" },
-                            },
-                          ]}
-                        />
+                        {/* Creating an organization is out of scope for the
+                        restricted cashbook role. */}
+                        {!isCashbook && (
+                          <>
+                            <Divider style={{ margin: "8px 0" }} />
+                            <Menu
+                              onClick={() => navigate("/organizations/new")}
+                              items={[
+                                {
+                                  key: "new-org",
+                                  icon: <PlusOutlined />,
+                                  label: <Trans>New organization</Trans>,
+                                  style: { height: 32, lineHeight: "32px" },
+                                },
+                              ]}
+                            />
+                          </>
+                        )}
                       </>
                     )}
                   >
@@ -860,19 +894,23 @@ export default function BaseLayout() {
                     themeMode === "dark" ? t`Switch to light mode` : t`Switch to dark mode`
                   }
                 />
-                <Dropdown
-                  menu={{ items: settingsMenuItems }}
-                  trigger={["click"]}
-                  placement="bottomRight"
-                >
-                  <Button
-                    type="text"
-                    icon={<SettingOutlined />}
-                    style={isSettingsRoute ? { color: colorPrimary } : undefined}
-                    title={t`Settings`}
-                    aria-label={t`Settings`}
-                  />
-                </Dropdown>
+                {/* The restricted cashbook role has no settings screens —
+                every item in this menu is out of its scope. */}
+                {!isCashbook && (
+                  <Dropdown
+                    menu={{ items: settingsMenuItems }}
+                    trigger={["click"]}
+                    placement="bottomRight"
+                  >
+                    <Button
+                      type="text"
+                      icon={<SettingOutlined />}
+                      style={isSettingsRoute ? { color: colorPrimary } : undefined}
+                      title={t`Settings`}
+                      aria-label={t`Settings`}
+                    />
+                  </Dropdown>
+                )}
                 <Select
                   variant="borderless"
                   popupMatchSelectWidth={false}
