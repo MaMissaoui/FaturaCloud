@@ -214,13 +214,7 @@ export default function BaseLayout() {
       "inbound-deliveries",
       "incoming-invoices",
     ];
-    const masterDataSections = [
-      "clients",
-      "vendors",
-      "products",
-      "bill-of-materials",
-      "organizations",
-    ];
+    const masterDataSections = ["clients", "vendors", "products", "bill-of-materials"];
     if (salesSections.includes(section)) {
       openKeys = ["group-sales"];
     } else if (purchasingSections.includes(section)) {
@@ -256,7 +250,9 @@ export default function BaseLayout() {
   // #183: Settings moved from a sidebar group into this header icon —
   // isSettingsRoute just tints the icon while any /settings/* route is
   // active, since it no longer has a sidebar entry to show as selected.
-  const isSettingsRoute = location.pathname.startsWith("/settings");
+  // /organizations is included because it now lives in this menu too.
+  const isSettingsRoute =
+    location.pathname.startsWith("/settings") || location.pathname.startsWith("/organizations");
   const settingsMenuItems = [
     {
       icon: <FileOutlined />,
@@ -311,6 +307,18 @@ export default function BaseLayout() {
         </Link>
       ),
       key: "settings.document-numbering",
+    },
+    // Organizations moved here from the sidebar's Master Data group (it's
+    // organization configuration, not day-to-day master data). The route
+    // itself is still the standalone /organizations page.
+    {
+      icon: <ApartmentOutlined />,
+      label: (
+        <Link to="/organizations">
+          <Trans>Organizations</Trans>
+        </Link>
+      ),
+      key: "settings.organizations",
     },
     ...(isPlatformAdmin
       ? [
@@ -607,15 +615,6 @@ export default function BaseLayout() {
                           </Link>
                         ),
                         key: "bill-of-materials",
-                      },
-                      {
-                        icon: <ApartmentOutlined />,
-                        label: (
-                          <Link to="/organizations">
-                            <Trans>Organizations</Trans>
-                          </Link>
-                        ),
-                        key: "organizations",
                       },
                     ],
                   },

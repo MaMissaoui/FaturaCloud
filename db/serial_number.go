@@ -155,26 +155,38 @@ func getOrCreateSerialNumbersTx(exec sqlSelectExecer, orgID, productID string, s
 	}
 
 	result := make(map[string]string, len(serials))
+	toCreate := make([]string, 0, len(serials))
 	for _, s := range serials {
 		if lu, ok := lookups[s]; ok {
 			result[s] = lu.ID
 			continue
 		}
-		id, _ := gonanoid.New()
-		if _, err := exec.Exec(
-			`INSERT INTO product_serial_numbers (id, organizationId, productId, serialNumber) VALUES (?, ?, ?, ?)`,
-			id, orgID, productID, s,
-		); err != nil {
-			// The caller already validated `s` wasn't found by
+		toCreate = append(toCreate, s)
+	}
+
+	// One multi-row INSERT for every new serial, not one statement per unit —
+	// a receipt can register hundreds of serials at once.
+	if len(toCreate) > 0 {
+		placeholders := make([]string, 0, len(toCreate))
+		args := make([]any, 0, len(toCreate)*4)
+		for _, s := range toCreate {
+			id, _ := gonanoid.New()
+			result[s] = id
+			placeholders = append(placeholders, "(?, ?, ?, ?)")
+			args = append(args, id, orgID, productID, s)
+		}
+		query := `INSERT INTO product_serial_numbers (id, organizationId, productId, serialNumber) VALUES ` +
+			strings.Join(placeholders, ", ")
+		if _, err := exec.Exec(query, args...); err != nil {
+			// The caller already validated none of these were found by
 			// lookupSerialNumbersTx above; this backstop only fires on a
 			// genuine race (unexpected in this app's single-writer SQLite
 			// setup, but a plain 500 here would be a confusing failure mode).
 			if isDuplicateSerialNumber(err) {
-				return nil, newValidationError("serial %q was just registered by another request — try again", s)
+				return nil, newValidationError("a serial was just registered by another request — try again")
 			}
 			return nil, fmt.Errorf("get_or_create_serial_number: %w", err)
 		}
-		result[s] = id
 	}
 	return result, nil
 }

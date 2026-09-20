@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
@@ -394,12 +395,18 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 	}
 
 	movements := make([]StockMovement, 0, len(movementIDs))
-	for _, id := range movementIDs {
-		var m StockMovement
-		if err := d.DB.Get(&m, `SELECT * FROM stockMovements WHERE id = ?`, id); err != nil {
+	if len(movementIDs) > 0 {
+		// One round trip for every inserted row, not one per row: a serialized
+		// receipt of N units used to run N serialized SELECTs after its N
+		// inserts. ORDER BY rowid keeps the insertion (serial) order the
+		// original per-id loop guaranteed.
+		query, args, err := sqlx.In(`SELECT * FROM stockMovements WHERE id IN (?) ORDER BY rowid`, movementIDs)
+		if err != nil {
 			return nil, fmt.Errorf("create_stock_movement fetch: %w", err)
 		}
-		movements = append(movements, m)
+		if err := d.DB.Select(&movements, d.DB.Rebind(query), args...); err != nil {
+			return nil, fmt.Errorf("create_stock_movement fetch: %w", err)
+		}
 	}
 	refreshedProduct, err := d.GetProduct(req.ProductID)
 	if err != nil {
