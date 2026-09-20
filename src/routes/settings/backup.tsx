@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Button,
   Card,
   Col,
@@ -56,6 +57,10 @@ function SettingsBackup() {
 
   const [backups, setBackups] = useState<BackupEntry[]>([]);
   const [loadingList, setLoadingList] = useState(true);
+  // A failed fetch must not render identically to "no backups exist" — on a
+  // backup screen that false all-clear is exactly the wrong signal.
+  const [listFailed, setListFailed] = useState(false);
+  const [configFailed, setConfigFailed] = useState(false);
   const [triggering, setTriggering] = useState(false);
   const [restoringName, setRestoringName] = useState<string | null>(null);
   const [uploadFile, setUploadFile] = useState<UploadFile | null>(null);
@@ -71,17 +76,30 @@ function SettingsBackup() {
   const fetchList = useCallback(() => {
     setLoadingList(true);
     ListBackups()
-      .then(setBackups)
-      .catch(() => setBackups([]))
+      .then((rows) => {
+        setBackups(rows);
+        setListFailed(false);
+      })
+      .catch(() => {
+        setBackups([]);
+        setListFailed(true);
+      })
       .finally(() => setLoadingList(false));
+  }, []);
+
+  const fetchConfig = useCallback(() => {
+    GetBackupConfig()
+      .then((c) => {
+        setConfig(c);
+        setConfigFailed(false);
+      })
+      .catch(() => setConfigFailed(true));
   }, []);
 
   useEffect(() => {
     fetchList();
-    GetBackupConfig()
-      .then(setConfig)
-      .catch(() => {});
-  }, [fetchList]);
+    fetchConfig();
+  }, [fetchList, fetchConfig]);
 
   // Not memoized: it depends on the current moment as much as
   // config.scheduleHour, so a useMemo keyed only on the latter would freeze
@@ -100,6 +118,7 @@ function SettingsBackup() {
     try {
       const saved = await SetBackupConfig(config);
       setConfig(saved);
+      setConfigFailed(false);
       messageApi.success(t`Schedule saved`);
     } catch {
       messageApi.error(t`Failed to save schedule`);
@@ -196,6 +215,19 @@ function SettingsBackup() {
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         {/* ── Schedule ── */}
         <Card title={<Trans>Automatic schedule</Trans>}>
+          {configFailed && (
+            <Alert
+              type="error"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={<Trans>Failed to load the backup schedule</Trans>}
+              action={
+                <Button size="small" onClick={fetchConfig}>
+                  <Trans>Retry</Trans>
+                </Button>
+              }
+            />
+          )}
           <Space direction="vertical" size={8}>
             <Space wrap align="center" size={[20, 8]}>
               <Space size={8}>
@@ -349,6 +381,19 @@ function SettingsBackup() {
             </Button>
           }
         >
+          {listFailed && (
+            <Alert
+              type="error"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={<Trans>Failed to load backups</Trans>}
+              action={
+                <Button size="small" onClick={fetchList}>
+                  <Trans>Retry</Trans>
+                </Button>
+              }
+            />
+          )}
           <Table<BackupEntry>
             dataSource={backups}
             rowKey="name"
