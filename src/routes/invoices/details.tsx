@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
   Alert,
@@ -17,7 +16,6 @@ import {
   Skeleton,
   Space,
   Descriptions,
-  Layout,
   Popconfirm,
   theme,
   Tooltip,
@@ -40,6 +38,7 @@ import {
 } from "@ant-design/icons";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
+import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
@@ -88,7 +87,6 @@ import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Footer } = Layout;
 
 // invoiceAtom is async; reading it with plain useAtom/useAtomValue makes it
 // throw to the nearest Suspense boundary whenever invoiceIdAtom changes after
@@ -106,7 +104,7 @@ const InvoiceDetails: React.FC = () => {
   const { id } = useParams<string>();
   const { i18n } = useLingui();
   const {
-    token: { colorBgContainer, colorText },
+    token: { colorText },
   } = theme.useToken();
   const { message } = App.useApp();
   const organization = useAtomValue(organizationAtom);
@@ -1078,53 +1076,38 @@ const InvoiceDetails: React.FC = () => {
             </Card>
 
             {/* Footer menu */}
-            {document.getElementById("footer") &&
-              createPortal(
-                <Footer
-                  style={{
-                    position: "sticky",
-                    bottom: 0,
-                    zIndex: 1,
-                    padding: 0,
-                    background: colorBgContainer,
-                    paddingLeft: 16,
-                    paddingRight: 16,
-                  }}
-                >
-                  <Row align="middle" justify="space-between" style={{ height: 64 }}>
-                    <Col>
-                      <Space>
-                        {id && !isNew && (
-                          <Button type="dashed" onClick={handleDuplicate(id)}>
-                            <CopyOutlined /> <Trans>Duplicate</Trans>
-                          </Button>
-                        )}
-                        {id && !isNew && currentInvoiceState !== "paid" && (
-                          <Popconfirm
-                            title={t`Delete this invoice?`}
-                            onConfirm={handleDelete(id)}
-                            okText={t`Yes`}
-                            cancelText={t`No`}
-                          >
-                            <Button type="dashed" danger>
-                              <DeleteOutlined /> <Trans>Delete</Trans>
-                            </Button>
-                          </Popconfirm>
-                        )}
-                      </Space>
-                    </Col>
-                    <Col>
-                      <Space size="middle" split={<Divider type="vertical" />}>
-                        {footerActionGroups.map((group, i) => (
-                          <Space key={i}>{group}</Space>
-                        ))}
-                      </Space>
-                    </Col>
-                  </Row>
-                </Footer>,
-                // @ts-expect-error - Footer can be null
-                document.getElementById("footer"),
-              )}
+            <ResponsiveFooter>
+              <Row align="middle" justify="space-between" style={{ height: 64 }}>
+                <Col>
+                  <Space>
+                    {id && !isNew && (
+                      <Button type="dashed" onClick={handleDuplicate(id)}>
+                        <CopyOutlined /> <Trans>Duplicate</Trans>
+                      </Button>
+                    )}
+                    {id && !isNew && currentInvoiceState !== "paid" && (
+                      <Popconfirm
+                        title={t`Delete this invoice?`}
+                        onConfirm={handleDelete(id)}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
+                      >
+                        <Button type="dashed" danger>
+                          <DeleteOutlined /> <Trans>Delete</Trans>
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </Space>
+                </Col>
+                <Col>
+                  <Space size="middle" split={<Divider type="vertical" />}>
+                    {footerActionGroups.map((group, i) => (
+                      <Space key={i}>{group}</Space>
+                    ))}
+                  </Space>
+                </Col>
+              </Row>
+            </ResponsiveFooter>
           </Form>
         </Col>
       </Row>

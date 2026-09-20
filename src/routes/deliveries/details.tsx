@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Alert,
@@ -9,14 +8,12 @@ import {
   Divider,
   Form,
   Input,
-  Layout,
   Popconfirm,
   Row,
   Select,
   Skeleton,
   Space,
   Tag,
-  theme,
   Tooltip,
   Typography,
   message,
@@ -39,6 +36,7 @@ import { ExportDeliveryDocument, GetOrderLineItems, GetOrderDeliveredQuantities 
 import { useDatePickerFormat } from "src/utils/date";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
+import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { organizationAtom } from "src/atoms/organization";
@@ -67,7 +65,6 @@ import {
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Footer } = Layout;
 
 // Module-level so it's referentially stable across renders — StatusFlow is
 // memoized and an inline arrow here would defeat that on every keystroke.
@@ -85,9 +82,6 @@ const DeliveryDetails = () => {
   const { id } = useParams<string>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
   const dateFormat = useDatePickerFormat();
 
   const isNew = id === "new";
@@ -577,92 +571,80 @@ const DeliveryDetails = () => {
         />
 
         {/* Footer bar */}
-        {document.getElementById("footer") &&
-          createPortal(
-            <Footer
-              style={{
-                position: "sticky",
-                bottom: 0,
-                zIndex: 1,
-                padding: "0 16px",
-                background: colorBgContainer,
-              }}
-            >
-              <Row align="middle" justify="space-between" style={{ height: 64 }}>
-                <Col>
-                  {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
-                    <Popconfirm
-                      title={t`Delete this delivery?`}
-                      onConfirm={handleDelete}
-                      okText={t`Yes`}
-                      cancelText={t`No`}
+        <ResponsiveFooter>
+          <Row align="middle" justify="space-between" style={{ height: 64 }}>
+            <Col>
+              {!isNew && !["shipped", "delivered"].includes(currentStatus) && (
+                <Popconfirm
+                  title={t`Delete this delivery?`}
+                  onConfirm={handleDelete}
+                  okText={t`Yes`}
+                  cancelText={t`No`}
+                >
+                  <Button type="dashed" danger>
+                    <DeleteOutlined /> <Trans>Delete</Trans>
+                  </Button>
+                </Popconfirm>
+              )}
+            </Col>
+            <Col>
+              <Space>
+                {!isNew &&
+                  transitions.map((tr) => (
+                    <Button
+                      key={tr.next}
+                      type={tr.type ?? "default"}
+                      onClick={() => handleStatusChange(tr.next)}
                     >
-                      <Button type="dashed" danger>
-                        <DeleteOutlined /> <Trans>Delete</Trans>
-                      </Button>
-                    </Popconfirm>
-                  )}
-                </Col>
-                <Col>
-                  <Space>
-                    {!isNew &&
-                      transitions.map((tr) => (
-                        <Button
-                          key={tr.next}
-                          type={tr.type ?? "default"}
-                          onClick={() => handleStatusChange(tr.next)}
-                        >
-                          {tr.label}
-                        </Button>
-                      ))}
-                    {!isNew && !["cancelled", "delivered"].includes(currentStatus) && (
-                      <Popconfirm
-                        title={t`Cancel this delivery?`}
-                        onConfirm={() => handleStatusChange("cancelled")}
-                        okText={t`Yes`}
-                        cancelText={t`No`}
-                      >
-                        <Button type="dashed" danger>
-                          <Trans>Cancel delivery</Trans>
-                        </Button>
-                      </Popconfirm>
-                    )}
-                    {!isNew && (
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingPdf}
-                          onClick={handleServerExport("pdf")}
-                        >
-                          <FilePdfOutlined /> PDF
-                        </Button>
-                      </Tooltip>
-                    )}
-                    {!isNew && (
-                      // Always the server fill-and-convert path
-                      // (db/xlsx_export_delivery.go) — every delivery has an
-                      // embedded fallback template (resolveTemplateBytes) to
-                      // fill even with no org override, so both buttons
-                      // always work.
-                      <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                        <Button
-                          disabled={isDirty}
-                          loading={downloadingExcel}
-                          onClick={handleServerExport("xlsx")}
-                        >
-                          <FileExcelOutlined /> <Trans>Excel</Trans>
-                        </Button>
-                      </Tooltip>
-                    )}
-                    <Button type="primary" onClick={() => form.submit()}>
-                      <SaveOutlined /> <Trans>Save</Trans>
+                      {tr.label}
                     </Button>
-                  </Space>
-                </Col>
-              </Row>
-            </Footer>,
-            document.getElementById("footer") as HTMLElement,
-          )}
+                  ))}
+                {!isNew && !["cancelled", "delivered"].includes(currentStatus) && (
+                  <Popconfirm
+                    title={t`Cancel this delivery?`}
+                    onConfirm={() => handleStatusChange("cancelled")}
+                    okText={t`Yes`}
+                    cancelText={t`No`}
+                  >
+                    <Button type="dashed" danger>
+                      <Trans>Cancel delivery</Trans>
+                    </Button>
+                  </Popconfirm>
+                )}
+                {!isNew && (
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingPdf}
+                      onClick={handleServerExport("pdf")}
+                    >
+                      <FilePdfOutlined /> PDF
+                    </Button>
+                  </Tooltip>
+                )}
+                {!isNew && (
+                  // Always the server fill-and-convert path
+                  // (db/xlsx_export_delivery.go) — every delivery has an
+                  // embedded fallback template (resolveTemplateBytes) to
+                  // fill even with no org override, so both buttons
+                  // always work.
+                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
+                    <Button
+                      disabled={isDirty}
+                      loading={downloadingExcel}
+                      onClick={handleServerExport("xlsx")}
+                    >
+                      <FileExcelOutlined /> <Trans>Excel</Trans>
+                    </Button>
+                  </Tooltip>
+                )}
+                <Button type="primary" onClick={() => form.submit()}>
+                  <SaveOutlined /> <Trans>Save</Trans>
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+        </ResponsiveFooter>
         <SerialCaptureModal
           open={serialCapture.open}
           mode="ship"

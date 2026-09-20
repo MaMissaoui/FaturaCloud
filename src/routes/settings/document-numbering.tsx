@@ -1,19 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  InputNumber,
-  Layout,
-  Row,
-  Space,
-  Typography,
-  theme,
-} from "antd";
+import { Button, Card, Col, Form, Input, InputNumber, Row, Space, Typography, theme } from "antd";
 import { useAtomValue } from "jotai";
-import { createPortal } from "react-dom";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import {
@@ -26,11 +13,11 @@ import isEmpty from "lodash/isEmpty";
 
 import { organizationAtom } from "src/atoms/organization";
 import { GetDocumentNumberSetting, UpdateDocumentNumberSetting } from "src/api";
+import ResponsiveFooter from "src/components/responsive-footer";
 import { message } from "src/utils/message";
 import { generateDocumentNumber, validateDocumentNumberFormat } from "src/utils/document-number";
 
 const { Title, Text } = Typography;
-const { Footer } = Layout;
 
 // The five document types with a document_number_settings row — invoices
 // keep their own numbering fields on Settings -> Invoice (see
@@ -176,7 +163,6 @@ function DocumentNumberingCard({ documentType, label }: { documentType: string; 
 
 function SettingsDocumentNumbering() {
   const [form] = Form.useForm<FormValues>();
-  const { token } = theme.useToken();
   const organization = useAtomValue(organizationAtom);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -271,32 +257,20 @@ function SettingsDocumentNumbering() {
         </Form>
       )}
 
-      {document.getElementById("footer") &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: token.colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="end" style={{ height: 64 }}>
-              <Col>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  loading={submitting}
-                  onClick={() => form.submit()}
-                >
-                  <Trans>Save</Trans>
-                </Button>
-              </Col>
-            </Row>
-          </Footer>,
-          document.getElementById("footer") as HTMLElement,
-        )}
+      <ResponsiveFooter>
+        <Row align="middle" justify="end" style={{ height: 64 }}>
+          <Col>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={submitting}
+              onClick={() => form.submit()}
+            >
+              <Trans>Save</Trans>
+            </Button>
+          </Col>
+        </Row>
+      </ResponsiveFooter>
     </div>
   );
 }

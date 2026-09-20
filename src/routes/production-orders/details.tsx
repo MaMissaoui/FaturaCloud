@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router";
 import {
   Alert,
@@ -10,7 +9,6 @@ import {
   Form,
   Input,
   InputNumber,
-  Layout,
   Popconfirm,
   Row,
   Select,
@@ -32,6 +30,7 @@ import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import find from "lodash/find";
 import PageHeader from "src/components/page-header";
+import ResponsiveFooter from "src/components/responsive-footer";
 import { message } from "src/utils/message";
 
 import { GetProductBOM } from "src/api";
@@ -68,7 +67,6 @@ import {
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Footer } = Layout;
 
 // Quantities in the BOM preview are always "for this order's quantity" —
 // rounded the same way the BOM editor's own display-side rounding is
@@ -96,8 +94,6 @@ const getProductionOrderStatusColor = (s: ProductionOrderStatus) => productionOr
 // src/routes/inbound-deliveries/details.tsx.
 const loadableOrderAtom = loadable(productionOrderAtom);
 
-const footerNode = () => document.getElementById("footer") as HTMLElement | null;
-
 // Extracted so Form.useForm()/Form.useWatch() only ever mount while
 // actually creating an order — every other document type's detail page
 // keeps one Form mounted in both modes, but a production order has no PUT
@@ -112,7 +108,6 @@ const CreateProductionOrderForm = ({
   nextNumber,
   createOrder,
   dateFormat,
-  colorBgContainer,
   qtyLocale,
 }: {
   finishedProducts: Product[];
@@ -121,7 +116,6 @@ const CreateProductionOrderForm = ({
   nextNumber: string;
   createOrder: (values: Partial<ProductionOrder>) => Promise<unknown>;
   dateFormat: string;
-  colorBgContainer: string;
   qtyLocale: string;
 }) => {
   const { token } = theme.useToken();
@@ -364,42 +358,30 @@ const CreateProductionOrderForm = ({
         />
       </Table>
 
-      {footerNode() &&
-        createPortal(
-          <Footer
-            style={{
-              position: "sticky",
-              bottom: 0,
-              zIndex: 1,
-              padding: "0 16px",
-              background: colorBgContainer,
-            }}
-          >
-            <Row align="middle" justify="end" style={{ height: 64 }}>
-              <Col>
-                <Tooltip
-                  title={
-                    !watchedProductId
-                      ? t`Select a finished product first`
-                      : bomLines.length === 0
-                        ? t`This product has no Bill of Materials`
-                        : undefined
-                  }
-                >
-                  <Button
-                    type="primary"
-                    loading={submitting}
-                    disabled={bomLines.length === 0}
-                    onClick={() => form.submit()}
-                  >
-                    <SaveOutlined /> <Trans>Create</Trans>
-                  </Button>
-                </Tooltip>
-              </Col>
-            </Row>
-          </Footer>,
-          footerNode() as HTMLElement,
-        )}
+      <ResponsiveFooter>
+        <Row align="middle" justify="end" style={{ height: 64 }}>
+          <Col>
+            <Tooltip
+              title={
+                !watchedProductId
+                  ? t`Select a finished product first`
+                  : bomLines.length === 0
+                    ? t`This product has no Bill of Materials`
+                    : undefined
+              }
+            >
+              <Button
+                type="primary"
+                loading={submitting}
+                disabled={bomLines.length === 0}
+                onClick={() => form.submit()}
+              >
+                <SaveOutlined /> <Trans>Create</Trans>
+              </Button>
+            </Tooltip>
+          </Col>
+        </Row>
+      </ResponsiveFooter>
     </Form>
   );
 };
@@ -409,7 +391,6 @@ const ProductionOrderDetails = () => {
   const navigate = useNavigate();
   const { i18n } = useLingui();
   const { token } = theme.useToken();
-  const { colorBgContainer } = token;
   const dateFormat = useDatePickerFormat();
   const formatDate = useDateFormatter();
 
@@ -558,7 +539,6 @@ const ProductionOrderDetails = () => {
           nextNumber={nextNumber}
           createOrder={createOrder}
           dateFormat={dateFormat}
-          colorBgContainer={colorBgContainer}
           qtyLocale={qtyLocale}
         />
       ) : (
@@ -647,69 +627,57 @@ const ProductionOrderDetails = () => {
               />
             </Table>
 
-            {footerNode() &&
-              createPortal(
-                <Footer
-                  style={{
-                    position: "sticky",
-                    bottom: 0,
-                    zIndex: 1,
-                    padding: "0 16px",
-                    background: colorBgContainer,
-                  }}
-                >
-                  <Row align="middle" justify="space-between" style={{ height: 64 }}>
-                    <Col>
-                      {currentStatus === "draft" && (
-                        <Popconfirm
-                          title={t`Delete this production order?`}
-                          onConfirm={handleDelete}
-                          okText={t`Yes`}
-                          cancelText={t`No`}
-                        >
-                          <Button type="dashed" danger>
-                            <DeleteOutlined /> <Trans>Delete</Trans>
-                          </Button>
-                        </Popconfirm>
-                      )}
-                    </Col>
-                    <Col>
-                      <Space>
-                        {transitions.map((transition) => (
-                          <Popconfirm
-                            key={transition.next}
-                            title={t`This will consume the recipe's components and produce the finished units. Continue?`}
-                            onConfirm={() => handleStatusChange(transition.next)}
-                            okText={t`Yes`}
-                            cancelText={t`No`}
-                            placement="topRight"
-                          >
-                            <Button type={transition.type ?? "default"}>{transition.label}</Button>
-                          </Popconfirm>
-                        ))}
-                        {currentStatus !== "cancelled" && (
-                          <Popconfirm
-                            title={
-                              currentStatus === "completed"
-                                ? t`This will reverse the stock this order consumed and produced. Continue?`
-                                : t`Cancel this production order?`
-                            }
-                            onConfirm={() => handleStatusChange("cancelled")}
-                            okText={t`Yes`}
-                            cancelText={t`No`}
-                            placement="topRight"
-                          >
-                            <Button type="dashed" danger>
-                              <Trans>Cancel order</Trans>
-                            </Button>
-                          </Popconfirm>
-                        )}
-                      </Space>
-                    </Col>
-                  </Row>
-                </Footer>,
-                footerNode() as HTMLElement,
-              )}
+            <ResponsiveFooter>
+              <Row align="middle" justify="space-between" style={{ height: 64 }}>
+                <Col>
+                  {currentStatus === "draft" && (
+                    <Popconfirm
+                      title={t`Delete this production order?`}
+                      onConfirm={handleDelete}
+                      okText={t`Yes`}
+                      cancelText={t`No`}
+                    >
+                      <Button type="dashed" danger>
+                        <DeleteOutlined /> <Trans>Delete</Trans>
+                      </Button>
+                    </Popconfirm>
+                  )}
+                </Col>
+                <Col>
+                  <Space>
+                    {transitions.map((transition) => (
+                      <Popconfirm
+                        key={transition.next}
+                        title={t`This will consume the recipe's components and produce the finished units. Continue?`}
+                        onConfirm={() => handleStatusChange(transition.next)}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
+                        placement="topRight"
+                      >
+                        <Button type={transition.type ?? "default"}>{transition.label}</Button>
+                      </Popconfirm>
+                    ))}
+                    {currentStatus !== "cancelled" && (
+                      <Popconfirm
+                        title={
+                          currentStatus === "completed"
+                            ? t`This will reverse the stock this order consumed and produced. Continue?`
+                            : t`Cancel this production order?`
+                        }
+                        onConfirm={() => handleStatusChange("cancelled")}
+                        okText={t`Yes`}
+                        cancelText={t`No`}
+                        placement="topRight"
+                      >
+                        <Button type="dashed" danger>
+                          <Trans>Cancel order</Trans>
+                        </Button>
+                      </Popconfirm>
+                    )}
+                  </Space>
+                </Col>
+              </Row>
+            </ResponsiveFooter>
 
             {/* finishedProductId is nullable (ON DELETE SET NULL), which the
                 removed `any` was hiding. A deleted finished product has no
