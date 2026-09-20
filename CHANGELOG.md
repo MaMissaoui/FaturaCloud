@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.34.0] - 2026-09-20
+
+First batch of the requirements round.
+
+### Added
+- New per-organization **Power User** role — full non-admin access, a copy of
+  what the general role used to have.
+- Incoming invoices now have a Product (SKU) column in their line items,
+  filling the description and unit cost on selection.
+
+### Changed
+- The **general** role no longer sees Accounting, Imports or Bill of
+  Materials (hidden from the sidebar and redirected to Invoices).
+- French translation of VAT Number / VATIN is now "Matricule fiscal".
+
+### Fixed
+- Line-item Product cells resolve the saved product's SKU/name even when the
+  picker's category filter excludes it (purchase orders, orders, deliveries,
+  inbound deliveries, invoices, cash book).
+
 ## [3.33.0] - 2026-09-20
 
 Third audit follow-up, plus a navigation change.
