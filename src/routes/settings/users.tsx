@@ -14,7 +14,7 @@ import {
   Table,
   Tag,
 } from "antd";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { DeleteOutlined, TeamOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -24,8 +24,6 @@ import dayjs from "dayjs";
 import { type UserRecord, CreateUser, DeleteUser, GetUser, ListUsers, UpdateUser } from "src/api";
 import { currentUserAtom } from "src/atoms/auth";
 import PageHeader from "src/components/page-header";
-
-const searchAtom = atom("");
 
 export default function SettingsUsers() {
   useLingui();
@@ -37,7 +35,7 @@ export default function SettingsUsers() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   // Drawer open state and which user it's editing were module-level Jotai
   // atoms — the pattern CLAUDE.md forbids for Modal/Drawer local state (the
   // mask can get orphaned and freeze the UI). Local component state instead.

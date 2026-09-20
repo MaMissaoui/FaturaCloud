@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PurchaseOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -20,8 +20,6 @@ import {
 import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-order";
 import PageHeader from "src/components/page-header";
 
-const searchAtom = atom<string>("");
-
 const PurchaseOrders = () => {
   useLingui();
   const location = useLocation();
@@ -29,7 +27,7 @@ const PurchaseOrders = () => {
   const formatDate = useDateFormatter();
   const orders = useAtomValue(purchaseOrdersAtom);
   const setOrders = useSetAtom(setPurchaseOrdersAtom);
-  const [search, setSearch] = useAtom(searchAtom);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -39,21 +37,23 @@ const PurchaseOrders = () => {
     }
   }, [location, setOrders]);
 
-  const filtered = search
-    ? filter(
+  const filtered = useMemo(
+    () =>
+      filter(
         orders,
         (o: PurchaseOrder) =>
           includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) ||
           includes((o.vendorName ?? "").toLowerCase(), search.toLowerCase()),
-      )
-    : orders;
+      ),
+    [orders, search],
+  );
 
   return (
     <>
       <PageHeader
         icon={<ShoppingCartOutlined />}
         title={<Trans>Purchase Orders</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
+        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
         actions={
           <Button type="primary" onClick={() => navigate("/purchase-orders/new")}>
             <Trans>New purchase order</Trans>
