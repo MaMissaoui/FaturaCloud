@@ -42,7 +42,10 @@ func (h *handler) createPayment(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
-	if !h.requireOrgMember(w, r, req.OrganizationID) {
+	// F104 — payments settle AR/AP and post to the GL, so creation is an
+	// accounting action; requireOrgRole's allowed set already includes
+	// admin/general, so only "accounting" is added here.
+	if !h.requireOrgRole(w, r, req.OrganizationID, "accounting") {
 		return
 	}
 	payment, err := h.db.CreatePayment(req)

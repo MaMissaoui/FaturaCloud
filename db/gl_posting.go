@@ -16,11 +16,35 @@ import (
 // (buildInvoiceGLLines/buildIncomingInvoiceGLLines guarantee it) so there's
 // no draft step — it goes straight to posted via the same
 // allocateAndFinalizeEntryTx choke point every other posting path uses.
+//
+// Every caller of this wrapper is a genuinely new posting, so it enforces
+// the active-account check. The one system-generated path that must not (the
+// fiscal-year close, which zeroes accounts already carrying history) calls
+// postAutoEntryTxEnforcing directly with false.
 func postAutoEntryTx(
 	tx *sqlx.Tx,
 	organizationID, journalID, sourceDocumentType, sourceDocumentID string,
 	date int64, reference, description string,
 	lines []CreateJournalLineRequest,
+) (string, error) {
+	return postAutoEntryTxEnforcing(
+		tx, organizationID, journalID, sourceDocumentType, sourceDocumentID,
+		date, reference, description, lines, true,
+	)
+}
+
+// postAutoEntryTxEnforcing is postAutoEntryTx with the active-account check
+// made explicit — see allocateAndFinalizeEntryTx's doc comment for why a
+// reversal and the fiscal-year close pass false. Kept as a separate internal
+// function rather than a new parameter on postAutoEntryTx so the ~10 genuine
+// auto-posting call sites across the package don't each have to restate the
+// same flag.
+func postAutoEntryTxEnforcing(
+	tx *sqlx.Tx,
+	organizationID, journalID, sourceDocumentType, sourceDocumentID string,
+	date int64, reference, description string,
+	lines []CreateJournalLineRequest,
+	enforceActiveAccounts bool,
 ) (string, error) {
 	entryID, err := gonanoid.New()
 	if err != nil {
@@ -46,7 +70,7 @@ func postAutoEntryTx(
 		return "", err
 	}
 
-	if err := allocateAndFinalizeEntryTx(tx, entryID, organizationID, fiscalYearID, journalID); err != nil {
+	if err := allocateAndFinalizeEntryTx(tx, entryID, organizationID, fiscalYearID, journalID, enforceActiveAccounts); err != nil {
 		return "", err
 	}
 
@@ -104,7 +128,12 @@ func reverseEntryTx(tx *sqlx.Tx, original *JournalEntry, reason string, reversal
 		return "", err
 	}
 
-	if err := allocateAndFinalizeEntryTx(tx, reversalID, original.OrganizationID, fiscalYearID, original.JournalID); err != nil {
+	// F97: a reversal replays the original entry's own accountIds, so it must
+	// succeed even if one of them has since been deactivated — otherwise
+	// deactivating an account permanently strands every posted entry that
+	// touches it, blocking invoice/bill cancel and payment void. Pass false;
+	// this is not a new posting.
+	if err := allocateAndFinalizeEntryTx(tx, reversalID, original.OrganizationID, fiscalYearID, original.JournalID, false); err != nil {
 		return "", err
 	}
 

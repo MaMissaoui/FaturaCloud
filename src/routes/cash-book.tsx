@@ -533,25 +533,25 @@ const CashBook = () => {
       message.error(t`Pick or create a customer first`);
       return;
     }
-    // Kept off-screen entirely (see the daily-movement panel above, which
-    // already surfaces the same missing-config case) but still resolved
-    // and sent explicitly, never left for CreateCashSale's own
-    // server-side fallback — defaultCashAccountId is wired to Bank in
-    // every chart-of-accounts template, and a sale posted there silently
-    // never moves the register balance/report.
-    const bankAccountId =
-      organization?.defaultCashRegisterAccountId || organization?.defaultCashAccountId;
-    if (!bankAccountId) {
-      message.error(
-        t`No cash register account configured — set one in Organization settings before recording a sale`,
-      );
-      return;
-    }
+    // F101: the register/till account is the only correct destination for
+    // money received at the counter — never defaultCashAccountId, which every
+    // chart-of-accounts template wires to Bank. Sent explicitly so a sale
+    // can't silently fall back server-side, and required up front (below)
+    // whenever an amount is actually being recorded so the cashier gets a
+    // clear message instead of a Bank posting. A zero-deposit loan sale has
+    // no payment to post and so doesn't need one.
     const totalCents = unitsToCents(total);
     const amountReceivedCents = Math.min(
       unitsToCents(toNumber(values.amountReceived) || 0),
       totalCents,
     );
+    const bankAccountId = organization?.defaultCashRegisterAccountId ?? undefined;
+    if (amountReceivedCents > 0 && !bankAccountId) {
+      message.error(
+        t`No cash register account configured — set defaultCashRegisterAccountId in Organization settings → Accounting before recording a sale with an amount received`,
+      );
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -764,6 +764,20 @@ const CashBook = () => {
           )}
 
           <Card size="small" title={<Trans>New sale</Trans>}>
+            {!registerAccountId && (
+              // F101: every sale that receives an amount posts it to the
+              // register/till account; with none configured the server now
+              // 409s rather than silently crediting Bank. Surface that here
+              // (not just on submit) so the cashier sees the fix before
+              // ringing anything up. A zero-deposit loan sale needs no
+              // register account and stays recordable.
+              <Typography.Text type="warning" style={{ display: "block", marginBottom: 12 }}>
+                <Trans>
+                  No cash register account configured — set defaultCashRegisterAccountId in
+                  Organization settings → Accounting before recording a sale with an amount received
+                </Trans>
+              </Typography.Text>
+            )}
             <Form form={form} layout="vertical" onFinish={handleSubmitSale}>
               <Row gutter={16}>
                 <Col xs={24} md={8}>
@@ -977,6 +991,10 @@ const CashBook = () => {
                       onClick={() => form.submit()}
                       loading={submitting}
                       size="large"
+                      // F101: an amount > 0 means a payment will post to the
+                      // register; with none configured it can't be recorded.
+                      // A zero-deposit loan sale (amount 0) is still allowed.
+                      disabled={amountReceivedWatched > 0 && !registerAccountId}
                     >
                       {amountReceivedWatched >= total ? (
                         <Trans>Record cash sale</Trans>
@@ -1319,11 +1337,7 @@ const CashBook = () => {
           onClose={closePayment}
           onSettled={handleSettled}
           defaultMethod="cash"
-          defaultBankAccountId={
-            organization?.defaultCashRegisterAccountId ??
-            organization?.defaultCashAccountId ??
-            undefined
-          }
+          defaultBankAccountId={organization?.defaultCashRegisterAccountId ?? undefined}
           minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
           countryCode={organization?.country_code}
         />

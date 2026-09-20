@@ -58,6 +58,54 @@ func TestCloseFiscalYearZeroesRevenueAndExpenseIntoRetainedEarnings(t *testing.T
 	}
 }
 
+// F97: the closing activity snapshot is deliberately not filtered by
+// isActive, so a revenue/expense account that posted during the year and was
+// later deactivated still has a balance to zero. Enforcing the active-account
+// check on the closing post made the year permanently uncloseable once such
+// an account was deactivated; CloseFiscalYear now bypasses it (the closing
+// entry is not a new posting — it is the counterpart to the original one).
+func TestCloseFiscalYearSucceedsAfterAccountDeactivated(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-close-inactive")
+	fyID := fecFixtureFiscalYearID(t, d, fx.orgID)
+
+	inv := fx.createInvoice(t, d, "close-inactive-inv", 2, 1000) // 2000 revenue
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+
+	// The revenue account now carries this year's activity; retire it.
+	deactivateAccount(t, d, fx.revenueAccountID)
+
+	closed, err := d.CloseFiscalYear(fyID)
+	if err != nil {
+		t.Fatalf("CloseFiscalYear after deactivating an account with activity: %v", err)
+	}
+	if closed.Status != "closed" {
+		t.Fatalf("status = %q, want closed", closed.Status)
+	}
+
+	entry, err := d.FindPostedEntryForSourceDocument("closing", fyID)
+	if err != nil || entry == nil {
+		t.Fatalf("expected a posted closing entry, err=%v entry=%v", err, entry)
+	}
+
+	// The closing entry must actually have zeroed the deactivated account —
+	// bypassing the check must not mean skipping the line.
+	tb, err := d.GetTrialBalance(fx.orgID, "", "")
+	if err != nil {
+		t.Fatalf("GetTrialBalance: %v", err)
+	}
+	balances := map[string]int64{}
+	for _, row := range tb {
+		balances[row.AccountID] = row.Debit - row.Credit
+	}
+	if balances[fx.revenueAccountID] != 0 {
+		t.Fatalf("deactivated revenue account balance = %d, want 0 after closing", balances[fx.revenueAccountID])
+	}
+}
+
 func TestCloseFiscalYearRejectsAlreadyClosed(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
