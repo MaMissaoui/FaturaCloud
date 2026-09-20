@@ -526,11 +526,30 @@ func (d *Database) DeleteOrder(orderID string) (bool, error) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// F103: re-read the status through tx and repeat the predicate in the
+	// DELETE — a concurrent PATCH .../status that moved the order to
+	// shipped/delivered between the pre-tx read above and this Beginx could
+	// otherwise let the delete remove an order whose deliveries/line items
+	// have advanced. Same guard shape as DeleteJournalEntry/
+	// DeleteProductionOrder.
+	var liveStatus string
+	if err := tx.Get(&liveStatus, `SELECT status FROM orders WHERE id = ?`, orderID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("delete_order status_check: %w", err)
+	}
+	if liveStatus == "shipped" || liveStatus == "delivered" {
+		return false, newValidationError("cannot delete a %s order — cancel it instead", liveStatus)
+	}
+
 	if _, err = tx.Exec(`DELETE FROM orderLineItems WHERE orderId = ?`, orderID); err != nil {
 		return false, fmt.Errorf("delete_order items: %w", err)
 	}
 
-	res, err := tx.Exec(`DELETE FROM orders WHERE id = ?`, orderID)
+	res, err := tx.Exec(
+		`DELETE FROM orders WHERE id = ? AND status NOT IN ('shipped', 'delivered')`, orderID,
+	)
 	if err != nil {
 		return false, fmt.Errorf("delete_order: %w", err)
 	}

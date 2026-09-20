@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/oauth2"
 )
 
 const testClientID = "fatura-cloud"
@@ -532,4 +534,187 @@ func assertRejectedToLogin(t *testing.T, rec *httptest.ResponseRecorder) {
 	if !strings.HasPrefix(loc, "/login?error=sso_failed") {
 		t.Errorf("expected redirect to /login?error=sso_failed, got %s", loc)
 	}
+}
+
+// TestOIDCEmailVerified_TypeHandling is F108's unit-level regression: the
+// claim must be honored whether the IdP spells it as a JSON boolean or as the
+// string "true"/"false" (case-insensitive), absent must stay "nothing to
+// check", and a present-but-unparseable value must fail closed rather than
+// silently skip the guard as the old bool-only assertion did.
+func TestOIDCEmailVerified_TypeHandling(t *testing.T) {
+	cases := []struct {
+		name   string
+		claims map[string]any
+		want   bool
+	}{
+		{"absent", map[string]any{}, true},
+		{"bool true", map[string]any{"email_verified": true}, true},
+		{"bool false", map[string]any{"email_verified": false}, false},
+		{"string true", map[string]any{"email_verified": "true"}, true},
+		{"string false", map[string]any{"email_verified": "false"}, false},
+		{"string TRUE uppercase", map[string]any{"email_verified": "TRUE"}, true},
+		{"string False mixed case", map[string]any{"email_verified": "False"}, false},
+		{"string padded true", map[string]any{"email_verified": " true "}, true},
+		{"unparseable string", map[string]any{"email_verified": "yes"}, false},
+		{"unexpected type", map[string]any{"email_verified": 1}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := oidcEmailVerified(tc.claims); got != tc.want {
+				t.Errorf("oidcEmailVerified(%v) = %v, want %v", tc.claims["email_verified"], got, tc.want)
+			}
+		})
+	}
+}
+
+// TestOIDCCallback_StringEmailVerifiedRejected is F108's integration half: a
+// string "false" that the old bool assertion dropped must now block the
+// callback, and a string "true" must not.
+func TestOIDCCallback_StringEmailVerifiedRejected(t *testing.T) {
+	idp := newFakeIdP(t)
+	h := newTestHandler(t, OIDCConfig{
+		IssuerURL: idp.server.URL, ClientID: testClientID, ClientSecret: "secret",
+		RedirectURL: testRedirectURL, Scopes: []string{"openid", "email", "groups"},
+		EmailClaim: "email", NameClaim: "name", GroupsClaim: "groups", AdminGroup: "admins",
+	})
+
+	idp.idTokenFor = func(code string) (string, string) {
+		claims := idp.baseClaims("n1")
+		claims["email_verified"] = "false"
+		return idp.sign(t, claims), ""
+	}
+
+	req := callbackRequest(h, "st1", "n1", "verifier1", "st1", "good-code")
+	rec := httptest.NewRecorder()
+	h.oidcCallback(rec, req)
+
+	assertRejectedToLogin(t, rec)
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == authCookieName {
+			t.Fatal("expected no auth cookie to be set for a string-false unverified email")
+		}
+	}
+}
+
+func TestOIDCCallback_StringEmailVerifiedAccepted(t *testing.T) {
+	idp := newFakeIdP(t)
+	h := newTestHandler(t, OIDCConfig{
+		IssuerURL: idp.server.URL, ClientID: testClientID, ClientSecret: "secret",
+		RedirectURL: testRedirectURL, Scopes: []string{"openid", "email", "groups"},
+		EmailClaim: "email", NameClaim: "name", GroupsClaim: "groups", AdminGroup: "admins",
+	})
+
+	idp.idTokenFor = func(code string) (string, string) {
+		claims := idp.baseClaims("n1")
+		claims["email_verified"] = "true"
+		return idp.sign(t, claims), ""
+	}
+
+	req := callbackRequest(h, "st1", "n1", "verifier1", "st1", "good-code")
+	rec := httptest.NewRecorder()
+	h.oidcCallback(rec, req)
+
+	parseIssuedJWT(t, h, rec)
+}
+
+// TestEnsureOIDC_DiscoveryErrorThenSuccess pins F107's central guarantee: a
+// discovery failure (here, a black-holing issuer that trips the bounded
+// timeout) returns an error instead of wedging the goroutine, and does not
+// permanently poison the cache — a later call against a healthy issuer
+// succeeds. The timeout is shortened for the test so it doesn't wait the
+// production 10s.
+func TestEnsureOIDC_DiscoveryErrorThenSuccess(t *testing.T) {
+	orig := oidcDiscoveryTimeout
+	oidcDiscoveryTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { oidcDiscoveryTimeout = orig })
+
+	// blockForever never responds to the discovery request; the bounded
+	// context is the only thing that can end this call.
+	blockForever := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	t.Cleanup(blockForever.Close)
+
+	h := newTestHandler(t, OIDCConfig{
+		IssuerURL: blockForever.URL, ClientID: testClientID, ClientSecret: "secret",
+		RedirectURL: testRedirectURL, Scopes: []string{"openid", "email"},
+		EmailClaim: "email", NameClaim: "name", GroupsClaim: "groups", AdminGroup: "admins",
+	})
+
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := h.ensureOIDC()
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected discovery against a hung issuer to fail, got nil")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("ensureOIDC did not return within the bounded timeout — goroutine is wedged")
+	}
+
+	// The failed attempt must not have cached anything: a subsequent call
+	// against a healthy issuer succeeds. (h.oidcCfg is swapped directly here
+	// as the test handler is single-goroutine at this point.)
+	idp := newFakeIdP(t)
+	h.oidcCfg.IssuerURL = idp.server.URL
+	verifier, cfg, err := h.ensureOIDC()
+	if err != nil {
+		t.Fatalf("expected discovery against a healthy issuer to succeed after a prior failure, got %v", err)
+	}
+	if verifier == nil || cfg == nil {
+		t.Fatal("expected non-nil verifier and oauth2 config after successful discovery")
+	}
+}
+
+// TestEnsureOIDC_DoesNotHoldLockDuringDiscovery proves the discovery call no
+// longer runs under oidcMu: while one goroutine is stuck in discovery against
+// a hung issuer, another call that can be served from cache must not block.
+func TestEnsureOIDC_DoesNotHoldLockDuringDiscovery(t *testing.T) {
+	orig := oidcDiscoveryTimeout
+	oidcDiscoveryTimeout = 2 * time.Second
+	t.Cleanup(func() { oidcDiscoveryTimeout = orig })
+
+	blockForever := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	t.Cleanup(blockForever.Close)
+
+	h := newTestHandler(t, OIDCConfig{
+		IssuerURL: blockForever.URL, ClientID: testClientID, ClientSecret: "secret",
+		RedirectURL: testRedirectURL, Scopes: []string{"openid", "email"},
+		EmailClaim: "email", NameClaim: "name", GroupsClaim: "groups", AdminGroup: "admins",
+	})
+	// Prime the cache directly so the second call takes the fast path.
+	h.oidcVerifier = &oidc.IDTokenVerifier{}
+	h.oidcOAuth2 = &oauth2.Config{}
+
+	started := make(chan struct{})
+	released := make(chan struct{})
+	go func() {
+		close(started)
+		_, _, _ = h.ensureOIDC() // triggers the slow discovery
+		close(released)
+	}()
+	<-started
+
+	// Give the discovery goroutine a moment to actually enter the HTTP call.
+	time.Sleep(50 * time.Millisecond)
+
+	cached := make(chan error, 1)
+	go func() {
+		_, _, err := h.ensureOIDC() // fast path — must not wait on discovery
+		cached <- err
+	}()
+	select {
+	case err := <-cached:
+		if err != nil {
+			t.Fatalf("expected cached fast path to succeed, got %v", err)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("cached ensureOIDC blocked while discovery was in flight — lock still held across the network call")
+	}
+	<-released
 }

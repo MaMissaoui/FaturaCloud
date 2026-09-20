@@ -468,6 +468,11 @@ export interface DocumentNumberSetting {
 export const GetDocumentNumberSetting = (orgId: string, documentType: string) =>
   get<DocumentNumberSetting>(`/organizations/${orgId}/document-number-settings/${documentType}`);
 
+// counter is omitted from the request body entirely by passing undefined —
+// the server treats an absent counter as "leave the counter alone", so a
+// format-only save can't rewind one a document creation advanced in the
+// meantime (see db/document_number.go). Only pass a counter when the user
+// actually changed it.
 export const UpdateDocumentNumberSetting = (
   orgId: string,
   documentType: string,
@@ -476,7 +481,7 @@ export const UpdateDocumentNumberSetting = (
 ) =>
   put<DocumentNumberSetting>(`/organizations/${orgId}/document-number-settings/${documentType}`, {
     format,
-    counter,
+    ...(counter !== undefined ? { counter } : {}),
   });
 
 // ---- Mass Data (Excel download/upload for bulk maintenance) ----

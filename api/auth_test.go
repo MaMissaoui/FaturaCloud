@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -150,5 +151,122 @@ func TestLoginPerAccountRateLimit(t *testing.T) {
 	// per-account limit.
 	if code := attempt("10.9.9.250"); code != http.StatusTooManyRequests {
 		t.Fatalf("expected per-account throttle to return 429, got %d", code)
+	}
+}
+
+// TestClientIP_WalksXForwardedForFromTheRight is F110's regression test: only
+// the direct peer's trust was checked before, but the *leftmost* X-Forwarded-For
+// entry was then read as the client. A trusted proxy appends to whatever the
+// client sent rather than replacing it, so the leftmost value is
+// attacker-controlled ("1.2.3.4" below) and the real client address is the
+// rightmost non-proxy hop. clientIP must walk from the right and skip
+// configured trusted proxies.
+func TestClientIP_WalksXForwardedForFromTheRight(t *testing.T) {
+	trusted := []netip.Prefix{
+		netip.MustParsePrefix("10.0.0.0/8"),
+		netip.MustParsePrefix("192.168.0.0/16"),
+	}
+	h := &handler{trustedProxies: trusted}
+
+	tests := []struct {
+		name       string
+		remoteAddr string
+		xff        string
+		want       string
+	}{
+		{"untrusted peer ignores the header", "203.0.113.5:1234", "1.2.3.4", "203.0.113.5"},
+		{"trusted peer, no header", "10.1.2.3:1234", "", "10.1.2.3"},
+		{"trusted peer, single client", "10.1.2.3:1234", "203.0.113.7", "203.0.113.7"},
+		// The spoof that the old leftmost read fell for: attacker-supplied
+		// 1.2.3.4, then the real client appended by the trusted proxy.
+		{"spoofed leftmost entry ignored", "10.1.2.3:1234", "1.2.3.4, 203.0.113.7", "203.0.113.7"},
+		// A chain of trusted proxies is skipped hop by hop.
+		{"trusted hops on the right are skipped", "10.1.2.3:1234", "1.2.3.4, 192.168.5.5, 203.0.113.9", "203.0.113.9"},
+		// Nothing but trusted proxies: fall back to the direct peer.
+		{"all hops trusted falls back to peer", "10.1.2.3:1234", "10.9.9.9, 192.168.5.5", "10.1.2.3"},
+		// An unparseable entry can't be a trusted proxy, so it's returned
+		// rather than skipped to an attacker-controlled entry further left.
+		{"unparseable entry returned as-is", "10.1.2.3:1234", "203.0.113.7, nonsense", "nonsense"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.RemoteAddr = tc.remoteAddr
+			if tc.xff != "" {
+				req.Header.Set("X-Forwarded-For", tc.xff)
+			}
+			if got := h.clientIP(req); got != tc.want {
+				t.Errorf("clientIP() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestLogout_RevokesAllSessions is F109's regression test: logout must not
+// merely expire the browser's own cookie (an httpOnly cookie can't be cleared
+// by page JS, and the user may hold a copy elsewhere) — it bumps
+// users.tokenVersion, so the already-issued JWT itself stops being accepted,
+// even though its 24h expiry hasn't passed.
+func TestLogout_RevokesAllSessions(t *testing.T) {
+	mux, database, _, _ := newTestRouter(t)
+	seedUser(t, database, "test-user", "user", 1)
+	token := mintTestJWT(t, "test-user", "user")
+
+	protected := func() int {
+		req := httptest.NewRequest(http.MethodGet, "/api/organizations", nil)
+		authRequest(req, token)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	if code := protected(); code != http.StatusOK {
+		t.Fatalf("expected the token to be accepted before logout, got %d", code)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	authRequest(req, token)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 from logout, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var tokenVersion int
+	if err := database.DB.Get(&tokenVersion, `SELECT tokenVersion FROM users WHERE id = ?`, "test-user"); err != nil {
+		t.Fatalf("query tokenVersion: %v", err)
+	}
+	if tokenVersion != 1 {
+		t.Fatalf("tokenVersion after logout = %d, want 1", tokenVersion)
+	}
+
+	if code := protected(); code != http.StatusUnauthorized {
+		t.Fatalf("expected the pre-logout token to be rejected after logout, got %d", code)
+	}
+}
+
+// TestIssueToken_EmbedsCurrentTokenVersion locks in the half of F109 that the
+// revocation tests above can't see: the token is only revocable if the value
+// issued into every token actually survives signing and re-parsing. Claims
+// carries TokenVersion with a json tag (not json:"-") for exactly this
+// reason — if it were dropped from the payload, a token minted *after* a
+// logout/password-change bump would parse as version 0 and be rejected no
+// matter what, locking the user out permanently rather than merely revoking
+// old sessions.
+func TestIssueToken_EmbedsCurrentTokenVersion(t *testing.T) {
+	h := &handler{jwtSecret: testRestoreJWTSecret}
+	token, err := h.issueTokenWithProvider(userRow{ID: "u1", Email: "u1@test.local", TokenVersion: 7}, "local")
+	if err != nil {
+		t.Fatalf("issueTokenWithProvider: %v", err)
+	}
+
+	claims := &Claims{}
+	if _, err := jwt.ParseWithClaims(token, claims, func(*jwt.Token) (any, error) {
+		return []byte(testRestoreJWTSecret), nil
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience)); err != nil {
+		t.Fatalf("parse issued token: %v", err)
+	}
+	if claims.TokenVersion != 7 {
+		t.Fatalf("issued token carries TokenVersion=%d, want 7 — the claim did not survive serialization", claims.TokenVersion)
 	}
 }

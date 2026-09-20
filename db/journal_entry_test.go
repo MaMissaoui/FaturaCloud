@@ -233,6 +233,76 @@ func TestPostJournalEntryRejectsInactiveAccount(t *testing.T) {
 	}
 }
 
+// deactivateAccount is a test helper that flips an existing account's
+// isActive to 0. UpdateAccount is a full replace (and refuses a type/isGroup
+// change on an account with posted history), so every other field is read
+// back and echoed unchanged — only isActive changes.
+func deactivateAccount(t *testing.T, d *Database, accountID string) {
+	t.Helper()
+	account, err := d.GetAccount(accountID)
+	if err != nil {
+		t.Fatalf("GetAccount(%s): %v", accountID, err)
+	}
+	if _, err := d.UpdateAccount(accountID, UpdateAccountRequest{
+		ParentID:           account.ParentID,
+		Code:               account.Code,
+		Name:               account.Name,
+		Type:               account.Type,
+		IsGroup:            account.IsGroup,
+		IsActive:           0,
+		DATEVAccountNumber: account.DATEVAccountNumber,
+		Description:        account.Description,
+	}); err != nil {
+		t.Fatalf("UpdateAccount(deactivate %s): %v", accountID, err)
+	}
+}
+
+// F97: `allocateAndFinalizeEntryTx` rejects lines on isActive=0 accounts,
+// which is correct for a genuinely new posting but was wrongly applied to
+// reversals too. A reversal replays the original entry's own accountIds, so
+// deactivating an account after the fact used to make every posted entry
+// touching it permanently unreversible (invoice/bill cancel, payment void,
+// delivery/receipt cancel, production-order cancel). The new-posting
+// rejection is still asserted by TestPostJournalEntryRejectsInactiveAccount.
+func TestReverseJournalEntrySucceedsAfterAccountDeactivated(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newJournalEntryTestFixture(t, d)
+
+	entry, err := d.CreateJournalEntry(CreateJournalEntryRequest{
+		OrganizationID: fx.orgID, JournalID: fx.journalID, Date: fx.date,
+		Description: "Sale to be reversed after an account retires",
+		Lines: []CreateJournalLineRequest{
+			{AccountID: fx.cashAccountID, Debit: 1000},
+			{AccountID: fx.salesAccountID, Credit: 1000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateJournalEntry: %v", err)
+	}
+	if _, err := d.PostJournalEntry(entry.ID); err != nil {
+		t.Fatalf("PostJournalEntry: %v", err)
+	}
+
+	deactivateAccount(t, d, fx.salesAccountID)
+
+	reversal, err := d.ReverseJournalEntry(entry.ID, "account retired after posting", fx.date)
+	if err != nil {
+		t.Fatalf("ReverseJournalEntry after deactivating an account: %v", err)
+	}
+	if reversal.Status != "posted" {
+		t.Fatalf("reversal status = %q, want posted", reversal.Status)
+	}
+
+	original, err := d.GetJournalEntry(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntry(original): %v", err)
+	}
+	if original.Status != "reversed" {
+		t.Fatalf("original status = %q, want reversed", original.Status)
+	}
+}
+
 func TestDeleteJournalEntryOnlyAllowsDraft(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)

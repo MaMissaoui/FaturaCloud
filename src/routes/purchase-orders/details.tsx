@@ -355,6 +355,19 @@ const PurchaseOrderDetails = () => {
     !isNew && order && !(order as any).then ? (order as any).orderNumber : undefined;
   const transitions = isNew ? [] : purchaseOrderTransitions(currentStatus);
 
+  // Re-runs the async detail read after a failed fetch. The null-then-restore
+  // idiom is the one that actually invalidates the atom's cached read (jotai
+  // skips the notification when the id is unchanged). handleStatusChange
+  // above warns this idiom is destructive for a *loaded* order because the
+  // `!order` guard unmounts the Form mid-edit — but this only runs from that
+  // very `!order` branch, where there is no loaded order (and no form state)
+  // to lose.
+  const retryLoad = () => {
+    if (!id) return;
+    setOrderId(null);
+    setTimeout(() => setOrderId(id), 0);
+  };
+
   if (!organization) return null;
   if (!isNew && !order) {
     return (
@@ -364,7 +377,20 @@ const PurchaseOrderDetails = () => {
           title={<Trans>Purchase Order</Trans>}
           style={{ marginBottom: 24 }}
         />
-        <Skeleton active paragraph={{ rows: 12 }} />
+        {orderLoadable.state === "loading" ? (
+          <Skeleton active paragraph={{ rows: 12 }} />
+        ) : (
+          <Alert
+            type="error"
+            showIcon
+            message={<Trans>Couldn't load this purchase order</Trans>}
+            action={
+              <Button size="small" onClick={retryLoad}>
+                <Trans>Retry</Trans>
+              </Button>
+            }
+          />
+        )}
       </>
     );
   }
