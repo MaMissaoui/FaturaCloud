@@ -2564,6 +2564,7 @@ msgstr "IBAN"
 #: src/components/clients/form.tsx:249
 #: src/components/clients/form.tsx:257
 #: src/routes/cash-book.tsx:1347
+#: src/routes/clients.tsx:184
 msgid "Identity number"
 msgstr "Ausweisnummer"
 
@@ -6152,8 +6153,6 @@ msgstr "Warnung: Dies löscht auch {invoiceCount} zugehörige Rechnung(en)."
 #: src/components/organizations/organization-edit-drawer.tsx:232
 #: src/components/vendors/form.tsx:214
 #: src/components/vendors/form.tsx:215
-#: src/routes/clients.tsx:184
-#: src/routes/vendors.tsx:184
 msgid "Website"
 msgstr "Website"
 

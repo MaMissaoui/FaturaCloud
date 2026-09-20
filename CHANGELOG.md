@@ -17,6 +17,8 @@ Cash Book follow-ups: a payment-refresh fix and two layout tweaks.
   as part of the sale it records.
 - Cash Book: the "Back to search" button is now a primary button, matching
   the other action buttons on the screen.
+- Clients and Vendors lists: the Website column was removed. The Clients
+  list gained an Identity number (CIN) column.
 
 ### Fixed
 - Cash Book: the cash register's movement list now refreshes after a payment

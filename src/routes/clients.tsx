@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Client } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Empty, Space, Table, Row, Tag, Tooltip } from "antd";
+import { Button, Col, Empty, Space, Table, Row, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import { PhoneOutlined, TeamOutlined, GlobalOutlined } from "@ant-design/icons";
+import { PhoneOutlined, TeamOutlined } from "@ant-design/icons";
 import isEmpty from "lodash/isEmpty";
 import filter from "lodash/filter";
 import get from "lodash/get";
@@ -181,25 +181,11 @@ const Clients = () => {
               sorter={(a: Client, b: Client) => (a.vatin ?? "").localeCompare(b.vatin ?? "")}
             />
             <Table.Column
-              title={<Trans>Website</Trans>}
-              dataIndex="website"
-              key="website"
-              width={60}
-              align="center"
-              sorter={(a: Client, b: Client) => (a.website ?? "").localeCompare(b.website ?? "")}
-              render={(website) =>
-                website ? (
-                  <Tooltip title={website}>
-                    <a
-                      href={website}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <GlobalOutlined style={{ fontSize: 16 }} />
-                    </a>
-                  </Tooltip>
-                ) : null
+              title={<Trans>Identity number</Trans>}
+              dataIndex="identity_number"
+              key="identity_number"
+              sorter={(a: Client, b: Client) =>
+                (a.identity_number ?? "").localeCompare(b.identity_number ?? "")
               }
             />
           </Table>
