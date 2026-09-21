@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.44.1] - 2026-09-21
+
+### Fixed
+- Cash Book: money values in the loan status, payment history and register
+  tables no longer wrap onto two lines; the tables scroll horizontally so
+  columns keep their natural width.
+
 ## [3.44.0] - 2026-09-21
 
 ### Changed
