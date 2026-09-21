@@ -117,14 +117,16 @@ purchaseOrderLineItemId` — and the 3-way match in
     `match` on the other documents. Forcing per-column `onChange` escape
     hatches into the built-in `quantity`/`unitPrice` kinds for one document's
     quirk would have made the shell's config surface worse, not better.
-  - **Preserved verbatim, not "cleaned up":** the back-compute handlers read
-    and write via `form.getFieldValue(["lineItems", field.key, ...])` —
-    `field.key`, not `field.name`. In antd `Form.List`, those two diverge
-    after a middle row is removed (key is a stable counter, name is the
-    positional index), so this is a pre-existing latent bug — fixing it
-    would be a behaviour change hidden inside a refactor, exactly the kind
-    of thing this migration series has been careful not to do. Flagging it
-    here, not fixing it.
+  - **Was preserved verbatim, now fixed separately:** the back-compute
+    handlers read and write via `form.getFieldValue(["lineItems", field.name,
+    ...])`. They originally used `field.key`, not `field.name` — in antd
+    `Form.List` those diverge after a middle row is removed (key is a stable
+    counter, name is the positional index), so editing a row's Qty/Price/Total
+    after deleting a middle line wrote to a row that no longer existed (or a
+    newly-created phantom one) instead of the one on screen. Deliberately left
+    alone during this migration so the refactor stayed behaviour-preserving,
+    then fixed on its own with a regression test
+    (`src/routes/invoices/details.test.tsx`).
   - `taxRate` stayed `kind: "custom"` too, to preserve the `{name} {percentage}%`
     composition the non-goals list explicitly protects (`VAT 20% 20%` is not
     a bug — see the top of this document).

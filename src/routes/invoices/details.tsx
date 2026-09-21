@@ -817,10 +817,14 @@ const InvoiceDetails: React.FC = () => {
                               style={{ width: "100%" }}
                               styles={{ input: { textAlign: "right" } }}
                               onChange={(value) => {
-                                const total = form.getFieldValue(["lineItems", field.key, "total"]);
+                                const total = form.getFieldValue([
+                                  "lineItems",
+                                  field.name,
+                                  "total",
+                                ]);
                                 const unitPrice = form.getFieldValue([
                                   "lineItems",
-                                  field.key,
+                                  field.name,
                                   "unitPrice",
                                 ]);
 
@@ -828,12 +832,12 @@ const InvoiceDetails: React.FC = () => {
                                 if (value) {
                                   if (!unitPrice && total) {
                                     form.setFieldValue(
-                                      ["lineItems", field.key, "unitPrice"],
+                                      ["lineItems", field.name, "unitPrice"],
                                       divideDecimal(total, value),
                                     );
                                   } else if (unitPrice) {
                                     form.setFieldValue(
-                                      ["lineItems", field.key, "total"],
+                                      ["lineItems", field.name, "total"],
                                       multiplyDecimal(value, unitPrice),
                                     );
                                   }
@@ -859,10 +863,14 @@ const InvoiceDetails: React.FC = () => {
                               style={{ width: "100%" }}
                               styles={{ input: { textAlign: "right" } }}
                               onChange={(value) => {
-                                const total = form.getFieldValue(["lineItems", field.key, "total"]);
+                                const total = form.getFieldValue([
+                                  "lineItems",
+                                  field.name,
+                                  "total",
+                                ]);
                                 const quantity = form.getFieldValue([
                                   "lineItems",
-                                  field.key,
+                                  field.name,
                                   "quantity",
                                 ]);
 
@@ -870,12 +878,12 @@ const InvoiceDetails: React.FC = () => {
                                 if (value) {
                                   if (!quantity && total) {
                                     form.setFieldValue(
-                                      ["lineItems", field.key, "quantity"],
+                                      ["lineItems", field.name, "quantity"],
                                       divideDecimal(total, value),
                                     );
                                   } else if (quantity) {
                                     form.setFieldValue(
-                                      ["lineItems", field.key, "total"],
+                                      ["lineItems", field.name, "total"],
                                       multiplyDecimal(quantity, value),
                                     );
                                   }
@@ -924,12 +932,12 @@ const InvoiceDetails: React.FC = () => {
                               onChange={(value) => {
                                 const unitPrice = form.getFieldValue([
                                   "lineItems",
-                                  field.key,
+                                  field.name,
                                   "unitPrice",
                                 ]);
                                 const quantity = form.getFieldValue([
                                   "lineItems",
-                                  field.key,
+                                  field.name,
                                   "quantity",
                                 ]);
 
@@ -937,12 +945,12 @@ const InvoiceDetails: React.FC = () => {
                                 if (value) {
                                   if (!quantity && unitPrice) {
                                     form.setFieldValue(
-                                      ["lineItems", field.key, "quantity"],
+                                      ["lineItems", field.name, "quantity"],
                                       divideDecimal(value, unitPrice),
                                     );
                                   } else if (quantity) {
                                     form.setFieldValue(
-                                      ["lineItems", field.key, "unitPrice"],
+                                      ["lineItems", field.name, "unitPrice"],
                                       divideDecimal(value, quantity),
                                     );
                                   }

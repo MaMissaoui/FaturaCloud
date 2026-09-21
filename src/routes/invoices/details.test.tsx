@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { createStore } from "jotai";
 import { renderWithProviders } from "src/test-support/render-with-providers";
 import InvoiceDetails from "./details";
@@ -146,6 +146,11 @@ function buildInvoice(overrides: Partial<Invoice> = {}): Invoice {
 }
 
 describe("InvoiceDetails", () => {
+  // No global auto-cleanup is configured for this file, so each render would
+  // otherwise stay in document.body and make `screen` queries ambiguous once a
+  // second test renders the same page.
+  afterEach(cleanup);
+
   it("renders the new-invoice form without throwing, prefilled with the generated invoice number", async () => {
     mockCommonFetches();
 
@@ -203,4 +208,53 @@ describe("InvoiceDetails", () => {
     expect(GetInvoice).toHaveBeenCalledWith("inv_1");
     expect(GetInvoiceLineItems).toHaveBeenCalledWith("inv_1");
   });
+
+  // Regression test for the field.key/field.name divergence flagged while
+  // migrating the line-items table to the shared shell: the Qty/Price/Total
+  // back-compute handlers read and wrote through `field.key` (the Form.List
+  // row's stable identity) while the Form.Items themselves bind through
+  // `field.name` (the row's current positional index). Those two are equal
+  // until a row above is removed — after that the surviving rows keep their
+  // original keys but are re-indexed, so a handler keyed on field.key writes
+  // to a row that no longer exists (or a newly-created phantom one) instead of
+  // the row the user is editing. Deleting the first of two rows is the
+  // smallest repro of exactly that divergence (the survivor ends up key 1,
+  // name 0), and keeps the test cheap enough for CI.
+  it("back-computes the visible row's total, not a stale key's, after a line item is deleted", async () => {
+    mockCommonFetches();
+
+    const store = createStore();
+    store.set(organizationIdAtom, "org_1");
+
+    const { container } = await renderWithProviders(<InvoiceDetails />, {
+      route: "/invoices/new",
+      path: "/invoices/:id",
+      jotaiStore: store,
+      flushAtoms: [nextInvoiceNumberAtom],
+    });
+    await screen.findByText("Invoice details");
+
+    // A new invoice seeds one line item; add a second so one can be removed.
+    fireEvent.click(screen.getByRole("button", { name: /add line item/i }));
+
+    const table = container.querySelector(".ant-table") as HTMLElement;
+    const numbers = () =>
+      Array.from(table.querySelectorAll<HTMLInputElement>(".ant-input-number-input"));
+
+    // Each row renders Qty, Price and Total as number inputs, in that order.
+    await waitFor(() => expect(numbers()).toHaveLength(6));
+
+    // Remove the first row — the survivor keeps Form.List key 1 but becomes
+    // positional name 0.
+    fireEvent.click(screen.getAllByRole("button", { name: /remove line item/i })[0]);
+    await waitFor(() => expect(numbers()).toHaveLength(3));
+
+    // Quantity still defaults to 1, so typing a price must back-compute the
+    // row's total (1 × 20 = 20). Keyed on the stale field.key of 1 that set
+    // lands on a non-existent row and the total stays empty.
+    fireEvent.change(numbers()[1], { target: { value: "20" } });
+    await waitFor(() => expect(numbers()[2].value).toBe("20"));
+    // Rendering the whole invoice page in jsdom (antd Form.List/Table) is a
+    // few seconds on its own, over the 5s default timeout on slower CI.
+  }, 30000);
 });
