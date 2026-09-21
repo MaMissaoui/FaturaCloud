@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.45.0] - 2026-09-21
+
+### Added
+- Unit tests for the shared document-filter predicate (now in
+  `src/utils/document-filters.ts`, re-exported from the component).
+
+### Changed
+- Dropped the remaining `role="link"` overrides on table rows (journal
+  entries, tax rates, dashboard, products, bill of materials) so rows keep
+  their proper table semantics; the docs note for the Cash Book screen
+  reflects its current behaviour.
+
 ## [3.44.1] - 2026-09-21
 
 ### Fixed
