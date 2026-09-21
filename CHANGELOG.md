@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.43.0] - 2026-09-21
+
+### Changed
+- Invoices, Orders and Production Orders use the shared document-filter logic
+  (Orders' tracking number is now searchable too); status colours are aligned
+  across document types.
+
+### Fixed
+- Imports' Committed value column shows "—" until the summaries request has
+  loaded, instead of a misleading 0,00.
+- The widest lists (Invoices, Incoming Invoices, Imports) scroll horizontally
+  rather than widening the page.
+
 ## [3.42.0] - 2026-09-21
 
 ### Changed
