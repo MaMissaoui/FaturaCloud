@@ -8,7 +8,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
-import includes from "lodash/includes";
 
 import { useDateFormatter } from "src/utils/date";
 import {
@@ -18,7 +17,10 @@ import {
   type PurchaseOrderStatus,
 } from "src/types/purchase-order";
 import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-order";
+import { vendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import type { Dayjs } from "dayjs";
 
 const PurchaseOrders = () => {
   useLingui();
@@ -28,6 +30,10 @@ const PurchaseOrders = () => {
   const orders = useAtomValue(purchaseOrdersAtom);
   const setOrders = useSetAtom(setPurchaseOrdersAtom);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [vendorFilter, setVendorFilter] = useState("");
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const vendors = useAtomValue(vendorsAtom);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,15 +43,32 @@ const PurchaseOrders = () => {
     }
   }, [location, setOrders]);
 
+  const vendorOptions = useMemo(
+    () =>
+      (vendors as any[]).map((v) => ({
+        value: v.id,
+        label: [v.name, v.code ? `· ${v.code}` : v.phone].filter(Boolean).join(" "),
+      })),
+    [vendors],
+  );
+
+  const hasFilters = !!(search || statusFilter || vendorFilter || dateRange);
+
   const filtered = useMemo(
     () =>
-      filter(
-        orders,
-        (o: PurchaseOrder) =>
-          includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((o.vendorName ?? "").toLowerCase(), search.toLowerCase()),
+      filter(orders, (o: PurchaseOrder) =>
+        matchesDocumentFilters({
+          search,
+          searchFields: [o.orderNumber, o.vendorName],
+          status: statusFilter,
+          rowStatus: o.status,
+          partyId: vendorFilter,
+          rowPartyId: o.vendorId,
+          dateRange,
+          rowDate: o.orderDate,
+        }),
       ),
-    [orders, search],
+    [orders, search, statusFilter, vendorFilter, dateRange],
   );
 
   return (
@@ -54,6 +77,22 @@ const PurchaseOrders = () => {
         icon={<ShoppingCartOutlined />}
         title={<Trans>Purchase Orders</Trans>}
         search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
+        extra={
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={PURCHASE_ORDER_STATUSES.map((s) => ({
+              value: s,
+              label: purchaseOrderStatusLabel(s),
+            }))}
+            partyOptions={vendorOptions}
+            partyValue={vendorFilter}
+            onPartyChange={setVendorFilter}
+            partyPlaceholder={t`All vendors`}
+          />
+        }
         actions={
           <Button type="primary" onClick={() => navigate("/purchase-orders/new")}>
             <Trans>New purchase order</Trans>
@@ -69,8 +108,8 @@ const PurchaseOrders = () => {
             rowKey="id"
             loading={loading}
             locale={{
-              emptyText: search ? (
-                <Empty description={<Trans>No purchase orders match your search</Trans>} />
+              emptyText: hasFilters ? (
+                <Empty description={<Trans>No purchase orders match your filters</Trans>} />
               ) : (
                 <Empty description={<Trans>No purchase orders yet</Trans>}>
                   <Link to="/purchase-orders/new">

@@ -8,7 +8,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ImportOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
-import includes from "lodash/includes";
 
 import { useDateFormatter } from "src/utils/date";
 import {
@@ -18,7 +17,10 @@ import {
   type InboundDeliveryStatus,
 } from "src/types/inbound-delivery";
 import { inboundDeliveriesAtom, setInboundDeliveriesAtom } from "src/atoms/inbound-delivery";
+import { vendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import type { Dayjs } from "dayjs";
 
 const InboundDeliveries = () => {
   useLingui();
@@ -28,6 +30,10 @@ const InboundDeliveries = () => {
   const deliveries = useAtomValue(inboundDeliveriesAtom);
   const setDeliveries = useSetAtom(setInboundDeliveriesAtom);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [vendorFilter, setVendorFilter] = useState("");
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const vendors = useAtomValue(vendorsAtom);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,16 +43,32 @@ const InboundDeliveries = () => {
     }
   }, [location, setDeliveries]);
 
+  const vendorOptions = useMemo(
+    () =>
+      (vendors as any[]).map((v) => ({
+        value: v.id,
+        label: [v.name, v.code ? `· ${v.code}` : v.phone].filter(Boolean).join(" "),
+      })),
+    [vendors],
+  );
+
+  const hasFilters = !!(search || statusFilter || vendorFilter || dateRange);
+
   const filtered = useMemo(
     () =>
-      filter(
-        deliveries,
-        (d: InboundDelivery) =>
-          includes((d.deliveryNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((d.vendorName ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((d.orderNumber ?? "").toLowerCase(), search.toLowerCase()),
+      filter(deliveries, (d: InboundDelivery) =>
+        matchesDocumentFilters({
+          search,
+          searchFields: [d.deliveryNumber, d.vendorName, d.orderNumber],
+          status: statusFilter,
+          rowStatus: d.status,
+          partyId: vendorFilter,
+          rowPartyId: d.vendorId,
+          dateRange,
+          rowDate: d.deliveryDate,
+        }),
       ),
-    [deliveries, search],
+    [deliveries, search, statusFilter, vendorFilter, dateRange],
   );
 
   return (
@@ -55,6 +77,22 @@ const InboundDeliveries = () => {
         icon={<ImportOutlined />}
         title={<Trans>Goods Receipts</Trans>}
         search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
+        extra={
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={INBOUND_DELIVERY_STATUSES.map((s) => ({
+              value: s,
+              label: inboundDeliveryStatusLabel(s),
+            }))}
+            partyOptions={vendorOptions}
+            partyValue={vendorFilter}
+            onPartyChange={setVendorFilter}
+            partyPlaceholder={t`All vendors`}
+          />
+        }
         actions={
           <Button type="primary" onClick={() => navigate("/inbound-deliveries/new")}>
             <Trans>New goods receipt</Trans>
@@ -70,8 +108,8 @@ const InboundDeliveries = () => {
             rowKey="id"
             loading={loading}
             locale={{
-              emptyText: search ? (
-                <Empty description={<Trans>No goods receipts match your search</Trans>} />
+              emptyText: hasFilters ? (
+                <Empty description={<Trans>No goods receipts match your filters</Trans>} />
               ) : (
                 <Empty description={<Trans>No goods receipts yet</Trans>}>
                   <Link to="/inbound-deliveries/new">

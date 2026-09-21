@@ -26,12 +26,15 @@ import {
   deleteInvoiceAtom,
 } from "src/atoms/invoice";
 import { organizationAtom } from "src/atoms/organization";
+import { clientsAtom } from "src/atoms/client";
 import { getFormattedNumber } from "src/utils/currencies";
 import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
 import PageHeader from "src/components/page-header";
+import DocumentFilters from "src/components/document-filters";
 import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
 import type { InvoiceDisplay } from "src/types/invoice";
+import type { Dayjs } from "dayjs";
 
 const Invoices = () => {
   // Built inside the component (not at module scope) so the filter labels
@@ -51,7 +54,11 @@ const Invoices = () => {
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const [search, setSearch] = useState("");
+  const [stateFilterValue, setStateFilterValue] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [loading, setLoading] = useState(false);
+  const clients = useAtomValue(clientsAtom);
   // Computed once per component render rather than inside the Due date
   // column's per-row render callback, so every row's overdue comparison
   // uses the same instant instead of each potentially reading a slightly
@@ -68,16 +75,36 @@ const Invoices = () => {
     setInvoices().finally(() => setLoading(false));
   }, [setInvoices]);
 
-  const filtered = useMemo(
+  const clientOptions = useMemo(
     () =>
-      filter(invoices, (invoice: InvoiceDisplay) => {
-        return some(["clientName", "number", "customerNotes", "total"], (field) => {
-          const value = get(invoice, field);
-          return includes(toString(value).toLowerCase(), search.toLowerCase());
-        });
-      }),
-    [invoices, search],
+      (clients as any[]).map((c) => ({
+        value: c.id,
+        label: [c.name, c.code ? `· ${c.code}` : c.phone].filter(Boolean).join(" "),
+      })),
+    [clients],
   );
+
+  const hasFilters = !!(search || stateFilterValue || clientFilter || dateRange);
+
+  const filtered = useMemo(() => {
+    const fromMs = dateRange?.[0] ? dateRange[0].startOf("day").valueOf() : null;
+    const toMs = dateRange?.[1] ? dateRange[1].endOf("day").valueOf() : null;
+    return filter(invoices, (invoice: InvoiceDisplay) => {
+      if (
+        search &&
+        !some(["clientName", "number", "customerNotes", "total"], (field) =>
+          includes(toString(get(invoice, field)).toLowerCase(), search.toLowerCase()),
+        )
+      ) {
+        return false;
+      }
+      if (stateFilterValue && invoice.state !== stateFilterValue) return false;
+      if (clientFilter && invoice.clientId !== clientFilter) return false;
+      if (fromMs !== null && (invoice.date ?? 0) < fromMs) return false;
+      if (toMs !== null && (invoice.date ?? 0) > toMs) return false;
+      return true;
+    });
+  }, [invoices, search, stateFilterValue, clientFilter, dateRange]);
 
   const handleDuplicateInvoice = async (invoiceId: string) => {
     const newInvoiceId = await duplicateInvoice(invoiceId);
@@ -136,6 +163,19 @@ const Invoices = () => {
         icon={<FileTextOutlined />}
         title={<Trans>Invoices</Trans>}
         search={{ placeholder: t`Search text`, value: search, onChange: setSearch }}
+        extra={
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status={stateFilterValue}
+            onStatusChange={setStateFilterValue}
+            statusOptions={INVOICE_STATES.map((s) => ({ value: s, label: invoiceStateLabel(s) }))}
+            partyOptions={clientOptions}
+            partyValue={clientFilter}
+            onPartyChange={setClientFilter}
+            partyPlaceholder={t`All clients`}
+          />
+        }
         actions={
           <Link to="/invoices/new">
             <Button type="primary" style={{ marginBottom: 10 }}>
@@ -151,8 +191,8 @@ const Invoices = () => {
         rowKey="id"
         loading={loading}
         locale={{
-          emptyText: search ? (
-            <Empty description={<Trans>No invoices match your search</Trans>} />
+          emptyText: hasFilters ? (
+            <Empty description={<Trans>No invoices match your filters</Trans>} />
           ) : (
             <Empty description={<Trans>No invoices yet</Trans>}>
               <Link to="/invoices/new">

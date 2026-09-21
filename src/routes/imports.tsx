@@ -19,6 +19,8 @@ import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-or
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import ImportForm from "src/components/imports/form";
 import PageHeader from "src/components/page-header";
+import DocumentFilters from "src/components/document-filters";
+import type { Dayjs } from "dayjs";
 import { useDateFormatter } from "src/utils/date";
 import { formatOrgCents } from "src/utils/currencies";
 
@@ -39,6 +41,7 @@ const Imports = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [summaries, setSummaries] = useState<Record<string, ImportSummary>>({});
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const formatDate = useDateFormatter();
 
   useEffect(() => {
@@ -71,16 +74,24 @@ const Imports = () => {
     return map;
   }, [orders]);
 
+  const hasFilters = !!(search || dateRange);
+
   const filteredImports = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return imports;
     return filter(imports, (imp: Import) => {
-      return some(["importNumber", "notes"], (field) => {
-        const value = get(imp, field);
-        return includes(toString(value).toLowerCase(), term);
-      });
+      if (
+        term &&
+        !some(["importNumber", "notes"], (field) =>
+          includes(toString(get(imp, field)).toLowerCase(), term),
+        )
+      ) {
+        return false;
+      }
+      if (dateRange?.[0] && (imp.date ?? 0) < dateRange[0].startOf("day").valueOf()) return false;
+      if (dateRange?.[1] && (imp.date ?? 0) > dateRange[1].endOf("day").valueOf()) return false;
+      return true;
     });
-  }, [imports, search]);
+  }, [imports, search, dateRange]);
 
   // formatOrgCents applies the organization's own minimum_fraction_digits
   // (the same helper every other money screen uses) — formatCents ignored it,
@@ -94,6 +105,19 @@ const Imports = () => {
         icon={<ContainerOutlined />}
         title={<Trans>Imports</Trans>}
         search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
+        extra={
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status=""
+            onStatusChange={() => {}}
+            statusOptions={[]}
+            partyOptions={[]}
+            partyValue=""
+            onPartyChange={() => {}}
+            partyPlaceholder=""
+          />
+        }
         actions={
           <Link to="/imports" state={{ importModal: true }}>
             <Button type="primary" style={{ marginBottom: 10 }}>
@@ -110,8 +134,8 @@ const Imports = () => {
             rowKey="id"
             loading={loading}
             locale={{
-              emptyText: search ? (
-                <Empty description={<Trans>No imports match your search</Trans>} />
+              emptyText: hasFilters ? (
+                <Empty description={<Trans>No imports match your filters</Trans>} />
               ) : (
                 <Empty description={<Trans>No imports yet</Trans>}>
                   <Link to="/imports" state={{ importModal: true }}>

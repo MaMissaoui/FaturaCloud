@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ProductionOrder } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Empty, Row, Select, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -17,6 +17,8 @@ import {
 } from "src/types/production-order";
 import { productionOrdersAtom, setProductionOrdersAtom } from "src/atoms/production-order";
 import PageHeader from "src/components/page-header";
+import DocumentFilters from "src/components/document-filters";
+import type { Dayjs } from "dayjs";
 
 const ProductionOrders = () => {
   useLingui();
@@ -27,6 +29,7 @@ const ProductionOrders = () => {
   const setOrders = useSetAtom(setProductionOrdersAtom);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductionOrderStatus | "">("");
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -49,9 +52,13 @@ const ProductionOrders = () => {
         (o.orderNumber ?? "").toLowerCase().includes(term) ||
         (o.finishedProductName ?? "").toLowerCase().includes(term);
       const matchesStatus = !statusFilter || o.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesDate =
+        !dateRange ||
+        ((o.date ?? 0) >= (dateRange[0]?.startOf("day").valueOf() ?? 0) &&
+          (o.date ?? 0) <= (dateRange[1]?.endOf("day").valueOf() ?? Number.MAX_SAFE_INTEGER));
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [orders, search, statusFilter]);
+  }, [orders, search, statusFilter, dateRange]);
 
   return (
     <>
@@ -60,17 +67,19 @@ const ProductionOrders = () => {
         title={<Trans>Production Orders</Trans>}
         search={{ placeholder: t`Search`, onChange: setSearch }}
         extra={
-          <Select
-            allowClear
-            aria-label={t`Filter by status`}
-            placeholder={t`All statuses`}
-            style={{ width: 160 }}
-            value={statusFilter || undefined}
-            onChange={(value) => setStatusFilter(value || "")}
-            options={PRODUCTION_ORDER_STATUSES.map((s) => ({
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status={statusFilter}
+            onStatusChange={(v) => setStatusFilter(v as ProductionOrderStatus | "")}
+            statusOptions={PRODUCTION_ORDER_STATUSES.map((s) => ({
               value: s,
               label: productionOrderStatusLabel(s),
             }))}
+            partyOptions={[]}
+            partyValue=""
+            onPartyChange={() => {}}
+            partyPlaceholder=""
           />
         }
         actions={
