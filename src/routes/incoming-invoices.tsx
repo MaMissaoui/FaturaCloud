@@ -8,7 +8,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { AuditOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
-import includes from "lodash/includes";
 
 import { useDateFormatter } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
@@ -22,7 +21,10 @@ import {
 } from "src/types/incoming-invoice";
 import { organizationAtom } from "src/atoms/organization";
 import { incomingInvoicesAtom, setIncomingInvoicesAtom } from "src/atoms/incoming-invoice";
+import { vendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import type { Dayjs } from "dayjs";
 
 const IncomingInvoices = () => {
   const { i18n } = useLingui();
@@ -33,6 +35,10 @@ const IncomingInvoices = () => {
   const invoices = useAtomValue(incomingInvoicesAtom);
   const setInvoices = useSetAtom(setIncomingInvoicesAtom);
   const [search, setSearch] = useState("");
+  const [stateFilter, setStateFilter] = useState("");
+  const [vendorFilter, setVendorFilter] = useState("");
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const vendors = useAtomValue(vendorsAtom);
   const [loading, setLoading] = useState(false);
   const [variances, setVariances] = useState<Record<string, boolean>>({});
 
@@ -50,16 +56,32 @@ const IncomingInvoices = () => {
       .catch(() => setVariances({}));
   }, [location, organization?.id]);
 
+  const vendorOptions = useMemo(
+    () =>
+      (vendors as any[]).map((v) => ({
+        value: v.id,
+        label: [v.name, v.code ? `· ${v.code}` : v.phone].filter(Boolean).join(" "),
+      })),
+    [vendors],
+  );
+
+  const hasFilters = !!(search || stateFilter || vendorFilter || dateRange);
+
   const filtered = useMemo(
     () =>
-      filter(
-        invoices,
-        (i: IncomingInvoice) =>
-          includes((i.vendorInvoiceNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((i.vendorName ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((i.reference ?? "").toLowerCase(), search.toLowerCase()),
+      filter(invoices, (i: IncomingInvoice) =>
+        matchesDocumentFilters({
+          search,
+          searchFields: [i.vendorInvoiceNumber, i.vendorName, i.reference],
+          status: stateFilter,
+          rowStatus: i.state,
+          partyId: vendorFilter,
+          rowPartyId: i.vendorId,
+          dateRange,
+          rowDate: i.date,
+        }),
       ),
-    [invoices, search],
+    [invoices, search, stateFilter, vendorFilter, dateRange],
   );
 
   return (
@@ -68,6 +90,22 @@ const IncomingInvoices = () => {
         icon={<AuditOutlined />}
         title={<Trans>Incoming Invoices</Trans>}
         search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
+        extra={
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status={stateFilter}
+            onStatusChange={setStateFilter}
+            statusOptions={INCOMING_INVOICE_STATES.map((s) => ({
+              value: s,
+              label: incomingInvoiceStateLabel(s),
+            }))}
+            partyOptions={vendorOptions}
+            partyValue={vendorFilter}
+            onPartyChange={setVendorFilter}
+            partyPlaceholder={t`All vendors`}
+          />
+        }
         actions={
           <Button type="primary" onClick={() => navigate("/incoming-invoices/new")}>
             <Trans>New incoming invoice</Trans>
@@ -83,8 +121,8 @@ const IncomingInvoices = () => {
             rowKey="id"
             loading={loading}
             locale={{
-              emptyText: search ? (
-                <Empty description={<Trans>No incoming invoices match your search</Trans>} />
+              emptyText: hasFilters ? (
+                <Empty description={<Trans>No incoming invoices match your filters</Trans>} />
               ) : (
                 <Empty description={<Trans>No incoming invoices yet</Trans>}>
                   <Link to="/incoming-invoices/new">

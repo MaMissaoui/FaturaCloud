@@ -8,7 +8,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { SendOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
-import includes from "lodash/includes";
 
 import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
 import {
@@ -18,7 +17,10 @@ import {
   type DeliveryStatus,
 } from "src/types/delivery";
 import PageHeader from "src/components/page-header";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import { clientsAtom } from "src/atoms/client";
 import { useDateFormatter } from "src/utils/date";
+import type { Dayjs } from "dayjs";
 
 const statusTag = (status: string) => (
   <Tag color={deliveryStatusColor[status as DeliveryStatus]}>{deliveryStatusLabel(status)}</Tag>
@@ -31,6 +33,10 @@ const Deliveries = () => {
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const clients = useAtomValue(clientsAtom);
   const formatDate = useDateFormatter();
   const [loading, setLoading] = useState(false);
 
@@ -41,16 +47,32 @@ const Deliveries = () => {
     }
   }, [location, setDeliveries]);
 
+  const clientOptions = useMemo(
+    () =>
+      (clients as any[]).map((c) => ({
+        value: c.id,
+        label: [c.name, c.code ? `· ${c.code}` : c.phone].filter(Boolean).join(" "),
+      })),
+    [clients],
+  );
+
+  const hasFilters = !!(search || statusFilter || clientFilter || dateRange);
+
   const filtered = useMemo(
     () =>
-      filter(
-        deliveries,
-        (d: Delivery) =>
-          includes((d.deliveryNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((d.clientName ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((d.orderNumber ?? "").toLowerCase(), search.toLowerCase()),
+      filter(deliveries, (d: Delivery) =>
+        matchesDocumentFilters({
+          search,
+          searchFields: [d.deliveryNumber, d.clientName, d.orderNumber],
+          status: statusFilter,
+          rowStatus: d.status,
+          partyId: clientFilter,
+          rowPartyId: d.clientId,
+          dateRange,
+          rowDate: d.deliveryDate,
+        }),
       ),
-    [deliveries, search],
+    [deliveries, search, statusFilter, clientFilter, dateRange],
   );
 
   return (
@@ -59,6 +81,22 @@ const Deliveries = () => {
         icon={<SendOutlined />}
         title={<Trans>Outbound Deliveries</Trans>}
         search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
+        extra={
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={DELIVERY_STATUSES.map((s) => ({
+              value: s,
+              label: deliveryStatusLabel(s),
+            }))}
+            partyOptions={clientOptions}
+            partyValue={clientFilter}
+            onPartyChange={setClientFilter}
+            partyPlaceholder={t`All clients`}
+          />
+        }
         actions={
           <Button type="primary" onClick={() => navigate("/deliveries/new")}>
             <Trans>New delivery</Trans>
@@ -73,8 +111,8 @@ const Deliveries = () => {
             rowKey="id"
             loading={loading}
             locale={{
-              emptyText: search ? (
-                <Empty description={<Trans>No deliveries match your search</Trans>} />
+              emptyText: hasFilters ? (
+                <Empty description={<Trans>No deliveries match your filters</Trans>} />
               ) : (
                 <Empty description={<Trans>No deliveries yet</Trans>}>
                   <Link to="/deliveries/new">

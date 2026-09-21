@@ -11,6 +11,7 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
+import { clientsAtom } from "src/atoms/client";
 import {
   ORDER_STATUSES,
   orderStatusColor,
@@ -18,7 +19,9 @@ import {
   type OrderStatus,
 } from "src/types/order";
 import PageHeader from "src/components/page-header";
+import DocumentFilters from "src/components/document-filters";
 import { useDateFormatter } from "src/utils/date";
+import type { Dayjs } from "dayjs";
 
 const statusTag = (status: string) => (
   <Tag color={orderStatusColor[status as OrderStatus]}>{orderStatusLabel(status)}</Tag>
@@ -30,7 +33,11 @@ const Orders = () => {
   const navigate = useNavigate();
   const orders = useAtomValue(ordersAtom);
   const setOrders = useSetAtom(setOrdersAtom);
+  const clients = useAtomValue(clientsAtom);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [loading, setLoading] = useState(false);
   const formatDate = useDateFormatter();
 
@@ -41,16 +48,35 @@ const Orders = () => {
     }
   }, [location, setOrders]);
 
-  const filtered = useMemo(
+  const clientOptions = useMemo(
     () =>
-      filter(
-        orders,
-        (o: Order) =>
-          includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) ||
-          includes((o.clientName ?? "").toLowerCase(), search.toLowerCase()),
-      ),
-    [orders, search],
+      (clients as any[]).map((c) => ({
+        value: c.id,
+        label: [c.name, c.code ? `· ${c.code}` : c.phone].filter(Boolean).join(" "),
+      })),
+    [clients],
   );
+
+  const hasFilters = !!(search || statusFilter || clientFilter || dateRange);
+
+  const filtered = useMemo(() => {
+    const fromMs = dateRange?.[0] ? dateRange[0].startOf("day").valueOf() : null;
+    const toMs = dateRange?.[1] ? dateRange[1].endOf("day").valueOf() : null;
+    return filter(orders, (o: Order) => {
+      if (
+        search &&
+        !includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) &&
+        !includes((o.clientName ?? "").toLowerCase(), search.toLowerCase())
+      ) {
+        return false;
+      }
+      if (statusFilter && o.status !== statusFilter) return false;
+      if (clientFilter && o.clientId !== clientFilter) return false;
+      if (fromMs !== null && (o.orderDate ?? 0) < fromMs) return false;
+      if (toMs !== null && (o.orderDate ?? 0) > toMs) return false;
+      return true;
+    });
+  }, [orders, search, statusFilter, clientFilter, dateRange]);
 
   return (
     <>
@@ -58,6 +84,19 @@ const Orders = () => {
         icon={<ShoppingOutlined />}
         title={<Trans>Orders</Trans>}
         search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
+        extra={
+          <DocumentFilters
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={ORDER_STATUSES.map((s) => ({ value: s, label: orderStatusLabel(s) }))}
+            partyOptions={clientOptions}
+            partyValue={clientFilter}
+            onPartyChange={setClientFilter}
+            partyPlaceholder={t`All clients`}
+          />
+        }
         actions={
           <Button type="primary" onClick={() => navigate("/orders/new")}>
             <Trans>New order</Trans>
@@ -73,8 +112,8 @@ const Orders = () => {
             rowKey="id"
             loading={loading}
             locale={{
-              emptyText: search ? (
-                <Empty description={<Trans>No orders match your search</Trans>} />
+              emptyText: hasFilters ? (
+                <Empty description={<Trans>No orders match your filters</Trans>} />
               ) : (
                 <Empty description={<Trans>No orders yet</Trans>}>
                   <Link to="/orders/new">
