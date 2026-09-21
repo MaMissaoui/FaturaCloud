@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.37.1] - 2026-09-21
+
+### Fixed
+- Cash Book: the customer filter in the loan status report is searchable again
+  (typing a name, code, phone, CIN, IBAN or guarantor filters the list).
+
 ## [3.37.0] - 2026-09-20
 
 ### Changed
