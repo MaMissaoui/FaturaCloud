@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   Alert,
   App,
@@ -12,7 +19,6 @@ import {
   Form,
   Input,
   InputNumber,
-  List,
   Modal,
   Radio,
   Row,
@@ -34,7 +40,6 @@ import {
   FieldTimeOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
-  RightOutlined,
   UserAddOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
@@ -161,7 +166,175 @@ const clientDetailLine = (c: any): string => {
     .join(" · ");
 };
 
-// Cash Book: a single fast-entry screen for a walk-in retail counter —
+// One selectable customer in the Cash Book pick-list. A grid rather than
+// List.Item.Meta: the name and its identifying fields on the left, a
+// fixed-width right rail for the open-loan amount so the figures line up as a
+// real column, and a single row height so a screenful holds ~11 results
+// instead of 8. Used both as a `listbox` option (search results, driven from
+// the search field's arrow keys) and as a plain button (the no-query "Open
+// loans" default), which is what the role/tabIndex props are for.
+const CashBookCustomerRow = ({
+  name,
+  meta,
+  outstanding,
+  moneyText,
+  active,
+  role,
+  id,
+  ariaLabel,
+  title,
+  onSelect,
+  onHover,
+}: {
+  name: ReactNode;
+  meta: ReactNode;
+  outstanding: number;
+  moneyText: string;
+  active: boolean;
+  role: "option" | "button";
+  id?: string;
+  ariaLabel: string;
+  title?: string;
+  onSelect: () => void;
+  onHover?: () => void;
+}) => {
+  const {
+    token: {
+      colorPrimary,
+      colorTextSecondary,
+      colorWarningText,
+      colorBorderSecondary,
+      controlItemBgHover,
+      controlItemBgActive,
+      borderRadius,
+    },
+  } = theme.useToken();
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      id={id}
+      role={role}
+      aria-selected={role === "option" ? active : undefined}
+      aria-label={ariaLabel}
+      title={title}
+      tabIndex={role === "button" ? 0 : undefined}
+      onClick={onSelect}
+      onMouseEnter={() => {
+        setHovered(true);
+        onHover?.();
+      }}
+      onMouseLeave={() => setHovered(false)}
+      onKeyDown={(e) => {
+        if (role === "button" && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr) max-content",
+        columnGap: 16,
+        alignItems: "center",
+        minHeight: 56,
+        padding: "8px 12px",
+        borderBottom: `1px solid ${colorBorderSecondary}`,
+        // The grid's left track is minmax(0, 1fr) so this row's own min-width
+        // never lets a long name push the money rail off-screen.
+        minWidth: 0,
+        borderRadius,
+        cursor: "pointer",
+        transition: "background-color 120ms ease",
+        background: active ? controlItemBgActive : hovered ? controlItemBgHover : undefined,
+        outline: active ? `2px solid ${colorPrimary}` : undefined,
+        outlineOffset: active ? -2 : undefined,
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            lineHeight: 1.35,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {name}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            marginTop: 2,
+            fontSize: 13,
+            lineHeight: 1.4,
+            color: colorTextSecondary,
+          }}
+        >
+          {meta}
+        </div>
+      </div>
+      {/* The rail keeps its width even with nothing to show, so the amounts
+          above and below it stay in one column; a zero balance renders
+          nothing rather than "0,00". */}
+      <div
+        style={{
+          minWidth: 132,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 2,
+        }}
+      >
+        {outstanding > 0 ? (
+          <>
+            <span style={{ fontSize: 11, letterSpacing: ".02em", color: colorTextSecondary }}>
+              {t`Open loan`}
+            </span>
+            <span
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                color: colorWarningText,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {moneyText}
+            </span>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
+// The identifiers that actually tell two same-named customers apart, in
+// priority order: the customer number (the organization's own unique key),
+// then the mobile number, then the CIN. IBAN/address/guarantor stay available
+// through the row's title tooltip rather than competing for the one line.
+const customerIdentifiers = (c: any, highlight: (text: string) => ReactNode): ReactNode => (
+  <>
+    {c.code ? (
+      <Typography.Text code style={{ fontSize: 12 }}>
+        {String(c.code)}
+      </Typography.Text>
+    ) : null}
+    {[c.phone, c.phone2, c.phone3].filter(Boolean).length ? (
+      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>
+        {highlight([c.phone, c.phone2, c.phone3].filter(Boolean).join(" / "))}
+      </span>
+    ) : null}
+    {c.identity_number ? (
+      <span>
+        {t`CIN`} {highlight(String(c.identity_number))}
+      </span>
+    ) : null}
+  </>
+);
+
 // search for a customer by name/mobile/IBAN/identity number, then either
 // pay off one of their open (loan sale) invoices or record a new sale.
 // Cash vs. loan is an explicit choice (saleMode, the "Sale type" toggle
@@ -567,6 +740,45 @@ const CashBook = () => {
     );
   };
 
+  // Active row for the combobox: moved by the search field's ArrowUp/Down and
+  // by mouse hover, and read by Enter in `onSearch`. Reset whenever the query
+  // changes so the arrows start from the top of the new list.
+  const [activeResultIndex, setActiveResultIndex] = useState(-1);
+  useEffect(() => {
+    setActiveResultIndex(-1);
+  }, [needle]);
+
+  const onSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (!visibleSearchResults.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveResultIndex((i) => Math.min(i + 1, visibleSearchResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveResultIndex((i) => Math.max(i - 1, 0));
+    }
+  };
+
+  const activeResultId =
+    activeResultIndex >= 0 && visibleSearchResults[activeResultIndex]
+      ? `cash-book-result-${visibleSearchResults[activeResultIndex].id}`
+      : undefined;
+
+  // A row's accessible name: the same facts the row shows, rather than the
+  // browser deriving it from the whole cell.
+  const resultAriaLabel = (c: any): string => {
+    const outstanding = openLoanByClient.get(c.id) ?? 0;
+    return [
+      c.name,
+      c.code ? `${t`Customer no.`} ${c.code}` : null,
+      [c.phone, c.phone2, c.phone3].filter(Boolean).join(" / ") || null,
+      c.identity_number ? `${t`CIN`} ${c.identity_number}` : null,
+      outstanding > 0 ? `${t`Open loan`} ${money(outstanding)}` : null,
+    ]
+      .filter(Boolean)
+      .join(". ");
+  };
+
   const openNewClientModal = (prefillName?: string) => {
     newClientForm.resetFields();
     if (prefillName) newClientForm.setFieldValue("name", prefillName);
@@ -824,11 +1036,27 @@ const CashBook = () => {
                 allowClear: true,
                 autoFocus: true,
                 onSearch: () => {
-                  // Enter is the natural motion after typing a phone number
-                  // at a counter — auto-select when the search has narrowed
-                  // to one customer instead of making the cashier reach for
-                  // the mouse.
-                  if (searchResults.length === 1) selectClient(searchResults[0]);
+                  // Enter is the natural motion after typing a phone number at
+                  // a counter — take the arrow-key-active row if there is one,
+                  // else auto-select when the search has narrowed to a single
+                  // customer, instead of making the cashier reach for the
+                  // mouse.
+                  if (activeResultIndex >= 0 && visibleSearchResults[activeResultIndex]) {
+                    selectClient(visibleSearchResults[activeResultIndex]);
+                  } else if (searchResults.length === 1) {
+                    selectClient(searchResults[0]);
+                  }
+                },
+                // The search field is the combobox that drives the result
+                // listbox below (WAI-ARIA pattern: one tab stop, arrows move
+                // the active option, Enter selects it).
+                inputProps: {
+                  role: "combobox",
+                  "aria-expanded": searchResults.length > 0,
+                  "aria-controls": "cash-book-results",
+                  "aria-autocomplete": "list",
+                  "aria-activedescendant": activeResultId,
+                  onKeyDown: onSearchKeyDown,
                 },
               }
             : undefined
@@ -882,72 +1110,53 @@ const CashBook = () => {
                   {searchResults.length} matches · {debtorCount} with an open loan
                 </Trans>
               </div>
-              <List
-                dataSource={visibleSearchResults}
-                locale={{
-                  emptyText: (
-                    <Empty description={t`No matching customers`}>
-                      <Button
-                        type="dashed"
-                        icon={<UserAddOutlined />}
-                        onClick={() => openNewClientModal(search)}
-                      >
-                        {t`Create`} "{search}"
-                      </Button>
-                    </Empty>
-                  ),
-                }}
-                style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
-                renderItem={(client: any) => {
-                  const details = clientDetailLine(client);
-                  const openLoan = openLoanByClient.get(client.id);
-                  return (
-                    <List.Item
-                      onClick={() => selectClient(client)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          selectClient(client);
-                        }
-                      }}
-                      style={{ cursor: "pointer" }}
-                      tabIndex={0}
-                      role="button"
-                      // The row itself is the target; a nested "Select" button
-                      // was both a second hit target for the same action and
-                      // invalid (a button inside a button), so the affordance
-                      // is a non-focusable chevron instead.
-                      actions={[<RightOutlined key="go" aria-hidden />]}
-                    >
-                      <List.Item.Meta
-                        title={highlight(client.name, needle)}
-                        description={
-                          <>
-                            <Typography.Text style={{ color: colorTextSecondary }}>
-                              {highlight(details, needle)}
-                            </Typography.Text>
-                            {openLoan ? (
-                              <>
-                                {" · "}
-                                <Typography.Text strong type="warning">
-                                  {t`Open loan`}: {money(openLoan)}
-                                </Typography.Text>
-                              </>
-                            ) : null}
-                          </>
-                        }
-                      />
-                    </List.Item>
-                  );
-                }}
-              />
-              {hiddenResultCount > 0 && (
-                <div style={{ marginBottom: 16, fontSize: 12, color: colorTextSecondary }}>
-                  <Trans>
-                    Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow{" "}
-                    {hiddenResultCount} more
-                  </Trans>
-                </div>
+              {visibleSearchResults.length === 0 ? (
+                <Empty description={t`No matching customers`} style={{ marginBottom: 16 }}>
+                  <Button
+                    type="dashed"
+                    icon={<UserAddOutlined />}
+                    onClick={() => openNewClientModal(search)}
+                  >
+                    {t`Create`} "{search}"
+                  </Button>
+                </Empty>
+              ) : (
+                <>
+                  <div
+                    id="cash-book-results"
+                    role="listbox"
+                    aria-label={t`Search results`}
+                    style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
+                  >
+                    {visibleSearchResults.map((client: any, index: number) => {
+                      const openLoan = openLoanByClient.get(client.id) ?? 0;
+                      return (
+                        <CashBookCustomerRow
+                          key={client.id}
+                          role="option"
+                          id={`cash-book-result-${client.id}`}
+                          active={index === activeResultIndex}
+                          ariaLabel={resultAriaLabel(client)}
+                          title={clientDetailLine(client)}
+                          name={highlight(client.name, needle)}
+                          meta={customerIdentifiers(client, (text) => highlight(text, needle))}
+                          outstanding={openLoan}
+                          moneyText={money(openLoan)}
+                          onSelect={() => selectClient(client)}
+                          onHover={() => setActiveResultIndex(index)}
+                        />
+                      );
+                    })}
+                  </div>
+                  {hiddenResultCount > 0 && (
+                    <div style={{ marginBottom: 16, fontSize: 12, color: colorTextSecondary }}>
+                      <Trans>
+                        Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow{" "}
+                        {hiddenResultCount} more
+                      </Trans>
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : (
@@ -963,34 +1172,21 @@ const CashBook = () => {
                 >
                   <Trans>Open loans</Trans>
                 </div>
-                <List
-                  dataSource={topDebtors}
-                  style={{ marginBottom: 16 }}
-                  renderItem={(row) => (
-                    <List.Item
-                      onClick={() => row.client && selectClient(row.client)}
-                      onKeyDown={(e) => {
-                        if ((e.key === "Enter" || e.key === " ") && row.client) {
-                          e.preventDefault();
-                          selectClient(row.client);
-                        }
-                      }}
-                      style={{ cursor: "pointer" }}
-                      tabIndex={0}
+                <div style={{ marginBottom: 16 }}>
+                  {topDebtors.map((row) => (
+                    <CashBookCustomerRow
+                      key={row.clientId}
                       role="button"
-                      actions={[<RightOutlined key="go" aria-hidden />]}
-                    >
-                      <List.Item.Meta
-                        title={row.name}
-                        description={
-                          <Typography.Text strong type="warning">
-                            {t`Open loan`}: {money(row.outstanding)}
-                          </Typography.Text>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
+                      active={false}
+                      ariaLabel={`${row.name}. ${t`Open loan`} ${money(row.outstanding)}`}
+                      name={row.name}
+                      meta={customerIdentifiers(row.client, (text) => text)}
+                      outstanding={row.outstanding}
+                      moneyText={money(row.outstanding)}
+                      onSelect={() => row.client && selectClient(row.client)}
+                    />
+                  ))}
+                </div>
               </>
             )
           )}
