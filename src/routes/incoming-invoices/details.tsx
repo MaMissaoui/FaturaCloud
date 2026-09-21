@@ -578,17 +578,26 @@ const IncomingInvoiceDetails = () => {
                 title={<Trans>Description</Trans>}
                 dataIndex="description"
                 key="description"
+                sorter={(a: MatchLine, b: MatchLine) =>
+                  String(a.description ?? "").localeCompare(String(b.description ?? ""))
+                }
               />
               <Table.Column
                 title={<Trans>Ordered</Trans>}
                 key="ordered"
                 align="right"
+                sorter={(a: MatchLine, b: MatchLine) =>
+                  (a.orderedQuantity ?? 0) - (b.orderedQuantity ?? 0)
+                }
                 render={(line: MatchLine) => line.orderedQuantity ?? "—"}
               />
               <Table.Column
                 title={<Trans>Received</Trans>}
                 key="received"
                 align="right"
+                sorter={(a: MatchLine, b: MatchLine) =>
+                  (a.receivedQuantity ?? 0) - (b.receivedQuantity ?? 0)
+                }
                 render={(line: MatchLine) => line.receivedQuantity ?? "—"}
               />
               <Table.Column
@@ -596,16 +605,23 @@ const IncomingInvoiceDetails = () => {
                 dataIndex="previouslyInvoicedQuantity"
                 key="previouslyInvoicedQuantity"
                 align="right"
+                sorter={(a: MatchLine, b: MatchLine) =>
+                  (a.previouslyInvoicedQuantity ?? 0) - (b.previouslyInvoicedQuantity ?? 0)
+                }
               />
               <Table.Column
                 title={<Trans>On this invoice</Trans>}
                 dataIndex="invoicedQuantity"
                 key="invoicedQuantity"
                 align="right"
+                sorter={(a: MatchLine, b: MatchLine) =>
+                  (a.invoicedQuantity ?? 0) - (b.invoicedQuantity ?? 0)
+                }
               />
               <Table.Column
                 title={<Trans>Status</Trans>}
                 key="status"
+                sorter={(a: MatchLine, b: MatchLine) => a.status.localeCompare(b.status)}
                 render={(line: MatchLine) => (
                   <Space direction="vertical" size={0}>
                     <Tag color={matchStatusColor[line.status]}>{matchStatusLabel(line.status)}</Tag>

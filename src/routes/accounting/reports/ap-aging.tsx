@@ -11,6 +11,7 @@ import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
 import { formatCents } from "src/utils/currency";
+import { moneySorter, numberSorter, textSorter } from "src/utils/sort";
 
 const PayableAging = () => {
   const { i18n } = useLingui();
@@ -142,19 +143,31 @@ const PayableAging = () => {
               ) : null
             }
           >
-            <Table.Column title={<Trans>Bill</Trans>} dataIndex="number" key="number" />
-            <Table.Column title={<Trans>Vendor</Trans>} dataIndex="vendorName" key="vendorName" />
+            <Table.Column
+              title={<Trans>Bill</Trans>}
+              dataIndex="number"
+              key="number"
+              sorter={textSorter((r: any) => r.number)}
+            />
+            <Table.Column
+              title={<Trans>Vendor</Trans>}
+              dataIndex="vendorName"
+              key="vendorName"
+              sorter={textSorter((r: any) => r.vendorName)}
+            />
             <Table.Column
               title={<Trans>Days overdue</Trans>}
               dataIndex="daysOverdue"
               key="daysOverdue"
               align="right"
+              sorter={numberSorter((r: any) => r.daysOverdue)}
               render={(days: number) => (days > 0 ? days : "—")}
             />
             <Table.Column
               title={<Trans>Balance due</Trans>}
               key="total"
               align="right"
+              sorter={moneySorter((r: any) => r.total)}
               render={(bill: OutstandingBillSummary) => (
                 <>
                   {money(bill.total)}

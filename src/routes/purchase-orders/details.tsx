@@ -671,6 +671,9 @@ const PurchaseOrderDetails = () => {
               <Table.Column
                 title={<Trans>Number</Trans>}
                 key="deliveryNumber"
+                sorter={(a: any, b: any) =>
+                  String(a.deliveryNumber ?? "").localeCompare(String(b.deliveryNumber ?? ""))
+                }
                 render={(receipt: any) => (
                   <Link to={`/inbound-deliveries/${receipt.id}`}>{receipt.deliveryNumber}</Link>
                 )}
@@ -678,11 +681,13 @@ const PurchaseOrderDetails = () => {
               <Table.Column
                 title={<Trans>Date</Trans>}
                 key="deliveryDate"
+                sorter={(a: any, b: any) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
                 render={(receipt: any) => formatDate(receipt.deliveryDate)}
               />
               <Table.Column
                 title={<Trans>Status</Trans>}
                 key="status"
+                sorter={(a: any, b: any) => String(a.status).localeCompare(String(b.status))}
                 render={(receipt: any) => (
                   <Tag color={inboundDeliveryStatusColor[receipt.status as InboundDeliveryStatus]}>
                     {inboundDeliveryStatusLabel(receipt.status)}
@@ -698,6 +703,11 @@ const PurchaseOrderDetails = () => {
               <Table.Column
                 title={<Trans>Vendor invoice #</Trans>}
                 key="vendorInvoiceNumber"
+                sorter={(a: any, b: any) =>
+                  String(a.vendorInvoiceNumber ?? "").localeCompare(
+                    String(b.vendorInvoiceNumber ?? ""),
+                  )
+                }
                 render={(invoice: any) => (
                   <Link to={`/incoming-invoices/${invoice.id}`}>{invoice.vendorInvoiceNumber}</Link>
                 )}
@@ -705,11 +715,13 @@ const PurchaseOrderDetails = () => {
               <Table.Column
                 title={<Trans>Date</Trans>}
                 key="date"
+                sorter={(a: any, b: any) => (a.date ?? 0) - (b.date ?? 0)}
                 render={(invoice: any) => formatDate(invoice.date)}
               />
               <Table.Column
                 title={<Trans>State</Trans>}
                 key="state"
+                sorter={(a: any, b: any) => String(a.state).localeCompare(String(b.state))}
                 render={(invoice: any) => (
                   <Tag color={incomingInvoiceStateColor[invoice.state as IncomingInvoiceState]}>
                     {incomingInvoiceStateLabel(invoice.state)}

@@ -160,6 +160,9 @@ const Imports = () => {
             <Table.Column
               title={<Trans>Purchase orders</Trans>}
               key="purchaseOrders"
+              sorter={(a: Import, b: Import) =>
+                (ordersByImport.get(a.id)?.length ?? 0) - (ordersByImport.get(b.id)?.length ?? 0)
+              }
               render={(imp: Import) => {
                 const linked = ordersByImport.get(imp.id) ?? [];
                 if (linked.length === 0) {
@@ -209,7 +212,13 @@ const Imports = () => {
               sorter={(a: Import, b: Import) => a.customsCost - b.customsCost}
               render={(cents: number) => money(cents)}
             />
-            <Table.Column title={<Trans>Notes</Trans>} dataIndex="notes" key="notes" ellipsis />
+            <Table.Column
+              title={<Trans>Notes</Trans>}
+              dataIndex="notes"
+              key="notes"
+              ellipsis
+              sorter={(a: Import, b: Import) => (a.notes ?? "").localeCompare(b.notes ?? "")}
+            />
           </Table>
         </Col>
       </Row>

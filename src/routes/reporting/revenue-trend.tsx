@@ -15,6 +15,7 @@ import type { MonthlyRevenue } from "src/api";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
+import { moneySorter, textSorter } from "src/utils/sort";
 
 const { RangePicker } = DatePicker;
 
@@ -142,12 +143,14 @@ const RevenueTrend = () => {
               <Table.Column
                 title={<Trans>Month</Trans>}
                 key="month"
+                sorter={textSorter((row: MonthlyRevenue) => row.month)}
                 render={(row: MonthlyRevenue) => formatMonth(row.month)}
               />
               <Table.Column
                 title={<Trans>Revenue</Trans>}
                 key="revenue"
                 align="right"
+                sorter={moneySorter((row: MonthlyRevenue) => row.revenue)}
                 render={(row: MonthlyRevenue) => money(row.revenue)}
               />
             </Table>

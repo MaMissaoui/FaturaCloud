@@ -37,6 +37,7 @@ import {
   type PaymentMethod,
 } from "src/types/payment";
 import { useDatePickerFormat } from "src/utils/date";
+import { dateSorter, moneySorter, textSorter } from "src/utils/sort";
 import { unitsToCents, centsToUnits } from "src/utils/currency";
 import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
 import { showExchangeRateFields } from "src/components/currency/currency-fields";
@@ -366,27 +367,32 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
           <Table.Column
             title={<Trans>Date</Trans>}
             key="date"
+            sorter={dateSorter((row: PaymentRow) => row.payment.date)}
             render={(row: PaymentRow) => dayjs(row.payment.date).format(dateFormat)}
           />
           <Table.Column
             title={<Trans>Method</Trans>}
             key="method"
+            sorter={textSorter((row: PaymentRow) => paymentMethodLabel(row.payment.method))}
             render={(row: PaymentRow) => paymentMethodLabel(row.payment.method)}
           />
           <Table.Column
             title={<Trans>Amount</Trans>}
             key="amount"
             align="right"
+            sorter={moneySorter((row: PaymentRow) => row.application.amount)}
             render={(row: PaymentRow) => money(row.application.amount)}
           />
           <Table.Column
             title={<Trans>Reference</Trans>}
             key="reference"
+            sorter={textSorter((row: PaymentRow) => row.payment.reference ?? "")}
             render={(row: PaymentRow) => row.payment.reference || "—"}
           />
           <Table.Column
             title={<Trans>Status</Trans>}
             key="status"
+            sorter={textSorter((row: PaymentRow) => paymentStatusLabel(row.payment.status))}
             render={(row: PaymentRow) => (
               <Tag color={paymentStatusColor[row.payment.status]}>
                 {paymentStatusLabel(row.payment.status)}

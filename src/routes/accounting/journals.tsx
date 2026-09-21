@@ -107,12 +107,14 @@ const Journals = () => {
             <Table.Column
               title={<Trans>Type</Trans>}
               dataIndex="type"
+              sorter={(a: Journal, b: Journal) => a.type.localeCompare(b.type)}
               key="type"
               render={(type: string) => journalTypeLabel(type)}
             />
             <Table.Column
               title={<Trans>Built-in</Trans>}
               dataIndex="isSystem"
+              sorter={(a: Journal, b: Journal) => a.isSystem - b.isSystem}
               key="isSystem"
               align="center"
               width={100}

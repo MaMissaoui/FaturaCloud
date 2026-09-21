@@ -132,12 +132,16 @@ const IncomingInvoices = () => {
             <Table.Column
               title={<Trans>Purchase order</Trans>}
               dataIndex="orderNumber"
+              sorter={(a: IncomingInvoice, b: IncomingInvoice) =>
+                (a.orderNumber ?? "").localeCompare(b.orderNumber ?? "")
+              }
               key="orderNumber"
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               title={<Trans>State</Trans>}
               dataIndex="state"
+              sorter={(a: IncomingInvoice, b: IncomingInvoice) => a.state.localeCompare(b.state)}
               key="state"
               filters={INCOMING_INVOICE_STATES.map((s) => ({
                 text: incomingInvoiceStateLabel(s),

@@ -42,6 +42,7 @@ import type {
   ProductionOrderComponentLine,
 } from "src/types/models";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
+import { numberSorter, textSorter } from "src/utils/sort";
 import SerialCaptureModal from "src/components/stock/serial-capture-modal";
 import StatusFlow from "src/components/status-flow";
 import {
@@ -312,6 +313,7 @@ const CreateProductionOrderForm = ({
         <Table.Column
           title={<Trans>Component</Trans>}
           key="componentName"
+          sorter={textSorter((l: any) => l.componentName)}
           render={(l: BillOfMaterialsLine) =>
             l.componentSku ? `${l.componentName} (${l.componentSku})` : l.componentName
           }
@@ -320,6 +322,7 @@ const CreateProductionOrderForm = ({
           title={<Trans>Qty per unit</Trans>}
           dataIndex="quantityPerUnit"
           key="quantityPerUnit"
+          sorter={numberSorter((l: any) => l.quantityPerUnit)}
           align="right"
           render={(v: number) => roundDisplay(v)}
         />
@@ -327,13 +330,22 @@ const CreateProductionOrderForm = ({
           title={<Trans>Total quantity</Trans>}
           key="totalQuantity"
           align="right"
+          sorter={numberSorter((l: any) => l.totalQuantity ?? l.quantityPerUnit)}
           render={(l: BillOfMaterialsLine) => roundDisplay(l.quantityPerUnit * watchedQuantity)}
         />
-        <Table.Column title={<Trans>Unit</Trans>} dataIndex="componentUnit" key="componentUnit" />
+        <Table.Column
+          title={<Trans>Unit</Trans>}
+          dataIndex="componentUnit"
+          key="componentUnit"
+          sorter={textSorter((l: any) => l.componentUnit)}
+        />
         <Table.Column
           title={<Trans>On hand</Trans>}
           key="onHand"
           align="right"
+          sorter={numberSorter(
+            (l: any) => find(products, { id: l.componentProductId })?.stockQuantity ?? 0,
+          )}
           // stockQuantity comes from the already-loaded productsAtom — no
           // new endpoint. Completion is what actually consumes stock (see
           // the transitions comment on ProductionOrderStatus), so before
@@ -588,6 +600,7 @@ const ProductionOrderDetails = () => {
               <Table.Column
                 title={<Trans>Component</Trans>}
                 key="componentName"
+                sorter={textSorter((l: any) => l.componentName)}
                 render={(_: unknown, l: ProductionOrderComponentLine) =>
                   l.componentSku ? `${l.componentName} (${l.componentSku})` : l.componentName
                 }
@@ -596,6 +609,7 @@ const ProductionOrderDetails = () => {
                 title={<Trans>Qty per unit</Trans>}
                 dataIndex="quantityPerUnit"
                 key="quantityPerUnit"
+                sorter={numberSorter((l: any) => l.quantityPerUnit)}
                 align="right"
               />
               <Table.Column
@@ -603,16 +617,21 @@ const ProductionOrderDetails = () => {
                 dataIndex="totalQuantity"
                 key="totalQuantity"
                 align="right"
+                sorter={numberSorter((l: any) => l.totalQuantity)}
               />
               <Table.Column
                 title={<Trans>Unit</Trans>}
                 dataIndex="componentUnit"
                 key="componentUnit"
+                sorter={textSorter((l: any) => l.componentUnit)}
               />
               <Table.Column
                 title={<Trans>On hand</Trans>}
                 key="onHand"
                 align="right"
+                sorter={numberSorter(
+                  (l: any) => find(products, { id: l.componentProductId })?.stockQuantity ?? 0,
+                )}
                 render={(_: unknown, l: ProductionOrderComponentLine) => {
                   if (!l.componentProductId) return "—";
                   const component = find(products, { id: l.componentProductId });

@@ -70,6 +70,7 @@ import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
 import PaymentPanel from "src/components/payments/payment-panel";
 import { useDatePickerFormat } from "src/utils/date";
+import { dateSorter, moneySorter, numberSorter, textSorter } from "src/utils/sort";
 import {
   addDecimal,
   calculateTax,
@@ -1244,11 +1245,13 @@ const CashBook = () => {
                   title={<Trans>Time</Trans>}
                   key="time"
                   width={70}
+                  sorter={dateSorter((row: CashMovementDetail) => row.date)}
                   render={(row: CashMovementDetail) => dayjs(row.date).format("HH:mm")}
                 />
                 <Table.Column
                   title={<Trans>Type</Trans>}
                   key="kind"
+                  sorter={textSorter((row: CashMovementDetail) => movementKindLabel(row.kind))}
                   render={(row: CashMovementDetail) => (
                     <Tag color={movementKindColor(row.kind)}>{movementKindLabel(row.kind)}</Tag>
                   )}
@@ -1256,12 +1259,14 @@ const CashBook = () => {
                 <Table.Column
                   title={<Trans>Customer</Trans>}
                   key="clientName"
+                  sorter={textSorter((row: CashMovementDetail) => row.clientName ?? row.note ?? "")}
                   render={(row: CashMovementDetail) => row.clientName ?? row.note ?? "—"}
                 />
                 <Table.Column
                   title={<Trans>Amount</Trans>}
                   key="amount"
                   align="right"
+                  sorter={numberSorter((row: CashMovementDetail) => row.amount)}
                   render={(row: CashMovementDetail) => (
                     <Typography.Text
                       strong
@@ -1365,15 +1370,22 @@ const CashBook = () => {
           pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
           locale={{ emptyText: <Trans>No loan sales</Trans> }}
         >
-          <Table.Column title={<Trans>Customer</Trans>} dataIndex="clientName" key="clientName" />
+          <Table.Column
+            title={<Trans>Customer</Trans>}
+            dataIndex="clientName"
+            key="clientName"
+            sorter={textSorter((row: LoanStatusRow) => row.clientName)}
+          />
           <Table.Column
             title={<Trans>Date</Trans>}
             key="date"
+            sorter={dateSorter((row: LoanStatusRow) => row.date)}
             render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
           />
           <Table.Column
             title={<Trans>Product</Trans>}
             key="product"
+            sorter={textSorter((row: LoanStatusRow) => row.productName)}
             render={(row: LoanStatusRow) =>
               row.sku ? `${row.productName} · ${row.sku}` : row.productName || "—"
             }
@@ -1382,24 +1394,28 @@ const CashBook = () => {
             title={<Trans>Qty</Trans>}
             key="quantity"
             align="right"
+            sorter={numberSorter((row: LoanStatusRow) => row.quantity)}
             render={(row: LoanStatusRow) => row.quantity}
           />
           <Table.Column
             title={<Trans>Amount</Trans>}
             key="amount"
             align="right"
+            sorter={moneySorter((row: LoanStatusRow) => row.amount)}
             render={(row: LoanStatusRow) => money(row.amount)}
           />
           <Table.Column
             title={<Trans>Paid</Trans>}
             key="paid"
             align="right"
+            sorter={moneySorter((row: LoanStatusRow) => row.paid)}
             render={(row: LoanStatusRow) => money(row.paid)}
           />
           <Table.Column
             title={<Trans>Outstanding</Trans>}
             key="outstanding"
             align="right"
+            sorter={moneySorter((row: LoanStatusRow) => row.outstanding)}
             render={(row: LoanStatusRow) => (
               <Typography.Text strong type={row.outstanding > 0 ? "warning" : "success"}>
                 {money(row.outstanding)}
@@ -1448,27 +1464,34 @@ const CashBook = () => {
           <Table.Column
             title={<Trans>Date</Trans>}
             key="date"
+            sorter={dateSorter((p: Payment) => p.date)}
             render={(p: Payment) => dayjs(p.date).format(dateFormat)}
           />
           <Table.Column
             title={<Trans>Customer</Trans>}
             key="customer"
+            sorter={textSorter(
+              (p: Payment) => (p.clientId && clientNameById.get(p.clientId)) || "",
+            )}
             render={(p: Payment) => (p.clientId && clientNameById.get(p.clientId)) || "—"}
           />
           <Table.Column
             title={<Trans>Method</Trans>}
             key="method"
+            sorter={textSorter((p: Payment) => paymentMethodLabel(p.method))}
             render={(p: Payment) => paymentMethodLabel(p.method)}
           />
           <Table.Column
             title={<Trans>Reference</Trans>}
             key="reference"
+            sorter={textSorter((p: Payment) => p.reference ?? "")}
             render={(p: Payment) => p.reference || "—"}
           />
           <Table.Column
             title={<Trans>Amount</Trans>}
             key="amount"
             align="right"
+            sorter={moneySorter((p: Payment) => p.amount)}
             render={(p: Payment) => money(p.amount)}
           />
         </Table>

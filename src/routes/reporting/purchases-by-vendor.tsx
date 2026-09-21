@@ -16,6 +16,7 @@ import type { VendorSpend } from "src/api";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
+import { moneySorter, textSorter } from "src/utils/sort";
 
 const { RangePicker } = DatePicker;
 
@@ -149,6 +150,7 @@ const PurchasesByVendor = () => {
             <Table.Column
               title={<Trans>Vendor</Trans>}
               key="name"
+              sorter={textSorter((row: VendorSpend) => row.name)}
               render={(row: VendorSpend) => (
                 <Link to="/vendors" state={{ vendorModal: true, vendorId: row.vendorId }}>
                   {row.name}
@@ -159,6 +161,7 @@ const PurchasesByVendor = () => {
               title={<Trans>Spend</Trans>}
               key="spend"
               align="right"
+              sorter={moneySorter((row: VendorSpend) => row.spend)}
               render={(row: VendorSpend) => money(row.spend)}
             />
           </Table>
