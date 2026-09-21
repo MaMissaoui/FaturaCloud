@@ -4,6 +4,7 @@ import type { FormInstance } from "antd/es/form";
 import { DeleteOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
+import { FieldFeedback } from "src/components/form-field-feedback";
 import find from "lodash/find";
 import map from "lodash/map";
 import {
@@ -117,41 +118,47 @@ export const ProductSelectCell = ({
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
       <Form.Item name={[fieldName, "productId"]} rules={rules} noStyle>
-        <Select
-          showSearch
-          style={{ width: "100%" }}
-          placeholder={t`Select product`}
-          // Show the SKU (the option's `label`) in the closed cell, while the
-          // open dropdown renders the children (product name · SKU). Without
-          // this, antd defaults the closed display to the option's children,
-          // so the cell duplicated the name that the description already
-          // carries.
-          optionLabelProp="label"
-          // Search matches on name (what someone remembers) as well as SKU,
-          // even though the option label shows the SKU.
-          filterOption={(input, option) => {
-            const p = find(options, { id: option?.value });
-            const needle = input.toLowerCase();
-            return (
-              !!p &&
-              (String(p.name).toLowerCase().includes(needle) ||
-                String(p.sku ?? "")
-                  .toLowerCase()
-                  .includes(needle))
-            );
-          }}
-          disabled={disabled}
-          onChange={(productId) => onSelect?.(productId, fieldName, form)}
-        >
-          {map(options, (p: any) => (
-            <Option key={p.id} value={p.id} label={optionLabel ? optionLabel(p) : p.sku || p.name}>
-              {/* The dropdown shows the product NAME (with its SKU appended),
+        <FieldFeedback>
+          <Select
+            showSearch
+            style={{ width: "100%" }}
+            placeholder={t`Select product`}
+            // Show the SKU (the option's `label`) in the closed cell, while the
+            // open dropdown renders the children (product name · SKU). Without
+            // this, antd defaults the closed display to the option's children,
+            // so the cell duplicated the name that the description already
+            // carries.
+            optionLabelProp="label"
+            // Search matches on name (what someone remembers) as well as SKU,
+            // even though the option label shows the SKU.
+            filterOption={(input, option) => {
+              const p = find(options, { id: option?.value });
+              const needle = input.toLowerCase();
+              return (
+                !!p &&
+                (String(p.name).toLowerCase().includes(needle) ||
+                  String(p.sku ?? "")
+                    .toLowerCase()
+                    .includes(needle))
+              );
+            }}
+            disabled={disabled}
+            onChange={(productId) => onSelect?.(productId, fieldName, form)}
+          >
+            {map(options, (p: any) => (
+              <Option
+                key={p.id}
+                value={p.id}
+                label={optionLabel ? optionLabel(p) : p.sku || p.name}
+              >
+                {/* The dropdown shows the product NAME (with its SKU appended),
                   so a product can be found and identified by name; the closed
                   cell shows the SKU via `label`. */}
-              {dropdownLabel ? dropdownLabel(p) : p.sku ? `${p.name} · ${p.sku}` : p.name}
-            </Option>
-          ))}
-        </Select>
+                {dropdownLabel ? dropdownLabel(p) : p.sku ? `${p.name} · ${p.sku}` : p.name}
+              </Option>
+            ))}
+          </Select>
+        </FieldFeedback>
       </Form.Item>
       {selectedText && (
         // Copy the product column's value to the clipboard — the SKU code, so
@@ -374,7 +381,9 @@ const LineItemsTable = ({
                               : []
                           }
                         >
-                          <TextArea rows={col.rows ?? 1} autoSize disabled={disabled} />
+                          <FieldFeedback>
+                            <TextArea rows={col.rows ?? 1} autoSize disabled={disabled} />
+                          </FieldFeedback>
                         </Form.Item>
                       )}
                     />
@@ -399,14 +408,16 @@ const LineItemsTable = ({
                                 noStyle
                                 rules={[{ required: true, message: t`Required` }]}
                               >
-                                <InputNumber
-                                  style={{ width: "100%" }}
-                                  styles={{ input: { textAlign: "right" } }}
-                                  min={0}
-                                  precision={precision}
-                                  disabled={disabled}
-                                  onPressEnter={() => addRowOnEnterFromLastRow(field.index)}
-                                />
+                                <FieldFeedback>
+                                  <InputNumber
+                                    style={{ width: "100%" }}
+                                    styles={{ input: { textAlign: "right" } }}
+                                    min={0}
+                                    precision={precision}
+                                    disabled={disabled}
+                                    onPressEnter={() => addRowOnEnterFromLastRow(field.index)}
+                                  />
+                                </FieldFeedback>
                               </Form.Item>
                             );
                           }}

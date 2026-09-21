@@ -149,16 +149,18 @@ purchaseOrderLineItemId` — and the 3-way match in
     saved, reloaded, and confirmed both the new line and the reordering
     persisted; confirmed the PDF preview renders the persisted data; confirmed
     `VAT 20% 20%` still renders unchanged.
-  - **Not a regression, but worth flagging**: while diagnosing an unrelated
-    save failure during verification, found that the Product column's
-    `requiredForNewLineItem` rule and antd's `required` rule on `Due date`
-    both use `noStyle` on their `Form.Item`, which suppresses antd's
-    validation-error rendering — so a line item missing a product (or, as
-    happened during testing, a seed invoice missing its due date) fails
-    `form.submit()` **silently**: no error, no network request, nothing to
-    tell the user why Save did nothing. Confirmed this is pre-existing
-    (identical on `main`, unrelated to the table extraction) — out of scope
-    here, but a real UX footgun worth a follow-up.
+  - **Was a footgun, now fixed:** the Product column's
+    `requiredForNewLineItem` rule and antd's `required` rules on the other
+    line-item cells sit on `noStyle` `Form.Item`s, which suppress antd's
+    validation-error rendering — so a line item missing a product/description/
+    price/total failed `form.submit()` **silently**: no error, no network
+    request, nothing to tell the user why Save did nothing. The shared
+    `src/components/form-field-feedback.tsx` now wraps those controls and
+    renders the error state + message (composing, not replacing, the page's own
+    `onChange` so auto-fill/back-compute still run), and every document form
+    sets `scrollToFirstError`. Covered by
+    `src/routes/invoices/details.test.tsx`'s "shows a line item's validation
+    error instead of failing Save silently".
 - **Tier 2.3 (visual polish)**, done after all six documents were on the
   shell, as its own commit:
   - **Header background and row-hover highlight were already there** —

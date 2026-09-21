@@ -904,7 +904,7 @@ const CashBook = () => {
                 </Trans>
               </Typography.Text>
             )}
-            <Form form={form} layout="vertical" onFinish={handleSubmitSale}>
+            <Form form={form} layout="vertical" onFinish={handleSubmitSale} scrollToFirstError>
               <Row gutter={16}>
                 <Col xs={24} md={8}>
                   <Form.Item
@@ -1537,7 +1537,12 @@ const CashBook = () => {
         cancelText={t`Cancel`}
         destroyOnHidden
       >
-        <Form form={newClientForm} layout="vertical" onFinish={handleNewClientSubmit}>
+        <Form
+          form={newClientForm}
+          layout="vertical"
+          onFinish={handleNewClientSubmit}
+          scrollToFirstError
+        >
           <Form.Item
             label={t`Name`}
             name="name"
