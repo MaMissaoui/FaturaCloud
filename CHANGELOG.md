@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.42.0] - 2026-09-21
+
+### Changed
+- Document list headers: the date/state/customer-vendor filter bar now sits on
+  its own full-width row under the title, with the search and primary action
+  on the top row — it no longer wraps into several lines beside the title.
+- Removed the duplicate per-column status filters (the filter bar is the one
+  status filter), and the search boxes now have a clear button.
+
+### Fixed
+- Consistent `—` placeholder for empty cells (plus missing null fallbacks on
+  the delivery Client and production-order Finished product columns); overdue
+  invoice due dates use an accessible error colour and a visible "Overdue"
+  tag.
+
 ## [3.41.0] - 2026-09-21
 
 ### Added
