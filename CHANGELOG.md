@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.41.0] - 2026-09-21
+
+### Added
+- Imports now has a vendor filter (an import matches when any of its linked
+  purchase orders belongs to the selected vendor), completing the vendor
+  filter across the purchasing lists.
+- All document list pages preload their customer/vendor list on mount, so the
+  header picker always has options.
+
+### Fixed
+- Production Orders' empty state now accounts for its status and date filters.
+- The status filter bar wording is now consistent with the column it filters
+  ("All statuses" / "Filter by status" on the Status pages).
+
 ## [3.40.0] - 2026-09-21
 
 ### Added
