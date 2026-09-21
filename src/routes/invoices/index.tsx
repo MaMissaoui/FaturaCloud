@@ -175,6 +175,7 @@ const Invoices = () => {
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            dateLabel={t`Date`}
             status={stateFilterValue}
             onStatusChange={setStateFilterValue}
             statusOptions={INVOICE_STATES.map((s) => ({ value: s, label: invoiceStateLabel(s) }))}

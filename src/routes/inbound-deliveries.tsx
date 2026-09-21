@@ -89,6 +89,7 @@ const InboundDeliveries = () => {
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            dateLabel={t`Delivery date`}
             status={statusFilter}
             onStatusChange={setStatusFilter}
             statusPlaceholder={t`All statuses`}

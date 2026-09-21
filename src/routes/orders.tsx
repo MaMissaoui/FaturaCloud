@@ -93,6 +93,7 @@ const Orders = () => {
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            dateLabel={t`Order date`}
             status={statusFilter}
             onStatusChange={setStatusFilter}
             statusPlaceholder={t`All statuses`}

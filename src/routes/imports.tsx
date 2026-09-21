@@ -8,10 +8,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ContainerOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
-import get from "lodash/get";
-import includes from "lodash/includes";
-import some from "lodash/some";
-import toString from "lodash/toString";
 
 import { GetImportSummaries } from "src/api";
 import { importsAtom, setImportsAtom } from "src/atoms/import";
@@ -20,7 +16,7 @@ import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import ImportForm from "src/components/imports/form";
 import PageHeader from "src/components/page-header";
-import DocumentFilters from "src/components/document-filters";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
 import { useDateFormatter } from "src/utils/date";
 import { formatOrgCents } from "src/utils/currencies";
@@ -95,7 +91,6 @@ const Imports = () => {
   const hasFilters = !!(search || dateRange || vendorFilter);
 
   const filteredImports = useMemo(() => {
-    const term = search.trim().toLowerCase();
     return filter(imports, (imp: Import) => {
       // An import has no vendor of its own — it matches when any of its
       // linked purchase orders belongs to the selected vendor.
@@ -105,17 +100,16 @@ const Imports = () => {
       ) {
         return false;
       }
-      if (
-        term &&
-        !some(["importNumber", "notes"], (field) =>
-          includes(toString(get(imp, field)).toLowerCase(), term),
-        )
-      ) {
-        return false;
-      }
-      if (dateRange?.[0] && (imp.date ?? 0) < dateRange[0].startOf("day").valueOf()) return false;
-      if (dateRange?.[1] && (imp.date ?? 0) > dateRange[1].endOf("day").valueOf()) return false;
-      return true;
+      return matchesDocumentFilters({
+        search,
+        searchFields: [imp.importNumber, imp.notes],
+        status: "",
+        rowStatus: "",
+        partyId: "",
+        rowPartyId: "",
+        dateRange,
+        rowDate: imp.date,
+      });
     });
   }, [imports, search, dateRange, vendorFilter, ordersByImport]);
 
@@ -141,9 +135,7 @@ const Imports = () => {
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
-            status=""
-            onStatusChange={() => {}}
-            statusOptions={[]}
+            dateLabel={t`Date`}
             partyOptions={vendorOptions}
             partyValue={vendorFilter}
             onPartyChange={setVendorFilter}

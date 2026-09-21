@@ -102,6 +102,7 @@ const IncomingInvoices = () => {
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            dateLabel={t`Date`}
             status={stateFilter}
             onStatusChange={setStateFilter}
             statusOptions={INCOMING_INVOICE_STATES.map((s) => ({
