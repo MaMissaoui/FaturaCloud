@@ -88,6 +88,7 @@ export const ProductSelectCell = ({
   rules,
   onSelect,
   optionLabel,
+  dropdownLabel,
 }: {
   fieldName: number;
   form: FormInstance;
@@ -96,47 +97,65 @@ export const ProductSelectCell = ({
   disabled?: boolean;
   rules?: any[];
   onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
-  // Custom option/selected label. Defaults to the SKU (falling back to the
-  // name) — pages that want the name visible too pass one.
+  // Label shown once a product is selected (the closed Select / the Product
+  // cell). Defaults to the SKU, falling back to the name.
   optionLabel?: (product: any) => string;
+  // Label shown for each option in the open dropdown. Defaults to the same as
+  // optionLabel — pages that want the name visible while searching pass one.
+  dropdownLabel?: (product: any) => string;
 }) => {
   const currentId = Form.useWatch(["lineItems", fieldName, "productId"], form);
   const pool = all ?? offered;
   const current = currentId ? find(pool, { id: currentId }) : undefined;
   const options = current && !find(offered, { id: current.id }) ? [...offered, current] : offered;
+  const selectedText = current
+    ? optionLabel
+      ? optionLabel(current)
+      : current.sku || current.name
+    : "";
 
   return (
-    <Form.Item name={[fieldName, "productId"]} rules={rules} noStyle>
-      <Select
-        showSearch
-        style={{ width: "100%" }}
-        placeholder={t`Select product`}
-        // Search matches on name (what someone remembers) as well as SKU,
-        // even though the option label shows the SKU.
-        filterOption={(input, option) => {
-          const p = find(options, { id: option?.value });
-          const needle = input.toLowerCase();
-          return (
-            !!p &&
-            (String(p.name).toLowerCase().includes(needle) ||
-              String(p.sku ?? "")
-                .toLowerCase()
-                .includes(needle))
-          );
-        }}
-        disabled={disabled}
-        onChange={(productId) => onSelect?.(productId, fieldName, form)}
-      >
-        {map(options, (p: any) => (
-          <Option key={p.id} value={p.id}>
-            {optionLabel ? optionLabel(p) : p.sku || p.name}
-          </Option>
-        ))}
-      </Select>
-    </Form.Item>
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <Form.Item name={[fieldName, "productId"]} rules={rules} noStyle>
+        <Select
+          showSearch
+          style={{ width: "100%" }}
+          placeholder={t`Select product`}
+          // Search matches on name (what someone remembers) as well as SKU,
+          // even though the option label shows the SKU.
+          filterOption={(input, option) => {
+            const p = find(options, { id: option?.value });
+            const needle = input.toLowerCase();
+            return (
+              !!p &&
+              (String(p.name).toLowerCase().includes(needle) ||
+                String(p.sku ?? "")
+                  .toLowerCase()
+                  .includes(needle))
+            );
+          }}
+          disabled={disabled}
+          onChange={(productId) => onSelect?.(productId, fieldName, form)}
+        >
+          {map(options, (p: any) => (
+            <Option key={p.id} value={p.id} label={optionLabel ? optionLabel(p) : p.sku || p.name}>
+              {dropdownLabel ? dropdownLabel(p) : p.sku || p.name}
+            </Option>
+          ))}
+        </Select>
+      </Form.Item>
+      {selectedText && (
+        // Copy the product column's value to the clipboard — the SKU code, so
+        // it can be pasted into another document/screen without retyping.
+        <Typography.Text
+          copyable={{ text: selectedText, tooltips: [t`Copy`, t`Copied`] }}
+          style={{ flexShrink: 0 }}
+          aria-label={t`Copy product`}
+        />
+      )}
+    </div>
   );
 };
-
 export type LineItemColumn =
   | { kind: "index" }
   | {
@@ -147,6 +166,8 @@ export type LineItemColumn =
       allProducts?: any[];
       // Custom option/selected label; defaults to SKU (falling back to name).
       optionLabel?: (product: any) => string;
+      // Custom dropdown-option label; defaults to the same as optionLabel.
+      dropdownLabel?: (product: any) => string;
       width?: number;
       required?: boolean;
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
@@ -314,6 +335,7 @@ const LineItemsTable = ({
                           }
                           onSelect={col.onSelect}
                           optionLabel={col.optionLabel}
+                          dropdownLabel={col.dropdownLabel}
                         />
                       )}
                     />

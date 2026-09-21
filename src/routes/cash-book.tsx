@@ -559,20 +559,33 @@ const CashBook = () => {
   // a cent once quantity amplifies the sub-cent gap, and
   // db/invoice_totals.go's validateInvoiceTotals requires an exact match.
   const lineItems = Form.useWatch("lineItems", form);
+  // The tax rate a line should use: its own (from a picked product or an
+  // explicit choice) or, when it has none, the organization's default. This
+  // is what makes "the price is gross, the tax is determined in the
+  // background" hold even for a line added before tax rates loaded (or a
+  // hand-typed line that never went through a product's onSelect) — the net
+  // and tax are derived from it here and in handleSubmitSale, so a sale is
+  // never silently recorded tax-free just because the line carried no rate.
+  const defaultTaxRateId = get(find(taxRates, { isDefault: 1 }), "id");
+  const effectiveTaxRateId = (item: any) => item?.taxRate || defaultTaxRateId;
   const netCentsFor = (item: any) => {
-    const rate = find(taxRates, { id: item?.taxRate });
+    const rate = find(taxRates, { id: effectiveTaxRateId(item) });
     return unitsToCents(netFromGross(toNumber(item?.unitPrice) || 0, rate?.percentage ?? 0));
   };
   const taxGroups = useMemo(() => {
     const groups: Record<string, { taxRate: any; subtotal: number; tax: number }> = {};
     ((lineItems || []) as any[]).forEach((item) => {
-      const key = item?.taxRate || "";
+      const key = effectiveTaxRateId(item) || "";
       const lineNetTotal = multiplyDecimal(
         toNumber(item?.quantity) || 0,
         centsToUnits(netCentsFor(item)),
       );
       if (!groups[key]) {
-        groups[key] = { taxRate: find(taxRates, { id: item?.taxRate }), subtotal: 0, tax: 0 };
+        groups[key] = {
+          taxRate: find(taxRates, { id: effectiveTaxRateId(item) }),
+          subtotal: 0,
+          tax: 0,
+        };
       }
       groups[key].subtotal = addDecimal(groups[key].subtotal, lineNetTotal);
     });
@@ -652,7 +665,7 @@ const CashBook = () => {
           description: item.description || null,
           quantity: item.quantity,
           unitPrice: netCentsFor(item),
-          taxRate: item.taxRate || null,
+          taxRate: effectiveTaxRateId(item) || null,
           productId: item.productId || null,
         })),
         subTotal: unitsToCents(subTotal),
@@ -914,10 +927,10 @@ const CashBook = () => {
                     kind: "product",
                     products: sellableProducts,
                     allProducts: products,
-                    // The counter picker shows the product name (with the SKU
-                    // as a suffix when it has one) rather than the SKU alone —
-                    // a cashier picks by name.
-                    optionLabel: (p: any) => (p.sku ? `${p.name} · ${p.sku}` : p.name),
+                    // The Product column shows the SKU code once a product is
+                    // picked (the description carries the name); the dropdown
+                    // shows the name too so a cashier can pick by name.
+                    dropdownLabel: (p: any) => (p.sku ? `${p.name} · ${p.sku}` : p.name),
                     onSelect: (productId, fieldName, formInstance) => {
                       const product = find(products, { id: productId }) as any;
                       if (product) {
