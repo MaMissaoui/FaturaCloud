@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.47.0] - 2026-09-21
+
+### Added
+- Cash Book: the loan status and payment history tables now carry an explicit
+  default sort on their Date column (oldest-first and newest-first
+  respectively), so the active order is visible in the header.
+
+### Changed
+- Loan status now defaults to oldest-first: the longest-outstanding loan is on
+  top instead of the largest. `GetLoanStatus` sorts the same way, so the
+  Excel/PDF exports and the API agree with the screen.
+
+### Fixed
+- Invoice line items: editing Qty/Price/Total on a row after deleting an
+  earlier row back-computed against the wrong row (the handlers used the
+  Form.List row key instead of its positional index) — the edited row's total
+  no longer updated and a phantom row could appear.
+
 ## [3.46.0] - 2026-09-21
 
 ### Fixed
