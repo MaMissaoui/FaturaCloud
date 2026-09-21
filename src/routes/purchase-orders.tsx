@@ -78,8 +78,14 @@ const PurchaseOrders = () => {
       <PageHeader
         icon={<ShoppingCartOutlined />}
         title={<Trans>Purchase Orders</Trans>}
-        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
-        extra={
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        filters={
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -134,7 +140,6 @@ const PurchaseOrders = () => {
               },
               style: { cursor: "pointer" },
               tabIndex: 0,
-              role: "link",
             })}
           >
             <Table.Column
@@ -184,11 +189,6 @@ const PurchaseOrders = () => {
               key="status"
               // Filters are built inside the component body (not at module
               // scope) so the labels follow the active locale.
-              filters={PURCHASE_ORDER_STATUSES.map((s) => ({
-                text: purchaseOrderStatusLabel(s),
-                value: s,
-              }))}
-              onFilter={(value, record: PurchaseOrder) => record.status === value}
               sorter={(a: PurchaseOrder, b: PurchaseOrder) =>
                 (a.status ?? "").localeCompare(b.status ?? "")
               }

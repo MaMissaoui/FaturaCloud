@@ -67,8 +67,14 @@ const ProductionOrders = () => {
       <PageHeader
         icon={<DeploymentUnitOutlined />}
         title={<Trans>Production Orders</Trans>}
-        search={{ placeholder: t`Search`, onChange: setSearch }}
-        extra={
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        filters={
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -123,7 +129,6 @@ const ProductionOrders = () => {
               },
               style: { cursor: "pointer" },
               tabIndex: 0,
-              role: "link",
             })}
           >
             <Table.Column
@@ -145,6 +150,7 @@ const ProductionOrders = () => {
               sorter={(a: ProductionOrder, b: ProductionOrder) =>
                 (a.finishedProductName ?? "").localeCompare(b.finishedProductName ?? "")
               }
+              render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               title={<Trans>Quantity</Trans>}
@@ -166,11 +172,6 @@ const ProductionOrders = () => {
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
-              filters={PRODUCTION_ORDER_STATUSES.map((s) => ({
-                text: productionOrderStatusLabel(s),
-                value: s,
-              }))}
-              onFilter={(value, record: ProductionOrder) => record.status === value}
               sorter={(a: ProductionOrder, b: ProductionOrder) =>
                 (a.status ?? "").localeCompare(b.status ?? "")
               }

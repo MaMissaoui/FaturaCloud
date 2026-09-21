@@ -85,8 +85,14 @@ const Orders = () => {
       <PageHeader
         icon={<ShoppingOutlined />}
         title={<Trans>Orders</Trans>}
-        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
-        extra={
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        filters={
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -138,7 +144,6 @@ const Orders = () => {
               },
               style: { cursor: "pointer" },
               tabIndex: 0,
-              role: "link",
             })}
           >
             <Table.Column
@@ -166,8 +171,6 @@ const Orders = () => {
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
-              filters={ORDER_STATUSES.map((s) => ({ text: orderStatusLabel(s), value: s }))}
-              onFilter={(value, record: Order) => record.status === value}
               sorter={(a: Order, b: Order) => (a.status ?? "").localeCompare(b.status ?? "")}
               render={statusTag}
             />

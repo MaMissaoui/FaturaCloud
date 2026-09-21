@@ -91,8 +91,14 @@ const IncomingInvoices = () => {
       <PageHeader
         icon={<AuditOutlined />}
         title={<Trans>Incoming Invoices</Trans>}
-        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
-        extra={
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        filters={
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -145,7 +151,6 @@ const IncomingInvoices = () => {
               },
               style: { cursor: "pointer" },
               tabIndex: 0,
-              role: "link",
             })}
           >
             <Table.Column
@@ -183,11 +188,6 @@ const IncomingInvoices = () => {
               dataIndex="state"
               sorter={(a: IncomingInvoice, b: IncomingInvoice) => a.state.localeCompare(b.state)}
               key="state"
-              filters={INCOMING_INVOICE_STATES.map((s) => ({
-                text: incomingInvoiceStateLabel(s),
-                value: s,
-              }))}
-              onFilter={(value, record: IncomingInvoice) => record.state === value}
               render={(state: string, record: IncomingInvoice) => (
                 <Space size={4}>
                   <Tag color={incomingInvoiceStateColor[state as IncomingInvoiceState]}>

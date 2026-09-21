@@ -82,8 +82,14 @@ const Deliveries = () => {
       <PageHeader
         icon={<SendOutlined />}
         title={<Trans>Outbound Deliveries</Trans>}
-        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
-        extra={
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        filters={
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -137,7 +143,6 @@ const Deliveries = () => {
               },
               style: { cursor: "pointer" },
               tabIndex: 0,
-              role: "link",
             })}
           >
             <Table.Column
@@ -175,6 +180,7 @@ const Deliveries = () => {
               sorter={(a: Delivery, b: Delivery) =>
                 (a.clientName ?? "").localeCompare(b.clientName ?? "")
               }
+              render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               title={<Trans>Delivery date</Trans>}
@@ -187,8 +193,6 @@ const Deliveries = () => {
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
-              filters={DELIVERY_STATUSES.map((s) => ({ text: deliveryStatusLabel(s), value: s }))}
-              onFilter={(value, record: Delivery) => record.status === value}
               sorter={(a: Delivery, b: Delivery) => (a.status ?? "").localeCompare(b.status ?? "")}
               render={statusTag}
             />
