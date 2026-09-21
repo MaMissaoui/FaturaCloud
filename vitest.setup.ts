@@ -1,5 +1,20 @@
 import "@testing-library/jest-dom/vitest";
+import { afterEach } from "vitest";
+import { cleanup } from "@testing-library/react";
 import { i18n } from "@lingui/core";
+
+// Unmount anything still mounted and flush React 19's scheduler before Vitest
+// tears the jsdom environment down. React schedules work through a
+// MessageChannel callback; a component whose async effect resolves just after
+// its test ends can leave one queued, and it then fires with `window` already
+// gone — surfacing as an *unhandled* "ReferenceError: window is not defined"
+// that fails the whole run even though every test passed (seen on CI, where
+// the extra load makes the race land). Doing it globally also covers the files
+// that never called cleanup() themselves.
+afterEach(async () => {
+  cleanup();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
 
 // Real app startup (src/utils/lingui.tsx) does this same synchronous
 // load+activate before loading a locale's actual .po catalog — with no

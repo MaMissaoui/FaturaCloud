@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { createStore } from "jotai";
 import { renderWithProviders } from "src/test-support/render-with-providers";
 import InvoiceDetails from "./details";
@@ -146,11 +146,6 @@ function buildInvoice(overrides: Partial<Invoice> = {}): Invoice {
 }
 
 describe("InvoiceDetails", () => {
-  // No global auto-cleanup is configured for this file, so each render would
-  // otherwise stay in document.body and make `screen` queries ambiguous once a
-  // second test renders the same page.
-  afterEach(cleanup);
-
   it("renders the new-invoice form without throwing, prefilled with the generated invoice number", async () => {
     mockCommonFetches();
 

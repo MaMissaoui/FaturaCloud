@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { App, ConfigProvider } from "antd";
@@ -111,8 +111,6 @@ async function renderProductForm() {
 }
 
 describe("ProductForm bill of materials safety (F111 / F117)", () => {
-  afterEach(cleanup);
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(GetProducts).mockResolvedValue({ data: [finishedProduct] } as never);
