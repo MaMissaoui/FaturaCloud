@@ -14,10 +14,10 @@ export const ORDER_STATUSES: OrderStatus[] = [
 // Ant Design Tag colors per status; draft is intentionally uncolored (default).
 export const orderStatusColor: Record<OrderStatus, string | undefined> = {
   draft: undefined,
-  confirmed: "blue",
+  confirmed: "geekblue",
   shipped: "orange",
   delivered: "green",
-  cancelled: "red",
+  cancelled: "volcano",
 };
 
 // Called during render (never hoisted to module scope) so the label follows

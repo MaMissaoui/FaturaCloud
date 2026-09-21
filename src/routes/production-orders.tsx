@@ -17,7 +17,7 @@ import {
 } from "src/types/production-order";
 import { productionOrdersAtom, setProductionOrdersAtom } from "src/atoms/production-order";
 import PageHeader from "src/components/page-header";
-import DocumentFilters from "src/components/document-filters";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
 
 const ProductionOrders = () => {
@@ -46,21 +46,22 @@ const ProductionOrders = () => {
   // 2026-09-14 F91).
   const hasFilters = !!(search || statusFilter || dateRange);
 
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return orders.filter((o: ProductionOrder) => {
-      const matchesSearch =
-        !term ||
-        (o.orderNumber ?? "").toLowerCase().includes(term) ||
-        (o.finishedProductName ?? "").toLowerCase().includes(term);
-      const matchesStatus = !statusFilter || o.status === statusFilter;
-      const matchesDate =
-        !dateRange ||
-        ((o.date ?? 0) >= (dateRange[0]?.startOf("day").valueOf() ?? 0) &&
-          (o.date ?? 0) <= (dateRange[1]?.endOf("day").valueOf() ?? Number.MAX_SAFE_INTEGER));
-      return matchesSearch && matchesStatus && matchesDate;
-    });
-  }, [orders, search, statusFilter, dateRange]);
+  const filtered = useMemo(
+    () =>
+      orders.filter((o: ProductionOrder) =>
+        matchesDocumentFilters({
+          search,
+          searchFields: [o.orderNumber, o.finishedProductName],
+          status: statusFilter,
+          rowStatus: o.status,
+          partyId: "",
+          rowPartyId: "",
+          dateRange,
+          rowDate: o.date,
+        }),
+      ),
+    [orders, search, statusFilter, dateRange],
+  );
 
   return (
     <>

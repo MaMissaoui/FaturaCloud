@@ -25,10 +25,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import dayjs from "dayjs";
 import filter from "lodash/filter";
-import get from "lodash/get";
-import includes from "lodash/includes";
-import some from "lodash/some";
-import toString from "lodash/toString";
 
 import {
   invoicesAtom,
@@ -42,7 +38,7 @@ import { getFormattedNumber } from "src/utils/currencies";
 import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
 import PageHeader from "src/components/page-header";
-import DocumentFilters from "src/components/document-filters";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
 import type { InvoiceDisplay } from "src/types/invoice";
 import type { Dayjs } from "dayjs";
@@ -95,25 +91,22 @@ const Invoices = () => {
 
   const hasFilters = !!(search || stateFilterValue || clientFilter || dateRange);
 
-  const filtered = useMemo(() => {
-    const fromMs = dateRange?.[0] ? dateRange[0].startOf("day").valueOf() : null;
-    const toMs = dateRange?.[1] ? dateRange[1].endOf("day").valueOf() : null;
-    return filter(invoices, (invoice: InvoiceDisplay) => {
-      if (
-        search &&
-        !some(["clientName", "number", "customerNotes", "total"], (field) =>
-          includes(toString(get(invoice, field)).toLowerCase(), search.toLowerCase()),
-        )
-      ) {
-        return false;
-      }
-      if (stateFilterValue && invoice.state !== stateFilterValue) return false;
-      if (clientFilter && invoice.clientId !== clientFilter) return false;
-      if (fromMs !== null && (invoice.date ?? 0) < fromMs) return false;
-      if (toMs !== null && (invoice.date ?? 0) > toMs) return false;
-      return true;
-    });
-  }, [invoices, search, stateFilterValue, clientFilter, dateRange]);
+  const filtered = useMemo(
+    () =>
+      filter(invoices, (invoice: InvoiceDisplay) =>
+        matchesDocumentFilters({
+          search,
+          searchFields: [invoice.clientName, invoice.number, invoice.customerNotes, invoice.total],
+          status: stateFilterValue,
+          rowStatus: invoice.state,
+          partyId: clientFilter,
+          rowPartyId: invoice.clientId,
+          dateRange,
+          rowDate: invoice.date,
+        }),
+      ),
+    [invoices, search, stateFilterValue, clientFilter, dateRange],
+  );
 
   const handleDuplicateInvoice = async (invoiceId: string) => {
     const newInvoiceId = await duplicateInvoice(invoiceId);
@@ -206,6 +199,7 @@ const Invoices = () => {
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         rowKey="id"
         loading={loading}
+        scroll={{ x: "max-content" }}
         locale={{
           emptyText: hasFilters ? (
             <Empty description={<Trans>No invoices match your filters</Trans>} />

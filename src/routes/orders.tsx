@@ -8,7 +8,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ShoppingOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
-import includes from "lodash/includes";
 
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
@@ -19,7 +18,7 @@ import {
   type OrderStatus,
 } from "src/types/order";
 import PageHeader from "src/components/page-header";
-import DocumentFilters from "src/components/document-filters";
+import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import { useDateFormatter } from "src/utils/date";
 import type { Dayjs } from "dayjs";
 
@@ -61,24 +60,22 @@ const Orders = () => {
 
   const hasFilters = !!(search || statusFilter || clientFilter || dateRange);
 
-  const filtered = useMemo(() => {
-    const fromMs = dateRange?.[0] ? dateRange[0].startOf("day").valueOf() : null;
-    const toMs = dateRange?.[1] ? dateRange[1].endOf("day").valueOf() : null;
-    return filter(orders, (o: Order) => {
-      if (
-        search &&
-        !includes((o.orderNumber ?? "").toLowerCase(), search.toLowerCase()) &&
-        !includes((o.clientName ?? "").toLowerCase(), search.toLowerCase())
-      ) {
-        return false;
-      }
-      if (statusFilter && o.status !== statusFilter) return false;
-      if (clientFilter && o.clientId !== clientFilter) return false;
-      if (fromMs !== null && (o.orderDate ?? 0) < fromMs) return false;
-      if (toMs !== null && (o.orderDate ?? 0) > toMs) return false;
-      return true;
-    });
-  }, [orders, search, statusFilter, clientFilter, dateRange]);
+  const filtered = useMemo(
+    () =>
+      filter(orders, (o: Order) =>
+        matchesDocumentFilters({
+          search,
+          searchFields: [o.orderNumber, o.clientName, o.trackingNumber],
+          status: statusFilter,
+          rowStatus: o.status,
+          partyId: clientFilter,
+          rowPartyId: o.clientId,
+          dateRange,
+          rowDate: o.orderDate,
+        }),
+      ),
+    [orders, search, statusFilter, clientFilter, dateRange],
+  );
 
   return (
     <>
