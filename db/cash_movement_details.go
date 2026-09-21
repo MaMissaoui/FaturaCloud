@@ -94,6 +94,13 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 	// the first payment" is a fact about the invoice's whole history, not
 	// something the caller's own date/account filter should be able to
 	// change. Only the outer query restricts to this account and range.
+	//
+	// The documentId IN (...) restricts the ranking to invoices that have at
+	// least one payment in the requested account/window — their full
+	// histories are still ranked (so rn stays correct), but invoices untouched
+	// by the window are never ranked at all. Without it the CTE ranked every
+	// payment application in the organization on every drill-down
+	// (db says the planner otherwise scans the whole ranked set).
 	err := d.DB.Select(&payments, `
 		WITH ranked AS (
 			SELECT pa.paymentId, pa.documentId AS invoiceId, pa.amount AS appliedAmount,
@@ -103,6 +110,13 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 			FROM payment_applications pa
 			JOIN payments p ON p.id = pa.paymentId
 			WHERE pa.documentType = 'invoice' AND p.status = 'posted' AND p.organizationId = ?
+			  AND pa.documentId IN (
+			      SELECT pa2.documentId
+			      FROM payment_applications pa2
+			      JOIN payments p2 ON p2.id = pa2.paymentId
+			      WHERE pa2.documentType = 'invoice' AND p2.status = 'posted'
+			        AND p2.bankAccountId = ? AND p2.date >= ? AND p2.date < ?
+			  )
 		)
 		SELECT p.id, p.date, r.appliedAmount AS amount, c.name AS clientName,
 		       i.id AS invoiceId, i.number AS invoiceNumber, p.notes AS note,
@@ -115,7 +129,7 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 		LEFT JOIN clients c ON c.id = p.clientId
 		WHERE p.bankAccountId = ? AND p.date >= ? AND p.date < ?
 		ORDER BY p.date ASC`,
-		organizationID, accountID, startMs, endExclusiveMs,
+		organizationID, accountID, startMs, endExclusiveMs, accountID, startMs, endExclusiveMs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_cash_movement_details payments: %w", err)
