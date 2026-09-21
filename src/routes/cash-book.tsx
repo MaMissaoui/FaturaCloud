@@ -1400,6 +1400,7 @@ const CashBook = () => {
             title={<Trans>Date</Trans>}
             key="date"
             sorter={dateSorter((row: LoanStatusRow) => row.date)}
+            defaultSortOrder="ascend"
             render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
           />
           <Table.Column
@@ -1494,6 +1495,7 @@ const CashBook = () => {
             title={<Trans>Date</Trans>}
             key="date"
             sorter={dateSorter((p: Payment) => p.date)}
+            defaultSortOrder="descend"
             render={(p: Payment) => dayjs(p.date).format(dateFormat)}
           />
           <Table.Column

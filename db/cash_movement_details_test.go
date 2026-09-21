@@ -1,6 +1,9 @@
 package db
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 // dayLaterMs is an arbitrary "later day" offset for a repayment made after
 // the original sale — large enough to be a clearly separate day, small
@@ -272,5 +275,46 @@ func TestGetLoanStatusExcludesCashSaleIncludesSettledLoan(t *testing.T) {
 	}
 	if len(filteredOut) != 0 {
 		t.Fatalf("filtering by an unrelated client returned %d rows, want 0", len(filteredOut))
+	}
+}
+
+func TestGetLoanStatusSortsOldestFirst(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-loan-status-order")
+	register := accountByCode(t, d, fx.orgID, "1010")
+
+	makeLoan := func(date int64) string {
+		sale, err := d.CreateCashSale(CreateCashSaleRequest{
+			OrganizationID: fx.orgID, ClientID: fx.clientID, Date: date, Currency: "EUR",
+			LineItems: []CreateInvoiceLineItemRequest{
+				{Quantity: 1, UnitPrice: 2400, ProductID: &fx.productID},
+			},
+			SubTotal: 2400, TaxTotal: 0, Total: 2400,
+			AmountReceived: 400, PaymentMethod: "cash", BankAccountID: register.ID,
+		})
+		if err != nil {
+			t.Fatalf("CreateCashSale: %v", err)
+		}
+		return sale.Invoice.ID
+	}
+
+	// Created newest-first on purpose, so a pass can't be an accident of
+	// insertion order.
+	newest := makeLoan(fx.date)
+	middle := makeLoan(fx.date - dayLaterMs)
+	oldest := makeLoan(fx.date - 2*dayLaterMs)
+
+	rows, err := d.GetLoanStatus(fx.orgID, "")
+	if err != nil {
+		t.Fatalf("GetLoanStatus: %v", err)
+	}
+	got := make([]string, 0, len(rows))
+	for _, r := range rows {
+		got = append(got, r.InvoiceID)
+	}
+	want := []string{oldest, middle, newest}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("loan order = %v, want oldest-first %v", got, want)
 	}
 }

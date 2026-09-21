@@ -257,8 +257,9 @@ type LoanStatusRow struct {
 // by default, or scoped to one customer via clientID (empty means every
 // customer). See LoanStatusRow's doc comment for the "was ever a loan"
 // filter and why a settled loan still appears, and for how each invoice's
-// payments are split across its lines. Sorted outstanding-first so the
-// customers who actually owe money surface before ones who've settled up.
+// payments are split across its lines. Sorted oldest-first by date — the
+// longest-outstanding loan surfaces first — with the largest outstanding
+// amount and then line id breaking ties so the order is deterministic.
 func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusRow, error) {
 	query := fmt.Sprintf(`
 		SELECT lineId, invoiceId, clientId, clientName, docDate,
@@ -351,10 +352,16 @@ func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusR
 	}
 
 	sort.SliceStable(rows, func(a, b int) bool {
+		// Oldest first: the longest-outstanding debt is what a cashier should
+		// chase first, which matters more than its size. Largest outstanding
+		// then breaks a same-day tie, and line id makes the order stable.
+		if rows[a].Date != rows[b].Date {
+			return rows[a].Date < rows[b].Date
+		}
 		if rows[a].Outstanding != rows[b].Outstanding {
 			return rows[a].Outstanding > rows[b].Outstanding
 		}
-		return rows[a].Date < rows[b].Date
+		return rows[a].LineID < rows[b].LineID
 	})
 	return rows, nil
 }
