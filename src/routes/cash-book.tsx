@@ -1292,7 +1292,7 @@ const CashBook = () => {
                     <Typography.Text
                       strong
                       type={row.direction === "in" ? "success" : "danger"}
-                      style={{ fontVariantNumeric: "tabular-nums" }}
+                      style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}
                     >
                       {row.direction === "in" ? "+" : "−"}
                       {money(row.amount)}
@@ -1388,6 +1388,7 @@ const CashBook = () => {
           dataSource={filteredLoanStatusRows}
           rowKey="lineId"
           size="small"
+          scroll={{ x: "max-content" }}
           pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
           locale={{ emptyText: <Trans>No loan sales</Trans> }}
         >
@@ -1423,14 +1424,18 @@ const CashBook = () => {
             key="amount"
             align="right"
             sorter={moneySorter((row: LoanStatusRow) => row.amount)}
-            render={(row: LoanStatusRow) => money(row.amount)}
+            render={(row: LoanStatusRow) => (
+              <span style={{ whiteSpace: "nowrap" }}>{money(row.amount)}</span>
+            )}
           />
           <Table.Column
             title={<Trans>Paid</Trans>}
             key="paid"
             align="right"
             sorter={moneySorter((row: LoanStatusRow) => row.paid)}
-            render={(row: LoanStatusRow) => money(row.paid)}
+            render={(row: LoanStatusRow) => (
+              <span style={{ whiteSpace: "nowrap" }}>{money(row.paid)}</span>
+            )}
           />
           <Table.Column
             title={<Trans>Outstanding</Trans>}
@@ -1438,7 +1443,11 @@ const CashBook = () => {
             align="right"
             sorter={moneySorter((row: LoanStatusRow) => row.outstanding)}
             render={(row: LoanStatusRow) => (
-              <Typography.Text strong type={row.outstanding > 0 ? "warning" : "success"}>
+              <Typography.Text
+                strong
+                type={row.outstanding > 0 ? "warning" : "success"}
+                style={{ whiteSpace: "nowrap" }}
+              >
                 {money(row.outstanding)}
               </Typography.Text>
             )}
@@ -1479,6 +1488,7 @@ const CashBook = () => {
           dataSource={paymentHistory}
           rowKey="id"
           size="small"
+          scroll={{ x: "max-content" }}
           pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
           locale={{ emptyText: <Trans>No payments yet</Trans> }}
         >
@@ -1513,7 +1523,7 @@ const CashBook = () => {
             key="amount"
             align="right"
             sorter={moneySorter((p: Payment) => p.amount)}
-            render={(p: Payment) => money(p.amount)}
+            render={(p: Payment) => <span style={{ whiteSpace: "nowrap" }}>{money(p.amount)}</span>}
           />
         </Table>
       </Card>
