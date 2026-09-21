@@ -16,6 +16,7 @@ import toString from "lodash/toString";
 import { GetImportSummaries } from "src/api";
 import { importsAtom, setImportsAtom } from "src/atoms/import";
 import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-order";
+import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import ImportForm from "src/components/imports/form";
 import PageHeader from "src/components/page-header";
@@ -32,6 +33,8 @@ const Imports = () => {
   const setImports = useSetAtom(setImportsAtom);
   const orders = useAtomValue(purchaseOrdersAtom);
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
+  const vendors = useAtomValue(vendorsAtom);
+  const setVendors = useSetAtom(setVendorsAtom);
   const organization = useAtomValue(organizationAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   // useState + useMemo, matching production-orders.tsx rather than the older
@@ -42,11 +45,13 @@ const Imports = () => {
   const [loading, setLoading] = useState(false);
   const [summaries, setSummaries] = useState<Record<string, ImportSummary>>({});
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const [vendorFilter, setVendorFilter] = useState("");
   const formatDate = useDateFormatter();
 
   useEffect(() => {
     if (location.pathname === "/imports") {
       setLoading(true);
+      setVendors();
       setImports().finally(() => setLoading(false));
       // Needed for both this page's own "Purchase orders" column and the
       // drawer's linked-purchase-orders card — fetched here (once, on list
@@ -59,7 +64,7 @@ const Imports = () => {
           .catch(() => setSummaries({}));
       }
     }
-  }, [location, setImports, setPurchaseOrders, organizationId]);
+  }, [location, setImports, setPurchaseOrders, setVendors, organizationId]);
 
   // Order numbers per import, from the already-fetched purchaseOrdersAtom —
   // no extra request, same data the drawer's own linked-PO card filters.
@@ -74,11 +79,28 @@ const Imports = () => {
     return map;
   }, [orders]);
 
-  const hasFilters = !!(search || dateRange);
+  const vendorOptions = useMemo(
+    () =>
+      (vendors as any[]).map((v) => ({
+        value: v.id,
+        label: [v.name, v.code ? `· ${v.code}` : v.phone].filter(Boolean).join(" "),
+      })),
+    [vendors],
+  );
+
+  const hasFilters = !!(search || dateRange || vendorFilter);
 
   const filteredImports = useMemo(() => {
     const term = search.trim().toLowerCase();
     return filter(imports, (imp: Import) => {
+      // An import has no vendor of its own — it matches when any of its
+      // linked purchase orders belongs to the selected vendor.
+      if (
+        vendorFilter &&
+        !(ordersByImport.get(imp.id) ?? []).some((o) => o.vendorId === vendorFilter)
+      ) {
+        return false;
+      }
       if (
         term &&
         !some(["importNumber", "notes"], (field) =>
@@ -91,7 +113,7 @@ const Imports = () => {
       if (dateRange?.[1] && (imp.date ?? 0) > dateRange[1].endOf("day").valueOf()) return false;
       return true;
     });
-  }, [imports, search, dateRange]);
+  }, [imports, search, dateRange, vendorFilter, ordersByImport]);
 
   // formatOrgCents applies the organization's own minimum_fraction_digits
   // (the same helper every other money screen uses) — formatCents ignored it,
@@ -112,10 +134,10 @@ const Imports = () => {
             status=""
             onStatusChange={() => {}}
             statusOptions={[]}
-            partyOptions={[]}
-            partyValue=""
-            onPartyChange={() => {}}
-            partyPlaceholder=""
+            partyOptions={vendorOptions}
+            partyValue={vendorFilter}
+            onPartyChange={setVendorFilter}
+            partyPlaceholder={t`All vendors`}
           />
         }
         actions={

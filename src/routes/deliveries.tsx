@@ -18,7 +18,7 @@ import {
 } from "src/types/delivery";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
-import { clientsAtom } from "src/atoms/client";
+import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { useDateFormatter } from "src/utils/date";
 import type { Dayjs } from "dayjs";
 
@@ -32,6 +32,7 @@ const Deliveries = () => {
   const navigate = useNavigate();
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
+  const setClients = useSetAtom(setClientsAtom);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
@@ -43,9 +44,10 @@ const Deliveries = () => {
   useEffect(() => {
     if (location.pathname === "/deliveries") {
       setLoading(true);
+      setClients();
       setDeliveries().finally(() => setLoading(false));
     }
-  }, [location, setDeliveries]);
+  }, [location, setDeliveries, setClients]);
 
   const clientOptions = useMemo(
     () =>
@@ -87,6 +89,8 @@ const Deliveries = () => {
             onDateRangeChange={setDateRange}
             status={statusFilter}
             onStatusChange={setStatusFilter}
+            statusPlaceholder={t`All statuses`}
+            statusAriaLabel={t`Filter by status`}
             statusOptions={DELIVERY_STATUSES.map((s) => ({
               value: s,
               label: deliveryStatusLabel(s),

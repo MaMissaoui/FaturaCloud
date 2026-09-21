@@ -21,7 +21,7 @@ import {
 } from "src/types/incoming-invoice";
 import { organizationAtom } from "src/atoms/organization";
 import { incomingInvoicesAtom, setIncomingInvoicesAtom } from "src/atoms/incoming-invoice";
-import { vendorsAtom } from "src/atoms/vendor";
+import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
@@ -34,6 +34,7 @@ const IncomingInvoices = () => {
   const organization = useAtomValue(organizationAtom);
   const invoices = useAtomValue(incomingInvoicesAtom);
   const setInvoices = useSetAtom(setIncomingInvoicesAtom);
+  const setVendors = useSetAtom(setVendorsAtom);
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("");
   const [vendorFilter, setVendorFilter] = useState("");
@@ -45,9 +46,10 @@ const IncomingInvoices = () => {
   useEffect(() => {
     if (location.pathname === "/incoming-invoices") {
       setLoading(true);
+      setVendors();
       setInvoices().finally(() => setLoading(false));
     }
-  }, [location, setInvoices]);
+  }, [location, setInvoices, setVendors]);
 
   useEffect(() => {
     if (location.pathname !== "/incoming-invoices" || !organization?.id) return;

@@ -44,6 +44,8 @@ const ProductionOrders = () => {
   // settings pages: that combination wrote a global atom and rebuilt
   // dataSource on every keystroke, re-rendering every visible row (audit
   // 2026-09-14 F91).
+  const hasFilters = !!(search || statusFilter || dateRange);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return orders.filter((o: ProductionOrder) => {
@@ -72,6 +74,8 @@ const ProductionOrders = () => {
             onDateRangeChange={setDateRange}
             status={statusFilter}
             onStatusChange={(v) => setStatusFilter(v as ProductionOrderStatus | "")}
+            statusPlaceholder={t`All statuses`}
+            statusAriaLabel={t`Filter by status`}
             statusOptions={PRODUCTION_ORDER_STATUSES.map((s) => ({
               value: s,
               label: productionOrderStatusLabel(s),
@@ -97,8 +101,8 @@ const ProductionOrders = () => {
             rowKey="id"
             loading={loading}
             locale={{
-              emptyText: search ? (
-                <Empty description={<Trans>No production orders match your search</Trans>} />
+              emptyText: hasFilters ? (
+                <Empty description={<Trans>No production orders match your filters</Trans>} />
               ) : (
                 <Empty description={<Trans>No production orders yet</Trans>}>
                   <Link to="/production-orders/new">
