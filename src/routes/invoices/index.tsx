@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button, Empty, Table, Typography, Dropdown, MenuProps, Popconfirm, Tooltip } from "antd";
+import {
+  Button,
+  Empty,
+  Table,
+  Tag,
+  Typography,
+  Dropdown,
+  MenuProps,
+  Popconfirm,
+  Tooltip,
+  theme,
+} from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   FileTextOutlined,
@@ -37,14 +48,8 @@ import type { InvoiceDisplay } from "src/types/invoice";
 import type { Dayjs } from "dayjs";
 
 const Invoices = () => {
-  // Built inside the component (not at module scope) so the filter labels
-  // follow the active locale rather than freezing at import-time locale.
-  const stateFilter = INVOICE_STATES.map((value) => ({
-    text: invoiceStateLabel(value),
-    value,
-  }));
-
   const { i18n } = useLingui();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();
 
@@ -166,8 +171,14 @@ const Invoices = () => {
       <PageHeader
         icon={<FileTextOutlined />}
         title={<Trans>Invoices</Trans>}
-        search={{ placeholder: t`Search text`, value: search, onChange: setSearch }}
-        extra={
+        search={{
+          placeholder: t`Search text`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        filters={
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -190,6 +201,7 @@ const Invoices = () => {
       />
 
       <Table
+        style={{ marginTop: 16 }}
         dataSource={filtered}
         pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
         rowKey="id"
@@ -217,7 +229,6 @@ const Invoices = () => {
           },
           style: { cursor: "pointer" },
           tabIndex: 0,
-          role: "link",
         })}
       >
         <Table.Column
@@ -238,7 +249,7 @@ const Invoices = () => {
           sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
             (a.clientName ?? "").localeCompare(b.clientName ?? "")
           }
-          render={(clientName) => (clientName ? clientName : "-")}
+          render={(clientName) => (clientName ? clientName : "—")}
         />
         <Table.Column
           title={<Trans>Date</Trans>}
@@ -247,7 +258,7 @@ const Invoices = () => {
           sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
             dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
           }
-          render={(date) => (date ? formatDate(date) : "-")}
+          render={(date) => (date ? formatDate(date) : "—")}
         />
         <Table.Column
           title={<Trans>Due date</Trans>}
@@ -257,13 +268,16 @@ const Invoices = () => {
             dayjs(a.dueDate).valueOf() - dayjs(b.dueDate).valueOf()
           }
           render={(date, invoice: InvoiceDisplay) => {
-            if (!date) return "-";
+            if (!date) return "—";
             // A sent (unpaid) invoice past its due date is overdue — flag it.
             const overdue = invoice.state === "sent" && dayjs(date).valueOf() < now;
             if (!overdue) return formatDate(date);
             return (
               <Tooltip title={t`Overdue`}>
-                <Typography.Text type="danger">{formatDate(date)}</Typography.Text>
+                <Typography.Text style={{ color: token.colorErrorText }}>
+                  {formatDate(date)}
+                </Typography.Text>{" "}
+                <Tag color="red">{t`Overdue`}</Tag>
               </Tooltip>
             );
           }}
@@ -284,8 +298,6 @@ const Invoices = () => {
           sorter={(a: InvoiceDisplay, b: InvoiceDisplay) =>
             (a.state ?? "").localeCompare(b.state ?? "")
           }
-          filters={stateFilter}
-          onFilter={(value, record: InvoiceDisplay) => record.state === String(value)}
           render={(invoice) => (
             <span onClick={(e) => e.stopPropagation()}>
               <InvoiceStateSelect invoice={invoice} />

@@ -78,8 +78,14 @@ const InboundDeliveries = () => {
       <PageHeader
         icon={<ImportOutlined />}
         title={<Trans>Goods Receipts</Trans>}
-        search={{ placeholder: t`Search`, value: search, onChange: setSearch }}
-        extra={
+        search={{
+          placeholder: t`Search`,
+          value: search,
+          onChange: setSearch,
+          allowClear: true,
+          onClear: () => setSearch(""),
+        }}
+        filters={
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -134,7 +140,6 @@ const InboundDeliveries = () => {
               },
               style: { cursor: "pointer" },
               tabIndex: 0,
-              role: "link",
             })}
           >
             <Table.Column
@@ -171,11 +176,6 @@ const InboundDeliveries = () => {
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
-              filters={INBOUND_DELIVERY_STATUSES.map((s) => ({
-                text: inboundDeliveryStatusLabel(s),
-                value: s,
-              }))}
-              onFilter={(value, record: InboundDelivery) => record.status === value}
               sorter={(a: InboundDelivery, b: InboundDelivery) =>
                 (a.status ?? "").localeCompare(b.status ?? "")
               }
