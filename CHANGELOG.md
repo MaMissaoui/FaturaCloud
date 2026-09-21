@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.49.0] - 2026-09-21
+
+### Changed
+- Cash Book: removed the "Open loans" list that filled the screen when no
+  search was typed — the search screen is now just the header and the
+  standing register / loan-status / payment panels. The ranked search
+  results are unchanged.
+- Cash Book: the sale screen (the "New sale" card and its "Back to search"
+  header) is now centered in a max-width container instead of stretching the
+  full content width.
+
+### Fixed
+- CI: the frontend test job no longer fails intermittently with an
+  unhandled "window is not defined" — pending React work is flushed before
+  the jsdom environment tears down.
+
 ## [3.48.0] - 2026-09-21
 
 ### Added
