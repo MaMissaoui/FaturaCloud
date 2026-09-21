@@ -812,6 +812,15 @@ export default function BaseLayout() {
         style={{
           width: "100%",
           marginLeft: isMobile ? 0 : siderCollapsed ? 80 : 200,
+          // The Sider is position:fixed, so this inner Layout is offset by a
+          // marginLeft instead of being laid out beside it. With the default
+          // min-width:auto it can't shrink below its widest child's min-content
+          // — the Cash Book's `scroll={{ x: "max-content" }}` loan-status table
+          // — so that page alone pushed the whole layout ~200px past the
+          // viewport (hiding the table's right columns and the search rows'
+          // money rail) instead of scrolling inside the table. min-width:0 lets
+          // the flex item shrink and the inner scroll container do its job.
+          minWidth: 0,
           transition: "all 0.2s",
         }}
       >
@@ -991,6 +1000,14 @@ export default function BaseLayout() {
             margin: "24px 16px",
             padding: 24,
             minHeight: 280,
+            // Content is a flex item in the outer Layout (next to the Sider).
+            // Its default min-width:auto lets a wide child — the Cash Book's
+            // `scroll={{ x: "max-content" }}` loan-status table — expand the
+            // whole column past the viewport instead of scrolling inside its
+            // own container, pushing the right-hand columns (and the search
+            // rows' money rail) off-screen. min-width:0 lets it shrink so the
+            // inner scroll container does its job.
+            minWidth: 0,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}

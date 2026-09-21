@@ -11,6 +11,10 @@ export interface PageHeaderSearchProps {
   allowClear?: boolean;
   onClear?: () => void;
   autoFocus?: boolean;
+  // Extra props for the search input itself — used by the Cash Book's
+  // combobox (role/aria-* + arrow-key handling), which drives the result
+  // listbox from the field.
+  inputProps?: Record<string, unknown>;
 }
 
 interface PageHeaderProps {
@@ -55,6 +59,7 @@ const PageHeader = ({ icon, title, search, extra, filters, actions, style }: Pag
               allowClear={search.allowClear}
               onClear={search.onClear}
               autoFocus={search.autoFocus}
+              {...(search.inputProps as object)}
             />
           )}
           {actions}
