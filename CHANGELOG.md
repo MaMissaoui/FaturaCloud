@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.37.0] - 2026-09-20
+
+### Changed
+- The embedded default document templates now print the VAT number as
+  **"Matricule fiscal"** (invoice, purchase order, order, incoming invoice,
+  outbound and inbound delivery). Organizations that uploaded a template
+  override are unaffected.
+
 ## [3.36.0] - 2026-09-20
 
 Loan status detail and cash book payment history.
