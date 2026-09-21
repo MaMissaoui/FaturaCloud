@@ -935,10 +935,8 @@ const CashBook = () => {
                     kind: "product",
                     products: sellableProducts,
                     allProducts: products,
-                    // The Product column shows the SKU code once a product is
-                    // picked (the description carries the name); the dropdown
-                    // shows the name too so a cashier can pick by name.
-                    dropdownLabel: (p: any) => (p.sku ? `${p.name} · ${p.sku}` : p.name),
+                    // The dropdown shows the product name (the shared default
+                    // also appends its SKU); the closed cell shows the SKU.
                     onSelect: (productId, fieldName, formInstance) => {
                       const product = find(products, { id: productId }) as any;
                       if (product) {
