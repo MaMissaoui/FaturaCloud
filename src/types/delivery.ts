@@ -11,7 +11,7 @@ export const deliveryStatusColor: Record<DeliveryStatus, string | undefined> = {
   draft: undefined,
   shipped: "orange",
   delivered: "green",
-  cancelled: "red",
+  cancelled: "volcano",
 };
 
 // Called during render (never hoisted to module scope) so the label follows

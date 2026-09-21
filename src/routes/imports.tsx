@@ -44,6 +44,9 @@ const Imports = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [summaries, setSummaries] = useState<Record<string, ImportSummary>>({});
+  // Gates the Committed value column so it shows "—" until the summaries
+  // request lands, instead of a plausible-looking 0,00 for every row.
+  const [summariesLoaded, setSummariesLoaded] = useState(false);
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [vendorFilter, setVendorFilter] = useState("");
   const formatDate = useDateFormatter();
@@ -61,7 +64,8 @@ const Imports = () => {
       if (organizationId) {
         GetImportSummaries(organizationId)
           .then(setSummaries)
-          .catch(() => setSummaries({}));
+          .catch(() => setSummaries({}))
+          .finally(() => setSummariesLoaded(true));
       }
     }
   }, [location, setImports, setPurchaseOrders, setVendors, organizationId]);
@@ -161,6 +165,7 @@ const Imports = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            scroll={{ x: "max-content" }}
             locale={{
               emptyText: hasFilters ? (
                 <Empty description={<Trans>No imports match your filters</Trans>} />
@@ -246,7 +251,11 @@ const Imports = () => {
                 (summaries[a.id]?.totalCommittedValue ?? 0) -
                 (summaries[b.id]?.totalCommittedValue ?? 0)
               }
-              render={(imp: Import) => money(summaries[imp.id]?.totalCommittedValue ?? 0)}
+              render={(imp: Import) =>
+                summariesLoaded && summaries[imp.id]
+                  ? money(summaries[imp.id].totalCommittedValue)
+                  : "—"
+              }
             />
             <Table.Column
               title={<Trans>Freight</Trans>}

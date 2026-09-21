@@ -128,6 +128,7 @@ const IncomingInvoices = () => {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            scroll={{ x: "max-content" }}
             locale={{
               emptyText: hasFilters ? (
                 <Empty description={<Trans>No incoming invoices match your filters</Trans>} />
