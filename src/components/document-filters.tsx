@@ -17,6 +17,10 @@ interface DocumentFiltersProps {
   status: string;
   onStatusChange: (status: string) => void;
   statusOptions: DocumentFilterOption[];
+  // Defaults to "All states" — pages whose column is labelled "Status" pass
+  // "All statuses" so the two agree.
+  statusPlaceholder?: string;
+  statusAriaLabel?: string;
   // The customer/vendor selector — pass empty arrays for a document with no
   // such party (imports, production orders).
   partyOptions: DocumentFilterOption[];
@@ -34,6 +38,8 @@ const DocumentFilters = ({
   status,
   onStatusChange,
   statusOptions,
+  statusPlaceholder,
+  statusAriaLabel,
   partyOptions,
   partyValue,
   onPartyChange,
@@ -56,8 +62,8 @@ const DocumentFilters = ({
           allowClear
           showSearch
           optionFilterProp="label"
-          placeholder={t`All states`}
-          aria-label={t`State`}
+          placeholder={statusPlaceholder ?? t`All states`}
+          aria-label={statusAriaLabel ?? t`Filter by state`}
           value={status || undefined}
           onChange={(value) => onStatusChange(value ?? "")}
           options={statusOptions}

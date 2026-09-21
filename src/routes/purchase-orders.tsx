@@ -17,7 +17,7 @@ import {
   type PurchaseOrderStatus,
 } from "src/types/purchase-order";
 import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-order";
-import { vendorsAtom } from "src/atoms/vendor";
+import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
@@ -29,6 +29,7 @@ const PurchaseOrders = () => {
   const formatDate = useDateFormatter();
   const orders = useAtomValue(purchaseOrdersAtom);
   const setOrders = useSetAtom(setPurchaseOrdersAtom);
+  const setVendors = useSetAtom(setVendorsAtom);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [vendorFilter, setVendorFilter] = useState("");
@@ -39,9 +40,10 @@ const PurchaseOrders = () => {
   useEffect(() => {
     if (location.pathname === "/purchase-orders") {
       setLoading(true);
+      setVendors();
       setOrders().finally(() => setLoading(false));
     }
-  }, [location, setOrders]);
+  }, [location, setOrders, setVendors]);
 
   const vendorOptions = useMemo(
     () =>
@@ -83,6 +85,8 @@ const PurchaseOrders = () => {
             onDateRangeChange={setDateRange}
             status={statusFilter}
             onStatusChange={setStatusFilter}
+            statusPlaceholder={t`All statuses`}
+            statusAriaLabel={t`Filter by status`}
             statusOptions={PURCHASE_ORDER_STATUSES.map((s) => ({
               value: s,
               label: purchaseOrderStatusLabel(s),

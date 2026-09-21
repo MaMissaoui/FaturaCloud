@@ -17,7 +17,7 @@ import {
   type InboundDeliveryStatus,
 } from "src/types/inbound-delivery";
 import { inboundDeliveriesAtom, setInboundDeliveriesAtom } from "src/atoms/inbound-delivery";
-import { vendorsAtom } from "src/atoms/vendor";
+import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
@@ -29,6 +29,7 @@ const InboundDeliveries = () => {
   const formatDate = useDateFormatter();
   const deliveries = useAtomValue(inboundDeliveriesAtom);
   const setDeliveries = useSetAtom(setInboundDeliveriesAtom);
+  const setVendors = useSetAtom(setVendorsAtom);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [vendorFilter, setVendorFilter] = useState("");
@@ -39,9 +40,10 @@ const InboundDeliveries = () => {
   useEffect(() => {
     if (location.pathname === "/inbound-deliveries") {
       setLoading(true);
+      setVendors();
       setDeliveries().finally(() => setLoading(false));
     }
-  }, [location, setDeliveries]);
+  }, [location, setDeliveries, setVendors]);
 
   const vendorOptions = useMemo(
     () =>
@@ -83,6 +85,8 @@ const InboundDeliveries = () => {
             onDateRangeChange={setDateRange}
             status={statusFilter}
             onStatusChange={setStatusFilter}
+            statusPlaceholder={t`All statuses`}
+            statusAriaLabel={t`Filter by status`}
             statusOptions={INBOUND_DELIVERY_STATUSES.map((s) => ({
               value: s,
               label: inboundDeliveryStatusLabel(s),

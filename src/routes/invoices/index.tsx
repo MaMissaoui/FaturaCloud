@@ -26,7 +26,7 @@ import {
   deleteInvoiceAtom,
 } from "src/atoms/invoice";
 import { organizationAtom } from "src/atoms/organization";
-import { clientsAtom } from "src/atoms/client";
+import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { getFormattedNumber } from "src/utils/currencies";
 import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
@@ -51,6 +51,7 @@ const Invoices = () => {
   const organization = useAtomValue(organizationAtom);
   const invoices = useAtomValue(invoicesAtom);
   const setInvoices = useSetAtom(setInvoicesAtom);
+  const setClients = useSetAtom(setClientsAtom);
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const [search, setSearch] = useState("");
@@ -72,8 +73,11 @@ const Invoices = () => {
 
   useEffect(() => {
     setLoading(true);
+    // Load the client list so the header's customer picker has options —
+    // the list pages don't otherwise fetch it.
+    setClients();
     setInvoices().finally(() => setLoading(false));
-  }, [setInvoices]);
+  }, [setInvoices, setClients]);
 
   const clientOptions = useMemo(
     () =>

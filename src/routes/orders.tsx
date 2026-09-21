@@ -11,7 +11,7 @@ import filter from "lodash/filter";
 import includes from "lodash/includes";
 
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
-import { clientsAtom } from "src/atoms/client";
+import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import {
   ORDER_STATUSES,
   orderStatusColor,
@@ -33,6 +33,7 @@ const Orders = () => {
   const navigate = useNavigate();
   const orders = useAtomValue(ordersAtom);
   const setOrders = useSetAtom(setOrdersAtom);
+  const setClients = useSetAtom(setClientsAtom);
   const clients = useAtomValue(clientsAtom);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -44,9 +45,10 @@ const Orders = () => {
   useEffect(() => {
     if (location.pathname === "/orders") {
       setLoading(true);
+      setClients();
       setOrders().finally(() => setLoading(false));
     }
-  }, [location, setOrders]);
+  }, [location, setOrders, setClients]);
 
   const clientOptions = useMemo(
     () =>
@@ -90,6 +92,8 @@ const Orders = () => {
             onDateRangeChange={setDateRange}
             status={statusFilter}
             onStatusChange={setStatusFilter}
+            statusPlaceholder={t`All statuses`}
+            statusAriaLabel={t`Filter by status`}
             statusOptions={ORDER_STATUSES.map((s) => ({ value: s, label: orderStatusLabel(s) }))}
             partyOptions={clientOptions}
             partyValue={clientFilter}
