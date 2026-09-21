@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.40.0] - 2026-09-21
+
+### Added
+- Document lists (Invoices, Orders, Purchase Orders, Outbound Deliveries,
+  Goods Receipts, Incoming Invoices, Imports, Production Orders) now have a
+  filter bar: date range, state/status, and a searchable customer/vendor
+  picker showing the party's name plus code or phone.
+- Document line items and the Cash Book: the Product column shows the SKU code
+  (name when a product has no SKU), the picker searches by SKU or name, the
+  description is filled with the product name, and each cell has a
+  copy-to-clipboard action.
+- Cash Book Withdraw: the receiving account now defaults from the
+  organization's Default cash account (Bank, 1020) for a deposit and Default
+  expense account (5100) for an expense.
+
+### Fixed
+- Cash Book: a gross-priced sale's tax rate is always determined (the line's
+  or product's rate, falling back to the organization's default) and the
+  net/tax split computed in the background, instead of being recorded
+  tax-free when a line carried no rate.
+
 ## [3.39.0] - 2026-09-21
 
 ### Added
