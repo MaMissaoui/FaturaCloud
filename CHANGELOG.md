@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.39.0] - 2026-09-21
+
+### Added
+- Empty states with a create action on the Chart of Accounts, Journals, Tax
+  rates and Units of measure lists, and "No periods in this year" on the
+  fiscal-year periods table.
+- Users: the New user form now asks to confirm the password.
+
+### Fixed
+- Document Templates: the on-screen help no longer tells users to set the
+  invoice layout to "Custom" (an uploaded template is used for both Excel and
+  PDF regardless of that setting).
+
 ## [3.38.0] - 2026-09-21
 
 ### Added
