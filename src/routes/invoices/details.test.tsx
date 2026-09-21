@@ -257,4 +257,29 @@ describe("InvoiceDetails", () => {
     // Rendering the whole invoice page in jsdom (antd Form.List/Table) is a
     // few seconds on its own, over the 5s default timeout on slower CI.
   }, 30000);
+
+  // A `noStyle` Form.Item renders no error text, so before this the required
+  // rules on the line-item cells (product/description/price/total) blocked
+  // form.submit() completely silently: no inline error, no toast, no request —
+  // Save just did nothing. "Description required" is unique to a line-item
+  // description cell, so it only renders once that feedback is wired up.
+  it("shows a line item's validation error instead of failing Save silently", async () => {
+    mockCommonFetches();
+
+    const store = createStore();
+    store.set(organizationIdAtom, "org_1");
+
+    await renderWithProviders(<InvoiceDetails />, {
+      route: "/invoices/new",
+      path: "/invoices/:id",
+      jotaiStore: store,
+      flushAtoms: [nextInvoiceNumberAtom],
+    });
+    await screen.findByText("Invoice details");
+
+    // The seeded line item has no description, so Save must surface the
+    // missing field rather than quietly doing nothing.
+    fireEvent.click(screen.getByText("Save"));
+    expect(await screen.findByText("Description required")).toBeInTheDocument();
+  }, 30000);
 });

@@ -312,6 +312,7 @@ const OrderDetails = () => {
       <Form
         form={form}
         onFinish={handleSubmit}
+        scrollToFirstError
         layout="vertical"
         initialValues={initialValues}
         onValuesChange={() => setIsDirty(true)}

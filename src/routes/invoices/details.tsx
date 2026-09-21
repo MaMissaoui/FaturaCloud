@@ -37,6 +37,7 @@ import {
   UserAddOutlined,
 } from "@ant-design/icons";
 import LineItemsTable, { ProductSelectCell } from "src/components/line-items/table";
+import { FieldFeedback } from "src/components/form-field-feedback";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
@@ -446,6 +447,7 @@ const InvoiceDetails: React.FC = () => {
           <Form
             form={form}
             onFinish={handleSubmit}
+            scrollToFirstError
             onValuesChange={() => setIsDirty(true)}
             layout="vertical"
             initialValues={initialValues}
@@ -813,37 +815,39 @@ const InvoiceDetails: React.FC = () => {
                             rules={[{ required: true, message: t`This field is required!` }]}
                             noStyle
                           >
-                            <InputNumber
-                              style={{ width: "100%" }}
-                              styles={{ input: { textAlign: "right" } }}
-                              onChange={(value) => {
-                                const total = form.getFieldValue([
-                                  "lineItems",
-                                  field.name,
-                                  "total",
-                                ]);
-                                const unitPrice = form.getFieldValue([
-                                  "lineItems",
-                                  field.name,
-                                  "unitPrice",
-                                ]);
+                            <FieldFeedback>
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                styles={{ input: { textAlign: "right" } }}
+                                onChange={(value) => {
+                                  const total = form.getFieldValue([
+                                    "lineItems",
+                                    field.name,
+                                    "total",
+                                  ]);
+                                  const unitPrice = form.getFieldValue([
+                                    "lineItems",
+                                    field.name,
+                                    "unitPrice",
+                                  ]);
 
-                                value = toNumber(value);
-                                if (value) {
-                                  if (!unitPrice && total) {
-                                    form.setFieldValue(
-                                      ["lineItems", field.name, "unitPrice"],
-                                      divideDecimal(total, value),
-                                    );
-                                  } else if (unitPrice) {
-                                    form.setFieldValue(
-                                      ["lineItems", field.name, "total"],
-                                      multiplyDecimal(value, unitPrice),
-                                    );
+                                  value = toNumber(value);
+                                  if (value) {
+                                    if (!unitPrice && total) {
+                                      form.setFieldValue(
+                                        ["lineItems", field.name, "unitPrice"],
+                                        divideDecimal(total, value),
+                                      );
+                                    } else if (unitPrice) {
+                                      form.setFieldValue(
+                                        ["lineItems", field.name, "total"],
+                                        multiplyDecimal(value, unitPrice),
+                                      );
+                                    }
                                   }
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                            </FieldFeedback>
                           </Form.Item>
                         ),
                       },
@@ -859,37 +863,39 @@ const InvoiceDetails: React.FC = () => {
                             rules={[{ required: true, message: t`This field is required!` }]}
                             noStyle
                           >
-                            <InputNumber
-                              style={{ width: "100%" }}
-                              styles={{ input: { textAlign: "right" } }}
-                              onChange={(value) => {
-                                const total = form.getFieldValue([
-                                  "lineItems",
-                                  field.name,
-                                  "total",
-                                ]);
-                                const quantity = form.getFieldValue([
-                                  "lineItems",
-                                  field.name,
-                                  "quantity",
-                                ]);
+                            <FieldFeedback>
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                styles={{ input: { textAlign: "right" } }}
+                                onChange={(value) => {
+                                  const total = form.getFieldValue([
+                                    "lineItems",
+                                    field.name,
+                                    "total",
+                                  ]);
+                                  const quantity = form.getFieldValue([
+                                    "lineItems",
+                                    field.name,
+                                    "quantity",
+                                  ]);
 
-                                value = toNumber(value);
-                                if (value) {
-                                  if (!quantity && total) {
-                                    form.setFieldValue(
-                                      ["lineItems", field.name, "quantity"],
-                                      divideDecimal(total, value),
-                                    );
-                                  } else if (quantity) {
-                                    form.setFieldValue(
-                                      ["lineItems", field.name, "total"],
-                                      multiplyDecimal(quantity, value),
-                                    );
+                                  value = toNumber(value);
+                                  if (value) {
+                                    if (!quantity && total) {
+                                      form.setFieldValue(
+                                        ["lineItems", field.name, "quantity"],
+                                        divideDecimal(total, value),
+                                      );
+                                    } else if (quantity) {
+                                      form.setFieldValue(
+                                        ["lineItems", field.name, "total"],
+                                        multiplyDecimal(quantity, value),
+                                      );
+                                    }
                                   }
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                            </FieldFeedback>
                           </Form.Item>
                         ),
                       },
@@ -926,37 +932,39 @@ const InvoiceDetails: React.FC = () => {
                             rules={[{ required: true, message: t`This field is required!` }]}
                             noStyle
                           >
-                            <InputNumber
-                              style={{ width: "100%" }}
-                              styles={{ input: { textAlign: "right" } }}
-                              onChange={(value) => {
-                                const unitPrice = form.getFieldValue([
-                                  "lineItems",
-                                  field.name,
-                                  "unitPrice",
-                                ]);
-                                const quantity = form.getFieldValue([
-                                  "lineItems",
-                                  field.name,
-                                  "quantity",
-                                ]);
+                            <FieldFeedback>
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                styles={{ input: { textAlign: "right" } }}
+                                onChange={(value) => {
+                                  const unitPrice = form.getFieldValue([
+                                    "lineItems",
+                                    field.name,
+                                    "unitPrice",
+                                  ]);
+                                  const quantity = form.getFieldValue([
+                                    "lineItems",
+                                    field.name,
+                                    "quantity",
+                                  ]);
 
-                                value = toNumber(value);
-                                if (value) {
-                                  if (!quantity && unitPrice) {
-                                    form.setFieldValue(
-                                      ["lineItems", field.name, "quantity"],
-                                      divideDecimal(value, unitPrice),
-                                    );
-                                  } else if (quantity) {
-                                    form.setFieldValue(
-                                      ["lineItems", field.name, "unitPrice"],
-                                      divideDecimal(value, quantity),
-                                    );
+                                  value = toNumber(value);
+                                  if (value) {
+                                    if (!quantity && unitPrice) {
+                                      form.setFieldValue(
+                                        ["lineItems", field.name, "quantity"],
+                                        divideDecimal(value, unitPrice),
+                                      );
+                                    } else if (quantity) {
+                                      form.setFieldValue(
+                                        ["lineItems", field.name, "unitPrice"],
+                                        divideDecimal(value, quantity),
+                                      );
+                                    }
                                   }
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                            </FieldFeedback>
                           </Form.Item>
                         ),
                       },
