@@ -1314,7 +1314,27 @@ const CashBook = () => {
               aria-label={t`Customer`}
               allowClear
               showSearch
-              optionFilterProp="children"
+              // The option children are JSX (name + detail line), so the
+              // default optionFilterProp="children" can't stringify them —
+              // search by the customer's own fields instead.
+              filterOption={(input, option) => {
+                const c = (clients as any[]).find((x) => x.id === option?.value);
+                if (!c) return false;
+                const hay = [
+                  c.name,
+                  c.code,
+                  c.phone,
+                  c.phone2,
+                  c.phone3,
+                  c.identity_number,
+                  c.iban,
+                  c.guarantor,
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+                  .toLowerCase();
+                return hay.includes(input.toLowerCase());
+              }}
               style={{ minWidth: 260 }}
               popupMatchSelectWidth={360}
             >
