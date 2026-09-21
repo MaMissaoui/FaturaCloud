@@ -540,7 +540,9 @@ export default function OrganizationEditDrawer({
                           label={<Trans>Default expense account</Trans>}
                           tooltip={
                             <Trans>
-                              Used for a vendor bill line whose product has no override.
+                              Used for a vendor bill line whose product has no override, and as the
+                              default receiving account when a Cash Book withdrawal is spent on an
+                              expense.
                             </Trans>
                           }
                         >
@@ -557,6 +559,13 @@ export default function OrganizationEditDrawer({
                         <Form.Item
                           name="defaultCashAccountId"
                           label={<Trans>Default cash account</Trans>}
+                          tooltip={
+                            <Trans>
+                              The organization's Bank account (code 1020 in the default chart),
+                              pre-filled as the receiving account when a Cash Book withdrawal is
+                              deposited to the bank.
+                            </Trans>
+                          }
                         >
                           <Select
                             allowClear
