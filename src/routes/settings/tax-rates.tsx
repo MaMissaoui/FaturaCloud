@@ -98,7 +98,6 @@ function SettingsTaxRates() {
               },
               style: { cursor: "pointer" },
               tabIndex: 0,
-              role: "link",
             })}
           >
             <Table.Column

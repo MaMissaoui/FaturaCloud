@@ -307,7 +307,6 @@ const Dashboard = () => {
                 },
                 style: { cursor: "pointer" },
                 tabIndex: 0,
-                role: "link",
               })}
             >
               <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
@@ -357,7 +356,6 @@ const Dashboard = () => {
                 },
                 style: { cursor: "pointer" },
                 tabIndex: 0,
-                role: "link",
               })}
             >
               <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
@@ -408,7 +406,6 @@ const Dashboard = () => {
                 },
                 style: { cursor: "pointer" },
                 tabIndex: 0,
-                role: "link",
               })}
             >
               <Table.Column title={<Trans>Client</Trans>} dataIndex="name" key="name" />
@@ -450,7 +447,6 @@ const Dashboard = () => {
                 },
                 style: { cursor: "pointer" },
                 tabIndex: 0,
-                role: "link",
               })}
             >
               <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
