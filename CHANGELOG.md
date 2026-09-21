@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.44.0] - 2026-09-21
+
+### Changed
+- The document-list date filter now has a visible label naming the field it
+  applies to ("Order date", "Delivery date", …) and the same date presets as
+  the Reporting pages; its two inputs share one accessible name.
+- `DocumentFilters`' status/party groups are optional, so pages without one
+  no longer pass empty placeholders.
+
+### Fixed
+- Imports uses the shared document-filter predicate for its search and date
+  (keeping its vendor-by-linked-PO rule).
+
 ## [3.43.0] - 2026-09-21
 
 ### Changed
