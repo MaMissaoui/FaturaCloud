@@ -434,7 +434,15 @@ const CashBook = () => {
 
   const openWithdrawModal = () => {
     withdrawForm.resetFields();
-    withdrawForm.setFieldsValue({ counterAccountType: "bank" });
+    // Default the destination to a bank deposit and prefill its receiving
+    // account from the organization's Default cash account (the Bank account,
+    // code 1020 in the default chart) — the same org-level setting the
+    // "Deposit to the bank" picker offers, so the cashier usually just
+    // confirms it.
+    withdrawForm.setFieldsValue({
+      counterAccountType: "bank",
+      counterAccountId: organization?.defaultCashAccountId ?? undefined,
+    });
     setWithdrawModalOpen(true);
   };
 
@@ -1578,7 +1586,19 @@ const CashBook = () => {
             name="counterAccountType"
             rules={[{ required: true, message: t`This field is required!` }]}
           >
-            <Select onChange={() => withdrawForm.setFieldValue("counterAccountId", undefined)}>
+            <Select
+              onChange={(value) =>
+                // Prefill the receiving account from the organization's own
+                // defaults: Default cash account (Bank, 1020) for a deposit,
+                // Default expense account (5100) for an expense.
+                withdrawForm.setFieldValue(
+                  "counterAccountId",
+                  (value === "expense"
+                    ? organization?.defaultExpenseAccountId
+                    : organization?.defaultCashAccountId) ?? undefined,
+                )
+              }
+            >
               <Option value="bank">
                 <Trans>Deposit to the bank</Trans>
               </Option>
