@@ -121,6 +121,12 @@ export const ProductSelectCell = ({
           showSearch
           style={{ width: "100%" }}
           placeholder={t`Select product`}
+          // Show the SKU (the option's `label`) in the closed cell, while the
+          // open dropdown renders the children (product name · SKU). Without
+          // this, antd defaults the closed display to the option's children,
+          // so the cell duplicated the name that the description already
+          // carries.
+          optionLabelProp="label"
           // Search matches on name (what someone remembers) as well as SKU,
           // even though the option label shows the SKU.
           filterOption={(input, option) => {
@@ -139,7 +145,10 @@ export const ProductSelectCell = ({
         >
           {map(options, (p: any) => (
             <Option key={p.id} value={p.id} label={optionLabel ? optionLabel(p) : p.sku || p.name}>
-              {dropdownLabel ? dropdownLabel(p) : p.sku || p.name}
+              {/* The dropdown shows the product NAME (with its SKU appended),
+                  so a product can be found and identified by name; the closed
+                  cell shows the SKU via `label`. */}
+              {dropdownLabel ? dropdownLabel(p) : p.sku ? `${p.name} · ${p.sku}` : p.name}
             </Option>
           ))}
         </Select>
