@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Journal } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Table, Tag } from "antd";
+import { Button, Col, Row, Table, Tag, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -64,6 +64,17 @@ const Journals = () => {
             pagination={{ hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: (
+                <Empty description={<Trans>No journals yet</Trans>}>
+                  <Link to="/accounting/journals" state={{ journalModal: true }}>
+                    <Button type="primary">
+                      <Trans>Create your first journal</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: Journal) => ({
               onClick: () =>
                 navigate("/accounting/journals", {

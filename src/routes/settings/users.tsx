@@ -370,25 +370,24 @@ export default function SettingsUsers() {
             <Input.Password />
           </Form.Item>
 
-          {isEdit && (
-            <Form.Item
-              name="passwordConfirm"
-              label={<Trans>Confirm password</Trans>}
-              dependencies={["password"]}
-              rules={[
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    const pw = getFieldValue("password");
-                    if (!pw && !value) return Promise.resolve();
-                    if (pw === value) return Promise.resolve();
-                    return Promise.reject(new Error(t`Passwords do not match`));
-                  },
-                }),
-              ]}
-            >
-              <Input.Password />
-            </Form.Item>
-          )}
+          <Form.Item
+            name="passwordConfirm"
+            label={<Trans>Confirm password</Trans>}
+            dependencies={["password"]}
+            rules={[
+              ...(isEdit ? [] : [{ required: true, message: t`Please confirm the password` }]),
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  const pw = getFieldValue("password");
+                  if (!pw && !value) return Promise.resolve();
+                  if (pw === value) return Promise.resolve();
+                  return Promise.reject(new Error(t`Passwords do not match`));
+                },
+              }),
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
         </Form>
       </Drawer>
     </>

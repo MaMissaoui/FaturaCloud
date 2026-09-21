@@ -239,8 +239,8 @@ function SettingsDocumentTemplates() {
       <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
         <Trans>
           Upload a custom Excel layout for a document type, or download the current one to edit it.
-          To use a custom template for invoices, set the invoice layout to "Custom" in the
-          Organizations Formatting settings.
+          An uploaded template is used for both the Excel and PDF export of that document type;
+          deleting it reverts to the built-in default.
         </Trans>
       </Text>
 

@@ -13,6 +13,7 @@ import {
   Row,
   Table,
   Tag,
+  Empty,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -172,6 +173,9 @@ const FiscalPeriods = () => {
                       pagination={false}
                       rowKey="id"
                       size="small"
+                      locale={{
+                        emptyText: <Empty description={<Trans>No periods in this year</Trans>} />,
+                      }}
                       footer={() => (
                         <Button
                           size="small"
