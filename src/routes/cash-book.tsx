@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   App,
   Button,
   Card,
@@ -7,6 +8,7 @@ import {
   Col,
   DatePicker,
   Divider,
+  Empty,
   Form,
   Input,
   InputNumber,
@@ -32,6 +34,7 @@ import {
   FieldTimeOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
+  RightOutlined,
   UserAddOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
@@ -70,6 +73,7 @@ import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
 import PaymentPanel from "src/components/payments/payment-panel";
 import { useDatePickerFormat } from "src/utils/date";
+import { searchClients } from "src/utils/client-search";
 import { dateSorter, moneySorter, numberSorter, textSorter } from "src/utils/sort";
 import {
   addDecimal,
@@ -171,7 +175,7 @@ const CashBook = () => {
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
   const {
-    token: { colorSuccess, colorError, colorBorder },
+    token: { colorSuccess, colorError, colorBorder, colorPrimary, colorTextSecondary },
   } = theme.useToken();
 
   const organizationId = useAtomValue(organizationIdAtom);
@@ -235,6 +239,10 @@ const CashBook = () => {
   const [loanStatusClientId, setLoanStatusClientId] = useState<string>("");
   const [loanStatusRows, setLoanStatusRows] = useState<LoanStatusRow[]>([]);
   const [loadingLoanStatus, setLoadingLoanStatus] = useState(false);
+  // A failed fetch leaves loanStatusRows empty, which would otherwise render
+  // every customer as debt-free on the search list — "no loan" and "we don't
+  // know" must not be the same pixels on a counter screen.
+  const [loanStatusFailed, setLoanStatusFailed] = useState(false);
   const [openLoansOnly, setOpenLoansOnly] = useState(true);
   // The invoice whose "Record payment" panel is open, resolved from the loan
   // report's invoiceId when the button is clicked.
@@ -321,11 +329,13 @@ const CashBook = () => {
       const rows = await GetLoanStatus(organizationId, loanStatusClientId || undefined);
       if (requestId !== loanStatusRequestIdRef.current) return;
       setLoanStatusRows(rows);
+      setLoanStatusFailed(false);
     } catch (error) {
       if (requestId !== loanStatusRequestIdRef.current) return;
       console.error("Failed to fetch loan status:", error);
       message.error(t`Failed to load loan status`);
       setLoanStatusRows([]);
+      setLoanStatusFailed(true);
     } finally {
       if (requestId === loanStatusRequestIdRef.current) setLoadingLoanStatus(false);
     }
@@ -509,14 +519,59 @@ const CashBook = () => {
   };
 
   const needle = search.trim().toLowerCase();
-  const searchResults = useMemo(() => {
-    if (!needle) return [];
-    return (clients as any[]).filter((c) =>
-      [c.name, c.phone, c.identity_number, c.iban].some(
-        (field) => field && String(field).toLowerCase().includes(needle),
-      ),
+  const searchResults = useMemo(
+    () => searchClients(clients as any[], needle, openLoanByClient),
+    [clients, needle, openLoanByClient],
+  );
+
+  // A one-character query on a large client book shouldn't render thousands of
+  // rows; 25 fills any viewport and the footer says how many were held back.
+  const MAX_SEARCH_RESULTS = 25;
+  const visibleSearchResults = searchResults.slice(0, MAX_SEARCH_RESULTS);
+  const hiddenResultCount = searchResults.length - visibleSearchResults.length;
+  const debtorCount = searchResults.reduce(
+    (n, c) => n + ((openLoanByClient.get(c.id) ?? 0) > 0 ? 1 : 0),
+    0,
+  );
+
+  // The counter's single most useful default when nothing is typed: who owes
+  // money, biggest first, from the report already loaded below — no request.
+  const topDebtors = useMemo(() => {
+    return [...openLoanByClient.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([clientId, outstanding]) => ({
+        clientId,
+        outstanding,
+        name: clientNameById.get(clientId) ?? "",
+        client: (clients as any[]).find((c) => c.id === clientId),
+      }))
+      .filter((row) => row.client);
+  }, [openLoanByClient, clientNameById, clients]);
+
+  // Renders `text` with its first case-insensitive occurrence of `term`
+  // highlighted, so a phone/CIN match is obvious rather than something to
+  // trust.
+  const highlight = (text: string, term: string) => {
+    if (!term) return text;
+    const at = text.toLowerCase().indexOf(term);
+    if (at < 0) return text;
+    return (
+      <>
+        {text.slice(0, at)}
+        <Typography.Text style={{ color: colorPrimary, fontWeight: 600 }}>
+          {text.slice(at, at + term.length)}
+        </Typography.Text>
+        {text.slice(at + term.length)}
+      </>
     );
-  }, [clients, needle]);
+  };
+
+  const openNewClientModal = (prefillName?: string) => {
+    newClientForm.resetFields();
+    if (prefillName) newClientForm.setFieldValue("name", prefillName);
+    setNewClientModalOpen(true);
+  };
 
   const handleNewClientSubmit = (values: any) => {
     const phone = values.phone?.trim();
@@ -787,13 +842,9 @@ const CashBook = () => {
             <Button
               type="dashed"
               icon={<UserAddOutlined />}
-              onClick={() => {
-                newClientForm.resetFields();
-                if (needle && searchResults.length === 0) {
-                  newClientForm.setFieldValue("name", search);
-                }
-                setNewClientModalOpen(true);
-              }}
+              onClick={() =>
+                openNewClientModal(needle && searchResults.length === 0 ? search : undefined)
+              }
             >
               <Trans>New customer</Trans>
             </Button>
@@ -801,67 +852,149 @@ const CashBook = () => {
         }
       />
 
-      {isToday && !inSale && needle && (
-        <List
-          dataSource={searchResults}
-          locale={{ emptyText: <Trans>No matching customers</Trans> }}
-          style={{ marginBottom: 16 }}
-          renderItem={(client: any) => {
-            const details = clientDetailLine(client);
-            const openLoan = openLoanByClient.get(client.id);
-            return (
-              <List.Item
-                onClick={() => selectClient(client)}
-                onKeyDown={(e) => {
-                  // Only the row itself handles the key — a nested control (the
-                  // "Select" button below) fires its own click on Enter/Space,
-                  // and letting that bubble here too would select the client
-                  // twice.
-                  if (e.target !== e.currentTarget) return;
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    selectClient(client);
-                  }
+      {isToday && !inSale && (
+        <>
+          {loanStatusFailed && (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={
+                <Trans>
+                  Open-loan figures couldn't be loaded — any loan shown may be incomplete
+                </Trans>
+              }
+            />
+          )}
+
+          {needle ? (
+            <>
+              <div
+                aria-live="polite"
+                style={{
+                  marginBottom: 4,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: colorTextSecondary,
                 }}
-                style={{ cursor: "pointer" }}
-                tabIndex={0}
-                role="button"
-                actions={[
-                  <Button
-                    type="link"
-                    onClick={(e) => {
-                      // The row's onClick already covers clicking anywhere in
-                      // the item — without this the button's click bubbled and
-                      // fired selectClient a second time (a duplicate fetch).
-                      e.stopPropagation();
-                      selectClient(client);
-                    }}
-                    key="select"
-                  >
-                    <Trans>Select</Trans>
-                  </Button>,
-                ]}
               >
-                <List.Item.Meta
-                  title={client.name}
-                  description={
-                    <>
-                      <Typography.Text type="secondary">{details}</Typography.Text>
-                      {openLoan ? (
-                        <>
-                          {" · "}
+                <Trans>
+                  {searchResults.length} matches · {debtorCount} with an open loan
+                </Trans>
+              </div>
+              <List
+                dataSource={visibleSearchResults}
+                locale={{
+                  emptyText: (
+                    <Empty description={t`No matching customers`}>
+                      <Button
+                        type="dashed"
+                        icon={<UserAddOutlined />}
+                        onClick={() => openNewClientModal(search)}
+                      >
+                        {t`Create`} "{search}"
+                      </Button>
+                    </Empty>
+                  ),
+                }}
+                style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
+                renderItem={(client: any) => {
+                  const details = clientDetailLine(client);
+                  const openLoan = openLoanByClient.get(client.id);
+                  return (
+                    <List.Item
+                      onClick={() => selectClient(client)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          selectClient(client);
+                        }
+                      }}
+                      style={{ cursor: "pointer" }}
+                      tabIndex={0}
+                      role="button"
+                      // The row itself is the target; a nested "Select" button
+                      // was both a second hit target for the same action and
+                      // invalid (a button inside a button), so the affordance
+                      // is a non-focusable chevron instead.
+                      actions={[<RightOutlined key="go" aria-hidden />]}
+                    >
+                      <List.Item.Meta
+                        title={highlight(client.name, needle)}
+                        description={
+                          <>
+                            <Typography.Text style={{ color: colorTextSecondary }}>
+                              {highlight(details, needle)}
+                            </Typography.Text>
+                            {openLoan ? (
+                              <>
+                                {" · "}
+                                <Typography.Text strong type="warning">
+                                  {t`Open loan`}: {money(openLoan)}
+                                </Typography.Text>
+                              </>
+                            ) : null}
+                          </>
+                        }
+                      />
+                    </List.Item>
+                  );
+                }}
+              />
+              {hiddenResultCount > 0 && (
+                <div style={{ marginBottom: 16, fontSize: 12, color: colorTextSecondary }}>
+                  <Trans>
+                    Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow{" "}
+                    {hiddenResultCount} more
+                  </Trans>
+                </div>
+              )}
+            </>
+          ) : (
+            topDebtors.length > 0 && (
+              <>
+                <div
+                  style={{
+                    marginBottom: 4,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: colorTextSecondary,
+                  }}
+                >
+                  <Trans>Open loans</Trans>
+                </div>
+                <List
+                  dataSource={topDebtors}
+                  style={{ marginBottom: 16 }}
+                  renderItem={(row) => (
+                    <List.Item
+                      onClick={() => row.client && selectClient(row.client)}
+                      onKeyDown={(e) => {
+                        if ((e.key === "Enter" || e.key === " ") && row.client) {
+                          e.preventDefault();
+                          selectClient(row.client);
+                        }
+                      }}
+                      style={{ cursor: "pointer" }}
+                      tabIndex={0}
+                      role="button"
+                      actions={[<RightOutlined key="go" aria-hidden />]}
+                    >
+                      <List.Item.Meta
+                        title={row.name}
+                        description={
                           <Typography.Text strong type="warning">
-                            {t`Open loan`}: {money(openLoan)}
+                            {t`Open loan`}: {money(row.outstanding)}
                           </Typography.Text>
-                        </>
-                      ) : null}
-                    </>
-                  }
+                        }
+                      />
+                    </List.Item>
+                  )}
                 />
-              </List.Item>
-            );
-          }}
-        />
+              </>
+            )
+          )}
+        </>
       )}
 
       {/* Sale-in-progress flow. The cash-register report is hidden while a
