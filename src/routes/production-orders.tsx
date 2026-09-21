@@ -79,6 +79,7 @@ const ProductionOrders = () => {
           <DocumentFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
+            dateLabel={t`Date`}
             status={statusFilter}
             onStatusChange={(v) => setStatusFilter(v as ProductionOrderStatus | "")}
             statusPlaceholder={t`All statuses`}
@@ -87,10 +88,6 @@ const ProductionOrders = () => {
               value: s,
               label: productionOrderStatusLabel(s),
             }))}
-            partyOptions={[]}
-            partyValue=""
-            onPartyChange={() => {}}
-            partyPlaceholder=""
           />
         }
         actions={
