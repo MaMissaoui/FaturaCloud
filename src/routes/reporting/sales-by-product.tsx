@@ -16,6 +16,7 @@ import type { ProductRevenue } from "src/api";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
+import { moneySorter, textSorter } from "src/utils/sort";
 
 const { RangePicker } = DatePicker;
 
@@ -153,6 +154,7 @@ const SalesByProduct = () => {
             <Table.Column
               title={<Trans>Product</Trans>}
               key="name"
+              sorter={textSorter((row: ProductRevenue) => row.name)}
               render={(row: ProductRevenue) => (
                 <Link to="/products" state={{ productModal: true, productId: row.productId }}>
                   {row.name}
@@ -163,6 +165,7 @@ const SalesByProduct = () => {
               title={<Trans>Revenue</Trans>}
               key="revenue"
               align="right"
+              sorter={moneySorter((row: ProductRevenue) => row.revenue)}
               render={(row: ProductRevenue) => money(row.revenue)}
             />
           </Table>

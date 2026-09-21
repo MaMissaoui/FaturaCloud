@@ -172,10 +172,16 @@ const TrialBalance = () => {
               sorter={(a: TrialBalanceRow, b: TrialBalanceRow) => a.code.localeCompare(b.code)}
               defaultSortOrder="ascend"
             />
-            <Table.Column title={<Trans>Name</Trans>} dataIndex="name" key="name" />
+            <Table.Column
+              title={<Trans>Name</Trans>}
+              dataIndex="name"
+              key="name"
+              sorter={(a: TrialBalanceRow, b: TrialBalanceRow) => a.name.localeCompare(b.name)}
+            />
             <Table.Column
               title={<Trans>Debit</Trans>}
               dataIndex="debit"
+              sorter={(a: TrialBalanceRow, b: TrialBalanceRow) => a.debit - b.debit}
               key="debit"
               align="right"
               render={(v: number) => money(v)}
@@ -183,6 +189,7 @@ const TrialBalance = () => {
             <Table.Column
               title={<Trans>Credit</Trans>}
               dataIndex="credit"
+              sorter={(a: TrialBalanceRow, b: TrialBalanceRow) => a.credit - b.credit}
               key="credit"
               align="right"
               render={(v: number) => money(v)}

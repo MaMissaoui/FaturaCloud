@@ -542,6 +542,9 @@ const OrderDetails = () => {
               <Table.Column
                 title={<Trans>Number</Trans>}
                 key="deliveryNumber"
+                sorter={(a: any, b: any) =>
+                  String(a.deliveryNumber ?? "").localeCompare(String(b.deliveryNumber ?? ""))
+                }
                 render={(delivery: any) => (
                   <Link to={`/deliveries/${delivery.id}`}>{delivery.deliveryNumber}</Link>
                 )}
@@ -549,11 +552,13 @@ const OrderDetails = () => {
               <Table.Column
                 title={<Trans>Date</Trans>}
                 key="deliveryDate"
+                sorter={(a: any, b: any) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
                 render={(delivery: any) => formatDate(delivery.deliveryDate)}
               />
               <Table.Column
                 title={<Trans>Status</Trans>}
                 key="status"
+                sorter={(a: any, b: any) => String(a.status).localeCompare(String(b.status))}
                 render={(delivery: any) => (
                   <Tag color={deliveryStatusColor[delivery.status as DeliveryStatus]}>
                     {deliveryStatusLabel(delivery.status)}

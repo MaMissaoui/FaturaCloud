@@ -59,6 +59,9 @@ export default function OrganizationMembersPanel({
           <Table.Column
             title={<Trans>User</Trans>}
             key="user"
+            sorter={(a: OrganizationMember, b: OrganizationMember) =>
+              (a.displayName || a.email).localeCompare(b.displayName || b.email)
+            }
             render={(_: unknown, record: OrganizationMember) => (
               <>
                 {record.displayName || record.email}
@@ -74,6 +77,7 @@ export default function OrganizationMembersPanel({
             title={<Trans>Role</Trans>}
             key="role"
             width={160}
+            sorter={(a: OrganizationMember, b: OrganizationMember) => a.role.localeCompare(b.role)}
             render={(_: unknown, record: OrganizationMember) => {
               const memberLabel = record.displayName || record.email;
               return (

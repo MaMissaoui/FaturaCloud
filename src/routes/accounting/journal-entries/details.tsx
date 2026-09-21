@@ -31,6 +31,7 @@ import find from "lodash/find";
 import sum from "lodash/sum";
 
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
+import { moneySorter, textSorter } from "src/utils/sort";
 import { journalEntryStatusColor, journalEntryStatusLabel } from "src/types/journal-entry";
 import { formatMoneyUnits } from "src/utils/currencies";
 import { GetJournalEntryReversal } from "src/api";
@@ -455,6 +456,10 @@ const JournalEntryDetails = () => {
           title={<Trans>Account</Trans>}
           dataIndex="accountId"
           key="accountId"
+          sorter={textSorter((line: any) => {
+            const account = find(accounts, { id: line.accountId });
+            return account ? `${account.code} · ${account.name}` : line.accountId;
+          })}
           render={(accountId: string) => {
             const account = find(accounts, { id: accountId });
             return account ? `${account.code} · ${account.name}` : accountId;
@@ -464,6 +469,7 @@ const JournalEntryDetails = () => {
           title={<Trans>Description</Trans>}
           dataIndex="description"
           key="description"
+          sorter={textSorter((line: any) => line.description ?? "")}
           render={(v: string | null) => v ?? "—"}
         />
         <Table.Column
@@ -471,6 +477,7 @@ const JournalEntryDetails = () => {
           dataIndex="debit"
           key="debit"
           align="right"
+          sorter={moneySorter((line: any) => line.debit)}
           render={(v: number) => (v ? money(v) : "—")}
         />
         <Table.Column
@@ -478,6 +485,7 @@ const JournalEntryDetails = () => {
           dataIndex="credit"
           key="credit"
           align="right"
+          sorter={moneySorter((line: any) => line.credit)}
           render={(v: number) => (v ? money(v) : "—")}
         />
       </Table>

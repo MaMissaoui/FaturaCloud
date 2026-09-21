@@ -143,6 +143,9 @@ const ProductionOrders = () => {
             <Table.Column
               title={<Trans>Import</Trans>}
               dataIndex="importNumber"
+              sorter={(a: ProductionOrder, b: ProductionOrder) =>
+                (a.importNumber ?? "").localeCompare(b.importNumber ?? "")
+              }
               key="importNumber"
               render={(v: string | null) => v ?? "—"}
             />

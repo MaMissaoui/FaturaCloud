@@ -151,6 +151,11 @@ const ChartOfAccounts = () => {
               title={<Trans>Parent</Trans>}
               dataIndex="parentId"
               key="parentId"
+              sorter={(a: Account, b: Account) => {
+                const pa = find(accounts, { id: a.parentId }) as Account | undefined;
+                const pb = find(accounts, { id: b.parentId }) as Account | undefined;
+                return `${pa?.code ?? ""}`.localeCompare(`${pb?.code ?? ""}`);
+              }}
               render={(parentId: string | null) => {
                 if (!parentId) return "—";
                 const parent = find(accounts, { id: parentId });
@@ -163,6 +168,7 @@ const ChartOfAccounts = () => {
               key="isGroup"
               align="center"
               width={90}
+              sorter={(a: Account, b: Account) => a.isGroup - b.isGroup}
               render={(isGroup: number) => (isGroup ? <Tag>{t`Header`}</Tag> : null)}
             />
             <Table.Column
@@ -171,6 +177,7 @@ const ChartOfAccounts = () => {
               key="isActive"
               align="center"
               width={90}
+              sorter={(a: Account, b: Account) => a.isActive - b.isActive}
               render={(isActive: number) =>
                 isActive ? (
                   <Tag color="green">{t`Active`}</Tag>

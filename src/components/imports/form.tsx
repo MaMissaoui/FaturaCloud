@@ -434,16 +434,23 @@ const ImportForm = () => {
                 <Table.Column
                   title={<Trans>Order #</Trans>}
                   key="orderNumber"
+                  sorter={(a: any, b: any) =>
+                    String(a.orderNumber ?? "").localeCompare(String(b.orderNumber ?? ""))
+                  }
                   render={(o: any) => <Link to={`/purchase-orders/${o.id}`}>{o.orderNumber}</Link>}
                 />
                 <Table.Column
                   title={<Trans>Vendor</Trans>}
                   key="vendorName"
+                  sorter={(a: any, b: any) =>
+                    String(a.vendorName ?? "").localeCompare(String(b.vendorName ?? ""))
+                  }
                   render={(o: any) => o.vendorName ?? "—"}
                 />
                 <Table.Column
                   title={<Trans>Status</Trans>}
                   key="status"
+                  sorter={(a: any, b: any) => String(a.status).localeCompare(String(b.status))}
                   render={(o: any) => (
                     <Tag color={purchaseOrderStatusColor[o.status as PurchaseOrderStatus]}>
                       {purchaseOrderStatusLabel(o.status)}

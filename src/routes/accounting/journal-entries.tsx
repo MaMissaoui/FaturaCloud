@@ -106,6 +106,7 @@ const JournalEntries = () => {
               dataIndex="entryNumber"
               key="entryNumber"
               width={100}
+              sorter={(a: any, b: any) => (a.entryNumber ?? 0) - (b.entryNumber ?? 0)}
               render={(n: number | null) => n ?? "—"}
             />
             <Table.Column
@@ -120,6 +121,13 @@ const JournalEntries = () => {
               title={<Trans>Journal</Trans>}
               dataIndex="journalId"
               key="journalId"
+              sorter={(a: any, b: any) => {
+                const ja = find(journals, { id: a.journalId });
+                const jb = find(journals, { id: b.journalId });
+                return `${ja?.code ?? ""} · ${ja?.name ?? ""}`.localeCompare(
+                  `${jb?.code ?? ""} · ${jb?.name ?? ""}`,
+                );
+              }}
               render={(journalId: string) => {
                 const journal = find(journals, { id: journalId });
                 return journal ? journal.name : "—";
@@ -128,6 +136,9 @@ const JournalEntries = () => {
             <Table.Column
               title={<Trans>Description</Trans>}
               key="description"
+              sorter={(a: any, b: any) =>
+                String(a.description ?? "").localeCompare(String(b.description ?? ""))
+              }
               render={(entry: any) => (
                 <Link
                   to={`/accounting/journal-entries/${entry.id}`}
@@ -141,12 +152,16 @@ const JournalEntries = () => {
               title={<Trans>Reference</Trans>}
               dataIndex="reference"
               key="reference"
+              sorter={(a: any, b: any) =>
+                String(a.reference ?? "").localeCompare(String(b.reference ?? ""))
+              }
               render={(v: string | null) => v ?? "—"}
             />
             <Table.Column
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
+              sorter={(a: any, b: any) => String(a.status).localeCompare(String(b.status))}
               render={(status: string) => (
                 <Tag
                   color={journalEntryStatusColor[status as keyof typeof journalEntryStatusColor]}

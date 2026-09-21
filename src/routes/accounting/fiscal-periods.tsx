@@ -34,6 +34,7 @@ import {
 import { isOrgAdminOrAccountingAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
+import { dateSorter, textSorter } from "src/utils/sort";
 
 const FiscalPeriods = () => {
   useLingui();
@@ -181,23 +182,31 @@ const FiscalPeriods = () => {
                         </Button>
                       )}
                     >
-                      <Table.Column title={<Trans>Name</Trans>} dataIndex="name" key="name" />
+                      <Table.Column
+                        title={<Trans>Name</Trans>}
+                        dataIndex="name"
+                        key="name"
+                        sorter={textSorter((r: FiscalPeriod) => r.name)}
+                      />
                       <Table.Column
                         title={<Trans>Start</Trans>}
                         dataIndex="startDate"
                         key="startDate"
+                        sorter={dateSorter((r: FiscalPeriod) => r.startDate)}
                         render={(v: number) => dayjs(v).format(dateFormat)}
                       />
                       <Table.Column
                         title={<Trans>End</Trans>}
                         dataIndex="endDate"
                         key="endDate"
+                        sorter={dateSorter((r: FiscalPeriod) => r.endDate)}
                         render={(v: number) => dayjs(v).format(dateFormat)}
                       />
                       <Table.Column
                         title={<Trans>Status</Trans>}
                         dataIndex="status"
                         key="status"
+                        sorter={textSorter((r: FiscalPeriod) => r.status)}
                         render={(status: string) => (
                           <Tag color={status === "open" ? "green" : "default"}>
                             {status === "open" ? t`Open` : t`Closed`}
@@ -242,23 +251,31 @@ const FiscalPeriods = () => {
               },
             }}
           >
-            <Table.Column title={<Trans>Name</Trans>} dataIndex="name" key="name" />
+            <Table.Column
+              title={<Trans>Name</Trans>}
+              dataIndex="name"
+              key="name"
+              sorter={textSorter((r: FiscalYear) => r.name)}
+            />
             <Table.Column
               title={<Trans>Start</Trans>}
               dataIndex="startDate"
               key="startDate"
+              sorter={dateSorter((r: FiscalYear) => r.startDate)}
               render={(v: number) => dayjs(v).format(dateFormat)}
             />
             <Table.Column
               title={<Trans>End</Trans>}
               dataIndex="endDate"
               key="endDate"
+              sorter={dateSorter((r: FiscalYear) => r.endDate)}
               render={(v: number) => dayjs(v).format(dateFormat)}
             />
             <Table.Column
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"
+              sorter={textSorter((r: FiscalYear) => r.status)}
               render={(status: string, year: FiscalYear) => {
                 const now = Date.now();
                 const isCurrent = year.startDate <= now && now <= year.endDate;

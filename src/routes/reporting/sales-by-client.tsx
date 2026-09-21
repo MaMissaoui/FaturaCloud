@@ -16,6 +16,7 @@ import type { ClientRevenue } from "src/api";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
+import { moneySorter, textSorter } from "src/utils/sort";
 
 const { RangePicker } = DatePicker;
 
@@ -149,6 +150,7 @@ const SalesByClient = () => {
             <Table.Column
               title={<Trans>Client</Trans>}
               key="name"
+              sorter={textSorter((row: ClientRevenue) => row.name)}
               render={(row: ClientRevenue) => (
                 <Link to="/clients" state={{ clientModal: true, clientId: row.clientId }}>
                   {row.name}
@@ -159,6 +161,7 @@ const SalesByClient = () => {
               title={<Trans>Revenue</Trans>}
               key="revenue"
               align="right"
+              sorter={moneySorter((row: ClientRevenue) => row.revenue)}
               render={(row: ClientRevenue) => money(row.revenue)}
             />
           </Table>

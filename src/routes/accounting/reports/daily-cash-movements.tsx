@@ -26,6 +26,7 @@ import type { Account } from "src/types/models";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
+import { dateSorter, moneySorter } from "src/utils/sort";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -191,30 +192,35 @@ const DailyCashMovements = () => {
             <Table.Column
               title={<Trans>Date</Trans>}
               key="date"
+              sorter={dateSorter((row: DailyCashMovementRow) => row.date)}
               render={(row: DailyCashMovementRow) => dayjs(row.date).format(dateFormat)}
             />
             <Table.Column
               title={<Trans>Opening balance</Trans>}
               key="opening"
               align="right"
+              sorter={moneySorter((row: DailyCashMovementRow) => row.opening)}
               render={(row: DailyCashMovementRow) => money(row.opening)}
             />
             <Table.Column
               title={<Trans>In</Trans>}
               key="in"
               align="right"
+              sorter={moneySorter((row: DailyCashMovementRow) => row.in)}
               render={(row: DailyCashMovementRow) => money(row.in)}
             />
             <Table.Column
               title={<Trans>Out</Trans>}
               key="out"
               align="right"
+              sorter={moneySorter((row: DailyCashMovementRow) => row.out)}
               render={(row: DailyCashMovementRow) => money(row.out)}
             />
             <Table.Column
               title={<Trans>Closing balance</Trans>}
               key="closing"
               align="right"
+              sorter={moneySorter((row: DailyCashMovementRow) => row.closing)}
               render={(row: DailyCashMovementRow) => <strong>{money(row.closing)}</strong>}
             />
           </Table>

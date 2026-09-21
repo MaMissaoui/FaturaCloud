@@ -40,6 +40,7 @@ import {
   TriggerBackup,
 } from "src/api";
 import { useDateTimeFormatter } from "src/utils/date";
+import { dateSorter, numberSorter, textSorter } from "src/utils/sort";
 
 const { Title, Text } = Typography;
 
@@ -406,6 +407,7 @@ function SettingsBackup() {
               title={<Trans>File</Trans>}
               dataIndex="name"
               key="name"
+              sorter={textSorter((r: BackupEntry) => r.name)}
               render={(name) => (
                 <Text code style={{ fontSize: 12 }}>
                   {name}
@@ -418,6 +420,7 @@ function SettingsBackup() {
               key="size"
               width={90}
               align="right"
+              sorter={numberSorter((r: BackupEntry) => r.size)}
               render={(size) => formatSize(size)}
             />
             <Table.Column<BackupEntry>
@@ -425,6 +428,7 @@ function SettingsBackup() {
               dataIndex="createdAt"
               key="createdAt"
               width={150}
+              sorter={dateSorter((r: BackupEntry) => r.createdAt)}
               render={(v) => formatDateTime(v)}
             />
             <Table.Column<BackupEntry>

@@ -171,11 +171,13 @@ const BillOfMaterials = () => {
             <Table.Column
               title={<Trans>Unit</Trans>}
               dataIndex="unit"
+              sorter={(a: Product, b: Product) => (a.unit ?? "").localeCompare(b.unit ?? "")}
               key="unit"
               render={(unit: string | null) => (unit ? unitLabel(unit) : "—")}
             />
             <Table.Column
               title={<Trans>Components</Trans>}
+              sorter={(a: Product, b: Product) => (summaries[a.id] ?? 0) - (summaries[b.id] ?? 0)}
               key="components"
               align="center"
               render={(p: Product) => {
