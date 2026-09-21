@@ -170,16 +170,14 @@ const clientDetailLine = (c: any): string => {
 // List.Item.Meta: the name and its identifying fields on the left, a
 // fixed-width right rail for the open-loan amount so the figures line up as a
 // real column, and a single row height so a screenful holds ~11 results
-// instead of 8. Used both as a `listbox` option (search results, driven from
-// the search field's arrow keys) and as a plain button (the no-query "Open
-// loans" default), which is what the role/tabIndex props are for.
+// instead of 8. A `listbox` option driven from the search field's arrow keys —
+// the row itself isn't focusable (the combobox is the single tab stop).
 const CashBookCustomerRow = ({
   name,
   meta,
   outstanding,
   moneyText,
   active,
-  role,
   id,
   ariaLabel,
   title,
@@ -191,7 +189,6 @@ const CashBookCustomerRow = ({
   outstanding: number;
   moneyText: string;
   active: boolean;
-  role: "option" | "button";
   id?: string;
   ariaLabel: string;
   title?: string;
@@ -214,23 +211,16 @@ const CashBookCustomerRow = ({
   return (
     <div
       id={id}
-      role={role}
-      aria-selected={role === "option" ? active : undefined}
+      role="option"
+      aria-selected={active}
       aria-label={ariaLabel}
       title={title}
-      tabIndex={role === "button" ? 0 : undefined}
       onClick={onSelect}
       onMouseEnter={() => {
         setHovered(true);
         onHover?.();
       }}
       onMouseLeave={() => setHovered(false)}
-      onKeyDown={(e) => {
-        if (role === "button" && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(0, 1fr) max-content",
@@ -707,21 +697,6 @@ const CashBook = () => {
     0,
   );
 
-  // The counter's single most useful default when nothing is typed: who owes
-  // money, biggest first, from the report already loaded below — no request.
-  const topDebtors = useMemo(() => {
-    return [...openLoanByClient.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([clientId, outstanding]) => ({
-        clientId,
-        outstanding,
-        name: clientNameById.get(clientId) ?? "",
-        client: (clients as any[]).find((c) => c.id === clientId),
-      }))
-      .filter((row) => row.client);
-  }, [openLoanByClient, clientNameById, clients]);
-
   // Renders `text` with its first case-insensitive occurrence of `term`
   // highlighted, so a phone/CIN match is obvious rather than something to
   // trust.
@@ -1080,7 +1055,7 @@ const CashBook = () => {
         }
       />
 
-      {isToday && !inSale && (
+      {isToday && !inSale && needle && (
         <>
           {loanStatusFailed && (
             <Alert
@@ -1095,100 +1070,65 @@ const CashBook = () => {
             />
           )}
 
-          {needle ? (
+          <div
+            aria-live="polite"
+            style={{
+              marginBottom: 4,
+              fontSize: 13,
+              fontWeight: 600,
+              color: colorTextSecondary,
+            }}
+          >
+            <Trans>
+              {searchResults.length} matches · {debtorCount} with an open loan
+            </Trans>
+          </div>
+          {visibleSearchResults.length === 0 ? (
+            <Empty description={t`No matching customers`} style={{ marginBottom: 16 }}>
+              <Button
+                type="dashed"
+                icon={<UserAddOutlined />}
+                onClick={() => openNewClientModal(search)}
+              >
+                {t`Create`} "{search}"
+              </Button>
+            </Empty>
+          ) : (
             <>
               <div
-                aria-live="polite"
-                style={{
-                  marginBottom: 4,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: colorTextSecondary,
-                }}
+                id="cash-book-results"
+                role="listbox"
+                aria-label={t`Search results`}
+                style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
               >
-                <Trans>
-                  {searchResults.length} matches · {debtorCount} with an open loan
-                </Trans>
+                {visibleSearchResults.map((client: any, index: number) => {
+                  const openLoan = openLoanByClient.get(client.id) ?? 0;
+                  return (
+                    <CashBookCustomerRow
+                      key={client.id}
+                      id={`cash-book-result-${client.id}`}
+                      active={index === activeResultIndex}
+                      ariaLabel={resultAriaLabel(client)}
+                      title={clientDetailLine(client)}
+                      name={highlight(client.name, needle)}
+                      meta={customerIdentifiers(client, (text) => highlight(text, needle))}
+                      outstanding={openLoan}
+                      moneyText={money(openLoan)}
+                      onSelect={() => selectClient(client)}
+                      onHover={() => setActiveResultIndex(index)}
+                    />
+                  );
+                })}
               </div>
-              {visibleSearchResults.length === 0 ? (
-                <Empty description={t`No matching customers`} style={{ marginBottom: 16 }}>
-                  <Button
-                    type="dashed"
-                    icon={<UserAddOutlined />}
-                    onClick={() => openNewClientModal(search)}
-                  >
-                    {t`Create`} "{search}"
-                  </Button>
-                </Empty>
-              ) : (
-                <>
-                  <div
-                    id="cash-book-results"
-                    role="listbox"
-                    aria-label={t`Search results`}
-                    style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
-                  >
-                    {visibleSearchResults.map((client: any, index: number) => {
-                      const openLoan = openLoanByClient.get(client.id) ?? 0;
-                      return (
-                        <CashBookCustomerRow
-                          key={client.id}
-                          role="option"
-                          id={`cash-book-result-${client.id}`}
-                          active={index === activeResultIndex}
-                          ariaLabel={resultAriaLabel(client)}
-                          title={clientDetailLine(client)}
-                          name={highlight(client.name, needle)}
-                          meta={customerIdentifiers(client, (text) => highlight(text, needle))}
-                          outstanding={openLoan}
-                          moneyText={money(openLoan)}
-                          onSelect={() => selectClient(client)}
-                          onHover={() => setActiveResultIndex(index)}
-                        />
-                      );
-                    })}
-                  </div>
-                  {hiddenResultCount > 0 && (
-                    <div style={{ marginBottom: 16, fontSize: 12, color: colorTextSecondary }}>
-                      <Trans>
-                        Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow{" "}
-                        {hiddenResultCount} more
-                      </Trans>
-                    </div>
-                  )}
-                </>
+              {hiddenResultCount > 0 && (
+                <div style={{ marginBottom: 16, fontSize: 12, color: colorTextSecondary }}>
+                  <Trans>
+                    Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow{" "}
+                    {hiddenResultCount} more
+                  </Trans>
+                </div>
               )}
             </>
-          ) : (
-            topDebtors.length > 0 && (
-              <>
-                <div
-                  style={{
-                    marginBottom: 4,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: colorTextSecondary,
-                  }}
-                >
-                  <Trans>Open loans</Trans>
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  {topDebtors.map((row) => (
-                    <CashBookCustomerRow
-                      key={row.clientId}
-                      role="button"
-                      active={false}
-                      ariaLabel={`${row.name}. ${t`Open loan`} ${money(row.outstanding)}`}
-                      name={row.name}
-                      meta={customerIdentifiers(row.client, (text) => text)}
-                      outstanding={row.outstanding}
-                      moneyText={money(row.outstanding)}
-                      onSelect={() => row.client && selectClient(row.client)}
-                    />
-                  ))}
-                </div>
-              </>
-            )
           )}
         </>
       )}
@@ -1198,7 +1138,7 @@ const CashBook = () => {
       need mid-transaction); the loan-status report below stays visible,
       prefiltered to this customer's open loans. */}
       {isToday && inSale && (
-        <>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <Space align="center" size={12} style={{ marginBottom: 16 }}>
             <Button type="primary" icon={<ArrowLeftOutlined />} onClick={backToSearch}>
               <Trans>Back to search</Trans>
@@ -1467,7 +1407,7 @@ const CashBook = () => {
               </Col>
             </Row>
           </Card>
-        </>
+        </div>
       )}
 
       {!inSale && (
