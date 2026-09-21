@@ -28,7 +28,7 @@ func buildPurchaseOrderTemplate() {
 	f.SetCellStyle(sheet, "A1", "A1", styles.bold)
 	set("A2", "{{organization.street}} {{organization.houseNumber}}")
 	set("A3", "{{organization.postalCode}} {{organization.city}}")
-	set("A4", "VAT: {{organization.vatin}}")
+	set("A4", "Matricule fiscal: {{organization.vatin}}")
 	set("A5", "{{organization.email}} | {{organization.phone}}")
 
 	// Document title + metadata (top-right).
@@ -45,7 +45,7 @@ func buildPurchaseOrderTemplate() {
 	set("A8", "{{vendor.name}}")
 	set("A9", "{{vendor.street}} {{vendor.houseNumber}}")
 	set("A10", "{{vendor.postalCode}} {{vendor.city}}")
-	set("A11", "VAT: {{vendor.vatin}}")
+	set("A11", "Matricule fiscal: {{vendor.vatin}}")
 
 	// Line item table header. Product (SKU) and Description (name) are two
 	// separate columns, mirroring the web app's line-items table — see

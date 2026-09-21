@@ -30,7 +30,7 @@ func buildIncomingInvoiceTemplate() {
 	f.SetCellStyle(sheet, "A1", "A1", styles.bold)
 	set("A2", "{{vendor.street}} {{vendor.houseNumber}}")
 	set("A3", "{{vendor.postalCode}} {{vendor.city}}")
-	set("A4", "VAT: {{vendor.vatin}}")
+	set("A4", "Matricule fiscal: {{vendor.vatin}}")
 	set("A5", "{{vendor.email}} | {{vendor.phone}}")
 
 	// Document title + metadata (top-right).
@@ -48,7 +48,7 @@ func buildIncomingInvoiceTemplate() {
 	set("A8", "{{organization.name}}")
 	set("A9", "{{organization.street}} {{organization.houseNumber}}")
 	set("A10", "{{organization.postalCode}} {{organization.city}}")
-	set("A11", "VAT: {{organization.vatin}}")
+	set("A11", "Matricule fiscal: {{organization.vatin}}")
 
 	// Line item table header. Description spans A:B (merged), same reasoning
 	// as invoice.go; the marker lives in column G, off to the right of the
