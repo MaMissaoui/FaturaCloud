@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.46.0] - 2026-09-21
+
+### Fixed
+- Line-item Product cell no longer duplicates the product name: the closed
+  cell shows the SKU (`optionLabelProp="label"`), while the dropdown shows
+  `name · SKU` so a product is still identifiable by name. Affects the Cash
+  Book sale screen and the invoice detail line items.
+
+### Changed
+- Cash-movement detail ranking CTE is now bounded to invoices with a payment
+  in the requested account/date window, so a register drill-down no longer
+  ranks every payment application in the organization.
+
 ## [3.45.0] - 2026-09-21
 
 ### Added
