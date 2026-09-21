@@ -130,30 +130,6 @@ const DocumentFilters = ({
 
 export default DocumentFilters;
 
-// The filtering itself, shared so every list page applies the same rules:
-// case-insensitive text search across the given fields, an exact status/state
-// match, an exact customer/vendor id match, and an inclusive day range on the
-// document's own date field.
-export function matchesDocumentFilters(opts: {
-  search: string;
-  searchFields: (string | number | null | undefined)[];
-  status: string;
-  rowStatus: string | null | undefined;
-  partyId: string;
-  rowPartyId: string | null | undefined;
-  dateRange: [Dayjs, Dayjs] | null;
-  rowDate: number | null | undefined;
-}): boolean {
-  const { search, searchFields, status, rowStatus, partyId, rowPartyId, dateRange, rowDate } = opts;
-  if (search) {
-    const needle = search.toLowerCase();
-    if (!searchFields.some((f) => (f ?? "").toString().toLowerCase().includes(needle))) {
-      return false;
-    }
-  }
-  if (status && rowStatus !== status) return false;
-  if (partyId && rowPartyId !== partyId) return false;
-  if (dateRange?.[0] && (rowDate ?? 0) < dateRange[0].startOf("day").valueOf()) return false;
-  if (dateRange?.[1] && (rowDate ?? 0) > dateRange[1].endOf("day").valueOf()) return false;
-  return true;
-}
+// Re-exported from the pure util (src/utils/document-filters.ts) so callers
+// can import both the component and the predicate from one place.
+export { matchesDocumentFilters } from "src/utils/document-filters";
