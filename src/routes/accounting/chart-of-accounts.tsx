@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Account } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Table, Tag, Col, Row, Space } from "antd";
+import { Button, Table, Tag, Col, Row, Space, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -97,6 +97,19 @@ const ChartOfAccounts = () => {
             pagination={{ defaultPageSize: 50, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No accounts match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No accounts yet</Trans>}>
+                  <Link to="/accounting/chart-of-accounts" state={{ accountModal: true }}>
+                    <Button type="primary">
+                      <Trans>Create your first account</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: Account) => ({
               onClick: () =>
                 navigate("/accounting/chart-of-accounts", {

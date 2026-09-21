@@ -173,8 +173,8 @@ msgid "Accounts receivable"
 msgstr "Accounts receivable"
 
 #: src/components/accounting/account-form.tsx:198
-#: src/routes/accounting/chart-of-accounts.tsx:175
-#: src/routes/accounting/chart-of-accounts.tsx:183
+#: src/routes/accounting/chart-of-accounts.tsx:188
+#: src/routes/accounting/chart-of-accounts.tsx:196
 #: src/routes/settings/countries.tsx:109
 #: src/routes/settings/users.tsx:222
 #: src/routes/settings/users.tsx:321
@@ -561,8 +561,8 @@ msgstr "BOM version(s)"
 msgid "Brand color"
 msgstr "Brand color"
 
-#: src/routes/accounting/journals.tsx:115
-#: src/routes/accounting/journals.tsx:121
+#: src/routes/accounting/journals.tsx:126
+#: src/routes/accounting/journals.tsx:132
 msgid "Built-in"
 msgstr "Built-in"
 
@@ -606,7 +606,7 @@ msgstr "Canary Islands general indirect tax"
 #: src/components/tax-rates/form.tsx:147
 #: src/components/units-of-measure/form.tsx:113
 #: src/components/vendors/form.tsx:152
-#: src/routes/accounting/fiscal-periods.tsx:115
+#: src/routes/accounting/fiscal-periods.tsx:116
 #: src/routes/cash-book.tsx:527
 #: src/routes/cash-book.tsx:1506
 #: src/routes/cash-book.tsx:1552
@@ -823,26 +823,26 @@ msgid "clients, vendors, products, tax rates"
 msgstr "clients, vendors, products, tax rates"
 
 #: src/components/mass-data/mass-data-excel-actions.tsx:93
-#: src/routes/accounting/fiscal-periods.tsx:239
+#: src/routes/accounting/fiscal-periods.tsx:243
 msgid "Close"
 msgstr "Close"
 
 #. placeholder {0}: year.name
-#: src/routes/accounting/fiscal-periods.tsx:104
+#: src/routes/accounting/fiscal-periods.tsx:105
 msgid "Close fiscal year \"{0}\"?"
 msgstr "Close fiscal year \"{0}\"?"
 
-#: src/routes/accounting/fiscal-periods.tsx:223
+#: src/routes/accounting/fiscal-periods.tsx:227
 msgid "Close this period? New entries will be blocked."
 msgstr "Close this period? New entries will be blocked."
 
-#: src/routes/accounting/fiscal-periods.tsx:113
-#: src/routes/accounting/fiscal-periods.tsx:305
+#: src/routes/accounting/fiscal-periods.tsx:114
+#: src/routes/accounting/fiscal-periods.tsx:309
 msgid "Close year"
 msgstr "Close year"
 
-#: src/routes/accounting/fiscal-periods.tsx:212
-#: src/routes/accounting/fiscal-periods.tsx:285
+#: src/routes/accounting/fiscal-periods.tsx:216
+#: src/routes/accounting/fiscal-periods.tsx:289
 msgid "Closed"
 msgstr "Closed"
 
@@ -863,8 +863,8 @@ msgstr "Closing balance"
 #: src/components/organizations/organizations-table.tsx:68
 #: src/components/vendors/form.tsx:180
 #: src/components/vendors/form.tsx:181
-#: src/routes/accounting/chart-of-accounts.tsx:119
-#: src/routes/accounting/journals.tsx:86
+#: src/routes/accounting/chart-of-accounts.tsx:132
+#: src/routes/accounting/journals.tsx:97
 #: src/routes/accounting/reports/balance-sheet.tsx:52
 #: src/routes/accounting/reports/profit-and-loss.tsx:73
 #: src/routes/accounting/trial-balance.tsx:168
@@ -927,7 +927,7 @@ msgstr "Confirm"
 msgid "Confirm order"
 msgstr "Confirm order"
 
-#: src/routes/settings/users.tsx:376
+#: src/routes/settings/users.tsx:375
 msgid "Confirm password"
 msgstr "Confirm password"
 
@@ -1092,6 +1092,10 @@ msgstr "Create"
 msgid "Create Organization"
 msgstr "Create Organization"
 
+#: src/routes/accounting/chart-of-accounts.tsx:107
+msgid "Create your first account"
+msgstr "Create your first account"
+
 #: src/routes/clients.tsx:96
 msgid "Create your first client"
 msgstr "Create your first client"
@@ -1116,6 +1120,10 @@ msgstr "Create your first incoming invoice"
 msgid "Create your first invoice"
 msgstr "Create your first invoice"
 
+#: src/routes/accounting/journals.tsx:72
+msgid "Create your first journal"
+msgstr "Create your first journal"
+
 #: src/routes/orders.tsx:82
 msgid "Create your first order"
 msgstr "Create your first order"
@@ -1131,6 +1139,14 @@ msgstr "Create your first production order"
 #: src/routes/purchase-orders.tsx:78
 msgid "Create your first purchase order"
 msgstr "Create your first purchase order"
+
+#: src/routes/settings/tax-rates.tsx:85
+msgid "Create your first tax rate"
+msgstr "Create your first tax rate"
+
+#: src/routes/settings/units-of-measure.tsx:82
+msgid "Create your first unit of measure"
+msgstr "Create your first unit of measure"
 
 #: src/routes/vendors.tsx:96
 msgid "Create your first vendor"
@@ -1159,7 +1175,7 @@ msgid "Currency"
 msgstr "Currency"
 
 #: src/components/products/bom-editor-drawer.tsx:395
-#: src/routes/accounting/fiscal-periods.tsx:287
+#: src/routes/accounting/fiscal-periods.tsx:291
 #: src/routes/accounting/reports/ap-aging.tsx:79
 #: src/routes/accounting/reports/ar-aging.tsx:79
 #: src/routes/dashboard.tsx:255
@@ -1264,8 +1280,8 @@ msgstr "Date format"
 msgid "Date is required"
 msgstr "Date is required"
 
-#: src/routes/accounting/fiscal-periods.tsx:333
-#: src/routes/accounting/fiscal-periods.tsx:359
+#: src/routes/accounting/fiscal-periods.tsx:337
+#: src/routes/accounting/fiscal-periods.tsx:363
 #: src/routes/accounting/reports/daily-cash-movements.tsx:139
 msgid "Date range"
 msgstr "Date range"
@@ -1332,8 +1348,8 @@ msgstr "Decimal places"
 #: src/components/tax-rates/form.tsx:192
 #: src/routes/settings/document-templates.tsx:142
 #: src/routes/settings/payment-terms.tsx:110
-#: src/routes/settings/tax-rates.tsx:118
-#: src/routes/settings/units-of-measure.tsx:108
+#: src/routes/settings/tax-rates.tsx:131
+#: src/routes/settings/units-of-measure.tsx:121
 msgid "Default"
 msgstr "Default"
 
@@ -1584,7 +1600,7 @@ msgstr "Deposit to the bank"
 #: src/routes/accounting/journal-entries/details.tsx:430
 #: src/routes/accounting/journal-entries/details.tsx:469
 #: src/routes/incoming-invoices/details.tsx:578
-#: src/routes/settings/tax-rates.tsx:102
+#: src/routes/settings/tax-rates.tsx:115
 msgid "Description"
 msgstr "Description"
 
@@ -1739,7 +1755,7 @@ msgstr "e.g. 1200"
 msgid "e.g. 1234567A/B/C/000"
 msgstr "e.g. 1234567A/B/C/000"
 
-#: src/routes/accounting/fiscal-periods.tsx:329
+#: src/routes/accounting/fiscal-periods.tsx:333
 msgid "e.g. 2026"
 msgstr "e.g. 2026"
 
@@ -1763,7 +1779,7 @@ msgstr "e.g. Cash"
 msgid "e.g. Intra-community supply"
 msgstr "e.g. Intra-community supply"
 
-#: src/routes/accounting/fiscal-periods.tsx:355
+#: src/routes/accounting/fiscal-periods.tsx:359
 msgid "e.g. January"
 msgstr "e.g. January"
 
@@ -1874,8 +1890,8 @@ msgstr "Enable fiscal stamp"
 msgid "Enable withholding tax"
 msgstr "Enable withholding tax"
 
-#: src/routes/accounting/fiscal-periods.tsx:199
-#: src/routes/accounting/fiscal-periods.tsx:268
+#: src/routes/accounting/fiscal-periods.tsx:203
+#: src/routes/accounting/fiscal-periods.tsx:272
 msgid "End"
 msgstr "End"
 
@@ -2420,7 +2436,7 @@ msgid "fiscal period(s)"
 msgstr "fiscal period(s)"
 
 #: src/layouts/base.tsx:661
-#: src/routes/accounting/fiscal-periods.tsx:132
+#: src/routes/accounting/fiscal-periods.tsx:133
 msgid "Fiscal Periods"
 msgstr "Fiscal Periods"
 
@@ -2555,7 +2571,7 @@ msgstr "Goods Receipts"
 msgid "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 msgstr "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 
-#: src/routes/accounting/chart-of-accounts.tsx:166
+#: src/routes/accounting/chart-of-accounts.tsx:179
 msgid "Group"
 msgstr "Group"
 
@@ -2566,7 +2582,7 @@ msgstr "Group"
 msgid "Guarantor"
 msgstr "Guarantor"
 
-#: src/routes/accounting/chart-of-accounts.tsx:172
+#: src/routes/accounting/chart-of-accounts.tsx:185
 msgid "Header"
 msgstr "Header"
 
@@ -2692,7 +2708,7 @@ msgid "In stock"
 msgstr "In stock"
 
 #: src/components/organizations/organization-members-panel.tsx:70
-#: src/routes/accounting/chart-of-accounts.tsx:185
+#: src/routes/accounting/chart-of-accounts.tsx:198
 msgid "Inactive"
 msgstr "Inactive"
 
@@ -2920,7 +2936,7 @@ msgstr "journal entr(y/ies)"
 msgid "Journal Entries"
 msgstr "Journal Entries"
 
-#: src/routes/accounting/fiscal-periods.tsx:147
+#: src/routes/accounting/fiscal-periods.tsx:148
 msgid "Journal entries can only be posted within an open fiscal year. Create one to start using the general ledger."
 msgstr "Journal entries can only be posted within an open fiscal year. Create one to start using the general ledger."
 
@@ -3265,12 +3281,12 @@ msgstr "Movements for {0}"
 #: src/components/units-of-measure/form.tsx:125
 #: src/components/vendors/form.tsx:168
 #: src/components/vendors/form.tsx:172
-#: src/routes/accounting/chart-of-accounts.tsx:127
-#: src/routes/accounting/fiscal-periods.tsx:186
-#: src/routes/accounting/fiscal-periods.tsx:255
-#: src/routes/accounting/fiscal-periods.tsx:326
-#: src/routes/accounting/fiscal-periods.tsx:352
-#: src/routes/accounting/journals.tsx:94
+#: src/routes/accounting/chart-of-accounts.tsx:140
+#: src/routes/accounting/fiscal-periods.tsx:190
+#: src/routes/accounting/fiscal-periods.tsx:259
+#: src/routes/accounting/fiscal-periods.tsx:330
+#: src/routes/accounting/fiscal-periods.tsx:356
+#: src/routes/accounting/journals.tsx:105
 #: src/routes/accounting/trial-balance.tsx:176
 #: src/routes/bill-of-materials.tsx:150
 #: src/routes/cash-book.tsx:1511
@@ -3280,8 +3296,8 @@ msgstr "Movements for {0}"
 #: src/routes/products.tsx:262
 #: src/routes/settings/countries.tsx:103
 #: src/routes/settings/payment-terms.tsx:96
-#: src/routes/settings/tax-rates.tsx:92
-#: src/routes/settings/units-of-measure.tsx:94
+#: src/routes/settings/tax-rates.tsx:105
+#: src/routes/settings/units-of-measure.tsx:107
 #: src/routes/settings/users.tsx:193
 #: src/routes/settings/users.tsx:311
 #: src/routes/vendors.tsx:117
@@ -3333,12 +3349,12 @@ msgstr "New customer"
 msgid "New delivery"
 msgstr "New delivery"
 
-#: src/routes/accounting/fiscal-periods.tsx:342
+#: src/routes/accounting/fiscal-periods.tsx:346
 msgid "New fiscal period"
 msgstr "New fiscal period"
 
-#: src/routes/accounting/fiscal-periods.tsx:135
-#: src/routes/accounting/fiscal-periods.tsx:316
+#: src/routes/accounting/fiscal-periods.tsx:136
+#: src/routes/accounting/fiscal-periods.tsx:320
 msgid "New fiscal year"
 msgstr "New fiscal year"
 
@@ -3402,7 +3418,7 @@ msgstr "New password (leave blank to keep current)"
 msgid "New payment term"
 msgstr "New payment term"
 
-#: src/routes/accounting/fiscal-periods.tsx:181
+#: src/routes/accounting/fiscal-periods.tsx:185
 msgid "New period"
 msgstr "New period"
 
@@ -3478,7 +3494,7 @@ msgstr "Next run: {nextRunLabel}"
 #: src/components/tax-rates/form.tsx:136
 #: src/components/units-of-measure/form.tsx:102
 #: src/components/vendors/form.tsx:136
-#: src/routes/accounting/fiscal-periods.tsx:235
+#: src/routes/accounting/fiscal-periods.tsx:239
 #: src/routes/accounting/journal-entries/details.tsx:394
 #: src/routes/accounting/journal-entries/details.tsx:404
 #: src/routes/deliveries/details.tsx:583
@@ -3500,6 +3516,14 @@ msgstr "Next run: {nextRunLabel}"
 #: src/routes/settings/users.tsx:286
 msgid "No"
 msgstr "No"
+
+#: src/routes/accounting/chart-of-accounts.tsx:102
+msgid "No accounts match your search"
+msgstr "No accounts match your search"
+
+#: src/routes/accounting/chart-of-accounts.tsx:104
+msgid "No accounts yet"
+msgstr "No accounts yet"
 
 #: src/routes/accounting/reports/daily-cash-movements.tsx:190
 msgid "No activity in this range"
@@ -3542,7 +3566,7 @@ msgstr "No finished-good products match \"{search}\""
 msgid "No finished-good products yet — set a product's category to \"Finished good\" to define a recipe for it."
 msgstr "No finished-good products yet — set a product's category to \"Finished good\" to define a recipe for it."
 
-#: src/routes/accounting/fiscal-periods.tsx:145
+#: src/routes/accounting/fiscal-periods.tsx:146
 msgid "No fiscal year yet"
 msgstr "No fiscal year yet"
 
@@ -3577,6 +3601,10 @@ msgstr "No invoices match your search"
 #: src/routes/invoices/index.tsx:157
 msgid "No invoices yet"
 msgstr "No invoices yet"
+
+#: src/routes/accounting/journals.tsx:69
+msgid "No journals yet"
+msgstr "No journals yet"
 
 #: src/components/line-items/table.tsx:244
 msgid "No line items"
@@ -3626,6 +3654,10 @@ msgstr "No payments recorded yet"
 #: src/routes/cash-book.tsx:1462
 msgid "No payments yet"
 msgstr "No payments yet"
+
+#: src/routes/accounting/fiscal-periods.tsx:177
+msgid "No periods in this year"
+msgstr "No periods in this year"
 
 #: src/routes/production-orders.tsx:92
 msgid "No production orders match your search"
@@ -3683,6 +3715,22 @@ msgstr "No stock-enabled products"
 #: src/routes/dashboard.tsx:344
 msgid "No stock-tracked products"
 msgstr "No stock-tracked products"
+
+#: src/routes/settings/tax-rates.tsx:80
+msgid "No tax rates match your search"
+msgstr "No tax rates match your search"
+
+#: src/routes/settings/tax-rates.tsx:82
+msgid "No tax rates yet"
+msgstr "No tax rates yet"
+
+#: src/routes/settings/units-of-measure.tsx:77
+msgid "No units match your search"
+msgstr "No units match your search"
+
+#: src/routes/settings/units-of-measure.tsx:79
+msgid "No units of measure yet"
+msgstr "No units of measure yet"
 
 #: src/components/imports/form.tsx:407
 msgid "No unlinked draft or confirmed purchase orders"
@@ -3811,8 +3859,8 @@ msgstr "Only a \"Finished good\" product can have a bill of materials — change
 msgid "Only active countries appear in the country picklist on organizations, vendors and clients. Existing records keep whatever country they already have, even if it's later deactivated here."
 msgstr "Only active countries appear in the country picklist on organizations, vendors and clients. Existing records keep whatever country they already have, even if it's later deactivated here."
 
-#: src/routes/accounting/fiscal-periods.tsx:212
-#: src/routes/accounting/fiscal-periods.tsx:285
+#: src/routes/accounting/fiscal-periods.tsx:216
+#: src/routes/accounting/fiscal-periods.tsx:289
 msgid "Open"
 msgstr "Open"
 
@@ -4111,7 +4159,7 @@ msgstr "Page orientation"
 msgid "Paid"
 msgstr "Paid"
 
-#: src/routes/accounting/chart-of-accounts.tsx:151
+#: src/routes/accounting/chart-of-accounts.tsx:164
 msgid "Parent"
 msgstr "Parent"
 
@@ -4212,7 +4260,7 @@ msgstr "pcs, kg, m…"
 
 #: src/components/tax-rates/form.tsx:183
 #: src/components/tax-rates/form.tsx:186
-#: src/routes/settings/tax-rates.tsx:110
+#: src/routes/settings/tax-rates.tsx:123
 msgid "Percentage"
 msgstr "Percentage"
 
@@ -4267,6 +4315,10 @@ msgstr "Pick or create a customer first"
 msgid "piece"
 msgstr "piece"
 
+#: src/routes/settings/users.tsx:378
+msgid "Please confirm the password"
+msgstr "Please confirm the password"
+
 #: src/routes/login.tsx:113
 msgid "Please enter a valid email"
 msgstr "Please enter a valid email"
@@ -4298,8 +4350,8 @@ msgstr "Please input a description!"
 
 #: src/components/accounting/account-form.tsx:162
 #: src/components/accounting/journal-form.tsx:147
-#: src/routes/accounting/fiscal-periods.tsx:327
-#: src/routes/accounting/fiscal-periods.tsx:353
+#: src/routes/accounting/fiscal-periods.tsx:331
+#: src/routes/accounting/fiscal-periods.tsx:357
 msgid "Please input a name!"
 msgstr "Please input a name!"
 
@@ -4322,8 +4374,8 @@ msgstr "Please input name!"
 msgid "Please select a .db file"
 msgstr "Please select a .db file"
 
-#: src/routes/accounting/fiscal-periods.tsx:334
-#: src/routes/accounting/fiscal-periods.tsx:360
+#: src/routes/accounting/fiscal-periods.tsx:338
+#: src/routes/accounting/fiscal-periods.tsx:364
 msgid "Please select a date range!"
 msgstr "Please select a date range!"
 
@@ -4812,11 +4864,11 @@ msgstr "Remove member"
 msgid "Remove this member?"
 msgstr "Remove this member?"
 
-#: src/routes/accounting/fiscal-periods.tsx:241
+#: src/routes/accounting/fiscal-periods.tsx:245
 msgid "Reopen"
 msgstr "Reopen"
 
-#: src/routes/accounting/fiscal-periods.tsx:225
+#: src/routes/accounting/fiscal-periods.tsx:229
 msgid "Reopen this period?"
 msgstr "Reopen this period?"
 
@@ -5423,8 +5475,8 @@ msgstr "Stamp duty account"
 msgid "Standard rate"
 msgstr "Standard rate"
 
-#: src/routes/accounting/fiscal-periods.tsx:192
-#: src/routes/accounting/fiscal-periods.tsx:261
+#: src/routes/accounting/fiscal-periods.tsx:196
+#: src/routes/accounting/fiscal-periods.tsx:265
 msgid "Start"
 msgstr "Start"
 
@@ -5437,8 +5489,8 @@ msgstr "State"
 
 #: src/components/imports/form.tsx:451
 #: src/components/payments/payment-panel.tsx:393
-#: src/routes/accounting/fiscal-periods.tsx:206
-#: src/routes/accounting/fiscal-periods.tsx:275
+#: src/routes/accounting/fiscal-periods.tsx:210
+#: src/routes/accounting/fiscal-periods.tsx:279
 #: src/routes/accounting/journal-entries.tsx:161
 #: src/routes/deliveries.tsx:145
 #: src/routes/deliveries/details.tsx:426
@@ -5749,7 +5801,7 @@ msgstr "This invoice's match variance is now resolved"
 msgid "This month"
 msgstr "This month"
 
-#: src/routes/accounting/fiscal-periods.tsx:107
+#: src/routes/accounting/fiscal-periods.tsx:108
 msgid "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
 msgstr "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
 
@@ -5938,8 +5990,8 @@ msgstr "Tunisia"
 #: src/components/accounting/journal-form.tsx:153
 #: src/components/products/form.tsx:357
 #: src/components/stock/movement-form.tsx:151
-#: src/routes/accounting/chart-of-accounts.tsx:142
-#: src/routes/accounting/journals.tsx:108
+#: src/routes/accounting/chart-of-accounts.tsx:155
+#: src/routes/accounting/journals.tsx:119
 #: src/routes/cash-book.tsx:1252
 #: src/routes/inventory.tsx:569
 #: src/routes/products.tsx:276
@@ -6035,8 +6087,12 @@ msgid "Upload a .db file to replace the current database."
 msgstr "Upload a .db file to replace the current database."
 
 #: src/routes/settings/document-templates.tsx:240
-msgid "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
-msgstr "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
+msgid "Upload a custom Excel layout for a document type, or download the current one to edit it. An uploaded template is used for both the Excel and PDF export of that document type; deleting it reverts to the built-in default."
+msgstr "Upload a custom Excel layout for a document type, or download the current one to edit it. An uploaded template is used for both the Excel and PDF export of that document type; deleting it reverts to the built-in default."
+
+#: src/routes/settings/document-templates.tsx:240
+#~ msgid "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
+#~ msgstr "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
 
 #: src/components/mass-data/mass-data-excel-actions.tsx:84
 msgid "Upload Excel"
@@ -6303,7 +6359,7 @@ msgstr "Withholding tax rate"
 #: src/components/tax-rates/form.tsx:135
 #: src/components/units-of-measure/form.tsx:101
 #: src/components/vendors/form.tsx:135
-#: src/routes/accounting/fiscal-periods.tsx:234
+#: src/routes/accounting/fiscal-periods.tsx:238
 #: src/routes/accounting/journal-entries/details.tsx:393
 #: src/routes/accounting/journal-entries/details.tsx:403
 #: src/routes/deliveries/details.tsx:582

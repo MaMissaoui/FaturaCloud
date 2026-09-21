@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { UnitOfMeasure } from "src/types/models";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Space, Table } from "antd";
+import { Button, Col, Row, Space, Table, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -72,6 +72,19 @@ function SettingsUnitsOfMeasure() {
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No units match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No units of measure yet</Trans>}>
+                  <Link to="/settings/units-of-measure" state={{ unitOfMeasureModal: true }}>
+                    <Button type="primary">
+                      <Trans>Create your first unit of measure</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: UnitOfMeasure) => ({
               onClick: () =>
                 navigate("/settings/units-of-measure", {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { TaxRate } from "src/types/models";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
-import { Button, Col, Row, Space, Table } from "antd";
+import { Button, Col, Row, Space, Table, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { CalculatorOutlined, CheckSquareOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
@@ -75,6 +75,19 @@ function SettingsTaxRates() {
             dataSource={filtered}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
+            locale={{
+              emptyText: search ? (
+                <Empty description={<Trans>No tax rates match your search</Trans>} />
+              ) : (
+                <Empty description={<Trans>No tax rates yet</Trans>}>
+                  <Link to="/settings/tax-rates/new">
+                    <Button type="primary">
+                      <Trans>Create your first tax rate</Trans>
+                    </Button>
+                  </Link>
+                </Empty>
+              ),
+            }}
             onRow={(record: TaxRate) => ({
               onClick: () => navigate(`/settings/tax-rates/${record.id}`),
               onKeyDown: (e) => {
