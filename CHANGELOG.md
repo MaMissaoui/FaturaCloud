@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.48.0] - 2026-09-21
+
+### Added
+- Cash Book search is now a ranked pick-list: results are ordered by exact
+  name/number, then name prefix, then other substring, with the most-owed
+  first within a tier; the matched text is highlighted, a live
+  "N matches · M with an open loan" count sits above the list, results are
+  capped at 25 with a "keep typing" footer, no matches offers a
+  "Create <query>" button, and with nothing typed the list shows the top 8
+  debtors from the loan report already loaded.
+- Cash Book search is a keyboard combobox: ArrowUp/Down move the active
+  result and Enter selects it, with the results exposed as a listbox of
+  labelled options (one tab stop instead of one per row).
+
+### Changed
+- Cash Book result rows use a two-zone layout — name and customer
+  number/phone/CIN on the left, the open-loan amount in a fixed-width
+  right-hand rail — so the figures line up as a column.
+- Cash Book: a failed loan-status fetch now shows a warning instead of
+  silently rendering every customer as debt-free.
+
+### Fixed
+- Line items: a missing required product/description/price/total now shows
+  its validation error instead of failing Save silently.
+- The Cash Book page no longer overflows the viewport by ~200px — its
+  loan-status table scrolls inside its own container, so the table's
+  right-hand columns and the search rows' money rail stay visible.
+
 ## [3.47.0] - 2026-09-21
 
 ### Added
