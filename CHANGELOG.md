@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.38.0] - 2026-09-21
+
+### Added
+- Sorting on table columns across the app — case-insensitive text, numeric,
+  date and money comparators, via a shared `src/utils/sort.ts`. Covers the
+  Cash Book tables, accounting lists and reports, reporting pages, document
+  detail-line tables and settings lists. Editable line-item tables are
+  excluded (sorting a form's rows would reorder the fields being typed).
+
 ## [3.37.1] - 2026-09-21
 
 ### Fixed
