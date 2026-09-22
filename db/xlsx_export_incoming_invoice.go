@@ -18,6 +18,7 @@ func FillIncomingInvoiceTemplate(
 	org Organization,
 	vendor Vendor,
 	taxRates map[string]TaxRate,
+	logo []byte,
 	orientation string,
 ) ([]byte, []string, error) {
 	currency := invoice.Currency
@@ -31,7 +32,8 @@ func FillIncomingInvoiceTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	return fillTemplate(templateBytes, scalars, lineRows, orientation)
+	blocks := []repeatBlock{{marker: lineItemMarker, rows: lineRows, required: true}}
+	return fillTemplate(templateBytes, scalars, blocks, logo, orientation)
 }
 
 // FetchIncomingInvoiceExportData gathers everything FillIncomingInvoiceTemplate
@@ -40,18 +42,18 @@ func FillIncomingInvoiceTemplate(
 // Callers hold dbMu only around this call; the fill/convert step that
 // follows must run lock-free (see api/document_templates.go's
 // exportInvoiceDocument for why).
-func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingInvoice, []IncomingInvoiceLineItem, *Organization, *Vendor, []byte, map[string]TaxRate, string, error) {
+func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingInvoice, []IncomingInvoiceLineItem, *Organization, *Vendor, []byte, map[string]TaxRate, []byte, string, error) {
 	invoice, err := d.GetIncomingInvoice(invoiceID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get incoming invoice: %w", err)
+		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get incoming invoice: %w", err)
 	}
 	lineItems, err := d.GetIncomingInvoiceLineItems(invoiceID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(invoice.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get organization: %w", err)
 	}
 
 	// Unlike purchase_orders.vendorId, incoming_invoices.vendorId is a
@@ -59,16 +61,23 @@ func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingIn
 	// so no vendor-less fallback is needed here.
 	vendor, err := d.GetVendor(invoice.VendorID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get vendor: %w", err)
+		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get vendor: %w", err)
 	}
 
 	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "incoming_invoice")
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve template: %w", err)
 	}
 	orientation, err := d.GetDocumentTemplateOrientation(invoice.OrganizationID, "incoming_invoice")
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve orientation: %w", err)
+		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve orientation: %w", err)
+	}
+	// A missing logo is not an error — the template's logo cell just stays
+	// empty (GetOrganizationLogo returns nil, nil for an org that never
+	// uploaded one).
+	logo, err := d.GetOrganizationLogo(invoice.OrganizationID)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get logo: %w", err)
 	}
 
 	taxRates := map[string]TaxRate{}
@@ -86,7 +95,7 @@ func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingIn
 		taxRates[*li.TaxRate] = *rate
 	}
 
-	return invoice, lineItems, org, vendor, templateBytes, taxRates, orientation, nil
+	return invoice, lineItems, org, vendor, templateBytes, taxRates, logo, orientation, nil
 }
 
 // buildIncomingInvoiceScalarPlaceholders is the fixed namespace->field
@@ -117,6 +126,8 @@ func buildIncomingInvoiceScalarPlaceholders(invoice IncomingInvoice, org Organiz
 		"organization.houseNumber": derefString(org.HouseNumber),
 		"organization.postalCode":  derefString(org.PostalCode),
 		"organization.city":        derefString(org.City),
+		"organization.iban":        derefString(org.IBAN),
+		"organization.bankName":    derefString(org.BankName),
 
 		"vendor.name":        derefString(vendor.Name),
 		"vendor.vatin":       derefString(vendor.Vatin),

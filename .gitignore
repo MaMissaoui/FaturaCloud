@@ -50,3 +50,5 @@ pnpm-debug.log*
 # db/templates/gen's own output — the canonical file is db/templates/*.xlsx,
 # committed separately after running `go run ./db/templates/gen`
 db/templates/gen/*.xlsx
+# `go build`/`go run` inside the generator package can leave a binary behind
+db/templates/gen/gen

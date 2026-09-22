@@ -17,6 +17,7 @@ func FillInboundDeliveryTemplate(
 	lineItems []InboundDeliveryLineItem,
 	org Organization,
 	vendor Vendor,
+	logo []byte,
 	orientation string,
 ) ([]byte, []string, error) {
 	currency := ""
@@ -32,7 +33,8 @@ func FillInboundDeliveryTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildInboundDeliveryLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode)
 	}
-	return fillTemplate(templateBytes, scalars, lineRows, orientation)
+	blocks := []repeatBlock{{marker: lineItemMarker, rows: lineRows, required: true}}
+	return fillTemplate(templateBytes, scalars, blocks, logo, orientation)
 }
 
 // FetchInboundDeliveryExportData gathers everything
@@ -42,39 +44,46 @@ func FillInboundDeliveryTemplate(
 // Callers hold dbMu only around this call; the fill/convert step that
 // follows must run lock-free (see api/document_templates.go's
 // exportInvoiceDocument for why).
-func (d *Database) FetchInboundDeliveryExportData(deliveryID string) (*InboundDelivery, []InboundDeliveryLineItem, *Organization, *Vendor, []byte, string, error) {
+func (d *Database) FetchInboundDeliveryExportData(deliveryID string) (*InboundDelivery, []InboundDeliveryLineItem, *Organization, *Vendor, []byte, []byte, string, error) {
 	delivery, err := d.GetInboundDelivery(deliveryID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get inbound delivery: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get inbound delivery: %w", err)
 	}
 	lineItems, err := d.GetInboundDeliveryLineItems(deliveryID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(delivery.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get organization: %w", err)
 	}
 
 	var vendor Vendor
 	if delivery.VendorID != nil {
 		v, err := d.GetVendor(*delivery.VendorID)
 		if err != nil {
-			return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get vendor: %w", err)
+			return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get vendor: %w", err)
 		}
 		vendor = *v
 	}
 
 	templateBytes, _, err := resolveTemplateBytes(d, delivery.OrganizationID, "inbound_delivery")
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: resolve template: %w", err)
 	}
 	orientation, err := d.GetDocumentTemplateOrientation(delivery.OrganizationID, "inbound_delivery")
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: resolve orientation: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: resolve orientation: %w", err)
+	}
+	// A missing logo is not an error — the template's logo cell just stays
+	// empty (GetOrganizationLogo returns nil, nil for an org that never
+	// uploaded one).
+	logo, err := d.GetOrganizationLogo(delivery.OrganizationID)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: get logo: %w", err)
 	}
 
-	return delivery, lineItems, org, &vendor, templateBytes, orientation, nil
+	return delivery, lineItems, org, &vendor, templateBytes, logo, orientation, nil
 }
 
 // buildInboundDeliveryScalarPlaceholders is the fixed namespace->field
@@ -98,6 +107,8 @@ func buildInboundDeliveryScalarPlaceholders(delivery InboundDelivery, org Organi
 		"organization.houseNumber": derefString(org.HouseNumber),
 		"organization.postalCode":  derefString(org.PostalCode),
 		"organization.city":        derefString(org.City),
+		"organization.iban":        derefString(org.IBAN),
+		"organization.bankName":    derefString(org.BankName),
 
 		"vendor.name":        derefString(vendor.Name),
 		"vendor.vatin":       derefString(vendor.Vatin),

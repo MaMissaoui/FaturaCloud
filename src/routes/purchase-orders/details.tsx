@@ -76,10 +76,11 @@ import {
   incomingInvoiceStateLabel,
   type IncomingInvoiceState,
 } from "src/types/incoming-invoice";
-import { organizationAtom } from "src/atoms/organization";
+import { organizationAtom, myOrgRoleAtom } from "src/atoms/organization";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import { importsAtom, setImportsAtom } from "src/atoms/import";
+import { roleCanSeeMenuItem } from "src/layouts/role-menu";
 import { inboundDeliveriesAtom, setInboundDeliveriesAtom } from "src/atoms/inbound-delivery";
 import { incomingInvoicesAtom, setIncomingInvoicesAtom } from "src/atoms/incoming-invoice";
 import {
@@ -121,6 +122,12 @@ const PurchaseOrderDetails = () => {
   const prefillImportId = isNew ? ((location.state as any)?.importId ?? null) : null;
 
   const organization = useAtomValue(organizationAtom);
+  // Imports is section-scoped server-side (api/sections.go): a general user
+  // keeps purchase orders but not imports, so the Import select and its fetch
+  // are hidden/ skipped for roles without the section (otherwise the mount
+  // fetch 403s). Mirrors ROLE_MENU's group-purchasing child list.
+  const orgRole = useAtomValue(myOrgRoleAtom);
+  const importsAllowed = roleCanSeeMenuItem(orgRole, "group-purchasing", "imports");
   const vendors = useAtomValue(vendorsAtom);
   const setVendors = useSetAtom(setVendorsAtom);
   const imports = useAtomValue(importsAtom);
@@ -175,7 +182,7 @@ const PurchaseOrderDetails = () => {
   useEffect(() => {
     setVendors();
     setProducts();
-    setImports();
+    if (importsAllowed) setImports();
     setInboundDeliveries();
     setIncomingInvoices();
     setStatusOverride(null);
@@ -188,6 +195,7 @@ const PurchaseOrderDetails = () => {
   }, [
     id,
     isNew,
+    importsAllowed,
     setVendors,
     setProducts,
     setImports,
@@ -463,43 +471,45 @@ const PurchaseOrderDetails = () => {
               </Select>
             </Form.Item>
           </Col>
-          <Col xs={24} md={12} xl={4}>
-            <Form.Item
-              label={<Trans>Import</Trans>}
-              name="importId"
-              tooltip={t`The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received.`}
-            >
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="children"
-                placeholder={t`None`}
-                onChange={(newImportId) => {
-                  // Only cascade on a new order — same guard as the vendor
-                  // cascade above. currency/exchangeRate are a *prefill*
-                  // (db/migrations/0066's comment): the order still stores and
-                  // freezes its own values once saved.
-                  if (!isNew || !newImportId) return;
-                  const imp = find(imports, { id: newImportId }) as any;
-                  if (imp?.currency) {
-                    form.setFieldsValue({
-                      currency: imp.currency,
-                      exchangeRate: imp.exchangeRate ?? undefined,
-                      exchangeRateDate: imp.exchangeRateDate
-                        ? dayjs(imp.exchangeRateDate)
-                        : undefined,
-                    });
-                  }
-                }}
+          {importsAllowed && (
+            <Col xs={24} md={12} xl={4}>
+              <Form.Item
+                label={<Trans>Import</Trans>}
+                name="importId"
+                tooltip={t`The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received.`}
               >
-                {map(imports, (imp: any) => (
-                  <Option key={imp.id} value={imp.id}>
-                    {imp.importNumber}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="children"
+                  placeholder={t`None`}
+                  onChange={(newImportId) => {
+                    // Only cascade on a new order — same guard as the vendor
+                    // cascade above. currency/exchangeRate are a *prefill*
+                    // (db/migrations/0066's comment): the order still stores and
+                    // freezes its own values once saved.
+                    if (!isNew || !newImportId) return;
+                    const imp = find(imports, { id: newImportId }) as any;
+                    if (imp?.currency) {
+                      form.setFieldsValue({
+                        currency: imp.currency,
+                        exchangeRate: imp.exchangeRate ?? undefined,
+                        exchangeRateDate: imp.exchangeRateDate
+                          ? dayjs(imp.exchangeRateDate)
+                          : undefined,
+                      });
+                    }
+                  }}
+                >
+                  {map(imports, (imp: any) => (
+                    <Option key={imp.id} value={imp.id}>
+                      {imp.importNumber}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          )}
           <Col xs={24} md={12} xl={3}>
             <Form.Item
               label={<Trans>Order number</Trans>}

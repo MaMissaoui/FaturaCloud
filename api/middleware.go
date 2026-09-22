@@ -207,6 +207,13 @@ func (h *handler) orgAuthorized(resolve orgIDResolver, mode orgAuthMode, allowed
 					return
 				}
 			}
+			// Section guard (api/sections.go): a member of a restricted role
+			// may only reach the sections its UI exposes. Independent of the
+			// allowed predicate above, which decides membership/role tier.
+			if isMember && !routeAllowedForRole(role, r.Pattern) {
+				writeError(w, http.StatusForbidden, "forbidden")
+				return
+			}
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -287,12 +294,16 @@ func (h *handler) requireOrgMember(w http.ResponseWriter, r *http.Request, orgID
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
 	}
-	_, isMember, err := h.db.GetOrganizationRole(orgID, claims.UserID)
+	role, isMember, err := h.db.GetOrganizationRole(orgID, claims.UserID)
 	if err != nil {
 		writeInternalError(w, err)
 		return false
 	}
 	if !isMember {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return false
+	}
+	if !routeAllowedForRole(role, r.Pattern) {
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
 	}
@@ -326,6 +337,10 @@ func (h *handler) requireOrgRole(w http.ResponseWriter, r *http.Request, orgID s
 		}
 	}
 	if !allowed {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return false
+	}
+	if !routeAllowedForRole(role, r.Pattern) {
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
 	}

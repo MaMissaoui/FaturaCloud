@@ -12,10 +12,14 @@ import (
 // bold labels, and right-aligned totals look identical rather than drifting
 // per generator.
 type templateStyles struct {
-	bold   int
-	title  int
-	header int
-	right  int
+	bold       int
+	title      int
+	titleSmall int
+	header     int
+	right      int
+	boldRight  int
+	boxed      int
+	center     int
 }
 
 func newTemplateStyles(f *excelize.File) templateStyles {
@@ -27,10 +31,20 @@ func newTemplateStyles(f *excelize.File) templateStyles {
 	if err != nil {
 		log.Fatal(err)
 	}
-	header, err := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Bold: true, Color: "FFFFFF"},
-		Fill:      excelize.Fill{Type: "pattern", Color: []string{"1E293B"}, Pattern: 1},
+	// The boxed document title ("Facture N°: …") — smaller than the old
+	// standalone title so it fits inside the bordered title box.
+	titleSmall, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 12},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	header, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"E2E8F0"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+		Border:    thinBorder(),
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -39,7 +53,55 @@ func newTemplateStyles(f *excelize.File) templateStyles {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return templateStyles{bold: bold, title: title, header: header, right: right}
+	boldRight, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true},
+		Alignment: &excelize.Alignment{Horizontal: "right"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	// The plain gridline outline the Tunisian format draws around the buyer
+	// block, title box, line-item table and totals.
+	boxed, err := f.NewStyle(&excelize.Style{
+		Border:    thinBorder(),
+		Alignment: &excelize.Alignment{Vertical: "center", WrapText: true},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	center, err := f.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return templateStyles{
+		bold:       bold,
+		title:      title,
+		titleSmall: titleSmall,
+		header:     header,
+		right:      right,
+		boldRight:  boldRight,
+		boxed:      boxed,
+		center:     center,
+	}
+}
+
+// thinBorder is the single thin-line outline used by the boxed/header styles
+// — the printed format's plain gridlines.
+func thinBorder() []excelize.Border {
+	side := func(s string) excelize.Border {
+		return excelize.Border{Type: s, Color: "808080", Style: 1}
+	}
+	return []excelize.Border{side("left"), side("right"), side("top"), side("bottom")}
+}
+
+// mergeCell merges a range, failing loudly on error (generation is
+// offline, an error here is a programming mistake in a generator).
+func mergeCell(f *excelize.File, sheet, from, to string) {
+	if err := f.MergeCell(sheet, from, to); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // applyFitToPageWidth scales a sheet to always fit one page wide when

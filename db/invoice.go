@@ -58,6 +58,11 @@ type Invoice struct {
 	FiscalStampAmount    int64    `db:"fiscalStampAmount"    json:"fiscalStampAmount"`
 	WithholdingTaxRate   *float64 `db:"withholdingTaxRate"   json:"withholdingTaxRate"`
 	WithholdingTaxAmount *int64   `db:"withholdingTaxAmount" json:"withholdingTaxAmount"`
+
+	// DiscountAmount (remise) is a flat pre-tax amount in cents subtracted
+	// from the line-item subtotal before VAT — see validateInvoiceTotals
+	// (db/invoice_totals.go). NOT NULL DEFAULT 0, like FiscalStampAmount.
+	DiscountAmount int64 `db:"discountAmount" json:"discountAmount"`
 }
 
 // InvoiceLineItem mirrors the invoiceLineItems table.
@@ -117,6 +122,7 @@ type CreateInvoiceRequest struct {
 	FiscalStampAmount    int64    `json:"fiscalStampAmount"`
 	WithholdingTaxRate   *float64 `json:"withholdingTaxRate"`
 	WithholdingTaxAmount *int64   `json:"withholdingTaxAmount"`
+	DiscountAmount       int64    `json:"discountAmount"`
 }
 
 // UpdateInvoiceRequest is the payload for updating an invoice. State is
@@ -143,6 +149,7 @@ type UpdateInvoiceRequest struct {
 	FiscalStampAmount    *int64   `json:"fiscalStampAmount"`
 	WithholdingTaxRate   *float64 `json:"withholdingTaxRate"`
 	WithholdingTaxAmount *int64   `json:"withholdingTaxAmount"`
+	DiscountAmount       *int64   `json:"discountAmount"`
 }
 
 func (d *Database) GetInvoices(organizationID string) ([]Invoice, error) {
@@ -210,7 +217,7 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 	if !invoiceStates[req.State] {
 		return nil, newValidationError("invalid invoice state %q", req.State)
 	}
-	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, req.FiscalStampAmount); err != nil {
+	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, req.FiscalStampAmount, req.DiscountAmount); err != nil {
 		return nil, err
 	}
 	client, err := d.GetClient(req.ClientID)
@@ -244,12 +251,12 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
 			currency, exchangeRate, exchangeRateDate, customerNotes, overdueCharge, total, taxTotal, subTotal,
-			buyerReference, paymentTerms, fiscalStampAmount, withholdingTaxRate, withholdingTaxAmount
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			buyerReference, paymentTerms, fiscalStampAmount, withholdingTaxRate, withholdingTaxAmount, discountAmount
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Number, req.State, req.ClientID,
 		req.Date, req.DueDate, req.Currency, exchangeRate, req.ExchangeRateDate, req.CustomerNotes, req.OverdueCharge,
 		req.Total, req.TaxTotal, req.SubTotal, req.BuyerReference, req.PaymentTerms,
-		req.FiscalStampAmount, req.WithholdingTaxRate, req.WithholdingTaxAmount,
+		req.FiscalStampAmount, req.WithholdingTaxRate, req.WithholdingTaxAmount, req.DiscountAmount,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create_invoice insert: %w", err)
@@ -347,7 +354,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 	// must not be able to bypass validation by omitting the field that would
 	// catch it.
 	if updates.LineItems != nil || updates.SubTotal != nil || updates.TaxTotal != nil ||
-		updates.Total != nil || updates.FiscalStampAmount != nil {
+		updates.Total != nil || updates.FiscalStampAmount != nil || updates.DiscountAmount != nil {
 		lineItems := updates.LineItems
 		if lineItems == nil {
 			stored, err := d.GetInvoiceLineItems(invoiceID)
@@ -367,7 +374,8 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		}
 
 		subTotal, taxTotal, total, fiscalStampAmount := updates.SubTotal, updates.TaxTotal, updates.Total, updates.FiscalStampAmount
-		if subTotal == nil || taxTotal == nil || total == nil || fiscalStampAmount == nil {
+		discountAmount := updates.DiscountAmount
+		if subTotal == nil || taxTotal == nil || total == nil || fiscalStampAmount == nil || discountAmount == nil {
 			current, err := d.GetInvoice(invoiceID)
 			if err != nil {
 				return nil, fmt.Errorf("update_invoice fetch current: %w", err)
@@ -384,9 +392,12 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 			if fiscalStampAmount == nil {
 				fiscalStampAmount = &current.FiscalStampAmount
 			}
+			if discountAmount == nil {
+				discountAmount = &current.DiscountAmount
+			}
 		}
 
-		if err := d.validateInvoiceTotals(*lineItems, *subTotal, *taxTotal, *total, *fiscalStampAmount); err != nil {
+		if err := d.validateInvoiceTotals(*lineItems, *subTotal, *taxTotal, *total, *fiscalStampAmount, *discountAmount); err != nil {
 			return nil, err
 		}
 	}
@@ -443,7 +454,8 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		    paymentTerms   = ?,
 		    fiscalStampAmount    = COALESCE(?, fiscalStampAmount),
 		    withholdingTaxRate   = ?,
-		    withholdingTaxAmount = ?
+		    withholdingTaxAmount = ?,
+		    discountAmount       = COALESCE(?, discountAmount)
 		WHERE id = ?`,
 		updates.Number, updates.ClientID,
 		updates.Date, updates.DueDate, updates.Currency,
@@ -453,6 +465,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		updates.Total, updates.TaxTotal, updates.SubTotal,
 		updates.BuyerReference, updates.PaymentTerms,
 		updates.FiscalStampAmount, updates.WithholdingTaxRate, updates.WithholdingTaxAmount,
+		updates.DiscountAmount,
 		invoiceID,
 	)
 	if err != nil {

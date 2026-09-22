@@ -45,7 +45,7 @@ func TestFillPurchaseOrderTemplateResolvesScalarPlaceholders(t *testing.T) {
 	order := testPurchaseOrder()
 	lineItems := []PurchaseOrderLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
 
-	out, unresolved, err := FillPurchaseOrderTemplate(tmpl, order, lineItems, testOrg(), testVendor(), nil, "")
+	out, unresolved, err := FillPurchaseOrderTemplate(tmpl, order, lineItems, testOrg(), testVendor(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillPurchaseOrderTemplate: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestFillPurchaseOrderTemplateComputesTotalsFromLineItems(t *testing.T) {
 	}
 	taxRates := map[string]TaxRate{"rate1": {ID: "rate1", Percentage: 19}}
 
-	out, _, err := FillPurchaseOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testVendor(), taxRates, "")
+	out, _, err := FillPurchaseOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testVendor(), taxRates, nil, "")
 	if err != nil {
 		t.Fatalf("FillPurchaseOrderTemplate: %v", err)
 	}
@@ -109,44 +109,10 @@ func TestFillPurchaseOrderTemplateComputesTotalsFromLineItems(t *testing.T) {
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultPurchaseOrderTemplatePlaceholdersAllResolve(t *testing.T) {
 	t.Parallel()
-	f, err := excelize.OpenReader(bytes.NewReader(purchaseOrderDefaultTemplate))
-	if err != nil {
-		t.Fatalf("open embedded default template: %v", err)
-	}
-	defer f.Close()
-	sheet := f.GetSheetName(0)
-
-	scalars := buildPurchaseOrderScalarPlaceholders(testPurchaseOrder(), testOrg(), testVendor(), "EUR", 0, 0, 0)
-	lineItemKeys := map[string]bool{
-		"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
-		"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
-	}
-
-	rows, err := f.GetRows(sheet)
-	if err != nil {
-		t.Fatalf("read rows: %v", err)
-	}
-
-	sawMarker := false
-	for _, row := range rows {
-		for _, cell := range row {
-			if strings.TrimSpace(cell) == lineItemMarker {
-				sawMarker = true
-				continue
-			}
-			for _, match := range placeholderPattern.FindAllStringSubmatch(cell, -1) {
-				key := match[1]
-				if _, ok := scalars[key]; ok {
-					continue
-				}
-				if lineItemKeys[key] {
-					continue
-				}
-				t.Errorf("embedded default purchase order template has unresolvable placeholder {{%s}}", key)
-			}
-		}
-	}
-	if !sawMarker {
-		t.Error("embedded default purchase order template has no {{#lineItems}} marker row")
-	}
+	assertEmbeddedTemplatePlaceholdersResolve(t, purchaseOrderDefaultTemplate, "purchase order",
+		buildPurchaseOrderScalarPlaceholders(testPurchaseOrder(), testOrg(), testVendor(), "EUR", 0, 0, 0),
+		map[string]bool{
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
+			"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
+		})
 }

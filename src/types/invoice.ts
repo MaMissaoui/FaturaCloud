@@ -37,6 +37,11 @@ export interface Invoice {
   fiscalStampAmount: number;
   withholdingTaxRate: number | null;
   withholdingTaxAmount: number | null;
+  // discountAmount (remise) is a flat pre-tax amount subtracted from the
+  // line-item subtotal before VAT — subTotal stays the gross "Total Brut
+  // HTVA", while the taxable base is subTotal − discountAmount. Always a
+  // number (NOT NULL DEFAULT 0), like fiscalStampAmount.
+  discountAmount: number;
 }
 
 // invoicesAtom's shape: invoiceToDisplay (src/atoms/invoice.ts) converts

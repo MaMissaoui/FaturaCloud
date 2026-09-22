@@ -10,8 +10,8 @@ import {
   organizationIdAtom,
   organizationsLoadedAtom,
   myOrgRoleAtom,
-  roleHomePath,
 } from "src/atoms/organization";
+import { roleHomePath } from "src/layouts/role-menu";
 
 const Index = () => {
   const navigate = useNavigate();

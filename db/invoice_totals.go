@@ -75,7 +75,19 @@ func (d *Database) checkInvoiceLineItemsFKOwnership(organizationID string, lineI
 // never checked here — it's added straight into the expected total. It
 // defaults to 0 for every invoice that doesn't set it, so this stays a
 // no-op for every existing caller.
-func (d *Database) validateInvoiceTotals(lineItems []CreateInvoiceLineItemRequest, subTotal, taxTotal, total, fiscalStampAmount int64) error {
+//
+// discountAmount (remise) is a flat pre-tax amount in cents subtracted from
+// the subtotal before VAT: subTotal itself stays the gross "Total Brut HTVA"
+// (the sum of line items), while the taxable base — and therefore taxTotal
+// and total — is computed on subTotal − discountAmount. With more than one
+// tax rate the discount is spread across the groups proportionally to each
+// group's share of the subtotal, so the groups' net bases sum exactly to the
+// net total. A discount larger than the subtotal is rejected.
+func (d *Database) validateInvoiceTotals(lineItems []CreateInvoiceLineItemRequest, subTotal, taxTotal, total, fiscalStampAmount, discountAmount int64) error {
+	if discountAmount < 0 {
+		return newValidationError("discount cannot be negative")
+	}
+
 	subtotalUnits := new(big.Rat)
 	groupSubtotals := map[string]*big.Rat{}
 	var groupOrder []string
@@ -102,6 +114,15 @@ func (d *Database) validateInvoiceTotals(lineItems []CreateInvoiceLineItemReques
 		}
 	}
 
+	// discountAmount arrives in cents, subtotalUnits accumulates in currency
+	// units — divide by hundred first, the same conversion unitPrice and
+	// fiscalStampAmount go through.
+	discountUnits := new(big.Rat).Quo(new(big.Rat).SetInt64(discountAmount), hundred)
+	netTaxableUnits := new(big.Rat).Sub(subtotalUnits, discountUnits)
+	if netTaxableUnits.Sign() < 0 {
+		return newValidationError("discount cannot exceed the invoice subtotal")
+	}
+
 	taxTotalUnits := new(big.Rat)
 	for _, taxRateID := range groupOrder {
 		rate, err := d.GetTaxRate(taxRateID)
@@ -112,18 +133,21 @@ func (d *Database) validateInvoiceTotals(lineItems []CreateInvoiceLineItemReques
 		if err != nil {
 			return newValidationError("invalid tax rate percentage")
 		}
-		tax := new(big.Rat).Mul(groupSubtotals[taxRateID], pct)
+		// Each group's taxable base is its own subtotal less its proportional
+		// share of the discount (subtotalUnits > 0 here: a non-empty
+		// groupOrder implies at least one line item).
+		groupNet := new(big.Rat).Set(groupSubtotals[taxRateID])
+		groupDiscount := new(big.Rat).Mul(discountUnits, groupSubtotals[taxRateID])
+		groupDiscount.Quo(groupDiscount, subtotalUnits)
+		groupNet.Sub(groupNet, groupDiscount)
+
+		tax := new(big.Rat).Mul(groupNet, pct)
 		tax.Quo(tax, hundred)
 		tax = roundHalfUp(tax, 2)
 		taxTotalUnits.Add(taxTotalUnits, tax)
 	}
 
-	// fiscalStampAmount arrives in cents (like every other Invoice total
-	// column) but subtotalUnits/taxTotalUnits accumulate in currency units
-	// (ratToCents below is what converts back to cents at the end) — divide
-	// by hundred first, the same conversion unitPrice goes through above,
-	// or this silently overstates the stamp's contribution 100x.
-	totalUnits := new(big.Rat).Add(subtotalUnits, taxTotalUnits)
+	totalUnits := new(big.Rat).Add(netTaxableUnits, taxTotalUnits)
 	totalUnits.Add(totalUnits, new(big.Rat).Quo(new(big.Rat).SetInt64(fiscalStampAmount), hundred))
 
 	wantSubTotal := ratToCents(subtotalUnits)

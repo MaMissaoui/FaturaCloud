@@ -41,7 +41,7 @@ func TestFillOrderTemplateResolvesScalarPlaceholders(t *testing.T) {
 	order := testOrder()
 	lineItems := []OrderLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
 
-	out, unresolved, err := FillOrderTemplate(tmpl, order, lineItems, testOrg(), testClient(), "")
+	out, unresolved, err := FillOrderTemplate(tmpl, order, lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillOrderTemplate: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestFillOrderTemplateComputesTotalsFromLineItemsWithNoTax(t *testing.T) {
 		{Description: "Widget", Quantity: 2, UnitPrice: 1000},
 	}
 
-	out, _, err := FillOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testClient(), "")
+	out, _, err := FillOrderTemplate(buf.Bytes(), order, lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillOrderTemplate: %v", err)
 	}
@@ -104,44 +104,10 @@ func TestFillOrderTemplateComputesTotalsFromLineItemsWithNoTax(t *testing.T) {
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultOrderTemplatePlaceholdersAllResolve(t *testing.T) {
 	t.Parallel()
-	f, err := excelize.OpenReader(bytes.NewReader(orderDefaultTemplate))
-	if err != nil {
-		t.Fatalf("open embedded default template: %v", err)
-	}
-	defer f.Close()
-	sheet := f.GetSheetName(0)
-
-	scalars := buildOrderScalarPlaceholders(testOrder(), testOrg(), testClient(), "EUR", 0, 0, 0)
-	lineItemKeys := map[string]bool{
-		"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
-		"lineItems.unitPrice": true, "lineItems.lineTotal": true,
-	}
-
-	rows, err := f.GetRows(sheet)
-	if err != nil {
-		t.Fatalf("read rows: %v", err)
-	}
-
-	sawMarker := false
-	for _, row := range rows {
-		for _, cell := range row {
-			if strings.TrimSpace(cell) == lineItemMarker {
-				sawMarker = true
-				continue
-			}
-			for _, match := range placeholderPattern.FindAllStringSubmatch(cell, -1) {
-				key := match[1]
-				if _, ok := scalars[key]; ok {
-					continue
-				}
-				if lineItemKeys[key] {
-					continue
-				}
-				t.Errorf("embedded default order template has unresolvable placeholder {{%s}}", key)
-			}
-		}
-	}
-	if !sawMarker {
-		t.Error("embedded default order template has no {{#lineItems}} marker row")
-	}
+	assertEmbeddedTemplatePlaceholdersResolve(t, orderDefaultTemplate, "order",
+		buildOrderScalarPlaceholders(testOrder(), testOrg(), testClient(), "EUR", 0, 0, 0),
+		map[string]bool{
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
+			"lineItems.unitPrice": true, "lineItems.lineTotal": true,
+		})
 }

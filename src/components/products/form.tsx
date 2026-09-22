@@ -35,8 +35,10 @@ import {
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { unitsOfMeasureAtom, setUnitsOfMeasureAtom } from "src/atoms/unit-of-measure";
+import { myOrgRoleAtom } from "src/atoms/organization";
 import { GetProductBOM, ReplaceProductBOM } from "src/api";
 import { message } from "src/utils/message";
+import { roleCanSeeMenuItem } from "src/layouts/role-menu";
 import ScrollShadow from "src/components/scroll-shadow";
 import BOMFields from "src/components/products/bom-fields";
 
@@ -91,6 +93,15 @@ const ProductForm = () => {
 
   const isVisible = get(location.state, "productModal", false);
 
+  // Bill of Materials is section-scoped server-side (api/sections.go): only
+  // admin/power_user may read or write /api/products/{id}/bom. Roles without
+  // it (general, sales, purchasing, accounting, cashbook) keep the Products
+  // page but must not load, render, or save the recipe — an unguarded load
+  // would 403 and, worse, leave `bomLoad` "failed", which disables Save for
+  // the whole product. Mirrors ROLE_MENU's group-masterdata child list.
+  const orgRole = useAtomValue(myOrgRoleAtom);
+  const bomAllowed = roleCanSeeMenuItem(orgRole, "group-masterdata", "bill-of-materials");
+
   const product = useMemo(() => {
     if (!productId) return null;
     return products.find((p: any) => p.id === productId) ?? null;
@@ -130,7 +141,7 @@ const ProductForm = () => {
   // existing "finished" product is open, same "load, then let the Form
   // own it" shape as every other field here.
   useEffect(() => {
-    if (isVisible && productId && product?.category === "finished") {
+    if (bomAllowed && isVisible && productId && product?.category === "finished") {
       // Switching product mid-flight must not let the previous product's
       // recipe (or its failure) land on the one now open (F111).
       let cancelled = false;
@@ -165,7 +176,7 @@ const ProductForm = () => {
     // [] is the real value, not an unknown one.
     setBomLoad(null);
     form.setFieldValue("bom", []);
-  }, [isVisible, productId, product?.category, form]);
+  }, [bomAllowed, isVisible, productId, product?.category, form]);
 
   // The full (unpaginated) product catalog is only needed while this drawer
   // is actually open — to look up the product being edited, populate the
@@ -256,7 +267,7 @@ const ProductForm = () => {
       // itself doesn't render (and values.bom is never edited) otherwise.
       // ReplaceProductBOM is a raw API call, not atom-wrapped, so it needs
       // its own toast on failure — setProduct's atom already has one built in.
-      if (productId && values.category === "finished") {
+      if (bomAllowed && productId && values.category === "finished") {
         // F111: only replace the recipe when this product's BOM is actually
         // known. `bomLoad === null` means "not an existing finished product"
         // ([] is the real value); a `loading`/`failed` status — or one left
@@ -589,7 +600,7 @@ const ProductForm = () => {
 
           <Form.Item noStyle shouldUpdate={(prev, cur) => prev.category !== cur.category}>
             {({ getFieldValue }) =>
-              productId && getFieldValue("category") === "finished" ? (
+              productId && bomAllowed && getFieldValue("category") === "finished" ? (
                 <Card
                   size="small"
                   title={<Trans>Bill of Materials</Trans>}

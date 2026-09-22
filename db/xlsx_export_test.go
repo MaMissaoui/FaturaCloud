@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -61,7 +60,7 @@ func TestFillInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
 		{Description: ptr("Widget"), Quantity: 1, UnitPrice: 10000},
 	}
 
-	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "")
+	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -91,7 +90,7 @@ func TestFillInvoiceTemplateExpandsLineItemRows(t *testing.T) {
 		{Description: ptr("Gizmo"), Quantity: 3, UnitPrice: 1000},
 	}
 
-	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "")
+	out, unresolved, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -159,7 +158,7 @@ func TestFillInvoiceTemplateBlanksUnknownPlaceholder(t *testing.T) {
 	}
 
 	lineItems := []InvoiceLineItem{{Description: ptr("Widget"), Quantity: 1, UnitPrice: 1000}}
-	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, "")
+	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate should not error on an unknown placeholder: %v", err)
 	}
@@ -187,7 +186,7 @@ func TestFillInvoiceTemplateRequiresMarkerRow(t *testing.T) {
 		t.Fatalf("build fixture: %v", err)
 	}
 
-	_, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), nil, testOrg(), testClient(), nil, "")
+	_, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), nil, testOrg(), testClient(), nil, nil, "")
 	if err == nil {
 		t.Fatal("expected an error for a template with no {{#lineItems}} marker row")
 	}
@@ -216,7 +215,7 @@ func TestFillInvoiceTemplateMarkerCanBeInAnyColumn(t *testing.T) {
 		{Description: ptr("Widget"), Quantity: 2, UnitPrice: 500},
 		{Description: ptr("Gadget"), Quantity: 1, UnitPrice: 1000},
 	}
-	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, "")
+	out, unresolved, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -265,7 +264,7 @@ func TestFillInvoiceTemplateStripsExtraSheets(t *testing.T) {
 	}
 
 	lineItems := []InvoiceLineItem{{Description: ptr("Widget"), Quantity: 1, UnitPrice: 1000}}
-	out, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, "")
+	out, _, err := FillInvoiceTemplate(buf.Bytes(), testInvoice(), lineItems, testOrg(), testClient(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate: %v", err)
 	}
@@ -292,7 +291,7 @@ func TestFillInvoiceTemplateOrientationOverride(t *testing.T) {
 	tmpl := buildFixtureTemplate(t)
 	lineItems := []InvoiceLineItem{{Description: ptr("Widget"), Quantity: 1, UnitPrice: 1000}}
 
-	outNoOverride, _, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "")
+	outNoOverride, _, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate (no override): %v", err)
 	}
@@ -309,7 +308,7 @@ func TestFillInvoiceTemplateOrientationOverride(t *testing.T) {
 		t.Fatalf("expected no orientation override to leave the page setup untouched, got %q", *layout1.Orientation)
 	}
 
-	outLandscape, _, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, "landscape")
+	outLandscape, _, err := FillInvoiceTemplate(tmpl, testInvoice(), lineItems, testOrg(), testClient(), nil, nil, "landscape")
 	if err != nil {
 		t.Fatalf("FillInvoiceTemplate (landscape): %v", err)
 	}
@@ -346,17 +345,28 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 		"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
 		"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
 	}
+	// The tax recap's own repeat block resolves from a separate map; its
+	// placeholders and the marker are valid template content, not typos.
+	taxLineKeys := map[string]bool{
+		"taxLines.rate": true, "taxLines.base": true, "taxLines.amount": true,
+	}
+	// The logo marker is an image anchor, not a text placeholder.
+	scalars["organization.logo"] = ""
 
 	rows, err := f.GetRows(sheet)
 	if err != nil {
 		t.Fatalf("read rows: %v", err)
 	}
 
-	sawMarker := false
+	sawMarker, sawTaxMarker := false, false
 	for _, row := range rows {
 		for _, cell := range row {
-			if strings.TrimSpace(cell) == lineItemMarker {
+			switch strings.TrimSpace(cell) {
+			case lineItemMarker:
 				sawMarker = true
+				continue
+			case taxLineMarker:
+				sawTaxMarker = true
 				continue
 			}
 			for _, match := range placeholderPattern.FindAllStringSubmatch(cell, -1) {
@@ -364,7 +374,7 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 				if _, ok := scalars[key]; ok {
 					continue
 				}
-				if lineItemKeys[key] {
+				if lineItemKeys[key] || taxLineKeys[key] {
 					continue
 				}
 				t.Errorf("embedded default template has unresolvable placeholder {{%s}}", key)
@@ -373,6 +383,9 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 	}
 	if !sawMarker {
 		t.Error("embedded default template has no {{#lineItems}} marker row")
+	}
+	if !sawTaxMarker {
+		t.Error("embedded default template has no {{#taxLines}} marker row")
 	}
 }
 
@@ -393,9 +406,12 @@ func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T
 	defer f.Close()
 	sheet := f.GetSheetName(0)
 
-	markerRow, _, err := findMarkerRow(f, sheet)
+	markerRow, _, found, err := findMarkerRow(f, sheet, lineItemMarker)
 	if err != nil {
 		t.Fatalf("find marker row: %v", err)
+	}
+	if !found {
+		t.Fatalf("invoice default template has no %s marker", lineItemMarker)
 	}
 	headerRowNum := markerRow - 1 // markerRow is 1-indexed; the header sits directly above it
 
@@ -406,26 +422,34 @@ func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T
 	headerRow := rows[headerRowNum-1]
 	dataRow := rows[markerRow-1]
 
-	if len(headerRow) < 2 || strings.TrimSpace(headerRow[0]) != "Product" || strings.TrimSpace(headerRow[1]) != "Description" {
-		t.Fatalf("header row columns A/B should be \"Product\"/\"Description\", got %v", headerRow)
+	// The Tunisian layout: A Code, B Désignation, C Quantité, D P.U HT,
+	// E TOTAL HT. The markers live in column J — well off the visible content
+	// columns, so they never shift them.
+	if len(headerRow) < 5 || strings.TrimSpace(headerRow[0]) != "Code" {
+		t.Fatalf("header row column A should be \"Code\", got %v", headerRow)
 	}
-	if len(dataRow) < 2 || !strings.Contains(dataRow[0], "{{lineItems.sku}}") || !strings.Contains(dataRow[1], "{{lineItems.description}}") {
-		t.Fatalf("data row columns A/B should carry {{lineItems.sku}}/{{lineItems.description}}, got %v", dataRow)
+	if strings.TrimSpace(headerRow[1]) != "Désignation" || strings.TrimSpace(headerRow[2]) != "Quantité" ||
+		strings.TrimSpace(headerRow[3]) != "P.U HT" || strings.TrimSpace(headerRow[4]) != "TOTAL HT" {
+		t.Fatalf("header row labels should be Code/Désignation/Quantité/P.U HT/TOTAL HT, got %v", headerRow)
+	}
+	if len(dataRow) < 5 || !strings.Contains(dataRow[0], "{{lineItems.sku}}") || !strings.Contains(dataRow[1], "{{lineItems.description}}") ||
+		!strings.Contains(dataRow[2], "{{lineItems.quantity}}") || !strings.Contains(dataRow[3], "{{lineItems.unitPrice}}") ||
+		!strings.Contains(dataRow[4], "{{lineItems.lineTotal}}") {
+		t.Fatalf("data row should carry sku/description/quantity/unitPrice/lineTotal in A/B/C/D/E, got %v", dataRow)
 	}
 
 	merges, err := f.GetMergeCells(sheet)
 	if err != nil {
 		t.Fatalf("get merge cells: %v", err)
 	}
-	dontWantMerged := map[string]bool{
-		fmt.Sprintf("A%d:B%d", headerRowNum, headerRowNum): true,
-		fmt.Sprintf("A%d:B%d", markerRow, markerRow):       true,
-	}
+	seen := map[string]bool{}
 	for _, m := range merges {
-		key := m.GetStartAxis() + ":" + m.GetEndAxis()
-		if dontWantMerged[key] {
-			t.Errorf("expected Product/Description to be independent columns, but found merged range %s", key)
-		}
+		seen[m.GetStartAxis()+":"+m.GetEndAxis()] = true
+	}
+	// Guard against a header/data column drift: the header and data rows must
+	// carry the same column count, so neither is shifted relative to the other.
+	if len(headerRow) != len(dataRow[:len(headerRow)]) {
+		t.Errorf("header/data columns differ: header=%v data=%v", headerRow, dataRow)
 	}
 }
 

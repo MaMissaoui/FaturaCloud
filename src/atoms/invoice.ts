@@ -31,6 +31,7 @@ function invoiceToDisplay(invoice: Invoice): InvoiceDisplay {
     taxTotal: centsToUnits(invoice.taxTotal),
     subTotal: centsToUnits(invoice.subTotal),
     fiscalStampAmount: centsToUnits(invoice.fiscalStampAmount || 0),
+    discountAmount: centsToUnits(invoice.discountAmount || 0),
     withholdingTaxAmount:
       invoice.withholdingTaxAmount != null ? centsToUnits(invoice.withholdingTaxAmount) : null,
   };
@@ -70,6 +71,7 @@ type InvoiceFormValues = Omit<
   | "subTotal"
   | "fiscalStampAmount"
   | "withholdingTaxAmount"
+  | "discountAmount"
 > & {
   date?: Dayjs | number;
   dueDate?: Dayjs | number | null;
@@ -79,6 +81,7 @@ type InvoiceFormValues = Omit<
   subTotal?: number;
   fiscalStampAmount?: number;
   withholdingTaxAmount?: number | null;
+  discountAmount?: number;
   lineItems?: InvoiceLineItemFormValues[];
 };
 
@@ -110,6 +113,7 @@ export const invoiceAtom = atom(
         taxTotal: centsToUnits(invoice.taxTotal),
         subTotal: centsToUnits(invoice.subTotal),
         fiscalStampAmount: centsToUnits(invoice.fiscalStampAmount || 0),
+        discountAmount: centsToUnits(invoice.discountAmount || 0),
         withholdingTaxAmount:
           invoice.withholdingTaxAmount != null ? centsToUnits(invoice.withholdingTaxAmount) : null,
         lineItems: (lineItems || []).map((item) => ({
@@ -147,6 +151,7 @@ export const invoiceAtom = atom(
           taxTotal: unitsToCents(invoice.taxTotal ?? 0),
           subTotal: unitsToCents(invoice.subTotal ?? 0),
           fiscalStampAmount: unitsToCents(invoice.fiscalStampAmount || 0),
+          discountAmount: unitsToCents(invoice.discountAmount || 0),
           withholdingTaxRate: invoice.withholdingTaxRate ?? null,
           withholdingTaxAmount:
             invoice.withholdingTaxAmount != null
@@ -190,6 +195,8 @@ export const invoiceAtom = atom(
           subTotal: invoice.subTotal != null ? unitsToCents(invoice.subTotal) : undefined,
           fiscalStampAmount:
             invoice.fiscalStampAmount != null ? unitsToCents(invoice.fiscalStampAmount) : undefined,
+          discountAmount:
+            invoice.discountAmount != null ? unitsToCents(invoice.discountAmount) : undefined,
           withholdingTaxRate: invoice.withholdingTaxRate ?? null,
           withholdingTaxAmount:
             invoice.withholdingTaxAmount != null
@@ -318,6 +325,7 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
       total: originalInvoice.total,
       taxTotal: originalInvoice.taxTotal,
       subTotal: originalInvoice.subTotal,
+      discountAmount: originalInvoice.discountAmount,
       customerNotes: originalInvoice.customerNotes,
       overdueCharge: originalInvoice.overdueCharge,
       buyerReference: originalInvoice.buyerReference,
