@@ -61,6 +61,7 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/organizations/{orgId}/reports/cash-movement-details` — member-level; the per-transaction drill-down behind the daily aggregate (`accountId`/`startDate`/`endDate`), merging inbound invoice payments with `cash_movements` withdrawals
 - `GET /api/organizations/{orgId}/reports/loan-status` — member-level; optional `clientId`; the standing "who owes what" report over loan-sale invoices
 - `GET /api/organizations/{orgId}/reports/daily-cash-movements/export` (takes `accountId` + `date`) and `GET /api/organizations/{orgId}/reports/loan-status/export` (takes `clientId` + `openOnly=true`) — member-level `?format=xlsx|pdf`, registered directly on `mux` (not `withDB`) like every other LibreOffice export
+- `GET /api/organizations/{orgId}/reports/payment-history/export` (takes `clientId`) — the Payment history card's inbound payments, same member-level `?format=xlsx|pdf` and direct `mux` registration as the two exports above
 
 **Document Templates (issue #115) — per-org, per-document-type Excel export template overrides**
 - `GET /api/organizations/{orgId}/document-templates/{documentType}` — the org's uploaded override, or the embedded default if none

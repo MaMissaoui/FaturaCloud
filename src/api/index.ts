@@ -716,6 +716,23 @@ export const ExportLoanStatus = (
   );
 };
 
+// Exports the Cash Book screen's Payment history card (inbound payments) —
+// see db/report_export.go. clientId mirrors the filter that card applies
+// (the customer being served, or the loan report's customer filter); omit it
+// for every customer in the organization.
+export const ExportPaymentHistory = (
+  organizationId: string,
+  format: "xlsx" | "pdf",
+  clientId?: string,
+) => {
+  const params = new URLSearchParams({ format });
+  if (clientId) params.set("clientId", clientId);
+  return downloadDocumentExport(
+    `/api/organizations/${organizationId}/reports/payment-history/export?${params.toString()}`,
+    `payment-history.${format}`,
+  );
+};
+
 // ---- Tax Rates ----
 
 export const GetTaxRates = (organizationId: string) =>

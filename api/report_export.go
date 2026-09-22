@@ -74,10 +74,34 @@ func (h *handler) getLoanStatusExport(w http.ResponseWriter, r *http.Request) {
 	streamReportExport(w, r, xlsxBytes, filenameBase, format)
 }
 
-// streamReportExport is the shared xlsx/pdf response tail for both report
+// getPaymentHistoryExport streams the Cash Book screen's Payment history card
+// (inbound payments, newest first) as .xlsx or, if converted, .pdf, honoring
+// the same clientId filter the screen applies to that card (the customer
+// being served, or the loan report's own customer filter).
+func (h *handler) getPaymentHistoryExport(w http.ResponseWriter, r *http.Request) {
+	orgID := r.PathValue("orgId")
+	format := r.URL.Query().Get("format")
+	if format != "xlsx" && format != "pdf" {
+		writeError(w, http.StatusBadRequest, "format must be xlsx or pdf")
+		return
+	}
+	clientID := r.URL.Query().Get("clientId")
+
+	h.dbMu.RLock()
+	xlsxBytes, filenameBase, err := h.db.GeneratePaymentHistoryExport(orgID, clientID)
+	h.dbMu.RUnlock()
+	if err != nil {
+		writeDBError(w, err, "organization not found")
+		return
+	}
+
+	streamReportExport(w, r, xlsxBytes, filenameBase, format)
+}
+
+// streamReportExport is the shared xlsx/pdf response tail for the report
 // exports above — same shape as exportInvoiceDocument's, factored out since
-// neither report has per-type totals/unresolved-placeholder handling to set
-// it apart.
+// none of them has per-type totals/unresolved-placeholder handling to set it
+// apart.
 func streamReportExport(w http.ResponseWriter, r *http.Request, xlsxBytes []byte, filenameBase, format string) {
 	if format == "xlsx" {
 		w.Header().Set("Content-Type", documentTemplateContentType)
