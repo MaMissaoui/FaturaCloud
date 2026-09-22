@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.52.0] - 2026-09-22
+
+### Added
+- Documents: the embedded default Excel/PDF template for every document type
+  (invoice, purchase order, order, incoming invoice, outbound delivery, goods
+  receipt) is now the Tunisian "Facture" layout — seller block with logo,
+  boxed buyer/vendor block, code/description/quantity/unit-price/line-total
+  table, a per-tax-rate VAT recap, a totals block (Total Brut HTVA / Remise /
+  Total Net HTVA / Total TVA / D.Timbre / Total TTC), an optional
+  amount-in-words line and a signature area. Generated from one shared frame;
+  regenerate the defaults with `go run ./db/templates/gen`.
+- Documents: exported documents can now embed the organization's uploaded
+  logo (`{{organization.logo}}` in a template cell).
+- Invoices: a Discount (remise) field — a flat pre-tax amount subtracted from
+  the subtotal before VAT, spread across the tax-rate groups proportionally
+  and reflected in the posted revenue and output tax.
+- Settings: a "Show amount in words" toggle (Organizations → Formatting) that
+  prints the total spelled out in words ("Arrêtée la présente facture à la
+  somme de ...").
+
+### Changed
+- Roles: the focused per-role views (General, Sales, Purchasing, Accounting)
+  are now enforced server-side — a restricted role is 403'd on the section
+  routes its UI hides, instead of only having them hidden and redirected.
+  Master data, accounts reads, payments and the settings/organization routes
+  stay membership-level for every role.
+
 ## [3.51.0] - 2026-09-22
 
 ### Added
