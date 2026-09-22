@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDecimal,
+  allocateDiscount,
   calculateTax,
   centsToUnits,
   divideDecimal,
@@ -69,5 +70,33 @@ describe("formatCents", () => {
 
   it("formats a valid currency without throwing", () => {
     expect(() => formatCents(1000, "USD", "en-US")).not.toThrow();
+  });
+});
+
+describe("allocateDiscount", () => {
+  it("returns the gross subtotals unchanged when there is no discount", () => {
+    expect(allocateDiscount([{ subtotal: 100 }, { subtotal: 50 }], 150, 0)).toEqual([100, 50]);
+  });
+
+  it("spreads a discount across groups proportionally to their share", () => {
+    // 150 total, 10 discount: the 100 group takes 2/3 (6.666..), the 50
+    // group takes 1/3 (3.333..) — decimal.js, no float drift.
+    const [a, b] = allocateDiscount([{ subtotal: 100 }, { subtotal: 50 }], 150, 10);
+    expect(a).toBeCloseTo(93.3333, 4);
+    expect(b).toBeCloseTo(46.6667, 4);
+    expect(a + b).toBeCloseTo(140, 6);
+  });
+
+  it("gives the whole discount to the only group", () => {
+    expect(allocateDiscount([{ subtotal: 100 }], 100, 25)).toEqual([75]);
+  });
+
+  it("treats a zero subtotal as no share rather than dividing by zero", () => {
+    expect(allocateDiscount([{ subtotal: 0 }], 0, 10)).toEqual([0]);
+  });
+
+  it("never returns a negative base", () => {
+    const [only] = allocateDiscount([{ subtotal: 5 }], 5, 999);
+    expect(only).toBe(0);
   });
 });

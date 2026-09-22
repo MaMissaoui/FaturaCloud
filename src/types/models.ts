@@ -270,6 +270,10 @@ export interface Organization {
   // src/components/invoices/layouts.ts for the registry of other values.
   fiscalStampEnabled: number | null;
   withholdingTaxEnabled: number | null;
+  // amountInWordsEnabled gates the printed "amount in words" line
+  // (e.g. "Arrêtée la présente facture à la somme de ...") on exported
+  // documents. A Formatting-section toggle; independent of the others.
+  amountInWordsEnabled: number | null;
   defaultFiscalStampAmount: number | null;
   defaultStampDutyAccountId: string | null;
   invoiceLayout: string | null;

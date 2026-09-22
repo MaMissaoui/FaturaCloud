@@ -437,45 +437,69 @@ export default function OrganizationEditDrawer({
               label: <Trans>Formatting</Trans>,
               forceRender: true,
               children: (
-                <Row gutter={[16, 0]}>
-                  <Col xs={24} md={8}>
-                    <Form.Item name="date_format" label={<Trans>Date format</Trans>}>
-                      <Select placeholder={t`Select date format`}>
-                        {Object.keys(DATE_FORMATS).map((key) => (
-                          <Select.Option
-                            key={key}
-                            value={DATE_FORMATS[key as DateFormatKey] ?? "AUTO"}
-                          >
-                            {getDateFormatLabel(key as DateFormatKey)}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={8}>
-                    <Form.Item name="minimum_fraction_digits" label={<Trans>Decimal places</Trans>}>
-                      <InputNumber min={0} max={10} style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={8}>
-                    <Form.Item
-                      name="invoiceLayout"
-                      label={<Trans>Invoice PDF layout</Trans>}
-                      style={{ marginBottom: 0 }}
-                      tooltip={
-                        <Trans>Which template invoices for this organization render with.</Trans>
-                      }
-                    >
-                      <Select placeholder={t`Default`} allowClear>
-                        {invoicePDFLayoutOptions().map((option) => (
-                          <Select.Option key={option.value} value={option.value}>
-                            {option.label}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
+                <>
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="date_format" label={<Trans>Date format</Trans>}>
+                        <Select placeholder={t`Select date format`}>
+                          {Object.keys(DATE_FORMATS).map((key) => (
+                            <Select.Option
+                              key={key}
+                              value={DATE_FORMATS[key as DateFormatKey] ?? "AUTO"}
+                            >
+                              {getDateFormatLabel(key as DateFormatKey)}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="minimum_fraction_digits"
+                        label={<Trans>Decimal places</Trans>}
+                      >
+                        <InputNumber min={0} max={10} style={{ width: "100%" }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="invoiceLayout"
+                        label={<Trans>Invoice PDF layout</Trans>}
+                        style={{ marginBottom: 0 }}
+                        tooltip={
+                          <Trans>Which template invoices for this organization render with.</Trans>
+                        }
+                      >
+                        <Select placeholder={t`Default`} allowClear>
+                          {invoicePDFLayoutOptions().map((option) => (
+                            <Select.Option key={option.value} value={option.value}>
+                              {option.label}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Row gutter={[16, 0]} style={{ marginTop: 8 }}>
+                    <Col xs={24}>
+                      <Form.Item
+                        name="amountInWordsEnabled"
+                        valuePropName="checked"
+                        style={{ marginBottom: 0 }}
+                        tooltip={
+                          <Trans>
+                            Print the document total spelled out in words, e.g. "Arrêtée la présente
+                            facture à la somme de ...".
+                          </Trans>
+                        }
+                      >
+                        <Checkbox>
+                          <Trans>Show amount in words</Trans>
+                        </Checkbox>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </>
               ),
             },
             isEdit && editingId

@@ -97,6 +97,7 @@ function buildOrganization(overrides: Partial<Organization> = {}): Organization 
     datev_client_number: null,
     fiscalStampEnabled: 0,
     withholdingTaxEnabled: 0,
+    amountInWordsEnabled: 0,
     defaultFiscalStampAmount: null,
     defaultStampDutyAccountId: null,
     invoiceLayout: null,
@@ -141,6 +142,7 @@ function buildInvoice(overrides: Partial<Invoice> = {}): Invoice {
     fiscalStampAmount: 0,
     withholdingTaxRate: null,
     withholdingTaxAmount: null,
+    discountAmount: 0,
     ...overrides,
   };
 }

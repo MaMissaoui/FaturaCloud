@@ -341,6 +341,12 @@ export default function Organizations() {
                 ? 1
                 : 0
               : values.withholdingTaxEnabled,
+          amountInWordsEnabled:
+            typeof values.amountInWordsEnabled === "boolean"
+              ? values.amountInWordsEnabled
+                ? 1
+                : 0
+              : values.amountInWordsEnabled,
         });
         // Logo upload/removal and delete already reload the active
         // organization when they touch the currently-selected org (see

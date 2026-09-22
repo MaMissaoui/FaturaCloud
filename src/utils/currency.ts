@@ -125,6 +125,31 @@ export function calculateTax(amount: number | string, percentage: number | strin
 }
 
 /**
+ * Spread a flat pre-tax discount (remise) across tax-rate groups in
+ * proportion to each group's share of the total subtotal, returning each
+ * group's net taxable base. This mirrors db/invoice_totals.go's
+ * validateInvoiceTotals and db/gl_posting.go's buildInvoiceGLLines exactly —
+ * the denominator is the full subtotal, not just the rated subset, and the
+ * per-group tax is then rounded once — so the totals the form submits agree
+ * with what the server recomputes (any disagreement 409s on save).
+ *
+ * @param groups - one entry per tax-rate group: its gross subtotal
+ * @param subTotal - the invoice's total subtotal across all groups
+ * @param discount - the flat discount, in the same units as subTotal
+ */
+export function allocateDiscount(
+  groups: Array<{ subtotal: number }>,
+  subTotal: number,
+  discount: number,
+): number[] {
+  return groups.map((group) => {
+    const share =
+      subTotal > 0 ? multiplyDecimal(discount, divideDecimal(group.subtotal, subTotal)) : 0;
+    return Math.max(0, subtractDecimal(group.subtotal, share));
+  });
+}
+
+/**
  * Back out the tax-exclusive (net) unit price from a tax-inclusive (gross)
  * one, rounded to 2 decimal places like every other stored price. Used by
  * gross-price entry screens (Cash Book) to convert what a cashier types

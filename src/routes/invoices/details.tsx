@@ -83,6 +83,7 @@ import {
   subtractDecimal,
   centsToUnits,
   unitsToCents,
+  allocateDiscount,
 } from "src/utils/currency";
 import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
 
@@ -185,6 +186,7 @@ const InvoiceDetails: React.FC = () => {
       fiscalStampAmount: organization?.defaultFiscalStampAmount
         ? centsToUnits(organization.defaultFiscalStampAmount)
         : 0,
+      discountAmount: 0,
     };
 
     if (!isNew && invoice) {
@@ -252,7 +254,14 @@ const InvoiceDetails: React.FC = () => {
       "total",
     ),
   );
-  // Group line items by tax rate and calculate tax for each group
+  // Remise: a flat pre-tax amount subtracted from the subtotal before VAT.
+  const discountAmount = toNumber(Form.useWatch("discountAmount", form)) || 0;
+  const netSubTotal = Math.max(0, subtractDecimal(subTotal, discountAmount));
+  // Group line items by tax rate and calculate tax for each group. The
+  // discount is spread across the groups in proportion to each group's share
+  // of the subtotal — the same allocation db/invoice_totals.go's
+  // validateInvoiceTotals uses server-side (denominator is the full
+  // subtotal, not just the rated subset), so the two always agree.
   const taxGroups = useMemo(() => {
     const groups: { [key: string]: { taxRate: any; items: any[]; subtotal: number; tax: number } } =
       {};
@@ -274,15 +283,20 @@ const InvoiceDetails: React.FC = () => {
 
           groups[taxRateId].items.push(item);
           groups[taxRateId].subtotal = addDecimal(groups[taxRateId].subtotal, item.total);
-          groups[taxRateId].tax = taxRate?.percentage
-            ? calculateTax(groups[taxRateId].subtotal, taxRate.percentage)
-            : 0;
         }
       });
     }
 
-    return Object.values(groups);
-  }, [lineItems, taxRates]);
+    const groupList = Object.values(groups);
+    const netBases = allocateDiscount(groupList, subTotal, discountAmount);
+    groupList.forEach((group, i) => {
+      group.tax = group.taxRate?.percentage
+        ? calculateTax(netBases[i], group.taxRate.percentage)
+        : 0;
+    });
+
+    return groupList;
+  }, [lineItems, taxRates, subTotal, discountAmount]);
 
   const taxTotal = sum(map(taxGroups, "tax"));
   // Tunisia invoice support. fiscalStampAmount (timbre fiscal) is a flat,
@@ -294,12 +308,12 @@ const InvoiceDetails: React.FC = () => {
   // settles with a tax certificate (see the "Net amount due" row below).
   const fiscalStampAmount = toNumber(Form.useWatch("fiscalStampAmount", form)) || 0;
   const withholdingTaxRate = Form.useWatch("withholdingTaxRate", form);
-  const total = addDecimal(addDecimal(subTotal, taxTotal), fiscalStampAmount);
-  // Derived from TTC (subTotal + taxTotal) excluding the stamp — a
+  const total = addDecimal(addDecimal(netSubTotal, taxTotal), fiscalStampAmount);
+  // Derived from TTC (net subtotal + taxTotal) excluding the stamp — a
   // withholding percentage is a tax-code rate on the taxable transaction
   // value, not on the state's own stamp duty.
   const withholdingTaxAmount = withholdingTaxRate
-    ? calculateTax(addDecimal(subTotal, taxTotal), withholdingTaxRate)
+    ? calculateTax(addDecimal(netSubTotal, taxTotal), withholdingTaxRate)
     : 0;
   const netAmountDue = subtractDecimal(total, withholdingTaxAmount);
 
@@ -705,6 +719,22 @@ const InvoiceDetails: React.FC = () => {
                     </Col>
                   </Row>
 
+                  <Row gutter={16}>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label={<Trans>Discount</Trans>}
+                        name="discountAmount"
+                        tooltip={
+                          <Trans>
+                            A flat amount subtracted from the subtotal before VAT is calculated.
+                          </Trans>
+                        }
+                      >
+                        <InputNumber style={{ width: "100%" }} min={0} precision={3} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
                   {/* Both fields are independent, organization-level opt-ins
                       (see Organizations → Accounting) — deliberately not
                       gated on invoiceLayout, which is only a PDF template
@@ -1011,6 +1041,11 @@ const InvoiceDetails: React.FC = () => {
                           <Descriptions.Item label={<Trans>Subtotal</Trans>}>
                             {fmt(subTotal)}
                           </Descriptions.Item>
+                          {discountAmount > 0 && (
+                            <Descriptions.Item label={<Trans>Discount</Trans>}>
+                              -{fmt(discountAmount)}
+                            </Descriptions.Item>
+                          )}
                           {taxGroups.length > 0 ? (
                             taxGroups.map((group) => (
                               <Descriptions.Item
