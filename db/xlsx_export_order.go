@@ -17,6 +17,7 @@ func FillOrderTemplate(
 	lineItems []OrderLineItem,
 	org Organization,
 	client Client,
+	logo []byte,
 	orientation string,
 ) ([]byte, []string, error) {
 	currency := ""
@@ -38,25 +39,26 @@ func FillOrderTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode)
 	}
-	return fillTemplate(templateBytes, scalars, lineRows, orientation)
+	blocks := []repeatBlock{{marker: lineItemMarker, rows: lineRows, required: true}}
+	return fillTemplate(templateBytes, scalars, blocks, logo, orientation)
 }
 
 // FetchOrderExportData gathers everything FillOrderTemplate needs for one
 // order — mirrors FetchPurchaseOrderExportData's shape. Callers hold dbMu
 // only around this call; the fill/convert step that follows must run
 // lock-free (see api/document_templates.go's exportInvoiceDocument for why).
-func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem, *Organization, *Client, []byte, string, error) {
+func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem, *Organization, *Client, []byte, []byte, string, error) {
 	order, err := d.GetOrder(orderID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get order: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get order: %w", err)
 	}
 	lineItems, err := d.GetOrderLineItems(orderID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get line items: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get line items: %w", err)
 	}
 	org, err := d.GetOrganization(order.OrganizationID)
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get organization: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get organization: %w", err)
 	}
 
 	// orders.clientId is nullable (ON DELETE SET NULL) — an order that's lost
@@ -65,21 +67,28 @@ func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem
 	if order.ClientID != nil {
 		c, err := d.GetClient(*order.ClientID)
 		if err != nil {
-			return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get client: %w", err)
+			return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get client: %w", err)
 		}
 		client = *c
 	}
 
 	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "order")
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: resolve template: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: resolve template: %w", err)
 	}
 	orientation, err := d.GetDocumentTemplateOrientation(order.OrganizationID, "order")
 	if err != nil {
-		return nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: resolve orientation: %w", err)
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: resolve orientation: %w", err)
+	}
+	// A missing logo is not an error — the template's logo cell just stays
+	// empty (GetOrganizationLogo returns nil, nil for an org that never
+	// uploaded one).
+	logo, err := d.GetOrganizationLogo(order.OrganizationID)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: get logo: %w", err)
 	}
 
-	return order, lineItems, org, &client, templateBytes, orientation, nil
+	return order, lineItems, org, &client, templateBytes, logo, orientation, nil
 }
 
 // buildOrderScalarPlaceholders is the fixed namespace->field allowlist for
@@ -107,15 +116,21 @@ func buildOrderScalarPlaceholders(order Order, org Organization, client Client, 
 		"organization.houseNumber": derefString(org.HouseNumber),
 		"organization.postalCode":  derefString(org.PostalCode),
 		"organization.city":        derefString(org.City),
+		"organization.iban":        derefString(org.IBAN),
+		"organization.bankName":    derefString(org.BankName),
 
-		"client.name":        derefString(client.Name),
-		"client.vatin":       derefString(client.Vatin),
-		"client.email":       firstEmail(client.Emails),
-		"client.phone":       derefString(client.Phone),
-		"client.street":      derefString(client.Street),
-		"client.houseNumber": derefString(client.HouseNumber),
-		"client.postalCode":  derefString(client.PostalCode),
-		"client.city":        derefString(client.City),
+		"client.name":           derefString(client.Name),
+		"client.identityNumber": derefString(client.IdentityNumber),
+		"client.address":        derefString(client.Address),
+		"client.vatin":          derefString(client.Vatin),
+		"client.email":          firstEmail(client.Emails),
+		"client.phone":          derefString(client.Phone),
+		"client.phone2":         derefString(client.Phone2),
+		"client.phone3":         derefString(client.Phone3),
+		"client.street":         derefString(client.Street),
+		"client.houseNumber":    derefString(client.HouseNumber),
+		"client.postalCode":     derefString(client.PostalCode),
+		"client.city":           derefString(client.City),
 	}
 }
 

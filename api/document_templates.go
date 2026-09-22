@@ -215,14 +215,14 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 	}
 
 	h.dbMu.RLock()
-	invoice, lineItems, org, client, templateBytes, taxRates, orientation, err := h.db.FetchInvoiceExportData(id)
+	invoice, lineItems, org, client, templateBytes, taxRates, logo, orientation, err := h.db.FetchInvoiceExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "invoice not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *client, taxRates, orientation)
+	filled, unresolved, err := db.FillInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *client, taxRates, logo, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -268,14 +268,14 @@ func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Req
 	}
 
 	h.dbMu.RLock()
-	order, lineItems, org, vendor, templateBytes, taxRates, orientation, err := h.db.FetchPurchaseOrderExportData(id)
+	order, lineItems, org, vendor, templateBytes, taxRates, logo, orientation, err := h.db.FetchPurchaseOrderExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "purchase order not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillPurchaseOrderTemplate(templateBytes, *order, lineItems, *org, *vendor, taxRates, orientation)
+	filled, unresolved, err := db.FillPurchaseOrderTemplate(templateBytes, *order, lineItems, *org, *vendor, taxRates, logo, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -322,14 +322,14 @@ func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.R
 	}
 
 	h.dbMu.RLock()
-	invoice, lineItems, org, vendor, templateBytes, taxRates, orientation, err := h.db.FetchIncomingInvoiceExportData(id)
+	invoice, lineItems, org, vendor, templateBytes, taxRates, logo, orientation, err := h.db.FetchIncomingInvoiceExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "incoming invoice not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillIncomingInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *vendor, taxRates, orientation)
+	filled, unresolved, err := db.FillIncomingInvoiceTemplate(templateBytes, *invoice, lineItems, *org, *vendor, taxRates, logo, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -375,14 +375,14 @@ func (h *handler) exportDeliveryDocument(w http.ResponseWriter, r *http.Request)
 	}
 
 	h.dbMu.RLock()
-	delivery, lineItems, org, client, templateBytes, orientation, err := h.db.FetchDeliveryExportData(id)
+	delivery, lineItems, org, client, templateBytes, logo, orientation, err := h.db.FetchDeliveryExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "delivery not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *client, orientation)
+	filled, unresolved, err := db.FillDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *client, logo, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -428,14 +428,14 @@ func (h *handler) exportInboundDeliveryDocument(w http.ResponseWriter, r *http.R
 	}
 
 	h.dbMu.RLock()
-	delivery, lineItems, org, vendor, templateBytes, orientation, err := h.db.FetchInboundDeliveryExportData(id)
+	delivery, lineItems, org, vendor, templateBytes, logo, orientation, err := h.db.FetchInboundDeliveryExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "goods receipt not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillInboundDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *vendor, orientation)
+	filled, unresolved, err := db.FillInboundDeliveryTemplate(templateBytes, *delivery, lineItems, *org, *vendor, logo, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -480,14 +480,14 @@ func (h *handler) exportOrderDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.dbMu.RLock()
-	order, lineItems, org, client, templateBytes, orientation, err := h.db.FetchOrderExportData(id)
+	order, lineItems, org, client, templateBytes, logo, orientation, err := h.db.FetchOrderExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "order not found")
 		return
 	}
 
-	filled, unresolved, err := db.FillOrderTemplate(templateBytes, *order, lineItems, *org, *client, orientation)
+	filled, unresolved, err := db.FillOrderTemplate(templateBytes, *order, lineItems, *org, *client, logo, orientation)
 	if err != nil {
 		writeMutationError(w, err)
 		return

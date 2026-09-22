@@ -44,7 +44,7 @@ func TestFillIncomingInvoiceTemplateResolvesScalarPlaceholders(t *testing.T) {
 	invoice := testIncomingInvoice()
 	lineItems := []IncomingInvoiceLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 500}}
 
-	out, unresolved, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil, "")
+	out, unresolved, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillIncomingInvoiceTemplate: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestFillIncomingInvoiceTemplateUsesStoredTotals(t *testing.T) {
 	// match the invoice's own stored totals.
 	lineItems := []IncomingInvoiceLineItem{{Description: "Widget", Quantity: 2, UnitPrice: 100}}
 
-	out, _, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil, "")
+	out, _, err := FillIncomingInvoiceTemplate(tmpl, invoice, lineItems, testOrg(), testVendor(), nil, nil, "")
 	if err != nil {
 		t.Fatalf("FillIncomingInvoiceTemplate: %v", err)
 	}
@@ -106,44 +106,10 @@ func TestFillIncomingInvoiceTemplateUsesStoredTotals(t *testing.T) {
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultIncomingInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 	t.Parallel()
-	f, err := excelize.OpenReader(bytes.NewReader(incomingInvoiceDefaultTemplate))
-	if err != nil {
-		t.Fatalf("open embedded default template: %v", err)
-	}
-	defer f.Close()
-	sheet := f.GetSheetName(0)
-
-	scalars := buildIncomingInvoiceScalarPlaceholders(testIncomingInvoice(), testOrg(), testVendor(), "EUR")
-	lineItemKeys := map[string]bool{
-		"lineItems.description": true, "lineItems.quantity": true,
-		"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
-	}
-
-	rows, err := f.GetRows(sheet)
-	if err != nil {
-		t.Fatalf("read rows: %v", err)
-	}
-
-	sawMarker := false
-	for _, row := range rows {
-		for _, cell := range row {
-			if strings.TrimSpace(cell) == lineItemMarker {
-				sawMarker = true
-				continue
-			}
-			for _, match := range placeholderPattern.FindAllStringSubmatch(cell, -1) {
-				key := match[1]
-				if _, ok := scalars[key]; ok {
-					continue
-				}
-				if lineItemKeys[key] {
-					continue
-				}
-				t.Errorf("embedded default incoming invoice template has unresolvable placeholder {{%s}}", key)
-			}
-		}
-	}
-	if !sawMarker {
-		t.Error("embedded default incoming invoice template has no {{#lineItems}} marker row")
-	}
+	assertEmbeddedTemplatePlaceholdersResolve(t, incomingInvoiceDefaultTemplate, "incoming invoice",
+		buildIncomingInvoiceScalarPlaceholders(testIncomingInvoice(), testOrg(), testVendor(), "EUR"),
+		map[string]bool{
+			"lineItems.description": true, "lineItems.quantity": true,
+			"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
+		})
 }

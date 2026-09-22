@@ -1,106 +1,43 @@
 package main
 
-import (
-	"log"
-	"strconv"
-
-	"github.com/xuri/excelize/v2"
-)
-
-// buildDeliveryTemplate generates db/templates/delivery_default.xlsx, the
-// embedded default for outbound deliveries (delivery notes). Unlike every
-// other document type, outbound_delivery_line_items has no price columns at
-// all — a delivery note never shows prices — so this template has no totals
-// block, no currency, and a 3-column item table (Description/Quantity/Unit)
-// instead of the usual 5-6.
+// buildDeliveryTemplate generates db/templates/delivery_default.xlsx via the
+// shared Tunisian layout. A delivery note (Bon de livraison) never shows
+// prices, so it has no VAT recap and no totals block — a pure line-item list.
 func buildDeliveryTemplate() {
-	f := excelize.NewFile()
-	sheet := "Delivery Note"
-	f.SetSheetName(f.GetSheetName(0), sheet)
-	styles := newTemplateStyles(f)
-
-	set := func(cell, value string) { _ = f.SetCellStr(sheet, cell, value) }
-
-	// Seller block (top-left) — the organization shipping the goods.
-	set("A1", "{{organization.name}}")
-	f.SetCellStyle(sheet, "A1", "A1", styles.bold)
-	set("A2", "{{organization.street}} {{organization.houseNumber}}")
-	set("A3", "{{organization.postalCode}} {{organization.city}}")
-	set("A4", "Matricule fiscal: {{organization.vatin}}")
-	set("A5", "{{organization.email}} | {{organization.phone}}")
-
-	// Document title + metadata (top-right).
-	set("E1", "DELIVERY NOTE")
-	f.SetCellStyle(sheet, "E1", "E1", styles.title)
-	set("E2", "Delivery number: {{delivery.number}}")
-	set("E3", "Delivery date: {{delivery.date}}")
-	set("E4", "Order: {{delivery.orderNumber}}")
-	set("E5", "Tracking number: {{delivery.trackingNumber}}")
-
-	// Buyer block.
-	set("A7", "Deliver To")
-	f.SetCellStyle(sheet, "A7", "A7", styles.bold)
-	set("A8", "{{client.name}}")
-	set("A9", "{{client.street}} {{client.houseNumber}}")
-	set("A10", "{{client.postalCode}} {{client.city}}")
-	set("A11", "Shipping address: {{delivery.shippingAddress}}")
-
-	// Line item table header. Description spans A:B (merged, the same
-	// invoice-style layout as every other template) with a dedicated SKU
-	// column at C; the {{#lineItems}} marker on the repeat row lives in
-	// column E, off to the right.
-	headerRow := 13
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow)); err != nil {
-		log.Fatal(err)
-	}
-	cols := []string{"A", "C", "D"}
-	labels := []string{"Description", "Product", "Quantity"}
-	for i, col := range cols {
-		cell := col + strconv.Itoa(headerRow)
-		set(cell, labels[i])
-		f.SetCellStyle(sheet, cell, cell, styles.header)
-	}
-	f.SetCellStyle(sheet, "B"+strconv.Itoa(headerRow), "B"+strconv.Itoa(headerRow), styles.header)
-
-	// Repeat row: A:B merged carries the description, C the SKU, D the
-	// quantity+unit, E the marker.
-	repeatRow := headerRow + 1
-	if err := f.MergeCell(sheet, "A"+strconv.Itoa(repeatRow), "B"+strconv.Itoa(repeatRow)); err != nil {
-		log.Fatal(err)
-	}
-	set("A"+strconv.Itoa(repeatRow), "{{lineItems.description}}")
-	set("C"+strconv.Itoa(repeatRow), "{{lineItems.sku}}")
-	set("D"+strconv.Itoa(repeatRow), "{{lineItems.quantity}} {{lineItems.unit}}")
-	set("E"+strconv.Itoa(repeatRow), "{{#lineItems}}")
-	// Quantity is numeric — right-align on the repeat row so DuplicateRowTo
-	// carries it to every expanded row. SKU stays left (an identifier/text).
-	f.SetCellStyle(sheet, "D"+strconv.Itoa(repeatRow), "D"+strconv.Itoa(repeatRow), styles.right)
-
-	footerRow := repeatRow + 4
-	set("A"+strconv.Itoa(footerRow), "Notes: {{delivery.notes}}")
-
-	f.SetColWidth(sheet, "A", "A", 24)
-	f.SetColWidth(sheet, "B", "B", 16)
-	// C (Product/SKU) is 22, not the original 16 -- see invoice.go's
-	// matching comment for why.
-	f.SetColWidth(sheet, "C", "C", 22)
-	f.SetColWidth(sheet, "D", "D", 16)
-
-	applyFitToPageWidth(f, sheet)
-	applyRepeatingHeaderRows(f, sheet, headerRow)
-	applyPageFooter(f, sheet)
+	f := buildTunisiaLayout(tunisiaLayoutSpec{
+		sheet:     "Bon de livraison",
+		title:     "Bon de livraison N°: {{delivery.number}}",
+		date:      "Date : {{delivery.date}}",
+		partyName: "{{client.name}}",
+		partyFields: []string{
+			"{{client.street}} {{client.houseNumber}}",
+			"{{client.postalCode}} {{client.city}}",
+			"Tel: {{client.phone}}",
+			"CIN: {{client.identityNumber}}",
+		},
+		columns: []tableColumn{
+			{"Code", "{{lineItems.sku}}", false},
+			{"Désignation", "{{lineItems.description}}", false},
+			{"Quantité", "{{lineItems.quantity}}", true},
+			{"Unité", "{{lineItems.unit}}", false},
+		},
+		footerLeft:  "IBAN : {{organization.iban}}",
+		footerRight: "{{organization.bankName}}",
+	})
 	addAvailableFieldsSheet(f, deliveryFieldRefs)
-	finalizeWorkbook(f, sheet, "db/templates/gen/delivery_default.xlsx")
+	finalizeWorkbook(f, "Bon de livraison", "db/templates/gen/delivery_default.xlsx")
 }
 
-// deliveryFieldRefs groups every placeholder db.buildDeliveryScalarPlaceholders
-// / db.buildDeliveryLineItemPlaceholders (db/xlsx_export_delivery.go) resolve.
+// deliveryFieldRefs groups every placeholder
+// db.buildDeliveryScalarPlaceholders / db.buildDeliveryLineItemPlaceholders
+// (db/xlsx_export_delivery.go) resolve.
 var deliveryFieldRefs = []fieldRef{
+	{"Header", "{{organization.logo}}", "Seller logo — place alone in a cell to anchor the uploaded image there"},
 	{"Header", "{{delivery.number}}", "Delivery number"},
 	{"Header", "{{delivery.date}}", "Delivery date"},
-	{"Header", "{{delivery.orderNumber}}", "Linked sales order number, blank if standalone"},
+	{"Header", "{{delivery.orderNumber}}", "Linked order number, blank on a standalone delivery"},
 	{"Header", "{{delivery.shippingAddress}}", "Free-text shipping address, blank if unset"},
-	{"Header", "{{delivery.trackingNumber}}", "Carrier tracking number, blank if unset"},
+	{"Header", "{{delivery.trackingNumber}}", "Tracking number, blank if unset"},
 	{"Header", "{{organization.name}}", "Seller company name"},
 	{"Header", "{{organization.vatin}}", "Seller VAT number"},
 	{"Header", "{{organization.email}}", "Seller email"},
@@ -110,26 +47,30 @@ var deliveryFieldRefs = []fieldRef{
 	{"Header", "{{organization.houseNumber}}", "Seller house number"},
 	{"Header", "{{organization.postalCode}}", "Seller postal code"},
 	{"Header", "{{organization.city}}", "Seller city"},
-	{"Header", "{{client.name}}", "Customer name, blank on a walk-in/no-client delivery"},
+	{"Header", "{{organization.iban}}", "Seller IBAN"},
+	{"Header", "{{organization.bankName}}", "Seller bank name"},
+	{"Header", "{{client.name}}", "Customer name"},
 	{"Header", "{{client.vatin}}", "Customer VAT number"},
+	{"Header", "{{client.identityNumber}}", "Customer national ID / CIN number"},
+	{"Header", "{{client.address}}", "Customer single-line address"},
 	{"Header", "{{client.email}}", "Customer email"},
 	{"Header", "{{client.phone}}", "Customer phone"},
+	{"Header", "{{client.phone2}}", "Customer phone 2"},
+	{"Header", "{{client.phone3}}", "Customer phone 3"},
 	{"Header", "{{client.street}}", "Customer street"},
 	{"Header", "{{client.houseNumber}}", "Customer house number"},
 	{"Header", "{{client.postalCode}}", "Customer postal code"},
 	{"Header", "{{client.city}}", "Customer city"},
 
-	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in any one cell of the row to repeat once per line item; that whole cell is blanked in the output"},
+	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in one cell of the row to repeat once per line item"},
+	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU"},
 	{"Item lines", "{{lineItems.description}}", "Line item description"},
-	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU, blank on a free-text line or an unset SKU"},
 	{"Item lines", "{{lineItems.quantity}}", "Quantity"},
-	{"Item lines", "{{lineItems.unit}}", "Unit of measure (e.g. pcs, kg), blank if unset"},
+	{"Item lines", "{{lineItems.unit}}", "Unit of measure, blank if unset"},
 
 	{"Footer", "{{delivery.notes}}", "Free-text notes, blank if unset"},
 
-	// Export info — when this specific file was generated, not any document
-	// field. See mergeExportMetaPlaceholders (db/xlsx_export.go).
-	{"Export info", "{{export.generatedDate}}", "Date this file was exported (not the delivery's own date), in the organization's date format"},
+	{"Export info", "{{export.generatedDate}}", "Date this file was exported, in the organization's date format"},
 	{"Export info", "{{export.generatedTime}}", "Time this file was exported, 24-hour HH:MM, server time"},
-	{"Export info", "&P (page number) / &N (total pages)", "Native Excel/LibreOffice codes, not a {{}} placeholder — only work inside this sheet's own Page Layout ▸ Header/Footer, never in a regular cell, since the page count isn't known until export. The default footer already shows \"Page &P of &N\" on every page; edit it in Excel/LibreOffice's own header/footer editor to move or restyle it"},
+	{"Export info", "&P (page number) / &N (total pages)", "Native Excel/LibreOffice codes, only work in Page Layout ▸ Header/Footer"},
 }

@@ -40,7 +40,7 @@ func TestFillDeliveryTemplateResolvesScalarPlaceholders(t *testing.T) {
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 3, Unit: ptr("pcs")}}
 
-	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testClient(), "")
+	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillDeliveryTemplate: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestFillDeliveryTemplateIncludesSKU(t *testing.T) {
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 1, SKU: ptr("WID-001")}}
 
-	out, _, err := FillDeliveryTemplate(buf.Bytes(), delivery, lineItems, testOrg(), testClient(), "")
+	out, _, err := FillDeliveryTemplate(buf.Bytes(), delivery, lineItems, testOrg(), testClient(), nil, "")
 	if err != nil {
 		t.Fatalf("FillDeliveryTemplate: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestFillDeliveryTemplateBlankClientOnStandaloneDelivery(t *testing.T) {
 	delivery := testOutboundDelivery()
 	lineItems := []OutboundDeliveryLineItem{{Description: "Widget", Quantity: 1}}
 
-	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), Client{}, "")
+	out, unresolved, err := FillDeliveryTemplate(tmpl, delivery, lineItems, testOrg(), Client{}, nil, "")
 	if err != nil {
 		t.Fatalf("FillDeliveryTemplate: %v", err)
 	}
@@ -132,44 +132,9 @@ func TestFillDeliveryTemplateBlankClientOnStandaloneDelivery(t *testing.T) {
 // binary every organization without a custom template gets.
 func TestEmbeddedDefaultDeliveryTemplatePlaceholdersAllResolve(t *testing.T) {
 	t.Parallel()
-	f, err := excelize.OpenReader(bytes.NewReader(deliveryDefaultTemplate))
-	if err != nil {
-		t.Fatalf("open embedded default template: %v", err)
-	}
-	defer f.Close()
-	sheet := f.GetSheetName(0)
-
-	scalars := buildDeliveryScalarPlaceholders(testOutboundDelivery(), testOrg(), testClient())
-	lineItemKeys := map[string]bool{
-		"lineItems.description": true, "lineItems.sku": true,
-		"lineItems.quantity": true, "lineItems.unit": true,
-	}
-
-	rows, err := f.GetRows(sheet)
-	if err != nil {
-		t.Fatalf("read rows: %v", err)
-	}
-
-	sawMarker := false
-	for _, row := range rows {
-		for _, cell := range row {
-			if strings.TrimSpace(cell) == lineItemMarker {
-				sawMarker = true
-				continue
-			}
-			for _, match := range placeholderPattern.FindAllStringSubmatch(cell, -1) {
-				key := match[1]
-				if _, ok := scalars[key]; ok {
-					continue
-				}
-				if lineItemKeys[key] {
-					continue
-				}
-				t.Errorf("embedded default delivery template has unresolvable placeholder {{%s}}", key)
-			}
-		}
-	}
-	if !sawMarker {
-		t.Error("embedded default delivery template has no {{#lineItems}} marker row")
-	}
+	assertEmbeddedTemplatePlaceholdersResolve(t, deliveryDefaultTemplate, "delivery",
+		buildDeliveryScalarPlaceholders(testOutboundDelivery(), testOrg(), testClient()),
+		map[string]bool{
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true, "lineItems.unit": true,
+		})
 }
