@@ -32,6 +32,10 @@ func TestReportExportsFitToPageWidthWithSmallMargins(t *testing.T) {
 			raw, _, err := d.GenerateLoanStatusExport(fx.orgID, "", false)
 			return raw, err
 		}},
+		{"payment history", func() ([]byte, error) {
+			raw, _, err := d.GeneratePaymentHistoryExport(fx.orgID, "")
+			return raw, err
+		}},
 	}
 
 	for _, tc := range cases {
@@ -178,4 +182,130 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 	if got, _ := sf.GetCellValue(sf.GetSheetName(0), "A2"); !strings.Contains(got, "Test Client") {
 		t.Errorf("scoped A2 = %q, want it to name the customer", got)
 	}
+}
+
+// TestPaymentHistoryExportMirrorsCashBookCard locks in the Payment history
+// card's export: the active customer filter named in the first-page header,
+// the same columns the screen shows plus an explicit Status (the screen's
+// table has no status column, but a printed report must distinguish a voided
+// payment), and a totals row that sums only posted payments — a voided
+// payment collected nothing.
+func TestPaymentHistoryExportMirrorsCashBookCard(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-payment-history-export")
+	register := accountByCode(t, d, fx.orgID, "1010")
+
+	// A cash sale settled in full, which records one inbound payment.
+	sale, err := d.CreateCashSale(CreateCashSaleRequest{
+		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+		SubTotal: 2000, TaxTotal: 400, Total: 2400,
+		AmountReceived: 2400, PaymentMethod: "cash", BankAccountID: register.ID,
+	})
+	if err != nil {
+		t.Fatalf("CreateCashSale: %v", err)
+	}
+
+	org, err := d.GetOrganization(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetOrganization: %v", err)
+	}
+	currency := ""
+	if org.Currency != nil {
+		currency = *org.Currency
+	}
+	wantAmount := formatMoneyCents(2400, currency, org.MinimumFractionDigits, org.CountryCode)
+	zero := formatMoneyCents(0, currency, org.MinimumFractionDigits, org.CountryCode)
+
+	raw, filename, err := d.GeneratePaymentHistoryExport(fx.orgID, "")
+	if err != nil {
+		t.Fatalf("GeneratePaymentHistoryExport: %v", err)
+	}
+	if filename != "payment-history" {
+		t.Errorf("filename = %q, want payment-history", filename)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("open workbook: %v", err)
+	}
+	defer f.Close()
+	sheet := f.GetSheetName(0)
+
+	if subtitle, _ := f.GetCellValue(sheet, "A2"); !strings.Contains(subtitle, "All customers") {
+		t.Errorf("A2 = %q, want the unfiltered export to name its filter", subtitle)
+	}
+	if label, _ := f.GetCellValue(sheet, "A4"); label != "Date" {
+		t.Fatalf("A4 = %q, want the column-label row", label)
+	}
+	if printTitles := printTitlesFor(f); !strings.Contains(printTitles, "$4:$4") {
+		t.Errorf("Print_Titles = %q, want it to repeat row 4", printTitles)
+	}
+	// Row 5 is the payment: Date, Customer, Method, Reference, Status, Amount.
+	if got, _ := f.GetCellValue(sheet, "B5"); got != "Test Client" {
+		t.Errorf("B5 customer = %q, want Test Client", got)
+	}
+	if got, _ := f.GetCellValue(sheet, "C5"); got != "Cash" {
+		t.Errorf("C5 method = %q, want Cash", got)
+	}
+	if got, _ := f.GetCellValue(sheet, "E5"); got != "Posted" {
+		t.Errorf("E5 status = %q, want Posted", got)
+	}
+	if got, _ := f.GetCellValue(sheet, "F5"); got != wantAmount {
+		t.Errorf("F5 amount = %q, want %q", got, wantAmount)
+	}
+	if got, _ := f.GetCellValue(sheet, "A6"); got != "Total (posted)" {
+		t.Fatalf("A6 = %q, want the totals row", got)
+	}
+	if got, _ := f.GetCellValue(sheet, "F6"); got != wantAmount {
+		t.Errorf("F6 total = %q, want %q", got, wantAmount)
+	}
+
+	// A customer-scoped export names that customer in the first-page header.
+	scoped, _, err := d.GeneratePaymentHistoryExport(fx.orgID, fx.clientID)
+	if err != nil {
+		t.Fatalf("GeneratePaymentHistoryExport (scoped): %v", err)
+	}
+	sf, err := excelize.OpenReader(bytes.NewReader(scoped))
+	if err != nil {
+		t.Fatalf("open scoped workbook: %v", err)
+	}
+	defer sf.Close()
+	if got, _ := sf.GetCellValue(sf.GetSheetName(0), "A2"); !strings.Contains(got, "Test Client") {
+		t.Errorf("scoped A2 = %q, want it to name the customer", got)
+	}
+
+	// Voiding the payment keeps the row (matching the on-screen table) but
+	// drops it from the total.
+	if _, err := d.VoidPayment(sale.Payment.ID, fx.date); err != nil {
+		t.Fatalf("VoidPayment: %v", err)
+	}
+	voided, _, err := d.GeneratePaymentHistoryExport(fx.orgID, "")
+	if err != nil {
+		t.Fatalf("GeneratePaymentHistoryExport (voided): %v", err)
+	}
+	vf, err := excelize.OpenReader(bytes.NewReader(voided))
+	if err != nil {
+		t.Fatalf("open voided workbook: %v", err)
+	}
+	defer vf.Close()
+	vsheet := vf.GetSheetName(0)
+	if got, _ := vf.GetCellValue(vsheet, "E5"); got != "Voided" {
+		t.Errorf("E5 status = %q, want Voided", got)
+	}
+	if got, _ := vf.GetCellValue(vsheet, "F6"); got != zero {
+		t.Errorf("voided total = %q, want %q", got, zero)
+	}
+}
+
+// printTitlesFor returns the workbook's print-titles defined name, if any.
+func printTitlesFor(f *excelize.File) string {
+	for _, dn := range f.GetDefinedName() {
+		if dn.Name == "_xlnm.Print_Titles" {
+			return dn.RefersTo
+		}
+	}
+	return ""
 }

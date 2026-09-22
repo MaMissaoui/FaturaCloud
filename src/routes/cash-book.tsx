@@ -59,6 +59,7 @@ import {
   CreateCashSale,
   ExportDailyCashMovements,
   ExportLoanStatus,
+  ExportPaymentHistory,
   GetAccounts,
   GetCashMovementDetails,
   GetDailyCashMovements,
@@ -417,6 +418,8 @@ const CashBook = () => {
   // customer being served), shown in its own card below the loan report.
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [downloadingPaymentsPdf, setDownloadingPaymentsPdf] = useState(false);
+  const [downloadingPaymentsExcel, setDownloadingPaymentsExcel] = useState(false);
 
   // Guards against an in-flight earlier request overwriting a newer one —
   // rapid date picker changes (daily movement) or customer-filter changes
@@ -590,6 +593,27 @@ const CashBook = () => {
         format,
         loanStatusClientId || undefined,
         openLoansOnly,
+      );
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t`Export failed`);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Scoped the same way the card's own table is (paymentHistory's scopeId):
+  // the customer being served while a sale is in progress, else the loan
+  // report's customer filter, else every customer.
+  const handleExportPaymentHistory = (format: "xlsx" | "pdf") => async () => {
+    if (!organizationId) return;
+    const setDownloading =
+      format === "xlsx" ? setDownloadingPaymentsExcel : setDownloadingPaymentsPdf;
+    setDownloading(true);
+    try {
+      await ExportPaymentHistory(
+        organizationId,
+        format,
+        selectedClient?.id || loanStatusClientId || undefined,
       );
     } catch (error) {
       message.error(error instanceof Error ? error.message : t`Export failed`);
@@ -1751,6 +1775,16 @@ const CashBook = () => {
         style={sectionCardStyle}
         styles={sectionCardStyles}
         loading={loadingPayments}
+        extra={
+          <Space>
+            <Button loading={downloadingPaymentsPdf} onClick={handleExportPaymentHistory("pdf")}>
+              <FilePdfOutlined /> PDF
+            </Button>
+            <Button loading={downloadingPaymentsExcel} onClick={handleExportPaymentHistory("xlsx")}>
+              <FileExcelOutlined /> <Trans>Excel</Trans>
+            </Button>
+          </Space>
+        }
       >
         <Table
           dataSource={paymentHistory}

@@ -27,6 +27,39 @@ func movementKindLabel(kind string) string {
 	}
 }
 
+// paymentMethodLabel mirrors src/types/payment.ts's paymentMethodLabel —
+// English only, for the same reason movementKindLabel above is.
+func paymentMethodLabel(method string) string {
+	switch method {
+	case "bank_transfer":
+		return "Bank transfer"
+	case "cash":
+		return "Cash"
+	case "card":
+		return "Card"
+	case "direct_debit":
+		return "Direct debit"
+	case "check":
+		return "Check"
+	case "other":
+		return "Other"
+	default:
+		return method
+	}
+}
+
+// paymentStatusLabel mirrors src/types/payment.ts's paymentStatusLabel.
+func paymentStatusLabel(status string) string {
+	switch status {
+	case "posted":
+		return "Posted"
+	case "voided":
+		return "Voided"
+	default:
+		return status
+	}
+}
+
 // reportWorkbook is the shared skeleton every report export below builds
 // on: a title, a generated-on line, then a table starting at row 4 (one
 // blank row of breathing room under the subtitle). Callers get back the
@@ -371,4 +404,150 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 		filename += "-open"
 	}
 	return buf.Bytes(), filename, nil
+}
+
+// GeneratePaymentHistoryExport builds the Cash Book screen's Payment history
+// card — the inbound payments actually collected, newest first — as an .xlsx
+// workbook. Without a clientID it covers every inbound payment in the
+// organization; with one it scopes to that customer, the same filter the
+// screen's Payment history table applies (selectedClient/loanStatusClientId).
+// Outbound (vendor) payments are never part of this report, matching the
+// screen's own direction=="inbound" filter.
+//
+// The row set deliberately includes voided payments, exactly as the on-screen
+// table does, but carries a Status column so a voided row is identifiable on
+// paper (the screen relies on the PaymentPanel for that context, which an
+// exported file doesn't have). The totals row sums only posted rows, since a
+// voided payment collected nothing.
+func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string) ([]byte, string, error) {
+	org, err := d.GetOrganization(organizationID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	payments, err := d.GetPayments(organizationID)
+	if err != nil {
+		return nil, "", err
+	}
+	clients, err := d.GetClients(organizationID)
+	if err != nil {
+		return nil, "", err
+	}
+	clientNameByID := map[string]string{}
+	for _, c := range clients {
+		if c.Name != nil {
+			clientNameByID[c.ID] = *c.Name
+		}
+	}
+
+	// Filtered in Go rather than in a dedicated query, the same choice
+	// GenerateLoanStatusExport makes for its openOnly filter: GetPayments is
+	// already the screen's own query, and the per-customer row counts here
+	// are small.
+	rows := payments[:0]
+	for _, p := range payments {
+		if p.Direction != "inbound" {
+			continue
+		}
+		if clientID != "" && (p.ClientID == nil || *p.ClientID != clientID) {
+			continue
+		}
+		rows = append(rows, p)
+	}
+
+	orgName := ""
+	if org.Name != nil {
+		orgName = *org.Name
+	}
+	currency := ""
+	if org.Currency != nil {
+		currency = *org.Currency
+	}
+	money := func(cents int64) string {
+		return formatMoneyCents(cents, currency, org.MinimumFractionDigits, org.CountryCode)
+	}
+
+	// The active customer filter, named in the first-page header block so an
+	// exported report is self-describing — otherwise a reader can't tell
+	// whether these are one customer's payments or the whole organization's.
+	filterLabel := "All customers"
+	if clientID != "" {
+		filterLabel = "Customer: " + clientID
+		if name, ok := clientNameByID[clientID]; ok && name != "" {
+			filterLabel = "Customer: " + name
+		}
+	}
+
+	subtitle := fmt.Sprintf("%s — %s — generated %s", orgName, filterLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat))
+
+	f, sheet, row, err := reportWorkbook("Payment History", subtitle)
+	if err != nil {
+		return nil, "", err
+	}
+	defer f.Close()
+
+	headerRow := row
+	if err := writeHeaderRow(f, sheet, row, []string{
+		"Date", "Customer", "Method", "Reference", "Status", "Amount",
+	}); err != nil {
+		return nil, "", err
+	}
+	if err := repeatReportHeaderRow(f, sheet, headerRow); err != nil {
+		return nil, "", err
+	}
+	row++
+
+	var totalPosted int64
+	for _, p := range rows {
+		customer := ""
+		if p.ClientID != nil {
+			customer = clientNameByID[*p.ClientID]
+		}
+		reference := ""
+		if p.Reference != nil {
+			reference = *p.Reference
+		}
+		if err := setRow(f, sheet, row, []any{
+			formatOrgDate(p.Date, org.DateFormat), customer,
+			paymentMethodLabel(p.Method), reference,
+			paymentStatusLabel(p.Status), money(p.Amount),
+		}); err != nil {
+			return nil, "", err
+		}
+		if p.Status != "voided" {
+			totalPosted += p.Amount
+		}
+		row++
+	}
+
+	// Totals row over posted payments only — a voided payment collected
+	// nothing, so counting it would overstate the report.
+	totalStyle, err := f.NewStyle(&excelize.Style{
+		Font:   &excelize.Font{Bold: true},
+		Border: []excelize.Border{{Type: "top", Color: "000000", Style: 1}},
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	if err := setRow(f, sheet, row, []any{
+		"Total (posted)", "", "", "", "", money(totalPosted),
+	}); err != nil {
+		return nil, "", err
+	}
+	totalStart, _ := excelize.CoordinatesToCellName(1, row)
+	totalEnd, _ := excelize.CoordinatesToCellName(6, row)
+	if err := f.SetCellStyle(sheet, totalStart, totalEnd, totalStyle); err != nil {
+		return nil, "", err
+	}
+
+	setColWidths(f, sheet, []float64{16, 28, 18, 24, 12, 16})
+
+	var buf bytes.Buffer
+	raw, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, "", err
+	}
+	buf.Write(raw.Bytes())
+
+	return buf.Bytes(), "payment-history", nil
 }

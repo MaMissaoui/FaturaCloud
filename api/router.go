@@ -715,6 +715,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// to any member on the Cash Book screen itself.
 	mux.Handle("GET /api/organizations/{orgId}/reports/daily-cash-movements/export", auth(h.orgMember(pathOrgID("orgId"))(csrf(limitBody(defaultMaxBody, h.getDailyCashMovementsExport)))))
 	mux.Handle("GET /api/organizations/{orgId}/reports/loan-status/export", auth(h.orgMember(pathOrgID("orgId"))(csrf(limitBody(defaultMaxBody, h.getLoanStatusExport)))))
+	mux.Handle("GET /api/organizations/{orgId}/reports/payment-history/export", auth(h.orgMember(pathOrgID("orgId"))(csrf(limitBody(defaultMaxBody, h.getPaymentHistoryExport)))))
 
 	// GL export — France FEC and Germany DATEV Buchungsstapel EXTF, both
 	// implemented (see db/export_fec.go and db/export_datev.go; the GL Export
