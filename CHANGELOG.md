@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.50.0] - 2026-09-22
+
+### Added
+- Cash Book: the Payment history card now has the same Excel/PDF export
+  buttons as the register and loan-status panels, scoped to the customer
+  being served (or the loan report's customer filter) when one is selected.
+  The exported report carries a Status column so a voided payment is
+  identifiable, and totals only posted payments.
+
 ## [3.49.0] - 2026-09-21
 
 ### Changed
