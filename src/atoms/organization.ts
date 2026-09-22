@@ -171,10 +171,29 @@ isCashbookAtom.debugLabel = "isCashbookAtom";
 // isGeneralRoleAtom reports whether the current user's role in the selected
 // organization is the "general" role. Used to hide and redirect away from the
 // sections a general user no longer has access to (Accounting, Imports, Bill
-// of Materials) — the same UI-only enforced-view pattern as isCashbookAtom,
-// not a server-side authorization boundary.
+// of Materials, Production Orders) — the same UI-only enforced-view pattern
+// as isCashbookAtom, not a server-side authorization boundary. BaseLayout now
+// drives that from myOrgRoleAtom's raw value (the focused per-role menu), but
+// this stays as the named predicate for any single-role check.
 export const isGeneralRoleAtom = atom(async (get) => (await get(myOrgRoleAtom)) === "general");
 isGeneralRoleAtom.debugLabel = "isGeneralRoleAtom";
+
+// roleHomePath is the route a role is sent to when it lands on "/" or is
+// bounced out of a section outside its scope (src/layouts/base.tsx,
+// src/routes/index.tsx) — the focused view's "home". admin, power_user and
+// general all default to the invoice list.
+export const roleHomePath = (role: string): string => {
+  switch (role) {
+    case "cashbook":
+      return "/cash-book";
+    case "purchasing":
+      return "/purchase-orders";
+    case "accounting":
+      return "/accounting/journal-entries";
+    default:
+      return "/invoices";
+  }
+};
 
 // Forces organizationAtom to refetch the currently selected organization
 // (including its logo) without going through a create/update. Used after a

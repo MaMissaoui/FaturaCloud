@@ -19,6 +19,8 @@ Apart from two top-level items — **Dashboard** and **Cash Book** (`/cash-book`
 
 **The `cashbook` role sees a deliberately reduced view** (2026-09-20): only **Cash Book** and **Clients** in the sidebar, no Settings gear, no "New organization" option in the org switcher. It is enforced, not just hidden — `src/layouts/base.tsx` bounces any other route back to `/cash-book`, `src/routes/organizations/new.tsx` does the same for the one page outside that layout, and `src/routes/index.tsx` lands a cashbook user on `/cash-book` instead of `/invoices`. Both read `isCashbookAtom` (`src/atoms/organization.ts`, `myOrgRoleAtom === "cashbook"`). Purely a UI restriction: reads stay membership-level server-side, so this is not an authorization boundary.
 
+**The `general`, `sales`, `purchasing` and `accounting` roles get the same frontend-only focused views** (2026-09-22): `src/layouts/base.tsx` holds a `ROLE_MENU` allow-list (top-level group key → allowed child keys, `null` = every child) that both filters the sidebar and drives a redirect for a typed URL, with `roleHomePath` (`src/atoms/organization.ts`) as each role's home and `src/routes/index.tsx` landing the role there. `general` keeps everything except Accounting, Imports, Bill of Materials and Production Orders; `sales` keeps Sales + Clients/Products + the sales reports; `purchasing` keeps Purchasing + Vendors/Products + Purchases by Vendor; `accounting` keeps Accounting + Tax Summary. `admin`/`power_user` are absent from the map and get the full menu. Same UI-only caveat as cashbook: reads stay membership-level server-side.
+
 - **Sales**: Invoices → Outbound Deliveries → Orders
 - **Purchasing**: Imports → Purchase Orders → Goods Receipts → Incoming Invoices
 - **Inventory**: Inventory → Production Orders
