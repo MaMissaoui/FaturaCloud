@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "src/test-support/render-with-providers";
 import PaymentPanel from "./payment-panel";
 import type { Payment, PaymentApplication } from "src/types/models";
@@ -32,7 +32,7 @@ vi.mock("src/api", () => ({
   VoidPayment: vi.fn(),
 }));
 
-import { GetAccounts, GetInvoicePayments, GetPayment } from "src/api";
+import { GetAccounts, GetInvoicePayments, GetPayment, CreatePayment } from "src/api";
 
 const payment: Payment = {
   id: "pay_1",
@@ -95,6 +95,48 @@ describe("PaymentPanel", () => {
     // "Record payment" button gated on hasPostedEntry + a nonzero balance.
     await waitFor(() => expect(screen.getByText("REF-1")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Record payment" })).toBeInTheDocument();
+  });
+
+  it("hides Method/account and submits cash into the register account when hideMethodAndAccount is set", async () => {
+    vi.clearAllMocks();
+    vi.mocked(GetInvoicePayments).mockResolvedValue([]);
+    vi.mocked(GetPayment).mockResolvedValue(payment);
+    vi.mocked(GetAccounts).mockResolvedValue([]);
+    vi.mocked(CreatePayment).mockResolvedValue(payment);
+
+    await renderWithProviders(
+      <PaymentPanel
+        organizationId="org_1"
+        documentType="invoice"
+        documentId="inv_3"
+        direction="inbound"
+        clientId="client_1"
+        currency="EUR"
+        orgCurrency="EUR"
+        total={10000}
+        hasPostedEntry={true}
+        embedded
+        hideMethodAndAccount
+        defaultMethod="cash"
+        defaultBankAccountId="acct_cash"
+      />,
+    );
+
+    // Embedded mode jumps straight to the form — no "Record payment" button
+    // to click first.
+    expect(await screen.findByText("Record payment")).toBeInTheDocument();
+    expect(screen.queryByText("Method")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bank / cash account")).not.toBeInTheDocument();
+    // The account picker isn't rendered, so its data isn't fetched either.
+    expect(GetAccounts).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Record" }));
+
+    await waitFor(() =>
+      expect(CreatePayment).toHaveBeenCalledWith(
+        expect.objectContaining({ method: "cash", bankAccountId: "acct_cash" }),
+      ),
+    );
   });
 
   it("renders nothing when there's no posted GL entry and no payment history", async () => {
