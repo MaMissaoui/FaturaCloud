@@ -205,7 +205,7 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	if err := d.checkInvoiceLineItemsFKOwnership(req.OrganizationID, req.LineItems); err != nil {
 		return nil, err
 	}
-	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, 0); err != nil {
+	if err := d.validateInvoiceTotals(req.LineItems, req.SubTotal, req.TaxTotal, req.Total, 0, 0); err != nil {
 		return nil, err
 	}
 	// Resolve-only, for an early 409 before any work happens — postAutoEntryTx

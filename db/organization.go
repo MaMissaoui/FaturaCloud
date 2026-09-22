@@ -181,6 +181,7 @@ type Organization struct {
 	// the registry of other valid values.
 	FiscalStampEnabled        *int64  `db:"fiscalStampEnabled"        json:"fiscalStampEnabled"`
 	WithholdingTaxEnabled     *int64  `db:"withholdingTaxEnabled"     json:"withholdingTaxEnabled"`
+	AmountInWordsEnabled      *int64  `db:"amountInWordsEnabled"      json:"amountInWordsEnabled"`
 	DefaultFiscalStampAmount  *int64  `db:"defaultFiscalStampAmount"  json:"defaultFiscalStampAmount"`
 	DefaultStampDutyAccountID *string `db:"defaultStampDutyAccountId" json:"defaultStampDutyAccountId"`
 	InvoiceLayout             *string `db:"invoiceLayout"             json:"invoiceLayout"`
@@ -276,6 +277,7 @@ type UpdateOrganizationRequest struct {
 
 	FiscalStampEnabled        *int64  `json:"fiscalStampEnabled"`
 	WithholdingTaxEnabled     *int64  `json:"withholdingTaxEnabled"`
+	AmountInWordsEnabled      *int64  `json:"amountInWordsEnabled"`
 	DefaultFiscalStampAmount  *int64  `json:"defaultFiscalStampAmount"`
 	DefaultStampDutyAccountID *string `json:"defaultStampDutyAccountId"`
 	InvoiceLayout             *string `json:"invoiceLayout"`
@@ -300,7 +302,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, invoiceLayout,
-	       fiscalStampEnabled, withholdingTaxEnabled`
+	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
@@ -536,7 +538,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     defaultFiscalStampAmount  = COALESCE(?, defaultFiscalStampAmount),
 		     invoiceLayout             = COALESCE(?, invoiceLayout),
 		     fiscalStampEnabled        = COALESCE(?, fiscalStampEnabled),
-		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled)` +
+		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled),
+		     amountInWordsEnabled      = COALESCE(?, amountInWordsEnabled)` +
 		accountSet.String() + `
 		 WHERE id = ?`
 
@@ -553,6 +556,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DatevConsultantNumber, updates.DatevClientNumber,
 		updates.DefaultFiscalStampAmount, updates.InvoiceLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
+		updates.AmountInWordsEnabled,
 	}
 	// accountSet's placeholders sit between the COALESCE block and WHERE,
 	// so its args do too.

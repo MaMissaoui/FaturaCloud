@@ -247,3 +247,27 @@ func TestInvoiceNumberFormatRejectsUnrecognizedToken(t *testing.T) {
 		t.Fatalf("clearing to an empty string should be accepted: %v", err)
 	}
 }
+
+// TestUpdateOrganizationAmountInWords confirms the amount-in-words toggle
+// round-trips through a real update (it is a plain COALESCE'd 0/1 column,
+// same as fiscalStampEnabled/withholdingTaxEnabled).
+func TestUpdateOrganizationAmountInWords(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-words"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if org.AmountInWordsEnabled == nil || *org.AmountInWordsEnabled != 0 {
+		t.Fatalf("new organization amountInWordsEnabled = %v, want 0", org.AmountInWordsEnabled)
+	}
+
+	on := int64(1)
+	updated, err := d.UpdateOrganization(org.ID, UpdateOrganizationRequest{AmountInWordsEnabled: &on})
+	if err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
+	if updated.AmountInWordsEnabled == nil || *updated.AmountInWordsEnabled != 1 {
+		t.Fatalf("amountInWordsEnabled = %v, want 1", updated.AmountInWordsEnabled)
+	}
+}

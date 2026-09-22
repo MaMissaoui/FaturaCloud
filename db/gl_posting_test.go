@@ -424,3 +424,55 @@ func TestInvoiceWithZeroPercentTaxRateSkipsZeroTaxLine(t *testing.T) {
 		t.Fatalf("AR debit = %d, want 1000", arDebit)
 	}
 }
+
+// TestInvoiceDiscountPostsReducedRevenueAndTax proves the remise reaches the
+// GL: a 100.00 discount on a 1000.00 subtotal at 20% books 900.00 revenue and
+// 180.00 output tax, against a 1080.00 AR — matching what
+// validateInvoiceTotals accepts.
+func TestInvoiceDiscountPostsReducedRevenueAndTax(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-inv-discount")
+
+	// 1000.00 subtotal, 100.00 discount -> net 900.00, tax 180.00,
+	// total 1080.00.
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: fx.orgID, Number: "inv-discount", ClientID: fx.clientID,
+		Date: fx.date, Currency: "EUR",
+		SubTotal: 100000, TaxTotal: 18000, Total: 108000, DiscountAmount: 10000,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 100000, TaxRate: &fx.taxRateID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice with discount: %v", err)
+	}
+	if inv.DiscountAmount != 10000 {
+		t.Fatalf("persisted discountAmount = %d, want 10000", inv.DiscountAmount)
+	}
+
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+	entry, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("FindPostedEntryForSourceDocument: entry=%v err=%v", entry, err)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+
+	arDebit, _ := sumLines(lines, fx.arAccountID)
+	if arDebit != 108000 {
+		t.Fatalf("AR debit = %d, want 108000", arDebit)
+	}
+	_, revCredit := sumLines(lines, fx.revenueAccountID)
+	if revCredit != 90000 {
+		t.Fatalf("revenue credit = %d, want 90000", revCredit)
+	}
+	_, taxCredit := sumLines(lines, fx.outputTaxAccountID)
+	if taxCredit != 18000 {
+		t.Fatalf("output tax credit = %d, want 18000", taxCredit)
+	}
+}

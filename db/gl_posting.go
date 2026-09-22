@@ -372,6 +372,33 @@ func (d *Database) buildInvoiceGLLines(invoice *Invoice, lineItems []InvoiceLine
 		}
 	}
 
+	// Remise: the discount reduces the taxable base, so it is spread across
+	// the revenue groups (and, identically, across the tax groups) in
+	// proportion to each group's share of the total subtotal — the same
+	// allocation validateInvoiceTotals (db/invoice_totals.go) uses, so the
+	// posted revenue and tax amounts agree with the stored totals. Revenue
+	// and tax groups are both measured against the full subtotal
+	// (totalRevenueRat), not just the rated subset, matching that function.
+	if invoice.DiscountAmount > 0 {
+		totalRevenueRat := new(big.Rat)
+		for _, accountID := range revenueOrder {
+			totalRevenueRat.Add(totalRevenueRat, revenueRats[accountID])
+		}
+		if totalRevenueRat.Sign() > 0 {
+			discountRat := new(big.Rat).SetInt64(invoice.DiscountAmount)
+			for _, accountID := range revenueOrder {
+				share := new(big.Rat).Mul(discountRat, revenueRats[accountID])
+				share.Quo(share, totalRevenueRat)
+				revenueRats[accountID].Sub(revenueRats[accountID], share)
+			}
+			for _, taxRateID := range taxOrder {
+				share := new(big.Rat).Mul(discountRat, taxRats[taxRateID])
+				share.Quo(share, totalRevenueRat)
+				taxRats[taxRateID].Sub(taxRats[taxRateID], share)
+			}
+		}
+	}
+
 	// Tax is rounded per group before the percentage is applied's result is
 	// rounded — mirrors validateInvoiceTotals exactly (in cents rather than
 	// units; 1 cent is the smallest unit of either representation, so
