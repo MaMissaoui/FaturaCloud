@@ -9,7 +9,8 @@ import {
   organizationsAtom,
   organizationIdAtom,
   organizationsLoadedAtom,
-  isCashbookAtom,
+  myOrgRoleAtom,
+  roleHomePath,
 } from "src/atoms/organization";
 
 const Index = () => {
@@ -19,7 +20,7 @@ const Index = () => {
   const organizations = useAtomValue(organizationsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   const organizationsLoaded = useAtomValue(organizationsLoadedAtom);
-  const isCashbook = useAtomValue(isCashbookAtom);
+  const orgRole = useAtomValue(myOrgRoleAtom);
   const setOrganizationId = useSetAtom(organizationIdAtom);
 
   // Handle organization-based redirects
@@ -28,11 +29,11 @@ const Index = () => {
       return;
     }
 
-    // If organizationId exists and is valid, redirect to invoices (or the
-    // Cash Book for the restricted cashbook role, which has no access to
-    // the invoice screens).
+    // If organizationId exists and is valid, redirect to the role's home
+    // section (the focused views — cashbook, purchasing, accounting — each
+    // land somewhere other than the invoice list).
     if (organizationId && organizations.some((org) => org.id === organizationId)) {
-      navigate(isCashbook ? "/cash-book" : "/invoices", { replace: true });
+      navigate(roleHomePath(orgRole), { replace: true });
       return;
     }
 
@@ -55,7 +56,7 @@ const Index = () => {
         setOrganizationId(firstOrganization.id);
       }
     }
-  }, [organizationId, organizations, navigate, setOrganizationId, organizationsLoaded, isCashbook]);
+  }, [organizationId, organizations, navigate, setOrganizationId, organizationsLoaded, orgRole]);
 
   // Show loading state while organizations are being loaded
   if (!organizationsLoaded) {
