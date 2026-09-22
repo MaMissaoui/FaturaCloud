@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.51.0] - 2026-09-22
+
+### Added
+- Roles: the "General" role now also drops Production Orders, alongside the
+  Accounting, Imports and Bill of Materials sections it already hid, and the
+  Sales, Purchasing and Accounting roles get the same frontend-only focused
+  views — each sees its own domain plus a few shared basics (Dashboard,
+  relevant master data and reports). A typed URL outside a role's scope
+  bounces back to that role's home section. Admin/power_user keep the full
+  menu; reads stay membership-level server-side.
+- Cash Book: the Record payment form now hides the Method and Bank/cash
+  account pickers, defaulting to cash and the organization's register
+  account (the till), and the "New customer" and "Withdraw" buttons are now
+  primary.
+
 ## [3.50.0] - 2026-09-22
 
 ### Added
