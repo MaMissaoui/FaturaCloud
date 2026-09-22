@@ -92,6 +92,13 @@ interface PaymentPanelProps {
   // passes these; every other embedding keeps its original defaults.
   defaultMethod?: PaymentMethod;
   defaultBankAccountId?: string;
+  // Cash Book reuse: hides the Method and Bank/cash-account fields entirely,
+  // silently using defaultMethod/defaultBankAccountId. At the counter a
+  // payment is always cash into the till (the organization's register
+  // account), so the two pickers were two required fields to get past for
+  // no decision the cashier ever actually makes. The values still flow
+  // through the same payload; only the on-screen choice is gone.
+  hideMethodAndAccount?: boolean;
   // Organization's configured "Decimal places" (Settings → Invoice), the
   // same value every other money display in the app (getFormattedNumber,
   // invoice/PO/order totals, the accounting reports) formats with. Without
@@ -123,6 +130,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   onClose,
   defaultMethod,
   defaultBankAccountId,
+  hideMethodAndAccount = false,
   minimumFractionDigits,
   countryCode,
 }) => {
@@ -182,10 +190,12 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   );
 
   useEffect(() => {
+    // The account picker is the only consumer; Cash Book hides it.
+    if (hideMethodAndAccount) return;
     GetAccounts(organizationId)
       .then((accts) => setAccounts(accts.filter((a) => !a.isGroup)))
       .catch((error) => console.error("Failed to fetch accounts:", error));
-  }, [organizationId]);
+  }, [organizationId, hideMethodAndAccount]);
 
   const paidCents = rows
     .filter((r) => r.payment.status !== "voided")
@@ -234,18 +244,23 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
     try {
+      // With the Method/account fields hidden (Cash Book), the form values
+      // fall back to the same defaults openModal prefilled — see the
+      // hideMethodAndAccount prop's doc comment.
+      const method = values.method ?? defaultMethod ?? "cash";
+      const bankAccountId = values.bankAccountId ?? defaultBankAccountId;
       await CreatePayment({
         organizationId,
         direction,
         clientId: direction === "inbound" ? clientId : undefined,
         vendorId: direction === "outbound" ? vendorId : undefined,
-        bankAccountId: values.bankAccountId,
+        bankAccountId,
         amount: unitsToCents(values.amount),
         currency,
         exchangeRate: values.exchangeRate,
         exchangeRateDate: values.exchangeRateDate ? values.exchangeRateDate.valueOf() : null,
         date: values.date.valueOf(),
-        method: values.method,
+        method,
         reference: values.reference || null,
         notes: values.notes || null,
         applications: [{ documentType, documentId, amount: unitsToCents(values.amount) }],
@@ -291,32 +306,36 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         >
           <DatePicker style={{ width: "100%" }} format={dateFormat} />
         </Form.Item>
-        <Form.Item
-          label={t`Method`}
-          name="method"
-          rules={[{ required: true, message: t`This field is required!` }]}
-        >
-          <Select>
-            {PAYMENT_METHODS.map((method) => (
-              <Option key={method} value={method}>
-                {paymentMethodLabel(method)}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Form.Item
-          label={t`Bank / cash account`}
-          name="bankAccountId"
-          rules={[{ required: true, message: t`This field is required!` }]}
-        >
-          <Select showSearch optionFilterProp="children">
-            {accounts.map((a) => (
-              <Option key={a.id} value={a.id}>
-                {a.code} — {a.name}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
+        {!hideMethodAndAccount && (
+          <Form.Item
+            label={t`Method`}
+            name="method"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <Select>
+              {PAYMENT_METHODS.map((method) => (
+                <Option key={method} value={method}>
+                  {paymentMethodLabel(method)}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        )}
+        {!hideMethodAndAccount && (
+          <Form.Item
+            label={t`Bank / cash account`}
+            name="bankAccountId"
+            rules={[{ required: true, message: t`This field is required!` }]}
+          >
+            <Select showSearch optionFilterProp="children">
+              {accounts.map((a) => (
+                <Option key={a.id} value={a.id}>
+                  {a.code} — {a.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        )}
         <Form.Item
           label={t`Amount (${currency})`}
           name="amount"

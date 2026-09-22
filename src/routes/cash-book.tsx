@@ -1062,12 +1062,8 @@ const CashBook = () => {
         }
         actions={
           isToday && !inSale ? (
-            // Deliberately "dashed", not "primary" like every other list
-            // page's create button — this screen's real primary action is
-            // recording a sale, not adding a customer, so this stays
-            // de-emphasized on purpose.
             <Button
-              type="dashed"
+              type="primary"
               icon={<UserAddOutlined />}
               onClick={() =>
                 openNewClientModal(needle && searchResults.length === 0 ? search : undefined)
@@ -1455,7 +1451,7 @@ const CashBook = () => {
               <Col>
                 <Space>
                   {isToday && (
-                    <Button onClick={openWithdrawModal}>
+                    <Button type="primary" onClick={openWithdrawModal}>
                       <Trans>Withdraw</Trans>
                     </Button>
                   )}
@@ -1968,6 +1964,7 @@ const CashBook = () => {
           onSettled={handleSettled}
           defaultMethod="cash"
           defaultBankAccountId={organization?.defaultCashRegisterAccountId ?? undefined}
+          hideMethodAndAccount
           minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
           countryCode={organization?.country_code}
         />
