@@ -178,22 +178,9 @@ isCashbookAtom.debugLabel = "isCashbookAtom";
 export const isGeneralRoleAtom = atom(async (get) => (await get(myOrgRoleAtom)) === "general");
 isGeneralRoleAtom.debugLabel = "isGeneralRoleAtom";
 
-// roleHomePath is the route a role is sent to when it lands on "/" or is
-// bounced out of a section outside its scope (src/layouts/base.tsx,
-// src/routes/index.tsx) — the focused view's "home". admin, power_user and
-// general all default to the invoice list.
-export const roleHomePath = (role: string): string => {
-  switch (role) {
-    case "cashbook":
-      return "/cash-book";
-    case "purchasing":
-      return "/purchase-orders";
-    case "accounting":
-      return "/accounting/journal-entries";
-    default:
-      return "/invoices";
-  }
-};
+// roleHomePath moved to src/layouts/role-menu.ts alongside the rest of the
+// focused per-role model (ROLE_MENU, isRouteAllowedForRole, ...) so it can be
+// unit-tested; api/sections.go mirrors the same allow-list server-side.
 
 // Forces organizationAtom to refetch the currently selected organization
 // (including its logo) without going through a create/update. Used after a
