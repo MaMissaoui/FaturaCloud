@@ -74,6 +74,9 @@ dry run immediately followed by the real `--org-name`.
   every account this tool needs, e.g. the VAT accounts tax rates require;
   `Tunisia` is the other country with a dedicated profile — see
   `masterdata.go`'s `orgProfiles`), 14-day payment terms (30 for Tunisia).
+  A Tunisia organization is also created with the Tunisian "Facture"
+  document layout (`documentLayout: "tunisia"`); every other country gets
+  the generic default layout.
 - **Tax rates** — Standard (19%), Reduced (7%), Zero-rated (0%), each wired
   to the SKR04 chart's output/input VAT accounts (codes `3800`/`1400`) —
   without that wiring, sending an invoice 409s with "no output tax account
