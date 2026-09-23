@@ -37,6 +37,14 @@ body {
   padding-block: 8px;
 }
 
+// The title keeps its natural width (antd lets it shrink to "…"), so the
+// extra controls are what wraps.
+.card-head-wrap .ant-card-head-title {
+  flex: 1 0 auto;
+  max-width: 100%;
+}
+
 .card-head-wrap .ant-card-extra {
   margin-inline-start: auto;
 }
+
