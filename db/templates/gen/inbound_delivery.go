@@ -1,11 +1,11 @@
 package main
 
-// buildInboundDeliveryTemplate generates
-// db/templates/inbound_delivery_default.xlsx via the shared Tunisian layout.
+// buildInboundDeliveryTunisiaTemplate generates
+// db/templates/inbound_delivery_tunisia.xlsx via the shared Tunisian layout.
 // A goods receipt (Bon de réception) is an internal document — it shows each
 // line's unit cost and line total (the received value) but, like a delivery
 // note, has no tax rates and no aggregate totals block.
-func buildInboundDeliveryTemplate() {
+func buildInboundDeliveryTunisiaTemplate() {
 	f := buildTunisiaLayout(tunisiaLayoutSpec{
 		sheet:     "Bon de réception",
 		title:     "Bon de réception N°: {{inboundDelivery.number}}",
@@ -29,7 +29,7 @@ func buildInboundDeliveryTemplate() {
 		footerRight: "{{organization.bankName}}",
 	})
 	addAvailableFieldsSheet(f, inboundDeliveryFieldRefs)
-	finalizeWorkbook(f, "Bon de réception", "db/templates/gen/inbound_delivery_default.xlsx")
+	finalizeWorkbook(f, "Bon de réception", "db/templates/gen/inbound_delivery_tunisia.xlsx")
 }
 
 // inboundDeliveryFieldRefs groups every placeholder

@@ -1,12 +1,12 @@
 package main
 
-// buildIncomingInvoiceTemplate generates
-// db/templates/incoming_invoice_default.xlsx via the shared Tunisian layout.
+// buildIncomingInvoiceTunisiaTemplate generates
+// db/templates/incoming_invoice_tunisia.xlsx via the shared Tunisian layout.
 // A vendor bill (Facture fournisseur) is inward — the boxed second-party
 // block shows the vendor (who issued it), while the seller block is the
 // organization receiving the bill. It has real server-validated stored totals
 // (unlike purchase orders/orders), so the totals block reads them directly.
-func buildIncomingInvoiceTemplate() {
+func buildIncomingInvoiceTunisiaTemplate() {
 	f := buildTunisiaLayout(tunisiaLayoutSpec{
 		sheet:     "Facture fournisseur",
 		title:     "Facture N°: {{incomingInvoice.number}}",
@@ -34,7 +34,7 @@ func buildIncomingInvoiceTemplate() {
 		footerRight: "{{organization.bankName}}",
 	})
 	addAvailableFieldsSheet(f, incomingInvoiceFieldRefs)
-	finalizeWorkbook(f, "Facture fournisseur", "db/templates/gen/incoming_invoice_default.xlsx")
+	finalizeWorkbook(f, "Facture fournisseur", "db/templates/gen/incoming_invoice_tunisia.xlsx")
 }
 
 // incomingInvoiceFieldRefs groups every placeholder

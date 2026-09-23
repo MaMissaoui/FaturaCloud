@@ -9,7 +9,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// TestTunisiaLayoutFillsEndToEnd exercises the new default layout as a whole:
+// TestTunisiaLayoutFillsEndToEnd exercises the Tunisia layout as a whole:
 // line-item expansion, the per-tax-rate VAT recap, the amount-in-words line,
 // the discount (Remise) column and a logo image anchor all survive one fill.
 func TestTunisiaLayoutFillsEndToEnd(t *testing.T) {
@@ -44,7 +44,7 @@ func TestTunisiaLayoutFillsEndToEnd(t *testing.T) {
 		t.Fatalf("decode png: %v", err)
 	}
 
-	filled, unresolved, err := FillInvoiceTemplate(invoiceDefaultTemplate, invoice, lineItems, org, client, taxRates, logo, "")
+	filled, unresolved, err := FillInvoiceTemplate(invoiceTunisiaTemplate, invoice, lineItems, org, client, taxRates, logo, "")
 	if err != nil {
 		t.Fatalf("fill: %v", err)
 	}

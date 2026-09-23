@@ -111,3 +111,15 @@ func TestEmbeddedDefaultOrderTemplatePlaceholdersAllResolve(t *testing.T) {
 			"lineItems.unitPrice": true, "lineItems.lineTotal": true,
 		})
 }
+
+// TestEmbeddedTunisiaOrderTemplatePlaceholdersAllResolve is the same guard
+// for the Tunisia-layout template (order_tunisia.xlsx).
+func TestEmbeddedTunisiaOrderTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
+	assertEmbeddedTemplatePlaceholdersResolve(t, orderTunisiaTemplate, "order",
+		buildOrderScalarPlaceholders(testOrder(), testOrg(), testClient(), "EUR", 0, 0, 0),
+		map[string]bool{
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
+			"lineItems.unitPrice": true, "lineItems.lineTotal": true,
+		})
+}

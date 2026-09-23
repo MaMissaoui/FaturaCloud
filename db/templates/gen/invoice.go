@@ -1,6 +1,6 @@
 package main
 
-// buildInvoiceTemplate generates db/templates/invoice_default.xlsx — the
+// buildInvoiceTunisiaTemplate generates db/templates/invoice_tunisia.xlsx — the
 // embedded default template for issue #115's custom invoice export. See
 // tunisia_layout.go's buildTunisiaLayout for the shared frame every document
 // type's Tunisian-layout default uses, and the package doc comment in
@@ -14,7 +14,7 @@ package main
 // The output has two sheets: "Facture" (the content sheet — sheet index 0,
 // what db.FillInvoiceTemplate fills and returns) and "Available fields", a
 // reference table of every placeholder the fill engine resolves.
-func buildInvoiceTemplate() {
+func buildInvoiceTunisiaTemplate() {
 	f := buildTunisiaLayout(tunisiaLayoutSpec{
 		sheet: "Facture",
 		title: "Facture N°: {{invoice.number}}",
@@ -47,7 +47,7 @@ func buildInvoiceTemplate() {
 		},
 	})
 	addAvailableFieldsSheet(f, invoiceFieldRefs)
-	finalizeWorkbook(f, "Facture", "db/templates/gen/invoice_default.xlsx")
+	finalizeWorkbook(f, "Facture", "db/templates/gen/invoice_tunisia.xlsx")
 }
 
 // invoiceFieldRefs groups every placeholder the invoice fill engine

@@ -1,10 +1,10 @@
 package main
 
-// buildPurchaseOrderTemplate generates db/templates/purchase_order_default.xlsx
+// buildPurchaseOrderTunisiaTemplate generates db/templates/purchase_order_tunisia.xlsx
 // via the shared Tunisian layout (tunisia_layout.go), so every document type
 // looks like one designed system. A purchase order is buyer-side outward, so
 // the boxed second-party block shows the vendor.
-func buildPurchaseOrderTemplate() {
+func buildPurchaseOrderTunisiaTemplate() {
 	f := buildTunisiaLayout(tunisiaLayoutSpec{
 		sheet:     "Bon de commande",
 		title:     "Bon de commande N°: {{purchaseOrder.number}}",
@@ -34,7 +34,7 @@ func buildPurchaseOrderTemplate() {
 		footerRight: "{{organization.bankName}}",
 	})
 	addAvailableFieldsSheet(f, purchaseOrderFieldRefs)
-	finalizeWorkbook(f, "Bon de commande", "db/templates/gen/purchase_order_default.xlsx")
+	finalizeWorkbook(f, "Bon de commande", "db/templates/gen/purchase_order_tunisia.xlsx")
 }
 
 // purchaseOrderFieldRefs groups every placeholder

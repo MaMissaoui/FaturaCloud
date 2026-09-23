@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -327,15 +328,86 @@ func TestFillInvoiceTemplateOrientationOverride(t *testing.T) {
 }
 
 // TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve opens the real
-// shipped default template and confirms every {{...}} in it is a placeholder
-// the fill engine actually recognizes. Load-bearing: this committed .xlsx
-// binary isn't diff-reviewable, so this is the only automated guard against
-// a typo in the file every customer receives.
+// shipped default-layout template and confirms every {{...}} in it is a
+// placeholder the fill engine actually recognizes. Load-bearing: this
+// committed .xlsx binary isn't diff-reviewable, so this is the only automated
+// guard against a typo in the file every default-layout customer receives.
 func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
+	assertEmbeddedTemplatePlaceholdersResolve(t, invoiceDefaultTemplate, "invoice",
+		buildScalarPlaceholders(testInvoice(), testOrg(), testClient()),
+		map[string]bool{
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
+			"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
+		})
+}
+
+// TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData guards
+// against the header row (e.g. "Product", "Description", "Quantity", ...)
+// drifting out of alignment with the data row again. The {{#lineItems}}
+// marker lives off in its own column (not one of the visible A-F content
+// columns — see db.findMarkerRow), so Product/Description are two
+// independent columns (A/B, not merged) in both the header and data rows,
+// with C-F carrying Quantity/Unit Price/Tax Rate/Line Total in both —
+// column-for-column, not shifted by one.
+func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T) {
 	t.Parallel()
 	f, err := excelize.OpenReader(bytes.NewReader(invoiceDefaultTemplate))
 	if err != nil {
 		t.Fatalf("open embedded default template: %v", err)
+	}
+	defer f.Close()
+	sheet := f.GetSheetName(0)
+
+	markerRow, _, found, err := findMarkerRow(f, sheet, lineItemMarker)
+	if err != nil {
+		t.Fatalf("find marker row: %v", err)
+	}
+	if !found {
+		t.Fatalf("invoice default template has no %s marker", lineItemMarker)
+	}
+	headerRowNum := markerRow - 1 // markerRow is 1-indexed; the header sits directly above it
+
+	rows, err := f.GetRows(sheet)
+	if err != nil {
+		t.Fatalf("read rows: %v", err)
+	}
+	headerRow := rows[headerRowNum-1]
+	dataRow := rows[markerRow-1]
+
+	if len(headerRow) < 2 || strings.TrimSpace(headerRow[0]) != "Product" || strings.TrimSpace(headerRow[1]) != "Description" {
+		t.Fatalf("header row columns A/B should be \"Product\"/\"Description\", got %v", headerRow)
+	}
+	if len(dataRow) < 2 || !strings.Contains(dataRow[0], "{{lineItems.sku}}") || !strings.Contains(dataRow[1], "{{lineItems.description}}") {
+		t.Fatalf("data row columns A/B should carry {{lineItems.sku}}/{{lineItems.description}}, got %v", dataRow)
+	}
+
+	merges, err := f.GetMergeCells(sheet)
+	if err != nil {
+		t.Fatalf("get merge cells: %v", err)
+	}
+	dontWantMerged := map[string]bool{
+		fmt.Sprintf("A%d:B%d", headerRowNum, headerRowNum): true,
+		fmt.Sprintf("A%d:B%d", markerRow, markerRow):       true,
+	}
+	for _, m := range merges {
+		key := m.GetStartAxis() + ":" + m.GetEndAxis()
+		if dontWantMerged[key] {
+			t.Errorf("expected Product/Description to be independent columns, but found merged range %s", key)
+		}
+	}
+}
+
+// TestEmbeddedTunisiaInvoiceTemplatePlaceholdersAllResolve opens the real
+// shipped Tunisia-layout template and confirms every {{...}} in it is a placeholder
+// the fill engine actually recognizes. Load-bearing: this committed .xlsx
+// binary isn't diff-reviewable, so this is the only automated guard against
+// a typo in the file every customer receives.
+func TestEmbeddedTunisiaInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
+	f, err := excelize.OpenReader(bytes.NewReader(invoiceTunisiaTemplate))
+	if err != nil {
+		t.Fatalf("open embedded tunisia template: %v", err)
 	}
 	defer f.Close()
 	sheet := f.GetSheetName(0)
@@ -377,31 +449,32 @@ func TestEmbeddedDefaultInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
 				if lineItemKeys[key] || taxLineKeys[key] {
 					continue
 				}
-				t.Errorf("embedded default template has unresolvable placeholder {{%s}}", key)
+				t.Errorf("embedded tunisia template has unresolvable placeholder {{%s}}", key)
 			}
 		}
 	}
 	if !sawMarker {
-		t.Error("embedded default template has no {{#lineItems}} marker row")
+		t.Error("embedded tunisia template has no {{#lineItems}} marker row")
 	}
 	if !sawTaxMarker {
-		t.Error("embedded default template has no {{#taxLines}} marker row")
+		t.Error("embedded tunisia template has no {{#taxLines}} marker row")
 	}
 }
 
-// TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData guards
-// against the header row (e.g. "Product", "Description", "Quantity", ...)
-// drifting out of alignment with the data row again. The {{#lineItems}}
+// TestEmbeddedTunisiaInvoiceTemplateLineItemHeaderAlignsWithData is the
+// Tunisia-layout counterpart of the default-layout test above: the header row
+// (Code/Désignation/Quantité/P.U HT/TOTAL HT) must not drift out of alignment
+// with the data row. The {{#lineItems}}
 // marker lives off in its own column (not one of the visible A-F content
 // columns — see db.findMarkerRow), so Product/Description are two
 // independent columns (A/B, not merged) in both the header and data rows,
 // with C-F carrying Quantity/Unit Price/Tax Rate/Line Total in both —
 // column-for-column, not shifted by one.
-func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T) {
+func TestEmbeddedTunisiaInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T) {
 	t.Parallel()
-	f, err := excelize.OpenReader(bytes.NewReader(invoiceDefaultTemplate))
+	f, err := excelize.OpenReader(bytes.NewReader(invoiceTunisiaTemplate))
 	if err != nil {
-		t.Fatalf("open embedded default template: %v", err)
+		t.Fatalf("open embedded tunisia template: %v", err)
 	}
 	defer f.Close()
 	sheet := f.GetSheetName(0)
@@ -411,7 +484,7 @@ func TestEmbeddedDefaultInvoiceTemplateLineItemHeaderAlignsWithData(t *testing.T
 		t.Fatalf("find marker row: %v", err)
 	}
 	if !found {
-		t.Fatalf("invoice default template has no %s marker", lineItemMarker)
+		t.Fatalf("invoice tunisia template has no %s marker", lineItemMarker)
 	}
 	headerRowNum := markerRow - 1 // markerRow is 1-indexed; the header sits directly above it
 

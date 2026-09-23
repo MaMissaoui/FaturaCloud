@@ -1,9 +1,9 @@
 package main
 
-// buildDeliveryTemplate generates db/templates/delivery_default.xlsx via the
+// buildDeliveryTunisiaTemplate generates db/templates/delivery_tunisia.xlsx via the
 // shared Tunisian layout. A delivery note (Bon de livraison) never shows
 // prices, so it has no VAT recap and no totals block — a pure line-item list.
-func buildDeliveryTemplate() {
+func buildDeliveryTunisiaTemplate() {
 	f := buildTunisiaLayout(tunisiaLayoutSpec{
 		sheet:     "Bon de livraison",
 		title:     "Bon de livraison N°: {{delivery.number}}",
@@ -25,7 +25,7 @@ func buildDeliveryTemplate() {
 		footerRight: "{{organization.bankName}}",
 	})
 	addAvailableFieldsSheet(f, deliveryFieldRefs)
-	finalizeWorkbook(f, "Bon de livraison", "db/templates/gen/delivery_default.xlsx")
+	finalizeWorkbook(f, "Bon de livraison", "db/templates/gen/delivery_tunisia.xlsx")
 }
 
 // deliveryFieldRefs groups every placeholder
