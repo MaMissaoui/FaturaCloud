@@ -1021,7 +1021,12 @@ export default function BaseLayout() {
           <Outlet />
           {/*<SignOut />*/}
         </Content>
-        <div id="footer" />
+        {/* The sticky element has to be this wrapper, not the Footer that
+        ResponsiveFooter portals into it: sticky only moves within its parent,
+        and this div is exactly the Footer's size, so a sticky Footer never
+        stuck and every detail page's Save/status actions sat at the very end
+        of a long document. This div's parent is the full-height column. */}
+        <div id="footer" style={{ position: "sticky", bottom: 0, zIndex: 1 }} />
       </Layout>
       <FeedbackModal open={feedbackModalOpen} onClose={() => setFeedbackModalOpen(false)} />
     </Layout>

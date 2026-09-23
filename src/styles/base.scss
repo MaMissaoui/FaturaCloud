@@ -48,3 +48,24 @@ body {
   margin-inline-start: auto;
 }
 
+// Sticky document footers (ResponsiveFooter): every detail page lays its
+// actions out as a fixed 64px Row holding a non-wrapping Space, which on a
+// phone ran up to ~980px wide and widened the whole page. Below the md
+// breakpoint let the row grow and the actions wrap, so every action stays
+// visible (inline `height: 64` needs the !important). Desktop is unchanged.
+@media (max-width: 767px) {
+  .responsive-footer > .ant-row {
+    height: auto !important;
+    row-gap: 8px;
+    padding-block: 8px;
+  }
+
+  .responsive-footer .ant-col {
+    max-width: 100%;
+  }
+
+  .responsive-footer .ant-space {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+}
