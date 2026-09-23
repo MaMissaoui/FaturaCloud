@@ -477,10 +477,18 @@ export default function BaseLayout() {
             {!siderIsCollapsed && <Wordmark fontSize={17} />}
           </Link>
         </div>
+        {/* A collapsed inline menu renders its open groups as floating
+        popups, so opening the current route's group while collapsed left
+        that submenu stuck open over the page — on every grouped route on a
+        phone, where the sider is always collapsed until the menu button is
+        tapped. Collapsed starts with nothing open; the key remounts the
+        (uncontrolled) menu on toggle so the default re-applies, and hover
+        popups on the collapsed desktop sider still work. */}
         <Menu
+          key={siderIsCollapsed ? "collapsed" : "expanded"}
           theme={themeMode}
           mode="inline"
-          defaultOpenKeys={openKeys}
+          defaultOpenKeys={siderIsCollapsed ? [] : openKeys}
           defaultSelectedKeys={selectedKeys}
           onClick={closeMobileMenu}
           items={
@@ -822,8 +830,12 @@ export default function BaseLayout() {
             borderBottom: `1px solid ${colorBorderSecondary}`,
           }}
         >
-          <Row>
-            <Col flex="auto">
+          {/* wrap={false}: the header is a fixed 64px tall, so a wrapped second
+          line (the right-hand icons on a phone) spilled over the page instead
+          of fitting. On mobile the org select narrows and the version and
+          user name are hidden so one line fits a 390px screen. */}
+          <Row wrap={false}>
+            <Col flex="auto" style={{ minWidth: 0 }}>
               <Space align="center">
                 <Button
                   type="text"
@@ -836,7 +848,7 @@ export default function BaseLayout() {
                   aria-label={siderIsCollapsed ? t`Expand sidebar` : t`Collapse sidebar`}
                   style={{
                     fontSize: "16px",
-                    width: 64,
+                    width: isMobile ? 48 : 64,
                     height: 64,
                   }}
                 />
@@ -852,7 +864,7 @@ export default function BaseLayout() {
                         ? String(orgName).toLowerCase().includes(input.toLowerCase())
                         : false;
                     }}
-                    style={{ width: 200 }}
+                    style={{ width: isMobile ? 140 : 200 }}
                     defaultValue={organization.id}
                     onSelect={(value) => {
                       setOrganizationId(value);
@@ -891,9 +903,9 @@ export default function BaseLayout() {
                 )}
               </Space>
             </Col>
-            <Col>
-              <Space>
-                {version && (
+            <Col flex="none">
+              <Space size={isMobile ? 0 : "small"}>
+                {version && !isMobile && (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     {version}
                   </Typography.Text>
@@ -962,11 +974,15 @@ export default function BaseLayout() {
                   })}
                 </Select>
                 {currentUser && (
-                  <Space size={4} style={{ marginRight: 24 }}>
-                    <UserOutlined />
-                    <span style={{ fontSize: 13 }}>
-                      {currentUser.displayName || currentUser.email}
-                    </span>
+                  <Space size={4} style={{ marginRight: isMobile ? 8 : 24 }}>
+                    {!isMobile && (
+                      <>
+                        <UserOutlined />
+                        <span style={{ fontSize: 13 }}>
+                          {currentUser.displayName || currentUser.email}
+                        </span>
+                      </>
+                    )}
                     <Button
                       type="text"
                       icon={<LogoutOutlined />}
@@ -985,8 +1001,10 @@ export default function BaseLayout() {
           id="main-content"
           tabIndex={-1}
           style={{
-            margin: "24px 16px",
-            padding: 24,
+            // Tighter on a phone, where 16px margin + 24px padding on each
+            // side left under 310px of a 390px screen for the page itself.
+            margin: isMobile ? "12px 8px" : "24px 16px",
+            padding: isMobile ? 12 : 24,
             minHeight: 280,
             // Content is a flex item in the outer Layout (next to the Sider).
             // Its default min-width:auto lets a wide child — the Cash Book's
