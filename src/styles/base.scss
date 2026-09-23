@@ -27,3 +27,16 @@ body {
   overflow-x: auto;
 }
 
+// Opt-in for a Card whose `extra` holds filters/buttons: let them drop below
+// the title on a narrow screen instead of squeezing the title to "…" and
+// spilling past the card edge. The Cash Book's Loan status and Payment
+// history cards use it.
+.card-head-wrap .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding-block: 8px;
+}
+
+.card-head-wrap .ant-card-extra {
+  margin-inline-start: auto;
+}
