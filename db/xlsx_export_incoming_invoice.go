@@ -32,7 +32,17 @@ func FillIncomingInvoiceTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	blocks := []repeatBlock{{marker: lineItemMarker, rows: lineRows, required: true}}
+	// The Tunisia-layout template carries a per-rate VAT recap; an optional
+	// block, so templates without the marker (the default layout, most
+	// uploads) are unaffected. Incoming invoices have no discount.
+	exportItems := make([]exportLineItem, len(lineItems))
+	for i, li := range lineItems {
+		exportItems[i] = exportLineItem{Quantity: li.Quantity, UnitPrice: li.UnitPrice, TaxRate: li.TaxRate}
+	}
+	blocks := []repeatBlock{
+		{marker: lineItemMarker, rows: lineRows, required: true},
+		{marker: taxLineMarker, rows: buildTaxBreakdownRows(exportItems, taxRates, currency, org.MinimumFractionDigits, org.CountryCode, 0)},
+	}
 	return fillTemplate(templateBytes, scalars, blocks, logo, orientation)
 }
 

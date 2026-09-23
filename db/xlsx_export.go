@@ -80,7 +80,11 @@ func FillInvoiceTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	taxRows := buildTaxBreakdownRows(lineItems, taxRates, currency, org.MinimumFractionDigits, org.CountryCode, invoice.DiscountAmount)
+	exportItems := make([]exportLineItem, len(lineItems))
+	for i, li := range lineItems {
+		exportItems[i] = exportLineItem{Quantity: li.Quantity, UnitPrice: li.UnitPrice, TaxRate: li.TaxRate}
+	}
+	taxRows := buildTaxBreakdownRows(exportItems, taxRates, currency, org.MinimumFractionDigits, org.CountryCode, invoice.DiscountAmount)
 	blocks := []repeatBlock{
 		{marker: lineItemMarker, rows: lineRows, required: true},
 		{marker: taxLineMarker, rows: taxRows},
@@ -530,9 +534,11 @@ func resolveTaxRatePercent(taxRates map[string]TaxRate, taxRateID *string) strin
 // base is net of the proportional discount share — the same allocation
 // validateInvoiceTotals (db/invoice_totals.go) and buildInvoiceGLLines
 // (db/gl_posting.go) use — and the tax is rounded once per group, matching
-// those two.
+// those two. Shared by every document type whose template can carry the
+// recap — invoices, purchase orders and incoming invoices (the latter two pass
+// a zero discount, having none).
 func buildTaxBreakdownRows(
-	lineItems []InvoiceLineItem,
+	lineItems []exportLineItem,
 	taxRates map[string]TaxRate,
 	currency string,
 	minimumFractionDigits *int64,
