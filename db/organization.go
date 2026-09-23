@@ -167,8 +167,8 @@ type Organization struct {
 	DefaultCashRegisterAccountID *string `db:"defaultCashRegisterAccountId" json:"defaultCashRegisterAccountId"`
 
 	// Invoice feature toggles (fiscal stamp / withholding tax, first added
-	// for Tunisia invoice support) and the invoice PDF layout this
-	// organization's invoices render with — three independent settings, not
+	// for Tunisia invoice support) and the document layout this
+	// organization's exports render with — three independent settings, not
 	// one bundled "Tunisia mode": an organization can enable either feature
 	// with any layout, and can switch layouts without it implying anything
 	// about which fields its invoices carry. See db/gl_posting.go's
@@ -176,15 +176,17 @@ type Organization struct {
 	// themselves are a frontend-only gate (validateInvoiceTotals and
 	// buildInvoiceGLLines react to the invoice's own stored values
 	// regardless of these flags, the same way they'd react to a value set
-	// through the API directly). invoiceLayout NULL/"" means the original
-	// single-layout template — see src/components/invoices/layouts.ts for
-	// the registry of other valid values.
+	// through the API directly). documentLayout picks which embedded
+	// template set every document type's export falls back to when the org
+	// has no uploaded override: "tunisia" is the Tunisian "Facture" layout,
+	// and NULL/""/"default"/anything else is the generic default layout (see
+	// normalizeDocumentLayout in db/templates_embed.go).
 	FiscalStampEnabled        *int64  `db:"fiscalStampEnabled"        json:"fiscalStampEnabled"`
 	WithholdingTaxEnabled     *int64  `db:"withholdingTaxEnabled"     json:"withholdingTaxEnabled"`
 	AmountInWordsEnabled      *int64  `db:"amountInWordsEnabled"      json:"amountInWordsEnabled"`
 	DefaultFiscalStampAmount  *int64  `db:"defaultFiscalStampAmount"  json:"defaultFiscalStampAmount"`
 	DefaultStampDutyAccountID *string `db:"defaultStampDutyAccountId" json:"defaultStampDutyAccountId"`
-	InvoiceLayout             *string `db:"invoiceLayout"             json:"invoiceLayout"`
+	DocumentLayout            *string `db:"documentLayout"            json:"documentLayout"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -220,6 +222,10 @@ type CreateOrganizationRequest struct {
 	PostalCode  *string `json:"postal_code"`
 	City        *string `json:"city"`
 	CountryCode *string `json:"country_code"`
+
+	// DocumentLayout is accepted on create so a layout picked in the New
+	// Organization drawer isn't silently dropped; NULL means the default.
+	DocumentLayout *string `json:"documentLayout"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -280,7 +286,7 @@ type UpdateOrganizationRequest struct {
 	AmountInWordsEnabled      *int64  `json:"amountInWordsEnabled"`
 	DefaultFiscalStampAmount  *int64  `json:"defaultFiscalStampAmount"`
 	DefaultStampDutyAccountID *string `json:"defaultStampDutyAccountId"`
-	InvoiceLayout             *string `json:"invoiceLayout"`
+	DocumentLayout            *string `json:"documentLayout"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -301,7 +307,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultInventoryAccountId, defaultGRNIAccountId,
 	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
-	       defaultFiscalStampAmount, defaultStampDutyAccountId, invoiceLayout,
+	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
@@ -401,13 +407,15 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			registration_number, vatin, bank_name, iban, currency,
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format, brandColor,
-			bic, tax_number, street, house_number, postal_code, city, country_code
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			bic, tax_number, street, house_number, postal_code, city, country_code,
+			documentLayout
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat, req.BrandColor,
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
+		req.DocumentLayout,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
 	}
@@ -536,7 +544,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     datev_consultant_number   = COALESCE(?, datev_consultant_number),
 		     datev_client_number       = COALESCE(?, datev_client_number),
 		     defaultFiscalStampAmount  = COALESCE(?, defaultFiscalStampAmount),
-		     invoiceLayout             = COALESCE(?, invoiceLayout),
+		     documentLayout            = COALESCE(?, documentLayout),
 		     fiscalStampEnabled        = COALESCE(?, fiscalStampEnabled),
 		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled),
 		     amountInWordsEnabled      = COALESCE(?, amountInWordsEnabled)` +
@@ -554,7 +562,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.BIC, updates.TaxNumber, updates.Street, updates.HouseNumber,
 		updates.PostalCode, updates.City, updates.CountryCode,
 		updates.DatevConsultantNumber, updates.DatevClientNumber,
-		updates.DefaultFiscalStampAmount, updates.InvoiceLayout,
+		updates.DefaultFiscalStampAmount, updates.DocumentLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
 		updates.AmountInWordsEnabled,
 	}

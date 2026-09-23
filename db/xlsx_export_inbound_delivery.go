@@ -67,7 +67,7 @@ func (d *Database) FetchInboundDeliveryExportData(deliveryID string) (*InboundDe
 		vendor = *v
 	}
 
-	templateBytes, _, err := resolveTemplateBytes(d, delivery.OrganizationID, "inbound_delivery")
+	templateBytes, _, err := resolveTemplateBytes(d, delivery.OrganizationID, "inbound_delivery", org.DocumentLayout)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_inbound_delivery_export_data: resolve template: %w", err)
 	}

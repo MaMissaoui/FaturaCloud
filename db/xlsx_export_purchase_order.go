@@ -74,7 +74,7 @@ func (d *Database) FetchPurchaseOrderExportData(orderID string) (*PurchaseOrder,
 		vendor = *v
 	}
 
-	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "purchase_order")
+	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "purchase_order", org.DocumentLayout)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: resolve template: %w", err)
 	}

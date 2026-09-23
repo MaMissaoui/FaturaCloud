@@ -354,7 +354,7 @@ func (d *Database) FetchInvoiceExportData(invoiceID string) (*Invoice, []Invoice
 	if err != nil {
 		return fail(fmt.Errorf("fetch_invoice_export_data: get client: %w", err))
 	}
-	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "invoice")
+	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "invoice", org.DocumentLayout)
 	if err != nil {
 		return fail(fmt.Errorf("fetch_invoice_export_data: resolve template: %w", err))
 	}

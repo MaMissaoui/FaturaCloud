@@ -118,9 +118,11 @@ func (d *Database) DeleteDocumentTemplate(organizationID, documentType string) (
 
 // ExportDocumentTemplateBytes is what the download endpoint streams: an
 // org's uploaded override if one exists (with its original filename), else
-// the embedded default (named "<documentType>_default.xlsx") — so
+// the embedded template for the org's documentLayout (named
+// "<documentType>_<layout>.xlsx", e.g. "invoice_tunisia.xlsx") — so
 // "download the current template" and "download the default" (no override
-// yet) share one handler.
+// yet) share one handler, and the download always matches what an export
+// would actually fill.
 func (d *Database) ExportDocumentTemplateBytes(organizationID, documentType string) ([]byte, string, error) {
 	row, content, err := d.GetDocumentTemplate(organizationID, documentType)
 	if err == nil {
@@ -129,19 +131,27 @@ func (d *Database) ExportDocumentTemplateBytes(organizationID, documentType stri
 	if !errors.Is(err, sql.ErrNoRows) {
 		return nil, "", fmt.Errorf("export_document_template_bytes: %w", err)
 	}
-	def, ok := embeddedDefaultTemplates[documentType]
+	var stored *string
+	if err := d.DB.Get(&stored, `SELECT documentLayout FROM organizations WHERE id = ?`, organizationID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, "", fmt.Errorf("export_document_template_bytes: read layout: %w", err)
+	}
+	layout := normalizeDocumentLayout(stored)
+	def, ok := embeddedTemplatesFor(layout)[documentType]
 	if !ok {
 		return nil, "", newValidationError("unknown document type %q", documentType)
 	}
-	return def, documentType + "_default.xlsx", nil
+	return def, documentType + "_" + layout + ".xlsx", nil
 }
 
 // resolveTemplateBytes returns an org's uploaded override for documentType,
-// falling back to the embedded default shipped with the binary. An unknown
-// documentType returns the same *ValidationError ExportDocumentTemplateBytes
-// does — every caller passes a constant today, but this stays a clean error
-// rather than a panic so the two functions agree on this condition.
-func resolveTemplateBytes(d *Database, organizationID, documentType string) ([]byte, string, error) {
+// falling back to the embedded template for layout (the org's
+// documentLayout, normalized by normalizeDocumentLayout — anything but
+// "tunisia" means the generic default). An uploaded override always wins over
+// either embedded layout. An unknown documentType returns the same
+// *ValidationError ExportDocumentTemplateBytes does — every caller passes a
+// constant today, but this stays a clean error rather than a panic so the two
+// functions agree on this condition.
+func resolveTemplateBytes(d *Database, organizationID, documentType string, layout *string) ([]byte, string, error) {
 	_, content, err := d.GetDocumentTemplate(organizationID, documentType)
 	if err == nil {
 		return content, "override", nil
@@ -149,9 +159,10 @@ func resolveTemplateBytes(d *Database, organizationID, documentType string) ([]b
 	if !errors.Is(err, sql.ErrNoRows) {
 		return nil, "", fmt.Errorf("resolve_template_bytes: %w", err)
 	}
-	def, ok := embeddedDefaultTemplates[documentType]
+	normalized := normalizeDocumentLayout(layout)
+	def, ok := embeddedTemplatesFor(normalized)[documentType]
 	if !ok {
 		return nil, "", newValidationError("unknown document type %q", documentType)
 	}
-	return def, "default", nil
+	return def, normalized, nil
 }

@@ -64,7 +64,7 @@ func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingIn
 		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get vendor: %w", err)
 	}
 
-	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "incoming_invoice")
+	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "incoming_invoice", org.DocumentLayout)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve template: %w", err)
 	}
