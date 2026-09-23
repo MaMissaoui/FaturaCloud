@@ -16,3 +16,14 @@ body {
     top: 8px;
   }
 }
+
+// Let every table scroll horizontally inside its own box. antd only does this
+// for tables that opt in with `scroll={{ x }}`; without it a wide table grows
+// to its content width and, on a phone, widens the whole page — the list
+// pages' action columns end up off-screen with the page itself scrolling
+// sideways. Tables that already set scroll.x are unaffected (antd renders the
+// same overflow on them).
+.ant-table-wrapper .ant-table-content {
+  overflow-x: auto;
+}
+
