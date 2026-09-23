@@ -785,8 +785,8 @@ msgstr "Choisir un fichier"
 msgid "CIN"
 msgstr "CIN"
 
-#: src/components/clients/form.tsx:358
-#: src/components/clients/form.tsx:359
+#: src/components/clients/form.tsx:345
+#: src/components/clients/form.tsx:346
 #: src/components/organizations/organization-edit-drawer.tsx:410
 #: src/components/vendors/form.tsx:277
 #: src/components/vendors/form.tsx:278
@@ -981,7 +981,7 @@ msgstr "Continuer"
 msgid "Copied"
 msgstr "Copié"
 
-#: src/components/clients/form.tsx:385
+#: src/components/clients/form.tsx:389
 msgid "Copied into new invoices for this client, e.g. a Leitweg-ID for German B2G."
 msgstr "Copiée dans les nouvelles factures de ce client, par ex. un Leitweg-ID pour le B2G allemand."
 
@@ -1120,7 +1120,7 @@ msgstr "Contrepartie pour la variation signée de la valeur du stock d'un ajuste
 msgid "Countries"
 msgstr "Pays"
 
-#: src/components/clients/form.tsx:326
+#: src/components/clients/form.tsx:352
 #: src/components/organizations/organization-edit-drawer.tsx:178
 #: src/components/organizations/organization-edit-drawer.tsx:374
 #: src/components/vendors/form.tsx:249
@@ -1404,8 +1404,8 @@ msgstr "Décimales"
 msgid "Default"
 msgstr "Par défaut"
 
-#: src/components/clients/form.tsx:384
 #: src/components/clients/form.tsx:388
+#: src/components/clients/form.tsx:392
 msgid "Default buyer reference"
 msgstr "Référence acheteur par défaut"
 
@@ -1417,8 +1417,8 @@ msgstr "Compte de caisse par défaut"
 msgid "Default COGS account"
 msgstr "Compte de coût des marchandises vendues par défaut"
 
-#: src/components/clients/form.tsx:294
-#: src/components/clients/form.tsx:297
+#: src/components/clients/form.tsx:234
+#: src/components/clients/form.tsx:235
 #: src/components/vendors/form.tsx:219
 #: src/components/vendors/form.tsx:220
 msgid "Default currency"
@@ -1777,7 +1777,7 @@ msgstr "Facture électronique (XML)"
 msgid "E-invoice export failed"
 msgstr "Échec de l'export de la facture électronique"
 
-#: src/components/clients/form.tsx:372
+#: src/components/clients/form.tsx:376
 #: src/components/organizations/organization-edit-drawer.tsx:419
 #: src/components/tax-rates/form.tsx:199
 msgid "E-invoicing"
@@ -1787,8 +1787,8 @@ msgstr "Facturation électronique"
 msgid "E-mail"
 msgstr "E-mail"
 
-#: src/components/clients/form.tsx:234
-#: src/components/clients/form.tsx:235
+#: src/components/clients/form.tsx:245
+#: src/components/clients/form.tsx:246
 #: src/components/vendors/form.tsx:204
 #: src/components/vendors/form.tsx:205
 msgid "E-mails"
@@ -2169,11 +2169,11 @@ msgstr "Échec de la récupération de la commande"
 msgid "Failed to fetch orders"
 msgstr "Échec de la récupération des commandes"
 
-#: src/atoms/organization.ts:70
+#: src/atoms/organization.ts:79
 msgid "Failed to fetch organization"
 msgstr "Échec de la récupération de l'organisation"
 
-#: src/atoms/organization.ts:29
+#: src/atoms/organization.ts:30
 msgid "Failed to fetch organizations"
 msgstr "Échec de la récupération des organisations"
 
@@ -2647,8 +2647,8 @@ msgstr "Marchandises reçues non facturées — comptabilise un passif à la ré
 msgid "Group"
 msgstr "Groupe"
 
-#: src/components/clients/form.tsx:254
-#: src/components/clients/form.tsx:255
+#: src/components/clients/form.tsx:293
+#: src/components/clients/form.tsx:294
 #: src/routes/cash-book.tsx:165
 #: src/routes/cash-book.tsx:1927
 msgid "Guarantor"
@@ -2674,8 +2674,8 @@ msgstr "heure"
 msgid "Hour (UTC)"
 msgstr "Heure (UTC)"
 
-#: src/components/clients/form.tsx:344
-#: src/components/clients/form.tsx:345
+#: src/components/clients/form.tsx:331
+#: src/components/clients/form.tsx:332
 #: src/components/organizations/organization-edit-drawer.tsx:400
 #: src/components/vendors/form.tsx:267
 #: src/components/vendors/form.tsx:268
@@ -2690,14 +2690,14 @@ msgstr "De combien une quantité facturée peut dépasser la quantité commandé
 msgid "How far a vendor's unit price may differ from the purchase order."
 msgstr "De combien le prix unitaire du fournisseur peut s'écarter de la commande d'achat."
 
-#: src/components/clients/form.tsx:280
-#: src/components/clients/form.tsx:288
+#: src/components/clients/form.tsx:281
+#: src/components/clients/form.tsx:289
 #: src/routes/cash-book.tsx:1924
 msgid "IBAN"
 msgstr "IBAN"
 
-#: src/components/clients/form.tsx:266
-#: src/components/clients/form.tsx:274
+#: src/components/clients/form.tsx:267
+#: src/components/clients/form.tsx:275
 #: src/routes/cash-book.tsx:1921
 #: src/routes/clients.tsx:184
 msgid "Identity number"
@@ -4131,12 +4131,12 @@ msgstr "Commandé"
 msgid "Orders"
 msgstr "Commandes"
 
-#: src/atoms/organization.ts:103
+#: src/atoms/organization.ts:112
 #: src/routes/organizations/new.tsx:67
 msgid "Organization created"
 msgstr "Organisation créée"
 
-#: src/atoms/organization.ts:114
+#: src/atoms/organization.ts:123
 #: src/routes/organizations/new.tsx:72
 msgid "Organization creation failed"
 msgstr "Échec de la création de l'organisation"
@@ -4154,11 +4154,11 @@ msgstr "Organisation supprimée"
 msgid "Organization deletion failed"
 msgstr "Échec de la suppression de l'organisation"
 
-#: src/atoms/organization.ts:116
+#: src/atoms/organization.ts:125
 msgid "Organization update failed"
 msgstr "Échec de la mise à jour de l'organisation"
 
-#: src/atoms/organization.ts:107
+#: src/atoms/organization.ts:116
 msgid "Organization updated successfully"
 msgstr "Organisation mise à jour avec succès"
 
@@ -4390,12 +4390,12 @@ msgstr "Pourcentage que le client retient et reverse à l'administration fiscale
 msgid "Permanently delete this organization's data without deleting the organization itself."
 msgstr "Supprime définitivement les données de cette organisation sans supprimer l'organisation elle-même."
 
-#: src/components/clients/form.tsx:268
+#: src/components/clients/form.tsx:269
 msgid "Personal ID/CIN card number — used to look up this client in Cash Book, not a tax ID."
 msgstr "Numéro de CIN — sert à retrouver ce client dans le Cash Book, ce n'est pas un identifiant fiscal."
 
-#: src/components/clients/form.tsx:239
-#: src/components/clients/form.tsx:240
+#: src/components/clients/form.tsx:250
+#: src/components/clients/form.tsx:251
 #: src/components/organizations/organization-edit-drawer.tsx:227
 #: src/components/organizations/organizations-table.tsx:81
 #: src/components/vendors/form.tsx:209
@@ -4405,14 +4405,14 @@ msgstr "Numéro de CIN — sert à retrouver ce client dans le Cash Book, ce n'e
 msgid "Phone"
 msgstr "Téléphone"
 
-#: src/components/clients/form.tsx:244
-#: src/components/clients/form.tsx:245
+#: src/components/clients/form.tsx:255
+#: src/components/clients/form.tsx:256
 #: src/routes/cash-book.tsx:1912
 msgid "Phone 2"
 msgstr "Téléphone 2"
 
-#: src/components/clients/form.tsx:249
-#: src/components/clients/form.tsx:250
+#: src/components/clients/form.tsx:260
+#: src/components/clients/form.tsx:261
 #: src/routes/cash-book.tsx:1915
 msgid "Phone 3"
 msgstr "Téléphone 3"
@@ -4531,8 +4531,8 @@ msgstr "Comptabiliser"
 msgid "Post this entry? It cannot be edited afterward."
 msgstr "Comptabiliser cette écriture ? Elle ne pourra plus être modifiée ensuite."
 
-#: src/components/clients/form.tsx:351
-#: src/components/clients/form.tsx:354
+#: src/components/clients/form.tsx:338
+#: src/components/clients/form.tsx:341
 #: src/components/organizations/organization-edit-drawer.tsx:405
 #: src/components/vendors/form.tsx:272
 #: src/components/vendors/form.tsx:273
@@ -5356,7 +5356,7 @@ msgstr "Résultats de recherche"
 msgid "Search text"
 msgstr "Rechercher du texte"
 
-#: src/components/clients/form.tsx:282
+#: src/components/clients/form.tsx:283
 msgid "Search/reference only — used to look up this client in Cash Book, not this client's bank account for payments."
 msgstr "Recherche/référence uniquement — sert à retrouver ce client dans le Cash Book, pas son compte bancaire pour les paiements."
 
@@ -5364,7 +5364,7 @@ msgstr "Recherche/référence uniquement — sert à retrouver ce client dans le
 #~ msgid "Select"
 #~ msgstr "Sélectionner"
 
-#: src/components/clients/form.tsx:330
+#: src/components/clients/form.tsx:358
 #: src/components/organizations/organization-edit-drawer.tsx:386
 #: src/components/vendors/form.tsx:253
 msgid "Select a country"
@@ -5711,8 +5711,8 @@ msgstr "Valorisation des stocks"
 msgid "Stock valuation by product"
 msgstr "Valorisation des stocks par produit"
 
-#: src/components/clients/form.tsx:339
-#: src/components/clients/form.tsx:340
+#: src/components/clients/form.tsx:326
+#: src/components/clients/form.tsx:327
 #: src/components/organizations/organization-edit-drawer.tsx:395
 #: src/components/vendors/form.tsx:262
 #: src/components/vendors/form.tsx:263
@@ -5777,8 +5777,8 @@ msgstr "Taxe 0%"
 msgid "Tax for production, services and importation in Ceuta and Melilla"
 msgstr "Taxe sur la production, les services et l'importation à Ceuta et Melilla"
 
-#: src/components/clients/form.tsx:377
-#: src/components/clients/form.tsx:378
+#: src/components/clients/form.tsx:381
+#: src/components/clients/form.tsx:382
 #: src/components/organizations/organization-edit-drawer.tsx:426
 msgid "Tax number"
 msgstr "Numéro fiscal"
@@ -6456,8 +6456,8 @@ msgstr "Client de passage / sans client"
 msgid "Warning: This will also delete {invoiceCount} related invoice(s)."
 msgstr "Attention : Cela supprimera également {invoiceCount} facture(s) associée(s)."
 
-#: src/components/clients/form.tsx:259
-#: src/components/clients/form.tsx:260
+#: src/components/clients/form.tsx:300
+#: src/components/clients/form.tsx:303
 #: src/components/organizations/organization-edit-drawer.tsx:232
 #: src/components/vendors/form.tsx:214
 #: src/components/vendors/form.tsx:215
