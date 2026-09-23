@@ -1,24 +1,17 @@
 import InvoicePDF from "src/components/invoices/pdf";
 import InvoicePDFTunisia from "src/components/invoices/pdf-tunisia";
 
-// The invoice PDF layout registry. organizations.invoiceLayout (nullable)
-// stores a key here; null/"" and any key this registry doesn't recognize
-// (e.g. an older frontend build looking up a layout added since) both fall
-// back to "default" — a layout choice must never hard-fail invoice
-// rendering the way a missing GL account default is allowed to. Adding a
-// new layout means adding a component here; nothing else in the app needs
-// to know the registry exists.
+// The legacy client-side invoice PDF layout registry (React-PDF components).
+// Orphaned: every exported document now renders server-side from an Excel
+// template, and the per-organization layout choice lives on as
+// organizations.documentLayout (src/types/document-layout.ts), which picks
+// between the server's embedded "default" and "tunisia" template sets for all
+// six document types. Nothing imports this module any more; it is kept, along
+// with pdf.tsx/pdf-tunisia.tsx, rather than deleted, which is a separate
+// values-laden decision (losing the branded React-PDF look and SEPA QR code).
 //
-// The user-facing option list for the Organizations drawer's "Invoice PDF
-// layout" select deliberately does NOT live here any more (audit F131):
-// building it in this module forced the /organizations route to pull in this
-// file's static imports of pdf.tsx / pdf-tunisia.tsx — the entire
-// @react-pdf/renderer engine — just to render three labels. It now lives in
-// src/components/organizations/organization-edit-drawer.tsx, the only
-// remaining consumer. This module is otherwise orphaned since the 2026-09-08
-// PDF unification made invoiceLayout inert for invoice output (see the root
-// CLAUDE.md note); it is kept, along with pdf.tsx/pdf-tunisia.tsx, rather than
-// deleted, which is a separate values-laden decision.
+// null/"" and any unrecognized key fall back to "default" — a layout choice
+// must never hard-fail rendering.
 export const invoicePDFLayouts = {
   default: InvoicePDF,
   tunisia: InvoicePDFTunisia,
