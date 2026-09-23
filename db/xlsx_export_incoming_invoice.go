@@ -157,6 +157,7 @@ func buildIncomingInvoiceScalarPlaceholders(invoice IncomingInvoice, org Organiz
 func buildIncomingInvoiceLineItemPlaceholders(li IncomingInvoiceLineItem, currency string, minimumFractionDigits *int64, countryCode *string, taxRatePercent string) map[string]string {
 	lineTotal := lineTotalCents(li.Quantity, li.UnitPrice)
 	return map[string]string{
+		"lineItems.sku":         derefString(li.SKU),
 		"lineItems.description": li.Description,
 		"lineItems.quantity":    formatQuantity(li.Quantity),
 		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits, countryCode),

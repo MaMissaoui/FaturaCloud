@@ -19,6 +19,11 @@ func buildIncomingInvoiceTunisiaTemplate() {
 			"MF: {{vendor.vatin}}",
 		},
 		columns: []tableColumn{
+			// A Code column like every other Tunisia-layout type: the frame's
+			// column widths (and the VAT recap beneath) assume Code in A and
+			// Désignation in the wide B, so without it Désignation wrapped
+			// into the narrow A column.
+			{"Code", "{{lineItems.sku}}", false},
 			{"Désignation", "{{lineItems.description}}", false},
 			{"Quantité", "{{lineItems.quantity}}", true},
 			{"P.U HT", "{{lineItems.unitPrice}}", true},
@@ -70,6 +75,7 @@ var incomingInvoiceFieldRefs = []fieldRef{
 	{"Header", "{{vendor.city}}", "Vendor city"},
 
 	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in one cell of the row to repeat once per line item"},
+	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU (the Code column), blank on a free-text line"},
 	{"Item lines", "{{lineItems.description}}", "Line item description"},
 	{"Item lines", "{{lineItems.quantity}}", "Quantity"},
 	{"Item lines", "{{lineItems.unitPrice}}", "Unit price, formatted with currency"},
