@@ -406,12 +406,12 @@ recorded below.
   one-cent share of the total. `TestAllocateInvoiceLinesWithANegativeLine`
   pins that every amount and paid figure stays at or above zero and that both
   still sum to the invoice's figures.
-- **Amount-in-words language: open, product question.** The line is always
-  French, labelled "facture", and uses the currency code as the unit name for
-  non-TND currencies ("Mille EUR et Dix Centimes"). The setting isn't
-  layout-gated, so a de or en organization that enables it gets French.
-  Whether to gate it on the Tunisian layout, localize it, or leave it as is
-  needs a product decision.
+- **Amount-in-words language: resolved in #390.** The line was always
+  French, even for a de or en organization on the default layout. The owner
+  decided it should follow the organization's language, so #390 adds
+  `organizations.documentLanguage` (en/de/fr, migration `0091`) with English
+  and German spellers. When unset it falls back by layout: French on the
+  Tunisian layout, English otherwise.
 - **A single-payment loan vanishes from the loan tracker: fixed.** A
   zero-deposit loan cleared by exactly one payment matched the pure cash sale
   shape (`appCount = 1`, fully paid) and dropped out of the table. The filter
