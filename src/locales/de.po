@@ -65,13 +65,13 @@ msgid "1-30 days"
 msgstr "1-30 Tage"
 
 #. placeholder {0}: String(new Date().getMonth() + 1).padStart(2, "0")
-#: src/routes/settings/document-numbering.tsx:141
+#: src/routes/settings/document-numbering.tsx:147
 #: src/routes/settings/invoice.tsx:172
 msgid "2-digit month ({0})"
 msgstr "Monat, 2-stellig ({0})"
 
 #. placeholder {0}: String(new Date().getFullYear() % 100).padStart(2, "0")
-#: src/routes/settings/document-numbering.tsx:137
+#: src/routes/settings/document-numbering.tsx:143
 #: src/routes/settings/invoice.tsx:168
 msgid "2-digit year ({0})"
 msgstr "Jahr, 2-stellig ({0})"
@@ -87,7 +87,7 @@ msgid "31-60 days"
 msgstr "31-60 Tage"
 
 #. placeholder {0}: new Date().getFullYear()
-#: src/routes/settings/document-numbering.tsx:134
+#: src/routes/settings/document-numbering.tsx:140
 #: src/routes/settings/invoice.tsx:164
 msgid "4-digit year ({0})"
 msgstr "Jahr, 4-stellig ({0})"
@@ -417,7 +417,7 @@ msgstr "Automatischer Zeitplan"
 msgid "Available stock"
 msgstr "Verfügbarer Bestand"
 
-#: src/routes/settings/document-numbering.tsx:116
+#: src/routes/settings/document-numbering.tsx:119
 #: src/routes/settings/invoice.tsx:148
 msgid "Available variables"
 msgstr "Verfügbare Variablen"
@@ -814,7 +814,7 @@ msgstr "Stadt"
 msgid "Client"
 msgstr "Kunde"
 
-#: src/routes/settings/document-numbering.tsx:151
+#: src/routes/settings/document-numbering.tsx:157
 #: src/routes/settings/invoice.tsx:182
 msgid "Client code (e.g. AP, MS)"
 msgstr "Kundencode (z. B. AP, MS)"
@@ -1110,11 +1110,11 @@ msgstr "Dieser Fertigungsauftrag konnte nicht geladen werden"
 msgid "Couldn't load this purchase order"
 msgstr "Diese Bestellung konnte nicht geladen werden"
 
-#: src/routes/settings/document-numbering.tsx:92
+#: src/routes/settings/document-numbering.tsx:95
 msgid "Counter"
 msgstr "Zähler"
 
-#: src/routes/settings/document-numbering.tsx:95
+#: src/routes/settings/document-numbering.tsx:98
 #: src/routes/settings/invoice.tsx:202
 msgid "Counter must be 0 or greater"
 msgstr "Zähler muss 0 oder größer sein"
@@ -1378,7 +1378,7 @@ msgid "day"
 msgstr "Tag"
 
 #. placeholder {0}: String(new Date().getDate()).padStart(2, "0")
-#: src/routes/settings/document-numbering.tsx:149
+#: src/routes/settings/document-numbering.tsx:155
 #: src/routes/settings/invoice.tsx:180
 msgid "Day of month ({0})"
 msgstr "Tag des Monats ({0})"
@@ -1713,7 +1713,7 @@ msgid "Document layout"
 msgstr "Dokumentlayout"
 
 #: src/layouts/base.tsx:322
-#: src/routes/settings/document-numbering.tsx:236
+#: src/routes/settings/document-numbering.tsx:242
 msgid "Document Numbering"
 msgstr "Belegnummerierung"
 
@@ -1964,7 +1964,7 @@ msgstr "Quellensteuer aktivieren"
 msgid "End"
 msgstr "Ende"
 
-#: src/routes/settings/document-numbering.tsx:103
+#: src/routes/settings/document-numbering.tsx:106
 msgid "Enter a format to see a preview"
 msgstr "Format eingeben, um eine Vorschau zu sehen"
 
@@ -2270,7 +2270,7 @@ msgstr "Kassenbewegungen konnten nicht geladen werden"
 msgid "Failed to load loan status"
 msgstr "Kreditstatus konnte nicht geladen werden"
 
-#: src/routes/settings/document-numbering.tsx:196
+#: src/routes/settings/document-numbering.tsx:202
 msgid "Failed to load numbering settings"
 msgstr "Nummerierungseinstellungen konnten nicht geladen werden"
 
@@ -2352,7 +2352,7 @@ msgstr "Buchung konnte nicht storniert werden"
 msgid "Failed to save bill of materials"
 msgstr "Stückliste konnte nicht gespeichert werden"
 
-#: src/routes/settings/document-numbering.tsx:226
+#: src/routes/settings/document-numbering.tsx:232
 msgid "Failed to save numbering settings"
 msgstr "Nummerierungseinstellungen konnten nicht gespeichert werden"
 
@@ -2804,7 +2804,7 @@ msgstr "Auf Lager"
 msgid "Inactive"
 msgstr "Inaktiv"
 
-#: src/routes/settings/document-numbering.tsx:46
+#: src/routes/settings/document-numbering.tsx:49
 #: src/routes/settings/document-templates.tsx:284
 msgid "Inbound Delivery"
 msgstr "Eingangslieferung"
@@ -3351,7 +3351,7 @@ msgid "Month"
 msgstr "Monat"
 
 #. placeholder {0}: new Date().toLocaleString("en", { month: "short" })
-#: src/routes/settings/document-numbering.tsx:145
+#: src/routes/settings/document-numbering.tsx:151
 #: src/routes/settings/invoice.tsx:176
 msgid "Month name ({0})"
 msgstr "Monatsname ({0})"
@@ -3572,7 +3572,7 @@ msgstr "Neuer Benutzer"
 msgid "New vendor"
 msgstr "Neuer Lieferant"
 
-#: src/routes/settings/document-numbering.tsx:94
+#: src/routes/settings/document-numbering.tsx:97
 msgid "Next document will use this number + 1"
 msgstr "Das nächste Dokument verwendet diese Nummer + 1"
 
@@ -3955,7 +3955,7 @@ msgstr "Nichts zu löschen – diese Organisation war leer"
 msgid "Number"
 msgstr "Nummer"
 
-#: src/routes/settings/document-numbering.tsx:72
+#: src/routes/settings/document-numbering.tsx:75
 msgid "Number format"
 msgstr "Nummernformat"
 
@@ -3971,7 +3971,7 @@ msgstr "Nummerierung"
 msgid "numbering setting(s)"
 msgstr "Nummerierungseinstellung(en)"
 
-#: src/routes/settings/document-numbering.tsx:224
+#: src/routes/settings/document-numbering.tsx:230
 msgid "Numbering settings saved"
 msgstr "Nummerierungseinstellungen gespeichert"
 
@@ -4073,7 +4073,7 @@ msgstr "oder"
 
 #: src/routes/deliveries.tsx:162
 #: src/routes/orders/details.tsx:284
-#: src/routes/settings/document-numbering.tsx:40
+#: src/routes/settings/document-numbering.tsx:43
 #: src/routes/settings/document-templates.tsx:263
 msgid "Order"
 msgstr "Bestellung"
@@ -4224,7 +4224,7 @@ msgid "Outbound Deliveries"
 msgstr "Ausgangslieferungen"
 
 #: src/routes/deliveries/details.tsx:331
-#: src/routes/settings/document-numbering.tsx:44
+#: src/routes/settings/document-numbering.tsx:47
 #: src/routes/settings/document-templates.tsx:277
 msgid "Outbound Delivery"
 msgstr "Ausgangslieferung"
@@ -4596,7 +4596,7 @@ msgstr "Füllt den Steuermarkenbetrag einer neuen Rechnung vor. Der gesetzliche 
 msgid "Prefix"
 msgstr "Präfix"
 
-#: src/routes/settings/document-numbering.tsx:101
+#: src/routes/settings/document-numbering.tsx:104
 #: src/routes/settings/invoice.tsx:133
 msgid "Preview"
 msgstr "Vorschau"
@@ -4692,7 +4692,7 @@ msgstr "Produkt(e)"
 
 #: src/routes/production-orders/details.tsx:517
 #: src/routes/production-orders/details.tsx:542
-#: src/routes/settings/document-numbering.tsx:48
+#: src/routes/settings/document-numbering.tsx:51
 msgid "Production Order"
 msgstr "Fertigungsauftrag"
 
@@ -4744,7 +4744,7 @@ msgid "Purchase order"
 msgstr "Bestellung"
 
 #: src/routes/purchase-orders/details.tsx:379
-#: src/routes/settings/document-numbering.tsx:42
+#: src/routes/settings/document-numbering.tsx:45
 #: src/routes/settings/document-templates.tsx:256
 msgid "Purchase Order"
 msgstr "Bestellung"
@@ -5312,7 +5312,7 @@ msgstr "Umsatz nach Produkt"
 #: src/routes/orders/details.tsx:650
 #: src/routes/purchase-orders/details.tsx:827
 #: src/routes/settings/backup.tsx:279
-#: src/routes/settings/document-numbering.tsx:269
+#: src/routes/settings/document-numbering.tsx:275
 #: src/routes/settings/invoice.tsx:261
 #: src/routes/settings/users.tsx:300
 msgid "Save"
@@ -5505,7 +5505,7 @@ msgstr "Feedback senden"
 msgid "Sent"
 msgstr "Gesendet"
 
-#: src/routes/settings/document-numbering.tsx:129
+#: src/routes/settings/document-numbering.tsx:132
 #: src/routes/settings/invoice.tsx:161
 msgid "Sequential number"
 msgstr "Fortlaufende Nummer"
@@ -5897,7 +5897,7 @@ msgstr "Vielen Dank für Ihr Vertrauen"
 msgid "The ISO country code — drives currency/date formatting defaults and which e-invoicing profile applies. Separate from the Country field near the top, which only picks a starter chart of accounts."
 msgstr "Der ISO-Ländercode — steuert die Standardformatierung von Währung/Datum und welches E-Rechnungs-Profil angewendet wird. Getrennt vom Feld \"Land\" weiter oben, das nur einen Start-Kontenplan auswählt."
 
-#: src/routes/settings/document-numbering.tsx:239
+#: src/routes/settings/document-numbering.tsx:245
 msgid "The number format and next counter for each document type. Invoice numbering is configured separately under Invoice settings."
 msgstr "Das Nummernformat und der nächste Zähler für jeden Belegtyp. Die Rechnungsnummerierung wird separat unter den Rechnungseinstellungen konfiguriert."
 
@@ -5957,7 +5957,7 @@ msgstr "Dies kann nicht rückgängig gemacht werden."
 #: src/routes/invoices/details.tsx:845
 #: src/routes/invoices/details.tsx:893
 #: src/routes/invoices/details.tsx:962
-#: src/routes/settings/document-numbering.tsx:75
+#: src/routes/settings/document-numbering.tsx:78
 #: src/routes/settings/invoice.tsx:117
 #: src/routes/settings/invoice.tsx:201
 msgid "This field is required!"
@@ -6598,6 +6598,6 @@ msgstr "ihre.email@beispiel.de (optional)"
 msgid "Zero rated goods"
 msgstr "Steuersatz null"
 
-#: src/routes/settings/document-numbering.tsx:132
-msgid "Zero-padded sequential number (e.g. {number:4} → 0007)"
-msgstr "Mit Nullen aufgefüllte fortlaufende Nummer (z. B. {number:4} → 0007)"
+#: src/routes/settings/document-numbering.tsx:138
+msgid "Zero-padded sequential number (e.g. {zeroPaddedExample} → 0007)"
+msgstr "Mit Nullen aufgefüllte fortlaufende Nummer (z. B. {zeroPaddedExample} → 0007)"

@@ -19,6 +19,9 @@ import { generateDocumentNumber, validateDocumentNumberFormat } from "src/utils/
 
 const { Title, Text } = Typography;
 
+// Shown in the "Available variables" list; see the Trans that uses it.
+const zeroPaddedExample = "{number:4}";
+
 // The five document types with a document_number_settings row — invoices
 // keep their own numbering fields on Settings -> Invoice (see
 // db/document_number.go for why they weren't folded into this table).
@@ -129,7 +132,12 @@ function DocumentNumberingCard({ documentType, label }: { documentType: string; 
               ["{number}", <Trans key="n">Sequential number</Trans>],
               [
                 "{number:N}",
-                <Trans key="np">{`Zero-padded sequential number (e.g. {number:4} → 0007)`}</Trans>,
+                // The example token is passed in as a value: written literally,
+                // ICU MessageFormat parses "{number:4}" as a (malformed)
+                // placeholder and the catalog fails to compile (audit F149).
+                <Trans key="np">
+                  Zero-padded sequential number (e.g. {zeroPaddedExample} → 0007)
+                </Trans>,
               ],
               ["{year}", <Trans key="y">{`4-digit year (${new Date().getFullYear()})`}</Trans>],
               [
