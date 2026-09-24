@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -349,5 +350,72 @@ func TestGenerateEInvoiceRejectsMissingLineTaxRate(t *testing.T) {
 	}
 	if !strings.Contains(verr.Error(), "line item 1 tax rate") {
 		t.Fatalf("expected error to mention the missing tax rate, got %q", verr.Error())
+	}
+}
+
+// TestGenerateEInvoiceCarriesInvoiceDiscount covers audit F142: an invoice
+// discount must reach the XML as document-level allowances per VAT category,
+// with every monetary total net of it, so PayableAmount equals the invoice's
+// own total rather than the undiscounted one.
+func TestGenerateEInvoiceCarriesInvoiceDiscount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	seeded := seedGermanInvoice(t, d)
+	reduced, err := d.CreateTaxRate(CreateTaxRateRequest{
+		ID: "tax-xr-7", OrganizationID: seeded.OrganizationID, Name: "VAT 7%", Percentage: 7, CategoryCode: "S",
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+	standard := "tax-xr"
+
+	// 19% group 30.00 and 7% group 10.00 (subtotal 40.00), discount 8.00:
+	// allowances 6.00 / 2.00, taxable 24.00 / 8.00, tax 4.56 / 0.56.
+	invoice, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-xr-discount", OrganizationID: seeded.OrganizationID, Number: "INV-2026-002",
+		ClientID: seeded.ClientID, Date: 1736895600000, Currency: "EUR",
+		BuyerReference: ptr("04011000-1234512345-06"),
+		SubTotal:       4000, DiscountAmount: 800, TaxTotal: 512, Total: 3712,
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Description: ptr("Consulting"), Quantity: 3, UnitPrice: 1000, TaxRate: &standard},
+			{Description: ptr("Books"), Quantity: 1, UnitPrice: 1000, TaxRate: &reduced.ID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+
+	raw, err := d.GenerateEInvoice(invoice.ID)
+	if err != nil {
+		t.Fatalf("GenerateEInvoice: %v", err)
+	}
+	xml := string(raw)
+	for _, want := range []string{
+		`<cbc:LineExtensionAmount currencyID="EUR">40.00</cbc:LineExtensionAmount>`,
+		`<cbc:TaxExclusiveAmount currencyID="EUR">32.00</cbc:TaxExclusiveAmount>`,
+		`<cbc:TaxInclusiveAmount currencyID="EUR">37.12</cbc:TaxInclusiveAmount>`,
+		`<cbc:AllowanceTotalAmount currencyID="EUR">8.00</cbc:AllowanceTotalAmount>`,
+		`<cbc:PayableAmount currencyID="EUR">37.12</cbc:PayableAmount>`,
+		`<cbc:TaxAmount currencyID="EUR">5.12</cbc:TaxAmount>`,
+		`<cbc:TaxableAmount currencyID="EUR">24.00</cbc:TaxableAmount>`,
+		`<cbc:TaxableAmount currencyID="EUR">8.00</cbc:TaxableAmount>`,
+		`<cbc:Amount currencyID="EUR">6.00</cbc:Amount>`,
+		`<cbc:Amount currencyID="EUR">2.00</cbc:Amount>`,
+		`<cbc:ChargeIndicator>false</cbc:ChargeIndicator>`,
+		`<cbc:AllowanceChargeReasonCode>95</cbc:AllowanceChargeReasonCode>`,
+	} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("e-invoice missing %s", want)
+		}
+	}
+	if strings.Count(xml, "<cac:AllowanceCharge>") != 2 {
+		t.Errorf("want one allowance per VAT category (2), got %d", strings.Count(xml, "<cac:AllowanceCharge>"))
+	}
+	// UBL schema order: AllowanceCharge comes before TaxTotal.
+	if strings.Index(xml, "<cac:AllowanceCharge>") > strings.Index(xml, "<cac:TaxTotal>") {
+		t.Error("cac:AllowanceCharge must precede cac:TaxTotal")
+	}
+	if payable := fmt.Sprintf("%d.%02d", invoice.Total/100, invoice.Total%100); !strings.Contains(xml, ">"+payable+"</cbc:PayableAmount>") {
+		t.Errorf("PayableAmount should equal the invoice total %s", payable)
 	}
 }
