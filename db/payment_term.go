@@ -190,9 +190,30 @@ func (d *Database) SeedDefaultPaymentTermsForAllOrganizations() error {
 		if count > 0 {
 			continue
 		}
-		if err := seedDefaultPaymentTerms(d.DB, orgID); err != nil {
-			return fmt.Errorf("seed_default_payment_terms_for_all_organizations seed %s: %w", orgID, err)
+		if err := d.seedDefaultPaymentTermsForOrganization(orgID); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// seedDefaultPaymentTermsForOrganization seeds one organization's starter
+// set in a single transaction. The COUNT(*) == 0 gate above never re-fires
+// once any row exists, so a seed interrupted halfway would otherwise leave a
+// partial set for good. The gate's read happens before Beginx()
+// (db.SetMaxOpenConns(1) — a d.DB read while a transaction is open
+// deadlocks).
+func (d *Database) seedDefaultPaymentTermsForOrganization(orgID string) error {
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return fmt.Errorf("seed_default_payment_terms_for_all_organizations begin %s: %w", orgID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := seedDefaultPaymentTerms(tx, orgID); err != nil {
+		return fmt.Errorf("seed_default_payment_terms_for_all_organizations seed %s: %w", orgID, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("seed_default_payment_terms_for_all_organizations commit %s: %w", orgID, err)
 	}
 	return nil
 }
