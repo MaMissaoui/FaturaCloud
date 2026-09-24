@@ -663,6 +663,9 @@ export interface PaymentApplication {
   paymentId: string;
   documentType: "invoice" | "incoming_invoice";
   documentId: string;
+  // The invoice line a Cash Book loan payment settles (migration 0090);
+  // null for an invoice-level application.
+  invoiceLineItemId?: string | null;
   amount: number;
   createdAt: number;
 }
