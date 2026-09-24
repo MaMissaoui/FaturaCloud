@@ -30,6 +30,13 @@ func TestFrenchNumber(t *testing.T) {
 		1000000: "un million",
 		2000000: "deux millions",
 		1234567: "un million deux cent trente-quatre mille cinq cent soixante-sept",
+		// "cents"/"quatre-vingts" lose their plural before "mille" (F144),
+		// but keep it before "millions".
+		80000:     "quatre-vingt mille",
+		200000:    "deux cent mille",
+		300080:    "trois cent mille quatre-vingts",
+		280000:    "deux cent quatre-vingt mille",
+		200000000: "deux cents millions",
 	}
 	for n, want := range cases {
 		if got := frenchNumber(n); got != want {

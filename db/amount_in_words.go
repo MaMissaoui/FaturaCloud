@@ -84,6 +84,18 @@ func frenchBelow1000(n int) string {
 	return s + " " + frenchBelow100(rest)
 }
 
+// invariableBeforeMille drops the plural "s" that "cents" and
+// "quatre-vingts" take when they end a number: "mille" is an adjective, so
+// before it they stay invariable (deux cent mille, quatre-vingt mille —
+// audit F144). Before "million"/"milliard", which are nouns, the plural
+// stays (deux cents millions), so only the thousands group goes through this.
+func invariableBeforeMille(s string) string {
+	if strings.HasSuffix(s, "cents") || strings.HasSuffix(s, "quatre-vingts") {
+		return strings.TrimSuffix(s, "s")
+	}
+	return s
+}
+
 // frenchNumber spells any non-negative int64. "mille" is invariable
 // (deux mille, not deux milles); million/milliard take an "s" in the plural.
 // Scale words are space-separated.
@@ -114,7 +126,7 @@ func frenchNumber(n int64) string {
 		if thousands == 1 {
 			parts = append(parts, "mille")
 		} else {
-			parts = append(parts, frenchBelow1000(int(thousands))+" mille")
+			parts = append(parts, invariableBeforeMille(frenchBelow1000(int(thousands)))+" mille")
 		}
 		n %= 1000
 	}
