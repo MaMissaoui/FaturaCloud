@@ -28,6 +28,10 @@ type orgProfile struct {
 	// server's own validateInvoiceNumberFormat (db/organization.go) doesn't
 	// recognize it.
 	invoiceNumberFormat string
+	// documentLayout is the organization's export layout
+	// (organizations.documentLayout, set on create) — "" leaves it unset,
+	// i.e. the server's generic default layout.
+	documentLayout string
 	// invoiceNumberPrefix is the prefix seeder.go's local invoiceNum
 	// numberer uses ("" means "INV") — kept in sync with invoiceNumberFormat
 	// by hand, since CreateInvoice (unlike CreateOrder/CreatePurchaseOrder/…)
@@ -88,6 +92,9 @@ var orgProfiles = map[string]orgProfile{
 		// Fabrication) instead of the tool's English defaults — see
 		// setupOrganization/setupDocumentNumberSettings below.
 		invoiceNumberFormat: "FAC-{year}-{number}", invoiceNumberPrefix: "FAC",
+		// The Tunisian "Facture" export layout, as a real Tunisian org would
+		// pick in Organizations ▸ Formatting ▸ Document layout.
+		documentLayout: "tunisia",
 		documentNumberFormats: map[string]string{
 			"order":            "CMD-{year}-{number:3}",
 			"purchase_order":   "BC-{year}-{number:4}",
@@ -171,6 +178,7 @@ func (s *Seeder) setupOrganization() error {
 		// document this tool created. p.invoiceNumberFormat overrides this
 		// per-country (e.g. Tunisia's "FAC-{year}-{number}").
 		InvoiceNumberFormat: strPtr(orDefault(p.invoiceNumberFormat, "INV-{year}-{number}")),
+		DocumentLayout:      nonEmptyStrPtr(p.documentLayout),
 	}
 
 	var org db.Organization

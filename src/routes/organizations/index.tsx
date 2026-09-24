@@ -40,6 +40,7 @@ import {
 import PageHeader from "src/components/page-header";
 import OrganizationsTable from "src/components/organizations/organizations-table";
 import OrganizationEditDrawer from "src/components/organizations/organization-edit-drawer";
+import { normalizeDocumentLayout } from "src/types/document-layout";
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 
 // The GL-default account Selects the edit drawer renders. A cleared one has
@@ -160,7 +161,7 @@ export default function Organizations() {
     editRequestIdRef.current++;
     setEditingId(null);
     form.resetFields();
-    form.setFieldsValue({ minimum_fraction_digits: 2, currency: "EUR" });
+    form.setFieldsValue({ minimum_fraction_digits: 2, currency: "EUR", documentLayout: "default" });
     setActiveSections([]);
     setDrawerOpen(true);
   };
@@ -200,6 +201,7 @@ export default function Organizations() {
       form.setFieldsValue({
         ...org,
         date_format: org.date_format ?? undefined,
+        documentLayout: normalizeDocumentLayout(org.documentLayout),
         // defaultFiscalStampAmount is stored in cents like every other
         // money column; this form (unlike the invoice form's atom) has no
         // existing cents<->units conversion layer, so it's done here and

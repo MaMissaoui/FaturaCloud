@@ -1,31 +1,39 @@
-// Command gen generates the embedded default Excel export templates under
-// db/templates/ (invoice_default.xlsx, purchase_order_default.xlsx,
-// order_default.xlsx, incoming_invoice_default.xlsx, delivery_default.xlsx,
-// inbound_delivery_default.xlsx, …) — see each buildXTemplate function's own
-// doc comment (invoice.go, purchase_order.go, order.go,
-// incoming_invoice.go, delivery.go, inbound_delivery.go) for that document
-// type's layout. A real Excel/LibreOffice session wasn't available in the
-// environment this feature was built in, so each output is built
-// programmatically via excelize rather than hand-authored — every output is
-// still a real, valid .xlsx a user can open and edit like any other.
+// Command gen generates the embedded Excel export templates under
+// db/templates/ — two per document type, one per organization document layout
+// (organizations.documentLayout):
 //
-// Run from the repo root and copy the outputs over the committed defaults
+//   - <type>_default.xlsx — the generic layout (seller block, document title
+//     top-right, a labeled party block, a Product/Description/Quantity/Unit
+//     Price/Tax Rate/Line Total table, Subtotal/Tax/Total footer), built by
+//     each build<Type>DefaultTemplate in <type>_default.go.
+//   - <type>_tunisia.xlsx — the Tunisian "Facture"-style layout, built by each
+//     build<Type>TunisiaTemplate in <type>.go on top of the shared frame in
+//     tunisia_layout.go.
+//
+// The document types are invoice, purchase_order, order, incoming_invoice,
+// delivery and inbound_delivery. A real Excel/LibreOffice session wasn't
+// available in the environment this feature was built in, so each output is
+// built programmatically via excelize rather than hand-authored — every output
+// is still a real, valid .xlsx a user can open and edit like any other.
+//
+// Run from the repo root and move the outputs over the committed templates
 // whenever a layout needs a deliberate change:
 //
-//	go run ./db/templates/gen \
-//	  && mv db/templates/gen/invoice_default.xlsx db/templates/invoice_default.xlsx \
-//	  && mv db/templates/gen/purchase_order_default.xlsx db/templates/purchase_order_default.xlsx \
-//	  && mv db/templates/gen/order_default.xlsx db/templates/order_default.xlsx \
-//	  && mv db/templates/gen/incoming_invoice_default.xlsx db/templates/incoming_invoice_default.xlsx \
-//	  && mv db/templates/gen/delivery_default.xlsx db/templates/delivery_default.xlsx \
-//	  && mv db/templates/gen/inbound_delivery_default.xlsx db/templates/inbound_delivery_default.xlsx
+//	go run ./db/templates/gen && mv db/templates/gen/*.xlsx db/templates/
 package main
 
 func main() {
-	buildInvoiceTemplate()
-	buildPurchaseOrderTemplate()
-	buildOrderTemplate()
-	buildIncomingInvoiceTemplate()
-	buildDeliveryTemplate()
-	buildInboundDeliveryTemplate()
+	buildInvoiceDefaultTemplate()
+	buildPurchaseOrderDefaultTemplate()
+	buildOrderDefaultTemplate()
+	buildIncomingInvoiceDefaultTemplate()
+	buildDeliveryDefaultTemplate()
+	buildInboundDeliveryDefaultTemplate()
+
+	buildInvoiceTunisiaTemplate()
+	buildPurchaseOrderTunisiaTemplate()
+	buildOrderTunisiaTemplate()
+	buildIncomingInvoiceTunisiaTemplate()
+	buildDeliveryTunisiaTemplate()
+	buildInboundDeliveryTunisiaTemplate()
 }

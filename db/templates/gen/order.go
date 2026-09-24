@@ -1,11 +1,11 @@
 package main
 
-// buildOrderTemplate generates db/templates/order_default.xlsx via the shared
+// buildOrderTunisiaTemplate generates db/templates/order_tunisia.xlsx via the shared
 // Tunisian layout. An order is sales-side outward (a "Bon de commande" the
 // customer places, or a confirmation), so the boxed block shows the client.
 // Orders have no per-line tax rate at all (db.OrderLineItem), so the VAT recap
 // is a single zero-tax row and Total TVA is always zero.
-func buildOrderTemplate() {
+func buildOrderTunisiaTemplate() {
 	f := buildTunisiaLayout(tunisiaLayoutSpec{
 		sheet:     "Commande",
 		title:     "Commande N°: {{order.number}}",
@@ -33,7 +33,7 @@ func buildOrderTemplate() {
 		footerRight: "{{organization.bankName}}",
 	})
 	addAvailableFieldsSheet(f, orderFieldRefs)
-	finalizeWorkbook(f, "Commande", "db/templates/gen/order_default.xlsx")
+	finalizeWorkbook(f, "Commande", "db/templates/gen/order_tunisia.xlsx")
 }
 
 // orderFieldRefs groups every placeholder

@@ -32,7 +32,17 @@ func FillIncomingInvoiceTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	blocks := []repeatBlock{{marker: lineItemMarker, rows: lineRows, required: true}}
+	// The Tunisia-layout template carries a per-rate VAT recap; an optional
+	// block, so templates without the marker (the default layout, most
+	// uploads) are unaffected. Incoming invoices have no discount.
+	exportItems := make([]exportLineItem, len(lineItems))
+	for i, li := range lineItems {
+		exportItems[i] = exportLineItem{Quantity: li.Quantity, UnitPrice: li.UnitPrice, TaxRate: li.TaxRate}
+	}
+	blocks := []repeatBlock{
+		{marker: lineItemMarker, rows: lineRows, required: true},
+		{marker: taxLineMarker, rows: buildTaxBreakdownRows(exportItems, taxRates, currency, org.MinimumFractionDigits, org.CountryCode, 0)},
+	}
 	return fillTemplate(templateBytes, scalars, blocks, logo, orientation)
 }
 
@@ -64,7 +74,7 @@ func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingIn
 		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: get vendor: %w", err)
 	}
 
-	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "incoming_invoice")
+	templateBytes, _, err := resolveTemplateBytes(d, invoice.OrganizationID, "incoming_invoice", org.DocumentLayout)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_incoming_invoice_export_data: resolve template: %w", err)
 	}
@@ -147,6 +157,7 @@ func buildIncomingInvoiceScalarPlaceholders(invoice IncomingInvoice, org Organiz
 func buildIncomingInvoiceLineItemPlaceholders(li IncomingInvoiceLineItem, currency string, minimumFractionDigits *int64, countryCode *string, taxRatePercent string) map[string]string {
 	lineTotal := lineTotalCents(li.Quantity, li.UnitPrice)
 	return map[string]string{
+		"lineItems.sku":         derefString(li.SKU),
 		"lineItems.description": li.Description,
 		"lineItems.quantity":    formatQuantity(li.Quantity),
 		"lineItems.unitPrice":   formatMoneyCents(li.UnitPrice, currency, minimumFractionDigits, countryCode),

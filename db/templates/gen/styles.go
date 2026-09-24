@@ -163,3 +163,20 @@ func applyPageFooter(f *excelize.File, sheet string) {
 		log.Fatal(err)
 	}
 }
+
+// newDarkHeaderStyle is the generic ("default") layout's line-item header
+// band — bold white text on a dark slate fill, the header every document type
+// used before the Tunisian layout's lighter bordered header replaced
+// templateStyles.header. Registered only by the default-layout builders, so
+// the Tunisia workbooks' style tables stay exactly as they were.
+func newDarkHeaderStyle(f *excelize.File) int {
+	style, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"1E293B"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return style
+}

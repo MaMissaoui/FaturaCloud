@@ -38,7 +38,13 @@ func FillPurchaseOrderTemplate(
 	for i, li := range lineItems {
 		lineRows[i] = buildPurchaseOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
 	}
-	blocks := []repeatBlock{{marker: lineItemMarker, rows: lineRows, required: true}}
+	// The Tunisia-layout template carries a per-rate VAT recap; an optional
+	// block, so templates without the marker (the default layout, most
+	// uploads) are unaffected.
+	blocks := []repeatBlock{
+		{marker: lineItemMarker, rows: lineRows, required: true},
+		{marker: taxLineMarker, rows: buildTaxBreakdownRows(exportItems, taxRates, currency, org.MinimumFractionDigits, org.CountryCode, 0)},
+	}
 	return fillTemplate(templateBytes, scalars, blocks, logo, orientation)
 }
 
@@ -74,7 +80,7 @@ func (d *Database) FetchPurchaseOrderExportData(orderID string) (*PurchaseOrder,
 		vendor = *v
 	}
 
-	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "purchase_order")
+	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "purchase_order", org.DocumentLayout)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_purchase_order_export_data: resolve template: %w", err)
 	}

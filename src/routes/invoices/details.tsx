@@ -737,7 +737,7 @@ const InvoiceDetails: React.FC = () => {
 
                   {/* Both fields are independent, organization-level opt-ins
                       (see Organizations → Accounting) — deliberately not
-                      gated on invoiceLayout, which is only a PDF template
+                      gated on documentLayout, which is only a template
                       choice; any layout can carry either field, and either
                       field can be used without switching layout. */}
                   {(!!organization.fiscalStampEnabled || !!organization.withholdingTaxEnabled) && (

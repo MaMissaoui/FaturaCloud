@@ -72,7 +72,7 @@ func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem
 		client = *c
 	}
 
-	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "order")
+	templateBytes, _, err := resolveTemplateBytes(d, order.OrganizationID, "order", org.DocumentLayout)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, "", fmt.Errorf("fetch_order_export_data: resolve template: %w", err)
 	}

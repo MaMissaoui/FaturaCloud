@@ -102,7 +102,7 @@ function buildOrganization(overrides: Partial<Organization> = {}): Organization 
     amountInWordsEnabled: 0,
     defaultFiscalStampAmount: null,
     defaultStampDutyAccountId: null,
-    invoiceLayout: null,
+    documentLayout: null,
     defaultCashRegisterAccountId: null,
     ...overrides,
   };

@@ -1,12 +1,12 @@
 package main
 
-// buildIncomingInvoiceTemplate generates
-// db/templates/incoming_invoice_default.xlsx via the shared Tunisian layout.
+// buildIncomingInvoiceTunisiaTemplate generates
+// db/templates/incoming_invoice_tunisia.xlsx via the shared Tunisian layout.
 // A vendor bill (Facture fournisseur) is inward — the boxed second-party
 // block shows the vendor (who issued it), while the seller block is the
 // organization receiving the bill. It has real server-validated stored totals
 // (unlike purchase orders/orders), so the totals block reads them directly.
-func buildIncomingInvoiceTemplate() {
+func buildIncomingInvoiceTunisiaTemplate() {
 	f := buildTunisiaLayout(tunisiaLayoutSpec{
 		sheet:     "Facture fournisseur",
 		title:     "Facture N°: {{incomingInvoice.number}}",
@@ -19,6 +19,11 @@ func buildIncomingInvoiceTemplate() {
 			"MF: {{vendor.vatin}}",
 		},
 		columns: []tableColumn{
+			// A Code column like every other Tunisia-layout type: the frame's
+			// column widths (and the VAT recap beneath) assume Code in A and
+			// Désignation in the wide B, so without it Désignation wrapped
+			// into the narrow A column.
+			{"Code", "{{lineItems.sku}}", false},
 			{"Désignation", "{{lineItems.description}}", false},
 			{"Quantité", "{{lineItems.quantity}}", true},
 			{"P.U HT", "{{lineItems.unitPrice}}", true},
@@ -34,7 +39,7 @@ func buildIncomingInvoiceTemplate() {
 		footerRight: "{{organization.bankName}}",
 	})
 	addAvailableFieldsSheet(f, incomingInvoiceFieldRefs)
-	finalizeWorkbook(f, "Facture fournisseur", "db/templates/gen/incoming_invoice_default.xlsx")
+	finalizeWorkbook(f, "Facture fournisseur", "db/templates/gen/incoming_invoice_tunisia.xlsx")
 }
 
 // incomingInvoiceFieldRefs groups every placeholder
@@ -70,6 +75,7 @@ var incomingInvoiceFieldRefs = []fieldRef{
 	{"Header", "{{vendor.city}}", "Vendor city"},
 
 	{"Item lines", "{{#lineItems}}", "Marker (not a value) — place alone in one cell of the row to repeat once per line item"},
+	{"Item lines", "{{lineItems.sku}}", "Linked product's SKU (the Code column), blank on a free-text line"},
 	{"Item lines", "{{lineItems.description}}", "Line item description"},
 	{"Item lines", "{{lineItems.quantity}}", "Quantity"},
 	{"Item lines", "{{lineItems.unitPrice}}", "Unit price, formatted with currency"},

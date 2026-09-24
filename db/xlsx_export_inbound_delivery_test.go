@@ -105,3 +105,15 @@ func TestEmbeddedDefaultInboundDeliveryTemplatePlaceholdersAllResolve(t *testing
 			"lineItems.unit": true, "lineItems.unitCost": true, "lineItems.lineTotal": true,
 		})
 }
+
+// TestEmbeddedTunisiaInboundDeliveryTemplatePlaceholdersAllResolve is the same guard
+// for the Tunisia-layout template (inbound_delivery_tunisia.xlsx).
+func TestEmbeddedTunisiaInboundDeliveryTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
+	assertEmbeddedTemplatePlaceholdersResolve(t, inboundDeliveryTunisiaTemplate, "inbound delivery",
+		buildInboundDeliveryScalarPlaceholders(testInboundDelivery(), testOrg(), testVendor(), "EUR"),
+		map[string]bool{
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
+			"lineItems.unit": true, "lineItems.unitCost": true, "lineItems.lineTotal": true,
+		})
+}

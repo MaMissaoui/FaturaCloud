@@ -109,7 +109,19 @@ func TestEmbeddedDefaultIncomingInvoiceTemplatePlaceholdersAllResolve(t *testing
 	assertEmbeddedTemplatePlaceholdersResolve(t, incomingInvoiceDefaultTemplate, "incoming invoice",
 		buildIncomingInvoiceScalarPlaceholders(testIncomingInvoice(), testOrg(), testVendor(), "EUR"),
 		map[string]bool{
-			"lineItems.description": true, "lineItems.quantity": true,
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
+			"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
+		})
+}
+
+// TestEmbeddedTunisiaIncomingInvoiceTemplatePlaceholdersAllResolve is the same guard
+// for the Tunisia-layout template (incoming_invoice_tunisia.xlsx).
+func TestEmbeddedTunisiaIncomingInvoiceTemplatePlaceholdersAllResolve(t *testing.T) {
+	t.Parallel()
+	assertEmbeddedTemplatePlaceholdersResolve(t, incomingInvoiceTunisiaTemplate, "incoming invoice",
+		buildIncomingInvoiceScalarPlaceholders(testIncomingInvoice(), testOrg(), testVendor(), "EUR"),
+		map[string]bool{
+			"lineItems.sku": true, "lineItems.description": true, "lineItems.quantity": true,
 			"lineItems.unitPrice": true, "lineItems.taxRate": true, "lineItems.lineTotal": true,
 		})
 }

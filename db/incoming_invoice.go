@@ -55,6 +55,9 @@ type IncomingInvoiceLineItem struct {
 	UnitPrice               int64   `db:"unitPrice"               json:"unitPrice"`
 	TaxRate                 *string `db:"taxRate"                 json:"taxRate"`
 	Position                int     `db:"position"                json:"position"`
+	// Joined from products via productId; nil on a free-text line or an
+	// unset SKU — same convention as PurchaseOrderLineItem.SKU.
+	SKU *string `db:"sku" json:"sku"`
 }
 
 type CreateIncomingInvoiceRequest struct {
@@ -135,7 +138,10 @@ func (d *Database) GetIncomingInvoice(id string) (*IncomingInvoice, error) {
 func (d *Database) GetIncomingInvoiceLineItems(invoiceID string) ([]IncomingInvoiceLineItem, error) {
 	items := []IncomingInvoiceLineItem{}
 	err := d.DB.Select(&items,
-		`SELECT * FROM incoming_invoice_line_items WHERE incomingInvoiceId = ? ORDER BY position ASC`,
+		`SELECT iili.*, p.sku AS sku
+		 FROM incoming_invoice_line_items iili
+		 LEFT JOIN products p ON iili.productId = p.id
+		 WHERE iili.incomingInvoiceId = ? ORDER BY iili.position ASC`,
 		invoiceID,
 	)
 	if err != nil {
