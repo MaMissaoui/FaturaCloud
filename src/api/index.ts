@@ -1396,8 +1396,9 @@ export const GetCashMovementDetails = (
 
 // The Cash Book screen's embedded loan tracker — see db/dashboard.go's
 // LoanStatusRow doc comment for the "was ever a loan" filter (a settled
-// loan still appears, with outstanding: 0; a pure cash sale never does) and
-// for how each invoice's payments are split across its lines.
+// loan still appears, with outstanding: 0; a pure cash sale never does, and
+// neither does a loan cleared by one invoice-level payment) and for how each
+// invoice's payments are split across its lines.
 export interface LoanStatusRow {
   lineId: string;
   invoiceId: string;

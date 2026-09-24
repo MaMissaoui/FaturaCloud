@@ -237,3 +237,92 @@ func TestAllocateCappedRespectsCapsAndConservesTotal(t *testing.T) {
 		}
 	}
 }
+
+// TestLoanStatusKeepsALoanClearedByOneLinePayment pins the fix for the loan
+// that vanished from the tracker: a zero-deposit loan cleared by exactly one
+// payment used to look like a pure cash sale (one full payment), so it
+// dropped out even though it was a loan. A line payment names its line,
+// which a cash sale's upfront payment never does, and that keeps it listed.
+func TestLoanStatusKeepsALoanClearedByOneLinePayment(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-one-pay-loan")
+	register := accountByCode(t, d, fx.orgID, "1010")
+	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
+		DefaultCashRegisterAccountID: &register.ID,
+		InvoiceNumberFormat:          ptr("LOAN-{number}"),
+	}); err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
+	sale := func(amountReceived int64) string {
+		t.Helper()
+		result, err := d.CreateCashSale(CreateCashSaleRequest{
+			OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+			LineItems: []CreateInvoiceLineItemRequest{
+				{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+			},
+			SubTotal: 1000, TaxTotal: 200, Total: 1200,
+			AmountReceived: amountReceived, PaymentMethod: "cash",
+		})
+		if err != nil {
+			t.Fatalf("CreateCashSale: %v", err)
+		}
+		return result.Invoice.ID
+	}
+	cashSaleID := sale(1200)
+	loanID := sale(0)
+	items, err := d.GetInvoiceLineItems(loanID)
+	if err != nil || len(items) != 1 {
+		t.Fatalf("GetInvoiceLineItems = %v, %v; want one line", items, err)
+	}
+	if _, err := d.CreateCashSalePayment(CreateCashSalePaymentRequest{
+		InvoiceID: loanID, InvoiceLineItemID: items[0].ID, Amount: 1200, Date: fx.date + dayLaterMs,
+	}); err != nil {
+		t.Fatalf("CreateCashSalePayment: %v", err)
+	}
+
+	rows, err := d.GetLoanStatus(fx.orgID, "")
+	if err != nil {
+		t.Fatalf("GetLoanStatus: %v", err)
+	}
+	var loanRows int
+	for _, r := range rows {
+		if r.InvoiceID == cashSaleID {
+			t.Fatalf("a cash sale paid in full upfront should not appear in loan status: %+v", r)
+		}
+		if r.InvoiceID == loanID {
+			loanRows++
+			if r.Amount != 1200 || r.Paid != 1200 || r.Outstanding != 0 {
+				t.Fatalf("settled loan row = %+v, want amount=1200 paid=1200 outstanding=0", r)
+			}
+		}
+	}
+	if loanRows != 1 {
+		t.Fatalf("loan cleared by one line payment: %d rows in loan status, want 1", loanRows)
+	}
+}
+
+// TestAllocateInvoiceLinesWithANegativeLine checks that a credit line (a
+// negative unit price) can't drive any line's amount or paid below zero, and
+// that both still add up to the invoice's figures.
+func TestAllocateInvoiceLinesWithANegativeLine(t *testing.T) {
+	for _, invoicePaid := range []int64{0, 700, 1800} {
+		lines := []loanLineRaw{
+			{LineID: "a", NetLine: 2000, InvoiceTotal: 1800, InvoicePaid: invoicePaid},
+			{LineID: "b", NetLine: -500, InvoiceTotal: 1800, InvoicePaid: invoicePaid},
+		}
+		amounts, paid := allocateInvoiceLines(lines)
+		var amountSum, paidSum int64
+		for k := range lines {
+			if amounts[k] < 0 || paid[k] < 0 || paid[k] > amounts[k] {
+				t.Fatalf("paid %d: line %s amount %d paid %d, want 0 <= paid <= amount",
+					invoicePaid, lines[k].LineID, amounts[k], paid[k])
+			}
+			amountSum += amounts[k]
+			paidSum += paid[k]
+		}
+		if amountSum != 1800 || paidSum != invoicePaid {
+			t.Fatalf("paid %d: amounts sum %d, paid sum %d; want 1800 and %d", invoicePaid, amountSum, paidSum, invoicePaid)
+		}
+	}
+}

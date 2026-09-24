@@ -147,7 +147,7 @@ func documentPaidAmountExpr(docAlias, documentType, statusClause string) string 
 
 // documentPaymentAppCountExpr is documentPaidAmountExpr's COUNT(*) twin,
 // used by GetLoanStatus to tell a pure cash sale (exactly one full payment)
-// from a loan.
+// from a loan — see LoanStatusRow's doc comment.
 func documentPaymentAppCountExpr(docAlias, documentType, statusClause string) string {
 	return fmt.Sprintf(`(
 		SELECT COUNT(*)
@@ -242,6 +242,17 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 // count against that line only, while invoice-level payments (the upfront
 // amount of a cash sale, anything recorded through the invoice page's
 // payment panel) are spread across the lines — see allocateInvoiceLines.
+//
+// The tracker lists every invoice that was ever a loan, including one since
+// settled (its lines show outstanding 0), and leaves out a pure cash sale —
+// one paid in full by a single payment. An invoice counts as a loan when it
+// has no payment yet, more than one, a balance still owing, or any Cash Book
+// line settlement (lineAppCount): only POST /api/cash-sales/{id}/payments
+// names a line, so a zero-deposit loan cleared by one line payment stays
+// listed. What the filter still can't tell from a cash sale is a loan
+// cleared by exactly one invoice-level payment (recorded from the invoice
+// page, or a repayment made before migration 0090) — both are one full
+// payment with no line named.
 type LoanStatusRow struct {
 	LineID    string `db:"lineId"      json:"lineId"`
 	InvoiceID string `db:"invoiceId"   json:"invoiceId"`
@@ -270,6 +281,7 @@ type loanLineRaw struct {
 	InvoiceTotal  int64   `db:"invoiceTotal"`
 	InvoicePaid   int64   `db:"invoicePaid"`
 	AppCount      int64   `db:"appCount"`
+	LineAppCount  int64   `db:"lineAppCount"`
 	LinePaid      int64   `db:"linePaid"`
 	ProductName   string  `db:"productName"`
 	Sku           string  `db:"sku"`
@@ -294,6 +306,13 @@ func loanLinesQuery(where string) string {
 		       %s AS invoicePaid,
 		       %s AS appCount,
 		       (
+		           SELECT COUNT(*)
+		           FROM payment_applications pa
+		           JOIN payments p ON p.id = pa.paymentId
+		           WHERE pa.documentType = 'invoice' AND pa.documentId = i.id
+		             AND pa.invoiceLineItemId IS NOT NULL AND %s
+		       ) AS lineAppCount,
+		       (
 		           SELECT COALESCE(SUM(pa.amount), 0)
 		           FROM payment_applications pa
 		           JOIN payments p ON p.id = pa.paymentId
@@ -311,6 +330,7 @@ func loanLinesQuery(where string) string {
 		documentPaidAmountExpr("i", "invoice", paymentsPosted),
 		documentPaymentAppCountExpr("i", "invoice", paymentsPosted),
 		paymentsPosted,
+		paymentsPosted,
 		where,
 	)
 }
@@ -324,7 +344,7 @@ func loanLinesQuery(where string) string {
 // amount and then line id breaking ties so the order is deterministic.
 func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusRow, error) {
 	query := `SELECT * FROM (` + loanLinesQuery(`i.organizationId = ? AND i.state IN ('sent', 'paid')`) + `)
-		WHERE (appCount = 0 OR appCount > 1 OR invoicePaid < invoiceTotal)`
+		WHERE (appCount = 0 OR appCount > 1 OR invoicePaid < invoiceTotal OR lineAppCount > 0)`
 	args := []any{organizationID}
 	if clientID != "" {
 		query += " AND clientId = ?"
