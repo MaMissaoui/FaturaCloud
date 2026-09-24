@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
+import { atomWithStorage, unwrap } from "jotai/utils";
 import type { Organization } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
@@ -150,6 +150,18 @@ export const myOrgRoleAtom = atom(async (get) => {
 });
 myOrgRoleAtom.debugLabel = "myOrgRoleAtom";
 
+// myOrgRoleSyncAtom is myOrgRoleAtom without suspending: "" until the role
+// has loaded (the same "unresolved = unrestricted" convention ROLE_MENU uses),
+// then the role. For components deep inside a page that only need to hide an
+// action a role can't perform, where a suspense boundary would be overkill.
+export const myOrgRoleSyncAtom = unwrap(myOrgRoleAtom, (prev) => prev ?? "");
+myOrgRoleSyncAtom.debugLabel = "myOrgRoleSyncAtom";
+
+// PAYMENT_WRITE_ROLES are the roles POST /api/payments and its void route
+// accept (audit F104: an accounting-tier action — api/payments.go). "" (still
+// loading) is included so the controls don't flicker away on first render.
+export const PAYMENT_WRITE_ROLES = ["", "admin", "power_user", "general", "accounting"];
+
 // isOrgAdminAtom reports whether the current user is an admin member of the
 // currently selected organization — the per-org counterpart to
 // isPlatformAdminAtom, gating org-scoped admin actions (delete/reset
@@ -168,12 +180,11 @@ export const isOrgAdminOrAccountingAtom = atom(async (get) => {
 isOrgAdminOrAccountingAtom.debugLabel = "isOrgAdminOrAccountingAtom";
 
 // isCashbookAtom reports whether the current user's role in the selected
-// organization is the narrow "cashbook" (counter/till) role. Used purely as
-// a UI restriction: the sidebar shows only Cash Book and Clients, and
-// BaseLayout bounces any other route back to /cash-book. This is deliberate
-// frontend-only gating — reads stay membership-level server-side for every
-// role (api/CLAUDE.md), so a cashbook user can still read an invoice they
-// navigate to directly; hiding it just keeps the counter workflow focused.
+// organization is the narrow "cashbook" (counter/till) role. The sidebar
+// shows only Cash Book and Clients, and BaseLayout bounces any other route
+// back to /cash-book. Since 2026-09-22 the server enforces the same scope
+// (api/sections.go's section guard 403s the sections this UI hides), so
+// this is the UI half of a real boundary, not the only one.
 export const isCashbookAtom = atom(async (get) => (await get(myOrgRoleAtom)) === "cashbook");
 isCashbookAtom.debugLabel = "isCashbookAtom";
 

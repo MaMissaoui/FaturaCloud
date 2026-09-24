@@ -1,4 +1,6 @@
 import { memo, useCallback, useEffect, useState } from "react";
+import { useAtomValue } from "jotai";
+import { myOrgRoleSyncAtom, PAYMENT_WRITE_ROLES } from "src/atoms/organization";
 import {
   App,
   Button,
@@ -135,6 +137,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   countryCode,
 }) => {
   const { i18n } = useLingui();
+  const orgRole = useAtomValue(myOrgRoleSyncAtom);
   const { message } = App.useApp();
   const dateFormat = useDatePickerFormat();
   const [rows, setRows] = useState<PaymentRow[]>([]);
@@ -363,6 +366,11 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
 
   if (embedded) return paymentModal;
 
+  // Recording and voiding are accounting-tier on the server (F104); a sales
+  // or purchasing member keeps the read-only history rather than buttons that
+  // only ever 403 (audit F148).
+  const canWritePayments = PAYMENT_WRITE_ROLES.includes(orgRole);
+
   return (
     <Card size="small" title={<Trans>Payments</Trans>} style={{ marginTop: 24 }}>
       <Descriptions column={3} size="small" style={{ marginBottom: 8 }}>
@@ -421,7 +429,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
           <Table.Column
             key="actions"
             render={(row: PaymentRow) =>
-              row.payment.status === "posted" ? (
+              canWritePayments && row.payment.status === "posted" ? (
                 <Popconfirm
                   title={t`Void this payment?`}
                   description={t`This reverses its journal entry and restores the balance due.`}
@@ -439,7 +447,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
         </Table>
       )}
 
-      {hasPostedEntry && balanceDue > 0 && (
+      {canWritePayments && hasPostedEntry && balanceDue > 0 && (
         <Button onClick={openModal} style={{ marginBottom: 16 }}>
           <Trans>Record payment</Trans>
         </Button>

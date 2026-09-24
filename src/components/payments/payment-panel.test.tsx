@@ -32,7 +32,18 @@ vi.mock("src/api", () => ({
   VoidPayment: vi.fn(),
 }));
 
+// The role gate (audit F148) reads myOrgRoleSyncAtom; swapped for a plain
+// settable atom here so a test can pick the role without mocking the whole
+// organization/role fetch chain.
+vi.mock("src/atoms/organization", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/atoms/organization")>();
+  const { atom } = await import("jotai");
+  return { ...actual, myOrgRoleSyncAtom: atom("") };
+});
+
 import { GetAccounts, GetInvoicePayments, GetPayment, CreatePayment } from "src/api";
+import { myOrgRoleSyncAtom } from "src/atoms/organization";
+import { createStore } from "jotai";
 
 const payment: Payment = {
   id: "pay_1",
@@ -137,6 +148,41 @@ describe("PaymentPanel", () => {
         expect.objectContaining({ method: "cash", bankAccountId: "acct_cash" }),
       ),
     );
+  });
+
+  it.each([
+    ["sales", false],
+    ["purchasing", false],
+    ["accounting", true],
+    ["general", true],
+  ])("offers Record payment/Void to the %s role: %s", async (role, allowed) => {
+    vi.clearAllMocks();
+    vi.mocked(GetInvoicePayments).mockResolvedValue([application]);
+    vi.mocked(GetPayment).mockResolvedValue(payment);
+    vi.mocked(GetAccounts).mockResolvedValue([]);
+    const store = createStore();
+    store.set(myOrgRoleSyncAtom as any, role);
+
+    await renderWithProviders(
+      <PaymentPanel
+        organizationId="org_1"
+        documentType="invoice"
+        documentId="inv_4"
+        direction="inbound"
+        clientId="client_1"
+        currency="EUR"
+        orgCurrency="EUR"
+        total={10000}
+        hasPostedEntry={true}
+      />,
+      { jotaiStore: store },
+    );
+
+    // The history stays visible to every role; only the write actions are
+    // gated, since POST /api/payments and its void are accounting-tier.
+    await waitFor(() => expect(screen.getByText("REF-1")).toBeInTheDocument());
+    expect(!!screen.queryByRole("button", { name: "Record payment" })).toBe(allowed);
+    expect(!!screen.queryByRole("button", { name: "Void" })).toBe(allowed);
   });
 
   it("renders nothing when there's no posted GL entry and no payment history", async () => {

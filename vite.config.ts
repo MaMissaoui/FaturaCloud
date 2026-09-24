@@ -11,7 +11,9 @@ export default defineConfig(async () => ({
       plugins: ["@lingui/babel-plugin-lingui-macro"],
       presets: ["jotai-babel/preset"],
     }),
-    lingui(),
+    // Fail the build on a message that doesn't compile (e.g. a literal "{...}"
+    // ICU reads as a placeholder) instead of shipping it untranslated.
+    lingui({ failOnCompileError: true }),
     sentryVitePlugin({
       org: "mohamed-ali-missaoui",
       project: "faturacloud",
