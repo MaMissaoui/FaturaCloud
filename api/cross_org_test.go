@@ -372,9 +372,10 @@ var domainRouteRoles = map[routeKey][]string{
 	{"DELETE", "/api/clients/{id}"}:                       {"sales"},
 	{"POST", "/api/organizations/{orgId}/clients/import"}: {"sales"},
 
-	{"PUT", "/api/invoices/{id}"}:         {"sales"},
-	{"PATCH", "/api/invoices/{id}/state"}: {"sales"},
-	{"DELETE", "/api/invoices/{id}"}:      {"sales"},
+	{"PUT", "/api/invoices/{id}"}:             {"sales"},
+	{"PATCH", "/api/invoices/{id}/state"}:     {"sales"},
+	{"POST", "/api/cash-sales/{id}/payments"}: {"cashbook"},
+	{"DELETE", "/api/invoices/{id}"}:          {"sales"},
 
 	{"PUT", "/api/orders/{id}"}:          {"sales"},
 	{"PATCH", "/api/orders/{id}/status"}: {"sales"},

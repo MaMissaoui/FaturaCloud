@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -234,7 +235,7 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 	}
 	row += 2
 
-	if err := writeHeaderRow(f, sheet, row, []string{"Time", "Type", "Customer", "Amount"}); err != nil {
+	if err := writeHeaderRow(f, sheet, row, []string{"Time", "Type", "Invoice", "Customer", "Amount"}); err != nil {
 		return nil, "", err
 	}
 	row++
@@ -249,15 +250,19 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 		if det.Direction != "in" {
 			sign = "−"
 		}
+		invoiceNumber := ""
+		if det.InvoiceNumber != nil {
+			invoiceNumber = *det.InvoiceNumber
+		}
 		if err := setRow(f, sheet, row, []any{
-			time.UnixMilli(det.Date).UTC().Format("15:04"), movementKindLabel(det.Kind), customer, sign + money(det.Amount),
+			time.UnixMilli(det.Date).UTC().Format("15:04"), movementKindLabel(det.Kind), invoiceNumber, customer, sign + money(det.Amount),
 		}); err != nil {
 			return nil, "", err
 		}
 		row++
 	}
 
-	setColWidths(f, sheet, []float64{14, 20, 28, 16})
+	setColWidths(f, sheet, []float64{14, 20, 16, 28, 16})
 
 	var buf bytes.Buffer
 	raw, err := f.WriteToBuffer()
@@ -343,7 +348,7 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 
 	headerRow := row
 	if err := writeHeaderRow(f, sheet, row, []string{
-		"Customer", "Date", "Product", "SKU", "Qty", "Amount", "Paid", "Outstanding",
+		"Customer", "Date", "Invoice", "Product", "SKU", "Qty", "Amount", "Paid", "Outstanding",
 	}); err != nil {
 		return nil, "", err
 	}
@@ -356,7 +361,7 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 	var totalAmount, totalPaid, totalOutstanding int64
 	for _, r := range rows {
 		if err := setRow(f, sheet, row, []any{
-			r.ClientName, formatOrgDate(r.Date, org.DateFormat),
+			r.ClientName, formatOrgDate(r.Date, org.DateFormat), r.InvoiceNumber,
 			r.ProductName, r.Sku, r.Quantity,
 			money(r.Amount), money(r.Paid), money(r.Outstanding),
 		}); err != nil {
@@ -380,17 +385,17 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 		return nil, "", err
 	}
 	if err := setRow(f, sheet, row, []any{
-		"Total", "", "", "", totalQty, money(totalAmount), money(totalPaid), money(totalOutstanding),
+		"Total", "", "", "", "", totalQty, money(totalAmount), money(totalPaid), money(totalOutstanding),
 	}); err != nil {
 		return nil, "", err
 	}
 	totalStart, _ := excelize.CoordinatesToCellName(1, row)
-	totalEnd, _ := excelize.CoordinatesToCellName(8, row)
+	totalEnd, _ := excelize.CoordinatesToCellName(9, row)
 	if err := f.SetCellStyle(sheet, totalStart, totalEnd, totalStyle); err != nil {
 		return nil, "", err
 	}
 
-	setColWidths(f, sheet, []float64{24, 14, 28, 16, 10, 16, 16, 16})
+	setColWidths(f, sheet, []float64{24, 14, 16, 28, 16, 10, 16, 16, 16})
 
 	var buf bytes.Buffer
 	raw, err := f.WriteToBuffer()
@@ -488,7 +493,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 
 	headerRow := row
 	if err := writeHeaderRow(f, sheet, row, []string{
-		"Date", "Customer", "Method", "Reference", "Status", "Amount",
+		"Date", "Customer", "Invoice", "Method", "Reference", "Status", "Amount",
 	}); err != nil {
 		return nil, "", err
 	}
@@ -508,7 +513,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 			reference = *p.Reference
 		}
 		if err := setRow(f, sheet, row, []any{
-			formatOrgDate(p.Date, org.DateFormat), customer,
+			formatOrgDate(p.Date, org.DateFormat), customer, strings.Join(p.InvoiceNumbers, ", "),
 			paymentMethodLabel(p.Method), reference,
 			paymentStatusLabel(p.Status), money(p.Amount),
 		}); err != nil {
@@ -530,17 +535,17 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 		return nil, "", err
 	}
 	if err := setRow(f, sheet, row, []any{
-		"Total (posted)", "", "", "", "", money(totalPosted),
+		"Total (posted)", "", "", "", "", "", money(totalPosted),
 	}); err != nil {
 		return nil, "", err
 	}
 	totalStart, _ := excelize.CoordinatesToCellName(1, row)
-	totalEnd, _ := excelize.CoordinatesToCellName(6, row)
+	totalEnd, _ := excelize.CoordinatesToCellName(7, row)
 	if err := f.SetCellStyle(sheet, totalStart, totalEnd, totalStyle); err != nil {
 		return nil, "", err
 	}
 
-	setColWidths(f, sheet, []float64{16, 28, 18, 24, 12, 16})
+	setColWidths(f, sheet, []float64{16, 28, 20, 18, 24, 12, 16})
 
 	var buf bytes.Buffer
 	raw, err := f.WriteToBuffer()

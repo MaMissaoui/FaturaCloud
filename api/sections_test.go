@@ -139,8 +139,9 @@ var wantSectionRoutes = map[string]string{
 	"PUT /api/accounts/{id}":                          sectionAccountingWrite,
 
 	// Cash Book
-	"POST /api/cash-movements": sectionCashbook,
-	"POST /api/cash-sales":     sectionCashbook,
+	"POST /api/cash-movements":           sectionCashbook,
+	"POST /api/cash-sales":               sectionCashbook,
+	"POST /api/cash-sales/{id}/payments": sectionCashbook,
 
 	// Reporting — sales analytics
 	"GET /api/organizations/{orgId}/reporting/revenue-trend":    sectionReportSales,

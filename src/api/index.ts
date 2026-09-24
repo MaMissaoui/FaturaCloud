@@ -1252,6 +1252,24 @@ export interface CashSaleResult {
 
 export const CreateCashSale = (req: CreateCashSaleRequest) =>
   post<CashSaleResult>("/cash-sales", req);
+// Settles one line of a loan sale from the Cash Book — see
+// db/cash_sale_payment.go. The amount (cents) can't exceed that line's
+// outstanding balance; the invoice turns "paid" server-side once cleared.
+export interface CreateCashSalePaymentRequest {
+  invoiceLineItemId: string;
+  amount: number;
+  date?: number;
+  reference?: string;
+  notes?: string;
+}
+
+export interface CashSalePaymentResult {
+  payment: Payment;
+  invoice: Invoice;
+}
+
+export const CreateCashSalePayment = (invoiceId: string, req: CreateCashSalePaymentRequest) =>
+  post<CashSalePaymentResult>(`/cash-sales/${invoiceId}/payments`, req);
 export const GetClientOpenInvoices = (clientId: string) =>
   get<OutstandingInvoiceSummary[]>(`/clients/${clientId}/open-invoices`);
 
@@ -1383,6 +1401,8 @@ export const GetCashMovementDetails = (
 export interface LoanStatusRow {
   lineId: string;
   invoiceId: string;
+  // Doubles as the loan number on the Cash Book screen.
+  invoiceNumber: string;
   clientId: string;
   clientName: string;
   date: number;

@@ -656,6 +656,9 @@ export interface Payment {
   journalEntryId: string | null;
   voidingEntryId: string | null;
   createdAt: number;
+  // Numbers of the sales invoices this payment was applied to (the loan
+  // number(s) on the Cash Book). Filled by the org payments list only.
+  invoiceNumbers?: string[];
 }
 
 export interface PaymentApplication {
@@ -663,6 +666,9 @@ export interface PaymentApplication {
   paymentId: string;
   documentType: "invoice" | "incoming_invoice";
   documentId: string;
+  // The invoice line a Cash Book loan payment settles (migration 0090);
+  // null for an invoice-level application.
+  invoiceLineItemId?: string | null;
   amount: number;
   createdAt: number;
 }

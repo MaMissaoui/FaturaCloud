@@ -57,6 +57,7 @@ import { productsAtom, setProductsAtom } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import {
   CreateCashMovement,
+  CreateCashSalePayment,
   CreateCashSale,
   ExportDailyCashMovements,
   ExportLoanStatus,
@@ -64,10 +65,8 @@ import {
   GetAccounts,
   GetCashMovementDetails,
   GetDailyCashMovements,
-  GetInvoice,
   GetLoanStatus,
   GetPayments,
-  UpdateInvoiceState,
 } from "src/api";
 import type {
   CashMovementDetail,
@@ -75,10 +74,9 @@ import type {
   DailyCashMovementRow,
   LoanStatusRow,
 } from "src/api";
-import type { Account, Client, Invoice, Payment } from "src/types/models";
+import type { Account, Client, Payment } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
-import PaymentPanel from "src/components/payments/payment-panel";
 import { useDatePickerFormat } from "src/utils/date";
 import { searchClients } from "src/utils/client-search";
 import { dateSorter, moneySorter, numberSorter, textSorter } from "src/utils/sort";
@@ -412,9 +410,12 @@ const CashBook = () => {
   // know" must not be the same pixels on a counter screen.
   const [loanStatusFailed, setLoanStatusFailed] = useState(false);
   const [openLoansOnly, setOpenLoansOnly] = useState(true);
-  // The invoice whose "Record payment" panel is open, resolved from the loan
-  // report's invoiceId when the button is clicked.
-  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+  // The loan line whose "Record payment" modal is open. Payments settle one
+  // line at a time (POST /api/cash-sales/{invoiceId}/payments), capped at
+  // that line's outstanding balance.
+  const [payingLine, setPayingLine] = useState<LoanStatusRow | null>(null);
+  const [payingSubmitting, setPayingSubmitting] = useState(false);
+  const [payLineForm] = Form.useForm();
   const [downloadingLoanPdf, setDownloadingLoanPdf] = useState(false);
   const [downloadingLoanExcel, setDownloadingLoanExcel] = useState(false);
 
@@ -977,49 +978,43 @@ const CashBook = () => {
     }
   };
 
-  const openPayment = async (invoiceId: string) => {
-    try {
-      setPayingInvoice(await GetInvoice(invoiceId));
-    } catch (error) {
-      console.error("Failed to load invoice:", error);
-      message.error(t`Failed to load invoice`);
-    }
+  const openPayment = (row: LoanStatusRow) => {
+    payLineForm.setFieldsValue({ amount: centsToUnits(row.outstanding) });
+    setPayingLine(row);
   };
 
-  const closePayment = async () => {
-    setPayingInvoice(null);
+  // Records the payment against the one loan line, server-side in a single
+  // transaction that also moves the invoice to "paid" once its whole balance
+  // clears (db/cash_sale_payment.go) — no follow-up state call from here.
+  const handlePayLineSubmit = async (values: any) => {
+    if (!payingLine) return;
+    setPayingSubmitting(true);
+    try {
+      const result = await CreateCashSalePayment(payingLine.invoiceId, {
+        invoiceLineItemId: payingLine.lineId,
+        amount: unitsToCents(toNumber(values.amount) || 0),
+        date: Date.now(),
+      });
+      message.success(
+        result.invoice.state === "paid"
+          ? t`Payment recorded — loan fully settled`
+          : t`Payment recorded`,
+      );
+      setPayingLine(null);
+    } catch (error) {
+      console.error("Failed to record payment:", error);
+      message.error(error instanceof Error ? error.message : t`Failed to record payment`);
+      return;
+    } finally {
+      setPayingSubmitting(false);
+    }
+    // A payment posts to the cash register as well as against the loan, so
+    // refresh the register's movements too — a payment recorded while a sale
+    // is in progress (the register card is hidden then, see the !inSale gate)
+    // would otherwise stay missing from the movements list afterwards.
     await refreshLoanStatus();
-    // A payment posts to the cash register as well as against the invoice, so
-    // refresh the register's movements here too. This runs for every way the
-    // panel closes — a partial payment (PaymentPanel calls onClose, not
-    // onSettled), a full settlement (handleSettled → closePayment), and a
-    // plain dismissal. Without it, a payment recorded while a sale is in
-    // progress (the register card is hidden then — see the !inSale gate)
-    // stayed missing from the movements list after returning to the search
-    // screen, since nothing else re-runs refreshDailyMovement.
     await refreshDailyMovement();
     await refreshPayments();
-  };
-
-  // Auto-progresses the invoice to "paid" once its balance clears — see
-  // db/cash_sale.go's CreateCashSale doc comment for why this Cash-Book-only
-  // follow-up call is the right scope rather than a change to PaymentPanel's
-  // shared, otherwise-manual-state convention. Refreshing the loan report
-  // here is what makes a just-settled loan drop out of the open-only view.
-  const handleSettled = async () => {
-    if (payingInvoice) {
-      try {
-        await UpdateInvoiceState(payingInvoice.id, "paid");
-      } catch (error) {
-        console.error("Failed to mark invoice paid:", error);
-        message.error(
-          t`Payment recorded, but the invoice status couldn't be updated to Paid — update it manually from the invoice page`,
-        );
-      }
-    }
-    // closePayment also refreshes the register movements, so no separate
-    // refreshDailyMovement call is needed here.
-    await closePayment();
   };
 
   const clientName = selectedClient?.name || newClientDraft?.name || "";
@@ -1582,6 +1577,12 @@ const CashBook = () => {
                   )}
                 />
                 <Table.Column
+                  title={<Trans>Invoice</Trans>}
+                  key="invoiceNumber"
+                  sorter={textSorter((row: CashMovementDetail) => row.invoiceNumber ?? "")}
+                  render={(row: CashMovementDetail) => row.invoiceNumber || "—"}
+                />
+                <Table.Column
                   title={<Trans>Customer</Trans>}
                   key="clientName"
                   sorter={textSorter((row: CashMovementDetail) => row.clientName ?? row.note ?? "")}
@@ -1711,6 +1712,14 @@ const CashBook = () => {
             render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
           />
           <Table.Column
+            title={<Trans>Invoice</Trans>}
+            key="invoiceNumber"
+            sorter={textSorter((row: LoanStatusRow) => row.invoiceNumber)}
+            render={(row: LoanStatusRow) => (
+              <span style={{ whiteSpace: "nowrap" }}>{row.invoiceNumber || "—"}</span>
+            )}
+          />
+          <Table.Column
             title={<Trans>Product</Trans>}
             key="product"
             sorter={textSorter((row: LoanStatusRow) => row.productName)}
@@ -1802,7 +1811,7 @@ const CashBook = () => {
                     size="small"
                     icon={<DollarOutlined />}
                     disabled={!isToday}
-                    onClick={() => openPayment(row.invoiceId)}
+                    onClick={() => openPayment(row)}
                     aria-label={compactActions ? t`Record payment` : undefined}
                   >
                     {!compactActions && <Trans>Record payment</Trans>}
@@ -1857,6 +1866,14 @@ const CashBook = () => {
               (p: Payment) => (p.clientId && clientNameById.get(p.clientId)) || "",
             )}
             render={(p: Payment) => (p.clientId && clientNameById.get(p.clientId)) || "—"}
+          />
+          <Table.Column
+            title={<Trans>Invoice</Trans>}
+            key="invoiceNumbers"
+            sorter={textSorter((p: Payment) => (p.invoiceNumbers ?? []).join(", "))}
+            render={(p: Payment) =>
+              p.invoiceNumbers && p.invoiceNumbers.length > 0 ? p.invoiceNumbers.join(", ") : "—"
+            }
           />
           <Table.Column
             title={<Trans>Method</Trans>}
@@ -2001,27 +2018,74 @@ const CashBook = () => {
         </Form>
       </Modal>
 
-      {payingInvoice && organizationId && (
-        <PaymentPanel
-          organizationId={organizationId}
-          documentType="invoice"
-          documentId={payingInvoice.id}
-          direction="inbound"
-          clientId={payingInvoice.clientId}
-          currency={payingInvoice.currency}
-          orgCurrency={organization?.currency || "EUR"}
-          total={payingInvoice.total}
-          hasPostedEntry
-          embedded
-          onClose={closePayment}
-          onSettled={handleSettled}
-          defaultMethod="cash"
-          defaultBankAccountId={organization?.defaultCashRegisterAccountId ?? undefined}
-          hideMethodAndAccount
-          minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
-          countryCode={organization?.country_code}
-        />
-      )}
+      <Modal
+        title={<Trans>Record payment</Trans>}
+        open={!!payingLine}
+        onCancel={() => setPayingLine(null)}
+        onOk={() => payLineForm.submit()}
+        confirmLoading={payingSubmitting}
+        okText={t`Record`}
+        cancelText={t`Cancel`}
+        destroyOnHidden
+      >
+        {payingLine && (
+          <>
+            <Typography.Paragraph>
+              <Typography.Text strong>{payingLine.clientName}</Typography.Text>
+              {payingLine.invoiceNumber && (
+                <Typography.Text type="secondary">
+                  {" · "}
+                  <Trans>Invoice {payingLine.invoiceNumber}</Trans>
+                </Typography.Text>
+              )}
+              <br />
+              {payingLine.productName}
+              {payingLine.sku ? ` (${payingLine.sku})` : ""} × {payingLine.quantity}
+            </Typography.Paragraph>
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={8}>
+                <Typography.Text type="secondary">
+                  <Trans>Amount</Trans>
+                </Typography.Text>
+                <div style={{ whiteSpace: "nowrap" }}>{money(payingLine.amount)}</div>
+              </Col>
+              <Col span={8}>
+                <Typography.Text type="secondary">
+                  <Trans>Paid</Trans>
+                </Typography.Text>
+                <div style={{ whiteSpace: "nowrap" }}>{money(payingLine.paid)}</div>
+              </Col>
+              <Col span={8}>
+                <Typography.Text type="secondary">
+                  <Trans>Outstanding</Trans>
+                </Typography.Text>
+                <div style={{ whiteSpace: "nowrap" }}>
+                  <Typography.Text strong>{money(payingLine.outstanding)}</Typography.Text>
+                </div>
+              </Col>
+            </Row>
+          </>
+        )}
+        <Form form={payLineForm} layout="vertical" onFinish={handlePayLineSubmit}>
+          <Form.Item
+            label={t`Amount received (${currency})`}
+            name="amount"
+            rules={[
+              { required: true, message: t`This field is required!` },
+              {
+                validator: (_, value) =>
+                  payingLine && unitsToCents(toNumber(value) || 0) > payingLine.outstanding
+                    ? Promise.reject(
+                        new Error(t`Cannot exceed the outstanding balance of this item`),
+                      )
+                    : Promise.resolve(),
+              },
+            ]}
+          >
+            <InputNumber style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 };
