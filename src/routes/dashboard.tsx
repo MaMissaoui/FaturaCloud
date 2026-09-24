@@ -9,7 +9,8 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { DashboardOutlined } from "@ant-design/icons";
 
-import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
+import { organizationIdAtom, organizationAtom, myOrgRoleAtom } from "src/atoms/organization";
+import { dashboardWidgetsForRole, isRouteAllowedForRole } from "src/layouts/role-menu";
 import { themeAtom } from "src/atoms/generic";
 import { GetDashboard } from "src/api";
 import type {
@@ -61,6 +62,10 @@ const periodFromValue = (v: string): Period =>
     ? { kind: "year", year: Number(v.slice(1)) }
     : { kind: "months", months: Number(v.slice(1)) };
 
+// Column span for n widgets sharing a row: a hidden widget frees its space
+// instead of leaving a gap.
+const spanFor = (n: number) => (n > 0 ? Math.floor(24 / n) : 24);
+
 const Dashboard = () => {
   useLingui();
   const { i18n } = useLingui();
@@ -69,6 +74,30 @@ const Dashboard = () => {
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
   const themeMode = useAtomValue(themeAtom);
+  const orgRole = useAtomValue(myOrgRoleAtom);
+  const show = dashboardWidgetsForRole(orgRole);
+  const canOpen = (path: string) => isRouteAllowedForRole(orgRole, path);
+  const statCount = [show.sales, show.receivables, show.stock].filter(Boolean).length;
+  const detailCount = [show.receivables, show.stock].filter(Boolean).length;
+  const topCount = show.sales ? 2 : 0;
+  // A row-click handler set for a table row, or none when the role can't
+  // open the target page (the row then isn't presented as clickable).
+  const rowLink = (path: string, go: () => void) =>
+    canOpen(path)
+      ? {
+          onClick: go,
+          onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              go();
+            }
+          },
+          style: { cursor: "pointer" },
+          tabIndex: 0,
+        }
+      : {};
+  const reportLink = (path: string) =>
+    canOpen(path) ? <Link to={path}>{t`View full report`}</Link> : undefined;
 
   const [period, setPeriod] = useState<Period>({ kind: "months", months: 12 });
   const [data, setData] = useState<DashboardData | null>(null);
@@ -159,307 +188,297 @@ const Dashboard = () => {
       )}
 
       <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        <Col xs={24} md={8}>
-          <Card size="small" loading={loading}>
-            <Statistic
-              title={<Trans>Revenue (selected period)</Trans>}
-              value={failed ? "—" : money(revenueTotal)}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card size="small" loading={loading}>
-            <Statistic
-              title={
-                <>
-                  <Trans>Outstanding</Trans>{" "}
-                  <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                    (<Trans>as of today</Trans>)
-                  </Typography.Text>
-                </>
-              }
-              value={failed ? "—" : money(data?.outstanding.total ?? 0)}
-              // Red only when the genuinely alarming (90+ days) bucket is
-              // nonzero — a routine, healthy AR balance is a normal thing
-              // for any active business to carry, so coloring the raw
-              // total red unconditionally meant this card was red for
-              // nearly every organization nearly all the time, which
-              // stops the color signaling anything at all. Matches the
-              // "90+ days" card below, the actually-alarming figure.
-              styles={{
-                content: {
-                  color:
-                    !failed && (data?.outstanding.days90Plus ?? 0) > 0
-                      ? token.colorError
-                      : undefined,
-                },
-              }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card size="small" loading={loading}>
-            <Statistic
-              title={
-                <>
-                  <Trans>Stock valuation</Trans>{" "}
-                  <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                    (<Trans>as of today</Trans>)
-                  </Typography.Text>
-                </>
-              }
-              value={failed ? "—" : money(data?.stockValuation.total ?? 0)}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        <Col span={24}>
-          <Card
-            size="small"
-            title={<Trans>Revenue over time</Trans>}
-            loading={loading}
-            extra={<Link to="/reporting/revenue-trend">{t`View full report`}</Link>}
-          >
-            <div role="img" aria-label={t`Column chart showing revenue over time`}>
-              <Column
-                data={data?.revenueByMonth ?? []}
-                xField="month"
-                yField="revenue"
-                theme={themeMode === "dark" ? "classicDark" : "classic"}
-                height={220}
-                axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-                tooltip={{
-                  items: [
-                    { field: "revenue", name: t`Revenue`, valueFormatter: (v: number) => money(v) },
-                  ],
+        {show.sales && (
+          <Col xs={24} md={spanFor(statCount)}>
+            <Card size="small" loading={loading}>
+              <Statistic
+                title={<Trans>Revenue (selected period)</Trans>}
+                value={failed ? "—" : money(revenueTotal)}
+              />
+            </Card>
+          </Col>
+        )}
+        {show.receivables && (
+          <Col xs={24} md={spanFor(statCount)}>
+            <Card size="small" loading={loading}>
+              <Statistic
+                title={
+                  <>
+                    <Trans>Outstanding</Trans>{" "}
+                    <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+                      (<Trans>as of today</Trans>)
+                    </Typography.Text>
+                  </>
+                }
+                value={failed ? "—" : money(data?.outstanding.total ?? 0)}
+                // Red only when the genuinely alarming (90+ days) bucket is
+                // nonzero — a routine, healthy AR balance is a normal thing
+                // for any active business to carry, so coloring the raw
+                // total red unconditionally meant this card was red for
+                // nearly every organization nearly all the time, which
+                // stops the color signaling anything at all. Matches the
+                // "90+ days" card below, the actually-alarming figure.
+                styles={{
+                  content: {
+                    color:
+                      !failed && (data?.outstanding.days90Plus ?? 0) > 0
+                        ? token.colorError
+                        : undefined,
+                  },
                 }}
               />
-            </div>
-          </Card>
-        </Col>
+            </Card>
+          </Col>
+        )}
+        {show.stock && (
+          <Col xs={24} md={spanFor(statCount)}>
+            <Card size="small" loading={loading}>
+              <Statistic
+                title={
+                  <>
+                    <Trans>Stock valuation</Trans>{" "}
+                    <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+                      (<Trans>as of today</Trans>)
+                    </Typography.Text>
+                  </>
+                }
+                value={failed ? "—" : money(data?.stockValuation.total ?? 0)}
+              />
+            </Card>
+          </Col>
+        )}
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        <Col xs={24} xl={12}>
-          <Card
-            size="small"
-            title={<Trans>Outstanding invoices</Trans>}
-            loading={loading}
-            extra={<Link to="/accounting/reports/ar-aging">{t`View full report`}</Link>}
-          >
-            <Row gutter={[8, 12]} style={{ marginBottom: 12 }}>
-              <Col xs={12} sm={8}>
-                <Statistic
-                  title={<Trans>Current</Trans>}
-                  value={money(data?.outstanding.current ?? 0)}
-                  styles={{ content: outstandingStatisticStyle }}
-                />
-              </Col>
-              <Col xs={12} sm={8}>
-                <Statistic
-                  title={<Trans>1-30 days</Trans>}
-                  value={money(data?.outstanding.days1To30 ?? 0)}
-                  styles={{ content: outstandingStatisticStyle }}
-                />
-              </Col>
-              <Col xs={12} sm={8}>
-                <Statistic
-                  title={<Trans>31-60 days</Trans>}
-                  value={money(data?.outstanding.days31To60 ?? 0)}
-                  styles={{ content: outstandingStatisticStyle }}
-                />
-              </Col>
-              <Col xs={12} sm={8}>
-                <Statistic
-                  title={<Trans>61-90 days</Trans>}
-                  value={money(data?.outstanding.days61To90 ?? 0)}
-                  styles={{ content: outstandingStatisticStyle }}
-                />
-              </Col>
-              <Col xs={12} sm={8}>
-                <Statistic
-                  title={<Trans>90+ days</Trans>}
-                  value={money(data?.outstanding.days90Plus ?? 0)}
-                  styles={{
-                    content: {
-                      ...outstandingStatisticStyle,
-                      color: (data?.outstanding.days90Plus ?? 0) > 0 ? token.colorError : undefined,
-                    },
+      {show.sales && (
+        <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
+          <Col span={24}>
+            <Card
+              size="small"
+              title={<Trans>Revenue over time</Trans>}
+              loading={loading}
+              extra={reportLink("/reporting/revenue-trend")}
+            >
+              <div role="img" aria-label={t`Column chart showing revenue over time`}>
+                <Column
+                  data={data?.revenueByMonth ?? []}
+                  xField="month"
+                  yField="revenue"
+                  theme={themeMode === "dark" ? "classicDark" : "classic"}
+                  height={220}
+                  axis={{ y: { labelFormatter: (v: number) => money(v) } }}
+                  tooltip={{
+                    items: [
+                      {
+                        field: "revenue",
+                        name: t`Revenue`,
+                        valueFormatter: (v: number) => money(v),
+                      },
+                    ],
                   }}
                 />
-              </Col>
-            </Row>
-            <Table
-              dataSource={data?.outstanding.invoices ?? []}
-              rowKey="id"
-              size="small"
-              pagination={{ pageSize: 5, hideOnSinglePage: true }}
-              locale={{ emptyText: <Trans>No outstanding invoices</Trans> }}
-              onRow={(record: OutstandingInvoiceSummary) => ({
-                onClick: () => navigate(`/invoices/${record.id}`),
-                onKeyDown: (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    navigate(`/invoices/${record.id}`);
-                  }
-                },
-                style: { cursor: "pointer" },
-                tabIndex: 0,
-              })}
-            >
-              <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
-              <Table.Column title={<Trans>Client</Trans>} dataIndex="clientName" key="clientName" />
-              <Table.Column
-                title={<Trans>Days overdue</Trans>}
-                dataIndex="daysOverdue"
-                key="daysOverdue"
-                align="right"
-                render={(days: number) => (days > 0 ? days : "—")}
-              />
-              <Table.Column
-                title={<Trans>Total</Trans>}
-                key="total"
-                align="right"
-                render={(inv: OutstandingInvoiceSummary) => money(inv.total)}
-              />
-            </Table>
-          </Card>
-        </Col>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      )}
 
-        <Col xs={24} xl={12}>
-          <Card
-            size="small"
-            title={<Trans>Stock valuation by product</Trans>}
-            loading={loading}
-            extra={<Link to="/accounting/reports/inventory-valuation">{t`View full report`}</Link>}
-          >
-            <Table
-              dataSource={data?.stockValuation.items ?? []}
-              rowKey="productId"
-              size="small"
-              pagination={false}
-              locale={{ emptyText: <Trans>No stock-tracked products</Trans> }}
-              onRow={(record: StockValuationItem) => ({
-                onClick: () =>
-                  navigate("/products", {
-                    state: { productModal: true, productId: record.productId },
-                  }),
-                onKeyDown: (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    navigate("/products", {
-                      state: { productModal: true, productId: record.productId },
-                    });
+      {detailCount > 0 && (
+        <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
+          {show.receivables && (
+            <Col xs={24} xl={spanFor(detailCount)}>
+              <Card
+                size="small"
+                title={<Trans>Outstanding invoices</Trans>}
+                loading={loading}
+                extra={reportLink("/accounting/reports/ar-aging")}
+              >
+                <Row gutter={[8, 12]} style={{ marginBottom: 12 }}>
+                  <Col xs={12} sm={8}>
+                    <Statistic
+                      title={<Trans>Current</Trans>}
+                      value={money(data?.outstanding.current ?? 0)}
+                      styles={{ content: outstandingStatisticStyle }}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8}>
+                    <Statistic
+                      title={<Trans>1-30 days</Trans>}
+                      value={money(data?.outstanding.days1To30 ?? 0)}
+                      styles={{ content: outstandingStatisticStyle }}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8}>
+                    <Statistic
+                      title={<Trans>31-60 days</Trans>}
+                      value={money(data?.outstanding.days31To60 ?? 0)}
+                      styles={{ content: outstandingStatisticStyle }}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8}>
+                    <Statistic
+                      title={<Trans>61-90 days</Trans>}
+                      value={money(data?.outstanding.days61To90 ?? 0)}
+                      styles={{ content: outstandingStatisticStyle }}
+                    />
+                  </Col>
+                  <Col xs={12} sm={8}>
+                    <Statistic
+                      title={<Trans>90+ days</Trans>}
+                      value={money(data?.outstanding.days90Plus ?? 0)}
+                      styles={{
+                        content: {
+                          ...outstandingStatisticStyle,
+                          color:
+                            (data?.outstanding.days90Plus ?? 0) > 0 ? token.colorError : undefined,
+                        },
+                      }}
+                    />
+                  </Col>
+                </Row>
+                <Table
+                  dataSource={data?.outstanding.invoices ?? []}
+                  rowKey="id"
+                  size="small"
+                  pagination={{ pageSize: 5, hideOnSinglePage: true }}
+                  locale={{ emptyText: <Trans>No outstanding invoices</Trans> }}
+                  onRow={(record: OutstandingInvoiceSummary) =>
+                    rowLink(`/invoices/${record.id}`, () => navigate(`/invoices/${record.id}`))
                   }
-                },
-                style: { cursor: "pointer" },
-                tabIndex: 0,
-              })}
-            >
-              <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
-              <Table.Column
-                title={<Trans>Quantity</Trans>}
-                dataIndex="quantity"
-                key="quantity"
-                align="right"
-                render={(qty: number) => formatQty(qty, qtyLocale)}
-              />
-              <Table.Column
-                title={<Trans>Value</Trans>}
-                key="value"
-                align="right"
-                render={(item: StockValuationItem) => money(item.value)}
-              />
-            </Table>
-          </Card>
-        </Col>
-      </Row>
+                >
+                  <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
+                  <Table.Column
+                    title={<Trans>Client</Trans>}
+                    dataIndex="clientName"
+                    key="clientName"
+                  />
+                  <Table.Column
+                    title={<Trans>Days overdue</Trans>}
+                    dataIndex="daysOverdue"
+                    key="daysOverdue"
+                    align="right"
+                    render={(days: number) => (days > 0 ? days : "—")}
+                  />
+                  <Table.Column
+                    title={<Trans>Total</Trans>}
+                    key="total"
+                    align="right"
+                    render={(inv: OutstandingInvoiceSummary) => money(inv.total)}
+                  />
+                </Table>
+              </Card>
+            </Col>
+          )}
 
-      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        <Col xs={24} xl={12}>
-          <Card
-            size="small"
-            title={<Trans>Top clients</Trans>}
-            loading={loading}
-            extra={<Link to="/reporting/sales-by-client">{t`View full report`}</Link>}
-          >
-            <Table
-              dataSource={data?.topClients ?? []}
-              rowKey="clientId"
+          {show.stock && (
+            <Col xs={24} xl={spanFor(detailCount)}>
+              <Card
+                size="small"
+                title={<Trans>Stock valuation by product</Trans>}
+                loading={loading}
+                extra={reportLink("/accounting/reports/inventory-valuation")}
+              >
+                <Table
+                  dataSource={data?.stockValuation.items ?? []}
+                  rowKey="productId"
+                  size="small"
+                  pagination={false}
+                  locale={{ emptyText: <Trans>No stock-tracked products</Trans> }}
+                  onRow={(record: StockValuationItem) =>
+                    rowLink("/products", () =>
+                      navigate("/products", {
+                        state: { productModal: true, productId: record.productId },
+                      }),
+                    )
+                  }
+                >
+                  <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
+                  <Table.Column
+                    title={<Trans>Quantity</Trans>}
+                    dataIndex="quantity"
+                    key="quantity"
+                    align="right"
+                    render={(qty: number) => formatQty(qty, qtyLocale)}
+                  />
+                  <Table.Column
+                    title={<Trans>Value</Trans>}
+                    key="value"
+                    align="right"
+                    render={(item: StockValuationItem) => money(item.value)}
+                  />
+                </Table>
+              </Card>
+            </Col>
+          )}
+        </Row>
+      )}
+
+      {topCount > 0 && (
+        <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
+          <Col xs={24} xl={spanFor(topCount)}>
+            <Card
               size="small"
-              pagination={false}
-              locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
-              onRow={(record: ClientRevenue) => ({
-                onClick: () =>
-                  navigate("/clients", {
-                    state: { clientModal: true, clientId: record.clientId },
-                  }),
-                onKeyDown: (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
+              title={<Trans>Top clients</Trans>}
+              loading={loading}
+              extra={reportLink("/reporting/sales-by-client")}
+            >
+              <Table
+                dataSource={data?.topClients ?? []}
+                rowKey="clientId"
+                size="small"
+                pagination={false}
+                locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
+                onRow={(record: ClientRevenue) =>
+                  rowLink("/clients", () =>
                     navigate("/clients", {
                       state: { clientModal: true, clientId: record.clientId },
-                    });
-                  }
-                },
-                style: { cursor: "pointer" },
-                tabIndex: 0,
-              })}
-            >
-              <Table.Column title={<Trans>Client</Trans>} dataIndex="name" key="name" />
-              <Table.Column
-                title={<Trans>Revenue</Trans>}
-                key="revenue"
-                align="right"
-                render={(c: ClientRevenue) => money(c.revenue)}
-              />
-            </Table>
-          </Card>
-        </Col>
+                    }),
+                  )
+                }
+              >
+                <Table.Column title={<Trans>Client</Trans>} dataIndex="name" key="name" />
+                <Table.Column
+                  title={<Trans>Revenue</Trans>}
+                  key="revenue"
+                  align="right"
+                  render={(c: ClientRevenue) => money(c.revenue)}
+                />
+              </Table>
+            </Card>
+          </Col>
 
-        <Col xs={24} xl={12}>
-          <Card
-            size="small"
-            title={<Trans>Top products</Trans>}
-            loading={loading}
-            extra={<Link to="/reporting/sales-by-product">{t`View full report`}</Link>}
-          >
-            <Table
-              dataSource={data?.topProducts ?? []}
-              rowKey="productId"
+          <Col xs={24} xl={spanFor(topCount)}>
+            <Card
               size="small"
-              pagination={false}
-              locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
-              onRow={(record: ProductRevenue) => ({
-                onClick: () =>
-                  navigate("/products", {
-                    state: { productModal: true, productId: record.productId },
-                  }),
-                onKeyDown: (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
+              title={<Trans>Top products</Trans>}
+              loading={loading}
+              extra={reportLink("/reporting/sales-by-product")}
+            >
+              <Table
+                dataSource={data?.topProducts ?? []}
+                rowKey="productId"
+                size="small"
+                pagination={false}
+                locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
+                onRow={(record: ProductRevenue) =>
+                  rowLink("/products", () =>
                     navigate("/products", {
                       state: { productModal: true, productId: record.productId },
-                    });
-                  }
-                },
-                style: { cursor: "pointer" },
-                tabIndex: 0,
-              })}
-            >
-              <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
-              <Table.Column
-                title={<Trans>Revenue</Trans>}
-                key="revenue"
-                align="right"
-                render={(p: ProductRevenue) => money(p.revenue)}
-              />
-            </Table>
-          </Card>
-        </Col>
-      </Row>
+                    }),
+                  )
+                }
+              >
+                <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
+                <Table.Column
+                  title={<Trans>Revenue</Trans>}
+                  key="revenue"
+                  align="right"
+                  render={(p: ProductRevenue) => money(p.revenue)}
+                />
+              </Table>
+            </Card>
+          </Col>
+        </Row>
+      )}
     </>
   );
 };
