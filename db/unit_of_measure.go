@@ -231,20 +231,41 @@ func (d *Database) SeedDefaultUnitsOfMeasureForAllOrganizations() error {
 		if count > 0 {
 			continue
 		}
-		if err := seedDefaultUnitsOfMeasure(d.DB, orgID); err != nil {
-			return fmt.Errorf("seed_default_units_of_measure_for_all_organizations seed %s: %w", orgID, err)
+		if err := d.seedDefaultUnitsOfMeasureForOrganization(orgID); err != nil {
+			return err
 		}
-		if _, err := d.DB.Exec(`
-			UPDATE products SET unitOfMeasureId = (
-				SELECT id FROM units_of_measure
-				WHERE organizationId = products.organizationId AND name = products.unit COLLATE NOCASE
-				LIMIT 1
-			)
-			WHERE organizationId = ? AND unitOfMeasureId IS NULL AND unit IS NOT NULL AND unit != ''`,
-			orgID,
-		); err != nil {
-			return fmt.Errorf("seed_default_units_of_measure_for_all_organizations backfill %s: %w", orgID, err)
-		}
+	}
+	return nil
+}
+
+// seedDefaultUnitsOfMeasureForOrganization seeds one organization's starter
+// set and links its products in a single transaction. The COUNT(*) == 0 gate
+// above never re-fires once any row exists, so a seed interrupted halfway
+// (a crash, a failed insert) would otherwise leave a partial set for good.
+// The gate's read happens before Beginx() — db.SetMaxOpenConns(1) means a
+// d.DB read while a transaction is open deadlocks.
+func (d *Database) seedDefaultUnitsOfMeasureForOrganization(orgID string) error {
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return fmt.Errorf("seed_default_units_of_measure_for_all_organizations begin %s: %w", orgID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := seedDefaultUnitsOfMeasure(tx, orgID); err != nil {
+		return fmt.Errorf("seed_default_units_of_measure_for_all_organizations seed %s: %w", orgID, err)
+	}
+	if _, err := tx.Exec(`
+		UPDATE products SET unitOfMeasureId = (
+			SELECT id FROM units_of_measure
+			WHERE organizationId = products.organizationId AND name = products.unit COLLATE NOCASE
+			LIMIT 1
+		)
+		WHERE organizationId = ? AND unitOfMeasureId IS NULL AND unit IS NOT NULL AND unit != ''`,
+		orgID,
+	); err != nil {
+		return fmt.Errorf("seed_default_units_of_measure_for_all_organizations backfill %s: %w", orgID, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("seed_default_units_of_measure_for_all_organizations commit %s: %w", orgID, err)
 	}
 	return nil
 }
