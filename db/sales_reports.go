@@ -123,13 +123,15 @@ func (d *Database) GetSalesByClient(organizationID string, startDate, endDate in
 
 // GetSalesByProduct is GetSalesByClient's per-product counterpart, over
 // invoiceLineItems. A line item with no productId (e.g. a free-text service
-// line) is excluded, same as before.
+// line) is excluded, same as before. Revenue is net of tax and of each
+// line's proportional share of its invoice's discount, matching what the GL
+// books as revenue (audit F143).
 func (d *Database) GetSalesByProduct(organizationID string, startDate, endDate int64, limit int) ([]ProductRevenue, error) {
 	args := []any{organizationID}
 	rangeClause := dateRangeFilter("i.date", startDate, endDate, &args)
 	query := `
 		SELECT ili.productId AS productId, COALESCE(p.name, '') AS name,
-		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS revenue
+		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1) * ` + invoiceNetFactorExpr("i.discountAmount", "i.id") + `)) AS INTEGER) AS revenue
 		FROM invoiceLineItems ili
 		JOIN invoices i ON ili.invoiceId = i.id
 		JOIN products p ON ili.productId = p.id
@@ -215,12 +217,32 @@ type TaxSummaryLine struct {
 //     mismatch against the GL for such a document is expected and benign,
 //     not a bug to chase.
 //
-// There is no discount column on invoiceLineItems/incoming_invoice_line_items,
-// so quantity*unitPrice is the correct taxable base — the same base the GL
-// itself computes. Base itself is summed-then-rounded (not per-document):
+// The discount (invoices.discountAmount, migration 0088) is invoice-level,
+// not per line: each tax group's taxable base is its line total less its
+// share of the discount, in proportion to the group's share of the whole
+// subtotal — the same allocation validateInvoiceTotals, buildInvoiceGLLines
+// and buildTaxBreakdownRows use (invoiceNetFactor below). Incoming invoices
+// carry no discount, so quantity*unitPrice is their base. Base itself is summed-then-rounded (not per-document):
 // unlike Tax, there is no stored per-rate "base" figure it needs to
 // reconcile against — invoices.subTotal is a single whole-document number,
 // never split by tax rate.
+// invoiceNetFactorExpr is the fraction of an invoice's line subtotal left
+// after its discount: 1 when there is none (so undiscounted documents compute
+// exactly as before), otherwise 1 − discount / subtotal. Multiplying a line's
+// or a tax group's gross amount by it is the proportional allocation
+// validateInvoiceTotals and buildInvoiceGLLines use. discount and invoiceID
+// are SQL expressions for the invoice's discountAmount and id in the
+// caller's query.
+func invoiceNetFactorExpr(discount, invoiceID string) string {
+	return `(CASE WHEN ` + discount + ` > 0 THEN
+		1.0 - ` + discount + ` * 1.0 / NULLIF((SELECT SUM(li2.quantity * li2.unitPrice) FROM invoiceLineItems li2 WHERE li2.invoiceId = ` + invoiceID + `), 0)
+	ELSE 1.0 END)`
+}
+
+// invoiceNetFactor is invoiceNetFactorExpr for a query grouped per invoice
+// line set (getOutputTaxSummary's inner GROUP BY invoiceId, taxRateId).
+var invoiceNetFactor = invoiceNetFactorExpr("MAX(i.discountAmount)", "ili.invoiceId")
+
 type TaxSummary struct {
 	Output []TaxSummaryLine `json:"output"` // sales / output VAT
 	Input  []TaxSummaryLine `json:"input"`  // purchases / input VAT
@@ -249,8 +271,8 @@ func (d *Database) getOutputTaxSummary(organizationID string, startDate, endDate
 		FROM (
 			SELECT COALESCE(tr.id, '') AS taxRateId, COALESCE(tr.name, '') AS name,
 			       COALESCE(tr.category_code, '') AS categoryCode, COALESCE(tr.percentage, 0) AS percentage,
-			       SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1)) AS rawBase,
-			       ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(i.exchangeRate, 1))) AS docTax
+			       SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1)) * `+invoiceNetFactor+` AS rawBase,
+			       ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(i.exchangeRate, 1)) * `+invoiceNetFactor+`) AS docTax
 			FROM invoiceLineItems ili
 			JOIN invoices i ON ili.invoiceId = i.id
 			LEFT JOIN taxRates tr ON ili.taxRate = tr.id

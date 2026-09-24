@@ -215,11 +215,49 @@ func buildUBLInvoice(profile eInvoiceProfile, invoice *Invoice, lineItems []Invo
 		}
 	}
 
+	// Remise (invoices.discountAmount, migration 0088): a document-level
+	// allowance. EN 16931 carries it as one cac:AllowanceCharge per VAT
+	// category (BR-32 needs the category, BR-33 a reason), and every
+	// category's taxable amount is its line total less that allowance
+	// (BR-S-08) — so the discount is split across the categories in
+	// proportion to their share of the subtotal, the same allocation
+	// validateInvoiceTotals and buildInvoiceGLLines use. Each share is
+	// rounded to the cent and the last category takes the remainder, so the
+	// allowances sum exactly to AllowanceTotalAmount (BR-CO-11).
+	allowanceByRate := map[string]*big.Rat{}
+	discountUnits := new(big.Rat).Quo(new(big.Rat).SetInt64(invoice.DiscountAmount), hundred)
+	var allowances []ublAllowanceCharge
+	if invoice.DiscountAmount > 0 && subtotal.Sign() > 0 {
+		allocated := new(big.Rat)
+		for i, taxRateID := range taxRateOrder {
+			share := new(big.Rat)
+			if i == len(taxRateOrder)-1 {
+				share.Sub(discountUnits, allocated)
+			} else {
+				share.Mul(discountUnits, taxableByRate[taxRateID])
+				share.Quo(share, subtotal)
+				share = roundHalfUp(share, 2)
+			}
+			allocated.Add(allocated, share)
+			allowanceByRate[taxRateID] = share
+			allowances = append(allowances, ublAllowanceCharge{
+				ChargeIndicator:           false,
+				AllowanceChargeReasonCode: "95",
+				AllowanceChargeReason:     "Discount",
+				Amount:                    ublAmount{CurrencyID: currency, Value: formatRat(share)},
+				TaxCategory:               taxCategoryFor(taxRates[taxRateID]),
+			})
+		}
+	}
+
 	taxTotalAmount := new(big.Rat)
 	subtotals := make([]ublTaxSubtotal, 0, len(taxRateOrder))
 	for _, taxRateID := range taxRateOrder {
 		rate := taxRates[taxRateID]
-		taxable := taxableByRate[taxRateID]
+		taxable := new(big.Rat).Set(taxableByRate[taxRateID])
+		if share, ok := allowanceByRate[taxRateID]; ok {
+			taxable.Sub(taxable, share)
+		}
 		pct, err := floatToRat(rate.Percentage)
 		if err != nil {
 			return nil, fmt.Errorf("einvoice tax rate %q percentage: %w", taxRateID, err)
@@ -241,7 +279,8 @@ func buildUBLInvoice(profile eInvoiceProfile, invoice *Invoice, lineItems []Invo
 		})
 	}
 
-	total := new(big.Rat).Add(subtotal, taxTotalAmount)
+	taxExclusive := new(big.Rat).Sub(subtotal, discountUnits)
+	total := new(big.Rat).Add(taxExclusive, taxTotalAmount)
 
 	inv := &ublInvoice{
 		Xmlns:                "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
@@ -260,17 +299,21 @@ func buildUBLInvoice(profile eInvoiceProfile, invoice *Invoice, lineItems []Invo
 			*client.Name, client.Street, client.HouseNumber, *client.PostalCode, *client.City, *client.CountryCode,
 			client.Vatin, client.Phone, nil,
 		)},
+		AllowanceCharge: allowances,
 		TaxTotal: ublTaxTotal{
 			TaxAmount:   ublAmount{CurrencyID: currency, Value: formatRat(taxTotalAmount)},
 			TaxSubtotal: subtotals,
 		},
 		LegalMonetaryTotal: ublMonetaryTotal{
 			LineExtensionAmount: ublAmount{CurrencyID: currency, Value: formatRat(subtotal)},
-			TaxExclusiveAmount:  ublAmount{CurrencyID: currency, Value: formatRat(subtotal)},
+			TaxExclusiveAmount:  ublAmount{CurrencyID: currency, Value: formatRat(taxExclusive)},
 			TaxInclusiveAmount:  ublAmount{CurrencyID: currency, Value: formatRat(total)},
 			PayableAmount:       ublAmount{CurrencyID: currency, Value: formatRat(total)},
 		},
 		InvoiceLine: lines,
+	}
+	if invoice.DiscountAmount > 0 {
+		inv.LegalMonetaryTotal.AllowanceTotalAmount = &ublAmount{CurrencyID: currency, Value: formatRat(discountUnits)}
 	}
 
 	if invoice.BuyerReference != nil && *invoice.BuyerReference != "" {
@@ -487,10 +530,21 @@ type ublTaxTotal struct {
 }
 
 type ublMonetaryTotal struct {
-	LineExtensionAmount ublAmount `xml:"cbc:LineExtensionAmount"`
-	TaxExclusiveAmount  ublAmount `xml:"cbc:TaxExclusiveAmount"`
-	TaxInclusiveAmount  ublAmount `xml:"cbc:TaxInclusiveAmount"`
-	PayableAmount       ublAmount `xml:"cbc:PayableAmount"`
+	LineExtensionAmount  ublAmount  `xml:"cbc:LineExtensionAmount"`
+	TaxExclusiveAmount   ublAmount  `xml:"cbc:TaxExclusiveAmount"`
+	TaxInclusiveAmount   ublAmount  `xml:"cbc:TaxInclusiveAmount"`
+	AllowanceTotalAmount *ublAmount `xml:"cbc:AllowanceTotalAmount,omitempty"`
+	PayableAmount        ublAmount  `xml:"cbc:PayableAmount"`
+}
+
+// ublAllowanceCharge is a document-level allowance (the invoice discount),
+// one per VAT category — see buildUBLInvoice.
+type ublAllowanceCharge struct {
+	ChargeIndicator           bool           `xml:"cbc:ChargeIndicator"`
+	AllowanceChargeReasonCode string         `xml:"cbc:AllowanceChargeReasonCode"`
+	AllowanceChargeReason     string         `xml:"cbc:AllowanceChargeReason"`
+	Amount                    ublAmount      `xml:"cbc:Amount"`
+	TaxCategory               ublTaxCategory `xml:"cac:TaxCategory"`
 }
 
 type ublItem struct {
@@ -530,6 +584,8 @@ type ublInvoice struct {
 
 	PaymentMeans *ublPaymentMeans `xml:"cac:PaymentMeans,omitempty"`
 	PaymentTerms *ublPaymentTerms `xml:"cac:PaymentTerms,omitempty"`
+
+	AllowanceCharge []ublAllowanceCharge `xml:"cac:AllowanceCharge"`
 
 	TaxTotal           ublTaxTotal      `xml:"cac:TaxTotal"`
 	LegalMonetaryTotal ublMonetaryTotal `xml:"cac:LegalMonetaryTotal"`

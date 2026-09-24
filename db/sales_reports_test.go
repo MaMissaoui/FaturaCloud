@@ -426,3 +426,100 @@ func TestGetTaxSummaryRoundsPerDocument(t *testing.T) {
 		t.Fatalf("Base = %d, want 600", summary.Output[0].Base)
 	}
 }
+
+// TestGetTaxSummaryAppliesInvoiceDiscount covers audit F141: the invoice
+// discount (migration 0088) reduces each tax group's base in proportion to
+// its share of the subtotal, and the report must agree with the tax the GL
+// actually posted per rate.
+func TestGetTaxSummaryAppliesInvoiceDiscount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-tax-summary-discount")
+	reduced, err := d.CreateTaxRate(CreateTaxRateRequest{
+		OrganizationID: fx.orgID, Name: "Reduced VAT", Percentage: 10, OutputTaxAccountID: &fx.outputTaxAccountID,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	// 20% group 30.00, 10% group 10.00 (subtotal 40.00), discount 8.00:
+	// the 20% group carries 6.00 of it (net 24.00, tax 4.80), the 10% group
+	// 2.00 (net 8.00, tax 0.80). Total = 32.00 + 5.60 = 37.60.
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-tax-discount", OrganizationID: fx.orgID, ClientID: fx.clientID, Number: "TD-1", Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 3, UnitPrice: 1000, TaxRate: &fx.taxRateID},
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &reduced.ID},
+		},
+		SubTotal: 4000, DiscountAmount: 800, TaxTotal: 560, Total: 3760,
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState: %v", err)
+	}
+
+	summary, err := d.GetTaxSummary(fx.orgID, 0, 0)
+	if err != nil {
+		t.Fatalf("GetTaxSummary: %v", err)
+	}
+	want := map[string][2]int64{fx.taxRateID: {2400, 480}, reduced.ID: {800, 80}}
+	for _, line := range summary.Output {
+		w, ok := want[line.TaxRateID]
+		if !ok {
+			t.Fatalf("unexpected output line %+v", line)
+		}
+		if line.Base != w[0] || line.Tax != w[1] {
+			t.Errorf("rate %s: base %d tax %d, want base %d tax %d", line.TaxRateID, line.Base, line.Tax, w[0], w[1])
+		}
+		var posted int64
+		if err := d.DB.Get(&posted, `SELECT COALESCE(SUM(credit), 0) FROM journal_lines jl JOIN journal_entries je ON je.id = jl.journalEntryId
+			WHERE je.organizationId = ? AND jl.taxRateId = ?`, fx.orgID, line.TaxRateID); err != nil {
+			t.Fatalf("posted tax: %v", err)
+		}
+		if posted != line.Tax {
+			t.Errorf("rate %s: report tax %d, GL posted %d", line.TaxRateID, line.Tax, posted)
+		}
+	}
+	if len(summary.Output) != 2 {
+		t.Fatalf("got %d output lines, want 2", len(summary.Output))
+	}
+}
+
+// TestGetSalesByProductNetsInvoiceDiscount covers audit F143: a product's
+// revenue is its lines' net amount less their share of the invoice discount,
+// so it agrees with the revenue the GL posted.
+func TestGetSalesByProductNetsInvoiceDiscount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-sales-by-product-discount")
+
+	// One product line of 20.00 on a 20% invoice with a 5.00 discount.
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-sbp-discount", OrganizationID: fx.orgID, ClientID: fx.clientID, Number: "SBP-1", Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID}},
+		SubTotal:  2000, DiscountAmount: 500, TaxTotal: 300, Total: 1800,
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState: %v", err)
+	}
+
+	rows, err := d.GetSalesByProduct(fx.orgID, 0, 0, 0)
+	if err != nil {
+		t.Fatalf("GetSalesByProduct: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Revenue != 1500 {
+		t.Fatalf("GetSalesByProduct = %+v, want one product at 1500", rows)
+	}
+	var posted int64
+	if err := d.DB.Get(&posted, `SELECT COALESCE(SUM(credit), 0) FROM journal_lines WHERE accountId = ?`, fx.revenueAccountID); err != nil {
+		t.Fatalf("posted revenue: %v", err)
+	}
+	if posted != rows[0].Revenue {
+		t.Fatalf("report revenue %d, GL posted %d", rows[0].Revenue, posted)
+	}
+}

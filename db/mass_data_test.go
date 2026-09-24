@@ -100,6 +100,62 @@ func TestMassDataClientsExportImportRoundTrip(t *testing.T) {
 	}
 }
 
+// TestMassDataClientsKeepsCounterFields covers audit F145: UpdateClient is a
+// full-row replace, and the client sheet used to omit the Cash Book counter
+// fields (migration 0087), so every re-import NULLed them. They now round
+// trip, and a sheet exported before they existed leaves them untouched.
+func TestMassDataClientsKeepsCounterFields(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-md-clients-counter"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{
+		OrganizationID: org.ID, Name: ptr("Nour Guesmi"), Phone: ptr("20111222"),
+		Address: ptr("12 rue de Carthage"), Phone2: ptr("50333444"), Phone3: ptr("98555666"), Guarantor: ptr("Sami Guesmi"),
+	})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	assertCounterFields := func(t *testing.T, stage string) {
+		t.Helper()
+		got, err := d.GetClient(client.ID)
+		if err != nil {
+			t.Fatalf("GetClient: %v", err)
+		}
+		for name, pair := range map[string][2]*string{
+			"address": {got.Address, client.Address}, "phone2": {got.Phone2, client.Phone2},
+			"phone3": {got.Phone3, client.Phone3}, "guarantor": {got.Guarantor, client.Guarantor},
+		} {
+			if strOrEmpty(pair[0]) != strOrEmpty(pair[1]) {
+				t.Errorf("%s: %s = %q, want %q", stage, name, strOrEmpty(pair[0]), strOrEmpty(pair[1]))
+			}
+		}
+	}
+
+	spec := clientsMassDataSpec{}
+	exported, err := exportMassDataXLSX(spec, d, org.ID)
+	if err != nil {
+		t.Fatalf("exportMassDataXLSX: %v", err)
+	}
+	if result, err := importMassDataXLSX(spec, d, org.ID, exported); err != nil || result.Failed != 0 {
+		t.Fatalf("re-import of an unmodified export: err=%v result=%+v", err, result)
+	}
+	assertCounterFields(t, "after round trip")
+
+	// A workbook in the pre-0087 shape: the original 18 columns only.
+	rows, err := readXLSXRows(t, exported)
+	if err != nil {
+		t.Fatalf("read exported rows: %v", err)
+	}
+	legacy := buildTestXLSX(t, rows[0][:clientsCounterFieldsCol], [][]string{rows[1][:clientsCounterFieldsCol]})
+	if result, err := importMassDataXLSX(spec, d, org.ID, legacy); err != nil || result.Failed != 0 {
+		t.Fatalf("import of a pre-0087 sheet: err=%v result=%+v", err, result)
+	}
+	assertCounterFields(t, "after importing a pre-0087 sheet")
+}
+
 func TestMassDataImportRejectsMissingRequiredField(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)

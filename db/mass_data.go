@@ -40,6 +40,16 @@ type massDataSpec interface {
 	ImportRow(d *Database, organizationID string, ctx any, cells []string) (action, identifier string, err error)
 }
 
+// massDataColumnAware is implemented by a spec that has added columns since
+// its first release (clients: migration 0087's counter fields). The importer
+// tells it how many columns the uploaded sheet's header row actually has, so
+// a workbook exported before a column existed — which padCells hands over as
+// blank — leaves that field as stored instead of clearing it on every
+// updated row. A blank cell in a column the sheet *does* have still clears.
+type massDataColumnAware interface {
+	SetPresentColumns(ctx any, n int) any
+}
+
 // MassDataRowResult reports what happened to one spreadsheet row.
 type MassDataRowResult struct {
 	// Row is the 1-based row number as it appears in Excel (row 1 is the
@@ -132,6 +142,13 @@ func importMassDataXLSX(spec massDataSpec, d *Database, organizationID string, c
 	}
 
 	numCols := len(spec.Headers())
+	if aware, ok := spec.(massDataColumnAware); ok {
+		present := 0
+		if len(allRows) > 0 {
+			present = len(allRows[0])
+		}
+		ctx = aware.SetPresentColumns(ctx, present)
+	}
 	result := &MassDataImportResult{}
 	for i, raw := range allRows {
 		rowNum := i + 1
