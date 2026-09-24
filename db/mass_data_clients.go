@@ -3,8 +3,22 @@ package db
 import "strings"
 
 // clientsMassDataSpec is clients' massDataSpec (db/mass_data.go) — no
-// foreign-key columns, so NewImportContext needs no lookup state.
+// foreign-key columns, so its import context only carries how many columns
+// the uploaded sheet has (see massDataColumnAware).
 type clientsMassDataSpec struct{}
+
+// clientsCounterFieldsCol is the first of the four Cash Book counter columns
+// (migration 0087) — appended after the original 18 so an older export
+// still lines up positionally.
+const clientsCounterFieldsCol = 18
+
+type clientsImportContext struct {
+	presentColumns int
+}
+
+func (clientsMassDataSpec) SetPresentColumns(ctx any, n int) any {
+	return &clientsImportContext{presentColumns: n}
+}
 
 func (clientsMassDataSpec) Headers() []string {
 	return []string{
@@ -12,6 +26,7 @@ func (clientsMassDataSpec) Headers() []string {
 		"Registration Number", "VATIN", "Default Currency",
 		"Street", "House Number", "Postal Code", "City", "Country Code",
 		"Tax Number", "Default Buyer Reference", "Identity Number", "IBAN",
+		"Address", "Phone 2", "Phone 3", "Guarantor",
 	}
 }
 
@@ -27,6 +42,7 @@ func (clientsMassDataSpec) ExportRows(d *Database, organizationID string) ([][]s
 			strOrEmpty(c.RegistrationNumber), strOrEmpty(c.Vatin), strOrEmpty(c.DefaultCurrency),
 			strOrEmpty(c.Street), strOrEmpty(c.HouseNumber), strOrEmpty(c.PostalCode), strOrEmpty(c.City), strOrEmpty(c.CountryCode),
 			strOrEmpty(c.TaxNumber), strOrEmpty(c.DefaultBuyerReference), strOrEmpty(c.IdentityNumber), strOrEmpty(c.Iban),
+			strOrEmpty(c.Address), strOrEmpty(c.Phone2), strOrEmpty(c.Phone3), strOrEmpty(c.Guarantor),
 		}
 	}
 	return rows, nil
@@ -36,7 +52,7 @@ func (clientsMassDataSpec) NewImportContext(d *Database, organizationID string) 
 	return nil, nil
 }
 
-func (clientsMassDataSpec) ImportRow(d *Database, organizationID string, _ any, cells []string) (action, identifier string, err error) {
+func (clientsMassDataSpec) ImportRow(d *Database, organizationID string, ctx any, cells []string) (action, identifier string, err error) {
 	id := strings.TrimSpace(cells[0])
 	name := strings.TrimSpace(cells[1])
 	identifier = name
@@ -62,6 +78,10 @@ func (clientsMassDataSpec) ImportRow(d *Database, organizationID string, _ any, 
 		dst.DefaultBuyerReference = cellStr(cells[15])
 		dst.IdentityNumber = cellStr(cells[16])
 		dst.Iban = cellStr(cells[17])
+		dst.Address = cellStr(cells[18])
+		dst.Phone2 = cellStr(cells[19])
+		dst.Phone3 = cellStr(cells[20])
+		dst.Guarantor = cellStr(cells[21])
 	}
 
 	if id == "" {
@@ -88,6 +108,14 @@ func (clientsMassDataSpec) ImportRow(d *Database, organizationID string, _ any, 
 		Street: create.Street, HouseNumber: create.HouseNumber, PostalCode: create.PostalCode, City: create.City,
 		CountryCode: create.CountryCode, TaxNumber: create.TaxNumber, DefaultBuyerReference: create.DefaultBuyerReference,
 		IdentityNumber: create.IdentityNumber, Iban: create.Iban,
+		Address: create.Address, Phone2: create.Phone2, Phone3: create.Phone3, Guarantor: create.Guarantor,
+	}
+	// UpdateClient replaces every column, so a counter field whose column
+	// the uploaded sheet doesn't have (a workbook exported before migration
+	// 0087) keeps its stored value rather than being cleared.
+	if c, ok := ctx.(*clientsImportContext); ok && c.presentColumns <= clientsCounterFieldsCol {
+		update.Address, update.Phone2, update.Phone3, update.Guarantor =
+			existing.Address, existing.Phone2, existing.Phone3, existing.Guarantor
 	}
 	if _, err := d.UpdateClient(id, update); err != nil {
 		return "", identifier, err
