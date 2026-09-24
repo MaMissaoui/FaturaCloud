@@ -411,7 +411,15 @@ the two-column grid alone). Applied:
 
 | Form    | Always expanded  | Collapsed by default |
 | ------- | ---------------- | -------------------- |
-| Clients | Contact, Address | E-invoicing          |
+| Clients | Contact, Address | Cash Book, E-invoicing |
+
+**Cash Book panel (2026-09-24):** the Cash Book lookup/credit fields (free-text
+address, phone 2/3, identity number, IBAN, guarantor) had grown Contact enough
+to push Address below the fold (286px of scroll at 1440×900, 130px after a
+regrid). They moved into a collapsed "Cash Book" panel ahead of E-invoicing,
+and the drawer fits with no scrollbar again. The `PANEL_OF_FIELD` map in
+`src/components/clients/form.tsx` drives the auto-expand-on-error for both
+panels.
 
 Organizations already had this pattern pre-existing and untouched (it's the
 reference implementation, not something this plan changed).

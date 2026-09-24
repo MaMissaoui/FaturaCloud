@@ -28,9 +28,19 @@ import { currencies } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import ScrollShadow from "src/components/scroll-shadow";
 
-// Fields inside the collapsed "E-invoicing" panel — used to auto-expand it if
-// validation fails on a field the user can't currently see.
-const E_INVOICING_FIELDS = ["tax_number", "default_buyer_reference"];
+// Which collapsed panel each field lives in, so a validation error on a
+// hidden field opens its panel (a collapsed field's error is otherwise
+// invisible — see docs/ui-consistency-plan.md's Tier 1.2 footgun note).
+const PANEL_OF_FIELD: Record<string, string> = {
+  address: "cashbook",
+  phone2: "cashbook",
+  phone3: "cashbook",
+  identity_number: "cashbook",
+  iban: "cashbook",
+  guarantor: "cashbook",
+  tax_number: "einvoicing",
+  default_buyer_reference: "einvoicing",
+};
 
 const ClientForm = () => {
   const location = useLocation();
@@ -76,11 +86,11 @@ const ClientForm = () => {
   }: {
     errorFields: { name: (string | number)[] }[];
   }) => {
-    const hasHiddenError = errorFields.some((field) =>
-      E_INVOICING_FIELDS.includes(String(field.name[0])),
-    );
-    if (hasHiddenError) {
-      setActiveKeys((keys) => (keys.includes("einvoicing") ? keys : [...keys, "einvoicing"]));
+    const panels = errorFields
+      .map((field) => PANEL_OF_FIELD[String(field.name[0])])
+      .filter(Boolean);
+    if (panels.length) {
+      setActiveKeys((keys) => [...new Set([...keys, ...panels])]);
     }
   };
 
@@ -246,52 +256,9 @@ const ClientForm = () => {
                   <Select placeholder={t`E-mails`} mode="tags" tokenSeparators={[",", ";"]} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={8}>
+              <Col xs={24} md={12}>
                 <Form.Item name="phone" label={<Trans>Phone</Trans>}>
                   <Input placeholder={t`Phone`} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="phone2" label={<Trans>Phone 2</Trans>}>
-                  <Input placeholder={t`Phone 2`} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="phone3" label={<Trans>Phone 3</Trans>}>
-                  <Input placeholder={t`Phone 3`} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="identity_number"
-                  label={<Trans>Identity number</Trans>}
-                  tooltip={
-                    <Trans>
-                      Personal ID/CIN card number — used to look up this client in Cash Book, not a
-                      tax ID.
-                    </Trans>
-                  }
-                >
-                  <Input placeholder={t`Identity number`} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="iban"
-                  label={<Trans>IBAN</Trans>}
-                  tooltip={
-                    <Trans>
-                      Search/reference only — used to look up this client in Cash Book, not this
-                      client's bank account for payments.
-                    </Trans>
-                  }
-                >
-                  <Input placeholder={t`IBAN`} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="guarantor" label={<Trans>Guarantor</Trans>}>
-                  <Input placeholder={t`Guarantor`} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
@@ -308,20 +275,6 @@ const ClientForm = () => {
 
           <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
-              <Col xs={24}>
-                <Form.Item
-                  name="address"
-                  label={<Trans>Address</Trans>}
-                  tooltip={
-                    <Trans>
-                      Free-text address for the Cash Book's quick "New customer" form. The
-                      structured fields below are what appears on documents.
-                    </Trans>
-                  }
-                >
-                  <Input placeholder={t`Address`} />
-                </Form.Item>
-              </Col>
               <Col xs={24} md={16}>
                 <Form.Item name="street" label={<Trans>Street</Trans>}>
                   <Input placeholder={t`Street`} />
@@ -371,6 +324,79 @@ const ClientForm = () => {
             activeKey={activeKeys}
             onChange={(keys) => setActiveKeys(keys as string[])}
             items={[
+              {
+                // Cash Book lookup/credit fields: collapsed by default so the
+                // drawer fits without scrolling; every value still loads and
+                // saves (forceRender), and an error inside opens the panel.
+                key: "cashbook",
+                label: <Trans>Cash Book</Trans>,
+                forceRender: true,
+                children: (
+                  <Row gutter={[16, 0]}>
+                    <Col xs={24}>
+                      <Form.Item
+                        name="address"
+                        label={<Trans>Address</Trans>}
+                        tooltip={
+                          <Trans>
+                            Free-text address for the Cash Book's quick "New customer" form. The
+                            structured Address fields are what appears on documents.
+                          </Trans>
+                        }
+                      >
+                        <Input placeholder={t`Address`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="phone2" label={<Trans>Phone 2</Trans>}>
+                        <Input placeholder={t`Phone 2`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item name="phone3" label={<Trans>Phone 3</Trans>}>
+                        <Input placeholder={t`Phone 3`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="identity_number"
+                        label={<Trans>Identity number</Trans>}
+                        tooltip={
+                          <Trans>
+                            Personal ID/CIN card number — used to look up this client in Cash Book,
+                            not a tax ID.
+                          </Trans>
+                        }
+                      >
+                        <Input placeholder={t`Identity number`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="iban"
+                        label={<Trans>IBAN</Trans>}
+                        tooltip={
+                          <Trans>
+                            Search/reference only — used to look up this client in Cash Book, not
+                            this client's bank account for payments.
+                          </Trans>
+                        }
+                      >
+                        <Input placeholder={t`IBAN`} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24}>
+                      <Form.Item
+                        name="guarantor"
+                        label={<Trans>Guarantor</Trans>}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Input placeholder={t`Guarantor`} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                ),
+              },
               {
                 key: "einvoicing",
                 label: <Trans>E-invoicing</Trans>,
