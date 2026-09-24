@@ -43,8 +43,12 @@ type PaymentApplication struct {
 	PaymentID    string `db:"paymentId"    json:"paymentId"`
 	DocumentType string `db:"documentType" json:"documentType"`
 	DocumentID   string `db:"documentId"   json:"documentId"`
-	Amount       int64  `db:"amount"       json:"amount"`
-	CreatedAt    int64  `db:"createdAt"    json:"createdAt"`
+	// InvoiceLineItemID names the invoice line a Cash Book loan payment
+	// settles (migration 0090); nil means the application covers the
+	// invoice as a whole. See CreateCashSalePayment.
+	InvoiceLineItemID *string `db:"invoiceLineItemId" json:"invoiceLineItemId"`
+	Amount            int64   `db:"amount"       json:"amount"`
+	CreatedAt         int64   `db:"createdAt"    json:"createdAt"`
 }
 
 // CreatePaymentApplicationRequest is one line of a CreatePaymentRequest.
@@ -135,6 +139,7 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get_payments: %w", err)
 	}
+
 	return payments, nil
 }
 

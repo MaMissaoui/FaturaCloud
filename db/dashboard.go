@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"math/big"
 	"sort"
 	"time"
 )
@@ -234,11 +235,13 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 
 // LoanStatusRow is one invoice line's contribution to the loan tracker:
 // which customer, when, what product/quantity, how much that line accounts
-// for, and how much of it has been paid. Payments are recorded at the
-// invoice level, so a line's Paid is the invoice's paid amount allocated
-// proportionally by net line amount — with the rounding remainder landing
-// on the invoice's last line, so the line amounts always sum back to the
-// invoice total.
+// for, and how much of it has been paid. A line's Amount is its share of the
+// invoice total (tax, discount and stamp included) by net line value, and its
+// Paid is what's been applied to it: Cash Book loan payments name the line
+// they settle (payment_applications.invoiceLineItemId, migration 0090) and
+// count against that line only, while invoice-level payments (the upfront
+// amount of a cash sale, anything recorded through the invoice page's
+// payment panel) are spread across the lines — see allocateInvoiceLines.
 type LoanStatusRow struct {
 	LineID      string  `db:"lineId"      json:"lineId"`
 	InvoiceID   string  `db:"invoiceId"   json:"invoiceId"`
@@ -253,6 +256,62 @@ type LoanStatusRow struct {
 	Outstanding int64   `db:"outstanding" json:"outstanding"`
 }
 
+// loanLineRaw is one invoice line as read for the loan tracker, before its
+// invoice's total and payments are allocated across the lines.
+type loanLineRaw struct {
+	LineID       string  `db:"lineId"`
+	InvoiceID    string  `db:"invoiceId"`
+	ClientID     string  `db:"clientId"`
+	ClientName   string  `db:"clientName"`
+	Date         int64   `db:"docDate"`
+	InvoiceTotal int64   `db:"invoiceTotal"`
+	InvoicePaid  int64   `db:"invoicePaid"`
+	AppCount     int64   `db:"appCount"`
+	LinePaid     int64   `db:"linePaid"`
+	ProductName  string  `db:"productName"`
+	Sku          string  `db:"sku"`
+	Quantity     float64 `db:"quantity"`
+	NetLine      int64   `db:"netLine"`
+}
+
+// loanLineOrder is the within-invoice line order every allocation over
+// loanLineRaw rows assumes (GetLoanStatus and invoiceLineBalances must agree,
+// or the rounding remainder would land on a different line in each).
+const loanLineOrder = "netLine DESC, lineId ASC"
+
+// loanLinesQuery reads every line of the invoices matching where (a
+// condition on the invoice alias i), with the invoice's total, its paid
+// amount, and the amount applied to each line specifically. Only posted
+// payments count, the same clause the rest of the loan tracker uses.
+func loanLinesQuery(where string) string {
+	return fmt.Sprintf(`
+		SELECT li.id AS lineId, i.id AS invoiceId, i.clientId AS clientId,
+		       c.name AS clientName, i.date AS docDate,
+		       i.total AS invoiceTotal,
+		       %s AS invoicePaid,
+		       %s AS appCount,
+		       (
+		           SELECT COALESCE(SUM(pa.amount), 0)
+		           FROM payment_applications pa
+		           JOIN payments p ON p.id = pa.paymentId
+		           WHERE pa.documentType = 'invoice' AND pa.invoiceLineItemId = li.id AND %s
+		       ) AS linePaid,
+		       COALESCE(pr.name, li.description, '') AS productName,
+		       COALESCE(pr.sku, '') AS sku,
+		       li.quantity AS quantity,
+		       CAST(ROUND(li.unitPrice * li.quantity) AS INTEGER) AS netLine
+		FROM invoices i
+		JOIN clients c ON i.clientId = c.id
+		JOIN invoiceLineItems li ON li.invoiceId = i.id
+		LEFT JOIN products pr ON li.productId = pr.id
+		WHERE %s`,
+		documentPaidAmountExpr("i", "invoice", paymentsPosted),
+		documentPaymentAppCountExpr("i", "invoice", paymentsPosted),
+		paymentsPosted,
+		where,
+	)
+}
+
 // GetLoanStatus is the Cash Book screen's embedded loan tracker — org-wide
 // by default, or scoped to one customer via clientID (empty means every
 // customer). See LoanStatusRow's doc comment for the "was ever a loan"
@@ -261,91 +320,36 @@ type LoanStatusRow struct {
 // longest-outstanding loan surfaces first — with the largest outstanding
 // amount and then line id breaking ties so the order is deterministic.
 func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusRow, error) {
-	query := fmt.Sprintf(`
-		SELECT lineId, invoiceId, clientId, clientName, docDate,
-		       invoiceTotal, invoicePaid, productName, sku, quantity, netLine
-		FROM (
-			SELECT li.id AS lineId, i.id AS invoiceId, i.clientId AS clientId,
-			       c.name AS clientName, i.date AS docDate,
-			       i.total AS invoiceTotal,
-			       %s AS invoicePaid,
-			       %s AS appCount,
-			       COALESCE(pr.name, li.description, '') AS productName,
-			       COALESCE(pr.sku, '') AS sku,
-			       li.quantity AS quantity,
-			       CAST(ROUND(li.unitPrice * li.quantity) AS INTEGER) AS netLine
-			FROM invoices i
-			JOIN clients c ON i.clientId = c.id
-			JOIN invoiceLineItems li ON li.invoiceId = i.id
-			LEFT JOIN products pr ON li.productId = pr.id
-			WHERE i.organizationId = ? AND i.state IN ('sent', 'paid')
-		)
-		WHERE (appCount = 0 OR appCount > 1 OR invoicePaid < invoiceTotal)`,
-		documentPaidAmountExpr("i", "invoice", paymentsPosted),
-		documentPaymentAppCountExpr("i", "invoice", paymentsPosted),
-	)
+	query := `SELECT * FROM (` + loanLinesQuery(`i.organizationId = ? AND i.state IN ('sent', 'paid')`) + `)
+		WHERE (appCount = 0 OR appCount > 1 OR invoicePaid < invoiceTotal)`
 	args := []any{organizationID}
 	if clientID != "" {
 		query += " AND clientId = ?"
 		args = append(args, clientID)
 	}
-	query += " ORDER BY docDate ASC, invoiceId ASC, netLine DESC, lineId ASC"
+	query += " ORDER BY docDate ASC, invoiceId ASC, " + loanLineOrder
 
-	raw := []struct {
-		LineID       string  `db:"lineId"`
-		InvoiceID    string  `db:"invoiceId"`
-		ClientID     string  `db:"clientId"`
-		ClientName   string  `db:"clientName"`
-		Date         int64   `db:"docDate"`
-		InvoiceTotal int64   `db:"invoiceTotal"`
-		InvoicePaid  int64   `db:"invoicePaid"`
-		ProductName  string  `db:"productName"`
-		Sku          string  `db:"sku"`
-		Quantity     float64 `db:"quantity"`
-		NetLine      int64   `db:"netLine"`
-	}{}
+	raw := []loanLineRaw{}
 	if err := d.DB.Select(&raw, query, args...); err != nil {
 		return nil, fmt.Errorf("get_loan_status: %w", err)
 	}
 
-	// Allocate each invoice's total and paid amount across its lines by net
-	// line weight. The rows are contiguous per invoice (ORDER BY invoiceId),
-	// so a single forward pass groups them; the last line of each invoice
-	// absorbs the rounding remainder so the parts always sum to the whole.
+	// The rows are contiguous per invoice (ORDER BY invoiceId), so a single
+	// forward pass groups them.
 	rows := make([]LoanStatusRow, 0, len(raw))
 	for i := 0; i < len(raw); {
 		j := i
-		var netSum int64
 		for j < len(raw) && raw[j].InvoiceID == raw[i].InvoiceID {
-			netSum += raw[j].NetLine
 			j++
 		}
-		if netSum <= 0 {
-			// All-zero (e.g. a free line) — split evenly rather than divide by zero.
-			netSum = int64(j - i)
-		}
-		var allocatedAmount, allocatedPaid int64
+		amounts, paid := allocateInvoiceLines(raw[i:j])
 		for k := i; k < j; k++ {
 			r := raw[k]
-			weight := r.NetLine
-			if weight <= 0 {
-				weight = 1
-			}
-			var amount, paid int64
-			if k == j-1 {
-				amount = r.InvoiceTotal - allocatedAmount
-				paid = r.InvoicePaid - allocatedPaid
-			} else {
-				amount = r.InvoiceTotal * weight / netSum
-				paid = r.InvoicePaid * weight / netSum
-			}
-			allocatedAmount += amount
-			allocatedPaid += paid
 			rows = append(rows, LoanStatusRow{
 				LineID: r.LineID, InvoiceID: r.InvoiceID, ClientID: r.ClientID,
 				ClientName: r.ClientName, Date: r.Date,
 				ProductName: r.ProductName, Sku: r.Sku, Quantity: r.Quantity,
-				Amount: amount, Paid: paid, Outstanding: amount - paid,
+				Amount: amounts[k-i], Paid: paid[k-i], Outstanding: amounts[k-i] - paid[k-i],
 			})
 		}
 		i = j
@@ -364,6 +368,164 @@ func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusR
 		return rows[a].LineID < rows[b].LineID
 	})
 	return rows, nil
+}
+
+// allocateInvoiceLines splits one invoice's total and paid amount across its
+// lines (all rows of the same invoice, in loanLineOrder). It returns each
+// line's amount and paid, both summing exactly to the invoice's figures.
+//
+// A line's amount is the invoice total weighted by net line value, the last
+// line absorbing the rounding remainder. A line's paid is what was applied to
+// it directly (LinePaid) plus its share of the invoice-level payments: those
+// are spread in proportion to the line amounts, but never beyond what a line
+// still owes after its own direct payments — see allocateCapped. That's what
+// makes paying one line leave every other line's balance untouched.
+func allocateInvoiceLines(lines []loanLineRaw) (amounts, paid []int64) {
+	n := len(lines)
+	amounts = make([]int64, n)
+	paid = make([]int64, n)
+	if n == 0 {
+		return amounts, paid
+	}
+	total, invoicePaid := lines[0].InvoiceTotal, lines[0].InvoicePaid
+
+	weights := make([]int64, n)
+	var weightSum int64
+	for k, l := range lines {
+		weights[k] = l.NetLine
+		if weights[k] <= 0 {
+			// A free (or negative) line still gets a share rather than
+			// dividing by zero or pulling another line's share negative.
+			weights[k] = 1
+		}
+		weightSum += weights[k]
+	}
+	var allocated int64
+	for k := range lines {
+		if k == n-1 {
+			amounts[k] = total - allocated
+		} else {
+			amounts[k] = mulDiv(total, weights[k], weightSum)
+		}
+		allocated += amounts[k]
+	}
+
+	var direct int64
+	caps := make([]int64, n)
+	for k, l := range lines {
+		paid[k] = l.LinePaid
+		direct += l.LinePaid
+		caps[k] = amounts[k] - l.LinePaid
+		if caps[k] < 0 {
+			caps[k] = 0
+		}
+	}
+	undirected := invoicePaid - direct
+	if undirected < 0 {
+		undirected = 0
+	}
+	for k, share := range allocateCapped(undirected, amounts, caps) {
+		paid[k] += share
+	}
+	return amounts, paid
+}
+
+// allocateCapped spreads total across slots in proportion to weights, with
+// slot k never receiving more than caps[k]: whatever a capped slot can't take
+// is redistributed over the remaining slots (water-filling), and leftover
+// cents from the integer division go one at a time to slots with room. If
+// total exceeds the sum of the caps (only possible with inconsistent data),
+// the excess lands on the last slot so nothing is silently dropped.
+func allocateCapped(total int64, weights, caps []int64) []int64 {
+	n := len(caps)
+	shares := make([]int64, n)
+	if n == 0 || total <= 0 {
+		return shares
+	}
+	remaining := total
+	active := make([]bool, n)
+	for k := range caps {
+		active[k] = caps[k] > 0
+	}
+	for remaining > 0 {
+		var weightSum int64
+		for k := range caps {
+			if active[k] {
+				w := weights[k]
+				if w <= 0 {
+					w = 1
+				}
+				weightSum += w
+			}
+		}
+		if weightSum == 0 {
+			break
+		}
+		pool := remaining
+		progressed, capped := false, false
+		for k := range caps {
+			if !active[k] {
+				continue
+			}
+			w := weights[k]
+			if w <= 0 {
+				w = 1
+			}
+			share := mulDiv(pool, w, weightSum)
+			if room := caps[k] - shares[k]; share >= room {
+				share = room
+				active[k] = false
+				capped = true
+			}
+			if share > 0 {
+				shares[k] += share
+				remaining -= share
+				progressed = true
+			}
+		}
+		if !capped {
+			// Every active slot took its full proportional share; only the
+			// integer-division leftover (fewer cents than slots) remains.
+			break
+		}
+		if !progressed {
+			break
+		}
+	}
+	for k := 0; k < n && remaining > 0; k++ {
+		if shares[k] < caps[k] {
+			shares[k]++
+			remaining--
+		}
+	}
+	for remaining > 0 {
+		// Still left after a full pass: every slot has one cent of room at
+		// most per pass, so keep filling in order until the caps run out.
+		progressed := false
+		for k := 0; k < n && remaining > 0; k++ {
+			if shares[k] < caps[k] {
+				shares[k]++
+				remaining--
+				progressed = true
+			}
+		}
+		if !progressed {
+			shares[n-1] += remaining
+			remaining = 0
+		}
+	}
+	return shares
+}
+
+// mulDiv returns a*b/c truncated toward zero, computed without int64
+// overflow (two cent amounts multiplied together easily exceed it).
+func mulDiv(a, b, c int64) int64 {
+	if c == 0 {
+		return 0
+	}
+	r := new(big.Int).Mul(big.NewInt(a), big.NewInt(b))
+	r.Quo(r, big.NewInt(c))
+	return r.Int64()
 }
 
 // OutstandingBill is getOutstandingInvoices' purchases counterpart. See

@@ -676,6 +676,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/payments", pathOrgID("orgId"), h.listPayments)
 	protected("POST", "/api/payments", h.createPayment)
 	protected("POST", "/api/cash-sales", h.createCashSale)
+	orgRoleProtected("POST", "/api/cash-sales/{id}/payments", invoiceOrgID, []string{"cashbook"}, h.createCashSalePayment)
 	protected("POST", "/api/cash-movements", h.createCashMovement)
 	orgMemberProtected("GET", "/api/payments/{id}", paymentOrgID, h.getPayment)
 	orgMemberProtected("GET", "/api/payments/{id}/applications", paymentOrgID, h.getPaymentApplications)

@@ -97,14 +97,18 @@ var nullableFKClassification = map[string]fkDisposition{
 	"taxRates.outputTaxAccountId":                         fkNormalized,
 
 	// --- server-set: "" was never reachable ---
-	"bill_of_materials_version_lines.componentProductId":  fkServerSet,
-	"cash_movements.journalEntryId":                       fkServerSet,
-	"journal_entries.createdBy":                           fkServerSet,
-	"journal_entries.fiscalPeriodId":                      fkServerSet,
-	"journal_entries.reversalOfEntryId":                   fkServerSet,
-	"journal_lines.clientId":                              fkServerSet,
-	"journal_lines.vendorId":                              fkServerSet,
-	"payments.journalEntryId":                             fkServerSet,
+	"bill_of_materials_version_lines.componentProductId": fkServerSet,
+	"cash_movements.journalEntryId":                      fkServerSet,
+	"journal_entries.createdBy":                          fkServerSet,
+	"journal_entries.fiscalPeriodId":                     fkServerSet,
+	"journal_entries.reversalOfEntryId":                  fkServerSet,
+	"journal_lines.clientId":                             fkServerSet,
+	"journal_lines.vendorId":                             fkServerSet,
+	"payments.journalEntryId":                            fkServerSet,
+	// Named by the Cash Book request, but CreateCashSalePayment rejects ""
+	// and only ever inserts an id it matched against the invoice's own
+	// lines — every other path inserts NULL. "" never reaches the column.
+	"payment_applications.invoiceLineItemId":              fkServerSet,
 	"payments.voidingEntryId":                             fkServerSet,
 	"production_order_component_lines.componentProductId": fkServerSet,
 	"stockMovements.serialNumberId":                       fkServerSet,
