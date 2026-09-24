@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.53.0] - 2026-09-24
+
+### Added
+- Documents: a per-organization **Document layout** setting (Organizations →
+  Formatting) chooses between two built-in templates for all six document
+  types: **Default**, the generic layout restored from before 3.52.0
+  (seller block, title top-right, Bill To / Vendor block,
+  Product/Description/Quantity/Unit Price/Tax Rate/Line Total table,
+  Subtotal/Discount/Tax/Total), and **Tunisia**, the "Facture" layout.
+  An uploaded custom template still takes precedence, and "download
+  template" returns the file for the organization's current layout.
+
+### Changed
+- Upgrade: organizations with no layout set whose country is Tunisia keep
+  the Tunisia layout they had in 3.52.0; every other organization moves
+  back to the Default layout. The old "Invoice PDF layout" setting's
+  never-functional "Custom" option is gone.
+- Tunisia layout: the vendor bill gains a Code column, so long product
+  descriptions no longer run into the rows below.
+- Clients: the edit drawer fits more on screen, with the same fields
+  arranged in fewer rows.
+
+### Fixed
+- Tunisia layout: purchase orders and vendor bills printed an empty VAT
+  recap table and a stray "{{#taxLines}}"; the recap is now filled.
+- Phones: most list pages scrolled sideways because wide tables widened
+  the page; tables now scroll inside their own box. The top bar stays on
+  one line, and a section's submenu no longer sits open over the page.
+- Documents: the Save/status action bar now actually stays pinned to the
+  bottom of the screen, and wraps on phones instead of running off-screen.
+- Cash Book: the Loan status table's Record payment button and
+  Outstanding column were cut off at desktop width; the day's movements
+  list is now paginated; card headers and the Daily Cash Movements report
+  fit on phones.
+- Login: signing in with a previously selected organization could leave
+  the app on "Loading..." until a manual reload.
+
 ## [3.52.0] - 2026-09-22
 
 ### Added
