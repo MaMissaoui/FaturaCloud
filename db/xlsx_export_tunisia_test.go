@@ -15,6 +15,9 @@ import (
 func TestTunisiaLayoutFillsEndToEnd(t *testing.T) {
 	org := testOrg()
 	org.AmountInWordsEnabled = ptr(int64(1))
+	// The organization's layout, not the template passed below, is what
+	// picks the amount-in-words language (French when none is set).
+	org.DocumentLayout = ptr(DocumentLayoutTunisia)
 	if org.Currency == nil {
 		org.Currency = ptr("TND")
 	}

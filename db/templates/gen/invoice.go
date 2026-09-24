@@ -103,7 +103,7 @@ var invoiceFieldRefs = []fieldRef{
 	{"Footer", "{{invoice.paymentTerms}}", "Payment terms text"},
 	{"Footer", "{{invoice.fiscalStampAmount}}", "Tunisia timbre fiscal — flat duty, formatted with currency (0 if unused)"},
 	{"Footer", "{{invoice.withholdingTaxLine}}", "Full \"Withholding tax (12%): 40.00 EUR\" line, entirely blank (if unset)"},
-	{"Footer", "{{invoice.amountInWords}}", "Whole \"Arrêtée la présente facture à la somme de ...\" sentence, blank unless enabled in Formatting settings"},
+	{"Footer", "{{invoice.amountInWords}}", "Whole amount-in-words sentence in the organization's document language (French: \"Arrêtée la présente facture à la somme de ...\"), blank unless enabled in Formatting settings"},
 	{"Footer", "{{organization.iban}}", "Seller IBAN"},
 	{"Footer", "{{organization.bankName}}", "Seller bank name"},
 
