@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.54.0] - 2026-09-24
+
+### Added
+- Cash Book: loans are now settled **per invoice line**. Each line in the
+  Loan status table has its own Record payment button, one line per
+  payment, and an amount above that line's outstanding balance is
+  refused. A user with only the Cash Book role can now do this; before,
+  the server refused every step of settling a loan for that role. The
+  invoice turns Paid once every line is cleared.
+- Cash Book: the invoice number is shown as the loan number in the daily
+  movements, Loan status and Payment history tables, the payment dialog,
+  and the three Cash Book exports.
+- Organizations: a **Document language** setting (Formatting: English,
+  Deutsch, Français or Automatic) for the amount-in-words line on
+  invoices. Automatic prints French on the Tunisia layout and English on
+  the Default layout.
+
+### Changed
+- Invoices: the amount in words now follows the organization's document
+  language instead of always being French. On upgrade, Tunisian and
+  French-speaking organizations are set to French and German-speaking
+  ones to German. Any other organization that shows the line now gets it
+  in English.
+- Dashboard: each role sees only the widgets for the sections it can
+  open, and links to screens it can't open are no longer shown.
+
+### Fixed
+- Clients: importing the clients spreadsheet erased the Cash Book fields
+  (address, phone 2, phone 3, guarantor). The sheet now includes them, and
+  an older sheet without those columns leaves them as they were.
+- Reports: the Tax Summary and Sales by Product reports ignored the
+  invoice discount, overstating output VAT and sales. Both are now net of
+  the discount, matching the posted journal entries.
+- E-invoices: the UBL export ignored the invoice discount, so the payable
+  amount was the undiscounted total. The discount is now included,
+  split by VAT category.
+- Amount in words (French): "cent" and "quatre-vingt" are no longer
+  pluralized before "mille" (deux cent mille, not deux cents mille).
+- Cash Book: a loan with no deposit that was paid off in a single payment
+  disappeared from the Loan status table.
+- Payments: the record and void buttons are hidden from roles the server
+  doesn't allow to use them.
+- Settings: the document-numbering hint failed to display in German and
+  French.
+- Setup: an organization's default units of measure and payment terms are
+  created all at once, so an interrupted startup can no longer leave only
+  some of them.
+
 ## [3.53.1] - 2026-09-24
 
 ### Changed
