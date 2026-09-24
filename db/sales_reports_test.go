@@ -426,3 +426,63 @@ func TestGetTaxSummaryRoundsPerDocument(t *testing.T) {
 		t.Fatalf("Base = %d, want 600", summary.Output[0].Base)
 	}
 }
+
+// TestGetTaxSummaryAppliesInvoiceDiscount covers audit F141: the invoice
+// discount (migration 0088) reduces each tax group's base in proportion to
+// its share of the subtotal, and the report must agree with the tax the GL
+// actually posted per rate.
+func TestGetTaxSummaryAppliesInvoiceDiscount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-tax-summary-discount")
+	reduced, err := d.CreateTaxRate(CreateTaxRateRequest{
+		OrganizationID: fx.orgID, Name: "Reduced VAT", Percentage: 10, OutputTaxAccountID: &fx.outputTaxAccountID,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	// 20% group 30.00, 10% group 10.00 (subtotal 40.00), discount 8.00:
+	// the 20% group carries 6.00 of it (net 24.00, tax 4.80), the 10% group
+	// 2.00 (net 8.00, tax 0.80). Total = 32.00 + 5.60 = 37.60.
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-tax-discount", OrganizationID: fx.orgID, ClientID: fx.clientID, Number: "TD-1", Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 3, UnitPrice: 1000, TaxRate: &fx.taxRateID},
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &reduced.ID},
+		},
+		SubTotal: 4000, DiscountAmount: 800, TaxTotal: 560, Total: 3760,
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState: %v", err)
+	}
+
+	summary, err := d.GetTaxSummary(fx.orgID, 0, 0)
+	if err != nil {
+		t.Fatalf("GetTaxSummary: %v", err)
+	}
+	want := map[string][2]int64{fx.taxRateID: {2400, 480}, reduced.ID: {800, 80}}
+	for _, line := range summary.Output {
+		w, ok := want[line.TaxRateID]
+		if !ok {
+			t.Fatalf("unexpected output line %+v", line)
+		}
+		if line.Base != w[0] || line.Tax != w[1] {
+			t.Errorf("rate %s: base %d tax %d, want base %d tax %d", line.TaxRateID, line.Base, line.Tax, w[0], w[1])
+		}
+		var posted int64
+		if err := d.DB.Get(&posted, `SELECT COALESCE(SUM(credit), 0) FROM journal_lines jl JOIN journal_entries je ON je.id = jl.journalEntryId
+			WHERE je.organizationId = ? AND jl.taxRateId = ?`, fx.orgID, line.TaxRateID); err != nil {
+			t.Fatalf("posted tax: %v", err)
+		}
+		if posted != line.Tax {
+			t.Errorf("rate %s: report tax %d, GL posted %d", line.TaxRateID, line.Tax, posted)
+		}
+	}
+	if len(summary.Output) != 2 {
+		t.Fatalf("got %d output lines, want 2", len(summary.Output))
+	}
+}

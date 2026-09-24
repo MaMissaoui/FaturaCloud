@@ -215,12 +215,24 @@ type TaxSummaryLine struct {
 //     mismatch against the GL for such a document is expected and benign,
 //     not a bug to chase.
 //
-// There is no discount column on invoiceLineItems/incoming_invoice_line_items,
-// so quantity*unitPrice is the correct taxable base — the same base the GL
-// itself computes. Base itself is summed-then-rounded (not per-document):
+// The discount (invoices.discountAmount, migration 0088) is invoice-level,
+// not per line: each tax group's taxable base is its line total less its
+// share of the discount, in proportion to the group's share of the whole
+// subtotal — the same allocation validateInvoiceTotals, buildInvoiceGLLines
+// and buildTaxBreakdownRows use (invoiceNetFactor below). Incoming invoices
+// carry no discount, so quantity*unitPrice is their base. Base itself is summed-then-rounded (not per-document):
 // unlike Tax, there is no stored per-rate "base" figure it needs to
 // reconcile against — invoices.subTotal is a single whole-document number,
 // never split by tax rate.
+// invoiceNetFactor is the fraction of an invoice's line subtotal left after
+// its discount, for use inside a query grouped per invoice (alias i): 1 when
+// there is no discount (so undiscounted documents compute exactly as
+// before), otherwise 1 − discount / subtotal. Multiplying a tax group's
+// gross base by it is the proportional allocation described above.
+const invoiceNetFactor = `(CASE WHEN MAX(i.discountAmount) > 0 THEN
+		1.0 - MAX(i.discountAmount) * 1.0 / NULLIF((SELECT SUM(li2.quantity * li2.unitPrice) FROM invoiceLineItems li2 WHERE li2.invoiceId = ili.invoiceId), 0)
+	ELSE 1.0 END)`
+
 type TaxSummary struct {
 	Output []TaxSummaryLine `json:"output"` // sales / output VAT
 	Input  []TaxSummaryLine `json:"input"`  // purchases / input VAT
@@ -249,8 +261,8 @@ func (d *Database) getOutputTaxSummary(organizationID string, startDate, endDate
 		FROM (
 			SELECT COALESCE(tr.id, '') AS taxRateId, COALESCE(tr.name, '') AS name,
 			       COALESCE(tr.category_code, '') AS categoryCode, COALESCE(tr.percentage, 0) AS percentage,
-			       SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1)) AS rawBase,
-			       ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(i.exchangeRate, 1))) AS docTax
+			       SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1)) * `+invoiceNetFactor+` AS rawBase,
+			       ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(tr.percentage, 0) / 100.0 * COALESCE(i.exchangeRate, 1)) * `+invoiceNetFactor+`) AS docTax
 			FROM invoiceLineItems ili
 			JOIN invoices i ON ili.invoiceId = i.id
 			LEFT JOIN taxRates tr ON ili.taxRate = tr.id
