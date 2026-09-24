@@ -137,3 +137,23 @@ export const roleHomePath = (role: string): string => {
       return "/invoices";
   }
 };
+
+// Which widgets a role sees (audit F147). The dashboard's data is shared at
+// the API level (api/sections.go leaves the route membership-level), so this
+// is presentation: each widget follows the same ROLE_MENU sections as the
+// sidebar, and every row click / "View full report" link is shown only when
+// the target page is one the role can open, instead of bouncing it.
+//   - sales figures (revenue, top clients/products): the Sales section
+//   - receivables (outstanding invoices): Sales or Accounting (AR aging)
+//   - stock valuation: Inventory, Accounting (inventory valuation) or
+//     Purchasing (who buys the stock)
+// admin/power_user/general, and an unresolved role, see everything.
+export const dashboardWidgetsForRole = (role: string) => {
+  const sees = (key: string) => roleCanSeeMenuItem(role, key);
+  const sales = sees("group-sales");
+  return {
+    sales,
+    receivables: sales || sees("group-accounting"),
+    stock: sees("group-inventory") || sees("group-accounting") || sees("group-purchasing"),
+  };
+};

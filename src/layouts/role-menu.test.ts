@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dashboardWidgetsForRole,
   filterMenuForRole,
   isRouteAllowedForRole,
   roleCanSeeMenuItem,
@@ -235,5 +236,22 @@ describe("filterMenuForRole", () => {
     expect(
       filtered.find((i: any) => i.key === "group-reporting").children.map((c: any) => c.key),
     ).toEqual(["revenue-trend"]);
+  });
+});
+
+// Audit F147: the dashboard shows each widget only to roles that have the
+// matching section, so no role sees figures (or links) from a domain the rest
+// of its UI hides.
+describe("dashboardWidgetsForRole", () => {
+  it.each([
+    ["", { sales: true, receivables: true, stock: true }],
+    ["admin", { sales: true, receivables: true, stock: true }],
+    ["power_user", { sales: true, receivables: true, stock: true }],
+    ["general", { sales: true, receivables: true, stock: true }],
+    ["sales", { sales: true, receivables: true, stock: false }],
+    ["purchasing", { sales: false, receivables: false, stock: true }],
+    ["accounting", { sales: false, receivables: true, stock: true }],
+  ])("%s", (role, want) => {
+    expect(dashboardWidgetsForRole(role)).toEqual(want);
   });
 });
