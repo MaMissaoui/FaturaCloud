@@ -396,27 +396,49 @@ denies. Accounting pages link to no source documents.
 
 ## Watch list: suspicions, not confirmed
 
-- **`GetLoanStatus` with a negative line** (a credit or return line with a
-  negative `unitPrice`). The allocator clamps each weight to ≥ 1 but sums the
-  raw `netLine`, so `netSum` can be smaller than the sum of the weights. Earlier
-  lines can then over-allocate, leaving the last line a negative remainder. Not
-  reproduced. Whether a Cash Book invoice can carry a negative line was not
-  checked.
-- **Amount-in-words language.** The line is always French, labelled "facture",
-  and uses the currency code as the unit name for non-TND currencies ("Mille EUR
-  et Dix Centimes"). The doc comment says this is deliberate for the Tunisian
-  format, but the setting isn't layout-gated and the default layout also prints
-  it. A de or en organization that enables it gets French. This is a product
-  question, not yet a defect.
-- **A single-payment loan vanishes from the loan tracker.** `GetLoanStatus`'s
-  "was ever a loan" filter (`appCount = 0 OR appCount > 1 OR paid < total`)
-  can't tell a zero-deposit loan settled by exactly one payment from a straight
-  cash sale. Such a loan drops out of the table even with "Open only"
-  unchecked. This predates line-level settlement (the same happened with one
-  invoice-level repayment), but it's now likely for single-line loans.
-- **Carried forward from 2026-09-19, still unverified:** TND 3-decimal
-  round-trip, the non-transactional default UoM and payment-term seeding, and
-  OIDC provider caching.
+Followed up on 2026-09-24, after F140–F149 merged. Each item's outcome is
+recorded below.
+
+- **`GetLoanStatus` with a negative line: refuted.** The premise was wrong.
+  `allocateInvoiceLines` sums the clamped weights, not the raw `netLine`, so
+  the floor-divided shares of the earlier lines never exceed the total, and
+  the last line's remainder can't go negative. A credit line gets roughly a
+  one-cent share of the total. `TestAllocateInvoiceLinesWithANegativeLine`
+  pins that every amount and paid figure stays at or above zero and that both
+  still sum to the invoice's figures.
+- **Amount-in-words language: open, product question.** The line is always
+  French, labelled "facture", and uses the currency code as the unit name for
+  non-TND currencies ("Mille EUR et Dix Centimes"). The setting isn't
+  layout-gated, so a de or en organization that enables it gets French.
+  Whether to gate it on the Tunisian layout, localize it, or leave it as is
+  needs a product decision.
+- **A single-payment loan vanishes from the loan tracker: fixed.** A
+  zero-deposit loan cleared by exactly one payment matched the pure cash sale
+  shape (`appCount = 1`, fully paid) and dropped out of the table. The filter
+  now also keeps any invoice with a line-targeted application
+  (`lineAppCount > 0`). Only the Cash Book settlement route sets one, and a
+  cash sale's upfront payment never does.
+  `TestLoanStatusKeepsALoanClearedByOneLinePayment` checks both sides. The
+  remaining gap is documented on `LoanStatusRow`: a loan cleared by one
+  invoice-level payment (from the invoice page, or a repayment made before
+  `0090`) is still indistinguishable from a cash sale.
+- **Default UoM and payment-term seeding outside a transaction: fixed.**
+  `SeedDefaultUnitsOfMeasureForAllOrganizations` (including its product-link
+  backfill) and `SeedDefaultPaymentTermsForAllOrganizations` now seed each
+  organization in one transaction, so an interrupted seed can't leave a
+  partial set that the `COUNT(*) = 0` gate never revisits. The gate's read
+  stays before `Beginx()`.
+- **TND 3-decimal round-trip: confirmed, accepted limitation.** Storage is
+  2-decimal cents, so 12.345 TND is stored as 1235 cents and displayed as
+  12.350 at 3 fraction digits. This is the limitation `db/CLAUDE.md`'s
+  Tunisia note already documents. Fixing it means a storage-precision
+  migration, which is a product decision, not a defect fix.
+- **OIDC provider caching: closed.** `ensureOIDC` caches the discovered
+  provider only after a successful discovery, so a failed one retries on the
+  next request. The provider settings themselves come from environment
+  variables read at startup, so changing them needs a restart regardless of
+  the cache. go-oidc's remote key set refetches signing keys when it sees an
+  unknown key ID, so key rotation needs no restart.
 
 ## Explicitly excluded: do not re-raise
 
