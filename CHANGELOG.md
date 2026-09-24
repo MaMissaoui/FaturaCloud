@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.53.1] - 2026-09-24
+
+### Changed
+- Clients: the Cash Book fields (phone 2, phone 3, identity number, IBAN,
+  guarantor and the free-text address) are now in a collapsed "Cash Book"
+  section of the client edit drawer, so the drawer fits on screen without
+  scrolling. Their values still load and save while the section is closed,
+  and it opens automatically if one of its fields has an error.
+
 ## [3.53.0] - 2026-09-24
 
 ### Added
