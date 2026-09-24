@@ -51,7 +51,7 @@ they are grouped and cited so a remediation pass can check them cheaply.
 - The "Explicitly excluded — do not re-raise" section at the end is binding:
   those were checked and dismissed with a reason.
 
-**Status:** 44 findings (F96–F139). Not yet remediated.
+**Status:** 44 findings (F96–F139). All remediated — phases 1–5 shipped as #293–#298 (2026-09-20).
 
 ---
 

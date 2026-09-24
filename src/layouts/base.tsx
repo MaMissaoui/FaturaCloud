@@ -161,8 +161,8 @@ export default function BaseLayout() {
   // The cashbook (counter/till) role gets a deliberately reduced view: only
   // Cash Book and Clients are reachable. Enforced here rather than only by
   // hiding menu entries, so a typed URL bounces back to the counter screen.
-  // Purely a UI restriction — reads stay membership-level server-side, so
-  // this is not an authorization boundary.
+  // The server enforces the same scope (api/sections.go's section guard),
+  // so this redirect is the UI half of the boundary, not all of it.
   useEffect(() => {
     if (!isCashbook) return;
     const allowed =
