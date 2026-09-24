@@ -10,6 +10,7 @@ The 2026-09-19 plan (F96–F139) is fully remediated. Phases 1–5 shipped as
 #293–#298. That document's header still says "Not yet remediated" (see F146).
 
 What the delta contains, and what this sweep covered:
+
 - **Focused per-role views, enforced server-side** (#375/#377): `api/sections.go`,
   the section guard in `api/middleware.go`, `power_user` (migration `0086`) and
   `src/layouts/role-menu.ts`.
@@ -26,16 +27,16 @@ What the delta contains, and what this sweep covered:
 
 **Baseline health**, measured at `73737ea` before any change:
 
-| Check | Result |
-|---|---|
-| `go vet ./...` | Pass |
-| `gofmt -l .` | Pass |
-| `go test -race -count=1 ./...` | Pass (all packages) |
-| `pnpm type-check` | Pass |
-| `oxlint src/` | Warnings only: the pre-existing `react(set-state-in-effect)` set |
-| `pnpm test` | Pass (63/63, 10 files) |
-| `pnpm build` | Pass |
-| `govulncheck ./...` | Only the CI-allowlisted Excelize advisory (`GO-2026-6452`, no fix available) |
+| Check                          | Result                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `go vet ./...`                 | Pass                                                                         |
+| `gofmt -l .`                   | Pass                                                                         |
+| `go test -race -count=1 ./...` | Pass (all packages)                                                          |
+| `pnpm type-check`              | Pass                                                                         |
+| `oxlint src/`                  | Warnings only: the pre-existing `react(set-state-in-effect)` set             |
+| `pnpm test`                    | Pass (63/63, 10 files)                                                       |
+| `pnpm build`                   | Pass                                                                         |
+| `govulncheck ./...`            | Only the CI-allowlisted Excelize advisory (`GO-2026-6452`, no fix available) |
 
 **How this document was produced.** One sequential pass by the authoring model,
 with no parallel sweeps. Findings are marked **Confirmed** only when they were
@@ -49,6 +50,7 @@ role. Every denied pattern was then traced to its `src/api` function and to
 every page or component that calls it (see "Section-guard sweep" below).
 
 **Instructions for the executing model:**
+
 - This document is an audit, not a remediation. No code was changed while
   producing it.
 - Use one feature branch and PR per phase, and never push to `main`. Use
@@ -62,24 +64,27 @@ every page or component that calls it (see "Section-guard sweep" below).
 - The 2026-09-19 "Explicitly excluded" list still binds, and so does this
   document's own list at the end.
 
-**Status:** 10 findings (F140–F149). F140 fixed in #384; the rest are not yet remediated.
+**Status:** 10 findings (F140–F149), all with a remediation PR:
+F140 → #384; F141–F145 (phase 1) → #386; F146, F148, F149 (phase 2) → #387;
+F147 → #388. F147's decision is recorded: option (a), a role-aware
+dashboard over the shared payload.
 
 ---
 
 ## Severity overview
 
-| # | Finding | Area | Severity | Phase |
-|---|---------|------|----------|-------|
-| F140 | A `cashbook`-only member cannot settle a loan from the Cash Book. All three calls in the flow 403: `GET /api/invoices/{id}` (section guard, `v3.52.0`), `POST /api/payments` (F104's accounting gate, `v3.29.0`) and `PATCH …/state` (role redesign) | Authorization / regression | **High** | 1.1 |
-| F141 | Tax Summary's output VAT ignores the invoice discount, so it overstates base and tax against the posted GL | Accounting / reporting | Medium | 1.2 |
-| F142 | The UBL/Peppol e-invoice ignores the invoice discount, so `PayableAmount` exceeds the invoice total | E-invoicing / compliance | Medium | 1.3 |
-| F143 | Sales-by-Product revenue is gross of the invoice-level discount and disagrees with the P&L | Reporting | Low | 1.4 |
-| F144 | Amount-in-words pluralizes `cents` / `quatre-vingts` before `mille` (200 000 → "Deux Cents Mille") on a printed legal document | Print correctness | Low | 1.5 |
-| F145 | A client Excel mass-maintenance **import wipes** the migration-`0087` fields (`phone2`, `phone3`, `guarantor`, `address`) on every updated row, and the export omits them | Master data / data loss | Medium | 1.6 |
-| F146 | Doc drift: root `CLAUDE.md` says 8 export / 10 direct `mux.Handle` routes (actual 9 / 11), `base.tsx` still calls the cashbook redirect "not an authorization boundary", and the 09-19 plan still reads "Not yet remediated" | Docs | Low | 2.1 |
-| F147 | The dashboard is role-blind: purchasing and accounting members see sales data (cashbook only through the API), and its invoice rows link to a page their route guard bounces | UX / authz intent (decision) | Low | 2.2 |
-| F148 | `PaymentPanel` shows Record/Void payment controls to `sales` and `purchasing`, which F104 made 403 | UX | Low | 2.3 |
-| F149 | The Document Numbering hint `{number:4}` fails Lingui's ICU compile in all three locales (printed on every `pnpm build`) | i18n | Low | 2.4 |
+| #    | Finding                                                                                                                                                                                                                                              | Area                         | Severity | Phase |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------- | ----- |
+| F140 | A `cashbook`-only member cannot settle a loan from the Cash Book. All three calls in the flow 403: `GET /api/invoices/{id}` (section guard, `v3.52.0`), `POST /api/payments` (F104's accounting gate, `v3.29.0`) and `PATCH …/state` (role redesign) | Authorization / regression   | **High** | 1.1   |
+| F141 | Tax Summary's output VAT ignores the invoice discount, so it overstates base and tax against the posted GL                                                                                                                                           | Accounting / reporting       | Medium   | 1.2   |
+| F142 | The UBL/Peppol e-invoice ignores the invoice discount, so `PayableAmount` exceeds the invoice total                                                                                                                                                  | E-invoicing / compliance     | Medium   | 1.3   |
+| F143 | Sales-by-Product revenue is gross of the invoice-level discount and disagrees with the P&L                                                                                                                                                           | Reporting                    | Low      | 1.4   |
+| F144 | Amount-in-words pluralizes `cents` / `quatre-vingts` before `mille` (200 000 → "Deux Cents Mille") on a printed legal document                                                                                                                       | Print correctness            | Low      | 1.5   |
+| F145 | A client Excel mass-maintenance **import wipes** the migration-`0087` fields (`phone2`, `phone3`, `guarantor`, `address`) on every updated row, and the export omits them                                                                            | Master data / data loss      | Medium   | 1.6   |
+| F146 | Doc drift: root `CLAUDE.md` says 8 export / 10 direct `mux.Handle` routes (actual 9 / 11), `base.tsx` still calls the cashbook redirect "not an authorization boundary", and the 09-19 plan still reads "Not yet remediated"                         | Docs                         | Low      | 2.1   |
+| F147 | The dashboard is role-blind: purchasing and accounting members see sales data (cashbook only through the API), and its invoice rows link to a page their route guard bounces                                                                         | UX / authz intent (decision) | Low      | 2.2   |
+| F148 | `PaymentPanel` shows Record/Void payment controls to `sales` and `purchasing`, which F104 made 403                                                                                                                                                   | UX                           | Low      | 2.3   |
+| F149 | The Document Numbering hint `{number:4}` fails Lingui's ICU compile in all three locales (printed on every `pnpm build`)                                                                                                                             | i18n                         | Low      | 2.4   |
 
 ---
 
@@ -88,6 +93,7 @@ every page or component that calls it (see "Section-guard sweep" below).
 ### 1.1 — F140: the cashbook role cannot settle a loan (Confirmed, regression)
 
 The Cash Book's loan-settlement flow (`src/routes/cash-book.tsx`) makes these calls:
+
 1. `openPayment` calls `GetInvoice(invoiceId)` → `GET /api/invoices/{id}`
    (`:980-987`) to load the invoice into `PaymentPanel`.
 2. `PaymentPanel` calls `GET /api/invoices/{id}/payments` and `POST /api/payments`.
@@ -111,12 +117,12 @@ first released in `v3.29.0`) added
 (`api/payments.go:45-50`). Its allowed set is admin/power_user/general/
 accounting, which leaves `cashbook` out. `api/CLAUDE.md`'s "Payments (F104)"
 entry records that as a deliberate accounting-tier boundary. But
-`api/sections.go`'s file comment keeps every payments route shared *because*
+`api/sections.go`'s file comment keeps every payments route shared _because_
 "the Cash Book's loan settlement both read[s] and write[s] payments". The two
 decisions contradict each other, and nobody reconciled them for the one role
 whose screen depends on it. So a pure-cashbook user has been unable to settle a
 loan since `v3.29.0`. Since `v3.52.0` the flow fails even earlier, at step 1.
-Note that `POST /api/cash-sales` still records a sale's *upfront* payment,
+Note that `POST /api/cash-sales` still records a sale's _upfront_ payment,
 because that path runs inside `db.CreateCashSale` and never touches
 `createPayment`. Only the later settlement of a loan is broken.
 
@@ -139,6 +145,7 @@ screens' API dependencies. Of the shared screens, only the Products form
 (`bomAllowed`, F111's follow-up) was checked against the guard.
 
 **Fix direction.** Record the reconciled decision in `api/CLAUDE.md` first.
+
 - Add `"cashbook"` to `createPayment`'s `requireOrgRole` call. Ideally also
   check that every application targets an `invoice` document (not a bill), so
   the till role can settle customer loans but not pay vendors. Leave
@@ -274,7 +281,7 @@ point of mass maintenance, silently erases the Cash Book's customer-contact
 data. For the Tunisia counter use case, the guarantor is the collection
 contact for an open loan.
 
-The client drawer is *not* affected. Its collapsed Cash Book panel uses
+The client drawer is _not_ affected. Its collapsed Cash Book panel uses
 `forceRender` (`src/components/clients/form.tsx:333`), so a `PUT` always
 carries the fields.
 
@@ -301,7 +308,7 @@ next column added to `clients` can't reopen this.
   remediated". Update it to point at #293–#298.
 - `src/layouts/base.tsx:161-165` says the cashbook redirect is "purely a UI
   restriction — reads stay membership-level server-side, so this is not an
-  authorization boundary". Since #377 the section guard *is* a server-side
+  authorization boundary". Since #377 the section guard _is_ a server-side
   boundary for that role.
 - `db/sales_reports.go:218-223`'s "There is no discount column" comment is
   false, and is fixed as part of F141.
@@ -317,6 +324,7 @@ receivables and top clients/products. The overdue-invoice rows `navigate()` to
 purchasing and accounting. (`cashbook` is redirected away from `/dashboard`
 by `base.tsx`, so for that role the exposure is API-only.) Choose one of these and record the choice in
 `api/CLAUDE.md`:
+
 - (a) Keep the dashboard shared, but make its widgets and row links
   role-aware.
 - (b) Split the payload per section.
@@ -358,12 +366,12 @@ direct `mux.Handle` registrations) was passed through `routeAllowedForRole` for
 imports it. Section-owned routes, atoms and components used only inside their
 own section were set aside. That left these cross-section consumers:
 
-| Consumer | Denied call | Roles that keep the consumer | Verdict |
-|---|---|---|---|
-| `src/routes/cash-book.tsx` | `GetInvoice`, `UpdateInvoiceState` | `cashbook` | **F140** |
-| `src/components/products/form.tsx` | `GetProductBOM`, `ReplaceProductBOM` | `general`, `sales`, `purchasing` | Handled: `bomAllowed` skips the fetch and the save |
-| `src/routes/settings/gl-export.tsx` | fiscal years, FEC/DATEV | admin, accounting (route-gated) | Consistent |
-| `src/routes/dashboard.tsx` | row link to `/invoices/{id}` | all | **F147** (navigation only; no API call is denied) |
+| Consumer                            | Denied call                          | Roles that keep the consumer     | Verdict                                            |
+| ----------------------------------- | ------------------------------------ | -------------------------------- | -------------------------------------------------- |
+| `src/routes/cash-book.tsx`          | `GetInvoice`, `UpdateInvoiceState`   | `cashbook`                       | **F140**                                           |
+| `src/components/products/form.tsx`  | `GetProductBOM`, `ReplaceProductBOM` | `general`, `sales`, `purchasing` | Handled: `bomAllowed` skips the fetch and the save |
+| `src/routes/settings/gl-export.tsx` | fiscal years, FEC/DATEV              | admin, accounting (route-gated)  | Consistent                                         |
+| `src/routes/dashboard.tsx`          | row link to `/invoices/{id}`         | all                              | **F147** (navigation only; no API call is denied)  |
 
 No other page that a restricted role keeps calls a route its section guard
 denies. Accounting pages link to no source documents.
@@ -415,7 +423,7 @@ denies. Accounting pages link to no source documents.
 - **Changing `discountAmount` on a posted invoice.** `discountAmount` is not in
   `invoiceUpdateTouchesGLFields`. But `UpdateInvoice` revalidates the effective
   totals, and `total = net + roundHalfUp(net·r)` is strictly monotonic in `net`
-  for r ≥ 0. So a discount change without a matching `total` change (which *is*
+  for r ≥ 0. So a discount change without a matching `total` change (which _is_
   GL-guarded) always fails validation. Adding it to the guard would only be
   defense in depth.
 - **Migrations `0085`–`0089`.** All `.up`/`.down` pairs are present. `0086`'s
@@ -458,6 +466,7 @@ should land with or after F140, so the role list it hides against is final.
 ## Verification
 
 Beyond the per-phase gates:
+
 - **F140:** an `api/` test through `NewRouter`. A `cashbook` member of the org
   must get 200 on `GET /api/invoices/{id}` and succeed at the chosen `paid`
   path, and `sales` and `general` behavior must be unchanged. Then drive the
