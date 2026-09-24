@@ -35,6 +35,11 @@ type Payment struct {
 	JournalEntryID   *string `db:"journalEntryId"   json:"journalEntryId"`
 	VoidingEntryID   *string `db:"voidingEntryId"   json:"voidingEntryId"`
 	CreatedAt        int64   `db:"createdAt"        json:"createdAt"`
+	// InvoiceNumbers lists the numbers of the sales invoices this payment
+	// was applied to, in application order — on the Cash Book, the loan
+	// number(s) a collection belongs to. Filled by GetPayments only; empty
+	// for a vendor payment and on every other read path.
+	InvoiceNumbers []string `db:"-" json:"invoiceNumbers"`
 }
 
 // PaymentApplication mirrors the payment_applications table.
@@ -140,6 +145,31 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 		return nil, fmt.Errorf("get_payments: %w", err)
 	}
 
+	var applied []struct {
+		PaymentID     string `db:"paymentId"`
+		InvoiceNumber string `db:"invoiceNumber"`
+	}
+	if err := d.DB.Select(&applied, `
+		SELECT pa.paymentId, COALESCE(i.number, '') AS invoiceNumber
+		FROM payment_applications pa
+		JOIN payments p ON p.id = pa.paymentId
+		JOIN invoices i ON i.id = pa.documentId
+		WHERE pa.documentType = 'invoice' AND p.organizationId = ?
+		ORDER BY pa.createdAt ASC, pa.rowid ASC`,
+		organizationID,
+	); err != nil {
+		return nil, fmt.Errorf("get_payments invoice_numbers: %w", err)
+	}
+	numbers := map[string][]string{}
+	for _, a := range applied {
+		numbers[a.PaymentID] = append(numbers[a.PaymentID], a.InvoiceNumber)
+	}
+	for i := range payments {
+		payments[i].InvoiceNumbers = numbers[payments[i].ID]
+		if payments[i].InvoiceNumbers == nil {
+			payments[i].InvoiceNumbers = []string{}
+		}
+	}
 	return payments, nil
 }
 

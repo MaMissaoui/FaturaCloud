@@ -108,6 +108,21 @@ func TestCashSalePaymentSettlesOnlyItsLine(t *testing.T) {
 	assertLine(t, rows, bigLine, 2400, 0)
 	assertLine(t, rows, smallLine, 600, 600)
 
+	// The invoice number is the loan number, on the loan rows and on the
+	// payment (the Cash Book's movements/history show it).
+	if rows[bigLine].InvoiceNumber != result.Invoice.Number || result.Invoice.Number == "" {
+		t.Fatalf("loan row invoice number = %q, want %q", rows[bigLine].InvoiceNumber, result.Invoice.Number)
+	}
+	payments, err := d.GetPayments(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetPayments: %v", err)
+	}
+	for _, p := range payments {
+		if p.ID == result.Payment.ID && (len(p.InvoiceNumbers) != 1 || p.InvoiceNumbers[0] != result.Invoice.Number) {
+			t.Fatalf("payment invoiceNumbers = %v, want [%s]", p.InvoiceNumbers, result.Invoice.Number)
+		}
+	}
+
 	result, err = d.CreateCashSalePayment(CreateCashSalePaymentRequest{
 		InvoiceID: invoiceID, InvoiceLineItemID: bigLine, Amount: 2400, Date: fx.date,
 	})

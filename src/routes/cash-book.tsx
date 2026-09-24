@@ -1577,6 +1577,12 @@ const CashBook = () => {
                   )}
                 />
                 <Table.Column
+                  title={<Trans>Invoice</Trans>}
+                  key="invoiceNumber"
+                  sorter={textSorter((row: CashMovementDetail) => row.invoiceNumber ?? "")}
+                  render={(row: CashMovementDetail) => row.invoiceNumber || "—"}
+                />
+                <Table.Column
                   title={<Trans>Customer</Trans>}
                   key="clientName"
                   sorter={textSorter((row: CashMovementDetail) => row.clientName ?? row.note ?? "")}
@@ -1704,6 +1710,14 @@ const CashBook = () => {
             sorter={dateSorter((row: LoanStatusRow) => row.date)}
             defaultSortOrder="ascend"
             render={(row: LoanStatusRow) => dayjs(row.date).format(dateFormat)}
+          />
+          <Table.Column
+            title={<Trans>Invoice</Trans>}
+            key="invoiceNumber"
+            sorter={textSorter((row: LoanStatusRow) => row.invoiceNumber)}
+            render={(row: LoanStatusRow) => (
+              <span style={{ whiteSpace: "nowrap" }}>{row.invoiceNumber || "—"}</span>
+            )}
           />
           <Table.Column
             title={<Trans>Product</Trans>}
@@ -1852,6 +1866,14 @@ const CashBook = () => {
               (p: Payment) => (p.clientId && clientNameById.get(p.clientId)) || "",
             )}
             render={(p: Payment) => (p.clientId && clientNameById.get(p.clientId)) || "—"}
+          />
+          <Table.Column
+            title={<Trans>Invoice</Trans>}
+            key="invoiceNumbers"
+            sorter={textSorter((p: Payment) => (p.invoiceNumbers ?? []).join(", "))}
+            render={(p: Payment) =>
+              p.invoiceNumbers && p.invoiceNumbers.length > 0 ? p.invoiceNumbers.join(", ") : "—"
+            }
           />
           <Table.Column
             title={<Trans>Method</Trans>}
@@ -2010,6 +2032,12 @@ const CashBook = () => {
           <>
             <Typography.Paragraph>
               <Typography.Text strong>{payingLine.clientName}</Typography.Text>
+              {payingLine.invoiceNumber && (
+                <Typography.Text type="secondary">
+                  {" · "}
+                  <Trans>Invoice {payingLine.invoiceNumber}</Trans>
+                </Typography.Text>
+              )}
               <br />
               {payingLine.productName}
               {payingLine.sku ? ` (${payingLine.sku})` : ""} × {payingLine.quantity}

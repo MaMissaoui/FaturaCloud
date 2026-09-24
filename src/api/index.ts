@@ -1401,6 +1401,8 @@ export const GetCashMovementDetails = (
 export interface LoanStatusRow {
   lineId: string;
   invoiceId: string;
+  // Doubles as the loan number on the Cash Book screen.
+  invoiceNumber: string;
   clientId: string;
   clientName: string;
   date: number;

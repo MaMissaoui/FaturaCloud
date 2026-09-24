@@ -243,35 +243,38 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 // amount of a cash sale, anything recorded through the invoice page's
 // payment panel) are spread across the lines — see allocateInvoiceLines.
 type LoanStatusRow struct {
-	LineID      string  `db:"lineId"      json:"lineId"`
-	InvoiceID   string  `db:"invoiceId"   json:"invoiceId"`
-	ClientID    string  `db:"clientId"    json:"clientId"`
-	ClientName  string  `db:"clientName"  json:"clientName"`
-	Date        int64   `db:"date"        json:"date"`
-	ProductName string  `db:"productName" json:"productName"`
-	Sku         string  `db:"sku"         json:"sku"`
-	Quantity    float64 `db:"quantity"    json:"quantity"`
-	Amount      int64   `db:"amount"      json:"amount"`
-	Paid        int64   `db:"paid"        json:"paid"`
-	Outstanding int64   `db:"outstanding" json:"outstanding"`
+	LineID    string `db:"lineId"      json:"lineId"`
+	InvoiceID string `db:"invoiceId"   json:"invoiceId"`
+	// InvoiceNumber doubles as the loan number on the Cash Book screen.
+	InvoiceNumber string  `db:"invoiceNumber" json:"invoiceNumber"`
+	ClientID      string  `db:"clientId"    json:"clientId"`
+	ClientName    string  `db:"clientName"  json:"clientName"`
+	Date          int64   `db:"date"        json:"date"`
+	ProductName   string  `db:"productName" json:"productName"`
+	Sku           string  `db:"sku"         json:"sku"`
+	Quantity      float64 `db:"quantity"    json:"quantity"`
+	Amount        int64   `db:"amount"      json:"amount"`
+	Paid          int64   `db:"paid"        json:"paid"`
+	Outstanding   int64   `db:"outstanding" json:"outstanding"`
 }
 
 // loanLineRaw is one invoice line as read for the loan tracker, before its
 // invoice's total and payments are allocated across the lines.
 type loanLineRaw struct {
-	LineID       string  `db:"lineId"`
-	InvoiceID    string  `db:"invoiceId"`
-	ClientID     string  `db:"clientId"`
-	ClientName   string  `db:"clientName"`
-	Date         int64   `db:"docDate"`
-	InvoiceTotal int64   `db:"invoiceTotal"`
-	InvoicePaid  int64   `db:"invoicePaid"`
-	AppCount     int64   `db:"appCount"`
-	LinePaid     int64   `db:"linePaid"`
-	ProductName  string  `db:"productName"`
-	Sku          string  `db:"sku"`
-	Quantity     float64 `db:"quantity"`
-	NetLine      int64   `db:"netLine"`
+	LineID        string  `db:"lineId"`
+	InvoiceID     string  `db:"invoiceId"`
+	InvoiceNumber string  `db:"invoiceNumber"`
+	ClientID      string  `db:"clientId"`
+	ClientName    string  `db:"clientName"`
+	Date          int64   `db:"docDate"`
+	InvoiceTotal  int64   `db:"invoiceTotal"`
+	InvoicePaid   int64   `db:"invoicePaid"`
+	AppCount      int64   `db:"appCount"`
+	LinePaid      int64   `db:"linePaid"`
+	ProductName   string  `db:"productName"`
+	Sku           string  `db:"sku"`
+	Quantity      float64 `db:"quantity"`
+	NetLine       int64   `db:"netLine"`
 }
 
 // loanLineOrder is the within-invoice line order every allocation over
@@ -285,7 +288,7 @@ const loanLineOrder = "netLine DESC, lineId ASC"
 // payments count, the same clause the rest of the loan tracker uses.
 func loanLinesQuery(where string) string {
 	return fmt.Sprintf(`
-		SELECT li.id AS lineId, i.id AS invoiceId, i.clientId AS clientId,
+		SELECT li.id AS lineId, i.id AS invoiceId, COALESCE(i.number, '') AS invoiceNumber, i.clientId AS clientId,
 		       c.name AS clientName, i.date AS docDate,
 		       i.total AS invoiceTotal,
 		       %s AS invoicePaid,
@@ -346,7 +349,7 @@ func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusR
 		for k := i; k < j; k++ {
 			r := raw[k]
 			rows = append(rows, LoanStatusRow{
-				LineID: r.LineID, InvoiceID: r.InvoiceID, ClientID: r.ClientID,
+				LineID: r.LineID, InvoiceID: r.InvoiceID, InvoiceNumber: r.InvoiceNumber, ClientID: r.ClientID,
 				ClientName: r.ClientName, Date: r.Date,
 				ProductName: r.ProductName, Sku: r.Sku, Quantity: r.Quantity,
 				Amount: amounts[k-i], Paid: paid[k-i], Outstanding: amounts[k-i] - paid[k-i],

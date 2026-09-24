@@ -108,6 +108,7 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-loan-export")
 
+	invoiceNumbers := map[string]bool{}
 	// Two loan sales (no payment yet, state sent): 1000 + 20% = 1200 and
 	// 500 + 20% = 600, for a 1800-cent original total.
 	for _, inv := range []struct {
@@ -115,6 +116,7 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 		unit float64
 	}{{"INV-LOAN-1", 1000}, {"INV-LOAN-2", 500}} {
 		created := fx.createInvoice(t, d, inv.id, 1, inv.unit)
+		invoiceNumbers[created.Number] = true
 		if _, err := d.UpdateInvoiceState(created.ID, "sent"); err != nil {
 			t.Fatalf("UpdateInvoiceState(%s): %v", inv.id, err)
 		}
@@ -156,7 +158,14 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 		t.Errorf("Print_Titles = %q, want it to repeat row 4", printTitles)
 	}
 
-	// Two data rows (5, 6) then the totals row (7). Amount is column F.
+	// Column C carries each line's invoice number — the loan number.
+	for _, cell := range []string{"C5", "C6"} {
+		if got, _ := f.GetCellValue(sheet, cell); !invoiceNumbers[got] {
+			t.Errorf("%s invoice = %q, want one of the loan invoices' numbers", cell, got)
+		}
+	}
+
+	// Two data rows (5, 6) then the totals row (7). Amount is column G.
 	if total, _ := f.GetCellValue(sheet, "A7"); total != "Total" {
 		t.Fatalf("A7 = %q, want the totals row", total)
 	}
@@ -165,7 +174,7 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 		currency = *org.Currency
 	}
 	wantAmount := formatMoneyCents(1800, currency, org.MinimumFractionDigits, org.CountryCode)
-	if got, _ := f.GetCellValue(sheet, "F7"); got != wantAmount {
+	if got, _ := f.GetCellValue(sheet, "G7"); got != wantAmount {
 		t.Errorf("total amount = %q, want %q", got, wantAmount)
 	}
 
@@ -196,6 +205,10 @@ func TestPaymentHistoryExportMirrorsCashBookCard(t *testing.T) {
 	fx := newGLPostingTestFixture(t, d, "org-payment-history-export")
 	register := accountByCode(t, d, fx.orgID, "1010")
 
+	// A numbering format so the sale's invoice (loan) number is non-empty.
+	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{InvoiceNumberFormat: ptr("INV-{number}")}); err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
 	// A cash sale settled in full, which records one inbound payment.
 	sale, err := d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
@@ -243,24 +256,28 @@ func TestPaymentHistoryExportMirrorsCashBookCard(t *testing.T) {
 	if printTitles := printTitlesFor(f); !strings.Contains(printTitles, "$4:$4") {
 		t.Errorf("Print_Titles = %q, want it to repeat row 4", printTitles)
 	}
-	// Row 5 is the payment: Date, Customer, Method, Reference, Status, Amount.
+	// Row 5 is the payment: Date, Customer, Invoice, Method, Reference,
+	// Status, Amount.
 	if got, _ := f.GetCellValue(sheet, "B5"); got != "Test Client" {
 		t.Errorf("B5 customer = %q, want Test Client", got)
 	}
-	if got, _ := f.GetCellValue(sheet, "C5"); got != "Cash" {
-		t.Errorf("C5 method = %q, want Cash", got)
+	if got, _ := f.GetCellValue(sheet, "C5"); got != sale.Invoice.Number || got == "" {
+		t.Errorf("C5 invoice = %q, want the sale's invoice number %q", got, sale.Invoice.Number)
 	}
-	if got, _ := f.GetCellValue(sheet, "E5"); got != "Posted" {
-		t.Errorf("E5 status = %q, want Posted", got)
+	if got, _ := f.GetCellValue(sheet, "D5"); got != "Cash" {
+		t.Errorf("D5 method = %q, want Cash", got)
 	}
-	if got, _ := f.GetCellValue(sheet, "F5"); got != wantAmount {
-		t.Errorf("F5 amount = %q, want %q", got, wantAmount)
+	if got, _ := f.GetCellValue(sheet, "F5"); got != "Posted" {
+		t.Errorf("F5 status = %q, want Posted", got)
+	}
+	if got, _ := f.GetCellValue(sheet, "G5"); got != wantAmount {
+		t.Errorf("G5 amount = %q, want %q", got, wantAmount)
 	}
 	if got, _ := f.GetCellValue(sheet, "A6"); got != "Total (posted)" {
 		t.Fatalf("A6 = %q, want the totals row", got)
 	}
-	if got, _ := f.GetCellValue(sheet, "F6"); got != wantAmount {
-		t.Errorf("F6 total = %q, want %q", got, wantAmount)
+	if got, _ := f.GetCellValue(sheet, "G6"); got != wantAmount {
+		t.Errorf("G6 total = %q, want %q", got, wantAmount)
 	}
 
 	// A customer-scoped export names that customer in the first-page header.
@@ -292,10 +309,10 @@ func TestPaymentHistoryExportMirrorsCashBookCard(t *testing.T) {
 	}
 	defer vf.Close()
 	vsheet := vf.GetSheetName(0)
-	if got, _ := vf.GetCellValue(vsheet, "E5"); got != "Voided" {
-		t.Errorf("E5 status = %q, want Voided", got)
+	if got, _ := vf.GetCellValue(vsheet, "F5"); got != "Voided" {
+		t.Errorf("F5 status = %q, want Voided", got)
 	}
-	if got, _ := vf.GetCellValue(vsheet, "F6"); got != zero {
+	if got, _ := vf.GetCellValue(vsheet, "G6"); got != zero {
 		t.Errorf("voided total = %q, want %q", got, zero)
 	}
 }
