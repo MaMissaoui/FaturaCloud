@@ -161,7 +161,7 @@ msgstr "Konto aktualisiert"
 msgid "account(s)"
 msgstr "Konto/Konten"
 
-#: src/components/organizations/organization-edit-drawer.tsx:493
+#: src/components/organizations/organization-edit-drawer.tsx:513
 #: src/components/organizations/organization-members-panel.tsx:15
 #: src/components/products/form.tsx:661
 #: src/components/tax-rates/form.tsx:231
@@ -173,11 +173,11 @@ msgstr "Buchhaltung"
 msgid "Accounting equation check:"
 msgstr "Prüfung der Bilanzgleichung:"
 
-#: src/components/organizations/organization-edit-drawer.tsx:515
+#: src/components/organizations/organization-edit-drawer.tsx:535
 msgid "Accounts payable"
 msgstr "Verbindlichkeiten"
 
-#: src/components/organizations/organization-edit-drawer.tsx:500
+#: src/components/organizations/organization-edit-drawer.tsx:520
 msgid "Accounts receivable"
 msgstr "Forderungen"
 
@@ -408,6 +408,10 @@ msgstr "Vermögenswerte"
 #: src/components/stock/movement-form.tsx:187
 msgid "At least one serial number is required"
 msgstr "Mindestens eine Seriennummer ist erforderlich"
+
+#: src/types/document-layout.ts:42
+msgid "Automatic (from the document layout)"
+msgstr "Automatisch (nach Dokumentlayout)"
 
 #: src/routes/settings/backup.tsx:219
 msgid "Automatic schedule"
@@ -738,7 +742,7 @@ msgstr "Kassenbewegung(en)"
 msgid "Cash register"
 msgstr "Kasse"
 
-#: src/components/organizations/organization-edit-drawer.tsx:591
+#: src/components/organizations/organization-edit-drawer.tsx:611
 msgid "Cash register account"
 msgstr "Kassenkonto"
 
@@ -849,7 +853,7 @@ msgid "Client updated successfully"
 msgstr "Kunde erfolgreich aktualisiert"
 
 #: src/components/organizations/organizations-table.tsx:116
-#: src/routes/organizations/index.tsx:454
+#: src/routes/organizations/index.tsx:460
 msgid "client(s)"
 msgstr "Kunde(n)"
 
@@ -1005,7 +1009,7 @@ msgstr "Produkt kopieren"
 msgid "Cost"
 msgstr "Kosten"
 
-#: src/components/organizations/organization-edit-drawer.tsx:655
+#: src/components/organizations/organization-edit-drawer.tsx:675
 msgid "Cost of goods sold, recognized against inventory when a shipment ships."
 msgstr "Wareneinsatz, beim Versand einer Lieferung gegen den Bestand erfasst."
 
@@ -1013,7 +1017,7 @@ msgstr "Wareneinsatz, beim Versand einer Lieferung gegen den Bestand erfasst."
 msgid "Cost price"
 msgstr "Einkaufspreis"
 
-#: src/routes/organizations/index.tsx:506
+#: src/routes/organizations/index.tsx:512
 msgid "Couldn't load organizations"
 msgstr "Organisationen konnten nicht geladen werden"
 
@@ -1119,7 +1123,7 @@ msgstr "Zähler"
 msgid "Counter must be 0 or greater"
 msgstr "Zähler muss 0 oder größer sein"
 
-#: src/components/organizations/organization-edit-drawer.tsx:675
+#: src/components/organizations/organization-edit-drawer.tsx:695
 msgid "Counter-account for a manual stock adjustment's signed inventory value change."
 msgstr "Gegenkonto für die vorzeichenbehaftete Bestandswertänderung einer manuellen Lagerbuchung."
 
@@ -1216,7 +1220,7 @@ msgstr "Erstellt eine Momentaufnahme, speichert sie in der Sicherungsliste und l
 msgid "Credit"
 msgstr "Haben"
 
-#: src/components/organizations/organization-edit-drawer.tsx:695
+#: src/components/organizations/organization-edit-drawer.tsx:715
 msgid "Credited for the freight/customs allocated to a receipt whose purchase order belongs to an import — separate from GRNI, which stays valued at the vendor's goods price only."
 msgstr "Wird mit den Fracht-/Zollkosten erkannt, die einem Wareneingang zugeordnet sind, dessen Bestellung zu einem Import gehört — getrennt von den erhaltenen, nicht fakturierten Waren, die weiterhin nur zum Warenpreis des Lieferanten bewertet bleiben."
 
@@ -1349,15 +1353,15 @@ msgstr "Zeitraum"
 msgid "DATEV account number"
 msgstr "DATEV-Kontonummer"
 
-#: src/components/organizations/organization-edit-drawer.tsx:714
+#: src/components/organizations/organization-edit-drawer.tsx:734
 msgid "DATEV clearing account"
 msgstr "DATEV-Verrechnungskonto"
 
-#: src/components/organizations/organization-edit-drawer.tsx:747
+#: src/components/organizations/organization-edit-drawer.tsx:767
 msgid "DATEV client number"
 msgstr "DATEV-Mandantennummer"
 
-#: src/components/organizations/organization-edit-drawer.tsx:736
+#: src/components/organizations/organization-edit-drawer.tsx:756
 msgid "DATEV consultant number"
 msgstr "DATEV-Beraternummer"
 
@@ -1416,11 +1420,11 @@ msgstr "Standard"
 msgid "Default buyer reference"
 msgstr "Standard-Käuferreferenz"
 
-#: src/components/organizations/organization-edit-drawer.tsx:570
+#: src/components/organizations/organization-edit-drawer.tsx:590
 msgid "Default cash account"
 msgstr "Standard-Kassenkonto"
 
-#: src/components/organizations/organization-edit-drawer.tsx:653
+#: src/components/organizations/organization-edit-drawer.tsx:673
 msgid "Default COGS account"
 msgstr "Standard-Wareneinsatzkonto"
 
@@ -1435,11 +1439,11 @@ msgstr "Standardwährung"
 msgid "Default currency for invoices and reports. Changing this updates decimal precision."
 msgstr "Standardwährung für Rechnungen und Berichte. Eine Änderung passt die Dezimalstellen an."
 
-#: src/components/organizations/organization-edit-drawer.tsx:549
+#: src/components/organizations/organization-edit-drawer.tsx:569
 msgid "Default expense account"
 msgstr "Standard-Aufwandskonto"
 
-#: src/components/organizations/organization-edit-drawer.tsx:792
+#: src/components/organizations/organization-edit-drawer.tsx:812
 msgid "Default fiscal stamp amount"
 msgstr "Standard-Steuermarkenbetrag"
 
@@ -1451,23 +1455,23 @@ msgstr "Standard für neue Rechnungen"
 msgid "Default for new products"
 msgstr "Standard für neue Produkte"
 
-#: src/components/organizations/organization-edit-drawer.tsx:633
+#: src/components/organizations/organization-edit-drawer.tsx:653
 msgid "Default GRNI account"
 msgstr "Standard-Konto für erhaltene, nicht fakturierte Waren"
 
-#: src/components/organizations/organization-edit-drawer.tsx:693
+#: src/components/organizations/organization-edit-drawer.tsx:713
 msgid "Default import costs payable account"
 msgstr "Standardkonto für Verbindlichkeiten aus Importkosten"
 
-#: src/components/organizations/organization-edit-drawer.tsx:613
+#: src/components/organizations/organization-edit-drawer.tsx:633
 msgid "Default inventory account"
 msgstr "Standard-Bestandskonto"
 
-#: src/components/organizations/organization-edit-drawer.tsx:673
+#: src/components/organizations/organization-edit-drawer.tsx:693
 msgid "Default inventory adjustment account"
 msgstr "Standard-Konto für Bestandskorrekturen"
 
-#: src/components/organizations/organization-edit-drawer.tsx:530
+#: src/components/organizations/organization-edit-drawer.tsx:550
 msgid "Default revenue account"
 msgstr "Standard-Erlöskonto"
 
@@ -1566,7 +1570,7 @@ msgstr "Diese Lagerbewegung löschen? Der Lagerbestand wird neu berechnet."
 msgid "Delete this user?"
 msgstr "Diesen Benutzer löschen?"
 
-#: src/routes/organizations/index.tsx:423
+#: src/routes/organizations/index.tsx:429
 msgid "Deleted {total} record(s)"
 msgstr "{total} Datensatz/-sätze gelöscht"
 
@@ -1635,7 +1639,7 @@ msgid "Delivery update failed"
 msgstr "Lieferung-Aktualisierung fehlgeschlagen"
 
 #: src/components/organizations/organizations-table.tsx:120
-#: src/routes/organizations/index.tsx:464
+#: src/routes/organizations/index.tsx:470
 msgid "delivery(ies)"
 msgstr "Lieferung(en)"
 
@@ -1707,6 +1711,10 @@ msgstr "Nicht gespeicherte Änderungen verwerfen?"
 #: src/routes/invoices/details.tsx:1045
 msgid "Discount"
 msgstr "Rabatt"
+
+#: src/components/organizations/organization-edit-drawer.tsx:472
+msgid "Document language"
+msgstr "Dokumentsprache"
 
 #: src/components/organizations/organization-edit-drawer.tsx:448
 msgid "Document layout"
@@ -1805,7 +1813,7 @@ msgstr "E-Mail"
 msgid "E-mails"
 msgstr "E-Mails"
 
-#: src/components/organizations/organization-edit-drawer.tsx:741
+#: src/components/organizations/organization-edit-drawer.tsx:761
 msgid "e.g. 1001"
 msgstr "z. B. 1001"
 
@@ -1828,7 +1836,7 @@ msgstr "z. B. 1234567A/B/C/000"
 msgid "e.g. 2026"
 msgstr "z. B. 2026"
 
-#: src/components/organizations/organization-edit-drawer.tsx:750
+#: src/components/organizations/organization-edit-drawer.tsx:770
 msgid "e.g. 456"
 msgstr "z. B. 456"
 
@@ -1951,11 +1959,11 @@ msgstr "Aktivieren Sie \"Bestand verfolgen\" bei einem Produkt (Stammdaten → P
 msgid "Enable automatic backups"
 msgstr "Automatische Sicherungen aktivieren"
 
-#: src/components/organizations/organization-edit-drawer.tsx:766
+#: src/components/organizations/organization-edit-drawer.tsx:786
 msgid "Enable fiscal stamp"
 msgstr "Steuermarke aktivieren"
 
-#: src/components/organizations/organization-edit-drawer.tsx:783
+#: src/components/organizations/organization-edit-drawer.tsx:803
 msgid "Enable withholding tax"
 msgstr "Quellensteuer aktivieren"
 
@@ -2079,7 +2087,7 @@ msgstr "Exportiert jede gebuchte Journalzeile des ausgewählten Geschäftsjahres
 msgid "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 msgstr "Exportiert jede gebuchte Journalzeile des ausgewählten Geschäftsjahres als Datei SirenFECAAAAMMJJ.txt gemäß dem vorgeschriebenen Format der französischen Steuerbehörde. Erfordert eine 9-stellige SIREN-Nummer in der Handelsregisternummer der Organisation."
 
-#: src/routes/organizations/index.tsx:252
+#: src/routes/organizations/index.tsx:258
 msgid "Failed to add member"
 msgstr "Mitglied konnte nicht hinzugefügt werden"
 
@@ -2274,7 +2282,7 @@ msgstr "Kreditstatus konnte nicht geladen werden"
 msgid "Failed to load numbering settings"
 msgstr "Nummerierungseinstellungen konnten nicht geladen werden"
 
-#: src/routes/organizations/index.tsx:228
+#: src/routes/organizations/index.tsx:234
 msgid "Failed to load organization"
 msgstr "Organisation konnte nicht geladen werden"
 
@@ -2335,7 +2343,7 @@ msgstr "Verkauf konnte nicht erfasst werden"
 msgid "Failed to record stock movement"
 msgstr "Lagerbewegung konnte nicht erfasst werden"
 
-#: src/routes/organizations/index.tsx:277
+#: src/routes/organizations/index.tsx:283
 msgid "Failed to remove member"
 msgstr "Mitglied konnte nicht entfernt werden"
 
@@ -2356,7 +2364,7 @@ msgstr "Stückliste konnte nicht gespeichert werden"
 msgid "Failed to save numbering settings"
 msgstr "Nummerierungseinstellungen konnten nicht gespeichert werden"
 
-#: src/routes/organizations/index.tsx:381
+#: src/routes/organizations/index.tsx:387
 msgid "Failed to save organization"
 msgstr "Organisation konnte nicht gespeichert werden"
 
@@ -2396,7 +2404,7 @@ msgstr "Status der Eingangsrechnung konnte nicht aktualisiert werden"
 msgid "Failed to update invoice state"
 msgstr "Rechnungsstatus konnte nicht aktualisiert werden"
 
-#: src/routes/organizations/index.tsx:264
+#: src/routes/organizations/index.tsx:270
 msgid "Failed to update member role"
 msgstr "Rolle des Mitglieds konnte nicht aktualisiert werden"
 
@@ -2646,7 +2654,7 @@ msgid "Goods receipt update failed"
 msgstr "Aktualisieren des Wareneingangs fehlgeschlagen"
 
 #: src/components/organizations/organizations-table.tsx:124
-#: src/routes/organizations/index.tsx:466
+#: src/routes/organizations/index.tsx:472
 msgid "goods receipt(s)"
 msgstr "Wareneingang/-eingänge"
 
@@ -2659,7 +2667,7 @@ msgstr "Wareneingänge"
 msgid "Goods Receipts"
 msgstr "Wareneingänge"
 
-#: src/components/organizations/organization-edit-drawer.tsx:635
+#: src/components/organizations/organization-edit-drawer.tsx:655
 msgid "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 msgstr "Erhaltene, nicht fakturierte Waren — bucht beim Erhalt eines Wareneingangs eine Verbindlichkeit, die bei Genehmigung der passenden Lieferantenrechnung ausgeglichen wird."
 
@@ -2844,7 +2852,7 @@ msgid "Incoming invoice update failed"
 msgstr "Aktualisieren der Eingangsrechnung fehlgeschlagen"
 
 #: src/components/organizations/organizations-table.tsx:125
-#: src/routes/organizations/index.tsx:467
+#: src/routes/organizations/index.tsx:473
 msgid "incoming invoice(s)"
 msgstr "Eingangsrechnung(en)"
 
@@ -2988,7 +2996,7 @@ msgid "Invoice updated successfully"
 msgstr "Rechnung erfolgreich aktualisiert"
 
 #: src/components/organizations/organizations-table.tsx:118
-#: src/routes/organizations/index.tsx:462
+#: src/routes/organizations/index.tsx:468
 msgid "invoice(s)"
 msgstr "Rechnung(en)"
 
@@ -3161,7 +3169,7 @@ msgstr "Verbindlichkeiten"
 msgid "Liability"
 msgstr "Passiva"
 
-#: src/components/organizations/organization-edit-drawer.tsx:809
+#: src/components/organizations/organization-edit-drawer.tsx:829
 msgid "Liability account credited when an invoice's fiscal stamp posts — the seller collects it on behalf of the state, so it's never revenue."
 msgstr "Verbindlichkeitskonto, das bei Buchung der Steuermarke einer Rechnung gutgeschrieben wird — der Verkäufer erhebt sie im Auftrag des Staates, daher ist sie nie Umsatz."
 
@@ -3225,11 +3233,11 @@ msgstr "Anmeldung fehlgeschlagen"
 msgid "Logo"
 msgstr "Logo"
 
-#: src/routes/organizations/index.tsx:305
+#: src/routes/organizations/index.tsx:311
 msgid "Logo removal failed"
 msgstr "Logo-Entfernung fehlgeschlagen"
 
-#: src/routes/organizations/index.tsx:540
+#: src/routes/organizations/index.tsx:546
 msgid "Logo upload failed"
 msgstr "Logo-Upload fehlgeschlagen"
 
@@ -3306,11 +3314,11 @@ msgstr "Übereinstimmend"
 msgid "Matricule Fiscal (MF)"
 msgstr "Matricule Fiscal (MF)"
 
-#: src/routes/organizations/index.tsx:247
+#: src/routes/organizations/index.tsx:253
 msgid "Member added"
 msgstr "Mitglied hinzugefügt"
 
-#: src/routes/organizations/index.tsx:274
+#: src/routes/organizations/index.tsx:280
 msgid "Member removed"
 msgstr "Mitglied entfernt"
 
@@ -3503,7 +3511,7 @@ msgstr "Neue Bestellung"
 
 #: src/components/organizations/organization-edit-drawer.tsx:112
 #: src/layouts/base.tsx:887
-#: src/routes/organizations/index.tsx:496
+#: src/routes/organizations/index.tsx:502
 msgid "New organization"
 msgstr "Neue Organisation"
 
@@ -3884,19 +3892,19 @@ msgstr "Noch keine Lieferanten"
 
 #: src/components/accounting/account-form.tsx:183
 #: src/components/line-items/table.tsx:476
-#: src/components/organizations/organization-edit-drawer.tsx:506
-#: src/components/organizations/organization-edit-drawer.tsx:521
-#: src/components/organizations/organization-edit-drawer.tsx:540
-#: src/components/organizations/organization-edit-drawer.tsx:561
-#: src/components/organizations/organization-edit-drawer.tsx:582
-#: src/components/organizations/organization-edit-drawer.tsx:604
+#: src/components/organizations/organization-edit-drawer.tsx:526
+#: src/components/organizations/organization-edit-drawer.tsx:541
+#: src/components/organizations/organization-edit-drawer.tsx:560
+#: src/components/organizations/organization-edit-drawer.tsx:581
+#: src/components/organizations/organization-edit-drawer.tsx:602
 #: src/components/organizations/organization-edit-drawer.tsx:624
 #: src/components/organizations/organization-edit-drawer.tsx:644
 #: src/components/organizations/organization-edit-drawer.tsx:664
 #: src/components/organizations/organization-edit-drawer.tsx:684
-#: src/components/organizations/organization-edit-drawer.tsx:705
-#: src/components/organizations/organization-edit-drawer.tsx:727
-#: src/components/organizations/organization-edit-drawer.tsx:819
+#: src/components/organizations/organization-edit-drawer.tsx:704
+#: src/components/organizations/organization-edit-drawer.tsx:725
+#: src/components/organizations/organization-edit-drawer.tsx:747
+#: src/components/organizations/organization-edit-drawer.tsx:839
 #: src/components/tax-rates/form.tsx:247
 #: src/components/tax-rates/form.tsx:266
 #: src/routes/bill-of-materials.tsx:191
@@ -3944,7 +3952,7 @@ msgstr "Notizen"
 msgid "Nothing matches the current selection."
 msgstr "Nichts entspricht der aktuellen Auswahl."
 
-#: src/routes/organizations/index.tsx:424
+#: src/routes/organizations/index.tsx:430
 msgid "Nothing to delete — this organization was empty"
 msgstr "Nichts zu löschen – diese Organisation war leer"
 
@@ -4146,7 +4154,7 @@ msgid "Order update failed"
 msgstr "Bestellung-Aktualisierung fehlgeschlagen"
 
 #: src/components/organizations/organizations-table.tsx:119
-#: src/routes/organizations/index.tsx:463
+#: src/routes/organizations/index.tsx:469
 msgid "order(s)"
 msgstr "Bestellung(en)"
 
@@ -4174,11 +4182,11 @@ msgstr "Organisation-Erstellung fehlgeschlagen"
 msgid "Organization default"
 msgstr "Standard der Organisation"
 
-#: src/routes/organizations/index.tsx:396
+#: src/routes/organizations/index.tsx:402
 msgid "Organization deleted"
 msgstr "Organisation gelöscht"
 
-#: src/routes/organizations/index.tsx:399
+#: src/routes/organizations/index.tsx:405
 msgid "Organization deletion failed"
 msgstr "Organisation-Löschung fehlgeschlagen"
 
@@ -4191,7 +4199,7 @@ msgid "Organization updated successfully"
 msgstr "Organisation erfolgreich aktualisiert"
 
 #: src/layouts/base.tsx:334
-#: src/routes/organizations/index.tsx:486
+#: src/routes/organizations/index.tsx:492
 msgid "Organizations"
 msgstr "Organisationen"
 
@@ -4587,7 +4595,7 @@ msgstr "Power-User"
 msgid "Prefill only — every purchase order linked to this import still stores and freezes its own currency and rate when saved."
 msgstr "Nur Vorbelegung — jede mit diesem Import verknüpfte Bestellung speichert und fixiert beim Speichern weiterhin ihre eigene Währung und ihren eigenen Kurs."
 
-#: src/components/organizations/organization-edit-drawer.tsx:794
+#: src/components/organizations/organization-edit-drawer.tsx:814
 msgid "Prefills a new invoice's stamp amount. The statutory amount changes by law from time to time, so this is a plain editable default, not enforced."
 msgstr "Füllt den Steuermarkenbetrag einer neuen Rechnung vor. Der gesetzliche Betrag ändert sich von Zeit zu Zeit, daher ist dies nur ein editierbarer Standardwert, keine Vorgabe."
 
@@ -4629,8 +4637,12 @@ msgid "Pricing"
 msgstr "Preisgestaltung"
 
 #: src/components/organizations/organization-edit-drawer.tsx:475
-msgid "Print the document total spelled out in words, e.g. \"Arrêtée la présente facture à la somme de ...\"."
-msgstr "Den Gesamtbetrag des Dokuments in Worten ausgeschrieben drucken, z. B. \"Arrêtée la présente facture à la somme de ...\"."
+#~ msgid "Print the document total spelled out in words, e.g. \"Arrêtée la présente facture à la somme de ...\"."
+#~ msgstr "Den Gesamtbetrag des Dokuments in Worten ausgeschrieben drucken, z. B. \"Arrêtée la présente facture à la somme de ...\"."
+
+#: src/components/organizations/organization-edit-drawer.tsx:496
+msgid "Print the invoice total spelled out in words, in the document language."
+msgstr "Den Rechnungsbetrag in Worten drucken, in der Dokumentsprache."
 
 #: src/components/line-items/table.tsx:331
 #: src/components/products/form.tsx:378
@@ -4686,7 +4698,7 @@ msgid "Product updated"
 msgstr "Produkt aktualisiert"
 
 #: src/components/organizations/organizations-table.tsx:121
-#: src/routes/organizations/index.tsx:456
+#: src/routes/organizations/index.tsx:462
 msgid "product(s)"
 msgstr "Produkt(e)"
 
@@ -4791,7 +4803,7 @@ msgid "Purchase order update failed"
 msgstr "Aktualisieren der Bestellung fehlgeschlagen"
 
 #: src/components/organizations/organizations-table.tsx:123
-#: src/routes/organizations/index.tsx:465
+#: src/routes/organizations/index.tsx:471
 msgid "purchase order(s)"
 msgstr "Bestellung(en)"
 
@@ -5056,11 +5068,11 @@ msgstr "Angeforderte Menge übersteigt den verfügbaren Bestand"
 msgid "Required"
 msgstr "Erforderlich"
 
-#: src/components/organizations/organization-edit-drawer.tsx:748
+#: src/components/organizations/organization-edit-drawer.tsx:768
 msgid "Required to generate a DATEV export (1–99999)."
 msgstr "Erforderlich für den DATEV-Export (1–99999)."
 
-#: src/components/organizations/organization-edit-drawer.tsx:738
+#: src/components/organizations/organization-edit-drawer.tsx:758
 msgid "Required to generate a DATEV export (1001–9999999)."
 msgstr "Erforderlich für den DATEV-Export (1001–9999999)."
 
@@ -5072,7 +5084,7 @@ msgstr "Reserviert einen Seriennummernbereich für alles, was aus den Komponente
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: src/routes/organizations/index.tsx:440
+#: src/routes/organizations/index.tsx:446
 msgid "Reset failed"
 msgstr "Zurücksetzen fehlgeschlagen"
 
@@ -5161,7 +5173,7 @@ msgstr "Aufbewahrung (Tage)"
 #: src/routes/incoming-invoices/details.tsx:346
 #: src/routes/invoices/details.tsx:443
 #: src/routes/orders/details.tsx:296
-#: src/routes/organizations/index.tsx:509
+#: src/routes/organizations/index.tsx:515
 #: src/routes/production-orders/details.tsx:285
 #: src/routes/purchase-orders/details.tsx:391
 #: src/routes/reporting/purchases-by-vendor.tsx:107
@@ -5355,7 +5367,7 @@ msgstr "Zeitplan gespeichert"
 #: src/routes/inbound-deliveries.tsx:82
 #: src/routes/incoming-invoices.tsx:95
 #: src/routes/orders.tsx:86
-#: src/routes/organizations/index.tsx:488
+#: src/routes/organizations/index.tsx:494
 #: src/routes/production-orders.tsx:72
 #: src/routes/products.tsx:194
 #: src/routes/purchase-orders.tsx:82
@@ -5559,7 +5571,7 @@ msgstr "Kurzcode für die Belegnummerierung (z. B. ACME, MS). Wird automatisch g
 msgid "Shortage quantity found"
 msgstr "Fehlmenge festgestellt"
 
-#: src/components/organizations/organization-edit-drawer.tsx:482
+#: src/components/organizations/organization-edit-drawer.tsx:502
 msgid "Show amount in words"
 msgstr "Betrag in Worten anzeigen"
 
@@ -5571,11 +5583,11 @@ msgstr "Statusfluss anzeigen"
 msgid "Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow {hiddenResultCount} more"
 msgstr "Die ersten {MAX_SEARCH_RESULTS} werden angezeigt — weiter tippen, um {hiddenResultCount} weitere einzugrenzen"
 
-#: src/components/organizations/organization-edit-drawer.tsx:759
+#: src/components/organizations/organization-edit-drawer.tsx:779
 msgid "Shows a fiscal stamp (flat, non-taxable duty) field on this organization's invoices, independent of the PDF layout."
 msgstr "Zeigt ein Steuermarkenfeld (pauschale, nicht steuerpflichtige Abgabe) auf den Rechnungen dieser Organisation an, unabhängig vom PDF-Layout."
 
-#: src/components/organizations/organization-edit-drawer.tsx:776
+#: src/components/organizations/organization-edit-drawer.tsx:796
 msgid "Shows a withholding tax rate field on this organization's invoices, independent of the PDF layout."
 msgstr "Zeigt ein Quellensteuersatz-Feld auf den Rechnungen dieser Organisation an, unabhängig vom PDF-Layout."
 
@@ -5640,7 +5652,7 @@ msgstr "Ausgaben nach Lieferant"
 msgid "Spend on an expense (no vendor bill)"
 msgstr "Für eine Ausgabe verwenden (keine Lieferantenrechnung)"
 
-#: src/components/organizations/organization-edit-drawer.tsx:807
+#: src/components/organizations/organization-edit-drawer.tsx:827
 msgid "Stamp duty account"
 msgstr "Konto für Steuermarke"
 
@@ -5732,7 +5744,7 @@ msgid "Stock movement recorded"
 msgstr "Lagerbewegung erfasst"
 
 #: src/components/organizations/organizations-table.tsx:128
-#: src/routes/organizations/index.tsx:468
+#: src/routes/organizations/index.tsx:474
 msgid "stock movement(s)"
 msgstr "Lagerbewegung(en)"
 
@@ -5783,7 +5795,7 @@ msgstr "Zum hellen Modus wechseln"
 msgid "Switch to today to record a payment"
 msgstr "Zu heute wechseln, um eine Zahlung zu erfassen"
 
-#: src/components/organizations/organization-edit-drawer.tsx:716
+#: src/components/organizations/organization-edit-drawer.tsx:736
 msgid "Synthetic counter-account for a manual journal entry with more than one line on both sides (no natural anchor line) when exporting to DATEV. Leave blank if you don't use DATEV."
 msgstr "Synthetisches Gegenkonto für eine manuelle Buchung mit mehr als einer Zeile auf beiden Seiten (ohne natürliche Ankerzeile) beim Export nach DATEV. Leer lassen, wenn Sie DATEV nicht verwenden."
 
@@ -5851,7 +5863,7 @@ msgid "Tax rate updated successfully"
 msgstr "Steuersatz erfolgreich aktualisiert"
 
 #: src/components/organizations/organizations-table.tsx:122
-#: src/routes/organizations/index.tsx:457
+#: src/routes/organizations/index.tsx:463
 msgid "tax rate(s)"
 msgstr "Steuersatz/-sätze"
 
@@ -5897,6 +5909,10 @@ msgstr "Vielen Dank für Ihr Vertrauen"
 msgid "The ISO country code — drives currency/date formatting defaults and which e-invoicing profile applies. Separate from the Country field near the top, which only picks a starter chart of accounts."
 msgstr "Der ISO-Ländercode — steuert die Standardformatierung von Währung/Datum und welches E-Rechnungs-Profil angewendet wird. Getrennt vom Feld \"Land\" weiter oben, das nur einen Start-Kontenplan auswählt."
 
+#: src/components/organizations/organization-edit-drawer.tsx:474
+msgid "The language the amount in words is printed in. Automatic uses French with the Tunisia layout and English otherwise. The templates' own labels don't change."
+msgstr "Die Sprache, in der der Betrag in Worten gedruckt wird. Automatisch verwendet Französisch beim Layout Tunesien und sonst Englisch. Die Beschriftungen der Vorlagen ändern sich nicht."
+
 #: src/routes/settings/document-numbering.tsx:247
 msgid "The number format and next counter for each document type. Invoice numbering is configured separately under Invoice settings."
 msgstr "Das Nummernformat und der nächste Zähler für jeden Belegtyp. Die Rechnungsnummerierung wird separat unter den Rechnungseinstellungen konfiguriert."
@@ -5905,11 +5921,11 @@ msgstr "Das Nummernformat und der nächste Zähler für jeden Belegtyp. Die Rech
 msgid "The number on the vendor's invoice"
 msgstr "Die Nummer auf der Rechnung des Lieferanten"
 
-#: src/components/organizations/organization-edit-drawer.tsx:572
+#: src/components/organizations/organization-edit-drawer.tsx:592
 msgid "The organization's Bank account (code 1020 in the default chart), pre-filled as the receiving account when a Cash Book withdrawal is deposited to the bank."
 msgstr "Das Bankkonto der Organisation (Code 1020 im Standardkontenplan), vorbelegt als Empfangskonto, wenn eine Kassenbuch-Entnahme auf die Bank eingezahlt wird."
 
-#: src/components/organizations/organization-edit-drawer.tsx:593
+#: src/components/organizations/organization-edit-drawer.tsx:613
 msgid "The physical till the Cash Book screen's balance and daily movements report read — deliberately separate from \"Default cash account\" above, which this organization's chart of accounts uses as a payment default, not the register itself."
 msgstr "Die physische Kasse, die der Kontostand im Kassenbuch-Bildschirm und der Bericht über die täglichen Bewegungen auslesen — bewusst getrennt vom „Standard-Kassenkonto\" oben, das im Kontenplan dieser Organisation als Zahlungsstandard verwendet wird, nicht als die Kasse selbst."
 
@@ -6307,11 +6323,11 @@ msgstr "Diesen Kunden verwenden"
 msgid "Used by {documentCount} document(s)"
 msgstr "Verwendet von {documentCount} Dokument(en)"
 
-#: src/components/organizations/organization-edit-drawer.tsx:532
+#: src/components/organizations/organization-edit-drawer.tsx:552
 msgid "Used for a sales invoice line whose product has no override."
 msgstr "Wird für eine Position einer Ausgangsrechnung verwendet, deren Produkt kein eigenes Konto festlegt."
 
-#: src/components/organizations/organization-edit-drawer.tsx:551
+#: src/components/organizations/organization-edit-drawer.tsx:571
 msgid "Used for a vendor bill line whose product has no override, and as the default receiving account when a Cash Book withdrawal is spent on an expense."
 msgstr "Wird für eine Eingangsrechnungszeile ohne Produktüberschreibung verwendet und als Standard-Empfangskonto, wenn eine Kassenbuch-Entnahme für eine Ausgabe verwendet wird."
 
@@ -6319,15 +6335,15 @@ msgstr "Wird für eine Eingangsrechnungszeile ohne Produktüberschreibung verwen
 #~ msgid "Used for a vendor bill line whose product has no override."
 #~ msgstr "Wird für eine Position einer Lieferantenrechnung verwendet, deren Produkt kein eigenes Konto festlegt."
 
-#: src/components/organizations/organization-edit-drawer.tsx:516
+#: src/components/organizations/organization-edit-drawer.tsx:536
 msgid "Used for the AP line when a vendor bill posts."
 msgstr "Wird für die Verbindlichkeiten-Position verwendet, wenn eine Lieferantenrechnung gebucht wird."
 
-#: src/components/organizations/organization-edit-drawer.tsx:501
+#: src/components/organizations/organization-edit-drawer.tsx:521
 msgid "Used for the AR line when a sales invoice posts."
 msgstr "Wird für die Forderungen-Position verwendet, wenn eine Ausgangsrechnung gebucht wird."
 
-#: src/components/organizations/organization-edit-drawer.tsx:615
+#: src/components/organizations/organization-edit-drawer.tsx:635
 msgid "Used to capitalize a stock-enabled product's value when it's received or adjusted."
 msgstr "Wird verwendet, um den Wert eines bestandsgeführten Produkts beim Wareneingang oder bei einer Bestandskorrektur zu aktivieren."
 
@@ -6445,7 +6461,7 @@ msgid "Vendor updated successfully"
 msgstr "Lieferant erfolgreich aktualisiert"
 
 #: src/components/organizations/organizations-table.tsx:117
-#: src/routes/organizations/index.tsx:455
+#: src/routes/organizations/index.tsx:461
 msgid "vendor(s)"
 msgstr "Lieferant(en)"
 

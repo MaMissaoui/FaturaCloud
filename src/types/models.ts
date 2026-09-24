@@ -271,12 +271,16 @@ export interface Organization {
   fiscalStampEnabled: number | null;
   withholdingTaxEnabled: number | null;
   // amountInWordsEnabled gates the printed "amount in words" line
-  // (e.g. "Arrêtée la présente facture à la somme de ...") on exported
-  // documents. A Formatting-section toggle; independent of the others.
+  // (e.g. "Arrêtée la présente facture à la somme de ..." in French, the
+  // language set by documentLanguage) on exported documents. A Formatting-section toggle; independent of the others.
   amountInWordsEnabled: number | null;
   defaultFiscalStampAmount: number | null;
   defaultStampDutyAccountId: string | null;
   documentLayout: string | null;
+  // documentLanguage is the language the amount-in-words line is printed in
+  // ("en" | "de" | "fr"; null/"" = automatic by layout) — see
+  // src/types/document-layout.ts.
+  documentLanguage: string | null;
   // The Cash Book screen's register balance/daily-movements report/cash
   // withdrawal feature — deliberately separate from defaultCashAccountId,
   // which every chart-of-accounts template wires to the Bank account, never

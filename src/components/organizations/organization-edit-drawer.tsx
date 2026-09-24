@@ -34,7 +34,7 @@ import OrganizationMembersPanel, {
 import OrganizationDangerZone, {
   type OrganizationDangerZoneProps,
 } from "src/components/organizations/organization-danger-zone";
-import { documentLayoutOptions } from "src/types/document-layout";
+import { documentLanguageOptions, documentLayoutOptions } from "src/types/document-layout";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 
@@ -465,16 +465,36 @@ export default function OrganizationEditDrawer({
                       </Form.Item>
                     </Col>
                   </Row>
-                  <Row gutter={[16, 0]} style={{ marginTop: 8 }}>
-                    <Col xs={24}>
+                  <Row gutter={[16, 0]} style={{ marginTop: 8 }} align="middle">
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="documentLanguage"
+                        label={<Trans>Document language</Trans>}
+                        tooltip={
+                          <Trans>
+                            The language the amount in words is printed in. Automatic uses French
+                            with the Tunisia layout and English otherwise. The templates' own labels
+                            don't change.
+                          </Trans>
+                        }
+                      >
+                        <Select>
+                          {documentLanguageOptions().map((option) => (
+                            <Select.Option key={option.value} value={option.value}>
+                              {option.label}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={16}>
                       <Form.Item
                         name="amountInWordsEnabled"
                         valuePropName="checked"
                         style={{ marginBottom: 0 }}
                         tooltip={
                           <Trans>
-                            Print the document total spelled out in words, e.g. "Arrêtée la présente
-                            facture à la somme de ...".
+                            Print the invoice total spelled out in words, in the document language.
                           </Trans>
                         }
                       >
