@@ -486,3 +486,40 @@ func TestGetTaxSummaryAppliesInvoiceDiscount(t *testing.T) {
 		t.Fatalf("got %d output lines, want 2", len(summary.Output))
 	}
 }
+
+// TestGetSalesByProductNetsInvoiceDiscount covers audit F143: a product's
+// revenue is its lines' net amount less their share of the invoice discount,
+// so it agrees with the revenue the GL posted.
+func TestGetSalesByProductNetsInvoiceDiscount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-sales-by-product-discount")
+
+	// One product line of 20.00 on a 20% invoice with a 5.00 discount.
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		ID: "inv-sbp-discount", OrganizationID: fx.orgID, ClientID: fx.clientID, Number: "SBP-1", Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID}},
+		SubTotal:  2000, DiscountAmount: 500, TaxTotal: 300, Total: 1800,
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState: %v", err)
+	}
+
+	rows, err := d.GetSalesByProduct(fx.orgID, 0, 0, 0)
+	if err != nil {
+		t.Fatalf("GetSalesByProduct: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Revenue != 1500 {
+		t.Fatalf("GetSalesByProduct = %+v, want one product at 1500", rows)
+	}
+	var posted int64
+	if err := d.DB.Get(&posted, `SELECT COALESCE(SUM(credit), 0) FROM journal_lines WHERE accountId = ?`, fx.revenueAccountID); err != nil {
+		t.Fatalf("posted revenue: %v", err)
+	}
+	if posted != rows[0].Revenue {
+		t.Fatalf("report revenue %d, GL posted %d", rows[0].Revenue, posted)
+	}
+}

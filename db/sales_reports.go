@@ -123,13 +123,15 @@ func (d *Database) GetSalesByClient(organizationID string, startDate, endDate in
 
 // GetSalesByProduct is GetSalesByClient's per-product counterpart, over
 // invoiceLineItems. A line item with no productId (e.g. a free-text service
-// line) is excluded, same as before.
+// line) is excluded, same as before. Revenue is net of tax and of each
+// line's proportional share of its invoice's discount, matching what the GL
+// books as revenue (audit F143).
 func (d *Database) GetSalesByProduct(organizationID string, startDate, endDate int64, limit int) ([]ProductRevenue, error) {
 	args := []any{organizationID}
 	rangeClause := dateRangeFilter("i.date", startDate, endDate, &args)
 	query := `
 		SELECT ili.productId AS productId, COALESCE(p.name, '') AS name,
-		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS revenue
+		       CAST(ROUND(SUM(ili.quantity * ili.unitPrice * COALESCE(i.exchangeRate, 1) * ` + invoiceNetFactorExpr("i.discountAmount", "i.id") + `)) AS INTEGER) AS revenue
 		FROM invoiceLineItems ili
 		JOIN invoices i ON ili.invoiceId = i.id
 		JOIN products p ON ili.productId = p.id
@@ -224,14 +226,22 @@ type TaxSummaryLine struct {
 // unlike Tax, there is no stored per-rate "base" figure it needs to
 // reconcile against — invoices.subTotal is a single whole-document number,
 // never split by tax rate.
-// invoiceNetFactor is the fraction of an invoice's line subtotal left after
-// its discount, for use inside a query grouped per invoice (alias i): 1 when
-// there is no discount (so undiscounted documents compute exactly as
-// before), otherwise 1 − discount / subtotal. Multiplying a tax group's
-// gross base by it is the proportional allocation described above.
-const invoiceNetFactor = `(CASE WHEN MAX(i.discountAmount) > 0 THEN
-		1.0 - MAX(i.discountAmount) * 1.0 / NULLIF((SELECT SUM(li2.quantity * li2.unitPrice) FROM invoiceLineItems li2 WHERE li2.invoiceId = ili.invoiceId), 0)
+// invoiceNetFactorExpr is the fraction of an invoice's line subtotal left
+// after its discount: 1 when there is none (so undiscounted documents compute
+// exactly as before), otherwise 1 − discount / subtotal. Multiplying a line's
+// or a tax group's gross amount by it is the proportional allocation
+// validateInvoiceTotals and buildInvoiceGLLines use. discount and invoiceID
+// are SQL expressions for the invoice's discountAmount and id in the
+// caller's query.
+func invoiceNetFactorExpr(discount, invoiceID string) string {
+	return `(CASE WHEN ` + discount + ` > 0 THEN
+		1.0 - ` + discount + ` * 1.0 / NULLIF((SELECT SUM(li2.quantity * li2.unitPrice) FROM invoiceLineItems li2 WHERE li2.invoiceId = ` + invoiceID + `), 0)
 	ELSE 1.0 END)`
+}
+
+// invoiceNetFactor is invoiceNetFactorExpr for a query grouped per invoice
+// line set (getOutputTaxSummary's inner GROUP BY invoiceId, taxRateId).
+var invoiceNetFactor = invoiceNetFactorExpr("MAX(i.discountAmount)", "ili.invoiceId")
 
 type TaxSummary struct {
 	Output []TaxSummaryLine `json:"output"` // sales / output VAT
