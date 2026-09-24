@@ -5,10 +5,10 @@ import (
 )
 
 // amount in words (montant en lettres) — the "Arrêtée la présente facture à
-// la somme de ..." line on the Tunisian document layout. French, because
-// that's the language of the printed format this feature reproduces; the
-// wording is deliberately not translated (the whole template's static labels
-// are French too). Enabled per organization by amountInWordsEnabled
+// la somme de ..." line the invoice templates print. This file is the French
+// speller, the language of the Tunisian format the feature reproduces;
+// amount_in_words_lang.go adds English and German and picks between them by
+// the organization's document language (migration 0091). Enabled per organization by amountInWordsEnabled
 // (migration 0088); a disabled organization's placeholder resolves to "" so
 // the template line disappears entirely rather than leaving a dangling
 // "à la somme de :".
@@ -183,15 +183,23 @@ func amountInWordsFrench(totalCents int64, currencyCode string) string {
 	return strings.Join(words, " et ")
 }
 
-// amountInWordsLine builds the whole sentence the template prints, or "" when
-// the organization hasn't enabled the feature (so the line vanishes rather
-// than leaving a label with nothing after it — the same shape
-// invoice.withholdingTaxLine uses). The label text is intentionally French,
-// matching the rest of the Tunisian layout.
-func amountInWordsLine(totalCents int64, currencyCode string, enabled bool) string {
+// amountInWordsLine builds the whole sentence the template prints, in the
+// organization's document language (documentLanguageFor), or "" when the
+// organization hasn't enabled the feature (so the line vanishes rather than
+// leaving a label with nothing after it — the same shape
+// invoice.withholdingTaxLine uses). French keeps the Tunisian format's
+// wording exactly.
+func amountInWordsLine(totalCents int64, currencyCode string, enabled bool, language string) string {
 	if !enabled {
 		return ""
 	}
-	return "Arrêtée la présente facture à la somme de : " +
-		amountInWordsFrench(totalCents, currencyCode) + "."
+	switch language {
+	case DocumentLanguageEnglish:
+		return "Amount in words: " + amountInWordsEnglish(totalCents, currencyCode) + "."
+	case DocumentLanguageGerman:
+		return "Betrag in Worten: " + amountInWordsGerman(totalCents, currencyCode) + "."
+	default:
+		return "Arrêtée la présente facture à la somme de : " +
+			amountInWordsFrench(totalCents, currencyCode) + "."
+	}
 }

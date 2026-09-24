@@ -46,6 +46,16 @@ func normalizeBrandColor(p *string) (*string, error) {
 	return nil, newValidationError("brand color %q is not one of the supported presets", *p)
 }
 
+// validateDocumentLanguage accepts one of documentLanguages, or "" to clear
+// back to the layout-based fallback. A nil pointer (field omitted) passes
+// through unchanged, the same convention as normalizeBrandColor.
+func validateDocumentLanguage(p *string) error {
+	if p == nil || *p == "" || documentLanguages[*p] {
+		return nil
+	}
+	return newValidationError("document language %q is not one of en, de, fr", *p)
+}
+
 // invoiceNumberFormatTokens mirrors src/utils/invoice.ts's validVariables —
 // generateDocumentNumber (db/cash_sale.go) and generateInvoiceNumber (the
 // frontend) both only substitute these; anything else in a {...} placeholder
@@ -187,6 +197,10 @@ type Organization struct {
 	DefaultFiscalStampAmount  *int64  `db:"defaultFiscalStampAmount"  json:"defaultFiscalStampAmount"`
 	DefaultStampDutyAccountID *string `db:"defaultStampDutyAccountId" json:"defaultStampDutyAccountId"`
 	DocumentLayout            *string `db:"documentLayout"            json:"documentLayout"`
+	// DocumentLanguage is the language the amount-in-words line is written
+	// in: "en", "de" or "fr" (migration 0091). NULL/"" falls back by layout
+	// — see documentLanguageFor in db/amount_in_words_lang.go.
+	DocumentLanguage *string `db:"documentLanguage" json:"documentLanguage"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -225,7 +239,8 @@ type CreateOrganizationRequest struct {
 
 	// DocumentLayout is accepted on create so a layout picked in the New
 	// Organization drawer isn't silently dropped; NULL means the default.
-	DocumentLayout *string `json:"documentLayout"`
+	DocumentLayout   *string `json:"documentLayout"`
+	DocumentLanguage *string `json:"documentLanguage"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -287,6 +302,7 @@ type UpdateOrganizationRequest struct {
 	DefaultFiscalStampAmount  *int64  `json:"defaultFiscalStampAmount"`
 	DefaultStampDutyAccountID *string `json:"defaultStampDutyAccountId"`
 	DocumentLayout            *string `json:"documentLayout"`
+	DocumentLanguage          *string `json:"documentLanguage"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -308,7 +324,8 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultCOGSAccountId, defaultInventoryAdjustmentAccountId,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
-	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled`
+	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled,
+	       documentLanguage`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
@@ -391,6 +408,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		return nil, err
 	}
 	req.BrandColor = normalizedBrandColor
+	if err := validateDocumentLanguage(req.DocumentLanguage); err != nil {
+		return nil, err
+	}
 	if err := validateInvoiceNumberFormat(req.InvoiceNumberFormat); err != nil {
 		return nil, err
 	}
@@ -408,14 +428,14 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code,
-			documentLayout
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			documentLayout, documentLanguage
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat, req.BrandColor,
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
-		req.DocumentLayout,
+		req.DocumentLayout, req.DocumentLanguage,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
 	}
@@ -452,6 +472,9 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		return nil, err
 	}
 	updates.BrandColor = normalizedBrandColor
+	if err := validateDocumentLanguage(updates.DocumentLanguage); err != nil {
+		return nil, err
+	}
 	if err := validateInvoiceNumberFormat(updates.InvoiceNumberFormat); err != nil {
 		return nil, err
 	}
@@ -547,7 +570,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     documentLayout            = COALESCE(?, documentLayout),
 		     fiscalStampEnabled        = COALESCE(?, fiscalStampEnabled),
 		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled),
-		     amountInWordsEnabled      = COALESCE(?, amountInWordsEnabled)` +
+		     amountInWordsEnabled      = COALESCE(?, amountInWordsEnabled),
+		     documentLanguage          = COALESCE(?, documentLanguage)` +
 		accountSet.String() + `
 		 WHERE id = ?`
 
@@ -564,7 +588,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DatevConsultantNumber, updates.DatevClientNumber,
 		updates.DefaultFiscalStampAmount, updates.DocumentLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
-		updates.AmountInWordsEnabled,
+		updates.AmountInWordsEnabled, updates.DocumentLanguage,
 	}
 	// accountSet's placeholders sit between the COALESCE block and WHERE,
 	// so its args do too.

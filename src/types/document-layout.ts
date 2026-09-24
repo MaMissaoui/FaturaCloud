@@ -25,3 +25,22 @@ export const documentLayoutOptions = (): { value: DocumentLayout; label: string 
   { value: "default", label: t`Default` },
   { value: "tunisia", label: t`Tunisia` },
 ];
+
+// organizations.documentLanguage: the language the printed amount-in-words
+// line is written in (db/amount_in_words_lang.go). "" is the automatic
+// fallback — French on the Tunisian layout, English on the default one — and
+// is a real submittable value (the server stores it as "no language set"),
+// so the Select always shows an explicit choice. It doesn't translate a
+// template's static labels.
+export type DocumentLanguage = "" | "en" | "de" | "fr";
+
+export const normalizeDocumentLanguage = (language?: string | null): DocumentLanguage =>
+  language === "en" || language === "de" || language === "fr" ? language : "";
+
+// Each language is named in itself, so those names aren't translated.
+export const documentLanguageOptions = (): { value: DocumentLanguage; label: string }[] => [
+  { value: "", label: t`Automatic (from the document layout)` },
+  { value: "en", label: "English" },
+  { value: "de", label: "Deutsch" },
+  { value: "fr", label: "Français" },
+];

@@ -465,11 +465,13 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 		// use it, same as every other always-present label on this template.
 		"invoice.fiscalStampAmount":  formatMoneyCents(invoice.FiscalStampAmount, currency, org.MinimumFractionDigits, org.CountryCode),
 		"invoice.withholdingTaxLine": withholdingTaxLine,
-		// The whole "Arrêtée la présente facture à la somme de …" sentence,
+		// The whole amount-in-words sentence ("Arrêtée la présente facture à
+		// la somme de …" in French) in the organization's document language,
 		// blank when the organization hasn't enabled the Formatting toggle
 		// (db/amount_in_words.go) — same blank-when-unset shape as
 		// withholdingTaxLine, so the template line disappears cleanly.
-		"invoice.amountInWords": amountInWordsLine(invoice.Total, currency, org.AmountInWordsEnabled != nil && *org.AmountInWordsEnabled != 0),
+		"invoice.amountInWords": amountInWordsLine(invoice.Total, currency, org.AmountInWordsEnabled != nil && *org.AmountInWordsEnabled != 0,
+			documentLanguageFor(org.DocumentLanguage, org.DocumentLayout)),
 
 		"organization.name":        derefString(org.Name),
 		"organization.vatin":       derefString(org.Vatin),
