@@ -4,6 +4,8 @@ import { createStore } from "jotai";
 import { renderWithProviders } from "src/test-support/render-with-providers";
 import InvoiceDetails from "./details";
 import { organizationIdAtom, nextInvoiceNumberAtom } from "src/atoms/organization";
+import { currentUserAtom } from "src/atoms/auth";
+import type { CurrentUser } from "src/api";
 import type { Organization } from "src/types/models";
 import type { Invoice } from "src/types/invoice";
 
@@ -147,6 +149,20 @@ function buildInvoice(overrides: Partial<Invoice> = {}): Invoice {
   };
 }
 
+// organizationAtom only loads for a signed-in user (it used to fetch while
+// logged out on the login page, cache a 401 as null and never recover), so
+// every test that selects an organization also signs a user in, as the real
+// app's GetMe/login does before any page renders.
+const testUser: CurrentUser = {
+  id: "user_1",
+  email: "user@example.test",
+  displayName: "Test User",
+  role: "admin",
+  isPlatformAdmin: 0,
+  isActive: 1,
+  authProvider: "local",
+};
+
 describe("InvoiceDetails", () => {
   it("renders the new-invoice form without throwing, prefilled with the generated invoice number", async () => {
     mockCommonFetches();
@@ -158,6 +174,7 @@ describe("InvoiceDetails", () => {
     // selected" and renders nothing for (`if (!organization) return null`).
     // Set it directly on this test's own store before rendering.
     store.set(organizationIdAtom, "org_1");
+    store.set(currentUserAtom, testUser);
 
     await renderWithProviders(<InvoiceDetails />, {
       route: "/invoices/new",
@@ -188,6 +205,7 @@ describe("InvoiceDetails", () => {
 
     const store = createStore();
     store.set(organizationIdAtom, "org_1");
+    store.set(currentUserAtom, testUser);
 
     await renderWithProviders(<InvoiceDetails />, {
       route: "/invoices/inv_1",
@@ -222,6 +240,7 @@ describe("InvoiceDetails", () => {
 
     const store = createStore();
     store.set(organizationIdAtom, "org_1");
+    store.set(currentUserAtom, testUser);
 
     const { container } = await renderWithProviders(<InvoiceDetails />, {
       route: "/invoices/new",
@@ -265,6 +284,7 @@ describe("InvoiceDetails", () => {
 
     const store = createStore();
     store.set(organizationIdAtom, "org_1");
+    store.set(currentUserAtom, testUser);
 
     await renderWithProviders(<InvoiceDetails />, {
       route: "/invoices/new",

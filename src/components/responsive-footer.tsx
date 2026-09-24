@@ -14,7 +14,9 @@ const ResponsiveFooter = ({ children, style }: ResponsiveFooterProps) => {
   const footerEl = document.getElementById("footer");
 
   const footerContent = (
+    // className hooks the phone-width wrap rule in src/styles/base.scss.
     <Footer
+      className="responsive-footer"
       style={{
         position: "sticky",
         bottom: 0,

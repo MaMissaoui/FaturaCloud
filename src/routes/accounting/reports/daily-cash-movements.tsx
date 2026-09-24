@@ -31,6 +31,11 @@ import { dateSorter, moneySorter } from "src/utils/sort";
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
+// Summary tiles: compact cards and a 20px value, so a TND amount and its "DT"
+// suffix fit one line in a half-width tile on a phone (the default 24px
+// pushed "DT" onto its own line).
+const statStyles = { content: { fontSize: 20 } };
+
 // Day boundaries in the returned rows are UTC — see db/gl_reports.go's
 // DailyCashMovementRow doc comment for why (no per-organization timezone
 // anywhere in this app). row.date is a plain "YYYY-MM-DD" label with no
@@ -149,32 +154,36 @@ const DailyCashMovements = () => {
           {rows.length > 0 && (
             <Row gutter={[8, 8]} style={{ marginTop: 16, marginBottom: 16 }}>
               <Col xs={12} md={6}>
-                <Card>
+                <Card size="small">
                   <Statistic
+                    styles={statStyles}
                     title={<Trans>Opening balance</Trans>}
                     value={money(rows[0]?.opening ?? 0)}
                   />
                 </Card>
               </Col>
               <Col xs={12} md={6}>
-                <Card>
+                <Card size="small">
                   <Statistic
+                    styles={statStyles}
                     title={<Trans>Total in</Trans>}
                     value={money(rows.reduce((sum, r) => sum + r.in, 0))}
                   />
                 </Card>
               </Col>
               <Col xs={12} md={6}>
-                <Card>
+                <Card size="small">
                   <Statistic
+                    styles={statStyles}
                     title={<Trans>Total out</Trans>}
                     value={money(rows.reduce((sum, r) => sum + r.out, 0))}
                   />
                 </Card>
               </Col>
               <Col xs={12} md={6}>
-                <Card>
+                <Card size="small">
                   <Statistic
+                    styles={statStyles}
                     title={<Trans>Closing balance</Trans>}
                     value={money(rows[rows.length - 1]?.closing ?? 0)}
                   />
@@ -186,6 +195,9 @@ const DailyCashMovements = () => {
             dataSource={rows}
             rowKey="date"
             loading={loading}
+            // Amounts stay on one line and the table scrolls sideways on a
+            // phone, instead of squeezing "132 960,53 DT" onto three lines.
+            scroll={{ x: "max-content" }}
             pagination={{ hideOnSinglePage: true, defaultPageSize: 31 }}
             locale={{ emptyText: failed ? "—" : <Trans>No activity in this range</Trans> }}
           >
@@ -200,28 +212,36 @@ const DailyCashMovements = () => {
               key="opening"
               align="right"
               sorter={moneySorter((row: DailyCashMovementRow) => row.opening)}
-              render={(row: DailyCashMovementRow) => money(row.opening)}
+              render={(row: DailyCashMovementRow) => (
+                <span style={{ whiteSpace: "nowrap" }}>{money(row.opening)}</span>
+              )}
             />
             <Table.Column
               title={<Trans>In</Trans>}
               key="in"
               align="right"
               sorter={moneySorter((row: DailyCashMovementRow) => row.in)}
-              render={(row: DailyCashMovementRow) => money(row.in)}
+              render={(row: DailyCashMovementRow) => (
+                <span style={{ whiteSpace: "nowrap" }}>{money(row.in)}</span>
+              )}
             />
             <Table.Column
               title={<Trans>Out</Trans>}
               key="out"
               align="right"
               sorter={moneySorter((row: DailyCashMovementRow) => row.out)}
-              render={(row: DailyCashMovementRow) => money(row.out)}
+              render={(row: DailyCashMovementRow) => (
+                <span style={{ whiteSpace: "nowrap" }}>{money(row.out)}</span>
+              )}
             />
             <Table.Column
               title={<Trans>Closing balance</Trans>}
               key="closing"
               align="right"
               sorter={moneySorter((row: DailyCashMovementRow) => row.closing)}
-              render={(row: DailyCashMovementRow) => <strong>{money(row.closing)}</strong>}
+              render={(row: DailyCashMovementRow) => (
+                <strong style={{ whiteSpace: "nowrap" }}>{money(row.closing)}</strong>
+              )}
             />
           </Table>
         </>

@@ -75,7 +75,7 @@ const SettingsGLExport = () => {
                 9-digit SIREN in the organization's registration number.
               </Trans>
             </Text>
-            <Space>
+            <Space wrap>
               <Select
                 aria-label={t`Fiscal year for FEC export`}
                 placeholder={t`Select a fiscal year`}
@@ -107,7 +107,7 @@ const SettingsGLExport = () => {
                 under Accounting → Chart of Accounts and Organization settings.
               </Trans>
             </Text>
-            <Space>
+            <Space wrap>
               <Select
                 aria-label={t`Fiscal year for DATEV export`}
                 placeholder={t`Select a fiscal year`}

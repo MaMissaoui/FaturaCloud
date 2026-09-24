@@ -191,7 +191,7 @@ const ClientForm = () => {
         >
           <Card size="small" title={<Trans>Contact</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
-              <Col xs={24}>
+              <Col xs={24} md={16}>
                 <Form.Item
                   name="name"
                   label={<Trans>Name</Trans>}
@@ -205,7 +205,7 @@ const ClientForm = () => {
                   />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item name="code" label={<Trans>Code</Trans>}>
                   <Input placeholder={t`Code`} maxLength={10} />
                 </Form.Item>
@@ -230,34 +230,35 @@ const ClientForm = () => {
                   </Form.Item>
                 )}
               </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="defaultCurrency" label={<Trans>Default currency</Trans>}>
+                  <Select placeholder={t`Default currency`} allowClear showSearch>
+                    {map(currencies, (currency) => (
+                      <Select.Option value={currency} key={currency}>
+                        {currency}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
               <Col xs={24}>
                 <Form.Item name="emails" label={<Trans>E-mails</Trans>}>
                   <Select placeholder={t`E-mails`} mode="tags" tokenSeparators={[",", ";"]} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item name="phone" label={<Trans>Phone</Trans>}>
                   <Input placeholder={t`Phone`} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item name="phone2" label={<Trans>Phone 2</Trans>}>
                   <Input placeholder={t`Phone 2`} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
+              <Col xs={24} md={8}>
                 <Form.Item name="phone3" label={<Trans>Phone 3</Trans>}>
                   <Input placeholder={t`Phone 3`} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="guarantor" label={<Trans>Guarantor</Trans>}>
-                  <Input placeholder={t`Guarantor`} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="website" label={<Trans>Website</Trans>}>
-                  <Input placeholder={t`Website`} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
@@ -289,18 +290,17 @@ const ClientForm = () => {
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
+                <Form.Item name="guarantor" label={<Trans>Guarantor</Trans>}>
+                  <Input placeholder={t`Guarantor`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
                 <Form.Item
-                  name="defaultCurrency"
-                  label={<Trans>Default currency</Trans>}
+                  name="website"
+                  label={<Trans>Website</Trans>}
                   style={{ marginBottom: 0 }}
                 >
-                  <Select placeholder={t`Default currency`} allowClear showSearch>
-                    {map(currencies, (currency) => (
-                      <Select.Option value={currency} key={currency}>
-                        {currency}
-                      </Select.Option>
-                    ))}
-                  </Select>
+                  <Input placeholder={t`Website`} />
                 </Form.Item>
               </Col>
             </Row>
@@ -322,19 +322,6 @@ const ClientForm = () => {
                   <Input placeholder={t`Address`} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="country_code" label={<Trans>Country</Trans>}>
-                  <Select
-                    showSearch
-                    allowClear
-                    placeholder={t`Select a country`}
-                    options={countryOptions}
-                    filterOption={(input, option) =>
-                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                    }
-                  />
-                </Form.Item>
-              </Col>
               <Col xs={24} md={16}>
                 <Form.Item name="street" label={<Trans>Street</Trans>}>
                   <Input placeholder={t`Street`} />
@@ -345,7 +332,7 @@ const ClientForm = () => {
                   <Input placeholder={t`House number`} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={8}>
+              <Col xs={24} md={6}>
                 <Form.Item
                   name="postal_code"
                   label={<Trans>Postal code</Trans>}
@@ -354,9 +341,26 @@ const ClientForm = () => {
                   <Input placeholder={t`Postal code`} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={16}>
+              <Col xs={24} md={10}>
                 <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
                   <Input placeholder={t`City`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="country_code"
+                  label={<Trans>Country</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder={t`Select a country`}
+                    options={countryOptions}
+                    filterOption={(input, option) =>
+                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
                 </Form.Item>
               </Col>
             </Row>

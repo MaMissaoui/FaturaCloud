@@ -16,3 +16,56 @@ body {
     top: 8px;
   }
 }
+
+// Let every table scroll horizontally inside its own box. antd only does this
+// for tables that opt in with `scroll={{ x }}`; without it a wide table grows
+// to its content width and, on a phone, widens the whole page — the list
+// pages' action columns end up off-screen with the page itself scrolling
+// sideways. Tables that already set scroll.x are unaffected (antd renders the
+// same overflow on them).
+.ant-table-wrapper .ant-table-content {
+  overflow-x: auto;
+}
+
+// Opt-in for a Card whose `extra` holds filters/buttons: let them drop below
+// the title on a narrow screen instead of squeezing the title to "…" and
+// spilling past the card edge. The Cash Book's Loan status and Payment
+// history cards use it.
+.card-head-wrap .ant-card-head-wrapper {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding-block: 8px;
+}
+
+// The title keeps its natural width (antd lets it shrink to "…"), so the
+// extra controls are what wraps.
+.card-head-wrap .ant-card-head-title {
+  flex: 1 0 auto;
+  max-width: 100%;
+}
+
+.card-head-wrap .ant-card-extra {
+  margin-inline-start: auto;
+}
+
+// Sticky document footers (ResponsiveFooter): every detail page lays its
+// actions out as a fixed 64px Row holding a non-wrapping Space, which on a
+// phone ran up to ~980px wide and widened the whole page. Below the md
+// breakpoint let the row grow and the actions wrap, so every action stays
+// visible (inline `height: 64` needs the !important). Desktop is unchanged.
+@media (max-width: 767px) {
+  .responsive-footer > .ant-row {
+    height: auto !important;
+    row-gap: 8px;
+    padding-block: 8px;
+  }
+
+  .responsive-footer .ant-col {
+    max-width: 100%;
+  }
+
+  .responsive-footer .ant-space {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+}

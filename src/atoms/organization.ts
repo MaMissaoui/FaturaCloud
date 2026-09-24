@@ -14,6 +14,7 @@ import {
 } from "src/api";
 
 import { generateInvoiceNumber } from "src/utils/invoice";
+import { currentUserAtom } from "src/atoms/auth";
 
 // Organizations
 export const organizationsAtom = atom<Organization[]>([]);
@@ -56,7 +57,15 @@ export const organizationAtom = atom(
   async (get) => {
     const organizationId = get(organizationIdAtom);
     get(organizationRefreshTokenAtom);
-    if (!organizationId) return null;
+    // Keyed on the signed-in user: the login page mounts this atom too (the
+    // app root reads it for the brand color), and with a remembered
+    // organizationId it used to fetch while logged out, get a 401 and cache
+    // null. Nothing changed on login to invalidate that, so the layout sat on
+    // "Loading..." until a manual reload. Not fetching without a user, and
+    // re-running once login (or GetMe) sets one, fixes both that and the
+    // stray "failed to fetch" toast on the login page.
+    const currentUser = get(currentUserAtom);
+    if (!organizationId || !currentUser) return null;
 
     try {
       const [organization, logo] = await Promise.all([
