@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.55.0] - 2026-09-25
+
+### Added
+- Cash Book: the Payment history table and its export have a **Product**
+  column showing what each loan payment paid for. A payment covering a
+  whole invoice, such as a sale's upfront amount, shows "Whole invoice".
+- Cash Book: the loan table's **Record payment** window has a Reference
+  field.
+
+### Changed
+- Cash Book: the New sale form keeps a single **Reference** field for the
+  payment. The Notes field, which was stored but never shown on this
+  screen, is gone.
+
+### Fixed
+- Cash Book: the "Fully settled" tag no longer appears on a sale with no
+  items yet.
+
 ## [3.54.1] - 2026-09-25
 
 ### Fixed
