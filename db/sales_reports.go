@@ -222,10 +222,17 @@ type TaxSummaryLine struct {
 // share of the discount, in proportion to the group's share of the whole
 // subtotal — the same allocation validateInvoiceTotals, buildInvoiceGLLines
 // and buildTaxBreakdownRows use (invoiceNetFactor below). Incoming invoices
-// carry no discount, so quantity*unitPrice is their base. Base itself is summed-then-rounded (not per-document):
-// unlike Tax, there is no stored per-rate "base" figure it needs to
-// reconcile against — invoices.subTotal is a single whole-document number,
-// never split by tax rate.
+// carry no discount, so quantity*unitPrice is their base.
+//
+// Base itself is summed-then-rounded (not per-document): unlike Tax, there
+// is no stored per-rate "base" figure it needs to reconcile against —
+// invoices.subTotal is a single whole-document number, never split by tax
+// rate.
+type TaxSummary struct {
+	Output []TaxSummaryLine `json:"output"` // sales / output VAT
+	Input  []TaxSummaryLine `json:"input"`  // purchases / input VAT
+}
+
 // invoiceNetFactorExpr is the fraction of an invoice's line subtotal left
 // after its discount: 1 when there is none (so undiscounted documents compute
 // exactly as before), otherwise 1 − discount / subtotal. Multiplying a line's
@@ -242,11 +249,6 @@ func invoiceNetFactorExpr(discount, invoiceID string) string {
 // invoiceNetFactor is invoiceNetFactorExpr for a query grouped per invoice
 // line set (getOutputTaxSummary's inner GROUP BY invoiceId, taxRateId).
 var invoiceNetFactor = invoiceNetFactorExpr("MAX(i.discountAmount)", "ili.invoiceId")
-
-type TaxSummary struct {
-	Output []TaxSummaryLine `json:"output"` // sales / output VAT
-	Input  []TaxSummaryLine `json:"input"`  // purchases / input VAT
-}
 
 func (d *Database) GetTaxSummary(organizationID string, startDate, endDate int64) (*TaxSummary, error) {
 	output, err := d.getOutputTaxSummary(organizationID, startDate, endDate)
