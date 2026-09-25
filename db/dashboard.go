@@ -198,41 +198,6 @@ func (d *Database) GetReceivableAging(organizationID string) (OutstandingSummary
 	return d.getOutstandingInvoices(organizationID)
 }
 
-// GetClientOpenInvoices is the Cash Book screen's "does this client have any
-// outstanding loan sales" lookup. Deliberately NOT a call to
-// getOutstandingInvoices above: that query filters state = 'sent' only,
-// which would drop a loan sale someone manually marked 'paid' while a
-// balance still remains (invoices.state has no transition matrix — see
-// db/CLAUDE.md). This filters on the actual balance instead, but still
-// restricts to state IN ('sent', 'paid') — a 'draft' invoice has no posted
-// GL entry yet (needsInvoiceGLPresence), so it can't accept a payment
-// through this screen's PaymentPanel and must not be offered a "Pay" button.
-func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice, error) {
-	invoices := []OutstandingInvoice{}
-	err := d.DB.Select(&invoices, fmt.Sprintf(`
-		SELECT id, number, clientName, dueDate, currency,
-		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
-		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
-		FROM (
-			SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
-			       i.exchangeRate, i.total, i.date AS docDate,
-			       %s AS paid
-			FROM invoices i
-			JOIN clients c ON i.clientId = c.id
-			WHERE i.clientId = ? AND i.state IN ('sent', 'paid')
-		)
-		WHERE (total - paid) > 0
-		ORDER BY docDate ASC`,
-		documentPaidAmountExpr("i", "invoice", paymentsNonVoided),
-	),
-		clientID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get_client_open_invoices: %w", err)
-	}
-	return invoices, nil
-}
-
 // LoanStatusRow is one invoice line's contribution to the loan tracker:
 // which customer, when, what product/quantity, how much that line accounts
 // for, and how much of it has been paid. A line's Amount is its share of the
@@ -242,6 +207,10 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 // count against that line only, while invoice-level payments (the upfront
 // amount of a cash sale, anything recorded through the invoice page's
 // payment panel) are spread across the lines — see allocateInvoiceLines.
+//
+// The tracker covers every sent/paid invoice of the organization, not only
+// ones created through the Cash Book — there is no origin marker, and the
+// counter may collect any open receivable (audit F150, by decision).
 //
 // The tracker lists every invoice that was ever a loan, including one since
 // settled (its lines show outstanding 0), and leaves out a pure cash sale —

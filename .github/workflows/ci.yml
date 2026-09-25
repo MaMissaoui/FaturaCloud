@@ -108,19 +108,19 @@ jobs:
 
       - name: Vulnerability scan
         # govulncheck exits 3 (not just nonzero-on-error) whenever it finds a
-        # vulnerability actually *called* by this code — every PR since
-        # issue #257 has failed here on GO-2026-6452 (a panic in excelize's
-        # DuplicateRowTo/GetRows, both called from db/xlsx_export.go), which
-        # has no fix available upstream ("Fixed in: N/A") and was triaged as
-        # non-blocking, requiring a `gh pr merge --admin` bypass every time
-        # instead of an honest green check. This allowlists specifically
-        # that finding and nothing else: any *other* vulnerability id still
-        # fails the job. Text output (not -json, which always exits 0
-        # regardless of findings — useless as a pass/fail signal on its own)
-        # is parsed for "Vulnerability #N: GO-..." lines, which only appear
-        # for a called vulnerability — govulncheck's own "imported/required
-        # but never called" findings are reported separately and never cause
-        # a nonzero exit, so they need no allowlist entry here.
+        # vulnerability actually *called* by this code. allowed_ids below can
+        # allowlist a specific, already-triaged finding that has no upstream
+        # fix, so CI stays an honest green check instead of needing a
+        # `gh pr merge --admin` bypass every time; any *other* vulnerability
+        # id still fails the job. It is empty today: GO-2026-6452 (the
+        # excelize DuplicateRowTo/GetRows panic, issue #257) was the one
+        # entry, and the advisory now reads "fixed in v2.11.0", the version
+        # in use. Text output (not -json, which always exits 0 regardless of
+        # findings — useless as a pass/fail signal on its own) is parsed for
+        # "Vulnerability #N: GO-..." lines, which only appear for a called
+        # vulnerability — govulncheck's own "imported/required but never
+        # called" findings are reported separately and never cause a nonzero
+        # exit, so they need no allowlist entry here.
         run: |
           set +e
           go run golang.org/x/vuln/cmd/govulncheck@latest ./... > govulncheck-output.txt 2>&1
@@ -132,7 +132,7 @@ jobs:
           # in the comment for each). Adding a real vulnerability here to
           # silence CI defeats the point — only add one after confirming
           # there's genuinely no fixed version to upgrade to.
-          allowed_ids="GO-2026-6452" # excelize DuplicateRowTo/GetRows panic, issue #257 — no fix upstream
+          allowed_ids="" # space-separated GO-YYYY-NNNN ids, each with its issue link
 
           if [ "$exit_code" -eq 0 ]; then
             exit 0

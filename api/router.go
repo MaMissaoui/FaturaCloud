@@ -234,7 +234,6 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgRoleProtected("PUT", "/api/clients/{id}", clientOrgID, []string{"sales"}, h.updateClient)
 	orgRoleProtected("DELETE", "/api/clients/{id}", clientOrgID, []string{"sales"}, h.deleteClient)
 	orgMemberProtected("GET", "/api/clients/{id}/invoice-count", clientOrgID, h.getClientInvoiceCount)
-	orgMemberProtected("GET", "/api/clients/{id}/open-invoices", clientOrgID, h.getClientOpenInvoices)
 	// Mass maintenance (download/upload to Excel) — read is member-level
 	// like the list route above; write is role-gated the same as PUT/DELETE.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/clients/export", pathOrgID("orgId"), h.exportClients)
