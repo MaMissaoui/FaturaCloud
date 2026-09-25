@@ -66,7 +66,14 @@ were throwaway and have been deleted.
 - The 2026-09-19 and 2026-09-24 "Explicitly excluded" lists still bind, and so
   does this document's own list at the end.
 
-**Status:** 5 findings (F150, F152–F155). None remediated yet.
+**Status:** 5 findings (F150, F152–F155), all resolved by PR. The owner's
+decisions are recorded:
+
+- **F150:** accepted as intended (option 1). The counter may collect any open
+  receivable. Documented in #394, with no behavior change.
+- **F152:** fixed with option 1, the smaller change, in #393. It is still
+  unvalidated against BR-CO-17 with an external validator.
+- **F153–F155:** fixed in #394.
 
 ---
 
