@@ -3,6 +3,10 @@ package db
 import (
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -417,5 +421,102 @@ func TestGenerateEInvoiceCarriesInvoiceDiscount(t *testing.T) {
 	}
 	if payable := fmt.Sprintf("%d.%02d", invoice.Total/100, invoice.Total%100); !strings.Contains(xml, ">"+payable+"</cbc:PayableAmount>") {
 		t.Errorf("PayableAmount should equal the invoice total %s", payable)
+	}
+}
+
+// TestGenerateEInvoiceDiscountSweep pins audit F152. The discount splits
+// that actually round — two and four VAT categories, across many discount
+// values — must still give a PayableAmount equal to the invoice's own total
+// (no fiscal stamp here; the e-invoice doesn't emit one), and every
+// allowance must be non-negative, within its category's line total, and sum
+// to AllowanceTotalAmount. TestGenerateEInvoiceCarriesInvoiceDiscount's
+// split divides exactly, which is how the original fix got through.
+func TestGenerateEInvoiceDiscountSweep(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	seeded := seedGermanInvoice(t, d)
+	rateIDs := map[float64]string{19: "tax-xr"}
+	for _, pct := range []float64{7, 5, 16} {
+		tr, err := d.CreateTaxRate(CreateTaxRateRequest{
+			OrganizationID: seeded.OrganizationID, Name: fmt.Sprintf("VAT %v%%", pct), Percentage: pct, CategoryCode: "S",
+		})
+		if err != nil {
+			t.Fatalf("CreateTaxRate: %v", err)
+		}
+		rateIDs[pct] = tr.ID
+	}
+	type group struct {
+		cents int64
+		pct   float64
+	}
+	shapes := [][]group{
+		{{123456, 19}, {45678, 7}},
+		{{3000, 19}, {3000, 7}, {3000, 5}, {1000, 16}},
+	}
+	amountRe := regexp.MustCompile(`<cac:AllowanceCharge>.*?<cbc:Amount currencyID="EUR">(-?[0-9.]+)</cbc:Amount>`)
+	payableRe := regexp.MustCompile(`<cbc:PayableAmount currencyID="EUR">([0-9.]+)</cbc:PayableAmount>`)
+	n := 0
+	for si, groups := range shapes {
+		var subTotal int64
+		for _, g := range groups {
+			subTotal += g.cents
+		}
+		for discount := int64(1); discount <= 2000; discount += 37 {
+			// The invoice's own tax: each group's exact net, rounded once —
+			// validateInvoiceTotals' rule.
+			var taxTotal int64
+			var items []CreateInvoiceLineItemRequest
+			for _, g := range groups {
+				net := new(big.Rat).Sub(big.NewRat(g.cents, 1), big.NewRat(discount*g.cents, subTotal))
+				tax := new(big.Rat).Mul(net, big.NewRat(int64(g.pct), 100))
+				taxTotal += roundHalfUp(tax, 0).Num().Int64()
+				id := rateIDs[g.pct]
+				items = append(items, CreateInvoiceLineItemRequest{
+					Description: ptr("Item"), Quantity: 1, UnitPrice: float64(g.cents), TaxRate: &id,
+				})
+			}
+			n++
+			total := subTotal - discount + taxTotal
+			inv, err := d.CreateInvoice(CreateInvoiceRequest{
+				ID: fmt.Sprintf("inv-sweep-%d", n), OrganizationID: seeded.OrganizationID,
+				Number: fmt.Sprintf("SWEEP-%d", n), ClientID: seeded.ClientID, Date: 1736895600000, Currency: "EUR",
+				BuyerReference: ptr("04011000-1234512345-06"),
+				SubTotal:       subTotal, DiscountAmount: discount, TaxTotal: taxTotal, Total: total, LineItems: items,
+			})
+			if err != nil {
+				t.Fatalf("shape %d discount %d: CreateInvoice: %v", si, discount, err)
+			}
+			raw, err := d.GenerateEInvoice(inv.ID)
+			if err != nil {
+				t.Fatalf("shape %d discount %d: GenerateEInvoice: %v", si, discount, err)
+			}
+			xml := strings.ReplaceAll(string(raw), "\n", "")
+			if m := payableRe.FindStringSubmatch(xml); m == nil || m[1] != formatCents(total) {
+				t.Fatalf("shape %d discount %d: PayableAmount %v, want %s", si, discount, m, formatCents(total))
+			}
+			allowances := regexp.MustCompile(`<cac:AllowanceCharge>`).Split(xml, -1)[1:]
+			if len(allowances) != len(groups) {
+				t.Fatalf("shape %d discount %d: %d allowances, want %d", si, discount, len(allowances), len(groups))
+			}
+			var sum int64
+			for gi, a := range allowances {
+				m := amountRe.FindStringSubmatch("<cac:AllowanceCharge>" + a)
+				if m == nil {
+					t.Fatalf("shape %d discount %d: allowance %d has no amount", si, discount, gi)
+				}
+				cents, err := strconv.ParseFloat(m[1], 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+				c := int64(math.Round(cents * 100))
+				if c < 0 || c > groups[gi].cents {
+					t.Fatalf("shape %d discount %d: allowance %d = %d cents, want 0..%d", si, discount, gi, c, groups[gi].cents)
+				}
+				sum += c
+			}
+			if sum != discount {
+				t.Fatalf("shape %d discount %d: allowances sum to %d, want %d", si, discount, sum, discount)
+			}
+		}
 	}
 }
