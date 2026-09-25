@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.54.1] - 2026-09-25
+
+### Fixed
+- E-invoices: with a discount spread over several VAT rates, the payable
+  amount could be a cent off the invoice total, and with four or more
+  rates one discount line could come out negative. The discount is now
+  split in whole cents that are never negative, and the tax per rate
+  matches the invoice, so the payable amount always equals the invoice
+  total (the Tunisian fiscal stamp is still not part of the e-invoice).
+
+### Removed
+- The unused `GET /api/clients/{id}/open-invoices` endpoint. The Cash Book
+  has used the loan status list instead for some time.
+
+### Changed
+- Dependencies: `golang.org/x/crypto` updated to v0.56.0.
+
 ## [3.54.0] - 2026-09-24
 
 ### Added
