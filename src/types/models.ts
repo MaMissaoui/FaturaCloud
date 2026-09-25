@@ -663,6 +663,10 @@ export interface Payment {
   // Numbers of the sales invoices this payment was applied to (the loan
   // number(s) on the Cash Book). Filled by the org payments list only.
   invoiceNumbers?: string[];
+  // What a Cash Book line payment paid for: the product (or free-text line
+  // description) of each invoice line it settled. Empty for a payment
+  // covering a whole invoice. Filled by the org payments list only.
+  products?: string[];
 }
 
 export interface PaymentApplication {
