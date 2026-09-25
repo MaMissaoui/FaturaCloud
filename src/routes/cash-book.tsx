@@ -116,6 +116,17 @@ interface NewClientDraft {
 // db/cash_movement_details.go's CashMovementDetail doc comment for what
 // each one means and why it's computed from payment history, not the
 // invoice's current state.
+// The Payment history's Product cell: what a Cash Book line payment paid
+// for, "Whole invoice" for a payment applied to an invoice as a whole (a
+// cash sale's upfront amount, one recorded from the invoice page), and ""
+// for one with no invoice. Mirrors paymentProductsLabel in
+// db/report_export.go, which the exported report uses.
+const paymentProductsLabel = (p: Payment): string => {
+  if (p.products && p.products.length > 0) return p.products.join(", ");
+  if (p.invoiceNumbers && p.invoiceNumbers.length > 0) return t`Whole invoice`;
+  return "";
+};
+
 const movementKindLabel = (kind: CashMovementDetail["kind"]) => {
   switch (kind) {
     case "sale":
@@ -954,7 +965,6 @@ const CashBook = () => {
         paymentMethod: values.paymentMethod || "cash",
         bankAccountId,
         reference: values.reference || undefined,
-        notes: values.notes || undefined,
         ...(selectedClient ? { clientId: selectedClient.id } : { newClient: newClientDraft! }),
       };
 
@@ -994,6 +1004,7 @@ const CashBook = () => {
         invoiceLineItemId: payingLine.lineId,
         amount: unitsToCents(toNumber(values.amount) || 0),
         date: Date.now(),
+        reference: values.reference || undefined,
       });
       message.success(
         result.invoice.state === "paid"
@@ -1369,15 +1380,14 @@ const CashBook = () => {
                     </Form.Item>
                   </Col>
                 </Row>
+                {/* One free-text field for the payment: Reference is what the
+              Payment history table and export show, and it becomes the
+              journal entry's reference too. A separate Notes field was
+              stored but never shown anywhere on this screen. */}
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
                     <Form.Item label={t`Reference`} name="reference">
                       <Input />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item label={t`Notes`} name="notes">
-                      <TextArea rows={1} autoSize />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -1399,15 +1409,20 @@ const CashBook = () => {
               it both respects the organization's own brand color and keeps
               AntD's guaranteed-accessible text contrast instead of the
               solid-green/gold palette's weak contrast at this weight. */}
-                <Space>
-                  <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
-                    {amountReceivedWatched >= total ? (
-                      <Trans>Fully settled</Trans>
-                    ) : (
-                      <Trans>Balance owing</Trans>
-                    )}
-                  </Tag>
-                </Space>
+                {/* Hidden until the sale has a total: with no items, 0 received
+              "covers" a 0 total and the tag read "Fully settled" next to
+              an empty sale. */}
+                {total > 0 && (
+                  <Space>
+                    <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
+                      {amountReceivedWatched >= total ? (
+                        <Trans>Fully settled</Trans>
+                      ) : (
+                        <Trans>Balance owing</Trans>
+                      )}
+                    </Tag>
+                  </Space>
+                )}
               </Form>
 
               {/* The submit button sits at the foot of this card rather than in
@@ -1876,6 +1891,12 @@ const CashBook = () => {
             }
           />
           <Table.Column
+            title={<Trans>Product</Trans>}
+            key="products"
+            sorter={textSorter((p: Payment) => paymentProductsLabel(p))}
+            render={(p: Payment) => paymentProductsLabel(p) || "—"}
+          />
+          <Table.Column
             title={<Trans>Method</Trans>}
             key="method"
             sorter={textSorter((p: Payment) => paymentMethodLabel(p.method))}
@@ -2083,6 +2104,9 @@ const CashBook = () => {
             ]}
           >
             <InputNumber style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
+          </Form.Item>
+          <Form.Item label={t`Reference`} name="reference">
+            <Input />
           </Form.Item>
         </Form>
       </Modal>
