@@ -53,7 +53,9 @@ func lineOutstanding(lines []loanLineRaw, amounts, paid []int64, lineID string) 
 
 // CreateCashSalePayment is the Cash Book's loan-settlement write: a cash
 // payment into the organization's register that settles one line of an
-// invoice. It exists alongside CreatePayment rather than going through it
+// invoice — any sent or paid invoice of the organization, not only one
+// CreateCashSale made (audit F150: the counter may collect any open
+// receivable, by decision). It exists alongside CreatePayment rather than going through it
 // for three reasons:
 //
 //   - It targets a line (payment_applications.invoiceLineItemId, migration

@@ -243,6 +243,10 @@ func (d *Database) GetClientOpenInvoices(clientID string) ([]OutstandingInvoice,
 // amount of a cash sale, anything recorded through the invoice page's
 // payment panel) are spread across the lines — see allocateInvoiceLines.
 //
+// The tracker covers every sent/paid invoice of the organization, not only
+// ones created through the Cash Book — there is no origin marker, and the
+// counter may collect any open receivable (audit F150, by decision).
+//
 // The tracker lists every invoice that was ever a loan, including one since
 // settled (its lines show outstanding 0), and leaves out a pure cash sale —
 // one paid in full by a single payment. An invoice counts as a loan when it
