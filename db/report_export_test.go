@@ -256,28 +256,32 @@ func TestPaymentHistoryExportMirrorsCashBookCard(t *testing.T) {
 	if printTitles := printTitlesFor(f); !strings.Contains(printTitles, "$4:$4") {
 		t.Errorf("Print_Titles = %q, want it to repeat row 4", printTitles)
 	}
-	// Row 5 is the payment: Date, Customer, Invoice, Method, Reference,
-	// Status, Amount.
+	// Row 5 is the payment: Date, Customer, Invoice, Product, Method,
+	// Reference, Status, Amount.
 	if got, _ := f.GetCellValue(sheet, "B5"); got != "Test Client" {
 		t.Errorf("B5 customer = %q, want Test Client", got)
 	}
 	if got, _ := f.GetCellValue(sheet, "C5"); got != sale.Invoice.Number || got == "" {
 		t.Errorf("C5 invoice = %q, want the sale's invoice number %q", got, sale.Invoice.Number)
 	}
-	if got, _ := f.GetCellValue(sheet, "D5"); got != "Cash" {
-		t.Errorf("D5 method = %q, want Cash", got)
+	// A cash sale's upfront amount covers the invoice as a whole.
+	if got, _ := f.GetCellValue(sheet, "D5"); got != "Whole invoice" {
+		t.Errorf("D5 product = %q, want Whole invoice", got)
 	}
-	if got, _ := f.GetCellValue(sheet, "F5"); got != "Posted" {
-		t.Errorf("F5 status = %q, want Posted", got)
+	if got, _ := f.GetCellValue(sheet, "E5"); got != "Cash" {
+		t.Errorf("E5 method = %q, want Cash", got)
 	}
-	if got, _ := f.GetCellValue(sheet, "G5"); got != wantAmount {
-		t.Errorf("G5 amount = %q, want %q", got, wantAmount)
+	if got, _ := f.GetCellValue(sheet, "G5"); got != "Posted" {
+		t.Errorf("G5 status = %q, want Posted", got)
+	}
+	if got, _ := f.GetCellValue(sheet, "H5"); got != wantAmount {
+		t.Errorf("H5 amount = %q, want %q", got, wantAmount)
 	}
 	if got, _ := f.GetCellValue(sheet, "A6"); got != "Total (posted)" {
 		t.Fatalf("A6 = %q, want the totals row", got)
 	}
-	if got, _ := f.GetCellValue(sheet, "G6"); got != wantAmount {
-		t.Errorf("G6 total = %q, want %q", got, wantAmount)
+	if got, _ := f.GetCellValue(sheet, "H6"); got != wantAmount {
+		t.Errorf("H6 total = %q, want %q", got, wantAmount)
 	}
 
 	// A customer-scoped export names that customer in the first-page header.
@@ -309,10 +313,10 @@ func TestPaymentHistoryExportMirrorsCashBookCard(t *testing.T) {
 	}
 	defer vf.Close()
 	vsheet := vf.GetSheetName(0)
-	if got, _ := vf.GetCellValue(vsheet, "F5"); got != "Voided" {
-		t.Errorf("F5 status = %q, want Voided", got)
+	if got, _ := vf.GetCellValue(vsheet, "G5"); got != "Voided" {
+		t.Errorf("G5 status = %q, want Voided", got)
 	}
-	if got, _ := vf.GetCellValue(vsheet, "G6"); got != zero {
+	if got, _ := vf.GetCellValue(vsheet, "H6"); got != zero {
 		t.Errorf("voided total = %q, want %q", got, zero)
 	}
 }

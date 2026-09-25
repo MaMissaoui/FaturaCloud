@@ -40,6 +40,13 @@ type Payment struct {
 	// number(s) a collection belongs to. Filled by GetPayments only; empty
 	// for a vendor payment and on every other read path.
 	InvoiceNumbers []string `db:"-" json:"invoiceNumbers"`
+	// Products names what a Cash Book line payment paid for: the product
+	// (or, for a free-text line, its description) of each invoice line its
+	// applications target (payment_applications.invoiceLineItemId), in
+	// application order. An application covering a whole invoice — a cash
+	// sale's upfront amount, a payment from the invoice page — names no
+	// line and adds nothing. Filled by GetPayments only.
+	Products []string `db:"-" json:"products"`
 }
 
 // PaymentApplication mirrors the payment_applications table.
@@ -146,14 +153,18 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 	}
 
 	var applied []struct {
-		PaymentID     string `db:"paymentId"`
-		InvoiceNumber string `db:"invoiceNumber"`
+		PaymentID     string  `db:"paymentId"`
+		InvoiceNumber string  `db:"invoiceNumber"`
+		Product       *string `db:"product"`
 	}
 	if err := d.DB.Select(&applied, `
-		SELECT pa.paymentId, COALESCE(i.number, '') AS invoiceNumber
+		SELECT pa.paymentId, COALESCE(i.number, '') AS invoiceNumber,
+		       CASE WHEN li.id IS NOT NULL THEN COALESCE(pr.name, li.description, '') END AS product
 		FROM payment_applications pa
 		JOIN payments p ON p.id = pa.paymentId
 		JOIN invoices i ON i.id = pa.documentId
+		LEFT JOIN invoiceLineItems li ON li.id = pa.invoiceLineItemId
+		LEFT JOIN products pr ON pr.id = li.productId
 		WHERE pa.documentType = 'invoice' AND p.organizationId = ?
 		ORDER BY pa.createdAt ASC, pa.rowid ASC`,
 		organizationID,
@@ -161,13 +172,21 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 		return nil, fmt.Errorf("get_payments invoice_numbers: %w", err)
 	}
 	numbers := map[string][]string{}
+	products := map[string][]string{}
 	for _, a := range applied {
 		numbers[a.PaymentID] = append(numbers[a.PaymentID], a.InvoiceNumber)
+		if a.Product != nil && *a.Product != "" {
+			products[a.PaymentID] = append(products[a.PaymentID], *a.Product)
+		}
 	}
 	for i := range payments {
 		payments[i].InvoiceNumbers = numbers[payments[i].ID]
 		if payments[i].InvoiceNumbers == nil {
 			payments[i].InvoiceNumbers = []string{}
+		}
+		payments[i].Products = products[payments[i].ID]
+		if payments[i].Products == nil {
+			payments[i].Products = []string{}
 		}
 	}
 	return payments, nil

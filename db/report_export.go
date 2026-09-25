@@ -493,7 +493,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 
 	headerRow := row
 	if err := writeHeaderRow(f, sheet, row, []string{
-		"Date", "Customer", "Invoice", "Method", "Reference", "Status", "Amount",
+		"Date", "Customer", "Invoice", "Product", "Method", "Reference", "Status", "Amount",
 	}); err != nil {
 		return nil, "", err
 	}
@@ -514,7 +514,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 		}
 		if err := setRow(f, sheet, row, []any{
 			formatOrgDate(p.Date, org.DateFormat), customer, strings.Join(p.InvoiceNumbers, ", "),
-			paymentMethodLabel(p.Method), reference,
+			paymentProductsLabel(p), paymentMethodLabel(p.Method), reference,
 			paymentStatusLabel(p.Status), money(p.Amount),
 		}); err != nil {
 			return nil, "", err
@@ -535,17 +535,17 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 		return nil, "", err
 	}
 	if err := setRow(f, sheet, row, []any{
-		"Total (posted)", "", "", "", "", "", money(totalPosted),
+		"Total (posted)", "", "", "", "", "", "", money(totalPosted),
 	}); err != nil {
 		return nil, "", err
 	}
 	totalStart, _ := excelize.CoordinatesToCellName(1, row)
-	totalEnd, _ := excelize.CoordinatesToCellName(7, row)
+	totalEnd, _ := excelize.CoordinatesToCellName(8, row)
 	if err := f.SetCellStyle(sheet, totalStart, totalEnd, totalStyle); err != nil {
 		return nil, "", err
 	}
 
-	setColWidths(f, sheet, []float64{16, 28, 20, 18, 24, 12, 16})
+	setColWidths(f, sheet, []float64{16, 28, 20, 28, 18, 24, 12, 16})
 
 	var buf bytes.Buffer
 	raw, err := f.WriteToBuffer()
@@ -555,4 +555,20 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 	buf.Write(raw.Bytes())
 
 	return buf.Bytes(), "payment-history", nil
+}
+
+// paymentProductsLabel is the Product cell of a payment-history row: the
+// products its Cash Book line payments paid for, "Whole invoice" for a
+// payment applied to an invoice as a whole (a cash sale's upfront amount,
+// one recorded from the invoice page), and blank for one with no invoice.
+// The Cash Book screen shows the same three cases.
+func paymentProductsLabel(p Payment) string {
+	switch {
+	case len(p.Products) > 0:
+		return strings.Join(p.Products, ", ")
+	case len(p.InvoiceNumbers) > 0:
+		return "Whole invoice"
+	default:
+		return ""
+	}
 }

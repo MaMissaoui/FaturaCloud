@@ -108,12 +108,34 @@ func TestCashSalePaymentSettlesOnlyItsLine(t *testing.T) {
 	assertLine(t, rows, bigLine, 2400, 0)
 	assertLine(t, rows, smallLine, 600, 600)
 
+	// Payment history names the product the line payment paid for.
+	product, err := d.GetProduct(fx.productID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	payments, err := d.GetPayments(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetPayments: %v", err)
+	}
+	var found bool
+	for _, p := range payments {
+		if p.ID == result.Payment.ID {
+			found = true
+			if len(p.Products) != 1 || p.Products[0] != product.Name {
+				t.Fatalf("payment products = %v, want [%s]", p.Products, product.Name)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("line payment missing from GetPayments")
+	}
+
 	// The invoice number is the loan number, on the loan rows and on the
 	// payment (the Cash Book's movements/history show it).
 	if rows[bigLine].InvoiceNumber != result.Invoice.Number || result.Invoice.Number == "" {
 		t.Fatalf("loan row invoice number = %q, want %q", rows[bigLine].InvoiceNumber, result.Invoice.Number)
 	}
-	payments, err := d.GetPayments(fx.orgID)
+	payments, err = d.GetPayments(fx.orgID)
 	if err != nil {
 		t.Fatalf("GetPayments: %v", err)
 	}
