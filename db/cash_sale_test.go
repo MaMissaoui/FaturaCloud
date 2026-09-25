@@ -61,14 +61,8 @@ func TestCreateCashSaleFullCashSaleMarksInvoicePaid(t *testing.T) {
 			arDebit, arCredit, payArDebit, payArCredit)
 	}
 
-	open, err := d.GetClientOpenInvoices(fx.clientID)
-	if err != nil {
-		t.Fatalf("GetClientOpenInvoices: %v", err)
-	}
-	for _, inv := range open {
-		if inv.ID == result.Invoice.ID {
-			t.Fatalf("fully-paid cash sale still appears in open invoices")
-		}
+	if _, listed := loanOutstanding(t, d, fx.orgID, result.Invoice.ID); listed {
+		t.Fatalf("fully-paid cash sale still appears in the loan tracker")
 	}
 }
 
@@ -104,21 +98,12 @@ func TestCreateCashSaleLoanPartialPaymentStaysOpen(t *testing.T) {
 		t.Fatalf("GetInvoiceAmountPaid = %d, want 900", paid)
 	}
 
-	open, err := d.GetClientOpenInvoices(fx.clientID)
-	if err != nil {
-		t.Fatalf("GetClientOpenInvoices: %v", err)
+	outstanding, listed := loanOutstanding(t, d, fx.orgID, result.Invoice.ID)
+	if !listed {
+		t.Fatal("partially-paid loan sale should appear in the loan tracker")
 	}
-	found := false
-	for _, inv := range open {
-		if inv.ID == result.Invoice.ID {
-			found = true
-			if inv.Total != 1500 {
-				t.Fatalf("open balance = %d, want 1500", inv.Total)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("partially-paid loan sale should appear in open invoices")
+	if outstanding != 1500 {
+		t.Fatalf("open balance = %d, want 1500", outstanding)
 	}
 }
 
@@ -150,21 +135,12 @@ func TestCreateCashSaleZeroPaymentLoanSaleHasNoPayment(t *testing.T) {
 		t.Fatalf("expected the invoice's own entry to still be posted, err=%v entry=%v", err, invEntry)
 	}
 
-	open, err := d.GetClientOpenInvoices(fx.clientID)
-	if err != nil {
-		t.Fatalf("GetClientOpenInvoices: %v", err)
+	outstanding, listed := loanOutstanding(t, d, fx.orgID, result.Invoice.ID)
+	if !listed {
+		t.Fatal("unpaid loan sale should appear in the loan tracker")
 	}
-	found := false
-	for _, inv := range open {
-		if inv.ID == result.Invoice.ID {
-			found = true
-			if inv.Total != 2400 {
-				t.Fatalf("open balance = %d, want 2400", inv.Total)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("unpaid loan sale should appear in open invoices")
+	if outstanding != 2400 {
+		t.Fatalf("open balance = %d, want 2400", outstanding)
 	}
 }
 
@@ -608,24 +584,23 @@ func TestCreateCashSaleLoanSaleFullRoundTripSettlesToPaid(t *testing.T) {
 		t.Fatalf("final invoice state = %q, want paid", final.State)
 	}
 
-	open, err := d.GetClientOpenInvoices(fx.clientID)
-	if err != nil {
-		t.Fatalf("GetClientOpenInvoices: %v", err)
-	}
-	for _, inv := range open {
-		if inv.ID == result.Invoice.ID {
-			t.Fatal("fully-settled loan sale should no longer appear in open invoices")
-		}
+	// Nothing may still be owing. This loan was settled by one invoice-level
+	// payment (the invoice page's path), which the tracker can't tell from a
+	// pure cash sale, so it isn't listed at all — the documented gap on
+	// LoanStatusRow; a line payment keeps it listed (see
+	// TestLoanStatusKeepsALoanClearedByOneLinePayment).
+	if outstanding, _ := loanOutstanding(t, d, fx.orgID, result.Invoice.ID); outstanding != 0 {
+		t.Fatalf("fully-settled loan sale still owes %d", outstanding)
 	}
 }
 
 // A client can already have a draft invoice from the ordinary Invoices
 // screen (CreateInvoice defaults to state "draft") with a nonzero balance.
-// GetClientOpenInvoices must not surface it: a draft has no posted GL entry
-// (needsInvoiceGLPresence requires sent/paid), so Cash Book's "Pay" button
-// would otherwise open PaymentPanel against a document CreatePayment always
+// The Cash Book's loan tracker must not surface it: a draft has no posted GL
+// entry (needsInvoiceGLPresence requires sent/paid), so its Record payment
+// action would open against a document CreateCashSalePayment always
 // rejects.
-func TestCreateCashSaleGetClientOpenInvoicesExcludesDrafts(t *testing.T) {
+func TestLoanStatusExcludesDraftInvoices(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-drafts")
@@ -641,15 +616,26 @@ func TestCreateCashSaleGetClientOpenInvoicesExcludesDrafts(t *testing.T) {
 		t.Fatalf("CreateInvoice: %v", err)
 	}
 
-	open, err := d.GetClientOpenInvoices(fx.clientID)
-	if err != nil {
-		t.Fatalf("GetClientOpenInvoices: %v", err)
+	if _, listed := loanOutstanding(t, d, fx.orgID, draft.ID); listed {
+		t.Fatal("a draft invoice with no posted GL entry must not appear as payable in the Cash Book")
 	}
-	for _, inv := range open {
-		if inv.ID == draft.ID {
-			t.Fatal("a draft invoice with no posted GL entry must not appear as payable in Cash Book")
+}
+
+// loanOutstanding sums an invoice's outstanding balance across its rows in
+// the Cash Book's loan tracker, and reports whether it is listed at all.
+func loanOutstanding(t *testing.T, d *Database, orgID, invoiceID string) (outstanding int64, listed bool) {
+	t.Helper()
+	rows, err := d.GetLoanStatus(orgID, "")
+	if err != nil {
+		t.Fatalf("GetLoanStatus: %v", err)
+	}
+	for _, r := range rows {
+		if r.InvoiceID == invoiceID {
+			listed = true
+			outstanding += r.Outstanding
 		}
 	}
+	return outstanding, listed
 }
 
 // A cash sale has no invoicing due-date concept (it's paid or settled via

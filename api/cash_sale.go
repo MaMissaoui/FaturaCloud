@@ -22,16 +22,6 @@ func (h *handler) createCashSale(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, result)
 }
 
-func (h *handler) getClientOpenInvoices(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	invoices, err := h.db.GetClientOpenInvoices(id)
-	if err != nil {
-		writeInternalError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, invoices)
-}
-
 // createCashSalePayment settles one line of a loan sale from the Cash Book
 // (db.CreateCashSalePayment). Gated by orgRoleProtected on the invoice's own
 // organization with the cashbook role, and by the section guard's cashbook

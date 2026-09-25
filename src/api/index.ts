@@ -1270,8 +1270,6 @@ export interface CashSalePaymentResult {
 
 export const CreateCashSalePayment = (invoiceId: string, req: CreateCashSalePaymentRequest) =>
   post<CashSalePaymentResult>(`/cash-sales/${invoiceId}/payments`, req);
-export const GetClientOpenInvoices = (clientId: string) =>
-  get<OutstandingInvoiceSummary[]>(`/clients/${clientId}/open-invoices`);
 
 // ---- Accounting: Reports ----
 
