@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -219,50 +220,56 @@ func buildUBLInvoice(profile eInvoiceProfile, invoice *Invoice, lineItems []Invo
 	// allowance. EN 16931 carries it as one cac:AllowanceCharge per VAT
 	// category (BR-32 needs the category, BR-33 a reason), and every
 	// category's taxable amount is its line total less that allowance
-	// (BR-S-08) — so the discount is split across the categories in
-	// proportion to their share of the subtotal, the same allocation
-	// validateInvoiceTotals and buildInvoiceGLLines use. Each share is
-	// rounded to the cent and the last category takes the remainder, so the
-	// allowances sum exactly to AllowanceTotalAmount (BR-CO-11).
-	allowanceByRate := map[string]*big.Rat{}
+	// (BR-S-08). The discount is split across the categories in proportion
+	// to their share of the subtotal, in whole cents by largest remainder
+	// (allocateDiscountCents), so the allowances are never negative and sum
+	// exactly to AllowanceTotalAmount (BR-CO-11).
+	//
+	// Each category's tax, though, comes from its *exact* proportional net
+	// (line total less the unrounded share), rounded once — the same figure
+	// validateInvoiceTotals, buildInvoiceGLLines and the frontend's
+	// allocateDiscount produce. Taxing the cent-rounded taxable amount
+	// instead can land a cent away from the invoice's own taxTotal, and the
+	// e-invoice's PayableAmount then disagrees with the invoice (audit F152).
+	// The price is that a category's TaxAmount can differ by a cent from
+	// TaxableAmount × rate; validate against BR-CO-17 externally.
 	discountUnits := new(big.Rat).Quo(new(big.Rat).SetInt64(invoice.DiscountAmount), hundred)
+	allowanceCents := allocateDiscountCents(invoice.DiscountAmount, taxRateOrder, taxableByRate, subtotal)
 	var allowances []ublAllowanceCharge
-	if invoice.DiscountAmount > 0 && subtotal.Sign() > 0 {
-		allocated := new(big.Rat)
-		for i, taxRateID := range taxRateOrder {
-			share := new(big.Rat)
-			if i == len(taxRateOrder)-1 {
-				share.Sub(discountUnits, allocated)
-			} else {
-				share.Mul(discountUnits, taxableByRate[taxRateID])
-				share.Quo(share, subtotal)
-				share = roundHalfUp(share, 2)
-			}
-			allocated.Add(allocated, share)
-			allowanceByRate[taxRateID] = share
-			allowances = append(allowances, ublAllowanceCharge{
-				ChargeIndicator:           false,
-				AllowanceChargeReasonCode: "95",
-				AllowanceChargeReason:     "Discount",
-				Amount:                    ublAmount{CurrencyID: currency, Value: formatRat(share)},
-				TaxCategory:               taxCategoryFor(taxRates[taxRateID]),
-			})
+	for _, taxRateID := range taxRateOrder {
+		share, ok := allowanceCents[taxRateID]
+		if !ok {
+			continue
 		}
+		allowances = append(allowances, ublAllowanceCharge{
+			ChargeIndicator:           false,
+			AllowanceChargeReasonCode: "95",
+			AllowanceChargeReason:     "Discount",
+			Amount:                    ublAmount{CurrencyID: currency, Value: formatCents(share)},
+			TaxCategory:               taxCategoryFor(taxRates[taxRateID]),
+		})
 	}
 
 	taxTotalAmount := new(big.Rat)
 	subtotals := make([]ublTaxSubtotal, 0, len(taxRateOrder))
 	for _, taxRateID := range taxRateOrder {
 		rate := taxRates[taxRateID]
-		taxable := new(big.Rat).Set(taxableByRate[taxRateID])
-		if share, ok := allowanceByRate[taxRateID]; ok {
-			taxable.Sub(taxable, share)
+		gross := taxableByRate[taxRateID]
+		taxable := new(big.Rat).Set(gross)
+		if share, ok := allowanceCents[taxRateID]; ok {
+			taxable.Sub(taxable, new(big.Rat).Quo(new(big.Rat).SetInt64(share), hundred))
+		}
+		exactNet := new(big.Rat).Set(gross)
+		if invoice.DiscountAmount > 0 && subtotal.Sign() > 0 {
+			exactShare := new(big.Rat).Mul(discountUnits, gross)
+			exactShare.Quo(exactShare, subtotal)
+			exactNet.Sub(exactNet, exactShare)
 		}
 		pct, err := floatToRat(rate.Percentage)
 		if err != nil {
 			return nil, fmt.Errorf("einvoice tax rate %q percentage: %w", taxRateID, err)
 		}
-		tax := new(big.Rat).Mul(taxable, pct)
+		tax := new(big.Rat).Mul(exactNet, pct)
 		tax.Quo(tax, hundred)
 		tax = roundHalfUp(tax, 2)
 		taxTotalAmount.Add(taxTotalAmount, tax)
@@ -591,4 +598,53 @@ type ublInvoice struct {
 	LegalMonetaryTotal ublMonetaryTotal `xml:"cac:LegalMonetaryTotal"`
 
 	InvoiceLine []ublInvoiceLine `xml:"cac:InvoiceLine"`
+}
+
+// allocateDiscountCents splits discountCents across the tax categories in
+// proportion to each category's line total (taxableByRate, in currency
+// units, summing to subtotal) by largest remainder: every category gets the
+// floor of its exact share, and the cents left over go one each to the
+// largest fractional parts, earlier categories first on a tie. Shares are
+// never negative and always sum to discountCents; a category is never given
+// a cent that would take its share above its own line total. Returns nil when
+// there is nothing to allocate.
+func allocateDiscountCents(discountCents int64, order []string, taxableByRate map[string]*big.Rat, subtotal *big.Rat) map[string]int64 {
+	if discountCents <= 0 || subtotal.Sign() <= 0 || len(order) == 0 {
+		return nil
+	}
+	shares := make(map[string]int64, len(order))
+	fractions := make([]*big.Rat, len(order))
+	var allocated int64
+	for i, id := range order {
+		exact := new(big.Rat).Mul(new(big.Rat).SetInt64(discountCents), taxableByRate[id])
+		exact.Quo(exact, subtotal)
+		floor := new(big.Int).Quo(exact.Num(), exact.Denom())
+		shares[id] = floor.Int64()
+		allocated += shares[id]
+		fractions[i] = new(big.Rat).Sub(exact, new(big.Rat).SetInt(floor))
+	}
+	idx := make([]int, len(order))
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return fractions[idx[a]].Cmp(fractions[idx[b]]) > 0 })
+	// The leftover is under one cent per category, so one pass hands it out.
+	for _, i := range idx {
+		if allocated >= discountCents {
+			break
+		}
+		id := order[i]
+		lineCents := new(big.Rat).Mul(taxableByRate[id], hundred)
+		if new(big.Rat).SetInt64(shares[id]+1).Cmp(lineCents) > 0 {
+			continue
+		}
+		shares[id]++
+		allocated++
+	}
+	// Only fractional-cent line totals with a discount of (nearly) the whole
+	// subtotal can leave a cent unplaced; the totals must still add up.
+	if allocated < discountCents {
+		shares[order[idx[0]]] += discountCents - allocated
+	}
+	return shares
 }
