@@ -1409,15 +1409,20 @@ const CashBook = () => {
               it both respects the organization's own brand color and keeps
               AntD's guaranteed-accessible text contrast instead of the
               solid-green/gold palette's weak contrast at this weight. */}
-                <Space>
-                  <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
-                    {amountReceivedWatched >= total ? (
-                      <Trans>Fully settled</Trans>
-                    ) : (
-                      <Trans>Balance owing</Trans>
-                    )}
-                  </Tag>
-                </Space>
+                {/* Hidden until the sale has a total: with no items, 0 received
+              "covers" a 0 total and the tag read "Fully settled" next to
+              an empty sale. */}
+                {total > 0 && (
+                  <Space>
+                    <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
+                      {amountReceivedWatched >= total ? (
+                        <Trans>Fully settled</Trans>
+                      ) : (
+                        <Trans>Balance owing</Trans>
+                      )}
+                    </Tag>
+                  </Space>
+                )}
               </Form>
 
               {/* The submit button sits at the foot of this card rather than in
