@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { FormInstance } from "antd";
 import {
   Button,
@@ -35,6 +36,7 @@ import OrganizationDangerZone, {
   type OrganizationDangerZoneProps,
 } from "src/components/organizations/organization-danger-zone";
 import { documentLanguageOptions, documentLayoutOptions } from "src/types/document-layout";
+import { timezoneOptions } from "src/utils/timezones";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 
@@ -105,6 +107,10 @@ export default function OrganizationEditDrawer({
   const { token } = theme.useToken();
   const watchedCountryCode = Form.useWatch("country_code", form);
   const watchedFiscalStampEnabled = Form.useWatch("fiscalStampEnabled", form);
+  const watchedTimezone = Form.useWatch("timezone", form);
+  // ~420 zones; rebuilt only when the stored value changes, and always
+  // including it so a zone this browser doesn't list still displays.
+  const timezoneSelectOptions = useMemo(() => timezoneOptions(watchedTimezone), [watchedTimezone]);
   const countryOptions = useCountryOptions(watchedCountryCode);
 
   return (
@@ -487,7 +493,26 @@ export default function OrganizationEditDrawer({
                         </Select>
                       </Form.Item>
                     </Col>
-                    <Col xs={24} md={16}>
+                    <Col xs={24} md={8}>
+                      <Form.Item
+                        name="timezone"
+                        label={<Trans>Time zone</Trans>}
+                        tooltip={
+                          <Trans>
+                            The time zone this organization works in. Exported documents, accounting
+                            exports, document numbers and the Cash Book's daily totals use it to
+                            decide which day a date falls on.
+                          </Trans>
+                        }
+                      >
+                        <Select
+                          showSearch
+                          optionFilterProp="label"
+                          options={timezoneSelectOptions}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
                       <Form.Item
                         name="amountInWordsEnabled"
                         valuePropName="checked"

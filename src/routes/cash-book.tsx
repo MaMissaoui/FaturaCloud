@@ -77,7 +77,7 @@ import type {
 import type { Account, Client, Payment } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
-import { useDatePickerFormat } from "src/utils/date";
+import { calendarDayMs, useDatePickerFormat } from "src/utils/date";
 import { searchClients } from "src/utils/client-search";
 import { dateSorter, moneySorter, numberSorter, textSorter } from "src/utils/sort";
 import {
@@ -445,21 +445,14 @@ const CashBook = () => {
   const dailyMovementRequestIdRef = useRef(0);
   const loanStatusRequestIdRef = useRef(0);
 
-  // Local-calendar comparison, deliberately not UTC — "today" is what the
-  // cashier at the counter means by it, and it's what gates whether new
-  // sales/payments/withdrawals can be entered at all. A sale rung up very
-  // late at a positive UTC offset (e.g. after 23:00 in Tunis, UTC+1) still
-  // lands in the *previous* UTC day's row below — DailyCashMovementRow's
-  // own documented limitation, a stated edge case this screen doesn't try
-  // to correct.
+  // Local-calendar comparison — "today" is what the cashier at the counter
+  // means by it, and it's what gates whether new sales/payments/withdrawals
+  // can be entered at all. The server buckets the register by the
+  // organization's own days (organizations.timezone), so a sale rung up
+  // just after midnight, or backdated with the date picker, lands on the
+  // day the cashier sees; an organization with no time zone set still gets
+  // UTC days (see db/gl_reports.go's DailyCashMovementRow).
   const isToday = selectedDate.isSame(dayjs(), "day");
-
-  // Maps the picked calendar date straight to that date's UTC midnight —
-  // not selectedDate.valueOf() (local midnight), which the server would
-  // floor to the *previous* UTC day at any positive UTC offset, silently
-  // fetching yesterday's bucket for a panel labeled "today". See
-  // db/gl_reports.go's DailyCashMovementRow doc comment.
-  const utcDayMs = (d: Dayjs) => Date.UTC(d.year(), d.month(), d.date());
 
   useEffect(() => {
     setClients();
@@ -479,7 +472,7 @@ const CashBook = () => {
     const requestId = ++dailyMovementRequestIdRef.current;
     setLoadingDailyMovement(true);
     try {
-      const dayMs = utcDayMs(selectedDate);
+      const dayMs = calendarDayMs(selectedDate);
       const [[row], details] = await Promise.all([
         GetDailyCashMovements(organizationId, registerAccountId, dayMs, dayMs),
         GetCashMovementDetails(organizationId, registerAccountId, dayMs, dayMs),
@@ -589,7 +582,7 @@ const CashBook = () => {
       await ExportDailyCashMovements(
         organizationId,
         registerAccountId,
-        utcDayMs(selectedDate),
+        calendarDayMs(selectedDate),
         format,
       );
     } catch (error) {
@@ -1222,7 +1215,7 @@ const CashBook = () => {
                     >
                       {/* A forward-dated sale would post into a future day's
                     bucket, which the panel above never shows as "today"
-                    even after today catches up to it — see utcDayMs. */}
+                    even after today catches up to it. */}
                       <DatePicker
                         style={{ width: "100%" }}
                         format={dateFormat}
@@ -1553,7 +1546,7 @@ const CashBook = () => {
                 </Col>
               </Row>
               {/* Labeled from the fetched row's own date, not the picker's
-            value — if utcDayMs above ever drifted from the picked
+            value — if calendarDayMs ever drifted from the picked
             calendar date, this would visibly disagree with the picker
             instead of silently hiding the mismatch. */}
               {dailyMovement && (

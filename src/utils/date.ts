@@ -116,3 +116,12 @@ export function getDateFormatLabel(format: DateFormatKey): string {
   const formatString = DATE_FORMATS[format];
   return formatString ? `${format} (${today.format(formatString)})` : format;
 }
+
+// The instant to send the server for "this calendar day" in a day-based
+// query (the Cash Book register, Daily Cash Movements): UTC noon of the
+// picked date. The server floors it to a day in the organization's own
+// time zone (organizations.timezone, db/timezone.go), and noon UTC falls
+// on the same calendar date in every zone within ±12h — so the answer no
+// longer depends on the browser's zone matching the organization's, the
+// way sending local midnight did.
+export const calendarDayMs = (d: dayjs.Dayjs) => Date.UTC(d.year(), d.month(), d.date(), 12);
