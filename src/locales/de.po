@@ -221,7 +221,7 @@ msgstr "Position hinzufügen"
 msgid "Address"
 msgstr "Adresse"
 
-#: src/components/products/form.tsx:429
+#: src/components/products/form.tsx:458
 msgid "Adjust stock to zero first"
 msgstr "Bestand zuerst auf null setzen"
 
@@ -701,7 +701,7 @@ msgid "Cancelled"
 msgstr "Storniert"
 
 #. placeholder {0}: product.stockQuantity
-#: src/components/products/form.tsx:439
+#: src/components/products/form.tsx:468
 msgid "Cannot change while stock is non-zero ({0}) — adjust stock to zero first."
 msgstr "Kann nicht geändert werden, solange der Bestand ungleich null ist ({0}) — Bestand zuerst auf null setzen."
 
@@ -758,7 +758,7 @@ msgstr "Barverkauf erfasst"
 msgid "Cash sale selected — the full amount is collected now."
 msgstr "Barverkauf ausgewählt — der volle Betrag wird jetzt eingenommen."
 
-#: src/components/products/form.tsx:460
+#: src/components/products/form.tsx:398
 #: src/routes/inventory.tsx:386
 #: src/routes/products.tsx:292
 #: src/routes/reporting/tax-summary.tsx:76
@@ -800,8 +800,8 @@ msgstr "CIN"
 #: src/components/clients/form.tsx:298
 #: src/components/clients/form.tsx:299
 #: src/components/organizations/organization-edit-drawer.tsx:391
-#: src/components/vendors/form.tsx:277
-#: src/components/vendors/form.tsx:278
+#: src/components/vendors/form.tsx:268
+#: src/components/vendors/form.tsx:269
 msgid "City"
 msgstr "Stadt"
 
@@ -944,7 +944,7 @@ msgstr "Abgeschlossen"
 msgid "Component"
 msgstr "Komponente"
 
-#: src/components/products/form.tsx:474
+#: src/components/products/form.tsx:412
 #: src/routes/products.tsx:187
 msgid "Component / intermediate"
 msgstr "Komponente / Zwischenprodukt"
@@ -1134,7 +1134,7 @@ msgstr "Länder"
 #: src/components/clients/form.tsx:305
 #: src/components/organizations/organization-edit-drawer.tsx:159
 #: src/components/organizations/organization-edit-drawer.tsx:355
-#: src/components/vendors/form.tsx:249
+#: src/components/vendors/form.tsx:275
 #: src/routes/organizations/new.tsx:109
 msgid "Country"
 msgstr "Land"
@@ -1870,7 +1870,7 @@ msgstr "z. B. Netto 30"
 msgid "e.g. Sales"
 msgstr "z. B. Verkauf"
 
-#: src/components/products/form.tsx:389
+#: src/components/products/form.tsx:372
 msgid "e.g. SVC-001"
 msgstr "z. B. SVC-001"
 
@@ -2481,7 +2481,7 @@ msgstr "Nach Status filtern"
 msgid "Filtered by product type, set above"
 msgstr "Gefiltert nach oben eingestelltem Produkttyp"
 
-#: src/components/products/form.tsx:471
+#: src/components/products/form.tsx:409
 #: src/routes/inventory.tsx:333
 #: src/routes/inventory.tsx:392
 #: src/routes/inventory.tsx:457
@@ -2702,8 +2702,8 @@ msgstr "Stunde (UTC)"
 #: src/components/clients/form.tsx:284
 #: src/components/clients/form.tsx:285
 #: src/components/organizations/organization-edit-drawer.tsx:381
-#: src/components/vendors/form.tsx:267
-#: src/components/vendors/form.tsx:268
+#: src/components/vendors/form.tsx:254
+#: src/components/vendors/form.tsx:255
 msgid "House number"
 msgstr "Hausnummer"
 
@@ -4045,7 +4045,7 @@ msgstr "Das Öffnen der Stücklistenansicht schließt dieses Produkt und verwirf
 msgid "Optional"
 msgstr "Optional"
 
-#: src/components/products/form.tsx:462
+#: src/components/products/form.tsx:400
 msgid "Optional — filters this product out of purchasing pickers (if \"Finished good\") or sales pickers (if \"Component / intermediate\"). Leave unset if it's neither."
 msgstr "Optional — blendet dieses Produkt in Einkaufsauswahlen aus (bei „Fertigware“) oder in Verkaufsauswahlen (bei „Komponente / Zwischenprodukt“). Leer lassen, wenn keines von beidem zutrifft."
 
@@ -4570,8 +4570,8 @@ msgstr "Diese Buchung buchen? Sie kann danach nicht mehr bearbeitet werden."
 #: src/components/clients/form.tsx:291
 #: src/components/clients/form.tsx:294
 #: src/components/organizations/organization-edit-drawer.tsx:386
-#: src/components/vendors/form.tsx:272
-#: src/components/vendors/form.tsx:273
+#: src/components/vendors/form.tsx:261
+#: src/components/vendors/form.tsx:264
 msgid "Postal code"
 msgstr "Postleitzahl"
 
@@ -4638,7 +4638,7 @@ msgid "Print the invoice total spelled out in words, in the document language."
 msgstr "Den Rechnungsbetrag in Worten drucken, in der Dokumentsprache."
 
 #: src/components/line-items/table.tsx:331
-#: src/components/products/form.tsx:378
+#: src/components/products/form.tsx:387
 #: src/components/stock/movement-form.tsx:138
 #: src/routes/accounting/reports/inventory-valuation.tsx:132
 #: src/routes/cash-book.tsx:1738
@@ -4654,7 +4654,7 @@ msgstr "Den Rechnungsbetrag in Worten drucken, in der Dokumentsprache."
 msgid "Product"
 msgstr "Produkt"
 
-#: src/components/products/form.tsx:387
+#: src/components/products/form.tsx:370
 msgid "Product code is required"
 msgstr "Produktcode ist erforderlich"
 
@@ -5408,7 +5408,7 @@ msgstr "Nur Such-/Referenzzweck — dient dem Auffinden dieses Kunden im Kassenb
 
 #: src/components/clients/form.tsx:311
 #: src/components/organizations/organization-edit-drawer.tsx:367
-#: src/components/vendors/form.tsx:253
+#: src/components/vendors/form.tsx:281
 msgid "Select a country"
 msgstr "Land auswählen"
 
@@ -5531,7 +5531,7 @@ msgstr "Seriennummern"
 msgid "Serial numbers to remove"
 msgstr "Zu entfernende Seriennummern"
 
-#: src/components/products/form.tsx:375
+#: src/components/products/form.tsx:384
 #: src/routes/products.tsx:173
 #: src/routes/products.tsx:286
 msgid "Service"
@@ -5624,7 +5624,7 @@ msgstr "Numerischer Kontocode im SKR03/SKR04-Stil für die Spalte „Konto“ de
 msgid "SKU"
 msgstr "SKU"
 
-#: src/components/products/form.tsx:386
+#: src/components/products/form.tsx:369
 msgid "SKU / Product code"
 msgstr "SKU / Produktcode"
 
@@ -5755,8 +5755,8 @@ msgstr "Lagerbewertung nach Produkt"
 #: src/components/clients/form.tsx:279
 #: src/components/clients/form.tsx:280
 #: src/components/organizations/organization-edit-drawer.tsx:376
-#: src/components/vendors/form.tsx:262
-#: src/components/vendors/form.tsx:263
+#: src/components/vendors/form.tsx:249
+#: src/components/vendors/form.tsx:250
 msgid "Street"
 msgstr "Straße"
 
@@ -6150,11 +6150,11 @@ msgstr "Gesamtmenge"
 msgid "Total revenue"
 msgstr "Umsatz gesamt"
 
-#: src/components/products/form.tsx:398
+#: src/components/products/form.tsx:426
 msgid "Track inventory"
 msgstr "Bestand verfolgen"
 
-#: src/components/products/form.tsx:435
+#: src/components/products/form.tsx:464
 msgid "Track serial numbers"
 msgstr "Seriennummern erfassen"
 
@@ -6183,7 +6183,7 @@ msgstr "Tunesien"
 
 #: src/components/accounting/account-form.tsx:168
 #: src/components/accounting/journal-form.tsx:153
-#: src/components/products/form.tsx:368
+#: src/components/products/form.tsx:377
 #: src/components/stock/movement-form.tsx:151
 #: src/routes/accounting/chart-of-accounts.tsx:155
 #: src/routes/accounting/journals.tsx:119
@@ -6202,7 +6202,7 @@ msgstr "Seriennummer eingeben und Enter drücken"
 msgid "Type manually"
 msgstr "Manuell eingeben"
 
-#: src/components/products/form.tsx:469
+#: src/components/products/form.tsx:407
 #: src/routes/products.tsx:188
 msgid "Unclassified"
 msgstr "Nicht klassifiziert"

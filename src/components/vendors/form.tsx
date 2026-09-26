@@ -245,19 +245,6 @@ const VendorForm = () => {
 
           <Card size="small" title={<Trans>Address</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="country_code" label={<Trans>Country</Trans>}>
-                  <Select
-                    showSearch
-                    allowClear
-                    placeholder={t`Select a country`}
-                    options={countryOptions}
-                    filterOption={(input, option) =>
-                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                    }
-                  />
-                </Form.Item>
-              </Col>
               <Col xs={24} md={16}>
                 <Form.Item name="street" label={<Trans>Street</Trans>}>
                   <Input placeholder={t`Street`} />
@@ -268,14 +255,35 @@ const VendorForm = () => {
                   <Input placeholder={t`House number`} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="postal_code" label={<Trans>Postal code</Trans>}>
+              <Col xs={24} md={6}>
+                <Form.Item
+                  name="postal_code"
+                  label={<Trans>Postal code</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
                   <Input placeholder={t`Postal code`} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={16}>
+              <Col xs={24} md={10}>
                 <Form.Item name="city" label={<Trans>City</Trans>} style={{ marginBottom: 0 }}>
                   <Input placeholder={t`City`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="country_code"
+                  label={<Trans>Country</Trans>}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder={t`Select a country`}
+                    options={countryOptions}
+                    filterOption={(input, option) =>
+                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                    }
+                  />
                 </Form.Item>
               </Col>
             </Row>
