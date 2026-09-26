@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.56.0] - 2026-09-26
+
 ### Added
 - Organizations: a **Time zone** setting (Formatting section). The server
   now reads every date's calendar day in the organization's own time zone.
