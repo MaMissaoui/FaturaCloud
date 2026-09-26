@@ -44,11 +44,13 @@ Tier 2 progress:
 - Tier 2.3 (borderless-cell / drag-handle visual polish) is **done**, as its
   own commit after all six documents were on the shell (see below, after the
   invoices entry).
-- **Aside, not fixed**: saving an order always resets its `Delivered` column
-  to 0 — `db.UpdateOrder` replaces all line items (new IDs) on every save,
+- **Aside — resolved 2026-09-15 (4eef881, PR #244)**: saving an order used to
+  reset its `Delivered` column to 0 — `db.UpdateOrder` replaces all line items (new IDs) on every save,
   so `GetOrderDeliveredQuantities` (keyed by the old `orderLineItemId`) no
   longer matches. Pre-existing backend behavior, unrelated to this migration
   (confirmed identical on `main` before this change) — out of scope here.
+  Fixed since: `replaceOrderLineItemsTx` now reuses existing ids via
+  `reconcileLineItemIDs` (`db/line_item_reconcile.go`).
 - `purchase-orders/details.tsx` migrated: `#` column added, `unit` now uses
   the shared kind (added in the deliveries migration), `Received` custom
   column preserved. **No `disabled`/`isEditable` gating was added**, unlike
@@ -59,7 +61,7 @@ Tier 2 progress:
   would be inventing new restrictive behavior the backend doesn't enforce,
   not extracting an existing one — out of scope for a "make six tables use
   one shell" refactor, so left exactly as unrestricted as it was on `main`.
-- **Aside, not fixed — more serious than the orders `Delivered` bug**: like
+- **Aside — resolved 2026-09-15 (4eef881, PR #244); was more serious than the orders `Delivered` bug**: like
   `db.UpdateOrder`, `replacePurchaseOrderLineItemsTx` deletes and reinserts
   every line item (fresh ids) on any `PUT` that includes `lineItems`, which
   the frontend always sends on save. For purchase orders this is worse than
@@ -71,7 +73,9 @@ purchaseOrderLineItemId` — and the 3-way match in
   that already has linked goods receipts or incoming invoices orphans those
   references silently. Confirmed pre-existing (identical on `main`), unrelated
   to this migration, out of scope here — flagging because the blast radius is
-  larger than the orders case.
+  larger than the orders case. Fixed since: `replacePurchaseOrderLineItemsTx`
+  now updates existing rows in place via `reconcileLineItemIDs`, so linked
+  receipts and incoming invoices keep their `purchaseOrderLineItemId`.
 - `inbound-deliveries/details.tsx` migrated: `#` column added; `unit` and
   `unitPrice` reuse the shared kinds (`unitPrice` via its new `name: "unitCost"`
   override, `quantity` via its new `label: "Qty received"` override);
