@@ -28,7 +28,7 @@ func FillInboundDeliveryTemplate(
 	}
 
 	scalars := buildInboundDeliveryScalarPlaceholders(delivery, org, vendor, currency)
-	mergeExportMetaPlaceholders(scalars, org.DateFormat)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat, orgLocation(org.Timezone))
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildInboundDeliveryLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode)
@@ -91,7 +91,7 @@ func (d *Database) FetchInboundDeliveryExportData(deliveryID string) (*InboundDe
 func buildInboundDeliveryScalarPlaceholders(delivery InboundDelivery, org Organization, vendor Vendor, currency string) map[string]string {
 	return map[string]string{
 		"inboundDelivery.number":             delivery.DeliveryNumber,
-		"inboundDelivery.date":               formatOrgDate(delivery.DeliveryDate, org.DateFormat),
+		"inboundDelivery.date":               formatOrgDate(delivery.DeliveryDate, org.DateFormat, orgLocation(org.Timezone)),
 		"inboundDelivery.currency":           currency,
 		"inboundDelivery.purchaseOrder":      derefString(delivery.OrderNumber),
 		"inboundDelivery.vendorDeliveryNote": derefString(delivery.VendorDeliveryNote),

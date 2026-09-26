@@ -228,7 +228,11 @@ func (d *Database) PreviewNextDocumentNumber(organizationID, documentType string
 	if err != nil {
 		return "", err
 	}
-	return generateFormattedDocumentNumber(setting.Format, setting.Counter+1, time.Now(), ""), nil
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return "", err
+	}
+	return generateFormattedDocumentNumber(setting.Format, setting.Counter+1, time.Now().In(loc), ""), nil
 }
 
 // GenerateNextDocumentNumberTx atomically advances documentType's counter by
@@ -252,13 +256,20 @@ func GenerateNextDocumentNumberTx(tx *sqlx.Tx, organizationID, documentType stri
 	if !ok {
 		return "", newValidationError("unknown document type %q", documentType)
 	}
+	// The {year}/{month}/{day} tokens name the document's calendar day in
+	// the organization's zone, not the server's (UTC in Docker).
+	loc, err := organizationLocation(tx, organizationID)
+	if err != nil {
+		return "", err
+	}
+	date = date.In(loc)
 	var row struct {
 		Format  string `db:"format"`
 		Counter int64  `db:"counter"`
 	}
 	format := defaultFormat
 	var nextCounter int64 = 1
-	err := tx.Get(&row, `
+	err = tx.Get(&row, `
 		SELECT format, counter FROM document_number_settings
 		WHERE organizationId = ? AND documentType = ?`,
 		organizationID, documentType,

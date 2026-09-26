@@ -1,6 +1,9 @@
 package db
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // TestFormatOrgDate covers every value organizations.date_format can
 // actually hold (src/utils/date.ts's DATE_FORMATS — raw dayjs tokens) plus
@@ -30,7 +33,7 @@ func TestFormatOrgDate(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := formatOrgDate(ts, tc.format)
+			got := formatOrgDate(ts, tc.format, time.UTC)
 			if got != tc.want {
 				t.Fatalf("formatOrgDate(%d, %v) = %q, want %q", ts, derefOrNil(tc.format), got, tc.want)
 			}
@@ -40,11 +43,11 @@ func TestFormatOrgDate(t *testing.T) {
 
 func TestFormatOptionalOrgDate(t *testing.T) {
 	t.Parallel()
-	if got := formatOptionalOrgDate(nil, ptr("YYYY-MM-DD")); got != "" {
+	if got := formatOptionalOrgDate(nil, ptr("YYYY-MM-DD"), time.UTC); got != "" {
 		t.Fatalf("expected empty string for nil timestamp, got %q", got)
 	}
 	ts := int64(1772721000000)
-	if got := formatOptionalOrgDate(&ts, ptr("YYYY-MM-DD")); got != "2026-03-05" {
+	if got := formatOptionalOrgDate(&ts, ptr("YYYY-MM-DD"), time.UTC); got != "2026-03-05" {
 		t.Fatalf("got %q, want 2026-03-05", got)
 	}
 }

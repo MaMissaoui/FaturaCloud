@@ -295,7 +295,7 @@ func buildUBLInvoice(profile eInvoiceProfile, invoice *Invoice, lineItems []Invo
 		XmlnsCbc:             "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
 		CustomizationID:      profile.CustomizationID,
 		ID:                   invoice.Number,
-		IssueDate:            formatMillis(invoice.Date),
+		IssueDate:            formatMillis(invoice.Date, org.Timezone),
 		InvoiceTypeCode:      invoiceTypeCodeCommercial,
 		DocumentCurrencyCode: currency,
 		AccountingSupplierParty: ublPartyWrapper{Party: buildParty(
@@ -327,7 +327,7 @@ func buildUBLInvoice(profile eInvoiceProfile, invoice *Invoice, lineItems []Invo
 		inv.BuyerReference = *invoice.BuyerReference
 	}
 	if invoice.DueDate != nil {
-		inv.DueDate = formatMillis(*invoice.DueDate)
+		inv.DueDate = formatMillis(*invoice.DueDate, org.Timezone)
 	}
 	if invoice.PaymentTerms != nil && *invoice.PaymentTerms != "" {
 		inv.PaymentTerms = &ublPaymentTerms{Note: *invoice.PaymentTerms}
@@ -407,15 +407,20 @@ func buildParty(name string, street, houseNumber *string, postalCode, city, coun
 }
 
 // formatMillis renders a stored date as a calendar date (BT-2/BT-9 want a
-// date, not an instant). Invoice/due dates are written by the frontend as
-// local midnight (dayjs().valueOf()) with no timezone recorded, and this
-// runs server-side where the local zone is typically UTC (e.g. in Docker)
-// and essentially never matches the browser's. Flooring in UTC would read
-// back the wrong calendar day for any positive UTC offset — local midnight
-// in Berlin (UTC+1) is 23:00 UTC the day before. Rounding to the nearest UTC
-// day instead recovers the intended date for any zone within ±12h of UTC,
-// which covers every real timezone this app's locales (en/de/fr) target.
-func formatMillis(ms int64) string {
+// date, not an instant), in the organization's time zone when it has one
+// (orgLocation) — correct for both stored conventions, a picked date's local
+// midnight and a default date's moment of entry.
+//
+// With no zone set it keeps the older heuristic: round to the nearest UTC
+// day. That recovers a picked date (local midnight) for any zone within ±12h
+// of UTC, where flooring in UTC would read local midnight in Berlin (23:00
+// UTC the day before) as the previous day; it misreads a default date
+// entered after noon UTC as the next day, which is why the zone setting
+// replaced it.
+func formatMillis(ms int64, tz *string) string {
+	if hasOrgTimezone(tz) {
+		return time.UnixMilli(ms).In(orgLocation(tz)).Format("2006-01-02")
+	}
 	return time.UnixMilli(ms).UTC().Add(12 * time.Hour).Format("2006-01-02")
 }
 

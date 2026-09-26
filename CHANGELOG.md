@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Organizations: a **Time zone** setting (Formatting section). The server
+  now reads every date's calendar day in the organization's own time zone.
+  New organizations start with the browser's zone. Existing organizations in
+  single-time-zone countries (Tunisia, France, Germany, and others) get
+  theirs automatically. Everyone else keeps UTC days until the setting is
+  chosen.
+
+### Fixed
+- Dates picked from a calendar printed one day early on exported
+  documents, FEC/DATEV exports and in document numbers for organizations
+  east of UTC (e.g. Tunisia, France, Germany). A date entered between
+  midnight and 1:00 local time had the same problem.
+- E-invoices dated an invoice one day late when it was created in the
+  afternoon with its default date.
+- Cash Book: a sale entered just after midnight, or backdated with the date
+  picker, counted in the previous day's register totals. The movements
+  export also showed times in UTC.
+- Revenue trend and the dashboard's calendar-year view counted an invoice
+  dated 1 January in the previous December.
+- Re-exporting a FEC or DATEV file can now give different dates from a file
+  exported before this release, because the earlier dates were a day early.
+
 ## [3.55.1] - 2026-09-26
 
 ### Fixed

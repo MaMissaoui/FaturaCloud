@@ -27,7 +27,7 @@ func FillIncomingInvoiceTemplate(
 	}
 
 	scalars := buildIncomingInvoiceScalarPlaceholders(invoice, org, vendor, currency)
-	mergeExportMetaPlaceholders(scalars, org.DateFormat)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat, orgLocation(org.Timezone))
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildIncomingInvoiceLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
@@ -117,8 +117,8 @@ func (d *Database) FetchIncomingInvoiceExportData(invoiceID string) (*IncomingIn
 func buildIncomingInvoiceScalarPlaceholders(invoice IncomingInvoice, org Organization, vendor Vendor, currency string) map[string]string {
 	return map[string]string{
 		"incomingInvoice.number":        invoice.VendorInvoiceNumber,
-		"incomingInvoice.date":          formatOrgDate(invoice.Date, org.DateFormat),
-		"incomingInvoice.dueDate":       formatOptionalOrgDate(invoice.DueDate, org.DateFormat),
+		"incomingInvoice.date":          formatOrgDate(invoice.Date, org.DateFormat, orgLocation(org.Timezone)),
+		"incomingInvoice.dueDate":       formatOptionalOrgDate(invoice.DueDate, org.DateFormat, orgLocation(org.Timezone)),
 		"incomingInvoice.currency":      currency,
 		"incomingInvoice.reference":     derefString(invoice.Reference),
 		"incomingInvoice.purchaseOrder": derefString(invoice.OrderNumber),

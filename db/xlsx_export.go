@@ -75,7 +75,7 @@ func FillInvoiceTemplate(
 		currency = *org.Currency
 	}
 	scalars := buildScalarPlaceholders(invoice, org, client)
-	mergeExportMetaPlaceholders(scalars, org.DateFormat)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat, orgLocation(org.Timezone))
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
@@ -103,8 +103,8 @@ func FillInvoiceTemplate(
 // apart when it's re-exported later than it was created — export.generatedDate
 // follows the organization's own date_format for the same look-consistency
 // reason every other customer-facing date on these templates does;
-// export.generatedTime is always 24-hour HH:MM server time (organizations
-// have no separate time_format setting to follow).
+// export.generatedTime is always 24-hour HH:MM in the organization's time
+// zone (organizations have no separate time_format setting to follow).
 //
 // "Current page" / "total pages" are deliberately NOT offered here as a
 // {{}} placeholder: fillTemplate runs before LibreOffice ever paginates the
@@ -116,9 +116,9 @@ func FillInvoiceTemplate(
 // already wires "&CPage &P of &N" into every embedded default template's
 // footer for exactly this; a template author can move or restyle that from
 // within Excel/LibreOffice's own header/footer editor.
-func mergeExportMetaPlaceholders(scalars map[string]string, dateFormat *string) {
-	now := time.Now()
-	scalars["export.generatedDate"] = formatOrgDate(now.UnixMilli(), dateFormat)
+func mergeExportMetaPlaceholders(scalars map[string]string, dateFormat *string, loc *time.Location) {
+	now := time.Now().In(loc)
+	scalars["export.generatedDate"] = formatOrgDate(now.UnixMilli(), dateFormat, loc)
 	scalars["export.generatedTime"] = now.Format("15:04")
 }
 
@@ -447,8 +447,8 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 
 	return map[string]string{
 		"invoice.number":   invoice.Number,
-		"invoice.date":     formatOrgDate(invoice.Date, org.DateFormat),
-		"invoice.dueDate":  formatOptionalOrgDate(invoice.DueDate, org.DateFormat),
+		"invoice.date":     formatOrgDate(invoice.Date, org.DateFormat, orgLocation(org.Timezone)),
+		"invoice.dueDate":  formatOptionalOrgDate(invoice.DueDate, org.DateFormat, orgLocation(org.Timezone)),
 		"invoice.currency": currency,
 		"invoice.subTotal": formatMoneyCents(invoice.SubTotal, currency, org.MinimumFractionDigits, org.CountryCode),
 		"invoice.taxTotal": formatMoneyCents(invoice.TaxTotal, currency, org.MinimumFractionDigits, org.CountryCode),

@@ -281,6 +281,9 @@ export interface Organization {
   // ("en" | "de" | "fr"; null/"" = automatic by layout) — see
   // src/types/document-layout.ts.
   documentLanguage: string | null;
+  // timezone is the IANA zone the server reads every stored date's calendar
+  // day in (migration 0092); null/"" means UTC days. See src/utils/timezones.ts.
+  timezone: string | null;
   // The Cash Book screen's register balance/daily-movements report/cash
   // withdrawal feature — deliberately separate from defaultCashAccountId,
   // which every chart-of-accounts template wires to the Bank account, never

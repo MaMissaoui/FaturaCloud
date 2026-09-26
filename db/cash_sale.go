@@ -359,7 +359,11 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	if client.Code != nil {
 		clientCode = *client.Code
 	}
-	number := generateDocumentNumber(format, counter, time.UnixMilli(req.Date), clientCode)
+	loc, err := organizationLocation(tx, req.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	number := generateDocumentNumber(format, counter, time.UnixMilli(req.Date).In(loc), clientCode)
 
 	// dueDate defaults to the sale's own date, not organizations.due_days —
 	// a counter sale (cash or a loan settled later via CreatePayment, not a

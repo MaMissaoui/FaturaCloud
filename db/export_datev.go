@@ -101,6 +101,7 @@ func (d *Database) GenerateDATEV(organizationID, fiscalYearID string) (content [
 	if err != nil {
 		return nil, "", fmt.Errorf("generate_datev get_organization: %w", err)
 	}
+	loc := orgLocation(org.Timezone)
 	fiscalYear, err := d.GetFiscalYear(fiscalYearID)
 	if err != nil {
 		return nil, "", fmt.Errorf("generate_datev get_fiscal_year: %w", err)
@@ -137,7 +138,7 @@ func (d *Database) GenerateDATEV(organizationID, fiscalYearID string) (content [
 		linesByEntry[r.EntryID] = append(linesByEntry[r.EntryID], r)
 	}
 
-	problems := newDATEVProblems()
+	problems := newDATEVProblems(loc)
 
 	consultantNumber := validateDATEVNumericField(problems, "DATEV consultant number", org.DatevConsultantNumber, 1001, 9999999)
 	clientNumber := validateDATEVNumericField(problems, "DATEV client number", org.DatevClientNumber, 1, 99999)
@@ -242,14 +243,14 @@ func (d *Database) GenerateDATEV(organizationID, fiscalYearID string) (content [
 	}
 
 	var b strings.Builder
-	now := time.Now()
+	now := time.Now().In(loc) // "erzeugt am", the organization's wall clock
 	header1 := []string{
 		quoteDATEV("EXTF"), "700", "21", quoteDATEV("Buchungsstapel"), "13",
 		now.Format("20060102150405") + fmt.Sprintf("%03d", now.Nanosecond()/1e6),
 		"", quoteDATEV("RE"), quoteDATEV("FaturaCloud"), "",
 		strconv.FormatInt(consultantNumber, 10), strconv.FormatInt(clientNumber, 10),
-		formatDATEVDate(fiscalYear.StartDate), strconv.FormatInt(accountLength, 10),
-		formatDATEVDate(fiscalYear.StartDate), formatDATEVDate(fiscalYear.EndDate),
+		formatDATEVDate(fiscalYear.StartDate, loc), strconv.FormatInt(accountLength, 10),
+		formatDATEVDate(fiscalYear.StartDate, loc), formatDATEVDate(fiscalYear.EndDate, loc),
 		quoteDATEV(truncateDATEV("Buchungsstapel "+fiscalYear.Name, 30)),
 		"", "1", "", "", quoteDATEV(orgCurrencyOrDefault(org)),
 		"", "", "", "", "", "", "", "", "",
@@ -266,7 +267,7 @@ func (d *Database) GenerateDATEV(organizationID, fiscalYearID string) (content [
 		fields[6] = r.kontoNumber
 		fields[7] = r.gegenkontoNum
 		fields[8] = quoteDATEV(r.buSchluessel)
-		fields[9] = formatDATEVBelegdatum(r.date)
+		fields[9] = formatDATEVBelegdatum(r.date, loc)
 		fields[10] = quoteDATEV(sanitizeDATEVBelegfeld(derefString(r.reference)))
 		fields[13] = quoteDATEV(truncateDATEV(r.buchungstext, 60))
 		b.WriteString(strings.Join(fields, ";"))
@@ -300,10 +301,11 @@ type datevProblems struct {
 	missingAccountLabels []string
 	mixedLengths         []string
 	clearingNeeded       []string
+	loc                  *time.Location // for the dates quoted in clearingNeeded
 }
 
-func newDATEVProblems() *datevProblems {
-	return &datevProblems{missingAccounts: map[string]bool{}}
+func newDATEVProblems(loc *time.Location) *datevProblems {
+	return &datevProblems{missingAccounts: map[string]bool{}, loc: loc}
 }
 
 func (p *datevProblems) addMissingAccount(accountID, code, name string) {
@@ -319,7 +321,7 @@ func (p *datevProblems) addClearing(date int64, reference *string, description s
 	if reference != nil && *reference != "" {
 		label = fmt.Sprintf("%s (%s)", description, *reference)
 	}
-	p.clearingNeeded = append(p.clearingNeeded, fmt.Sprintf("%s on %s", label, formatDATEVDate(date)))
+	p.clearingNeeded = append(p.clearingNeeded, fmt.Sprintf("%s on %s", label, formatDATEVDate(date, p.loc)))
 }
 
 // capList joins up to 10 items, then "and N more" — long enough to be
@@ -428,8 +430,10 @@ func validateDATEVAccountNumbers(problems *datevProblems, rows []datevLineRow) (
 	return 4, accountNumberOf // no accounts referenced at all (empty fiscal year) — DATEV's own minimum
 }
 
-func formatDATEVDate(millis int64) string {
-	return time.UnixMilli(millis).UTC().Format("20060102")
+// formatDATEVDate renders a date as YYYYMMDD in the organization's time
+// zone (orgLocation) — the day the user entered, not its UTC day.
+func formatDATEVDate(millis int64, loc *time.Location) string {
+	return time.UnixMilli(millis).In(loc).Format("20060102")
 }
 
 // formatDATEVBelegdatum renders Belegdatum (column 10) as DDMM — day and
@@ -437,8 +441,8 @@ func formatDATEVDate(millis int64) string {
 // (`format: '%d%m'`) and the real example file. This is a different format
 // from every other date field in this exporter (header dates are
 // YYYYMMDD), so it deliberately isn't formatDATEVDate.
-func formatDATEVBelegdatum(millis int64) string {
-	return time.UnixMilli(millis).UTC().Format("0201")
+func formatDATEVBelegdatum(millis int64, loc *time.Location) string {
+	return time.UnixMilli(millis).In(loc).Format("0201")
 }
 
 // formatDATEVAmount renders integer cents as a plain decimal with a comma

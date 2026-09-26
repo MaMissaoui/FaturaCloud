@@ -25,7 +25,7 @@ import type { DailyCashMovementRow } from "src/api";
 import type { Account } from "src/types/models";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
-import { useDatePickerFormat } from "src/utils/date";
+import { calendarDayMs, useDatePickerFormat } from "src/utils/date";
 import { dateSorter, moneySorter } from "src/utils/sort";
 
 const { RangePicker } = DatePicker;
@@ -84,8 +84,10 @@ const DailyCashMovements = () => {
     GetDailyCashMovements(
       organizationId,
       accountId,
-      range[0].startOf("day").valueOf(),
-      range[1].endOf("day").valueOf(),
+      // Day-based: the server floors each end to a day in the
+      // organization's time zone — see calendarDayMs.
+      calendarDayMs(range[0]),
+      calendarDayMs(range[1]),
     )
       .then(setRows)
       .catch((error) => {

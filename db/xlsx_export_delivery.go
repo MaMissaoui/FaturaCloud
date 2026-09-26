@@ -19,7 +19,7 @@ func FillDeliveryTemplate(
 	orientation string,
 ) ([]byte, []string, error) {
 	scalars := buildDeliveryScalarPlaceholders(delivery, org, client)
-	mergeExportMetaPlaceholders(scalars, org.DateFormat)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat, orgLocation(org.Timezone))
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildDeliveryLineItemPlaceholders(li)
@@ -85,7 +85,7 @@ func (d *Database) FetchDeliveryExportData(deliveryID string) (*OutboundDelivery
 func buildDeliveryScalarPlaceholders(delivery OutboundDelivery, org Organization, client Client) map[string]string {
 	return map[string]string{
 		"delivery.number":          delivery.DeliveryNumber,
-		"delivery.date":            formatOrgDate(delivery.DeliveryDate, org.DateFormat),
+		"delivery.date":            formatOrgDate(delivery.DeliveryDate, org.DateFormat, orgLocation(org.Timezone)),
 		"delivery.orderNumber":     derefString(delivery.OrderNumber),
 		"delivery.shippingAddress": derefString(delivery.ShippingAddress),
 		"delivery.trackingNumber":  derefString(delivery.TrackingNumber),
