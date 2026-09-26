@@ -40,6 +40,7 @@ import {
 import PageHeader from "src/components/page-header";
 import OrganizationsTable from "src/components/organizations/organizations-table";
 import OrganizationEditDrawer from "src/components/organizations/organization-edit-drawer";
+import { usageBreakdown } from "src/components/organizations/usage-breakdown";
 import { normalizeDocumentLanguage, normalizeDocumentLayout } from "src/types/document-layout";
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 
@@ -452,31 +453,15 @@ export default function Organizations() {
   const isEdit = !!editingId;
 
   const resetCounts = editingId ? usageCounts[editingId] : undefined;
-  const resetBreakdown: [number, string][] = resetCounts
-    ? (
-        [
-          ...(resetMasterData
-            ? [
-                [resetCounts.clients, t`client(s)`],
-                [resetCounts.vendors, t`vendor(s)`],
-                [resetCounts.products, t`product(s)`],
-                [resetCounts.taxRates, t`tax rate(s)`],
-              ]
-            : []),
-          ...(resetMasterData || resetTransactionalData
-            ? [
-                [resetCounts.invoices, t`invoice(s)`],
-                [resetCounts.orders, t`order(s)`],
-                [resetCounts.deliveries, t`delivery(ies)`],
-                [resetCounts.purchaseOrders, t`purchase order(s)`],
-                [resetCounts.inboundDeliveries, t`goods receipt(s)`],
-                [resetCounts.incomingInvoices, t`incoming invoice(s)`],
-                [resetCounts.stockMovements, t`stock movement(s)`],
-              ]
-            : []),
-        ] as [number, string][]
-      ).filter(([n]) => n > 0)
-    : [];
+  // Master data always takes transactional data with it (db/reset.go), so
+  // either box selects the transactional counts.
+  const resetBreakdown: [number, string][] =
+    resetCounts && (resetMasterData || resetTransactionalData)
+      ? usageBreakdown(
+          resetCounts,
+          resetMasterData ? ["master", "transactional"] : ["transactional"],
+        )
+      : [];
   const resetSelected = resetMasterData || resetTransactionalData;
 
   // Members/danger-zone Cards are only ever shown for an organization this

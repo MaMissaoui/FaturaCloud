@@ -3,6 +3,7 @@ import type { Organization } from "src/types/models";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import type { OrganizationUsageCount } from "src/api";
+import { usageBreakdown } from "./usage-breakdown";
 
 interface OrganizationsTableProps {
   dataSource: Organization[];
@@ -107,43 +108,8 @@ export default function OrganizationsTable({
         render={(_: unknown, record: Organization) => {
           if (!myOrgAdminIds.has(record.id)) return null;
           const counts = usageCounts[record.id];
-          // Every field GetOrganizationUsageCount reports, so the warning
-          // can't understate the blast radius when a new org-scoped table is
-          // added (audit F125). Kept as a fixed list — rather than derived
-          // from Object.keys — so each field gets a real translated label.
-          const breakdown = counts
-            ? [
-                [counts.clients, t`client(s)`],
-                [counts.vendors, t`vendor(s)`],
-                [counts.invoices, t`invoice(s)`],
-                [counts.orders, t`order(s)`],
-                [counts.deliveries, t`delivery(ies)`],
-                [counts.products, t`product(s)`],
-                [counts.taxRates, t`tax rate(s)`],
-                [counts.purchaseOrders, t`purchase order(s)`],
-                [counts.inboundDeliveries, t`goods receipt(s)`],
-                [counts.incomingInvoices, t`incoming invoice(s)`],
-                [counts.productionOrders, t`production order(s)`],
-                [counts.imports, t`import(s)`],
-                [counts.stockMovements, t`stock movement(s)`],
-                [counts.cashMovements, t`cash movement(s)`],
-                [counts.productSerialNumbers, t`serial number(s)`],
-                [counts.payments, t`payment(s)`],
-                [counts.journalEntries, t`journal entr(y/ies)`],
-                [counts.reconciliationGroups, t`reconciliation group(s)`],
-                [counts.accounts, t`account(s)`],
-                [counts.journals, t`journal(s)`],
-                [counts.fiscalYears, t`fiscal year(s)`],
-                [counts.fiscalPeriods, t`fiscal period(s)`],
-                [counts.paymentTerms, t`payment term(s)`],
-                [counts.unitsOfMeasure, t`unit(s) of measure`],
-                [counts.documentTemplates, t`document template(s)`],
-                [counts.documentTemplateSettings, t`template setting(s)`],
-                [counts.documentNumberSettings, t`numbering setting(s)`],
-                [counts.billOfMaterials, t`bill(s) of materials`],
-                [counts.billOfMaterialsVersions, t`BOM version(s)`],
-              ].filter(([n]) => (n as number) > 0)
-            : [];
+          // Deleting the organization removes everything it owns.
+          const breakdown = counts ? usageBreakdown(counts, ["master", "transactional"]) : [];
           return (
             <Popconfirm
               title={t`Delete this organization?`}
