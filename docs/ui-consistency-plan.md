@@ -407,6 +407,17 @@ Applied to the three that needed it:
   Fixed by widening its `Form.Item noStyle shouldUpdate` wrapper into a third
   `md={8}` column alongside Type/SKU instead of its own row — same logic,
   tighter layout.
+- **Regressions fixed 2026-09-26** (both had crept back as fields were added):
+  - Products' edit drawer overflowed 63px (en) / 85px (fr). The "Track serial
+    numbers" `Col` was always rendered, empty when hidden, so Category wrapped
+    onto a row of its own. That `Col` now renders only with its switch, and
+    the grid is Name + SKU / Type + Category + Track inventory. The Cost price
+    help text became a label tooltip, since its two wrapped lines raised the
+    whole row. Result: 0px, or 19px with stock tracking on (the serial
+    switch's own row).
+  - Vendors overflowed 28px because Country sat alone on a half-empty row.
+    It now shares the Postal code / City row (6/10/8), the same as Clients.
+    Result: 0px.
 
 ### 1.2 Collapse secondary sections — DONE (clients only)
 

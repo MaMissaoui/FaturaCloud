@@ -354,13 +354,22 @@ const ProductForm = () => {
         >
           <Card size="small" title={<Trans>Details</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
-              <Col xs={24}>
+              <Col xs={24} md={16}>
                 <Form.Item
                   name="name"
                   label={<Trans>Name</Trans>}
                   rules={[{ required: true, message: t`Name is required` }]}
                 >
                   <Input placeholder={t`Product or service name`} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="sku"
+                  label={<Trans>SKU / Product code</Trans>}
+                  rules={[{ required: true, message: t`Product code is required` }]}
+                >
+                  <Input placeholder={t`e.g. SVC-001`} onChange={() => setCodeTouched(true)} />
                 </Form.Item>
               </Col>
 
@@ -380,77 +389,6 @@ const ProductForm = () => {
                   </Select>
                 </Form.Item>
               </Col>
-              <Col xs={24} md={8}>
-                <Form.Item
-                  name="sku"
-                  label={<Trans>SKU / Product code</Trans>}
-                  rules={[{ required: true, message: t`Product code is required` }]}
-                >
-                  <Input placeholder={t`e.g. SVC-001`} onChange={() => setCodeTouched(true)} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
-                  {({ getFieldValue }) =>
-                    getFieldValue("type") === "product" ? (
-                      <Form.Item
-                        name="stockEnabled"
-                        label={<Trans>Track inventory</Trans>}
-                        valuePropName="checked"
-                      >
-                        <Switch
-                          onChange={(checked) => {
-                            if (!checked) form.setFieldValue("serialized", false);
-                          }}
-                        />
-                      </Form.Item>
-                    ) : null
-                  }
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item
-                  noStyle
-                  shouldUpdate={(prev, cur) =>
-                    prev.type !== cur.type || prev.stockEnabled !== cur.stockEnabled
-                  }
-                >
-                  {({ getFieldValue }) =>
-                    getFieldValue("type") === "product" && getFieldValue("stockEnabled") ? (
-                      // Tooltip must wrap the whole Form.Item, not sit inside it as
-                      // the Switch's parent — Form.Item injects `checked`/`onChange`
-                      // onto its direct child, and Tooltip doesn't forward those
-                      // through to Switch, which silently breaks the field (the
-                      // switch visually toggles via its own uncontrolled state, but
-                      // the value never reaches the form).
-                      <Tooltip
-                        title={
-                          product && product.stockQuantity !== 0 ? (
-                            <Trans>Adjust stock to zero first</Trans>
-                          ) : undefined
-                        }
-                      >
-                        <Form.Item
-                          name="serialized"
-                          label={<Trans>Track serial numbers</Trans>}
-                          valuePropName="checked"
-                          extra={
-                            product && product.stockQuantity !== 0 ? (
-                              <Trans>
-                                Cannot change while stock is non-zero ({product.stockQuantity}) —
-                                adjust stock to zero first.
-                              </Trans>
-                            ) : undefined
-                          }
-                        >
-                          <Switch disabled={!!product && product.stockQuantity !== 0} />
-                        </Form.Item>
-                      </Tooltip>
-                    ) : null
-                  }
-                </Form.Item>
-              </Col>
-
               <Col xs={24} md={8}>
                 <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
                   {({ getFieldValue }) =>
@@ -479,6 +417,69 @@ const ProductForm = () => {
                   }
                 </Form.Item>
               </Col>
+              <Col xs={24} md={8}>
+                <Form.Item noStyle shouldUpdate={(prev, cur) => prev.type !== cur.type}>
+                  {({ getFieldValue }) =>
+                    getFieldValue("type") === "product" ? (
+                      <Form.Item
+                        name="stockEnabled"
+                        label={<Trans>Track inventory</Trans>}
+                        valuePropName="checked"
+                      >
+                        <Switch
+                          onChange={(checked) => {
+                            if (!checked) form.setFieldValue("serialized", false);
+                          }}
+                        />
+                      </Form.Item>
+                    ) : null
+                  }
+                </Form.Item>
+              </Col>
+              {/* Only rendered while the switch shows: an always-present empty
+                  Col used to push Category onto a row of its own. */}
+              <Form.Item
+                noStyle
+                shouldUpdate={(prev, cur) =>
+                  prev.type !== cur.type || prev.stockEnabled !== cur.stockEnabled
+                }
+              >
+                {({ getFieldValue }) =>
+                  getFieldValue("type") === "product" && getFieldValue("stockEnabled") ? (
+                    <Col xs={24} md={8}>
+                      {/* Tooltip must wrap the whole Form.Item, not sit inside it as
+                          the Switch's parent — Form.Item injects `checked`/`onChange`
+                          onto its direct child, and Tooltip doesn't forward those
+                          through to Switch, which silently breaks the field (the
+                          switch visually toggles via its own uncontrolled state, but
+                          the value never reaches the form). */}
+                      <Tooltip
+                        title={
+                          product && product.stockQuantity !== 0 ? (
+                            <Trans>Adjust stock to zero first</Trans>
+                          ) : undefined
+                        }
+                      >
+                        <Form.Item
+                          name="serialized"
+                          label={<Trans>Track serial numbers</Trans>}
+                          valuePropName="checked"
+                          extra={
+                            product && product.stockQuantity !== 0 ? (
+                              <Trans>
+                                Cannot change while stock is non-zero ({product.stockQuantity}) —
+                                adjust stock to zero first.
+                              </Trans>
+                            ) : undefined
+                          }
+                        >
+                          <Switch disabled={!!product && product.stockQuantity !== 0} />
+                        </Form.Item>
+                      </Tooltip>
+                    </Col>
+                  ) : null
+                }
+              </Form.Item>
 
               <Col xs={24}>
                 <Form.Item
@@ -517,7 +518,7 @@ const ProductForm = () => {
                 <Form.Item
                   name="unitCost"
                   label={<Trans>Cost price</Trans>}
-                  extra={
+                  tooltip={
                     <Trans>
                       Calculated as a weighted average once goods are received at a cost.
                     </Trans>
