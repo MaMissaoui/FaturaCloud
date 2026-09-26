@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.55.1] - 2026-09-26
+
+### Fixed
+- Organizations: the **Reset data** confirmation now lists every kind of
+  record the reset deletes. It used to list 11 of 29 and left out payments,
+  journal entries, cash movements, accounts, fiscal years and bills of
+  materials, among others. The reset itself always deleted them.
+- Products: the edit drawer fits a 1440×900 screen without scrolling again.
+  Category no longer wraps onto a row of its own, and the Cost price
+  explanation moved into a tooltip.
+- Vendors: the drawer fits a 1440×900 screen without scrolling. Country now
+  shares the Postal code / City row, as on Clients.
+
 ## [3.55.0] - 2026-09-25
 
 ### Added
