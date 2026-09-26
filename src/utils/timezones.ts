@@ -28,6 +28,15 @@ export const browserTimezone = (): string => {
   }
 };
 
+// The prefill for a new organization: the browser's zone when it's a real,
+// listed IANA zone, else "Not set". Some environments report a placeholder
+// such as "Etc/Unknown", which the server would reject on save.
+export const defaultTimezone = (): string => {
+  const zone = browserTimezone();
+  const known = supportedTimezones();
+  return zone && (zone === "UTC" || known.includes(zone)) ? zone : "";
+};
+
 export const normalizeTimezone = (value: string | null | undefined): string => value ?? "";
 
 // Every selectable zone, "Not set" first. UTC and the currently stored
@@ -36,8 +45,6 @@ export const normalizeTimezone = (value: string | null | undefined): string => v
 export const timezoneOptions = (current?: string | null): { value: string; label: string }[] => {
   const zones = new Set(supportedTimezones());
   zones.add("UTC");
-  const browser = browserTimezone();
-  if (browser) zones.add(browser);
   if (current) zones.add(current);
   return [
     { value: "", label: t`Not set (UTC)` },

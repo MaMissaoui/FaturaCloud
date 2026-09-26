@@ -42,7 +42,7 @@ import OrganizationsTable from "src/components/organizations/organizations-table
 import OrganizationEditDrawer from "src/components/organizations/organization-edit-drawer";
 import { usageBreakdown } from "src/components/organizations/usage-breakdown";
 import { normalizeDocumentLanguage, normalizeDocumentLayout } from "src/types/document-layout";
-import { browserTimezone, normalizeTimezone } from "src/utils/timezones";
+import { defaultTimezone, normalizeTimezone } from "src/utils/timezones";
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 
 // The GL-default account Selects the edit drawer renders. A cleared one has
@@ -170,7 +170,7 @@ export default function Organizations() {
       documentLanguage: "",
       // Where the organization is being set up from is the best guess for
       // where it operates; it stays editable in Formatting.
-      timezone: browserTimezone(),
+      timezone: defaultTimezone(),
     });
     setActiveSections([]);
     setDrawerOpen(true);
