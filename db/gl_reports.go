@@ -358,26 +358,18 @@ func (d *Database) GetAccountBalance(organizationID, accountID string, asOfDate 
 	return balance, nil
 }
 
-// floorToUTCDay truncates a Unix-ms timestamp to that instant's UTC calendar
-// day (00:00:00.000 UTC) — see DailyCashMovementRow's doc comment for why
-// UTC, not the organization's local time (this app stores no per-
-// organization timezone anywhere).
-func floorToUTCDay(ms int64) time.Time {
-	t := time.UnixMilli(ms).UTC()
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-}
-
 // DailyCashMovementRow is one calendar day's opening balance, total in
 // (debit), total out (credit), and closing balance for a single account.
 //
-// Day boundaries are UTC. journal_entries.date carries real time-of-day
-// (not midnight — a live Cash Book sale is timestamped at actual entry
-// time), and this app stores no per-organization timezone anywhere, so
-// there is no correct local offset to bucket by. An organization operating
-// at a positive UTC offset (e.g. Tunis, UTC+1) will see a very-late-evening
-// local sale land in the previous UTC day's row — a stated limitation, not
-// a silently-missing one, the same stance db/einvoice.go's Peppol decision
-// takes elsewhere in this codebase.
+// Day boundaries are the organization's own midnights (orgLocation,
+// migration 0092). journal_entries.date is either the moment of entry (a
+// live Cash Book sale) or local midnight (a date picked in a form), and both
+// only land on the right day when read in the zone they were entered in —
+// bucketing by UTC day put a Tunis (UTC+1) sale made between 00:00 and 01:00,
+// and every backdated one, in the previous day's row. An organization with
+// no zone set keeps UTC days, the behaviour before 0092. Days are stepped
+// with AddDate in that zone, so a daylight-saving change gives a 23- or
+// 25-hour day, never a skipped or doubled one.
 //
 // A day with no activity still gets a row (opening equals the previous
 // day's closing, zero movement) so the report reads as a continuous ledger
@@ -386,14 +378,14 @@ func floorToUTCDay(ms int64) time.Time {
 // balance accumulates (Closing[N] == Opening[N+1] is an accumulator-loop
 // property, not something the SQL guarantees on its own).
 type DailyCashMovementRow struct {
-	Date    string `db:"day"     json:"date"` // YYYY-MM-DD, UTC
+	Date    string `json:"date"` // YYYY-MM-DD, in the organization's zone
 	Opening int64  `json:"opening"`
-	In      int64  `db:"debit"   json:"in"`
-	Out     int64  `db:"credit"  json:"out"`
+	In      int64  `json:"in"`
+	Out     int64  `json:"out"`
 	Closing int64  `json:"closing"`
 }
 
-// GetDailyCashMovements returns one row per UTC calendar day from startDate
+// GetDailyCashMovements returns one row per calendar day from startDate
 // to endDate (inclusive) for accountID — see DailyCashMovementRow's doc
 // comment for the day-boundary and zero-activity-day handling. Reversed
 // entries are included in whichever day they were posted (same predicate as
@@ -409,8 +401,12 @@ func (d *Database) GetDailyCashMovements(organizationID, accountID string, start
 		return nil, newValidationError("endDate must not be before startDate")
 	}
 
-	startDay := floorToUTCDay(startDate)
-	endDay := floorToUTCDay(endDate)
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	startDay := floorToDay(startDate, loc)
+	endDay := floorToDay(endDate, loc)
 	endOfRange := endDay.AddDate(0, 0, 1).UnixMilli() - 1
 
 	opening, err := d.GetAccountBalance(organizationID, accountID, startDay.UnixMilli()-1)
@@ -418,23 +414,32 @@ func (d *Database) GetDailyCashMovements(organizationID, accountID string, start
 		return nil, err
 	}
 
-	activity := []DailyCashMovementRow{}
-	err = d.DB.Select(&activity, `
-		SELECT strftime('%Y-%m-%d', je.date / 1000, 'unixepoch') AS day,
-		       COALESCE(SUM(jl.debit), 0) AS debit, COALESCE(SUM(jl.credit), 0) AS credit
+	// Per line, not grouped in SQL: strftime can only bucket by UTC or a
+	// fixed offset, and a zone with daylight saving has neither.
+	type lineRow struct {
+		Date   int64 `db:"date"`
+		Debit  int64 `db:"debit"`
+		Credit int64 `db:"credit"`
+	}
+	lines := []lineRow{}
+	err = d.DB.Select(&lines, `
+		SELECT je.date AS date, jl.debit AS debit, jl.credit AS credit
 		FROM journal_lines jl
 		JOIN journal_entries je ON je.id = jl.journalEntryId
 		WHERE je.organizationId = ? AND je.status IN ('posted', 'reversed')
-		      AND jl.accountId = ? AND je.date >= ? AND je.date <= ?
-		GROUP BY day`,
+		      AND jl.accountId = ? AND je.date >= ? AND je.date <= ?`,
 		organizationID, accountID, startDay.UnixMilli(), endOfRange,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_daily_cash_movements: %w", err)
 	}
-	byDay := make(map[string]DailyCashMovementRow, len(activity))
-	for _, a := range activity {
-		byDay[a.Date] = a
+	byDay := make(map[string]DailyCashMovementRow)
+	for _, l := range lines {
+		key := time.UnixMilli(l.Date).In(loc).Format("2006-01-02")
+		a := byDay[key]
+		a.In += l.Debit
+		a.Out += l.Credit
+		byDay[key] = a
 	}
 
 	rows := []DailyCashMovementRow{}

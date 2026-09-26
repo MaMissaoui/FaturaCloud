@@ -15,7 +15,12 @@ func (h *handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		// explicit past year in the Dashboard's period picker — takes
 		// priority over ?months when both are somehow present, since a
 		// year selection is the more specific/explicit request.
-		startDate, endDate = db.DashboardYearRange(year)
+		var err error
+		startDate, endDate, err = h.db.DashboardYearRange(orgID, year)
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
 	} else {
 		months := parseIntParam(r, "months")
 		if months <= 0 {

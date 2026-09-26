@@ -71,6 +71,7 @@ func (d *Database) GenerateFEC(organizationID, fiscalYearID string) (content []b
 	if err != nil {
 		return nil, "", fmt.Errorf("generate_fec get_organization: %w", err)
 	}
+	loc := orgLocation(org.Timezone)
 	fiscalYear, err := d.GetFiscalYear(fiscalYearID)
 	if err != nil {
 		return nil, "", fmt.Errorf("generate_fec get_fiscal_year: %w", err)
@@ -83,7 +84,7 @@ func (d *Database) GenerateFEC(organizationID, fiscalYearID string) (content []b
 	if err != nil {
 		return nil, "", err
 	}
-	filename = fmt.Sprintf("%sFEC%s.txt", siren, formatFECDate(fiscalYear.EndDate))
+	filename = fmt.Sprintf("%sFEC%s.txt", siren, formatFECDate(fiscalYear.EndDate, loc))
 
 	rows := []fecRow{}
 	err = d.DB.Select(&rows, `
@@ -116,7 +117,7 @@ func (d *Database) GenerateFEC(organizationID, fiscalYearID string) (content []b
 	b.WriteString(strings.Join(fecColumns, "\t"))
 	b.WriteString("\n")
 	for _, r := range rows {
-		date := formatFECDate(r.Date)
+		date := formatFECDate(r.Date, loc)
 		compAuxNum, compAuxLib := "", ""
 		if r.ClientCode != nil || r.ClientName != nil {
 			compAuxNum, compAuxLib = strPtr(r.ClientCode), strPtr(r.ClientName)
@@ -134,7 +135,7 @@ func (d *Database) GenerateFEC(organizationID, fiscalYearID string) (content []b
 		}
 		var validDate string
 		if r.PostedAt != nil {
-			validDate = formatFECDate(*r.PostedAt)
+			validDate = formatFECDate(*r.PostedAt, loc)
 		}
 
 		// Every free-text field is sanitized: a tab or newline typed into an
@@ -175,8 +176,10 @@ func validateSIREN(registrationNumber *string) (string, error) {
 	return siren, nil
 }
 
-func formatFECDate(millis int64) string {
-	return time.UnixMilli(millis).UTC().Format("20060102")
+// formatFECDate renders a date as YYYYMMDD in the organization's time zone
+// (orgLocation) — the day the user entered, not its UTC day.
+func formatFECDate(millis int64, loc *time.Location) string {
+	return time.UnixMilli(millis).In(loc).Format("20060102")
 }
 
 // formatFECAmount renders integer cents as a plain decimal with 2 places

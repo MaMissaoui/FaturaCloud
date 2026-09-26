@@ -2,6 +2,8 @@ package db
 
 import (
 	"fmt"
+	"math"
+	"sort"
 	"time"
 )
 
@@ -49,8 +51,8 @@ func dateRangeFilter(column string, startDate, endDate int64, args *[]any) strin
 }
 
 type MonthlyRevenue struct {
-	Month   string `db:"month"   json:"month"`
-	Revenue int64  `db:"revenue" json:"revenue"`
+	Month   string `json:"month"`
+	Revenue int64  `json:"revenue"`
 }
 
 type ClientRevenue struct {
@@ -73,24 +75,43 @@ type VendorSpend struct {
 
 // GetRevenueByMonth is the Revenue Trend report — and, with startDate
 // computed from a rolling window and endDate left at 0, the dashboard's
-// "revenue over time" widget. Grouped by calendar month, ordered oldest
-// first.
+// "revenue over time" widget. Grouped by calendar month in the
+// organization's time zone (orgLocation) — in Go, since SQLite's strftime
+// only knows UTC, which counted a Tunis invoice dated 1 January (stored as
+// local midnight, 23:00 UTC on 31 December) as December revenue. Ordered
+// oldest first.
 func (d *Database) GetRevenueByMonth(organizationID string, startDate, endDate int64) ([]MonthlyRevenue, error) {
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return nil, err
+	}
 	args := []any{organizationID}
 	rangeClause := dateRangeFilter("date", startDate, endDate, &args)
-	rows := []MonthlyRevenue{}
-	err := d.DB.Select(&rows, `
-		SELECT strftime('%Y-%m', date / 1000, 'unixepoch') AS month,
-		       CAST(ROUND(SUM(total * COALESCE(exchangeRate, 1))) AS INTEGER) AS revenue
+	type invoiceRow struct {
+		Date    int64   `db:"date"`
+		Revenue float64 `db:"revenue"`
+	}
+	invoices := []invoiceRow{}
+	err = d.DB.Select(&invoices, `
+		SELECT date, total * COALESCE(exchangeRate, 1) AS revenue
 		FROM invoices
-		WHERE organizationId = ? AND state IN `+revenueStates+rangeClause+`
-		GROUP BY month
-		ORDER BY month ASC`,
+		WHERE organizationId = ? AND state IN `+revenueStates+rangeClause,
 		args...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_revenue_by_month: %w", err)
 	}
+	// Summed per month, then rounded once — the same order as the
+	// ROUND(SUM(...)) this replaced.
+	sums := map[string]float64{}
+	for _, inv := range invoices {
+		sums[time.UnixMilli(inv.Date).In(loc).Format("2006-01")] += inv.Revenue
+	}
+	rows := make([]MonthlyRevenue, 0, len(sums))
+	for month, sum := range sums {
+		rows = append(rows, MonthlyRevenue{Month: month, Revenue: int64(math.Round(sum))})
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Month < rows[j].Month })
 	return rows, nil
 }
 
@@ -332,12 +353,15 @@ func DashboardCutoff(months int) int64 {
 
 // DashboardYearRange returns the [startDate, endDate] bounds (both
 // inclusive, matching dateRangeFilter's `<=` on the end) of the given
-// calendar year in the server's local time zone — the same zone
-// time.Now() (and therefore DashboardCutoff above) already uses, so a
-// "this year" selection and a rolling "last 12 months" selection agree on
-// what day a given invoice's `date` timestamp falls on.
-func DashboardYearRange(year int) (startDate, endDate int64) {
-	start := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
+// calendar year in the organization's time zone (orgLocation), the zone
+// its documents' dates were entered in — not the server's, which in Docker
+// is UTC and cut a Tunis invoice dated 1 January out of its own year.
+func (d *Database) DashboardYearRange(organizationID string, year int) (startDate, endDate int64, err error) {
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return 0, 0, err
+	}
+	start := time.Date(year, time.January, 1, 0, 0, 0, 0, loc)
 	end := start.AddDate(1, 0, 0).Add(-time.Millisecond)
-	return start.UnixMilli(), end.UnixMilli()
+	return start.UnixMilli(), end.UnixMilli(), nil
 }

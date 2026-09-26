@@ -47,19 +47,21 @@ type CashMovementDetail struct {
 }
 
 // GetCashMovementDetails is GetDailyCashMovements' per-transaction drill
-// down for accountID covering the UTC calendar days that startDate and
-// endDate fall in, inclusive of both. Two sources, merged and sorted by
+// down for accountID covering the calendar days (in the organization's time
+// zone, orgLocation) that startDate and endDate fall in, inclusive of both. Two sources, merged and sorted by
 // date: inbound payments applied to an invoice (the "in" side — a
 // withdrawal is never an application, see CreateCashMovement) and
 // cash_movements withdrawals (the "out" side, always kind "withdrawal" —
 // cash_movements has no client and no invoice to attach).
 //
 // Both endpoints are interpreted as *days*, not as literal instants: each
-// is floored to its UTC day (floorToUTCDay, the same bucketing
-// GetDailyCashMovements uses) and the filter is
-// [floor(startDate), floor(endDate) + 24h). This is deliberate, because
-// every caller today passes the same UTC-midnight value twice to mean "this
-// whole day" (src/routes/cash-book.tsx and db/report_export.go), while the
+// is floored to its day in the organization's zone (floorToDay, the same
+// bucketing GetDailyCashMovements uses) and the filter is
+// [floor(startDate), floor(endDate) + 1 day). This is deliberate, because
+// every caller today passes one instant inside the day twice to mean "this
+// whole day" (src/routes/cash-book.tsx sends UTC noon of the picked date,
+// which lands on that date in any zone within ±12h; db/report_export.go
+// passes it through), while the
 // stored timestamps carry real time-of-day — a live sale or withdrawal is
 // stamped at the moment it happened — so a literal >= / <= on that instant
 // silently matched only a row stamped exactly 00:00:00.000. Flooring here
@@ -75,8 +77,12 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 		return nil, newValidationError("endDate must not be before startDate")
 	}
 
-	startMs := floorToUTCDay(startDate).UnixMilli()
-	endExclusiveMs := floorToUTCDay(endDate).AddDate(0, 0, 1).UnixMilli()
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	startMs := floorToDay(startDate, loc).UnixMilli()
+	endExclusiveMs := floorToDay(endDate, loc).AddDate(0, 0, 1).UnixMilli()
 
 	type paymentRow struct {
 		ID            string  `db:"id"`
@@ -101,7 +107,7 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 	// by the window are never ranked at all. Without it the CTE ranked every
 	// payment application in the organization on every drill-down
 	// (db says the planner otherwise scans the whole ranked set).
-	err := d.DB.Select(&payments, `
+	err = d.DB.Select(&payments, `
 		WITH ranked AS (
 			SELECT pa.paymentId, pa.documentId AS invoiceId, pa.amount AS appliedAmount,
 			       ROW_NUMBER() OVER (

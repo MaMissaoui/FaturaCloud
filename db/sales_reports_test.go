@@ -81,28 +81,33 @@ func TestGetRevenueByMonth(t *testing.T) {
 // must not be.
 func TestDashboardYearRange(t *testing.T) {
 	t.Parallel()
-	start, end := DashboardYearRange(2025)
+	d := newTestDB(t)
+	// No timezone set: the year is a UTC year, the pre-0092 behaviour (the
+	// server's own zone, which is UTC in Docker).
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	start, end, err := d.DashboardYearRange(org.ID, 2025)
+	if err != nil {
+		t.Fatalf("DashboardYearRange: %v", err)
+	}
 
-	wantStart := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local).UnixMilli()
+	wantStart := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
 	if start != wantStart {
 		t.Fatalf("start = %d, want %d", start, wantStart)
 	}
-	lastMomentOf2025 := time.Date(2025, time.December, 31, 23, 59, 59, 999_000_000, time.Local).UnixMilli()
+	lastMomentOf2025 := time.Date(2025, time.December, 31, 23, 59, 59, 999_000_000, time.UTC).UnixMilli()
 	if end != lastMomentOf2025 {
 		t.Fatalf("end = %d, want %d (2025-12-31 23:59:59.999)", end, lastMomentOf2025)
 	}
-	firstMomentOf2026 := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local).UnixMilli()
+	firstMomentOf2026 := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
 	if end >= firstMomentOf2026 {
 		t.Fatalf("end %d must fall strictly before 2026-01-01 (%d)", end, firstMomentOf2026)
 	}
 
 	// Exercised through the real range-filtered query, the same path
 	// api/dashboard.go's ?year= param drives GetDashboardData through.
-	d := newTestDB(t)
-	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
-	if err != nil {
-		t.Fatalf("CreateOrganization: %v", err)
-	}
 	client, err := d.CreateClient(CreateClientRequest{ID: "client-1", OrganizationID: org.ID, Name: ptr("Client")})
 	if err != nil {
 		t.Fatalf("CreateClient: %v", err)

@@ -201,6 +201,10 @@ type Organization struct {
 	// in: "en", "de" or "fr" (migration 0091). NULL/"" falls back by layout
 	// — see documentLanguageFor in db/amount_in_words_lang.go.
 	DocumentLanguage *string `db:"documentLanguage" json:"documentLanguage"`
+	// Timezone is the IANA zone (e.g. "Africa/Tunis", migration 0092) every
+	// server-side calendar-day derivation uses. NULL/"" means UTC — see
+	// orgLocation in db/timezone.go.
+	Timezone *string `db:"timezone" json:"timezone"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -241,6 +245,7 @@ type CreateOrganizationRequest struct {
 	// Organization drawer isn't silently dropped; NULL means the default.
 	DocumentLayout   *string `json:"documentLayout"`
 	DocumentLanguage *string `json:"documentLanguage"`
+	Timezone         *string `json:"timezone"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -303,6 +308,7 @@ type UpdateOrganizationRequest struct {
 	DefaultStampDutyAccountID *string `json:"defaultStampDutyAccountId"`
 	DocumentLayout            *string `json:"documentLayout"`
 	DocumentLanguage          *string `json:"documentLanguage"`
+	Timezone                  *string `json:"timezone"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -325,7 +331,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled,
-	       documentLanguage`
+	       documentLanguage, timezone`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
@@ -411,6 +417,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	if err := validateDocumentLanguage(req.DocumentLanguage); err != nil {
 		return nil, err
 	}
+	if err := validateTimezone(req.Timezone); err != nil {
+		return nil, err
+	}
 	if err := validateInvoiceNumberFormat(req.InvoiceNumberFormat); err != nil {
 		return nil, err
 	}
@@ -428,14 +437,14 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code,
-			documentLayout, documentLanguage
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			documentLayout, documentLanguage, timezone
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat, req.BrandColor,
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
-		req.DocumentLayout, req.DocumentLanguage,
+		req.DocumentLayout, req.DocumentLanguage, req.Timezone,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
 	}
@@ -473,6 +482,9 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 	}
 	updates.BrandColor = normalizedBrandColor
 	if err := validateDocumentLanguage(updates.DocumentLanguage); err != nil {
+		return nil, err
+	}
+	if err := validateTimezone(updates.Timezone); err != nil {
 		return nil, err
 	}
 	if err := validateInvoiceNumberFormat(updates.InvoiceNumberFormat); err != nil {
@@ -571,7 +583,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     fiscalStampEnabled        = COALESCE(?, fiscalStampEnabled),
 		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled),
 		     amountInWordsEnabled      = COALESCE(?, amountInWordsEnabled),
-		     documentLanguage          = COALESCE(?, documentLanguage)` +
+		     documentLanguage          = COALESCE(?, documentLanguage),
+		     timezone                  = COALESCE(?, timezone)` +
 		accountSet.String() + `
 		 WHERE id = ?`
 
@@ -588,7 +601,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DatevConsultantNumber, updates.DatevClientNumber,
 		updates.DefaultFiscalStampAmount, updates.DocumentLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
-		updates.AmountInWordsEnabled, updates.DocumentLanguage,
+		updates.AmountInWordsEnabled, updates.DocumentLanguage, updates.Timezone,
 	}
 	// accountSet's placeholders sit between the COALESCE block and WHERE,
 	// so its args do too.

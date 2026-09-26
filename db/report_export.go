@@ -181,7 +181,8 @@ func repeatReportHeaderRow(f *excelize.File, sheet string, row int) error {
 
 // GenerateDailyCashMovementsExport builds the Cash Book screen's daily
 // register panel (opening/in/out/closing plus the per-transaction detail
-// table) as an .xlsx workbook for one UTC day, the same accountID/day
+// table) as an .xlsx workbook for one day in the organization's time zone
+// (orgLocation), the same accountID/day
 // range the screen itself requests via GetDailyCashMovements/
 // GetCashMovementDetails. Returns nil, "", err with the same
 // cross-org/validation errors GetDailyCashMovements/GetCashMovementDetails
@@ -212,11 +213,12 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 	money := func(cents int64) string {
 		return formatMoneyCents(cents, currency, org.MinimumFractionDigits, org.CountryCode)
 	}
-	dateLabel := formatOrgDate(dayMs, org.DateFormat)
+	loc := orgLocation(org.Timezone)
+	dateLabel := formatOrgDate(dayMs, org.DateFormat, loc)
 
 	f, sheet, row, err := reportWorkbook(
 		"Daily Cash Movements",
-		fmt.Sprintf("%s — %s — generated %s", orgName, dateLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat)),
+		fmt.Sprintf("%s — %s — generated %s", orgName, dateLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat, orgLocation(org.Timezone))),
 	)
 	if err != nil {
 		return nil, "", err
@@ -255,7 +257,7 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 			invoiceNumber = *det.InvoiceNumber
 		}
 		if err := setRow(f, sheet, row, []any{
-			time.UnixMilli(det.Date).UTC().Format("15:04"), movementKindLabel(det.Kind), invoiceNumber, customer, sign + money(det.Amount),
+			time.UnixMilli(det.Date).In(loc).Format("15:04"), movementKindLabel(det.Kind), invoiceNumber, customer, sign + money(det.Amount),
 		}); err != nil {
 			return nil, "", err
 		}
@@ -274,7 +276,7 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 	// A filesystem-safe ISO date, deliberately not dateLabel (org.DateFormat
 	// can contain literal "/", e.g. "DD/MM/YYYY" — fine in an on-sheet
 	// subtitle, not fine in a Content-Disposition filename).
-	filename := "daily-cash-movements-" + time.UnixMilli(dayMs).UTC().Format("2006-01-02")
+	filename := "daily-cash-movements-" + time.UnixMilli(dayMs).In(loc).Format("2006-01-02")
 	return buf.Bytes(), filename, nil
 }
 
@@ -335,7 +337,7 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 		}
 	}
 
-	subtitle := fmt.Sprintf("%s — %s — generated %s", orgName, filterLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat))
+	subtitle := fmt.Sprintf("%s — %s — generated %s", orgName, filterLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat, orgLocation(org.Timezone)))
 	if openOnly {
 		subtitle += " — open loans only"
 	}
@@ -361,7 +363,7 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 	var totalAmount, totalPaid, totalOutstanding int64
 	for _, r := range rows {
 		if err := setRow(f, sheet, row, []any{
-			r.ClientName, formatOrgDate(r.Date, org.DateFormat), r.InvoiceNumber,
+			r.ClientName, formatOrgDate(r.Date, org.DateFormat, orgLocation(org.Timezone)), r.InvoiceNumber,
 			r.ProductName, r.Sku, r.Quantity,
 			money(r.Amount), money(r.Paid), money(r.Outstanding),
 		}); err != nil {
@@ -483,7 +485,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 		}
 	}
 
-	subtitle := fmt.Sprintf("%s — %s — generated %s", orgName, filterLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat))
+	subtitle := fmt.Sprintf("%s — %s — generated %s", orgName, filterLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat, orgLocation(org.Timezone)))
 
 	f, sheet, row, err := reportWorkbook("Payment History", subtitle)
 	if err != nil {
@@ -513,7 +515,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 			reference = *p.Reference
 		}
 		if err := setRow(f, sheet, row, []any{
-			formatOrgDate(p.Date, org.DateFormat), customer, strings.Join(p.InvoiceNumbers, ", "),
+			formatOrgDate(p.Date, org.DateFormat, orgLocation(org.Timezone)), customer, strings.Join(p.InvoiceNumbers, ", "),
 			paymentProductsLabel(p), paymentMethodLabel(p.Method), reference,
 			paymentStatusLabel(p.Status), money(p.Amount),
 		}); err != nil {

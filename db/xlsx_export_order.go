@@ -34,7 +34,7 @@ func FillOrderTemplate(
 	subTotal, taxTotal, total := computeExportTotals(exportItems, nil)
 
 	scalars := buildOrderScalarPlaceholders(order, org, client, currency, subTotal, taxTotal, total)
-	mergeExportMetaPlaceholders(scalars, org.DateFormat)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat, orgLocation(org.Timezone))
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode)
@@ -97,8 +97,8 @@ func (d *Database) FetchOrderExportData(orderID string) (*Order, []OrderLineItem
 func buildOrderScalarPlaceholders(order Order, org Organization, client Client, currency string, subTotal, taxTotal, total int64) map[string]string {
 	return map[string]string{
 		"order.number":          order.OrderNumber,
-		"order.orderDate":       formatOrgDate(order.OrderDate, org.DateFormat),
-		"order.deliveryDate":    formatOptionalOrgDate(order.DeliveryDate, org.DateFormat),
+		"order.orderDate":       formatOrgDate(order.OrderDate, org.DateFormat, orgLocation(org.Timezone)),
+		"order.deliveryDate":    formatOptionalOrgDate(order.DeliveryDate, org.DateFormat, orgLocation(org.Timezone)),
 		"order.currency":        currency,
 		"order.shippingAddress": derefString(order.ShippingAddress),
 		"order.trackingNumber":  derefString(order.TrackingNumber),

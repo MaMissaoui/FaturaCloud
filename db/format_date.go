@@ -19,24 +19,25 @@ var dateFormatLayouts = map[string]string{
 
 const defaultDateLayout = "2006-01-02"
 
-// formatOrgDate renders a millisecond Unix timestamp using the
-// organization's configured date_format, falling back to ISO 8601.
-func formatOrgDate(unixMillis int64, dateFormat *string) string {
+// formatOrgDate renders a millisecond Unix timestamp as a calendar day in
+// loc (the organization's zone — orgLocation), using the organization's
+// configured date_format, falling back to ISO 8601.
+func formatOrgDate(unixMillis int64, dateFormat *string, loc *time.Location) string {
 	layout := defaultDateLayout
 	if dateFormat != nil {
 		if l, ok := dateFormatLayouts[*dateFormat]; ok {
 			layout = l
 		}
 	}
-	return time.UnixMilli(unixMillis).UTC().Format(layout)
+	return time.UnixMilli(unixMillis).In(loc).Format(layout)
 }
 
 // formatOptionalOrgDate is formatOrgDate for a nullable timestamp (e.g.
 // invoices.dueDate), returning "" when unset rather than formatting the
 // Unix epoch.
-func formatOptionalOrgDate(unixMillis *int64, dateFormat *string) string {
+func formatOptionalOrgDate(unixMillis *int64, dateFormat *string, loc *time.Location) string {
 	if unixMillis == nil {
 		return ""
 	}
-	return formatOrgDate(*unixMillis, dateFormat)
+	return formatOrgDate(*unixMillis, dateFormat, loc)
 }

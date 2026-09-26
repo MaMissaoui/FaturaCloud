@@ -33,7 +33,7 @@ func FillPurchaseOrderTemplate(
 	subTotal, taxTotal, total := computeExportTotals(exportItems, taxRates)
 
 	scalars := buildPurchaseOrderScalarPlaceholders(order, org, vendor, currency, subTotal, taxTotal, total)
-	mergeExportMetaPlaceholders(scalars, org.DateFormat)
+	mergeExportMetaPlaceholders(scalars, org.DateFormat, orgLocation(org.Timezone))
 	lineRows := make([]map[string]string, len(lineItems))
 	for i, li := range lineItems {
 		lineRows[i] = buildPurchaseOrderLineItemPlaceholders(li, currency, org.MinimumFractionDigits, org.CountryCode, resolveTaxRatePercent(taxRates, li.TaxRate))
@@ -121,8 +121,8 @@ func (d *Database) FetchPurchaseOrderExportData(orderID string) (*PurchaseOrder,
 func buildPurchaseOrderScalarPlaceholders(order PurchaseOrder, org Organization, vendor Vendor, currency string, subTotal, taxTotal, total int64) map[string]string {
 	return map[string]string{
 		"purchaseOrder.number":          order.OrderNumber,
-		"purchaseOrder.orderDate":       formatOrgDate(order.OrderDate, org.DateFormat),
-		"purchaseOrder.expectedDate":    formatOptionalOrgDate(order.ExpectedDate, org.DateFormat),
+		"purchaseOrder.orderDate":       formatOrgDate(order.OrderDate, org.DateFormat, orgLocation(org.Timezone)),
+		"purchaseOrder.expectedDate":    formatOptionalOrgDate(order.ExpectedDate, org.DateFormat, orgLocation(org.Timezone)),
 		"purchaseOrder.currency":        currency,
 		"purchaseOrder.deliveryAddress": derefString(order.DeliveryAddress),
 		"purchaseOrder.notes":           derefString(order.Notes),
