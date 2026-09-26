@@ -174,8 +174,9 @@ func TestDailyCashMovementsBucketByOrganizationDay(t *testing.T) {
 }
 
 // Across Berlin's switch back from summer time (26 October 2025, a 25-hour
-// day) the report still yields one row per calendar day, and a movement in
-// the extra hour lands on the 26th.
+// day) the report still yields one row per calendar day, and a movement at
+// 00:30 on the 27th (23:30 UTC on the 26th) lands on the 27th, where UTC
+// bucketing would put it on the 26th.
 func TestDailyCashMovementsAcrossDaylightSavingChange(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
@@ -183,8 +184,8 @@ func TestDailyCashMovementsAcrossDaylightSavingChange(t *testing.T) {
 	setOrgTimezone(t, d, fx.orgID, "Europe/Berlin")
 	register, bank, _ := cashMovementTestAccounts(t, d, fx.orgID)
 
-	lateOn26th := time.Date(2025, 10, 26, 23, 30, 0, 0, berlin).UnixMilli()
-	postManualEntryForBalanceTest(t, d, fx.orgID, register.ID, bank.ID, 400, lateOn26th)
+	earlyOn27th := time.Date(2025, 10, 27, 0, 30, 0, 0, berlin).UnixMilli()
+	postManualEntryForBalanceTest(t, d, fx.orgID, register.ID, bank.ID, 400, earlyOn27th)
 
 	start := time.Date(2025, 10, 25, 12, 0, 0, 0, time.UTC).UnixMilli()
 	end := time.Date(2025, 10, 27, 12, 0, 0, 0, time.UTC).UnixMilli()
@@ -199,8 +200,8 @@ func TestDailyCashMovementsAcrossDaylightSavingChange(t *testing.T) {
 	if len(rows) != 3 || got[0] != "2025-10-25" || got[1] != "2025-10-26" || got[2] != "2025-10-27" {
 		t.Fatalf("days = %v, want 2025-10-25, -26, -27", got)
 	}
-	if rows[1].In != 400 || rows[2].Opening != 400 {
-		t.Fatalf("rows = %+v, want the 400 on 26 October carried into the 27th", rows)
+	if rows[1].In != 0 || rows[2].In != 400 || rows[2].Opening != 0 {
+		t.Fatalf("rows = %+v, want the 400 on 27 October only", rows)
 	}
 }
 

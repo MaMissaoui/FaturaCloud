@@ -243,7 +243,7 @@ func (d *Database) GenerateDATEV(organizationID, fiscalYearID string) (content [
 	}
 
 	var b strings.Builder
-	now := time.Now()
+	now := time.Now().In(loc) // "erzeugt am", the organization's wall clock
 	header1 := []string{
 		quoteDATEV("EXTF"), "700", "21", quoteDATEV("Buchungsstapel"), "13",
 		now.Format("20060102150405") + fmt.Sprintf("%03d", now.Nanosecond()/1e6),
