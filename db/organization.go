@@ -67,6 +67,18 @@ func validateDocumentLanguage(p *string) error {
 // string "INV-{YYYY}-{NNNN}" on every document.
 var invoiceNumberFormatTokenPattern = regexp.MustCompile(`\{[^}]+\}`)
 
+// DefaultInvoiceNumberFormat is what an organization numbers invoices with
+// when it has no format of its own — the same value the New Organization
+// form sends (src/routes/organizations/index.tsx, new.tsx). CreateOrganization
+// applies it when a caller omits the format (its explicit NULL used to
+// override the column's own default), and CreateCashSale falls back to it
+// whenever the stored format is NULL or "" — an organization created
+// through the API before that default, or one cleared through the API (""
+// clears, the organization-wide convention; Settings → Invoice itself
+// requires a value). The Cash Book has no number field to type one into,
+// so an empty format used to give every sale an empty invoice number.
+const DefaultInvoiceNumberFormat = "#{number}"
+
 var invoiceNumberFormatTokens = map[string]bool{
 	"{number}": true, "{year}": true, "{y}": true,
 	"{month}": true, "{m}": true, "{day}": true, "{clientCode}": true,
@@ -427,6 +439,10 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	}
 	if err := validateInventoryValuation(req.InventoryValuation); err != nil {
 		return nil, err
+	}
+	if req.InvoiceNumberFormat == nil || strings.TrimSpace(*req.InvoiceNumberFormat) == "" {
+		defaultFormat := DefaultInvoiceNumberFormat
+		req.InvoiceNumberFormat = &defaultFormat
 	}
 	if err := validateInvoiceNumberFormat(req.InvoiceNumberFormat); err != nil {
 		return nil, err
