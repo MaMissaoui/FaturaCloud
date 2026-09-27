@@ -114,7 +114,7 @@ func TestStockCountSetsCountedQuantityAndIsIdempotent(t *testing.T) {
 	rows := [][]string{
 		{f.washer.ID, "", "", "", "3", "", "Comptage"}, // by ID: 5 -> 3
 		{"", "", "", "", "", "", ""},                   // blank row, ignored by the engine
-		{"", f.fridge.Name, "", "", "4", "850", ""},  // by name: 0 -> 4, costed
+		{"", f.fridge.Name, "", "", "4", "850", ""},    // by name: 0 -> 4, costed
 	}
 
 	res := stockCountRows(t, d, f.orgID, rows)
