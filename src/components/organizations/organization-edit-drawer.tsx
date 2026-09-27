@@ -37,6 +37,7 @@ import OrganizationDangerZone, {
 } from "src/components/organizations/organization-danger-zone";
 import { documentLanguageOptions, documentLayoutOptions } from "src/types/document-layout";
 import { timezoneOptions } from "src/utils/timezones";
+import { inventoryValuationOptions } from "src/types/inventory-valuation";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 
@@ -650,6 +651,24 @@ export default function OrganizationEditDrawer({
                             options={leafAccountOptions}
                             optionFilterProp="label"
                           />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24}>
+                        <Form.Item
+                          name="inventoryValuation"
+                          label={<Trans>Inventory valuation</Trans>}
+                          tooltip={
+                            <Trans>
+                              Valued: receipts, shipments and stock adjustments post their value to
+                              the accounts below, and a product needs a unit cost before it can
+                              leave stock. Quantities only: stock is tracked by quantity alone,
+                              nothing is posted for it, no unit cost is ever required, and bills for
+                              stock products are expensed. Can only be changed before any stock is
+                              recorded.
+                            </Trans>
+                          }
+                        >
+                          <Select options={inventoryValuationOptions()} />
                         </Form.Item>
                       </Col>
                       <Col xs={24} md={12}>

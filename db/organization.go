@@ -205,6 +205,9 @@ type Organization struct {
 	// server-side calendar-day derivation uses. NULL/"" means UTC — see
 	// orgLocation in db/timezone.go.
 	Timezone *string `db:"timezone" json:"timezone"`
+	// InventoryValuation is "perpetual" (NULL/"" — the default) or
+	// "quantity_only" (migration 0093) — see db/inventory_valuation.go.
+	InventoryValuation *string `db:"inventoryValuation" json:"inventoryValuation"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -243,9 +246,10 @@ type CreateOrganizationRequest struct {
 
 	// DocumentLayout is accepted on create so a layout picked in the New
 	// Organization drawer isn't silently dropped; NULL means the default.
-	DocumentLayout   *string `json:"documentLayout"`
-	DocumentLanguage *string `json:"documentLanguage"`
-	Timezone         *string `json:"timezone"`
+	DocumentLayout     *string `json:"documentLayout"`
+	DocumentLanguage   *string `json:"documentLanguage"`
+	Timezone           *string `json:"timezone"`
+	InventoryValuation *string `json:"inventoryValuation"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -309,6 +313,7 @@ type UpdateOrganizationRequest struct {
 	DocumentLayout            *string `json:"documentLayout"`
 	DocumentLanguage          *string `json:"documentLanguage"`
 	Timezone                  *string `json:"timezone"`
+	InventoryValuation        *string `json:"inventoryValuation"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -331,7 +336,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled,
-	       documentLanguage, timezone`
+	       documentLanguage, timezone, inventoryValuation`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
@@ -420,6 +425,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	if err := validateTimezone(req.Timezone); err != nil {
 		return nil, err
 	}
+	if err := validateInventoryValuation(req.InventoryValuation); err != nil {
+		return nil, err
+	}
 	if err := validateInvoiceNumberFormat(req.InvoiceNumberFormat); err != nil {
 		return nil, err
 	}
@@ -437,14 +445,14 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code,
-			documentLayout, documentLanguage, timezone
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			documentLayout, documentLanguage, timezone, inventoryValuation
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat, req.BrandColor,
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
-		req.DocumentLayout, req.DocumentLanguage, req.Timezone,
+		req.DocumentLayout, req.DocumentLanguage, req.Timezone, req.InventoryValuation,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
 	}
@@ -486,6 +494,18 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 	}
 	if err := validateTimezone(updates.Timezone); err != nil {
 		return nil, err
+	}
+	if err := validateInventoryValuation(updates.InventoryValuation); err != nil {
+		return nil, err
+	}
+	if updates.InventoryValuation != nil {
+		current, err := d.GetOrganization(organizationID)
+		if err != nil {
+			return nil, err
+		}
+		if err := d.checkInventoryValuationSwitch(current, updates.InventoryValuation); err != nil {
+			return nil, err
+		}
 	}
 	if err := validateInvoiceNumberFormat(updates.InvoiceNumberFormat); err != nil {
 		return nil, err
@@ -584,7 +604,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     withholdingTaxEnabled     = COALESCE(?, withholdingTaxEnabled),
 		     amountInWordsEnabled      = COALESCE(?, amountInWordsEnabled),
 		     documentLanguage          = COALESCE(?, documentLanguage),
-		     timezone                  = COALESCE(?, timezone)` +
+		     timezone                  = COALESCE(?, timezone),
+		     inventoryValuation        = COALESCE(?, inventoryValuation)` +
 		accountSet.String() + `
 		 WHERE id = ?`
 
@@ -602,6 +623,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DefaultFiscalStampAmount, updates.DocumentLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
 		updates.AmountInWordsEnabled, updates.DocumentLanguage, updates.Timezone,
+		updates.InventoryValuation,
 	}
 	// accountSet's placeholders sit between the COALESCE block and WHERE,
 	// so its args do too.

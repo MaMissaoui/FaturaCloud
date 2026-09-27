@@ -43,6 +43,7 @@ import OrganizationEditDrawer from "src/components/organizations/organization-ed
 import { usageBreakdown } from "src/components/organizations/usage-breakdown";
 import { normalizeDocumentLanguage, normalizeDocumentLayout } from "src/types/document-layout";
 import { defaultTimezone, normalizeTimezone } from "src/utils/timezones";
+import { normalizeInventoryValuation } from "src/types/inventory-valuation";
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 
 // The GL-default account Selects the edit drawer renders. A cleared one has
@@ -214,6 +215,7 @@ export default function Organizations() {
         documentLayout: normalizeDocumentLayout(org.documentLayout),
         documentLanguage: normalizeDocumentLanguage(org.documentLanguage),
         timezone: normalizeTimezone(org.timezone),
+        inventoryValuation: normalizeInventoryValuation(org.inventoryValuation),
         // defaultFiscalStampAmount is stored in cents like every other
         // money column; this form (unlike the invoice form's atom) has no
         // existing cents<->units conversion layer, so it's done here and

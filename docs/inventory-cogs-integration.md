@@ -82,6 +82,8 @@ and more specific than "history can change":
 
 ### Open question 1 — no costed inflow yet
 
+> **Update 2026-09-27:** the 409 below still holds for `perpetual` organizations. For a business that keeps no unit costs at all, `organizations.inventoryValuation = 'quantity_only'` (migration `0093`, `db/inventory_valuation.go`) opts the whole organization out of inventory GL posting instead — quantities only, no COGS/GRNI/adjustment entries, bills expensed — rather than posting any line at a silent zero.
+
 `products.unitCost` is nullable. A stock-enabled product can ship (a
 pre-order, backfilled opening stock recorded without a cost) before any
 receipt has ever established a cost. Recommend: block the shipment with a

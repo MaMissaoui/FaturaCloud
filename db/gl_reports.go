@@ -254,10 +254,15 @@ type InventoryValuationLine struct {
 // and computed value can legitimately diverge (e.g. a product costed before
 // this organization had a defaultInventoryAccountId configured).
 type InventoryValuation struct {
-	GLBalance     int64                    `json:"glBalance"`
-	ComputedValue int64                    `json:"computedValue"`
-	Difference    int64                    `json:"difference"`
-	Products      []InventoryValuationLine `json:"products"`
+	// InventoryValuation is the organization's normalized mode. Under
+	// "quantity_only" nothing ever posts to the Inventory account, so
+	// GLBalance/Difference carry no meaning and the report shows quantities
+	// (valued only where a unit cost happens to be known).
+	InventoryValuation string                   `json:"inventoryValuation"`
+	GLBalance          int64                    `json:"glBalance"`
+	ComputedValue      int64                    `json:"computedValue"`
+	Difference         int64                    `json:"difference"`
+	Products           []InventoryValuationLine `json:"products"`
 }
 
 func (d *Database) GetInventoryValuation(organizationID string) (*InventoryValuation, error) {
@@ -300,10 +305,11 @@ func (d *Database) GetInventoryValuation(organizationID string) (*InventoryValua
 	}
 
 	return &InventoryValuation{
-		GLBalance:     glBalance,
-		ComputedValue: computedValue,
-		Difference:    glBalance - computedValue,
-		Products:      products,
+		InventoryValuation: normalizeInventoryValuation(org.InventoryValuation),
+		GLBalance:          glBalance,
+		ComputedValue:      computedValue,
+		Difference:         glBalance - computedValue,
+		Products:           products,
 	}, nil
 }
 

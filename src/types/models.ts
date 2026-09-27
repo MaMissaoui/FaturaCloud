@@ -284,6 +284,12 @@ export interface Organization {
   // timezone is the IANA zone the server reads every stored date's calendar
   // day in (migration 0092); null/"" means UTC days. See src/utils/timezones.ts.
   timezone: string | null;
+  // inventoryValuation is "perpetual" (null/"" — the default: GRNI, COGS and
+  // adjustment entries post, a stock-out needs a cost) or "quantity_only"
+  // (stock tracked by quantity alone, no unit cost ever required) —
+  // migration 0093, db/inventory_valuation.go. Changeable only before any
+  // stock is recorded.
+  inventoryValuation: string | null;
   // The Cash Book screen's register balance/daily-movements report/cash
   // withdrawal feature — deliberately separate from defaultCashAccountId,
   // which every chart-of-accounts template wires to the Bank account, never
