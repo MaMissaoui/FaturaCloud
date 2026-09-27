@@ -57,6 +57,11 @@ type Product struct {
 	// fully backward compatible and opt-in.
 	Category *string `db:"category" json:"category"`
 
+	// FamilyID groups the product under a maintained product family
+	// (product_families, migration 0095, db/product_family.go) — separate
+	// from Category. nil means no family.
+	FamilyID *string `db:"familyId" json:"familyId"`
+
 	// Per-product override of organizations.defaultRevenueAccountId /
 	// defaultExpenseAccountId — same override shape as TaxRateID overriding
 	// taxRates.isDefault. Nil means "use the organization's default".
@@ -81,6 +86,7 @@ type CreateProductRequest struct {
 	Serialized       int     `json:"serialized"`
 	RevenueAccountID *string `json:"revenueAccountId"`
 	ExpenseAccountID *string `json:"expenseAccountId"`
+	FamilyID         *string `json:"familyId"`
 }
 
 type UpdateProductRequest struct {
@@ -98,6 +104,7 @@ type UpdateProductRequest struct {
 	Serialized       int     `json:"serialized"`
 	RevenueAccountID *string `json:"revenueAccountId"`
 	ExpenseAccountID *string `json:"expenseAccountId"`
+	FamilyID         *string `json:"familyId"`
 }
 
 // productCategories are the only values Product.Category may take besides
@@ -123,7 +130,10 @@ type ProductListOptions struct {
 	// NULL — the app-level name productCategories/the frontend already use
 	// for that state — since NULL can't be passed as a query param value.
 	// Empty means no filter.
-	Category  string
+	Category string
+	// FamilyID filters on products.familyId; the special value "none"
+	// matches products with no family. Empty means no filter.
+	FamilyID  string
 	Limit     int
 	Offset    int
 	SortField string
@@ -164,6 +174,12 @@ func (d *Database) GetProducts(organizationID string, opts ProductListOptions) (
 	} else if opts.Category != "" {
 		where += " AND p.category = ?"
 		args = append(args, opts.Category)
+	}
+	if opts.FamilyID == "none" {
+		where += " AND p.familyId IS NULL"
+	} else if opts.FamilyID != "" {
+		where += " AND p.familyId = ?"
+		args = append(args, opts.FamilyID)
 	}
 
 	var total int
@@ -209,6 +225,19 @@ func (d *Database) GetProduct(productID string) (*Product, error) {
 // expenseAccountId (if set) belong to the SAME organization as the product
 // (issue #189). A nil/empty field means "not part of this request," not a
 // mismatch.
+// checkProductFamilyOwnership rejects a familyId from another organization
+// (the issue #189 cross-org FK rule) or one that doesn't exist.
+func (d *Database) checkProductFamilyOwnership(organizationID string, familyID *string) error {
+	if familyID == nil || *familyID == "" {
+		return nil
+	}
+	family, err := d.GetProductFamily(*familyID)
+	if err != nil {
+		return newValidationError("product family not found")
+	}
+	return requireSameOrg(organizationID, family.OrganizationID, "product family")
+}
+
 func (d *Database) checkProductFKOwnership(organizationID string, taxRateID, revenueAccountID, expenseAccountID *string) error {
 	if taxRateID != nil && *taxRateID != "" {
 		taxRate, err := d.GetTaxRate(*taxRateID)
@@ -299,6 +328,7 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	req.RevenueAccountID = nilIfEmptyID(req.RevenueAccountID)
 	req.ExpenseAccountID = nilIfEmptyID(req.ExpenseAccountID)
 	req.UnitOfMeasureID = nilIfEmptyID(req.UnitOfMeasureID)
+	req.FamilyID = nilIfEmptyID(req.FamilyID)
 
 	if req.ID == "" {
 		req.ID, _ = gonanoid.New()
@@ -321,6 +351,9 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	if err := d.checkProductFKOwnership(req.OrganizationID, req.TaxRateID, req.RevenueAccountID, req.ExpenseAccountID); err != nil {
 		return nil, err
 	}
+	if err := d.checkProductFamilyOwnership(req.OrganizationID, req.FamilyID); err != nil {
+		return nil, err
+	}
 	unit, err := d.resolveProductUnit(req.OrganizationID, req.UnitOfMeasureID, req.Unit, nil)
 	if err != nil {
 		return nil, err
@@ -329,11 +362,11 @@ func (d *Database) CreateProduct(req CreateProductRequest) (*Product, error) {
 	// A brand-new product always has zero stock, so the toggle guard
 	// UpdateProduct enforces has nothing to check here.
 	_, err = d.DB.Exec(
-		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, unitOfMeasureId, type, category, taxRateId, stockEnabled, serialized, revenueAccountId, expenseAccountId)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO products (id, organizationId, name, description, sku, price, unitCost, unit, unitOfMeasureId, type, category, taxRateId, stockEnabled, serialized, revenueAccountId, expenseAccountId, familyId)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name, req.Description, req.SKU,
 		req.Price, req.UnitCost, req.Unit, req.UnitOfMeasureID, req.Type, req.Category, req.TaxRateID, req.StockEnabled, req.Serialized,
-		req.RevenueAccountID, req.ExpenseAccountID,
+		req.RevenueAccountID, req.ExpenseAccountID, req.FamilyID,
 	)
 	if err != nil {
 		if isDuplicateSKU(err) {
@@ -386,6 +419,17 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 	if err := d.checkProductFKOwnership(current.OrganizationID, updates.TaxRateID, updates.RevenueAccountID, updates.ExpenseAccountID); err != nil {
 		return nil, err
 	}
+	// familyId is three-state, unlike the rest of this full-replace update:
+	// omitted (nil) keeps the stored family, "" clears it, an id sets it —
+	// the organization-wide convention — so a caller that predates families
+	// (an old client, a 15-column Excel sheet) can't wipe one it never saw.
+	familyID := current.FamilyID
+	if updates.FamilyID != nil {
+		familyID = nilIfEmptyID(updates.FamilyID)
+		if err := d.checkProductFamilyOwnership(current.OrganizationID, familyID); err != nil {
+			return nil, err
+		}
+	}
 	unit, err := d.resolveProductUnit(current.OrganizationID, updates.UnitOfMeasureID, updates.Unit, current.UnitOfMeasureID)
 	if err != nil {
 		return nil, err
@@ -395,11 +439,11 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 	_, err = d.DB.Exec(
 		`UPDATE products
 		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, unitOfMeasureId = ?, type = ?, category = ?, taxRateId = ?,
-		     stockEnabled = ?, serialized = ?, revenueAccountId = ?, expenseAccountId = ?
+		     stockEnabled = ?, serialized = ?, revenueAccountId = ?, expenseAccountId = ?, familyId = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Description, updates.SKU, updates.Price,
 		updates.UnitCost, updates.Unit, updates.UnitOfMeasureID, updates.Type, updates.Category, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
-		updates.RevenueAccountID, updates.ExpenseAccountID,
+		updates.RevenueAccountID, updates.ExpenseAccountID, familyID,
 		productID,
 	)
 	if err != nil {

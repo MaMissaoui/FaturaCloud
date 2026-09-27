@@ -35,6 +35,7 @@ import {
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { unitsOfMeasureAtom, setUnitsOfMeasureAtom } from "src/atoms/unit-of-measure";
+import { productFamiliesAtom, setProductFamiliesAtom } from "src/atoms/product-family";
 import { myOrgRoleAtom } from "src/atoms/organization";
 import { GetProductBOM, ReplaceProductBOM } from "src/api";
 import { message } from "src/utils/message";
@@ -80,6 +81,9 @@ const ProductForm = () => {
 
   const unitsOfMeasure = useAtomValue(unitsOfMeasureAtom);
   const setUnitsOfMeasure = useSetAtom(setUnitsOfMeasureAtom);
+
+  const productFamilies = useAtomValue(productFamiliesAtom);
+  const setProductFamilies = useSetAtom(setProductFamiliesAtom);
 
   const accounts = useAtomValue(accountsAtom);
   const setAccounts = useSetAtom(setAccountsAtom);
@@ -188,8 +192,9 @@ const ProductForm = () => {
       setTaxRates();
       setAccounts();
       setUnitsOfMeasure();
+      setProductFamilies();
     }
-  }, [isVisible, setProducts, setTaxRates, setAccounts, setUnitsOfMeasure]);
+  }, [isVisible, setProducts, setTaxRates, setAccounts, setUnitsOfMeasure, setProductFamilies]);
 
   useEffect(() => {
     const navProductId = get(location.state, "productId");
@@ -253,6 +258,12 @@ const ProductForm = () => {
     // it must not resurrect a value the user just cleared on a product that
     // did have a Base unit of measure selected.
     const clearedUnitOfMeasure = !!product?.unitOfMeasureId && !values.unitOfMeasureId;
+    // familyId: antd's allowClear sets the value to undefined, which
+    // JSON.stringify drops — but the server needs "" to clear the family.
+    // An omitted familyId silently keeps the stored one.
+    if (values.familyId === undefined) {
+      values.familyId = product?.familyId ? "" : undefined;
+    }
     try {
       await setProduct({
         ...values,
@@ -582,6 +593,17 @@ const ProductForm = () => {
                         </div>
                       </>
                     )}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="familyId" label={<Trans>Family</Trans>}>
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder={t`Select a family`}
+                    optionFilterProp="label"
+                    options={productFamilies.map((f) => ({ value: f.id, label: f.name }))}
                   />
                 </Form.Item>
               </Col>

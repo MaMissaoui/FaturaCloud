@@ -65,6 +65,7 @@ const finishedProduct: Product = {
   unitCost: null,
   unit: null,
   unitOfMeasureId: null,
+  familyId: null,
   type: "product",
   category: "finished",
   taxRateId: null,

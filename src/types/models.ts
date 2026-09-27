@@ -27,6 +27,7 @@ export interface Product {
   // The structured Base Unit of Measure (see UnitOfMeasure) — null means
   // this product still only has the legacy free-text unit, if anything.
   unitOfMeasureId: string | null;
+  familyId: string | null;
   type: "product" | "service";
   // Distinguishes a purchasable component/intermediate from a sellable
   // finished good — orthogonal to type (the server clears it whenever type
@@ -182,6 +183,13 @@ export interface UnitOfMeasure {
   organizationId: string;
   name: string;
   isDefault: number | null;
+  createdAt: string;
+}
+
+export interface ProductFamily {
+  id: string;
+  organizationId: string;
+  name: string;
   createdAt: string;
 }
 

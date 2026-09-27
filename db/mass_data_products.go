@@ -15,7 +15,22 @@ func (productsMassDataSpec) Headers() []string {
 		"Price", "Unit Cost", "Unit (legacy text)", "Unit of Measure",
 		"Tax Rate", "Stock Enabled", "Serialized",
 		"Revenue Account Code", "Expense Account Code",
+		// Added with product families (migration 0095) — at the end, since
+		// columns are positional; see SetPresentColumns.
+		"Family",
 	}
+}
+
+// productsColFamily is the Family column's index.
+const productsColFamily = 15
+
+// SetPresentColumns: a sheet exported before the Family column existed has
+// only 15 columns; its rows must keep each product's stored family rather
+// than clear it (UpdateProduct treats an omitted familyId as "keep").
+func (productsMassDataSpec) SetPresentColumns(ctxAny any, n int) any {
+	ctx := ctxAny.(*productsImportContext)
+	ctx.presentColumns = n
+	return ctx
 }
 
 func (productsMassDataSpec) ExportRows(d *Database, organizationID string) ([][]string, error) {
@@ -47,6 +62,14 @@ func (productsMassDataSpec) ExportRows(d *Database, organizationID string) ([][]
 	for _, a := range accounts {
 		accountCodeByID[a.ID] = a.Code
 	}
+	families, err := d.GetProductFamilies(organizationID)
+	if err != nil {
+		return nil, err
+	}
+	familyNameByID := make(map[string]string, len(families))
+	for _, f := range families {
+		familyNameByID[f.ID] = f.Name
+	}
 
 	rows := make([][]string, len(products))
 	for i, p := range products {
@@ -68,6 +91,7 @@ func (productsMassDataSpec) ExportRows(d *Database, organizationID string) ([][]
 			centsCell(p.Price), centsCellPtr(p.UnitCost), strOrEmpty(p.Unit), unitOfMeasureName,
 			taxRateName, boolCell(p.StockEnabled == 1), boolCell(p.Serialized == 1),
 			revenueCode, expenseCode,
+			familyNameByID[strOrEmpty(p.FamilyID)],
 		}
 	}
 	return rows, nil
@@ -77,6 +101,8 @@ type productsImportContext struct {
 	taxRateNameToID map[string]string
 	unitNameToID    map[string]string
 	accountCodeToID map[string]string
+	familyNameToID  map[string]string
+	presentColumns  int
 }
 
 func (productsMassDataSpec) NewImportContext(d *Database, organizationID string) (any, error) {
@@ -92,7 +118,12 @@ func (productsMassDataSpec) NewImportContext(d *Database, organizationID string)
 	if err != nil {
 		return nil, err
 	}
+	families, err := d.GetProductFamilies(organizationID)
+	if err != nil {
+		return nil, err
+	}
 	ctx := &productsImportContext{
+		familyNameToID:  make(map[string]string, len(families)),
 		taxRateNameToID: make(map[string]string, len(taxRates)),
 		unitNameToID:    make(map[string]string, len(units)),
 		accountCodeToID: make(map[string]string, len(accounts)),
@@ -105,6 +136,9 @@ func (productsMassDataSpec) NewImportContext(d *Database, organizationID string)
 	}
 	for _, a := range accounts {
 		ctx.accountCodeToID[a.Code] = a.ID
+	}
+	for _, f := range families {
+		ctx.familyNameToID[f.Name] = f.ID
 	}
 	return ctx, nil
 }
@@ -158,6 +192,21 @@ func (productsMassDataSpec) ImportRow(d *Database, organizationID string, ctxAny
 	if err != nil {
 		return "", identifier, err
 	}
+	// Family, by exact name like Tax Rate/Unit of Measure. familyID stays
+	// nil (keep the stored family) when the sheet has no Family column; a
+	// blank cell in a sheet that has one clears it.
+	var familyID *string
+	if ctx.presentColumns > productsColFamily {
+		resolved, err := resolveByLookup(ctx.familyNameToID, cells[productsColFamily], "product family")
+		if err != nil {
+			return "", identifier, err
+		}
+		cleared := ""
+		familyID = &cleared
+		if resolved != nil {
+			familyID = resolved
+		}
+	}
 	stockEnabled := intCell(cellBool(cells[11]))
 	serialized := intCell(cellBool(cells[12]))
 
@@ -176,6 +225,7 @@ func (productsMassDataSpec) ImportRow(d *Database, organizationID string, ctxAny
 		dst.Serialized = serialized
 		dst.RevenueAccountID = revenueAccountID
 		dst.ExpenseAccountID = expenseAccountID
+		dst.FamilyID = familyID
 	}
 
 	if id == "" {
@@ -202,6 +252,7 @@ func (productsMassDataSpec) ImportRow(d *Database, organizationID string, ctxAny
 		Type: create.Type, Category: create.Category, TaxRateID: create.TaxRateID,
 		StockEnabled: create.StockEnabled, Serialized: create.Serialized,
 		RevenueAccountID: create.RevenueAccountID, ExpenseAccountID: create.ExpenseAccountID,
+		FamilyID: create.FamilyID,
 	}
 	if _, err := d.UpdateProduct(id, update); err != nil {
 		return "", identifier, err

@@ -695,6 +695,7 @@ type OrganizationUsageCount struct {
 	FiscalPeriods            int64 `db:"fiscalPeriods"            json:"fiscalPeriods"`
 	PaymentTerms             int64 `db:"paymentTerms"             json:"paymentTerms"`
 	UnitsOfMeasure           int64 `db:"unitsOfMeasure"           json:"unitsOfMeasure"`
+	ProductFamilies          int64 `db:"productFamilies"          json:"productFamilies"`
 	DocumentTemplates        int64 `db:"documentTemplates"        json:"documentTemplates"`
 	DocumentTemplateSettings int64 `db:"documentTemplateSettings" json:"documentTemplateSettings"`
 	DocumentNumberSettings   int64 `db:"documentNumberSettings"   json:"documentNumberSettings"`
@@ -736,6 +737,7 @@ var organizationUsageCountTables = []struct{ Alias, Table string }{
 	{"fiscalPeriods", "fiscal_periods"},
 	{"paymentTerms", "payment_terms"},
 	{"unitsOfMeasure", "units_of_measure"},
+	{"productFamilies", "product_families"},
 	{"documentTemplates", "document_templates"},
 	{"documentTemplateSettings", "document_template_settings"},
 	{"documentNumberSettings", "document_number_settings"},

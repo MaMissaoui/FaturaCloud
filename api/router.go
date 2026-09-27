@@ -471,6 +471,20 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/units-of-measure/export", pathOrgID("orgId"), h.exportUnitsOfMeasure)
 	orgMemberProtected("POST", "/api/organizations/{orgId}/units-of-measure/import", pathOrgID("orgId"), h.importUnitsOfMeasure)
 
+	// Product families (migration 0095) — the same membership-level
+	// master-data shape as units of measure above.
+	productFamilyOrgID := func(r *http.Request) (string, error) {
+		family, err := h.db.GetProductFamily(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return family.OrganizationID, nil
+	}
+	orgMemberProtected("GET", "/api/organizations/{orgId}/product-families", pathOrgID("orgId"), h.listProductFamilies)
+	protected("POST", "/api/product-families", h.createProductFamily)
+	orgMemberProtected("PUT", "/api/product-families/{id}", productFamilyOrgID, h.updateProductFamily)
+	orgMemberProtected("DELETE", "/api/product-families/{id}", productFamilyOrgID, h.deleteProductFamily)
+
 	// Countries — global picklist activation, not per-organization (the
 	// new-organization form has no organization yet). Read is available to
 	// any authenticated user since every org/vendor/client form needs it;

@@ -262,6 +262,7 @@ var createRouteOrgChecks = map[routeKey]struct{ file, fn string }{
 	{"POST", "/api/tax-rates"}:          {"tax_rates.go", "createTaxRate"},
 	{"POST", "/api/payment-terms"}:      {"payment_terms.go", "createPaymentTerm"},
 	{"POST", "/api/units-of-measure"}:   {"units_of_measure.go", "createUnitOfMeasure"},
+	{"POST", "/api/product-families"}:   {"product_families.go", "createProductFamily"},
 	{"POST", "/api/products"}:           {"products.go", "createProduct"},
 	{"POST", "/api/stock-movements"}:    {"stock.go", "createStockMovement"},
 	{"POST", "/api/accounts"}:           {"accounts.go", "createAccount"},
@@ -678,6 +679,10 @@ var crossOrgProof = []struct {
 	{name: "update unit of measure by id", method: http.MethodPut, path: "/api/units-of-measure/org-a-unit-of-measure", body: []byte(`{"name":"hijacked"}`)},
 	{name: "delete unit of measure by id", method: http.MethodDelete, path: "/api/units-of-measure/org-a-unit-of-measure"},
 
+	{name: "list product families by org path", method: http.MethodGet, path: "/api/organizations/org-a/product-families"},
+	{name: "update product family by id", method: http.MethodPut, path: "/api/product-families/org-a-product-family", body: []byte(`{"name":"hijacked"}`)},
+	{name: "delete product family by id", method: http.MethodDelete, path: "/api/product-families/org-a-product-family"},
+
 	{name: "list payment terms by org path", method: http.MethodGet, path: "/api/organizations/org-a/payment-terms"},
 	{name: "update payment term by id", method: http.MethodPut, path: "/api/payment-terms/org-a-payment-term", body: []byte(`{"name":"hijacked"}`)},
 	{name: "delete payment term by id", method: http.MethodDelete, path: "/api/payment-terms/org-a-payment-term"},
@@ -873,6 +878,11 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed CreateUnitOfMeasure: %v", err)
 	}
+	if _, err := database.CreateProductFamily(db.CreateProductFamilyRequest{
+		ID: "org-a-product-family", OrganizationID: "org-a", Name: "product-family-a",
+	}); err != nil {
+		t.Fatalf("seed CreateProductFamily: %v", err)
+	}
 	product, err := database.CreateProduct(db.CreateProductRequest{
 		ID: "org-a-product", OrganizationID: "org-a", Name: "Test Product", Type: "product", Price: 1000,
 	})
@@ -1022,6 +1032,7 @@ func TestCrossOrgAccessDenied(t *testing.T) {
 		"/api/production-orders/org-a-production-order",
 		"/api/production-orders/org-a-production-order/component-lines",
 		"/api/organizations/org-a/units-of-measure",
+		"/api/organizations/org-a/product-families",
 	} {
 		t.Run("reachable by its own org: "+path, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, path, bytes.NewBuffer(nil))
