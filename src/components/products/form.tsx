@@ -42,21 +42,7 @@ import { message } from "src/utils/message";
 import { roleCanSeeMenuItem } from "src/layouts/role-menu";
 import ScrollShadow from "src/components/scroll-shadow";
 import BOMFields from "src/components/products/bom-fields";
-
-// Derives a product code from its name (e.g. "Steel Bracket" -> "STEEL-BRACKET"),
-// appending "-2", "-3", ... if that code is already used by another product.
-const deriveProductCode = (name: string, existingCodes: Set<string>): string => {
-  const base =
-    name
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 24) || "PRODUCT";
-  if (!existingCodes.has(base)) return base;
-  let suffix = 2;
-  while (existingCodes.has(`${base}-${suffix}`)) suffix += 1;
-  return `${base}-${suffix}`;
-};
+import { proposeProductCode } from "src/utils/product-code";
 
 const ProductForm = () => {
   const location = useLocation();
@@ -212,12 +198,12 @@ const ProductForm = () => {
     if (isVisible && !productId) setCodeTouched(false);
   }, [isVisible, productId]);
 
-  // Propose a code derived from the name for new products, unless the user
-  // has already typed one in themselves.
+  // Propose a PREFIX-NNN code for new products (src/utils/product-code.ts:
+  // continue the series of the most similarly named product, else start one
+  // from the name), unless the user has already typed one in themselves.
   useEffect(() => {
     if (productId || codeTouched || !nameValue) return;
-    const existingCodes = new Set(products.map((p: any) => p.sku).filter(Boolean));
-    form.setFieldValue("sku", deriveProductCode(nameValue, existingCodes));
+    form.setFieldValue("sku", proposeProductCode(nameValue, products as any[]));
   }, [nameValue, productId, codeTouched, products, form]);
 
   // Prefill a new product's Base unit of measure from the org's default —
