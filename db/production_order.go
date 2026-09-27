@@ -355,7 +355,11 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 	var lines []ProductionOrderComponentLine
 	var glLines []CreateJournalLineRequest
 	var glJournal *Journal
-	var perUnitCost int64
+	// perUnitCost stays nil when a quantity-only organization completes an
+	// order with an uncosted component: the finished units then enter
+	// uncosted rather than at a 0 that recomputeAverageCostTx would count
+	// as a real, free inflow.
+	var perUnitCost *int64
 	var imp *Import
 	var existingEntry *JournalEntry
 	// Resolved once here, pre-tx, and reused inside the transaction below
@@ -377,6 +381,12 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 		if err != nil {
 			return nil, err
 		}
+		org, err := d.GetOrganization(current.OrganizationID)
+		if err != nil {
+			return nil, fmt.Errorf("update_production_order_status organization: %w", err)
+		}
+		quantityOnly := isQuantityOnlyInventory(org)
+		allCosted := true
 
 		componentsCostTotal := new(big.Rat)
 		for _, line := range lines {
@@ -407,6 +417,12 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 					component.Name, component.StockQuantity, line.TotalQuantity,
 				)
 			}
+			if quantityOnly && component.UnitCost == nil {
+				// No cost basis to carry over, and quantity-only valuation
+				// never requires one.
+				allCosted = false
+				continue
+			}
 			unitCost, err := resolveMovementCost(d.DB, component, nil)
 			if err != nil {
 				return nil, wrapCostBasisError(err, "cannot complete production order")
@@ -423,12 +439,19 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 		if err != nil {
 			return nil, newValidationError("invalid quantity")
 		}
-		perUnitCost = roundHalfUp(new(big.Rat).Quo(new(big.Rat).SetInt64(componentsCostTotalCents), qtyRat), 0).Num().Int64()
-		producedValueCents := roundHalfUp(new(big.Rat).Mul(new(big.Rat).SetInt64(perUnitCost), qtyRat), 0).Num().Int64()
+		if allCosted {
+			unitCost := roundHalfUp(new(big.Rat).Quo(new(big.Rat).SetInt64(componentsCostTotalCents), qtyRat), 0).Num().Int64()
+			perUnitCost = &unitCost
+		}
 
-		glLines, glJournal, err = buildProductionOrderGLLines(d, current, componentsCostTotalCents, producedValueCents)
-		if err != nil {
-			return nil, err
+		// Quantity-only valuation posts no production residual at all (its
+		// account checks included), costed components or not.
+		if !quantityOnly {
+			producedValueCents := roundHalfUp(new(big.Rat).Mul(new(big.Rat).SetInt64(*perUnitCost), qtyRat), 0).Num().Int64()
+			glLines, glJournal, err = buildProductionOrderGLLines(d, current, componentsCostTotalCents, producedValueCents)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if current.ImportID != nil {
@@ -526,8 +549,9 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 		}
 
 		// Produce: finished units valued at perUnitCost (componentsCostTotal
-		// / quantity, resolved before the transaction opened above).
-		unitCostPtr := &perUnitCost
+		// / quantity, resolved before the transaction opened above; nil when
+		// a quantity-only order had an uncosted component).
+		unitCostPtr := perUnitCost
 		if finished.Serialized == 1 {
 			ids, err := getOrCreateSerialNumbersTx(tx, current.OrganizationID, finished.ID, serials)
 			if err != nil {

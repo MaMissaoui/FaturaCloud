@@ -518,7 +518,7 @@ func (d *Database) buildIncomingInvoiceGLLines(bill *IncomingInvoice, lineItems 
 				productCache[*item.ProductID] = product
 			}
 		}
-		expenseAccountID, isInventory, err := resolvePurchaseAccount(product, org.DefaultExpenseAccountID, org.DefaultInventoryAccountID)
+		expenseAccountID, isInventory, err := resolvePurchaseAccount(product, org.DefaultExpenseAccountID, org.DefaultInventoryAccountID, isQuantityOnlyInventory(org))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -698,6 +698,11 @@ func buildReceiptGRNILines(
 	if err != nil {
 		return nil, nil, fmt.Errorf("build_receipt_grni_lines organization: %w", err)
 	}
+	// Quantity-only valuation: nothing is capitalized on receipt; the bill
+	// expenses the goods instead (resolvePurchaseAccount).
+	if isQuantityOnlyInventory(org) {
+		return nil, nil, nil
+	}
 
 	var vendorTotal int64
 	for _, line := range lines {
@@ -857,8 +862,12 @@ func grniClearedQtyForPOLine(exec sqlSelectExecer, poLineID, excludeBillID strin
 // Phase 7 existed, stock-enabled always means Inventory now), everything
 // else still resolves via resolveExpenseAccount exactly as today. isInventory
 // tells the caller whether this account is eligible for GRNI clearing.
-func resolvePurchaseAccount(product *Product, defaultExpenseAccountID, defaultInventoryAccountID *string) (accountID string, isInventory bool, err error) {
-	if product != nil && product.StockEnabled == 1 {
+// quantityOnly (the organization's inventory valuation, see
+// db/inventory_valuation.go) restores the pre-Phase-7 treatment: nothing is
+// capitalized, so a stock-enabled product is expensed like any other and is
+// never eligible for GRNI clearing — its receipt accrued none.
+func resolvePurchaseAccount(product *Product, defaultExpenseAccountID, defaultInventoryAccountID *string, quantityOnly bool) (accountID string, isInventory bool, err error) {
+	if product != nil && product.StockEnabled == 1 && !quantityOnly {
 		if defaultInventoryAccountID == nil {
 			return "", false, newValidationError("cannot post bill: organization has no default Inventory account configured")
 		}
@@ -1035,6 +1044,12 @@ func buildDeliveryCOGSGLLines(d *Database, delivery *OutboundDelivery, lines []d
 	if err != nil {
 		return nil, nil, fmt.Errorf("build_delivery_cogs_gl_lines organization: %w", err)
 	}
+	// Quantity-only valuation: stock leaves at no GL value, so no cost is
+	// resolved (or required) at all — checked before the loop, whose
+	// resolveMovementCost calls would otherwise 409 an uncosted product.
+	if isQuantityOnlyInventory(org) {
+		return nil, nil, nil
+	}
 
 	productCache := map[string]*Product{}
 	getProduct := func(id string) (*Product, error) {
@@ -1134,6 +1149,12 @@ func buildStockAdjustmentGLLines(
 	org, err := d.GetOrganization(req.OrganizationID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build_stock_adjustment_gl_lines organization: %w", err)
+	}
+	// Quantity-only valuation: a manual movement carries no GL value — and
+	// this must return before the switch below, whose outflow branches
+	// resolve a cost basis and would 409 an uncosted product.
+	if isQuantityOnlyInventory(org) {
+		return nil, nil, nil
 	}
 
 	net := new(big.Rat) // positive = net debit to Inventory, negative = net credit
