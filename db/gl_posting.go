@@ -1040,7 +1040,14 @@ func wrapCostBasisError(err error, prefix string) error {
 // line is zero, no entry posts at all — the same "a zero-amount group
 // emits no row" rule buildInvoiceGLLines already follows.
 func buildDeliveryCOGSGLLines(d *Database, delivery *OutboundDelivery, lines []deliveryStockLine, resolvedSerials map[string]map[string]string) ([]CreateJournalLineRequest, *Journal, error) {
-	org, err := d.GetOrganization(delivery.OrganizationID)
+	return buildCOGSGLLines(d, delivery.OrganizationID, lines, resolvedSerials)
+}
+
+// buildCOGSGLLines is buildDeliveryCOGSGLLines' document-agnostic body,
+// shared with the Cash Book's own stock-out (db/invoice_stock.go): lines
+// only need ProductID/ProductName/Quantity/Serialized.
+func buildCOGSGLLines(d *Database, organizationID string, lines []deliveryStockLine, resolvedSerials map[string]map[string]string) ([]CreateJournalLineRequest, *Journal, error) {
+	org, err := d.GetOrganization(organizationID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build_delivery_cogs_gl_lines organization: %w", err)
 	}
@@ -1106,7 +1113,7 @@ func buildDeliveryCOGSGLLines(d *Database, delivery *OutboundDelivery, lines []d
 
 	// Pairs with the revenue-recognizing transaction, same journal an
 	// invoice's own auto-posted entry uses.
-	journal, err := getJournalByTypeTx(d.DB, delivery.OrganizationID, "sales")
+	journal, err := getJournalByTypeTx(d.DB, organizationID, "sales")
 	if err != nil {
 		return nil, nil, err
 	}

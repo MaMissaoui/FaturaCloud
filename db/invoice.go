@@ -63,6 +63,11 @@ type Invoice struct {
 	// from the line-item subtotal before VAT — see validateInvoiceTotals
 	// (db/invoice_totals.go). NOT NULL DEFAULT 0, like FiscalStampAmount.
 	DiscountAmount int64 `db:"discountAmount" json:"discountAmount"`
+
+	// MovesStock (migration 0094) marks a Cash Book sale that takes its own
+	// stock out while sent/paid — see db/invoice_stock.go. Set only by
+	// CreateCashSale; never settable through the API.
+	MovesStock int `db:"movesStock" json:"movesStock"`
 }
 
 // InvoiceLineItem mirrors the invoiceLineItems table.
@@ -345,6 +350,13 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		if entry != nil {
 			return nil, newValidationError("cannot change line items, totals, currency, or client on an invoice with a posted GL entry — cancel it instead")
 		}
+		// A zero-total Cash Book sale has no GL entry but can still have
+		// taken stock out, built from these same line items.
+		if hasStock, err := d.invoiceHasPostedStock(invoiceID); err != nil {
+			return nil, err
+		} else if hasStock {
+			return nil, newValidationError("cannot change line items, totals, currency, or client on a sale whose stock is taken out — cancel it instead")
+		}
 	}
 
 	// If any financial field is being touched, validate the *effective*
@@ -571,6 +583,29 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 		}
 	}
 
+	// A Cash Book sale's stock presence follows its state the same way
+	// (db/invoice_stock.go). Planned whenever the target state needs it —
+	// speculatively, like glLines above — and decided from an in-tx read.
+	needsStock := needsInvoiceStockPresence(invoice, state)
+	var stockPlan *invoiceStockPlan
+	if needsStock {
+		lineItems, err := d.GetInvoiceLineItems(invoiceID)
+		if err != nil {
+			return nil, fmt.Errorf("update_invoice_state stock_line_items: %w", err)
+		}
+		items := make([]invoiceStockItem, len(lineItems))
+		for i, item := range lineItems {
+			items[i] = invoiceStockItem{ProductID: item.ProductID, Quantity: item.Quantity}
+		}
+		stockLines, err := d.resolveInvoiceStockLines(items)
+		if err != nil {
+			return nil, err
+		}
+		if stockPlan, err = d.planInvoiceStockOut(invoice.OrganizationID, stockLines); err != nil {
+			return nil, err
+		}
+	}
+
 	tx, err := d.DB.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("update_invoice_state begin: %w", err)
@@ -607,6 +642,23 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 		}
 	}
 
+	if invoice.MovesStock == 1 {
+		postedStock, err := postedInvoiceStockTx(tx, invoiceID)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case needsStock && len(postedStock) == 0:
+			if err := applyInvoiceStockOutTx(tx, invoice, stockPlan); err != nil {
+				return nil, err
+			}
+		case !needsStock && len(postedStock) > 0:
+			if err := reverseInvoiceStockOutTx(tx, invoice, postedStock, state); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("update_invoice_state commit: %w", err)
 	}
@@ -628,6 +680,11 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 		return false, err
 	} else if entry != nil {
 		return false, newValidationError("cannot delete an invoice with a posted GL entry — cancel it instead")
+	}
+	if hasStock, err := d.invoiceHasPostedStock(invoiceID); err != nil {
+		return false, err
+	} else if hasStock {
+		return false, newValidationError("cannot delete a sale whose stock is taken out — cancel it instead")
 	}
 
 	tx, err := d.DB.Beginx()
@@ -659,6 +716,11 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 	}
 	if liveEntry != nil {
 		return false, newValidationError("cannot delete an invoice with a posted GL entry — cancel it instead")
+	}
+	if liveStock, err := postedInvoiceStockTx(tx, invoiceID); err != nil {
+		return false, err
+	} else if len(liveStock) > 0 {
+		return false, newValidationError("cannot delete a sale whose stock is taken out — cancel it instead")
 	}
 
 	if _, err = tx.Exec(`DELETE FROM invoiceLineItems WHERE invoiceId = ?`, invoiceID); err != nil {
