@@ -60,7 +60,7 @@ func cashBookSalesRangeFor(weekday time.Weekday) (lo, hi int) {
 // account note — the exact bug this dataset exists partly to catch a
 // regression of).
 func (s *Seeder) createCashBookSale(day time.Time) error {
-	lines := s.randomInvoiceLines(s.rng.IntRange(1, 4))
+	lines := s.retailSaleLines(s.rng.IntRange(1, 4))
 	subTotal, taxTotal, total := computeTotals(lines.totals)
 
 	req := db.CreateCashSaleRequest{
@@ -93,6 +93,7 @@ func (s *Seeder) createCashBookSale(day time.Time) error {
 		return fmt.Errorf("cash sale for %s: %w", clientName, err)
 	}
 	s.stats.Invoices++
+	s.takeRetailSaleStock(req.LineItems)
 	if req.AmountReceived > 0 {
 		s.stats.Payments++
 	}

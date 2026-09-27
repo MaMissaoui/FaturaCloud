@@ -195,6 +195,10 @@ type Seeder struct {
 	clients  []clientRef
 	vendors  []vendorRef
 	products []productRef
+	// onOrder is the retail scenario's quantity per product ordered but
+	// not yet received (retail_stock.go), so a reorder doesn't re-order
+	// what's already on its way.
+	onOrder map[string]float64
 	// foreignVendors are the handful of overseas (China) suppliers whose
 	// goods only ever arrive via a consolidated Import (F114) — kept
 	// separate from vendors (the local supplier pool ordinary restocking
@@ -254,6 +258,7 @@ func NewSeeder(c *Client, cfg Config) *Seeder {
 		profile:  scaleVolumeProfile(volumeProfiles[cfg.Volume], cfg.VolumeScale),
 		scenario: scn,
 		sched:    NewScheduler(),
+		onOrder:  map[string]float64{},
 
 		invoiceNum:  newNumberer(orDefault(orgProfileFor(cfg.Country).invoiceNumberPrefix, "INV")),
 		incomingNum: newNumberer("BILL"),
@@ -297,6 +302,13 @@ func (s *Seeder) Run() error {
 	if s.cfg.DryRun {
 		s.log.Printf("seed-demo: --dry-run, skipping document generation")
 		return nil
+	}
+	if s.scenario.hasCashBookSales {
+		// Counter sales take stock out server-side (v3.57.0+), so the shop
+		// opens with stock on the shelf — see retail_stock.go.
+		if err := s.setupRetailOpeningStock(); err != nil {
+			return fmt.Errorf("opening stock: %w", err)
+		}
 	}
 
 	totalDays := int(math.Round(s.cfg.EndDate.Sub(startDate).Hours()/24)) + 1
