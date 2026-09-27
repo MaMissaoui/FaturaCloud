@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.57.0] - 2026-09-27
+
+### Added
+- Organizations: an **Inventory valuation** setting (Accounting section).
+  **Valued** (the default, and what every existing organization keeps)
+  works as before. **Quantities only** tracks stock by quantity alone, for
+  businesses that don't keep unit costs:
+  - deliveries, stock-count shortages and production orders never need a
+    unit cost;
+  - no stock-value accounting entries are posted;
+  - bills for stock products are expensed.
+
+  The setting can only be changed before any stock is recorded. In this
+  mode the Inventory Valuation report shows quantities instead of the
+  ledger comparison.
+- Inventory: **Download Excel / Upload Excel** for a physical stock count.
+  The download lists every stock-tracked product with its current stock.
+  Fill in **Counted Quantity** and upload: each product is brought to the
+  counted quantity by recording the difference as a stock-count movement.
+  - Products are matched by ID, product code or exact name.
+  - A blank count leaves the product alone.
+  - Uploading the same file again changes nothing.
+  - Rows that fail are listed with the reason.
+- Cash Book: a sale now takes its stock-tracked products out of stock.
+  Cancelling the sale puts exactly that stock back, and setting it back to
+  sent or paid takes it out again.
+  - A sale is never blocked for lack of recorded stock; stock can go
+    negative, and the counter shows a warning when that happens.
+  - Serialized products can't be sold at the counter yet; use a delivery.
+  - In a Valued organization the sale also records its cost of goods, so a
+    stock product needs a unit cost before it can be sold there. The
+    message says how to fix it: give the product a cost, or switch the
+    organization to Quantities only. That switch is now allowed while
+    nothing has been posted to its Inventory account, even if it already
+    has stock.
+  - Normal invoices, and Cash Book sales made before this release, never
+    move stock.
+
+### Fixed
+- Cash Book: sales in an organization with no invoice number format got
+  an empty invoice number. They are now numbered `#1`, `#2`, … by default,
+  and a new organization created without a format gets `#{number}`.
 ## [3.56.0] - 2026-09-26
 
 ### Added
