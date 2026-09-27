@@ -28,11 +28,15 @@ export default function MassDataExcelActions({
   resource,
   filenamePrefix,
   onImported,
+  summarize = (res) => t`${res.created} created, ${res.updated} updated`,
 }: {
   organizationId: string;
   resource: MassDataResource;
   filenamePrefix: string;
   onImported: () => void;
+  // The success toast and results-modal wording — "created/updated" fits
+  // master data; the stock count upload reports adjusted/unchanged instead.
+  summarize?: (result: MassDataImportResult) => string;
 }) {
   const { message } = App.useApp();
   const [downloading, setDownloading] = useState(false);
@@ -59,7 +63,8 @@ export default function MassDataExcelActions({
         const res = await ImportMassData(organizationId, resource, file);
         setResult(res);
         if (res.failed === 0) {
-          message.success(t`Import complete: ${res.created} created, ${res.updated} updated.`);
+          const summary = summarize(res);
+          message.success(t`Import complete: ${summary}.`);
         }
         onImported();
       } catch (error) {
@@ -96,9 +101,7 @@ export default function MassDataExcelActions({
       >
         {result && (
           <>
-            <Text>
-              {t`${result.created} created, ${result.updated} updated, ${result.failed} failed.`}
-            </Text>
+            <Text>{t`${summarize(result)}, ${result.failed} failed.`}</Text>
             <Table
               size="small"
               rowKey="row"

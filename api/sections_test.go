@@ -89,9 +89,11 @@ var wantSectionRoutes = map[string]string{
 	"PUT /api/imports/{id}":                              sectionImports,
 
 	// Inventory
-	"DELETE /api/stock-movements/{id}":               sectionInventory,
-	"GET /api/organizations/{orgId}/stock-movements": sectionInventory,
-	"POST /api/stock-movements":                      sectionInventory,
+	"DELETE /api/stock-movements/{id}":                       sectionInventory,
+	"GET /api/organizations/{orgId}/stock-movements":         sectionInventory,
+	"GET /api/organizations/{orgId}/stock-movements/export":  sectionInventory,
+	"POST /api/organizations/{orgId}/stock-movements/import": sectionInventory,
+	"POST /api/stock-movements":                              sectionInventory,
 
 	// Production orders
 	"DELETE /api/production-orders/{id}":                           sectionProductionOrders,

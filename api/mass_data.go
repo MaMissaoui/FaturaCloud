@@ -194,3 +194,27 @@ func (h *handler) importAccounts(w http.ResponseWriter, r *http.Request) {
 	result, err := h.db.ImportAccountsXLSX(r.PathValue("orgId"), data)
 	writeMassDataImportResult(w, result, err)
 }
+
+// exportStockCount/importStockCount are the Inventory screen's physical
+// count sheet — not master data, but the same engine: each row states a
+// counted quantity and the difference posts as a count movement (see
+// db/mass_data_stock.go). Gated like a manual movement
+// (POST /api/stock-movements): any member of the organization, and the
+// stock-movements path puts both under the section guard's Inventory.
+func (h *handler) exportStockCount(w http.ResponseWriter, r *http.Request) {
+	content, err := h.db.ExportStockCountXLSX(r.PathValue("orgId"))
+	if err != nil {
+		writeDBError(w, err, "organization not found")
+		return
+	}
+	writeMassDataXLSX(w, "stock-count", content)
+}
+
+func (h *handler) importStockCount(w http.ResponseWriter, r *http.Request) {
+	data, ok := readMassDataUpload(w, r)
+	if !ok {
+		return
+	}
+	result, err := h.db.ImportStockCountXLSX(r.PathValue("orgId"), data)
+	writeMassDataImportResult(w, result, err)
+}

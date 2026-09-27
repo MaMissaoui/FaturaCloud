@@ -32,6 +32,7 @@ import { deleteStockMovementAtom } from "src/atoms/stock";
 import { GetStockMovements } from "src/api";
 import MovementForm from "src/components/stock/movement-form";
 import PageHeader from "src/components/page-header";
+import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import { numberFormatLocale } from "src/utils/currencies";
 import { useDateTimeFormatter } from "src/utils/date";
 import { unitLabel } from "src/utils/units";
@@ -279,11 +280,28 @@ const Inventory = () => {
         icon={<InboxOutlined />}
         title={<Trans>Inventory</Trans>}
         actions={
-          <Link to="/inventory" state={{ movementModal: true }}>
-            <Button type="primary">
-              <Trans>Record movement</Trans>
-            </Button>
-          </Link>
+          <Space wrap>
+            {organizationId && (
+              // Stock count sheet: fill in Counted Quantity per product and
+              // upload — the difference posts as a count movement.
+              <MassDataExcelActions
+                organizationId={organizationId}
+                resource="stock-movements"
+                filenamePrefix="stock-count"
+                summarize={(res) => t`${res.updated} adjusted, ${res.unchanged} unchanged`}
+                onImported={() => {
+                  setProductsLoading(true);
+                  setProducts().finally(() => setProductsLoading(false));
+                  fetchMovements();
+                }}
+              />
+            )}
+            <Link to="/inventory" state={{ movementModal: true }}>
+              <Button type="primary">
+                <Trans>Record movement</Trans>
+              </Button>
+            </Link>
+          </Space>
         }
       />
 

@@ -517,6 +517,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		return movement.OrganizationID, nil
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/stock-movements", pathOrgID("orgId"), h.listStockMovements)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/stock-movements/export", pathOrgID("orgId"), h.exportStockCount)
+	orgMemberProtected("POST", "/api/organizations/{orgId}/stock-movements/import", pathOrgID("orgId"), h.importStockCount)
 	protected("POST", "/api/stock-movements", h.createStockMovement)
 	orgMemberProtected("DELETE", "/api/stock-movements/{id}", stockMovementOrgID, h.deleteStockMovement)
 
