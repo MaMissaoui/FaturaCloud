@@ -229,6 +229,7 @@ func TestSharedRoutesAreUnrestricted(t *testing.T) {
 		"GET /api/organizations/{orgId}/tax-rates",
 		"GET /api/organizations/{orgId}/payment-terms",
 		"GET /api/organizations/{orgId}/units-of-measure",
+		"GET /api/organizations/{orgId}/product-families",
 		// Accounts reads (writes are sectionAccountingWrite)
 		"GET /api/organizations/{orgId}/accounts",
 		"GET /api/accounts/{id}",

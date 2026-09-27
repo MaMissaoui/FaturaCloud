@@ -108,6 +108,9 @@ var masterDataTables = []string{
 	// relative to "products" above doesn't matter for FK purposes, only for
 	// the row-count/tripwire contract.
 	"units_of_measure",
+	// product_families (migration 0095) is the same category of reference
+	// data — products.familyId is ON DELETE SET NULL, like unitOfMeasureId.
+	"product_families",
 	// bill_of_materials (a finished product's recipe) is reference data
 	// tied to products, the same category as taxRates/payment_terms —
 	// not transactional, since it's a standing definition a Production
@@ -162,7 +165,7 @@ func (d *Database) ResetOrganizationData(organizationID string, req ResetOrganiz
 		deleted.Clients, deleted.Vendors, deleted.Products, deleted.TaxRates = 0, 0, 0, 0
 		deleted.Accounts, deleted.Journals = 0, 0
 		deleted.FiscalYears, deleted.FiscalPeriods = 0, 0
-		deleted.PaymentTerms, deleted.UnitsOfMeasure = 0, 0
+		deleted.PaymentTerms, deleted.UnitsOfMeasure, deleted.ProductFamilies = 0, 0, 0
 		deleted.DocumentTemplates, deleted.DocumentTemplateSettings = 0, 0
 		deleted.DocumentNumberSettings = 0
 		deleted.BillOfMaterials, deleted.BillOfMaterialsVersions = 0, 0

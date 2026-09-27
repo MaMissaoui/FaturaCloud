@@ -89,6 +89,7 @@ var nullableFKClassification = map[string]fkDisposition{
 	"products.revenueAccountId":                           fkNormalized,
 	"products.taxRateId":                                  fkNormalized,
 	"products.unitOfMeasureId":                            fkNormalized,
+	"products.familyId":                                   fkExplicitClear, // update: omitted keeps, "" clears (create normalizes)
 	"purchase_order_line_items.productId":                 fkNormalized,
 	"purchase_order_line_items.taxRate":                   fkNormalized,
 	"purchase_orders.importId":                            fkNormalized,
