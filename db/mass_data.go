@@ -57,16 +57,21 @@ type MassDataRowResult struct {
 	// the offending row instead of counting.
 	Row        int    `json:"row"`
 	Identifier string `json:"identifier"`
-	Action     string `json:"action"` // "created" | "updated" | "error"
+	Action     string `json:"action"` // "created" | "updated" | "unchanged" | "error"
 	Error      string `json:"error,omitempty"`
 }
 
 // MassDataImportResult is the whole report for one uploaded file.
 type MassDataImportResult struct {
-	Created int                 `json:"created"`
-	Updated int                 `json:"updated"`
-	Failed  int                 `json:"failed"`
-	Rows    []MassDataRowResult `json:"rows"`
+	Created int `json:"created"`
+	Updated int `json:"updated"`
+	// Unchanged counts rows a spec deliberately left alone — so far only the
+	// stock count upload (db/mass_data_stock.go), for a count that already
+	// matches stock or was left blank. Every other spec always creates or
+	// updates, so it's always 0 for them.
+	Unchanged int                 `json:"unchanged"`
+	Failed    int                 `json:"failed"`
+	Rows      []MassDataRowResult `json:"rows"`
 }
 
 // exportMassDataXLSX builds one workbook: a bold header row from
@@ -168,9 +173,12 @@ func importMassDataXLSX(spec massDataSpec, d *Database, organizationID string, c
 			result.Failed++
 		} else {
 			rr.Action = action
-			if action == "created" {
+			switch action {
+			case "created":
 				result.Created++
-			} else {
+			case "unchanged":
+				result.Unchanged++
+			default:
 				result.Updated++
 			}
 		}
