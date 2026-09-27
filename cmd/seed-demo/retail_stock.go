@@ -17,9 +17,9 @@ import (
 //     product at its catalog cost when the run starts.
 //   - retailSaleLines only sells what the local on-hand mirror (stock.go)
 //     says is on the shelf, and every sale takes it off the mirror.
-//   - retailReorderLines makes retail purchase orders restock the products
-//     running lowest (counting what's already on order), instead of random
-//     ones in moto-sized bulk quantities.
+//   - retailReorderLines makes retail purchase orders restock every product
+//     at or below a reorder point (counting what's already on order), back
+//     up to a target level, instead of random ones in moto-sized bulk.
 //
 // None of this applies to the moto scenario, whose sales go through
 // deliveries that already respect on-hand stock (sales.go).
@@ -107,30 +107,30 @@ func (s *Seeder) takeRetailSaleStock(items []db.CreateInvoiceLineItemRequest) {
 	}
 }
 
-// retailReorderLines picks up to n products to restock: the lowest
-// (on hand + on order), each ordered back up to a restock target.
-func (s *Seeder) retailReorderLines(n int) []productRef {
-	products := s.stockProducts()
-	sort.SliceStable(products, func(i, j int) bool {
-		return s.onHand(products[i].id)+s.onOrder[products[i].id] < s.onHand(products[j].id)+s.onOrder[products[j].id]
-	})
-	// Choose among the lowest few rather than strictly the lowest n, so
-	// successive orders don't always name the exact same products.
-	pool := products
-	if len(pool) > n*3 {
-		pool = pool[:n*3]
-	}
-	var picked []productRef
-	seen := map[string]bool{}
-	for len(picked) < n && len(seen) < len(pool) {
-		p := Pick(s.rng, pool)
-		if seen[p.id] {
-			continue
+// retailReorderPoint is the (on hand + on order) level at or below which a
+// product is restocked, and retailMaxReorderLines caps one purchase order.
+const (
+	retailReorderPoint    = 2
+	retailMaxReorderLines = 10
+)
+
+// retailReorderLines returns every product at or below the reorder point
+// (counting what's already on order), lowest first, capped at
+// retailMaxReorderLines — the reorder-point restocking a real shop does.
+// Empty means nothing needs ordering, and the caller places no order.
+func (s *Seeder) retailReorderLines() []productRef {
+	level := func(p productRef) float64 { return s.onHand(p.id) + s.onOrder[p.id] }
+	var low []productRef
+	for _, p := range s.stockProducts() {
+		if level(p) <= retailReorderPoint {
+			low = append(low, p)
 		}
-		seen[p.id] = true
-		picked = append(picked, p)
 	}
-	return picked
+	sort.SliceStable(low, func(i, j int) bool { return level(low[i]) < level(low[j]) })
+	if len(low) > retailMaxReorderLines {
+		low = low[:retailMaxReorderLines]
+	}
+	return low
 }
 
 func (s *Seeder) retailReorderQuantity(p productRef) float64 {

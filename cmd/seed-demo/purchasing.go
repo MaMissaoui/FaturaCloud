@@ -68,7 +68,10 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 	// (retail_stock.go); moto restocks random components in bulk.
 	var retailPicks []productRef
 	if s.scenario.hasCashBookSales {
-		retailPicks = s.retailReorderLines(n)
+		retailPicks = s.retailReorderLines()
+		if len(retailPicks) == 0 {
+			return nil // nothing is low — no order this time
+		}
 		n = len(retailPicks)
 	}
 	for i := 0; i < n; i++ {
