@@ -32,7 +32,7 @@ func TestCashSaleNumbersWithDefaultWhenFormatMissing(t *testing.T) {
 		res, err := d.CreateCashSale(CreateCashSaleRequest{
 			OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
 			LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 1000, ProductID: &fx.productID}},
-			SubTotal: 1000, Total: 1000,
+			SubTotal:  1000, Total: 1000,
 		})
 		if err != nil {
 			t.Fatalf("CreateCashSale: %v", err)
