@@ -148,6 +148,7 @@ function buildInvoice(overrides: Partial<Invoice> = {}): Invoice {
     withholdingTaxRate: null,
     withholdingTaxAmount: null,
     discountAmount: 0,
+    movesStock: 0,
     ...overrides,
   };
 }
