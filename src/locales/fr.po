@@ -17,12 +17,24 @@ msgstr ""
 msgid "(current)"
 msgstr "(actuel)"
 
+#. placeholder {0}: res.updated
+#. placeholder {1}: res.unchanged
+#: src/routes/inventory.tsx:291
+msgid "{0} adjusted, {1} unchanged"
+msgstr "{0} ajusté(s), {1} inchangé(s)"
+
+#. placeholder {0}: res.created
+#. placeholder {1}: res.updated
+#: src/components/mass-data/mass-data-excel-actions.tsx:31
+msgid "{0} created, {1} updated"
+msgstr "{0} créé(s), {1} mis à jour"
+
 #. placeholder {0}: result.created
 #. placeholder {1}: result.updated
 #. placeholder {2}: result.failed
 #: src/components/mass-data/mass-data-excel-actions.tsx:100
-msgid "{0} created, {1} updated, {2} failed."
-msgstr "{0} créé(s), {1} mis à jour, {2} en échec."
+#~ msgid "{0} created, {1} updated, {2} failed."
+#~ msgstr "{0} créé(s), {1} mis à jour, {2} en échec."
 
 #. placeholder {0}: siblingDeliveries.length
 #. placeholder {1}: (linkedOrder as any)?.orderNumber
@@ -39,6 +51,12 @@ msgstr "{0} élément(s)"
 #: src/routes/cash-book.tsx:1109
 msgid "{0} matches · {debtorCount} with an open loan"
 msgstr "{0} résultats · {debtorCount} avec un crédit en cours"
+
+#. placeholder {0}: summarize(result)
+#. placeholder {1}: result.failed
+#: src/components/mass-data/mass-data-excel-actions.tsx:104
+msgid "{0}, {1} failed."
+msgstr "{0}, {1} en échec."
 
 #: src/routes/reporting/tax-summary.tsx:89
 msgid "%"
@@ -225,7 +243,7 @@ msgstr "Adresse"
 msgid "Adjust stock to zero first"
 msgstr "Ramenez d'abord le stock à zéro"
 
-#: src/routes/inventory.tsx:66
+#: src/routes/inventory.tsx:67
 msgid "Adjustment"
 msgstr "Ajustement"
 
@@ -759,7 +777,7 @@ msgid "Cash sale selected — the full amount is collected now."
 msgstr "Vente au comptant sélectionnée — le montant total est encaissé maintenant."
 
 #: src/components/products/form.tsx:398
-#: src/routes/inventory.tsx:386
+#: src/routes/inventory.tsx:404
 #: src/routes/products.tsx:292
 #: src/routes/reporting/tax-summary.tsx:76
 msgid "Category"
@@ -865,7 +883,7 @@ msgstr "Clients"
 msgid "clients, vendors, products, tax rates"
 msgstr "clients, fournisseurs, produits, taux de taxe"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:93
+#: src/components/mass-data/mass-data-excel-actions.tsx:98
 #: src/routes/accounting/fiscal-periods.tsx:243
 msgid "Close"
 msgstr "Clôturer"
@@ -935,9 +953,9 @@ msgid "Completed"
 msgstr "Terminé"
 
 #: src/components/products/bom-editor-drawer.tsx:426
-#: src/routes/inventory.tsx:336
-#: src/routes/inventory.tsx:396
-#: src/routes/inventory.tsx:459
+#: src/routes/inventory.tsx:354
+#: src/routes/inventory.tsx:414
+#: src/routes/inventory.tsx:477
 #: src/routes/production-orders/details.tsx:314
 #: src/routes/production-orders/details.tsx:601
 #: src/routes/products.tsx:302
@@ -1317,7 +1335,7 @@ msgstr "Base de données restaurée — actualisez pour voir les changements"
 #: src/routes/imports.tsx:203
 #: src/routes/incoming-invoices.tsx:105
 #: src/routes/incoming-invoices.tsx:212
-#: src/routes/inventory.tsx:545
+#: src/routes/inventory.tsx:563
 #: src/routes/invoices/details.tsx:680
 #: src/routes/invoices/index.tsx:178
 #: src/routes/invoices/index.tsx:250
@@ -1515,8 +1533,8 @@ msgstr "Supprimer"
 msgid "Delete failed"
 msgstr "Échec de la suppression"
 
-#: src/routes/inventory.tsx:610
-#: src/routes/inventory.tsx:627
+#: src/routes/inventory.tsx:628
+#: src/routes/inventory.tsx:645
 msgid "Delete movement"
 msgstr "Supprimer le mouvement"
 
@@ -1560,7 +1578,7 @@ msgstr "Supprimer cet ordre de fabrication ?"
 msgid "Delete this purchase order?"
 msgstr "Supprimer cette commande d'achat ?"
 
-#: src/routes/inventory.tsx:613
+#: src/routes/inventory.tsx:631
 msgid "Delete this stock movement? The stock level will be recalculated."
 msgstr "Supprimer ce mouvement de stock ? Le niveau de stock sera recalculé."
 
@@ -1744,11 +1762,11 @@ msgstr "Télécharger le modèle actuel"
 msgid "Download default"
 msgstr "Télécharger le modèle par défaut"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:80
+#: src/components/mass-data/mass-data-excel-actions.tsx:85
 msgid "Download Excel"
 msgstr "Télécharger Excel"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:47
+#: src/components/mass-data/mass-data-excel-actions.tsx:51
 #: src/routes/settings/document-templates.tsx:108
 msgid "Download failed"
 msgstr "Échec du téléchargement"
@@ -1949,7 +1967,7 @@ msgstr "E-mails"
 msgid "Emerald"
 msgstr "Émeraude"
 
-#: src/routes/inventory.tsx:305
+#: src/routes/inventory.tsx:323
 msgid "Enable \"Track inventory\" on a product (Master Data → Products) to see it here."
 msgstr "Activez « Suivre l'inventaire » sur un produit (Données de base → Produits) pour le voir ici."
 
@@ -2004,7 +2022,7 @@ msgstr "N° d'écriture"
 msgid "Equity"
 msgstr "Capitaux propres"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:111
+#: src/components/mass-data/mass-data-excel-actions.tsx:114
 msgid "Error"
 msgstr "Erreur"
 
@@ -2296,7 +2314,7 @@ msgstr "Échec du chargement de l'historique des paiements"
 msgid "Failed to load products"
 msgstr "Impossible de charger les produits"
 
-#: src/routes/inventory.tsx:221
+#: src/routes/inventory.tsx:222
 msgid "Failed to load stock movements"
 msgstr "Impossible de charger les mouvements de stock"
 
@@ -2446,22 +2464,22 @@ msgstr "Fichier"
 msgid "File is too large (max 500 MB)"
 msgstr "Fichier trop volumineux (max 500 Mo)"
 
-#: src/routes/inventory.tsx:503
-#: src/routes/inventory.tsx:504
+#: src/routes/inventory.tsx:521
+#: src/routes/inventory.tsx:522
 msgid "Filter by movement type"
 msgstr "Filtrer par type de mouvement"
 
-#: src/routes/inventory.tsx:483
-#: src/routes/inventory.tsx:484
+#: src/routes/inventory.tsx:501
+#: src/routes/inventory.tsx:502
 msgid "Filter by product"
 msgstr "Filtrer par produit"
 
-#: src/routes/inventory.tsx:323
-#: src/routes/inventory.tsx:324
+#: src/routes/inventory.tsx:341
+#: src/routes/inventory.tsx:342
 msgid "Filter by product type"
 msgstr "Filtrer par type de produit"
 
-#: src/routes/inventory.tsx:524
+#: src/routes/inventory.tsx:542
 msgid "Filter by reference"
 msgstr "Filtrer par référence"
 
@@ -2477,14 +2495,14 @@ msgstr "Filtrer par état"
 msgid "Filter by status"
 msgstr "Filtrer par statut"
 
-#: src/routes/inventory.tsx:454
+#: src/routes/inventory.tsx:472
 msgid "Filtered by product type, set above"
 msgstr "Filtré par type de produit, défini ci-dessus"
 
 #: src/components/products/form.tsx:409
-#: src/routes/inventory.tsx:333
-#: src/routes/inventory.tsx:392
-#: src/routes/inventory.tsx:457
+#: src/routes/inventory.tsx:351
+#: src/routes/inventory.tsx:410
+#: src/routes/inventory.tsx:475
 #: src/routes/products.tsx:186
 #: src/routes/products.tsx:298
 msgid "Finished good"
@@ -2748,8 +2766,12 @@ msgstr "L'import {0} réserve {1}{2} à {3}{4}."
 #. placeholder {0}: res.created
 #. placeholder {1}: res.updated
 #: src/components/mass-data/mass-data-excel-actions.tsx:62
-msgid "Import complete: {0} created, {1} updated."
-msgstr "Import terminé : {0} créé(s), {1} mis à jour."
+#~ msgid "Import complete: {0} created, {1} updated."
+#~ msgstr "Import terminé : {0} créé(s), {1} mis à jour."
+
+#: src/components/mass-data/mass-data-excel-actions.tsx:67
+msgid "Import complete: {summary}."
+msgstr "Import terminé : {summary}."
 
 #: src/atoms/import.ts:60
 msgid "Import created"
@@ -2773,7 +2795,7 @@ msgstr "Échec de la suppression de l'import"
 msgid "Import number"
 msgstr "Numéro d'import"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:90
+#: src/components/mass-data/mass-data-excel-actions.tsx:95
 msgid "Import results"
 msgstr "Résultats de l'import"
 
@@ -2796,7 +2818,7 @@ msgstr "Imports"
 
 #: src/routes/accounting/reports/daily-cash-movements.tsx:222
 #: src/routes/cash-book.tsx:1506
-#: src/routes/inventory.tsx:43
+#: src/routes/inventory.tsx:44
 msgid "In"
 msgstr "Entrée"
 
@@ -2883,7 +2905,7 @@ msgstr "Variable non valide : {match}. Les variables valides sont : {validVariab
 
 #: src/layouts/base.tsx:587
 #: src/layouts/base.tsx:594
-#: src/routes/inventory.tsx:280
+#: src/routes/inventory.tsx:281
 msgid "Inventory"
 msgstr "Inventaire"
 
@@ -3608,7 +3630,7 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 #: src/routes/inbound-deliveries/details.tsx:597
 #: src/routes/inbound-deliveries/details.tsx:611
 #: src/routes/incoming-invoices/details.tsx:728
-#: src/routes/inventory.tsx:619
+#: src/routes/inventory.tsx:637
 #: src/routes/invoices/details.tsx:1118
 #: src/routes/invoices/index.tsx:149
 #: src/routes/orders/details.tsx:582
@@ -3800,11 +3822,11 @@ msgstr "Aucun ordre de production ne correspond à vos filtres"
 msgid "No production orders yet"
 msgstr "Aucun ordre de fabrication pour le moment"
 
-#: src/routes/inventory.tsx:303
+#: src/routes/inventory.tsx:321
 msgid "No products are tracking stock yet"
 msgstr "Aucun produit ne suit encore le stock"
 
-#: src/routes/inventory.tsx:365
+#: src/routes/inventory.tsx:383
 #: src/routes/products.tsx:236
 msgid "No products match your filters"
 msgstr "Aucun produit ne correspond à vos filtres"
@@ -3926,7 +3948,7 @@ msgstr "Non défini (UTC)"
 
 #: src/components/stock/movement-form.tsx:265
 #: src/routes/cash-book.tsx:2029
-#: src/routes/inventory.tsx:599
+#: src/routes/inventory.tsx:617
 msgid "Note"
 msgstr "Note"
 
@@ -3981,7 +4003,7 @@ msgstr "paramètre(s) de numérotation"
 msgid "Numbering settings saved"
 msgstr "Paramètres de numérotation enregistrés"
 
-#: src/routes/inventory.tsx:402
+#: src/routes/inventory.tsx:420
 #: src/routes/production-orders/details.tsx:343
 #: src/routes/production-orders/details.tsx:629
 msgid "On hand"
@@ -4214,7 +4236,7 @@ msgstr "Notre référence"
 
 #: src/routes/accounting/reports/daily-cash-movements.tsx:231
 #: src/routes/cash-book.tsx:1523
-#: src/routes/inventory.tsx:49
+#: src/routes/inventory.tsx:50
 msgid "Out"
 msgstr "Sortie"
 
@@ -4649,8 +4671,8 @@ msgstr "Imprimer le total de la facture en toutes lettres, dans la langue des do
 #: src/routes/cash-book.tsx:1887
 #: src/routes/dashboard.tsx:394
 #: src/routes/dashboard.tsx:470
-#: src/routes/inventory.tsx:368
-#: src/routes/inventory.tsx:552
+#: src/routes/inventory.tsx:386
+#: src/routes/inventory.tsx:570
 #: src/routes/invoices/details.tsx:803
 #: src/routes/products.tsx:172
 #: src/routes/products.tsx:282
@@ -4679,7 +4701,7 @@ msgstr "Produit supprimé"
 msgid "Product deletion failed"
 msgstr "Échec de la suppression du produit"
 
-#: src/routes/inventory.tsx:190
+#: src/routes/inventory.tsx:191
 msgid "Product filter cleared — no longer matches the Stock levels filter above."
 msgstr "Filtre produit réinitialisé — ne correspond plus au filtre de niveaux de stock ci-dessus."
 
@@ -4864,7 +4886,7 @@ msgstr "Les quantités ci-dessous s'entendent par unité."
 
 #: src/routes/accounting/reports/inventory-valuation.tsx:153
 #: src/routes/dashboard.tsx:396
-#: src/routes/inventory.tsx:575
+#: src/routes/inventory.tsx:593
 #: src/routes/production-orders.tsx:154
 #: src/routes/production-orders/details.tsx:224
 #: src/routes/production-orders/details.tsx:580
@@ -4944,7 +4966,7 @@ msgstr "Le numéro de réception est obligatoire"
 msgid "Received"
 msgstr "Reçue"
 
-#: src/routes/inventory.tsx:446
+#: src/routes/inventory.tsx:464
 msgid "Recent movements"
 msgstr "Mouvements de stock récents"
 
@@ -4956,7 +4978,7 @@ msgstr "Récupérable — la TVA déductible dépasse la TVA collectée sur cett
 msgid "reconciliation group(s)"
 msgstr "groupe(s) de rapprochement"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:110
+#: src/components/mass-data/mass-data-excel-actions.tsx:113
 #: src/components/payments/payment-panel.tsx:300
 #: src/routes/cash-book.tsx:1970
 #: src/routes/cash-book.tsx:2041
@@ -4971,7 +4993,7 @@ msgstr "Enregistrer la vente au comptant"
 msgid "Record loan sale"
 msgstr "Enregistrer la vente à crédit"
 
-#: src/routes/inventory.tsx:284
+#: src/routes/inventory.tsx:301
 msgid "Record movement"
 msgstr "Enregistrer le mouvement"
 
@@ -4997,7 +5019,7 @@ msgstr "Enregistrer un mouvement de stock"
 #: src/routes/cash-book.tsx:1382
 #: src/routes/cash-book.tsx:1899
 #: src/routes/cash-book.tsx:2101
-#: src/routes/inventory.tsx:592
+#: src/routes/inventory.tsx:610
 msgid "Reference"
 msgstr "Référence"
 
@@ -5273,7 +5295,7 @@ msgstr "Rôle de {memberLabel}"
 msgid "Rolling window"
 msgstr "Fenêtre glissante"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:109
+#: src/components/mass-data/mass-data-excel-actions.tsx:112
 msgid "Row"
 msgstr "Ligne"
 
@@ -5389,7 +5411,7 @@ msgstr "Rechercher par nom, numéro de mobile, IBAN ou numéro d'identité"
 msgid "Search countries"
 msgstr "Rechercher des pays"
 
-#: src/routes/inventory.tsx:341
+#: src/routes/inventory.tsx:359
 msgid "Search products"
 msgstr "Rechercher des produits"
 
@@ -5623,7 +5645,7 @@ msgstr "Code de compte numérique de style SKR03/SKR04 pour la colonne « Konto 
 
 #: src/routes/accounting/reports/inventory-valuation.tsx:145
 #: src/routes/bill-of-materials.tsx:165
-#: src/routes/inventory.tsx:380
+#: src/routes/inventory.tsx:398
 #: src/routes/products.tsx:307
 msgid "SKU"
 msgstr "SKU"
@@ -5716,11 +5738,11 @@ msgstr "Comptage de stock — manque détecté (soustraction)"
 msgid "Stock count — surplus found (add)"
 msgstr "Comptage de stock — surplus détecté (ajout)"
 
-#: src/routes/inventory.tsx:61
+#: src/routes/inventory.tsx:62
 msgid "Stock count (shortage)"
 msgstr "Comptage de stock (manque)"
 
-#: src/routes/inventory.tsx:55
+#: src/routes/inventory.tsx:56
 msgid "Stock count (surplus)"
 msgstr "Comptage de stock (surplus)"
 
@@ -5728,7 +5750,7 @@ msgstr "Comptage de stock (surplus)"
 msgid "Stock in — receive goods"
 msgstr "Entrée de stock — réception de marchandises"
 
-#: src/routes/inventory.tsx:316
+#: src/routes/inventory.tsx:334
 msgid "Stock levels"
 msgstr "Niveaux de stock"
 
@@ -6200,7 +6222,7 @@ msgstr "Tunisie"
 #: src/routes/accounting/chart-of-accounts.tsx:155
 #: src/routes/accounting/journals.tsx:119
 #: src/routes/cash-book.tsx:1580
-#: src/routes/inventory.tsx:569
+#: src/routes/inventory.tsx:587
 #: src/routes/products.tsx:275
 msgid "Type"
 msgstr "Type"
@@ -6301,11 +6323,11 @@ msgstr "Importez une mise en page Excel personnalisée pour un type de document,
 #~ msgid "Upload a custom Excel layout for a document type, or download the current one to edit it. To use a custom template for invoices, set the invoice layout to \"Custom\" in the Organizations Formatting settings."
 #~ msgstr "Téléversez une mise en page Excel personnalisée pour un type de document, ou téléchargez l'actuelle pour la modifier. Pour utiliser un modèle personnalisé pour les factures, réglez la mise en page de facture sur « Personnalisé » dans les paramètres de formatage des Organisations."
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:84
+#: src/components/mass-data/mass-data-excel-actions.tsx:89
 msgid "Upload Excel"
 msgstr "Importer Excel"
 
-#: src/components/mass-data/mass-data-excel-actions.tsx:66
+#: src/components/mass-data/mass-data-excel-actions.tsx:71
 #: src/routes/settings/document-templates.tsx:89
 msgid "Upload failed"
 msgstr "Échec du téléversement"
@@ -6582,7 +6604,7 @@ msgstr "Taux de retenue à la source"
 #: src/routes/inbound-deliveries/details.tsx:596
 #: src/routes/inbound-deliveries/details.tsx:610
 #: src/routes/incoming-invoices/details.tsx:727
-#: src/routes/inventory.tsx:618
+#: src/routes/inventory.tsx:636
 #: src/routes/invoices/details.tsx:1117
 #: src/routes/invoices/index.tsx:148
 #: src/routes/orders/details.tsx:581

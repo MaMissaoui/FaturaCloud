@@ -501,18 +501,25 @@ export type MassDataResource =
   | "tax-rates"
   | "payment-terms"
   | "units-of-measure"
-  | "accounts";
+  | "accounts"
+  // Not master data: the Inventory screen's physical stock count sheet
+  // (db/mass_data_stock.go) — each row's counted quantity posts the
+  // difference as a count movement.
+  | "stock-movements";
 
 export interface MassDataRowResult {
   row: number;
   identifier: string;
-  action: "created" | "updated" | "error";
+  action: "created" | "updated" | "unchanged" | "error";
   error?: string;
 }
 
 export interface MassDataImportResult {
   created: number;
   updated: number;
+  // Rows deliberately left alone — only the stock count upload uses it (a
+  // count that already matches, or a blank count); 0 everywhere else.
+  unchanged: number;
   failed: number;
   rows: MassDataRowResult[];
 }
