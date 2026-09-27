@@ -1330,11 +1330,17 @@ export interface InventoryValuationLine {
 }
 
 export interface InventoryValuation {
+  // The organization's normalized inventory valuation mode — under
+  // "quantity_only" nothing posts to the Inventory account, so glBalance and
+  // difference carry no meaning.
+  inventoryValuation: InventoryValuationMode;
   glBalance: number;
   computedValue: number;
   difference: number;
   products: InventoryValuationLine[];
 }
+
+export type InventoryValuationMode = "perpetual" | "quantity_only";
 
 export const GetInventoryValuation = (organizationId: string) =>
   get<InventoryValuation>(`/organizations/${organizationId}/reports/inventory-valuation`);

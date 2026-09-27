@@ -45,6 +45,8 @@ const InventoryValuationReport = () => {
     refresh();
   }, [refresh]);
 
+  const quantityOnly = report?.inventoryValuation === "quantity_only";
+
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
   return (
@@ -65,16 +67,32 @@ const InventoryValuationReport = () => {
         />
       )}
 
+      {quantityOnly && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="info"
+          showIcon
+          message={
+            <Trans>
+              This organization tracks stock by quantity only, so nothing is posted to the Inventory
+              account. Values are shown only for products with a unit cost.
+            </Trans>
+          }
+        />
+      )}
+
       <Row gutter={[8, 8]} style={{ marginTop: 16, marginBottom: 16 }}>
-        <Col xs={12} md={8}>
-          <Card>
-            <Statistic
-              title={<Trans>GL balance</Trans>}
-              value={failed ? "—" : money(report?.glBalance ?? 0)}
-              loading={loading}
-            />
-          </Card>
-        </Col>
+        {!quantityOnly && (
+          <Col xs={12} md={8}>
+            <Card>
+              <Statistic
+                title={<Trans>GL balance</Trans>}
+                value={failed ? "—" : money(report?.glBalance ?? 0)}
+                loading={loading}
+              />
+            </Card>
+          </Col>
+        )}
         <Col xs={12} md={8}>
           <Card>
             <Statistic
@@ -84,20 +102,23 @@ const InventoryValuationReport = () => {
             />
           </Card>
         </Col>
-        <Col xs={12} md={8}>
-          <Card>
-            <Statistic
-              title={<Trans>Difference</Trans>}
-              value={failed ? "—" : money(report?.difference ?? 0)}
-              loading={loading}
-              styles={{
-                content: {
-                  color: !failed && (report?.difference ?? 0) !== 0 ? token.colorError : undefined,
-                },
-              }}
-            />
-          </Card>
-        </Col>
+        {!quantityOnly && (
+          <Col xs={12} md={8}>
+            <Card>
+              <Statistic
+                title={<Trans>Difference</Trans>}
+                value={failed ? "—" : money(report?.difference ?? 0)}
+                loading={loading}
+                styles={{
+                  content: {
+                    color:
+                      !failed && (report?.difference ?? 0) !== 0 ? token.colorError : undefined,
+                  },
+                }}
+              />
+            </Card>
+          </Col>
+        )}
       </Row>
 
       <Row>

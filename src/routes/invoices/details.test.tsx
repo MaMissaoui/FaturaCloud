@@ -105,6 +105,7 @@ function buildOrganization(overrides: Partial<Organization> = {}): Organization 
     documentLayout: null,
     documentLanguage: null,
     timezone: null,
+    inventoryValuation: null,
     defaultCashRegisterAccountId: null,
     ...overrides,
   };
