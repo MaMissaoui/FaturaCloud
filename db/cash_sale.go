@@ -346,8 +346,10 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	if err := tx.Get(&counters, `SELECT invoice_number_format, invoice_number_counter FROM organizations WHERE id = ?`, req.OrganizationID); err != nil {
 		return nil, fmt.Errorf("create_cash_sale read_counter: %w", err)
 	}
-	format := ""
-	if counters.Format != nil {
+	// An organization stored without a format (created through the API
+	// before CreateOrganization defaulted it) still gets numbered sales.
+	format := DefaultInvoiceNumberFormat
+	if counters.Format != nil && strings.TrimSpace(*counters.Format) != "" {
 		format = *counters.Format
 	}
 	var counter int64
