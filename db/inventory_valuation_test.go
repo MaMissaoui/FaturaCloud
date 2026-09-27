@@ -301,6 +301,29 @@ func TestInventoryValuationSwitchGuard(t *testing.T) {
 		}
 	})
 
+	t.Run("perpetual to quantity-only allowed with uncosted stock history", func(t *testing.T) {
+		t.Parallel()
+		d := newTestDB(t)
+		org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-switch-uncosted"})
+		if err != nil {
+			t.Fatalf("CreateOrganization: %v", err)
+		}
+		product, err := d.CreateProduct(CreateProductRequest{
+			OrganizationID: org.ID, Name: "Washer", Type: "product", StockEnabled: 1,
+		})
+		if err != nil {
+			t.Fatalf("CreateProduct: %v", err)
+		}
+		if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+			OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 5,
+		}); err != nil {
+			t.Fatalf("CreateStockMovement: %v", err)
+		}
+		if _, err := d.UpdateOrganization(org.ID, UpdateOrganizationRequest{InventoryValuation: ptr(InventoryValuationQuantityOnly)}); err != nil {
+			t.Fatalf("perpetual -> quantity_only with nothing on Inventory should be allowed: %v", err)
+		}
+	})
+
 	t.Run("rejected once the Inventory account carries an entry", func(t *testing.T) {
 		t.Parallel()
 		d := newTestDB(t)

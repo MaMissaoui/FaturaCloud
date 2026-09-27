@@ -584,11 +584,22 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 	}
 
 	// A Cash Book sale's stock presence follows its state the same way
-	// (db/invoice_stock.go). Planned whenever the target state needs it —
-	// speculatively, like glLines above — and decided from an in-tx read.
+	// (db/invoice_stock.go), decided from an in-tx read. The plan is only
+	// built when the stock-out isn't already posted: on sent<->paid it is,
+	// and re-validating the products as they are now (a cleared cost, a
+	// product since made serialized) would fail a state change that moves
+	// nothing.
 	needsStock := needsInvoiceStockPresence(invoice, state)
 	var stockPlan *invoiceStockPlan
+	alreadyPosted := false
 	if needsStock {
+		posted, err := postedInvoiceStockTx(d.DB, invoiceID)
+		if err != nil {
+			return nil, err
+		}
+		alreadyPosted = len(posted) > 0
+	}
+	if needsStock && !alreadyPosted {
 		lineItems, err := d.GetInvoiceLineItems(invoiceID)
 		if err != nil {
 			return nil, fmt.Errorf("update_invoice_state stock_line_items: %w", err)
@@ -649,6 +660,11 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 		}
 		switch {
 		case needsStock && len(postedStock) == 0:
+			if stockPlan == nil {
+				// The pre-tx read saw the stock-out posted, but a concurrent
+				// request reversed it since — nothing was planned to re-post.
+				return nil, newValidationError("the sale's stock changed while updating its state — reload and try again")
+			}
 			if err := applyInvoiceStockOutTx(tx, invoice, stockPlan); err != nil {
 				return nil, err
 			}

@@ -336,3 +336,85 @@ func TestOrdinaryInvoiceNeverMovesStock(t *testing.T) {
 		}
 	}
 }
+
+// Review finding 1: an existing perpetual org with stock history can't sell
+// an uncosted stock product at the counter — but the refusal names the way
+// out, and switching to Quantities only is allowed because nothing was ever
+// posted to its Inventory account.
+func TestCashSalePerpetualUncostedCanEscapeToQuantityOnly(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newCashStockFixture(t, d, "org-cash-stock-escape", false)
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: fx.orgID, ProductID: fx.washer.ID, Type: "in", Quantity: 5,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement (uncosted history): %v", err)
+	}
+
+	_, err := fx.sellWasher(t, d, 1)
+	requireValidationError(t, err, "cost basis")
+	requireValidationError(t, err, "Quantities only")
+
+	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
+		InventoryValuation: ptr(InventoryValuationQuantityOnly),
+	}); err != nil {
+		t.Fatalf("switch to quantity_only with uncosted stock history: %v", err)
+	}
+	if _, err := fx.sellWasher(t, d, 2); err != nil {
+		t.Fatalf("CreateCashSale after switching: %v", err)
+	}
+	if got := stockOf(t, d, fx.washer.ID); got != 3 {
+		t.Fatalf("stock = %v, want 3", got)
+	}
+}
+
+// Review finding 2: sent -> paid needs the stock-out in both states, so it
+// must not re-validate the products — here the typed cost the sale was
+// costed at has since been cleared, which would 409 a fresh stock-out.
+func TestCashSaleStateChangeWithStockPostedDoesNotRevalidateProducts(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newCashStockFixture(t, d, "org-cash-stock-revalidate", false)
+	requireFiscalYearCoveringNow(t, d, fx.orgID)
+	fridge, err := d.CreateProduct(CreateProductRequest{
+		OrganizationID: fx.orgID, Name: "Réfrigérateur Condor", SKU: ptr("REF-001"),
+		Type: "product", StockEnabled: 1, Price: 1000, UnitCost: ptr(int64(70000)),
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: fx.orgID, ProductID: fridge.ID, Type: "in", Quantity: 3,
+	}); err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+	sale, err := d.CreateCashSale(CreateCashSaleRequest{
+		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 1000, ProductID: &fridge.ID}},
+		SubTotal:  1000, Total: 1000,
+	})
+	if err != nil {
+		t.Fatalf("CreateCashSale: %v", err)
+	}
+
+	current, err := d.GetProduct(fridge.ID)
+	if err != nil {
+		t.Fatalf("GetProduct: %v", err)
+	}
+	if _, err := d.UpdateProduct(fridge.ID, UpdateProductRequest{
+		Name: current.Name, SKU: current.SKU, Price: current.Price, UnitCost: nil,
+		Type: current.Type, StockEnabled: current.StockEnabled,
+	}); err != nil {
+		t.Fatalf("UpdateProduct (clear cost): %v", err)
+	}
+	if p, _ := d.GetProduct(fridge.ID); p.UnitCost != nil {
+		t.Fatalf("precondition: unitCost = %d, want cleared", *p.UnitCost)
+	}
+
+	if _, err := d.UpdateInvoiceState(sale.Invoice.ID, "paid"); err != nil {
+		t.Fatalf("UpdateInvoiceState(paid): %v", err)
+	}
+	if got := stockOf(t, d, fridge.ID); got != 2 {
+		t.Fatalf("stock = %v, want 2 (nothing moves on sent -> paid)", got)
+	}
+}

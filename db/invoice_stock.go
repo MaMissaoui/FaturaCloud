@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -19,13 +20,17 @@ import (
 // the only reliable way back to exactly what this sale moved.
 //
 // Decided with the owner (2026-09-27): a sale is never blocked for lack of
-// recorded stock — the counter must keep selling when the records are off,
+// recorded STOCK — the counter must keep selling when the records are off,
 // and negative stock is the visible signal that a count is due. Serialized
 // products are refused at the counter until it has a serial picker; sell
 // them through a delivery. In perpetual valuation the stock-out also posts
 // COGS (source type "invoice_cogs", since "invoice" is the sale's own
-// revenue entry), with the same no-cost-basis 409 as a delivery; in
-// quantity-only valuation it posts nothing.
+// revenue entry), so an uncosted stock product is refused with the same
+// no-cost-basis 409 as a delivery — the message names both ways out: give
+// the product a unit cost, or switch the organization to Quantities only
+// (allowed while nothing is posted to its Inventory account, see
+// checkInventoryValuationSwitch). In quantity-only valuation it posts
+// nothing and needs no cost.
 
 // invoiceCOGSSourceType is the journal_entries.sourceDocumentType of a Cash Book
 // sale's COGS entry — distinct from the sale's own "invoice" entry, which
@@ -111,6 +116,13 @@ func (d *Database) planInvoiceStockOut(organizationID string, lines []deliverySt
 	// stock is touched.
 	cogsLines, journal, err := buildCOGSGLLines(d, organizationID, lines, nil)
 	if err != nil {
+		var verr *ValidationError
+		if errors.As(err, &verr) {
+			return nil, newValidationError(
+				"%s — give the product a unit cost, or switch the organization's inventory valuation to Quantities only",
+				verr.Error(),
+			)
+		}
 		return nil, err
 	}
 	plan.cogsLines, plan.cogsJournal = cogsLines, journal
