@@ -3920,7 +3920,7 @@ msgstr "Non liée"
 msgid "Not linked to a purchase order line."
 msgstr "Non liée à une ligne de commande d'achat."
 
-#: src/utils/timezones.ts:43
+#: src/utils/timezones.ts:50
 msgid "Not set (UTC)"
 msgstr "Non défini (UTC)"
 

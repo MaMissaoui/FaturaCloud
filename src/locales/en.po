@@ -3916,7 +3916,7 @@ msgstr "Not linked"
 msgid "Not linked to a purchase order line."
 msgstr "Not linked to a purchase order line."
 
-#: src/utils/timezones.ts:43
+#: src/utils/timezones.ts:50
 msgid "Not set (UTC)"
 msgstr "Not set (UTC)"
 
