@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.58.0] - 2026-09-27
+
+### Added
+- Products: **product families**. Each organization keeps its own list of
+  families (e.g. "Washing machine", "Refrigerator") under Settings ▸
+  Product families, and each product can belong to one.
+  - The product form has a **Family** field; the Products list has a
+    Family column and a Family filter, including "No family".
+  - The products Excel file has a new **Family** column. On upload, a family
+    name must match an existing family exactly; a blank cell removes the
+    family, and older files without the column keep each product's family.
+  - Deleting a family only removes it from its products.
+- Products: a new product gets a proposed **product code (SKU)** such as
+  "MAL-016". It continues the code series of the most similarly named
+  existing product (e.g. "Machine à laver …" next to MAL-003), or starts a
+  new series from the name's first three letters. It can still be edited.
+
+### Fixed
+- Demo data: the retail scenario keeps realistic stock levels now that
+  Cash Book sales take stock out.
+
 ## [3.57.0] - 2026-09-27
 
 ### Added
