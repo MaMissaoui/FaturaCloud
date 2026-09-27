@@ -254,7 +254,7 @@ func TestCashSaleRefusesSerializedAndNonPositiveStockLines(t *testing.T) {
 	_, err = d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
 		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 1000, ProductID: &tv.ID}},
-		SubTotal: 1000, Total: 1000,
+		SubTotal:  1000, Total: 1000,
 	})
 	requireValidationError(t, err, "serialized")
 
