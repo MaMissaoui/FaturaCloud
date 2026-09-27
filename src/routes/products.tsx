@@ -25,6 +25,7 @@ import debounce from "lodash/debounce";
 
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
+import { productFamiliesAtom, setProductFamiliesAtom } from "src/atoms/product-family";
 import { GetProducts } from "src/api";
 import ProductForm from "src/components/products/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
@@ -65,6 +66,9 @@ const Products = () => {
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
 
+  const productFamilies = useAtomValue(productFamiliesAtom);
+  const setProductFamilies = useSetAtom(setProductFamiliesAtom);
+
   const [products, setPageProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -74,6 +78,7 @@ const Products = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined);
+  const [familyFilter, setFamilyFilter] = useState<string | undefined>(undefined);
   const [sortField, setSortField] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
 
@@ -99,6 +104,7 @@ const Products = () => {
       search: search || undefined,
       type: typeFilter,
       category: categoryFilter,
+      familyId: familyFilter,
       limit: pageSize,
       offset: (page - 1) * pageSize,
       sort: sortField,
@@ -124,6 +130,7 @@ const Products = () => {
     search,
     typeFilter,
     categoryFilter,
+    familyFilter,
     sortField,
     sortOrder,
     message,
@@ -135,9 +142,10 @@ const Products = () => {
       // closes its drawer via navigate(), which is what refreshes this page
       // after a create/update/delete without a dedicated callback prop.
       setTaxRates();
+      setProductFamilies();
       fetchProducts();
     }
-  }, [location, fetchProducts, setTaxRates]);
+  }, [location, fetchProducts, setTaxRates, setProductFamilies]);
 
   const handleTableChange: TableProps<Product>["onChange"] = (pagination, _filters, sorter) => {
     setPage(pagination.current ?? 1);
@@ -188,6 +196,20 @@ const Products = () => {
                 { value: "unclassified", label: t`Unclassified` },
               ]}
             />
+            <Select
+              allowClear
+              placeholder={t`All families`}
+              style={{ width: 160 }}
+              value={familyFilter}
+              onChange={(value) => {
+                setFamilyFilter(value);
+                setPage(1);
+              }}
+              options={[
+                ...productFamilies.map((f) => ({ value: f.id, label: f.name })),
+                { value: "none", label: t`No family` },
+              ]}
+            />
           </>
         }
         search={{
@@ -232,7 +254,7 @@ const Products = () => {
             loading={loading}
             locale={{
               emptyText:
-                search || typeFilter || categoryFilter ? (
+                search || typeFilter || categoryFilter || familyFilter ? (
                   <Empty description={<Trans>No products match your filters</Trans>} />
                 ) : (
                   <Empty description={<Trans>No products yet</Trans>}>
@@ -303,6 +325,15 @@ const Products = () => {
                   </Tag>
                 ) : null
               }
+            />
+            <Table.Column
+              title={<Trans>Family</Trans>}
+              key="family"
+              render={(p: Product) => {
+                if (!p.familyId) return "—";
+                const f = productFamilies.find((f) => f.id === p.familyId);
+                return f ? f.name : "—";
+              }}
             />
             <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" sorter />
             <Table.Column

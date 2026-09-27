@@ -13,6 +13,7 @@ import type {
   TaxRate,
   PaymentTerm,
   UnitOfMeasure,
+  ProductFamily,
   Organization,
   PurchaseOrder,
   PurchaseOrderLineItem,
@@ -242,6 +243,7 @@ export type OrganizationUsageCount = {
   fiscalPeriods: number;
   paymentTerms: number;
   unitsOfMeasure: number;
+  productFamilies: number;
   documentTemplates: number;
   documentTemplateSettings: number;
   documentNumberSettings: number;
@@ -775,6 +777,17 @@ export const UpdateUnitOfMeasure = (id: string, req: Partial<UnitOfMeasure>) =>
 export const DeleteUnitOfMeasure = (id: string) =>
   del<{ deleted: boolean }>(`/units-of-measure/${id}`).then((r) => r.deleted);
 
+// ---- Product Families ----
+
+export const GetProductFamilies = (organizationId: string) =>
+  get<ProductFamily[]>(`/organizations/${organizationId}/product-families`);
+export const CreateProductFamily = (req: Partial<ProductFamily>) =>
+  post<ProductFamily>("/product-families", req);
+export const UpdateProductFamily = (id: string, req: Partial<ProductFamily>) =>
+  put<ProductFamily>(`/product-families/${id}`, req);
+export const DeleteProductFamily = (id: string) =>
+  del<{ deleted: boolean }>(`/product-families/${id}`).then((r) => r.deleted);
+
 // ---- Countries ----
 
 export const GetActiveCountries = () => get<string[]>("/countries/active");
@@ -797,6 +810,7 @@ export const GetProducts = (
     search?: string;
     type?: string;
     category?: string;
+    familyId?: string;
     limit?: number;
     offset?: number;
     sort?: string;
@@ -807,6 +821,7 @@ export const GetProducts = (
   if (params?.search) qs.set("search", params.search);
   if (params?.type) qs.set("type", params.type);
   if (params?.category) qs.set("category", params.category);
+  if (params?.familyId) qs.set("familyId", params.familyId);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   if (params?.sort) qs.set("sort", params.sort);

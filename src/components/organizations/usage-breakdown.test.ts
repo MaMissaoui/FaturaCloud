@@ -25,6 +25,7 @@ const allCounts = (): OrganizationUsageCount => ({
   fiscalPeriods: 1,
   paymentTerms: 1,
   unitsOfMeasure: 1,
+  productFamilies: 1,
   documentTemplates: 1,
   documentTemplateSettings: 1,
   documentNumberSettings: 1,
@@ -43,14 +44,14 @@ const labels = (rows: [number, string][]) => rows.map(([, label]) => label);
 // payments, journal entries, cash movements, accounts, BOMs and more.
 describe("usageBreakdown", () => {
   it("lists every count when deleting the organization", () => {
-    expect(usageBreakdown(allCounts(), ["master", "transactional"])).toHaveLength(29);
+    expect(usageBreakdown(allCounts(), ["master", "transactional"])).toHaveLength(30);
   });
 
   it("splits counts the same way db/reset.go's table lists do", () => {
     const transactional = labels(usageBreakdown(allCounts(), ["transactional"]));
     const master = labels(usageBreakdown(allCounts(), ["master"]));
     expect(transactional).toHaveLength(14);
-    expect(master).toHaveLength(15);
+    expect(master).toHaveLength(16);
     expect(transactional).toEqual(
       expect.arrayContaining([
         "payment(s)",

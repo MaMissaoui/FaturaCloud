@@ -62,6 +62,7 @@ import {
   FileExcelOutlined,
   ContainerOutlined,
   OrderedListOutlined,
+  ClusterOutlined,
 } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -305,6 +306,15 @@ export default function BaseLayout() {
         </Link>
       ),
       key: "settings.units-of-measure",
+    },
+    {
+      icon: <ClusterOutlined />,
+      label: (
+        <Link to="/settings/product-families">
+          <Trans>Product families</Trans>
+        </Link>
+      ),
+      key: "settings.product-families",
     },
     {
       icon: <FileExcelOutlined />,
