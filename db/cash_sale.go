@@ -253,10 +253,27 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		state = "paid"
 	}
 
+	// The sale takes its own stock out (db/invoice_stock.go) — resolved and,
+	// in perpetual valuation, costed here, so a serialized product or a
+	// missing cost basis is a 409 before anything is written.
+	stockItems := make([]invoiceStockItem, len(req.LineItems))
+	for i, item := range req.LineItems {
+		stockItems[i] = invoiceStockItem{ProductID: item.ProductID, Quantity: item.Quantity}
+	}
+	stockLines, err := d.resolveInvoiceStockLines(stockItems)
+	if err != nil {
+		return nil, err
+	}
+	stockPlan, err := d.planInvoiceStockOut(req.OrganizationID, stockLines)
+	if err != nil {
+		return nil, err
+	}
+
 	invoice := &Invoice{
 		ID: invoiceID, OrganizationID: req.OrganizationID, State: state, ClientID: client.ID,
 		Date: req.Date, Currency: req.Currency, ExchangeRate: exchangeRate,
 		Total: req.Total, TaxTotal: req.TaxTotal, SubTotal: req.SubTotal, FiscalStampAmount: 0,
+		MovesStock: 1,
 	}
 
 	// needsInvoiceGLPresence's own rule (db/invoice.go): a zero-total
@@ -376,8 +393,9 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
 			currency, exchangeRate, exchangeRateDate, customerNotes, overdueCharge, total, taxTotal, subTotal,
-			buyerReference, paymentTerms, fiscalStampAmount, withholdingTaxRate, withholdingTaxAmount
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			buyerReference, paymentTerms, fiscalStampAmount, withholdingTaxRate, withholdingTaxAmount,
+			movesStock
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
 		invoiceID, req.OrganizationID, number, state, client.ID, req.Date, req.Date,
 		req.Currency, exchangeRate, nil, nil, nil, req.Total, req.TaxTotal, req.SubTotal,
 		nil, nil, 0, nil, nil,
@@ -407,6 +425,11 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		); err != nil {
 			return nil, err
 		}
+	}
+
+	invoice.Number = number
+	if err := applyInvoiceStockOutTx(tx, invoice, stockPlan); err != nil {
+		return nil, err
 	}
 
 	if req.AmountReceived > 0 {

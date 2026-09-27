@@ -42,6 +42,10 @@ export interface Invoice {
   // HTVA", while the taxable base is subTotal − discountAmount. Always a
   // number (NOT NULL DEFAULT 0), like fiscalStampAmount.
   discountAmount: number;
+  // 1 on a Cash Book sale (migration 0094): it takes its own stock out while
+  // sent/paid, and cancelling it puts the stock back — see
+  // db/invoice_stock.go. Server-set only; 0 on every other invoice.
+  movesStock: number;
 }
 
 // invoicesAtom's shape: invoiceToDisplay (src/atoms/invoice.ts) converts

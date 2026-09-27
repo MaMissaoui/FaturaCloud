@@ -42,16 +42,25 @@ func validateInventoryValuation(v *string) error {
 		*v, InventoryValuationPerpetual, InventoryValuationQuantityOnly)
 }
 
-// checkInventoryValuationSwitch refuses to change the mode once the
-// organization has recorded any stock or carries anything on its Inventory
-// account. Either direction would leave the books inconsistent: going
-// quantity-only strands an Inventory/GRNI balance nothing will ever clear
-// (and a bill for goods received under perpetual would expense instead of
-// clearing their GRNI), while going perpetual leaves stock on hand with no
-// GL value, so the first COGS entry drives Inventory negative. Only an
-// actual change is checked — the Organizations drawer re-sends the whole
-// form on every save, and re-saving the current (normalized) mode must
-// never fail for an organization with history.
+// checkInventoryValuationSwitch guards a change of mode; the rule is
+// asymmetric.
+//
+//   - Either direction is refused once anything is posted to the Inventory
+//     account: going quantity-only would strand an Inventory/GRNI balance
+//     nothing ever clears (and a bill for goods received under perpetual
+//     would expense instead of clearing their GRNI).
+//   - perpetual -> quantity_only is otherwise allowed even with stock
+//     movements: with nothing on the Inventory account there is no balance
+//     to strand — the existing stock simply stops being valued. This is the
+//     escape route for an organization whose uncosted stock products a
+//     perpetual Cash Book sale or delivery refuses (no cost basis).
+//   - quantity_only -> perpetual is refused once any stock movement exists:
+//     that stock has no GL value, so the first COGS entry would drive
+//     Inventory negative.
+//
+// Only an actual change is checked — the Organizations drawer re-sends the
+// whole form on every save, and re-saving the current (normalized) mode
+// must never fail for an organization with history.
 func (d *Database) checkInventoryValuationSwitch(org *Organization, requested *string) error {
 	if requested == nil {
 		return nil
@@ -59,12 +68,14 @@ func (d *Database) checkInventoryValuationSwitch(org *Organization, requested *s
 	if normalizeInventoryValuation(requested) == normalizeInventoryValuation(org.InventoryValuation) {
 		return nil
 	}
-	var movements int
-	if err := d.DB.Get(&movements, `SELECT COUNT(*) FROM stockMovements WHERE organizationId = ?`, org.ID); err != nil {
-		return fmt.Errorf("check_inventory_valuation_switch movements: %w", err)
-	}
-	if movements > 0 {
-		return newValidationError("inventory valuation can only be changed before any stock movement is recorded")
+	if normalizeInventoryValuation(requested) == InventoryValuationPerpetual {
+		var movements int
+		if err := d.DB.Get(&movements, `SELECT COUNT(*) FROM stockMovements WHERE organizationId = ?`, org.ID); err != nil {
+			return fmt.Errorf("check_inventory_valuation_switch movements: %w", err)
+		}
+		if movements > 0 {
+			return newValidationError("inventory valuation can only be switched back to Valued before any stock movement is recorded")
+		}
 	}
 	if org.DefaultInventoryAccountID != nil {
 		var lines int

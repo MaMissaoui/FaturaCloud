@@ -969,6 +969,9 @@ const CashBook = () => {
       setNewClientDraft(null);
       setLoanStatusClientId(result.client.id);
       await setClients();
+      // The sale took its stock-tracked lines out of stock server-side
+      // (db/invoice_stock.go) — refresh so the next pick sees current stock.
+      await setProducts();
       await refreshDailyMovement();
       await refreshLoanStatus();
       await refreshPayments();
@@ -1240,6 +1243,15 @@ const CashBook = () => {
                       // also appends its SKU); the closed cell shows the SKU.
                       onSelect: (productId, fieldName, formInstance) => {
                         const product = find(products, { id: productId }) as any;
+                        if (product?.stockEnabled === 1 && (product.stockQuantity ?? 0) <= 0) {
+                          // Never blocks the sale (a decision: the counter keeps
+                          // selling when the records are off) — stock just
+                          // goes negative, the signal that a count is due.
+                          const onHand = product.stockQuantity ?? 0;
+                          message.warning(
+                            t`${product.name}: ${onHand} in stock — this sale will take it below zero.`,
+                          );
+                        }
                         if (product) {
                           const items = formInstance.getFieldValue("lineItems");
                           // A picked product's own tax rate wins when it has
