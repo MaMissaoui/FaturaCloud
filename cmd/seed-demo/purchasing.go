@@ -64,9 +64,24 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 	n := s.rng.IntRange(1, 4)
 	var reqLines []db.CreatePurchaseOrderLineItemRequest
 	var localLines []purchaseLine
+	// The retail shop restocks what's running low, a few units at a time
+	// (retail_stock.go); moto restocks random components in bulk.
+	var retailPicks []productRef
+	if s.scenario.hasCashBookSales {
+		retailPicks = s.retailReorderLines()
+		if len(retailPicks) == 0 {
+			return nil // nothing is low — no order this time
+		}
+		n = len(retailPicks)
+	}
 	for i := 0; i < n; i++ {
 		p := Pick(s.rng, stockProducts)
 		qty := float64(s.rng.IntRange(20, 150)) // restocking bulk, not a single-unit sale
+		if retailPicks != nil {
+			p = retailPicks[i]
+			qty = s.retailReorderQuantity(p)
+			s.onOrder[p.id] += qty
+		}
 		reqLines = append(reqLines, db.CreatePurchaseOrderLineItemRequest{
 			ProductID:   strPtr(p.id),
 			Description: p.name,
@@ -177,6 +192,12 @@ func (s *Seeder) receivePurchaseOrder(day time.Time, po db.PurchaseOrder, vendor
 	}
 	for _, l := range received {
 		s.adjustOnHand(l.productID, l.quantity)
+	}
+	for _, l := range lines {
+		s.onOrder[l.productID] -= l.quantity
+		if s.onOrder[l.productID] < 0 {
+			s.onOrder[l.productID] = 0
+		}
 	}
 
 	billDay := businessDaysLater(day, s.rng.IntRange(0, 7))
