@@ -84,20 +84,19 @@ const finishedProduct: Product = {
 // outer MemoryRouter — this component needs `location.state` to be open, and
 // React Router forbids nesting one Router inside another, so the single
 // MemoryRouter is constructed here with the drawer-opening state.
-async function renderProductForm() {
+async function renderProductForm(
+  state: Record<string, unknown> = { productModal: true, productId: "p1" },
+  initialProducts: Product[] = [finishedProduct],
+) {
   const store = createStore();
-  store.set(productsAtom, [finishedProduct]);
+  store.set(productsAtom, initialProducts);
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider store={store}>
       <I18nProvider i18n={i18n}>
         <ConfigProvider>
           <App>
-            <MemoryRouter
-              initialEntries={[
-                { pathname: "/products", state: { productModal: true, productId: "p1" } },
-              ]}
-            >
+            <MemoryRouter initialEntries={[{ pathname: "/products", state }]}>
               {children}
             </MemoryRouter>
           </App>
@@ -198,5 +197,49 @@ describe("ProductForm bill of materials safety (F111 / F117)", () => {
         "Opening the Bill of Materials screen closes this product and discards your unsaved changes.",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("ProductForm product code proposal", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(GetTaxRates).mockResolvedValue([]);
+    vi.mocked(GetAccounts).mockResolvedValue([]);
+    vi.mocked(GetUnitsOfMeasure).mockResolvedValue([]);
+    vi.mocked(GetProductFamilies).mockResolvedValue([]);
+  });
+
+  it("waits for the catalog before proposing, so the series continues", async () => {
+    // Hold the catalog fetch "in flight" until the name has been typed.
+    let deliver = (_: unknown) => {};
+    vi.mocked(GetProducts).mockReturnValue(
+      new Promise((resolve) => {
+        deliver = resolve;
+      }) as never,
+    );
+    const washer = (n: number): Product => ({
+      ...finishedProduct,
+      id: `w${n}`,
+      name: `Machine à laver HGE ${n}kg`,
+      sku: `MAL-00${n}`,
+    });
+
+    await renderProductForm({ productModal: true }, []);
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "Machine à laver Condor 8kg" },
+    });
+    const code = screen.getByLabelText("SKU / Product code") as HTMLInputElement;
+    // Let the name's effects run: without the catalog there is no proposal.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // Proposing against the empty list would have said "MAC-001".
+    expect(code.value).toBe("");
+
+    await act(async () => {
+      deliver({ data: [washer(1), washer(2), washer(3)] });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await waitFor(() => expect(code.value).toBe("MAL-004"));
   });
 });

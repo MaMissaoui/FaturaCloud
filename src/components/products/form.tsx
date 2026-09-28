@@ -172,13 +172,24 @@ const ProductForm = () => {
   // is actually open — to look up the product being edited, populate the
   // BOM component picker, and derive a collision-free SKU proposal — so it's
   // fetched here rather than unconditionally on every Products list visit.
+  // catalogLoaded gates the SKU proposal below: proposing against the
+  // previous (or empty) list would suggest a code that's already taken, e.g.
+  // "MAL-001" when the series really continues at "MAL-016".
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
   useEffect(() => {
     if (isVisible) {
-      setProducts();
+      let active = true;
+      setCatalogLoaded(false);
+      setProducts().finally(() => {
+        if (active) setCatalogLoaded(true);
+      });
       setTaxRates();
       setAccounts();
       setUnitsOfMeasure();
       setProductFamilies();
+      return () => {
+        active = false;
+      };
     }
   }, [isVisible, setProducts, setTaxRates, setAccounts, setUnitsOfMeasure, setProductFamilies]);
 
@@ -201,10 +212,12 @@ const ProductForm = () => {
   // Propose a PREFIX-NNN code for new products (src/utils/product-code.ts:
   // continue the series of the most similarly named product, else start one
   // from the name), unless the user has already typed one in themselves.
+  // Waits for the catalog, so a name typed before it arrives gets its
+  // proposal once it does.
   useEffect(() => {
-    if (productId || codeTouched || !nameValue) return;
+    if (productId || codeTouched || !nameValue || !catalogLoaded) return;
     form.setFieldValue("sku", proposeProductCode(nameValue, products as any[]));
-  }, [nameValue, productId, codeTouched, products, form]);
+  }, [nameValue, productId, codeTouched, catalogLoaded, products, form]);
 
   // Prefill a new product's Base unit of measure from the org's default —
   // otherwise Settings' "Default for new products" checkbox has no effect

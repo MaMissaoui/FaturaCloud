@@ -186,7 +186,7 @@ msgstr "Konto/Konten"
 
 #: src/components/organizations/organization-edit-drawer.tsx:539
 #: src/components/organizations/organization-members-panel.tsx:15
-#: src/components/products/form.tsx:670
+#: src/components/products/form.tsx:683
 #: src/components/tax-rates/form.tsx:231
 #: src/layouts/base.tsx:661
 msgid "Accounting"
@@ -244,7 +244,7 @@ msgstr "Position hinzufügen"
 msgid "Address"
 msgstr "Adresse"
 
-#: src/components/products/form.tsx:456
+#: src/components/products/form.tsx:469
 msgid "Adjust stock to zero first"
 msgstr "Bestand zuerst auf null setzen"
 
@@ -406,7 +406,7 @@ msgstr "Möchten Sie diese Zahlungsbedingung wirklich löschen?"
 msgid "Are you sure you want to delete this product family?"
 msgstr "Sind Sie sicher, dass Sie diese Produktfamilie löschen möchten?"
 
-#: src/components/products/form.tsx:322
+#: src/components/products/form.tsx:335
 msgid "Are you sure you want to delete this product?"
 msgstr "Sind Sie sicher, dass Sie dieses Produkt löschen möchten?"
 
@@ -561,7 +561,7 @@ msgstr "Balkendiagramm der Ausgaben nach Lieferant"
 msgid "Base"
 msgstr "Basis"
 
-#: src/components/products/form.tsx:544
+#: src/components/products/form.tsx:557
 msgid "Base unit of measure"
 msgstr "Basis-Maßeinheit"
 
@@ -578,7 +578,7 @@ msgid "Bill From"
 msgstr "Rechnung von"
 
 #: src/components/products/bom-editor-drawer.tsx:299
-#: src/components/products/form.tsx:615
+#: src/components/products/form.tsx:628
 #: src/layouts/base.tsx:652
 #: src/routes/bill-of-materials.tsx:84
 msgid "Bill of Materials"
@@ -589,7 +589,7 @@ msgstr "Stückliste"
 msgid "Bill of Materials — {0}"
 msgstr "Stückliste — {0}"
 
-#: src/components/products/form.tsx:278
+#: src/components/products/form.tsx:291
 msgid "Bill of materials couldn't be loaded, so it was left unchanged. Reopen this product to edit its recipe."
 msgstr "Die Stückliste konnte nicht geladen werden und blieb unverändert. Öffne dieses Produkt erneut, um das Rezept zu bearbeiten."
 
@@ -645,7 +645,7 @@ msgstr "Integrierte Journale können nicht gelöscht werden"
 msgid "Buyer reference"
 msgstr "Käuferreferenz"
 
-#: src/components/products/form.tsx:519
+#: src/components/products/form.tsx:532
 msgid "Calculated as a weighted average once goods are received at a cost."
 msgstr "Wird als gewichteter Durchschnitt berechnet, sobald Waren mit Kosten eingegangen sind."
 
@@ -672,7 +672,7 @@ msgstr "Allgemeine indirekte Steuer der Kanarischen Inseln"
 #: src/components/product-families/form.tsx:109
 #: src/components/products/bom-editor-drawer.tsx:309
 #: src/components/products/bom-editor-drawer.tsx:321
-#: src/components/products/form.tsx:336
+#: src/components/products/form.tsx:349
 #: src/components/stock/movement-form.tsx:123
 #: src/components/stock/serial-capture-modal.tsx:158
 #: src/components/tax-rates/form.tsx:147
@@ -737,7 +737,7 @@ msgid "Cancelled"
 msgstr "Storniert"
 
 #. placeholder {0}: product.stockQuantity
-#: src/components/products/form.tsx:466
+#: src/components/products/form.tsx:479
 msgid "Cannot change while stock is non-zero ({0}) — adjust stock to zero first."
 msgstr "Kann nicht geändert werden, solange der Bestand ungleich null ist ({0}) — Bestand zuerst auf null setzen."
 
@@ -794,7 +794,7 @@ msgstr "Barverkauf erfasst"
 msgid "Cash sale selected — the full amount is collected now."
 msgstr "Barverkauf ausgewählt — der volle Betrag wird jetzt eingenommen."
 
-#: src/components/products/form.tsx:395
+#: src/components/products/form.tsx:408
 #: src/routes/inventory.tsx:404
 #: src/routes/products.tsx:314
 #: src/routes/reporting/tax-summary.tsx:76
@@ -980,7 +980,7 @@ msgstr "Abgeschlossen"
 msgid "Component"
 msgstr "Komponente"
 
-#: src/components/products/form.tsx:409
+#: src/components/products/form.tsx:422
 #: src/routes/products.tsx:195
 msgid "Component / intermediate"
 msgstr "Komponente / Zwischenprodukt"
@@ -1048,7 +1048,7 @@ msgstr "Kosten"
 msgid "Cost of goods sold, recognized against inventory when a shipment ships."
 msgstr "Wareneinsatz, beim Versand einer Lieferung gegen den Bestand erfasst."
 
-#: src/components/products/form.tsx:517
+#: src/components/products/form.tsx:530
 msgid "Cost price"
 msgstr "Einkaufspreis"
 
@@ -1113,7 +1113,7 @@ msgid "Couldn't load the trial balance"
 msgstr "Die Summen- und Saldenliste konnte nicht geladen werden"
 
 #: src/components/products/bom-editor-drawer.tsx:352
-#: src/components/products/form.tsx:655
+#: src/components/products/form.tsx:668
 msgid "Couldn't load this bill of materials"
 msgstr "Diese Stückliste konnte nicht geladen werden"
 
@@ -1514,7 +1514,7 @@ msgstr "Standard-Konto für Bestandskorrekturen"
 msgid "Default revenue account"
 msgstr "Standard-Erlöskonto"
 
-#: src/components/products/form.tsx:597
+#: src/components/products/form.tsx:610
 msgid "Default tax rate"
 msgstr "Standard-Steuersatz"
 
@@ -1533,7 +1533,7 @@ msgstr "Standardmäßig der Gesamtbetrag. Ein höherer Betrag erfasst nur das zu
 #: src/components/organizations/organizations-table.tsx:147
 #: src/components/payment-terms/form.tsx:100
 #: src/components/product-families/form.tsx:102
-#: src/components/products/form.tsx:329
+#: src/components/products/form.tsx:342
 #: src/components/tax-rates/form.tsx:128
 #: src/components/tax-rates/form.tsx:140
 #: src/components/units-of-measure/form.tsx:106
@@ -1694,7 +1694,7 @@ msgstr "Auf die Bank einzahlen"
 #: src/components/invoices/pdf-tunisia.tsx:197
 #: src/components/invoices/pdf.tsx:279
 #: src/components/line-items/table.tsx:362
-#: src/components/products/form.tsx:484
+#: src/components/products/form.tsx:497
 #: src/components/tax-rates/form.tsx:176
 #: src/components/tax-rates/form.tsx:177
 #: src/routes/accounting/journal-entries.tsx:136
@@ -1716,7 +1716,7 @@ msgid "Destination"
 msgstr "Ziel"
 
 #: src/components/organizations/organization-edit-drawer.tsx:136
-#: src/components/products/form.tsx:352
+#: src/components/products/form.tsx:365
 #: src/components/stock/movement-form.tsx:259
 msgid "Details"
 msgstr "Details"
@@ -1729,8 +1729,8 @@ msgstr "Differenz"
 msgid "Direct debit"
 msgstr "Lastschrift"
 
-#: src/components/products/form.tsx:571
-#: src/components/products/form.tsx:636
+#: src/components/products/form.tsx:584
+#: src/components/products/form.tsx:649
 msgid "Discard and continue"
 msgstr "Verwerfen und fortfahren"
 
@@ -1911,7 +1911,7 @@ msgstr "z. B. Netto 30"
 msgid "e.g. Sales"
 msgstr "z. B. Verkauf"
 
-#: src/components/products/form.tsx:369
+#: src/components/products/form.tsx:382
 msgid "e.g. SVC-001"
 msgstr "z. B. SVC-001"
 
@@ -1951,7 +1951,7 @@ msgstr "Organisation bearbeiten"
 msgid "Edit payment term"
 msgstr "Zahlungsbedingung bearbeiten"
 
-#: src/components/products/form.tsx:312
+#: src/components/products/form.tsx:325
 msgid "Edit product"
 msgstr "Produkt bearbeiten"
 
@@ -2097,7 +2097,7 @@ msgstr "Erwartetes Datum"
 msgid "Expense"
 msgstr "Aufwand"
 
-#: src/components/products/form.tsx:694
+#: src/components/products/form.tsx:707
 #: src/routes/cash-book.tsx:2023
 msgid "Expense account"
 msgstr "Aufwandskonto"
@@ -2407,7 +2407,7 @@ msgid "Failed to reverse journal entry"
 msgstr "Buchung konnte nicht storniert werden"
 
 #: src/components/products/bom-editor-drawer.tsx:257
-#: src/components/products/form.tsx:285
+#: src/components/products/form.tsx:298
 msgid "Failed to save bill of materials"
 msgstr "Stückliste konnte nicht gespeichert werden"
 
@@ -2483,7 +2483,7 @@ msgstr "Fehler beim Aktualisieren des Benutzers"
 msgid "Failed to void payment"
 msgstr "Zahlung konnte nicht storniert werden"
 
-#: src/components/products/form.tsx:586
+#: src/components/products/form.tsx:599
 #: src/routes/products.tsx:330
 msgid "Family"
 msgstr "Familie"
@@ -2539,7 +2539,7 @@ msgstr "Nach Status filtern"
 msgid "Filtered by product type, set above"
 msgstr "Gefiltert nach oben eingestelltem Produkttyp"
 
-#: src/components/products/form.tsx:406
+#: src/components/products/form.tsx:419
 #: src/routes/inventory.tsx:351
 #: src/routes/inventory.tsx:410
 #: src/routes/inventory.tsx:475
@@ -3216,8 +3216,8 @@ msgstr "Leer lassen, um die Kundenadresse zu verwenden"
 msgid "Leave blank to use organization address"
 msgstr "Leer lassen, um die Adresse der Organisation zu verwenden"
 
-#: src/components/products/form.tsx:569
-#: src/components/products/form.tsx:634
+#: src/components/products/form.tsx:582
+#: src/components/products/form.tsx:647
 msgid "Leave without saving?"
 msgstr "Ohne Speichern verlassen?"
 
@@ -3310,7 +3310,7 @@ msgstr "Kunden verwalten"
 msgid "Manage payment terms"
 msgstr "Zahlungsbedingungen verwalten"
 
-#: src/components/products/form.tsx:577
+#: src/components/products/form.tsx:590
 msgid "Manage units of measure"
 msgstr "Maßeinheiten verwalten"
 
@@ -3319,7 +3319,7 @@ msgstr "Maßeinheiten verwalten"
 msgid "Manage vendors"
 msgstr "Lieferanten verwalten"
 
-#: src/components/products/form.tsx:570
+#: src/components/products/form.tsx:583
 msgid "Managing units of measure closes this product and discards your unsaved changes."
 msgstr "Das Verwalten der Mengeneinheiten schließt dieses Produkt und verwirft Ihre nicht gespeicherten Änderungen."
 
@@ -3447,7 +3447,7 @@ msgstr "Bewegungen für {0}"
 #: src/components/organizations/organizations-table.tsx:51
 #: src/components/payment-terms/form.tsx:119
 #: src/components/product-families/form.tsx:121
-#: src/components/products/form.tsx:357
+#: src/components/products/form.tsx:370
 #: src/components/tax-rates/form.tsx:171
 #: src/components/tax-rates/form.tsx:174
 #: src/components/units-of-measure/form.tsx:125
@@ -3477,7 +3477,7 @@ msgstr "Bewegungen für {0}"
 msgid "Name"
 msgstr "Name"
 
-#: src/components/products/form.tsx:358
+#: src/components/products/form.tsx:371
 msgid "Name is required"
 msgstr "Name ist erforderlich"
 
@@ -3595,7 +3595,7 @@ msgstr "Neue Zahlungsbedingung"
 msgid "New period"
 msgstr "Neue Periode"
 
-#: src/components/products/form.tsx:312
+#: src/components/products/form.tsx:325
 #: src/routes/products.tsx:235
 msgid "New product"
 msgstr "Neues Produkt"
@@ -3669,7 +3669,7 @@ msgstr "Nächste Ausführung: {nextRunLabel}"
 #: src/components/payment-terms/form.tsx:96
 #: src/components/payments/payment-panel.tsx:438
 #: src/components/product-families/form.tsx:98
-#: src/components/products/form.tsx:325
+#: src/components/products/form.tsx:338
 #: src/components/tax-rates/form.tsx:136
 #: src/components/units-of-measure/form.tsx:102
 #: src/components/vendors/form.tsx:136
@@ -4090,7 +4090,7 @@ msgstr "Nur aktive Länder erscheinen in der Länderauswahl bei Organisationen, 
 msgid "Open"
 msgstr "Offen"
 
-#: src/components/products/form.tsx:645
+#: src/components/products/form.tsx:658
 msgid "Open in Bill of Materials screen"
 msgstr "In der Stücklisten-Ansicht öffnen"
 
@@ -4124,7 +4124,7 @@ msgstr "Anfangssaldo"
 msgid "Opening balance"
 msgstr "Anfangssaldo"
 
-#: src/components/products/form.tsx:635
+#: src/components/products/form.tsx:648
 msgid "Opening the Bill of Materials screen closes this product and discards your unsaved changes."
 msgstr "Das Öffnen der Stücklistenansicht schließt dieses Produkt und verwirft deine nicht gespeicherten Änderungen."
 
@@ -4135,7 +4135,7 @@ msgstr "Das Öffnen der Stücklistenansicht schließt dieses Produkt und verwirf
 msgid "Optional"
 msgstr "Optional"
 
-#: src/components/products/form.tsx:397
+#: src/components/products/form.tsx:410
 msgid "Optional — filters this product out of purchasing pickers (if \"Finished good\") or sales pickers (if \"Component / intermediate\"). Leave unset if it's neither."
 msgstr "Optional — blendet dieses Produkt in Einkaufsauswahlen aus (bei „Fertigware“) oder in Verkaufsauswahlen (bei „Komponente / Zwischenprodukt“). Leer lassen, wenn keines von beidem zutrifft."
 
@@ -4143,7 +4143,7 @@ msgstr "Optional — blendet dieses Produkt in Einkaufsauswahlen aus (bei „Fer
 msgid "Optional — links the produced units to a shipment's reserved serial-number range."
 msgstr "Optional — verknüpft die produzierten Einheiten mit dem für eine Sendung reservierten Seriennummernbereich."
 
-#: src/components/products/form.tsx:487
+#: src/components/products/form.tsx:500
 msgid "Optional description or notes"
 msgstr "Optionale Beschreibung oder Notizen"
 
@@ -4260,8 +4260,8 @@ msgstr "Organisation erstellt"
 msgid "Organization creation failed"
 msgstr "Organisation-Erstellung fehlgeschlagen"
 
-#: src/components/products/form.tsx:685
-#: src/components/products/form.tsx:705
+#: src/components/products/form.tsx:698
+#: src/components/products/form.tsx:718
 msgid "Organization default"
 msgstr "Standard der Organisation"
 
@@ -4373,11 +4373,11 @@ msgstr "Übersteuerung"
 msgid "Override reason"
 msgstr "Begründung der Übersteuerung"
 
-#: src/components/products/form.tsx:696
+#: src/components/products/form.tsx:709
 msgid "Overrides the organization's default expense account on a vendor bill line."
 msgstr "Überschreibt das Standard-Aufwandskonto der Organisation für eine Position auf einer Lieferantenrechnung."
 
-#: src/components/products/form.tsx:677
+#: src/components/products/form.tsx:690
 msgid "Overrides the organization's default revenue account on a sales invoice line."
 msgstr "Überschreibt das Standard-Erlöskonto der Organisation für eine Position auf einer Ausgangsrechnung."
 
@@ -4693,7 +4693,7 @@ msgid "Preview"
 msgstr "Vorschau"
 
 #: src/components/invoices/pdf.tsx:285
-#: src/components/products/form.tsx:498
+#: src/components/products/form.tsx:511
 #: src/routes/invoices/details.tsx:887
 #: src/routes/products.tsx:340
 msgid "Price"
@@ -4703,7 +4703,7 @@ msgstr "Preis"
 msgid "Price (tax incl.)"
 msgstr "Preis (inkl. MwSt.)"
 
-#: src/components/products/form.tsx:499
+#: src/components/products/form.tsx:512
 msgid "Price is required"
 msgstr "Preis ist erforderlich"
 
@@ -4715,7 +4715,7 @@ msgstr "Preistoleranz (%)"
 msgid "Price variance"
 msgstr "Preisabweichung"
 
-#: src/components/products/form.tsx:493
+#: src/components/products/form.tsx:506
 msgid "Pricing"
 msgstr "Preisgestaltung"
 
@@ -4728,7 +4728,7 @@ msgid "Print the invoice total spelled out in words, in the document language."
 msgstr "Den Rechnungsbetrag in Worten drucken, in der Dokumentsprache."
 
 #: src/components/line-items/table.tsx:331
-#: src/components/products/form.tsx:384
+#: src/components/products/form.tsx:397
 #: src/components/stock/movement-form.tsx:138
 #: src/routes/accounting/reports/inventory-valuation.tsx:153
 #: src/routes/cash-book.tsx:1743
@@ -4744,7 +4744,7 @@ msgstr "Den Rechnungsbetrag in Worten drucken, in der Dokumentsprache."
 msgid "Product"
 msgstr "Produkt"
 
-#: src/components/products/form.tsx:367
+#: src/components/products/form.tsx:380
 msgid "Product code is required"
 msgstr "Produktcode ist erforderlich"
 
@@ -4803,7 +4803,7 @@ msgstr "Produktfamilie(n)"
 msgid "Product filter cleared — no longer matches the Stock levels filter above."
 msgstr "Produktfilter zurückgesetzt — entspricht nicht mehr dem obigen Lagerbestandsfilter."
 
-#: src/components/products/form.tsx:360
+#: src/components/products/form.tsx:373
 msgid "Product or service name"
 msgstr "Produkt- oder Dienstleistungsname"
 
@@ -5326,7 +5326,7 @@ msgstr "Umsatz"
 msgid "Revenue (selected period)"
 msgstr "Umsatz (gewählter Zeitraum)"
 
-#: src/components/products/form.tsx:675
+#: src/components/products/form.tsx:688
 msgid "Revenue account"
 msgstr "Erlöskonto"
 
@@ -5434,7 +5434,7 @@ msgstr "Umsatz nach Produkt"
 #: src/components/payment-terms/form.tsx:110
 #: src/components/product-families/form.tsx:112
 #: src/components/products/bom-editor-drawer.tsx:340
-#: src/components/products/form.tsx:339
+#: src/components/products/form.tsx:352
 #: src/components/stock/movement-form.tsx:126
 #: src/components/tax-rates/form.tsx:150
 #: src/components/units-of-measure/form.tsx:116
@@ -5542,7 +5542,7 @@ msgstr "Nur Such-/Referenzzweck — dient dem Auffinden dieses Kunden im Kassenb
 msgid "Select a country"
 msgstr "Land auswählen"
 
-#: src/components/products/form.tsx:590
+#: src/components/products/form.tsx:603
 msgid "Select a family"
 msgstr "Familie auswählen"
 
@@ -5572,7 +5572,7 @@ msgstr "Journal auswählen"
 msgid "Select a product"
 msgstr "Produkt auswählen"
 
-#: src/components/products/form.tsx:548
+#: src/components/products/form.tsx:561
 msgid "Select a unit of measure"
 msgstr "Maßeinheit auswählen"
 
@@ -5618,7 +5618,7 @@ msgstr "Produkt auswählen"
 msgid "Select serial numbers to ship"
 msgstr "Zu versendende Seriennummern auswählen"
 
-#: src/components/products/form.tsx:598
+#: src/components/products/form.tsx:611
 #: src/routes/invoices/details.tsx:942
 msgid "Select tax rate"
 msgstr "Steuersatz auswählen"
@@ -5665,7 +5665,7 @@ msgstr "Seriennummern"
 msgid "Serial numbers to remove"
 msgstr "Zu entfernende Seriennummern"
 
-#: src/components/products/form.tsx:381
+#: src/components/products/form.tsx:394
 #: src/routes/products.tsx:181
 #: src/routes/products.tsx:308
 msgid "Service"
@@ -5759,7 +5759,7 @@ msgstr "Numerischer Kontocode im SKR03/SKR04-Stil für die Spalte „Konto“ de
 msgid "SKU"
 msgstr "SKU"
 
-#: src/components/products/form.tsx:366
+#: src/components/products/form.tsx:379
 msgid "SKU / Product code"
 msgstr "SKU / Produktcode"
 
@@ -5826,8 +5826,8 @@ msgstr "Status"
 msgid "Status flow"
 msgstr "Statusablauf"
 
-#: src/components/products/form.tsx:572
-#: src/components/products/form.tsx:637
+#: src/components/products/form.tsx:585
+#: src/components/products/form.tsx:650
 msgid "Stay here"
 msgstr "Hier bleiben"
 
@@ -6055,7 +6055,7 @@ msgstr "Das Bankkonto der Organisation (Code 1020 im Standardkontenplan), vorbel
 msgid "The physical till the Cash Book screen's balance and daily movements report read — deliberately separate from \"Default cash account\" above, which this organization's chart of accounts uses as a payment default, not the register itself."
 msgstr "Die physische Kasse, die der Kontostand im Kassenbuch-Bildschirm und der Bericht über die täglichen Bewegungen auslesen — bewusst getrennt vom „Standard-Kassenkonto\" oben, das im Kontenplan dieser Organisation als Zahlungsstandard verwendet wird, nicht als die Kasse selbst."
 
-#: src/components/products/form.tsx:657
+#: src/components/products/form.tsx:670
 msgid "The recipe is unknown, so saving this product won't change it. Reopen the product to try again."
 msgstr "Das Rezept ist unbekannt, daher wird es beim Speichern dieses Produkts nicht geändert. Öffne das Produkt erneut, um es zu versuchen."
 
@@ -6298,11 +6298,11 @@ msgstr "Gesamtmenge"
 msgid "Total revenue"
 msgstr "Umsatz gesamt"
 
-#: src/components/products/form.tsx:423
+#: src/components/products/form.tsx:436
 msgid "Track inventory"
 msgstr "Bestand verfolgen"
 
-#: src/components/products/form.tsx:462
+#: src/components/products/form.tsx:475
 msgid "Track serial numbers"
 msgstr "Seriennummern erfassen"
 
@@ -6331,7 +6331,7 @@ msgstr "Tunesien"
 
 #: src/components/accounting/account-form.tsx:168
 #: src/components/accounting/journal-form.tsx:153
-#: src/components/products/form.tsx:374
+#: src/components/products/form.tsx:387
 #: src/components/stock/movement-form.tsx:151
 #: src/routes/accounting/chart-of-accounts.tsx:155
 #: src/routes/accounting/journals.tsx:119
@@ -6350,7 +6350,7 @@ msgstr "Seriennummer eingeben und Enter drücken"
 msgid "Type manually"
 msgstr "Manuell eingeben"
 
-#: src/components/products/form.tsx:404
+#: src/components/products/form.tsx:417
 #: src/routes/products.tsx:196
 msgid "Unclassified"
 msgstr "Nicht klassifiziert"
@@ -6714,7 +6714,7 @@ msgstr "Quellensteuersatz"
 #: src/components/payment-terms/form.tsx:95
 #: src/components/payments/payment-panel.tsx:437
 #: src/components/product-families/form.tsx:97
-#: src/components/products/form.tsx:324
+#: src/components/products/form.tsx:337
 #: src/components/tax-rates/form.tsx:135
 #: src/components/units-of-measure/form.tsx:101
 #: src/components/vendors/form.tsx:135
