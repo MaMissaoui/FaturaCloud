@@ -134,11 +134,15 @@ organizationAtom.debugLabel = "organizationAtom";
 // both derive from it rather than each hitting GetMyOrganizationRole
 // separately. Reuses organizationRefreshTokenAtom's bump so it refetches
 // whenever the organization itself does (e.g. after a membership change
-// elsewhere).
+// elsewhere). Also keyed on the signed-in user: organizationId survives a
+// logout (it's in localStorage), so without this the next user to log in
+// kept the previous user's cached role — and their menus — until they
+// re-selected the organization (issue #415).
 export const myOrgRoleAtom = atom(async (get) => {
   const organizationId = get(organizationIdAtom);
   get(organizationRefreshTokenAtom);
-  if (!organizationId) return "";
+  const currentUser = get(currentUserAtom);
+  if (!organizationId || !currentUser) return "";
 
   try {
     const { role } = await GetMyOrganizationRole(organizationId);
