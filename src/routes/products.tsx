@@ -67,6 +67,11 @@ const Products = () => {
   const setTaxRates = useSetAtom(setTaxRatesAtom);
 
   const productFamilies = useAtomValue(productFamiliesAtom);
+  // id → name, built once per family list rather than a find() per row.
+  const familyNameById = useMemo(
+    () => new Map(productFamilies.map((f) => [f.id, f.name])),
+    [productFamilies],
+  );
   const setProductFamilies = useSetAtom(setProductFamiliesAtom);
 
   const [products, setPageProducts] = useState<Product[]>([]);
@@ -329,11 +334,7 @@ const Products = () => {
             <Table.Column
               title={<Trans>Family</Trans>}
               key="family"
-              render={(p: Product) => {
-                if (!p.familyId) return "—";
-                const f = productFamilies.find((f) => f.id === p.familyId);
-                return f ? f.name : "—";
-              }}
+              render={(p: Product) => (p.familyId && familyNameById.get(p.familyId)) || "—"}
             />
             <Table.Column title={<Trans>SKU</Trans>} dataIndex="sku" key="sku" sorter />
             <Table.Column
