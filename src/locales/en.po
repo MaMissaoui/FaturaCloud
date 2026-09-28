@@ -2235,11 +2235,11 @@ msgstr "Failed to fetch order"
 msgid "Failed to fetch orders"
 msgstr "Failed to fetch orders"
 
-#: src/atoms/organization.ts:79
+#: src/atoms/organization.ts:80
 msgid "Failed to fetch organization"
 msgstr "Failed to fetch organization"
 
-#: src/atoms/organization.ts:30
+#: src/atoms/organization.ts:31
 msgid "Failed to fetch organizations"
 msgstr "Failed to fetch organizations"
 
@@ -4246,12 +4246,12 @@ msgstr "Ordered"
 msgid "Orders"
 msgstr "Orders"
 
-#: src/atoms/organization.ts:112
+#: src/atoms/organization.ts:113
 #: src/routes/organizations/new.tsx:68
 msgid "Organization created"
 msgstr "Organization created"
 
-#: src/atoms/organization.ts:123
+#: src/atoms/organization.ts:124
 #: src/routes/organizations/new.tsx:73
 msgid "Organization creation failed"
 msgstr "Organization creation failed"
@@ -4269,11 +4269,11 @@ msgstr "Organization deleted"
 msgid "Organization deletion failed"
 msgstr "Organization deletion failed"
 
-#: src/atoms/organization.ts:125
+#: src/atoms/organization.ts:126
 msgid "Organization update failed"
 msgstr "Organization update failed"
 
-#: src/atoms/organization.ts:116
+#: src/atoms/organization.ts:117
 msgid "Organization updated successfully"
 msgstr "Organization updated successfully"
 
