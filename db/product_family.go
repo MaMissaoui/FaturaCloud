@@ -13,7 +13,8 @@ import (
 // deliberately NOT products.category, which only ever holds the
 // finished/component classification the BOM/production and the sales/
 // purchasing pickers depend on. Same shape as UnitOfMeasure without a
-// default: unique name per organization, and deleting one is unconditional
+// default: unique name per organization (case-insensitive, migration 0096 +
+// checkProductFamilyNameFree), and deleting one is unconditional
 // because products.familyId is ON DELETE SET NULL.
 type ProductFamily struct {
 	ID             string `db:"id"             json:"id"`
@@ -58,6 +59,9 @@ func (d *Database) CreateProductFamily(req CreateProductFamilyRequest) (*Product
 	if req.Name == "" {
 		return nil, newValidationError("name is required")
 	}
+	if err := d.checkProductFamilyNameFree(req.OrganizationID, req.Name, ""); err != nil {
+		return nil, err
+	}
 	if _, err := d.DB.Exec(
 		`INSERT INTO product_families (id, organizationId, name) VALUES (?, ?, ?)`,
 		req.ID, req.OrganizationID, req.Name,
@@ -77,6 +81,13 @@ func (d *Database) UpdateProductFamily(id string, updates UpdateProductFamilyReq
 			return nil, newValidationError("name is required")
 		}
 		updates.Name = &trimmed
+		current, err := d.GetProductFamily(id)
+		if err != nil {
+			return nil, newValidationError("product family not found")
+		}
+		if err := d.checkProductFamilyNameFree(current.OrganizationID, trimmed, id); err != nil {
+			return nil, err
+		}
 	}
 	res, err := d.DB.Exec(`UPDATE product_families SET name = COALESCE(?, name) WHERE id = ?`, updates.Name, id)
 	if err != nil {
@@ -100,6 +111,30 @@ func (d *Database) DeleteProductFamily(id string) (bool, error) {
 	}
 	n, _ := res.RowsAffected()
 	return n > 0, nil
+}
+
+// checkProductFamilyNameFree rejects a name another family of the
+// organization already has, ignoring case with Unicode folding — the
+// migration 0096 NOCASE index only folds ASCII, so on its own it would let
+// "Électroménager" and "électroménager" coexist. excludeID is the family
+// being renamed (renaming "four" to "Four" is fine).
+func (d *Database) checkProductFamilyNameFree(organizationID, name, excludeID string) error {
+	families, err := d.GetProductFamilies(organizationID)
+	if err != nil {
+		return err
+	}
+	for _, f := range families {
+		if f.ID != excludeID && strings.EqualFold(f.Name, name) {
+			return newValidationError("a product family named %q already exists", f.Name)
+		}
+	}
+	return nil
+}
+
+// productFamilyNameKey is the case-insensitive key the products Excel import
+// matches a Family cell on, consistent with checkProductFamilyNameFree.
+func productFamilyNameKey(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
 }
 
 func isDuplicateProductFamilyName(err error) bool {

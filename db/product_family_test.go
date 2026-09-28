@@ -182,3 +182,48 @@ func TestMassDataProductsFamilyColumn(t *testing.T) {
 		t.Fatalf("blank Family cell didn't clear: %v", *p.FamilyID)
 	}
 }
+
+// Family names are unique per organization regardless of case, including
+// non-ASCII letters SQLite's NOCASE doesn't fold (migration 0096 +
+// checkProductFamilyNameFree), and the Excel import matches them the same way.
+func TestProductFamilyNamesAreCaseInsensitive(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgID, washers, fridges := newFamilyTestOrg(t, d, "org-family-case")
+	var verr *ValidationError
+
+	for _, name := range []string{"machine à laver", "RÉFRIGÉRATEUR", " réfrigérateur "} {
+		if _, err := d.CreateProductFamily(CreateProductFamilyRequest{OrganizationID: orgID, Name: name}); !errors.As(err, &verr) {
+			t.Fatalf("CreateProductFamily(%q) err = %v, want a duplicate-name ValidationError", name, err)
+		}
+	}
+	// Another organization may reuse the name.
+	other, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-family-case-2", Name: ptr("Other")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateProductFamily(CreateProductFamilyRequest{OrganizationID: other.ID, Name: "réfrigérateur"}); err != nil {
+		t.Fatalf("CreateProductFamily in another org: %v", err)
+	}
+
+	// Renaming onto another family's name (any case) fails; changing only
+	// the case of a family's own name is fine.
+	if _, err := d.UpdateProductFamily(washers.ID, UpdateProductFamilyRequest{Name: ptr("réfrigérateur")}); !errors.As(err, &verr) {
+		t.Fatalf("rename onto another family err = %v, want ValidationError", err)
+	}
+	if f, err := d.UpdateProductFamily(fridges.ID, UpdateProductFamilyRequest{Name: ptr("RÉFRIGÉRATEUR")}); err != nil || f.Name != "RÉFRIGÉRATEUR" {
+		t.Fatalf("case-only rename = %+v, %v", f, err)
+	}
+
+	headers := productsMassDataSpec{}.Headers()
+	r := make([]string, len(headers))
+	r[1], r[3], r[4], r[productsColFamily] = "Washer", "SKU-W", "product", "  MACHINE À LAVER "
+	res, err := d.ImportProductsXLSX(orgID, buildTestXLSX(t, headers, [][]string{r}))
+	if err != nil || res.Created != 1 {
+		t.Fatalf("ImportProductsXLSX = %+v, %v; want 1 created", res, err)
+	}
+	products, _, err := d.GetProducts(orgID, ProductListOptions{})
+	if err != nil || len(products) != 1 || products[0].FamilyID == nil || *products[0].FamilyID != washers.ID {
+		t.Fatalf("imported product family = %+v, %v", products, err)
+	}
+}

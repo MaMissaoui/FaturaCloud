@@ -138,7 +138,7 @@ func (productsMassDataSpec) NewImportContext(d *Database, organizationID string)
 		ctx.accountCodeToID[a.Code] = a.ID
 	}
 	for _, f := range families {
-		ctx.familyNameToID[f.Name] = f.ID
+		ctx.familyNameToID[productFamilyNameKey(f.Name)] = f.ID
 	}
 	return ctx, nil
 }
@@ -192,14 +192,20 @@ func (productsMassDataSpec) ImportRow(d *Database, organizationID string, ctxAny
 	if err != nil {
 		return "", identifier, err
 	}
-	// Family, by exact name like Tax Rate/Unit of Measure. familyID stays
-	// nil (keep the stored family) when the sheet has no Family column; a
-	// blank cell in a sheet that has one clears it.
+	// Family, by name ignoring case (family names are unique regardless of
+	// case — migration 0096), unlike Tax Rate/Unit of Measure's exact match.
+	// familyID stays nil (keep the stored family) when the sheet has no
+	// Family column; a blank cell in a sheet that has one clears it.
 	var familyID *string
 	if ctx.presentColumns > productsColFamily {
-		resolved, err := resolveByLookup(ctx.familyNameToID, cells[productsColFamily], "product family")
-		if err != nil {
-			return "", identifier, err
+		familyCell := strings.TrimSpace(cells[productsColFamily])
+		var resolved *string
+		if familyCell != "" {
+			id, ok := ctx.familyNameToID[productFamilyNameKey(familyCell)]
+			if !ok {
+				return "", identifier, newValidationError("product family %q not found", familyCell)
+			}
+			resolved = &id
 		}
 		cleared := ""
 		familyID = &cleared
