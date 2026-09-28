@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.58.1] - 2026-09-28
+
+### Fixed
+- Signing out and in as a different user now shows that user's own menus
+  straight away, instead of the previous user's until the organization was
+  selected again (#415). After signing out, the next sign-in starts on the
+  user's first organization.
+- A user who isn't a member of any organization yet is no longer stuck on
+  the New Organization screen: it explains that an administrator needs to
+  add them (or that they can create their own) and offers Sign out (#414).
+
 ## [3.58.0] - 2026-09-27
 
 ### Added
