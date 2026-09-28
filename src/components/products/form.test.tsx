@@ -35,6 +35,10 @@ vi.mock("src/api", () => ({
   CreateUnitOfMeasure: vi.fn(),
   UpdateUnitOfMeasure: vi.fn(),
   DeleteUnitOfMeasure: vi.fn(),
+  GetProductFamilies: vi.fn(),
+  CreateProductFamily: vi.fn(),
+  UpdateProductFamily: vi.fn(),
+  DeleteProductFamily: vi.fn(),
   GetProductBOM: vi.fn(),
   ReplaceProductBOM: vi.fn(),
   GetOrganizations: vi.fn(),
@@ -50,6 +54,7 @@ import {
   GetProductBOM,
   GetProducts,
   GetTaxRates,
+  GetProductFamilies,
   GetUnitsOfMeasure,
   ReplaceProductBOM,
   UpdateProduct,
@@ -118,6 +123,7 @@ describe("ProductForm bill of materials safety (F111 / F117)", () => {
     vi.mocked(GetTaxRates).mockResolvedValue([]);
     vi.mocked(GetAccounts).mockResolvedValue([]);
     vi.mocked(GetUnitsOfMeasure).mockResolvedValue([]);
+    vi.mocked(GetProductFamilies).mockResolvedValue([]);
     vi.mocked(UpdateProduct).mockResolvedValue(finishedProduct);
     vi.mocked(ReplaceProductBOM).mockResolvedValue(undefined as never);
   });
