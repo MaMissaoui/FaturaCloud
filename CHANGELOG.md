@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.58.2] - 2026-09-28
+
+### Fixed
+- Product families: names are unique regardless of case ("Four" and "four",
+  or "Réfrigérateur" and "RÉFRIGÉRATEUR", are the same family), and the
+  products Excel file's Family column matches names ignoring case (#418).
+- Products: a new product's proposed code waits until the product list has
+  loaded, so it continues the right series instead of suggesting a code
+  that's already taken (#422).
+- Signing out: a slow sign-out can no longer clear the session of a user who
+  signs in right after (#419), and an expired session also forgets the
+  selected organization, so the next user doesn't start on one they may not
+  belong to (#421).
+
 ## [3.58.1] - 2026-09-28
 
 ### Fixed
