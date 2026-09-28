@@ -86,7 +86,8 @@ import {
   myOrgRoleAtom,
 } from "src/atoms/organization";
 import { currentUserAtom, isPlatformAdminAtom } from "src/atoms/auth";
-import { GetVersion, Logout } from "src/api";
+import { GetVersion } from "src/api";
+import { logoutAtom } from "src/atoms/session";
 import { filterMenuForRole, isRouteAllowedForRole, roleHomePath } from "src/layouts/role-menu";
 import FeedbackModal from "src/components/feedback-modal";
 import Wordmark from "src/components/wordmark";
@@ -183,9 +184,12 @@ export default function BaseLayout() {
     }
   }, [orgRole, location.pathname, navigate]);
 
+  const logout = useSetAtom(logoutAtom);
   const handleLogout = () => {
-    Logout();
+    // Leave the layout first so clearing the user doesn't re-run its
+    // organization checks mid-logout.
     navigate("/login");
+    logout();
   };
 
   // If no organizationId is set, redirect to index page

@@ -1,5 +1,5 @@
-import { Form, Input, InputNumber, Select, Typography, Row, Col, Button, Card } from "antd";
-import { CloseOutlined } from "@ant-design/icons";
+import { Alert, Form, Input, InputNumber, Select, Typography, Row, Col, Button, Card } from "antd";
+import { CloseOutlined, LogoutOutlined } from "@ant-design/icons";
 import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
@@ -16,6 +16,7 @@ import {
   setOrganizationsAtom,
   isCashbookAtom,
 } from "src/atoms/organization";
+import { logoutAtom } from "src/atoms/session";
 import { CreateOrganization } from "src/api";
 import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
@@ -79,6 +80,16 @@ const NewOrganization = () => {
     navigate("/");
   };
 
+  // A user who isn't a member of any organization yet lands here with no
+  // Cancel (there's nowhere to go back to) and no layout header — logging
+  // out is the way off this screen (issue #414).
+  const logout = useSetAtom(logoutAtom);
+  const hasOrganizations = organizations.length > 0;
+  const handleLogout = () => {
+    navigate("/login");
+    logout();
+  };
+
   return (
     <>
       <Row style={{ marginTop: 100 }} justify="center">
@@ -90,6 +101,20 @@ const NewOrganization = () => {
             <Title level={3} style={{ margin: 0 }}>
               <Trans>New Organization</Trans>
             </Title>
+            {!hasOrganizations && (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginTop: 16 }}
+                message={<Trans>You are not a member of any organization yet</Trans>}
+                description={
+                  <Trans>
+                    Ask an administrator to add you to their organization, then sign in again. Or
+                    create your own organization below.
+                  </Trans>
+                }
+              />
+            )}
             <Form
               form={form}
               layout="vertical"
@@ -145,7 +170,7 @@ const NewOrganization = () => {
                 <Button type="primary" htmlType="submit" disabled={submitting}>
                   <Trans>Create Organization</Trans>
                 </Button>
-                {organizations.length > 0 && (
+                {hasOrganizations ? (
                   <Button
                     type="default"
                     onClick={handleCancel}
@@ -153,6 +178,15 @@ const NewOrganization = () => {
                     icon={<CloseOutlined />}
                   >
                     <Trans>Cancel</Trans>
+                  </Button>
+                ) : (
+                  <Button
+                    type="default"
+                    onClick={handleLogout}
+                    disabled={submitting}
+                    icon={<LogoutOutlined />}
+                  >
+                    <Trans>Sign out</Trans>
                   </Button>
                 )}
               </div>
