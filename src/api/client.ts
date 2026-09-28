@@ -8,6 +8,9 @@ const BASE = "/api";
 // CORS preflight this server never grants, which is what blocks CSRF.
 export const CSRF_HEADER = "X-CSRF-Protection";
 
+// organizationIdAtom's localStorage key (src/atoms/organization.ts).
+export const ORGANIZATION_ID_STORAGE_KEY = "organizationId";
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { [CSRF_HEADER]: "1" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -21,6 +24,16 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   if (res.status === 401) {
     if (window.location.pathname !== "/login") {
+      // The session is gone (expired or revoked), and whoever signs in next
+      // may be a different user. Forget the remembered organization, as
+      // logoutAtom (src/atoms/session.ts) does, so they don't start by
+      // fetching one they may not belong to. The full-page navigation below
+      // reloads every atom, so localStorage is the only state left to clear.
+      try {
+        localStorage.removeItem(ORGANIZATION_ID_STORAGE_KEY);
+      } catch {
+        // storage unavailable (private mode, blocked site data) — nothing to clear
+      }
       window.location.href = "/login";
     }
     throw new Error("Session expired");

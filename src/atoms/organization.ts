@@ -15,6 +15,7 @@ import {
 
 import { generateInvoiceNumber } from "src/utils/invoice";
 import { currentUserAtom } from "src/atoms/auth";
+import { ORGANIZATION_ID_STORAGE_KEY } from "src/api/client";
 
 // Organizations
 export const organizationsAtom = atom<Organization[]>([]);
@@ -35,7 +36,7 @@ export const setOrganizationsAtom = atom(null, async (_get, set) => {
 
 // Organization
 export const organizationIdAtom = atomWithStorage<string | null>(
-  "organizationId",
+  ORGANIZATION_ID_STORAGE_KEY,
   null,
   undefined,
   {
