@@ -262,7 +262,7 @@ msgstr "Ajustement — définir le compte à"
 msgid "Admin"
 msgstr "Administrateur"
 
-#: src/routes/products.tsx:186
+#: src/routes/products.tsx:191
 msgid "All categories"
 msgstr "Toutes les catégories"
 
@@ -276,7 +276,7 @@ msgstr "Tous les clients"
 msgid "All customers"
 msgstr "Tous les clients"
 
-#: src/routes/products.tsx:201
+#: src/routes/products.tsx:206
 msgid "All families"
 msgstr "Toutes les familles"
 
@@ -305,7 +305,7 @@ msgstr "Tous les états"
 msgid "All statuses"
 msgstr "Tous les statuts"
 
-#: src/routes/products.tsx:172
+#: src/routes/products.tsx:177
 msgid "All types"
 msgstr "Tous les types"
 
@@ -796,7 +796,7 @@ msgstr "Vente au comptant sélectionnée — le montant total est encaissé main
 
 #: src/components/products/form.tsx:408
 #: src/routes/inventory.tsx:404
-#: src/routes/products.tsx:314
+#: src/routes/products.tsx:319
 #: src/routes/reporting/tax-summary.tsx:76
 msgid "Category"
 msgstr "Catégorie"
@@ -976,12 +976,12 @@ msgstr "Terminé"
 #: src/routes/inventory.tsx:477
 #: src/routes/production-orders/details.tsx:314
 #: src/routes/production-orders/details.tsx:601
-#: src/routes/products.tsx:324
+#: src/routes/products.tsx:329
 msgid "Component"
 msgstr "Composant"
 
 #: src/components/products/form.tsx:422
-#: src/routes/products.tsx:195
+#: src/routes/products.tsx:200
 msgid "Component / intermediate"
 msgstr "Composant / intermédiaire"
 
@@ -1040,7 +1040,7 @@ msgstr "Copier"
 msgid "Copy product"
 msgstr "Copier le produit"
 
-#: src/routes/products.tsx:350
+#: src/routes/products.tsx:351
 msgid "Cost"
 msgstr "Coût"
 
@@ -1220,7 +1220,7 @@ msgstr "Créez votre premier journal"
 msgid "Create your first order"
 msgstr "Créez votre première commande"
 
-#: src/routes/products.tsx:263
+#: src/routes/products.tsx:268
 msgid "Create your first product"
 msgstr "Créez votre premier produit"
 
@@ -2345,7 +2345,7 @@ msgstr "Échec du chargement de l'orientation de la page"
 msgid "Failed to load payment history"
 msgstr "Échec du chargement de l'historique des paiements"
 
-#: src/routes/products.tsx:121
+#: src/routes/products.tsx:126
 msgid "Failed to load products"
 msgstr "Impossible de charger les produits"
 
@@ -2484,7 +2484,7 @@ msgid "Failed to void payment"
 msgstr "Échec de l'annulation du paiement"
 
 #: src/components/products/form.tsx:599
-#: src/routes/products.tsx:330
+#: src/routes/products.tsx:335
 msgid "Family"
 msgstr "Famille"
 
@@ -2543,8 +2543,8 @@ msgstr "Filtré par type de produit, défini ci-dessus"
 #: src/routes/inventory.tsx:351
 #: src/routes/inventory.tsx:410
 #: src/routes/inventory.tsx:475
-#: src/routes/products.tsx:194
-#: src/routes/products.tsx:320
+#: src/routes/products.tsx:199
+#: src/routes/products.tsx:325
 msgid "Finished good"
 msgstr "Produit fini"
 
@@ -3465,7 +3465,7 @@ msgstr "Mouvements du {0}"
 #: src/routes/clients.tsx:117
 #: src/routes/organizations/new.tsx:127
 #: src/routes/organizations/new.tsx:130
-#: src/routes/products.tsx:283
+#: src/routes/products.tsx:288
 #: src/routes/settings/countries.tsx:103
 #: src/routes/settings/payment-terms.tsx:96
 #: src/routes/settings/product-families.tsx:92
@@ -3596,7 +3596,7 @@ msgid "New period"
 msgstr "Nouvelle période"
 
 #: src/components/products/form.tsx:325
-#: src/routes/products.tsx:235
+#: src/routes/products.tsx:240
 msgid "New product"
 msgstr "Nouveau produit"
 
@@ -3745,7 +3745,7 @@ msgstr "Aucune livraison pour le moment"
 msgid "No families match your search"
 msgstr "Aucune famille ne correspond à votre recherche"
 
-#: src/routes/products.tsx:210
+#: src/routes/products.tsx:215
 msgid "No family"
 msgstr "Sans famille"
 
@@ -3891,11 +3891,11 @@ msgid "No products are tracking stock yet"
 msgstr "Aucun produit ne suit encore le stock"
 
 #: src/routes/inventory.tsx:383
-#: src/routes/products.tsx:258
+#: src/routes/products.tsx:263
 msgid "No products match your filters"
 msgstr "Aucun produit ne correspond à vos filtres"
 
-#: src/routes/products.tsx:260
+#: src/routes/products.tsx:265
 msgid "No products yet"
 msgstr "Aucun produit pour le moment"
 
@@ -4695,7 +4695,7 @@ msgstr "Aperçu"
 #: src/components/invoices/pdf.tsx:285
 #: src/components/products/form.tsx:511
 #: src/routes/invoices/details.tsx:887
-#: src/routes/products.tsx:340
+#: src/routes/products.tsx:341
 msgid "Price"
 msgstr "Prix"
 
@@ -4738,8 +4738,8 @@ msgstr "Imprimer le total de la facture en toutes lettres, dans la langue des do
 #: src/routes/inventory.tsx:386
 #: src/routes/inventory.tsx:570
 #: src/routes/invoices/details.tsx:803
-#: src/routes/products.tsx:180
-#: src/routes/products.tsx:304
+#: src/routes/products.tsx:185
+#: src/routes/products.tsx:309
 #: src/routes/reporting/sales-by-product.tsx:155
 msgid "Product"
 msgstr "Produit"
@@ -4856,7 +4856,7 @@ msgid "Production Orders"
 msgstr "Ordres de fabrication"
 
 #: src/layouts/base.tsx:643
-#: src/routes/products.tsx:167
+#: src/routes/products.tsx:172
 msgid "Products"
 msgstr "Produits"
 
@@ -5491,7 +5491,7 @@ msgstr "Planification enregistrée"
 #: src/routes/orders.tsx:86
 #: src/routes/organizations/index.tsx:486
 #: src/routes/production-orders.tsx:72
-#: src/routes/products.tsx:216
+#: src/routes/products.tsx:221
 #: src/routes/purchase-orders.tsx:82
 #: src/routes/settings/countries.tsx:68
 #: src/routes/settings/payment-terms.tsx:50
@@ -5666,8 +5666,8 @@ msgid "Serial numbers to remove"
 msgstr "Numéros de série à retirer"
 
 #: src/components/products/form.tsx:394
-#: src/routes/products.tsx:181
-#: src/routes/products.tsx:308
+#: src/routes/products.tsx:186
+#: src/routes/products.tsx:313
 msgid "Service"
 msgstr "Service"
 
@@ -5755,7 +5755,7 @@ msgstr "Code de compte numérique de style SKR03/SKR04 pour la colonne « Konto 
 #: src/routes/accounting/reports/inventory-valuation.tsx:166
 #: src/routes/bill-of-materials.tsx:165
 #: src/routes/inventory.tsx:398
-#: src/routes/products.tsx:338
+#: src/routes/products.tsx:339
 msgid "SKU"
 msgstr "SKU"
 
@@ -5835,7 +5835,7 @@ msgstr "Rester ici"
 msgid "Stay on this page"
 msgstr "Rester sur cette page"
 
-#: src/routes/products.tsx:371
+#: src/routes/products.tsx:372
 msgid "Stock"
 msgstr "Stock"
 
@@ -5960,7 +5960,7 @@ msgid "Tax number"
 msgstr "Numéro fiscal"
 
 #: src/components/tax-rates/form.tsx:167
-#: src/routes/products.tsx:360
+#: src/routes/products.tsx:361
 msgid "Tax rate"
 msgstr "Taux de taxe"
 
@@ -6337,7 +6337,7 @@ msgstr "Tunisie"
 #: src/routes/accounting/journals.tsx:119
 #: src/routes/cash-book.tsx:1592
 #: src/routes/inventory.tsx:587
-#: src/routes/products.tsx:297
+#: src/routes/products.tsx:302
 msgid "Type"
 msgstr "Type"
 
@@ -6351,7 +6351,7 @@ msgid "Type manually"
 msgstr "Saisie manuelle"
 
 #: src/components/products/form.tsx:417
-#: src/routes/products.tsx:196
+#: src/routes/products.tsx:201
 msgid "Unclassified"
 msgstr "Non classé"
 
@@ -6404,7 +6404,7 @@ msgstr "PU HT"
 msgid "unit(s) of measure"
 msgstr "unité(s) de mesure"
 
-#: src/routes/products.tsx:381
+#: src/routes/products.tsx:382
 msgid "units"
 msgstr "unités"
 
