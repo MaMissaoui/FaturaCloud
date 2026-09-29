@@ -37,6 +37,15 @@ func (h *handler) getPaymentApplications(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, applications)
 }
 
+func (h *handler) getPaymentInvoiceLines(w http.ResponseWriter, r *http.Request) {
+	details, err := h.db.GetPaymentInvoiceLines(r.PathValue("id"))
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, details)
+}
+
 func (h *handler) createPayment(w http.ResponseWriter, r *http.Request) {
 	var req db.CreatePaymentRequest
 	if err := decodeJSON(w, r, &req); err != nil {

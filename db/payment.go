@@ -40,13 +40,17 @@ type Payment struct {
 	// number(s) a collection belongs to. Filled by GetPayments only; empty
 	// for a vendor payment and on every other read path.
 	InvoiceNumbers []string `db:"-" json:"invoiceNumbers"`
-	// Products names what a Cash Book line payment paid for: the product
-	// (or, for a free-text line, its description) of each invoice line its
-	// applications target (payment_applications.invoiceLineItemId), in
-	// application order. An application covering a whole invoice — a cash
-	// sale's upfront amount, a payment from the invoice page — names no
-	// line and adds nothing. Filled by GetPayments only.
+	// Products names what the payment paid for: the product (or, for a
+	// free-text line, its description) of each invoice line a Cash Book line
+	// payment targets (payment_applications.invoiceLineItemId), and for an
+	// application covering a whole invoice — a cash sale's upfront amount, a
+	// payment from the invoice page — every line of that invoice, in invoice
+	// order. Application order, each name once. Filled by GetPayments only;
+	// GET /api/payments/{id}/invoice-lines has the quantities and amounts.
 	Products []string `db:"-" json:"products"`
+	// WholeInvoice is true when any of the payment's applications covers an
+	// invoice as a whole rather than named lines. Filled by GetPayments only.
+	WholeInvoice bool `db:"-" json:"wholeInvoice"`
 }
 
 // PaymentApplication mirrors the payment_applications table.
@@ -154,29 +158,72 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 
 	var applied []struct {
 		PaymentID     string  `db:"paymentId"`
+		InvoiceID     string  `db:"invoiceId"`
 		InvoiceNumber string  `db:"invoiceNumber"`
-		Product       *string `db:"product"`
+		LineItemID    *string `db:"invoiceLineItemId"`
 	}
 	if err := d.DB.Select(&applied, `
-		SELECT pa.paymentId, COALESCE(i.number, '') AS invoiceNumber,
-		       CASE WHEN li.id IS NOT NULL THEN COALESCE(pr.name, li.description, '') END AS product
+		SELECT pa.paymentId, pa.documentId AS invoiceId, COALESCE(i.number, '') AS invoiceNumber, pa.invoiceLineItemId
 		FROM payment_applications pa
 		JOIN payments p ON p.id = pa.paymentId
 		JOIN invoices i ON i.id = pa.documentId
-		LEFT JOIN invoiceLineItems li ON li.id = pa.invoiceLineItemId
-		LEFT JOIN products pr ON pr.id = li.productId
 		WHERE pa.documentType = 'invoice' AND p.organizationId = ?
 		ORDER BY pa.createdAt ASC, pa.rowid ASC`,
 		organizationID,
 	); err != nil {
 		return nil, fmt.Errorf("get_payments invoice_numbers: %w", err)
 	}
+	// Every paid-into invoice line's product name, in invoice order, so a
+	// whole-invoice application can name its invoice's products and a line
+	// application its own.
+	var lineNames []struct {
+		ID        string `db:"id"`
+		InvoiceID string `db:"invoiceId"`
+		Product   string `db:"product"`
+	}
+	if err := d.DB.Select(&lineNames, `
+		SELECT li.id, li.invoiceId, COALESCE(pr.name, li.description, '') AS product
+		FROM invoiceLineItems li
+		LEFT JOIN products pr ON pr.id = li.productId
+		WHERE li.invoiceId IN (
+			SELECT pa.documentId FROM payment_applications pa
+			JOIN payments p ON p.id = pa.paymentId
+			WHERE pa.documentType = 'invoice' AND p.organizationId = ?
+		)
+		ORDER BY li.invoiceId, li.position, li.rowid`,
+		organizationID,
+	); err != nil {
+		return nil, fmt.Errorf("get_payments products: %w", err)
+	}
+	lineName := map[string]string{}
+	invoiceNames := map[string][]string{}
+	for _, l := range lineNames {
+		lineName[l.ID] = l.Product
+		invoiceNames[l.InvoiceID] = append(invoiceNames[l.InvoiceID], l.Product)
+	}
 	numbers := map[string][]string{}
 	products := map[string][]string{}
+	whole := map[string]bool{}
+	seen := map[string]map[string]bool{}
+	addProduct := func(paymentID, name string) {
+		if name == "" || seen[paymentID][name] {
+			return
+		}
+		if seen[paymentID] == nil {
+			seen[paymentID] = map[string]bool{}
+		}
+		seen[paymentID][name] = true
+		products[paymentID] = append(products[paymentID], name)
+	}
 	for _, a := range applied {
 		numbers[a.PaymentID] = append(numbers[a.PaymentID], a.InvoiceNumber)
-		if a.Product != nil && *a.Product != "" {
-			products[a.PaymentID] = append(products[a.PaymentID], *a.Product)
+		if a.LineItemID != nil {
+			addProduct(a.PaymentID, lineName[*a.LineItemID])
+			continue
+		}
+		whole[a.PaymentID] = true
+		for _, name := range invoiceNames[a.InvoiceID] {
+			addProduct(a.PaymentID, name)
 		}
 	}
 	for i := range payments {
@@ -188,6 +235,7 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 		if payments[i].Products == nil {
 			payments[i].Products = []string{}
 		}
+		payments[i].WholeInvoice = whole[payments[i].ID]
 	}
 	return payments, nil
 }

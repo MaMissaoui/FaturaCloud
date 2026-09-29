@@ -680,10 +680,37 @@ export interface Payment {
   // Numbers of the sales invoices this payment was applied to (the loan
   // number(s) on the Cash Book). Filled by the org payments list only.
   invoiceNumbers?: string[];
-  // What a Cash Book line payment paid for: the product (or free-text line
-  // description) of each invoice line it settled. Empty for a payment
-  // covering a whole invoice. Filled by the org payments list only.
+  // What the payment paid for: the product (or free-text line description)
+  // of each invoice line a Cash Book line payment settled, and every product
+  // of an invoice it was applied to as a whole — see wholeInvoice. Filled by
+  // the org payments list only.
   products?: string[];
+  // True when any of its applications covers an invoice as a whole (a cash
+  // sale's upfront amount, a payment from the invoice page) rather than
+  // named lines. Filled by the org payments list only.
+  wholeInvoice?: boolean;
+}
+
+// GET /api/payments/{id}/invoice-lines — an invoice a payment was applied
+// to, with its lines (db/payment_invoice_lines.go). Amounts are cents; a
+// line's amount is its share of the invoice total, tax included, the same
+// figure the Cash Book's Loan status shows.
+export interface PaymentInvoiceLine {
+  lineId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  amount: number;
+  paidByThisPayment: number;
+}
+
+export interface PaymentInvoiceDetail {
+  invoiceId: string;
+  invoiceNumber: string;
+  invoiceTotal: number;
+  applied: number;
+  wholeInvoice: boolean;
+  lines: PaymentInvoiceLine[];
 }
 
 export interface PaymentApplication {

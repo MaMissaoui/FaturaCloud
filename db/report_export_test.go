@@ -264,9 +264,10 @@ func TestPaymentHistoryExportMirrorsCashBookCard(t *testing.T) {
 	if got, _ := f.GetCellValue(sheet, "C5"); got != sale.Invoice.Number || got == "" {
 		t.Errorf("C5 invoice = %q, want the sale's invoice number %q", got, sale.Invoice.Number)
 	}
-	// A cash sale's upfront amount covers the invoice as a whole.
-	if got, _ := f.GetCellValue(sheet, "D5"); got != "Whole invoice" {
-		t.Errorf("D5 product = %q, want Whole invoice", got)
+	// A cash sale's upfront amount covers the invoice as a whole, so the
+	// cell names that invoice's products.
+	if got, _ := f.GetCellValue(sheet, "D5"); got != "Widget" {
+		t.Errorf("D5 product = %q, want the invoice's product Widget", got)
 	}
 	if got, _ := f.GetCellValue(sheet, "E5"); got != "Cash" {
 		t.Errorf("E5 method = %q, want Cash", got)
