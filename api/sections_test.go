@@ -239,6 +239,7 @@ func TestSharedRoutesAreUnrestricted(t *testing.T) {
 		"POST /api/payments",
 		"GET /api/payments/{id}",
 		"GET /api/payments/{id}/applications",
+		"GET /api/payments/{id}/invoice-lines",
 		"POST /api/payments/{id}/void",
 		"GET /api/invoices/{id}/payments",
 		"GET /api/incoming-invoices/{id}/payments",

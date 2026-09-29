@@ -90,6 +90,9 @@ import {
   unitsToCents,
 } from "src/utils/currency";
 import { formatOrgCents } from "src/utils/currencies";
+import PaymentProductsCell, {
+  paymentProductsLabel,
+} from "src/components/payments/payment-products-cell";
 import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
 
 const { Option } = Select;
@@ -116,17 +119,6 @@ interface NewClientDraft {
 // db/cash_movement_details.go's CashMovementDetail doc comment for what
 // each one means and why it's computed from payment history, not the
 // invoice's current state.
-// The Payment history's Product cell: what a Cash Book line payment paid
-// for, "Whole invoice" for a payment applied to an invoice as a whole (a
-// cash sale's upfront amount, one recorded from the invoice page), and ""
-// for one with no invoice. Mirrors paymentProductsLabel in
-// db/report_export.go, which the exported report uses.
-const paymentProductsLabel = (p: Payment): string => {
-  if (p.products && p.products.length > 0) return p.products.join(", ");
-  if (p.invoiceNumbers && p.invoiceNumbers.length > 0) return t`Whole invoice`;
-  return "";
-};
-
 const movementKindLabel = (kind: CashMovementDetail["kind"]) => {
   switch (kind) {
     case "sale":
@@ -1899,7 +1891,7 @@ const CashBook = () => {
             title={<Trans>Product</Trans>}
             key="products"
             sorter={textSorter((p: Payment) => paymentProductsLabel(p))}
-            render={(p: Payment) => paymentProductsLabel(p) || "—"}
+            render={(p: Payment) => <PaymentProductsCell payment={p} money={money} />}
           />
           <Table.Column
             title={<Trans>Method</Trans>}

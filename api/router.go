@@ -695,6 +695,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	protected("POST", "/api/cash-movements", h.createCashMovement)
 	orgMemberProtected("GET", "/api/payments/{id}", paymentOrgID, h.getPayment)
 	orgMemberProtected("GET", "/api/payments/{id}/applications", paymentOrgID, h.getPaymentApplications)
+	// The Cash Book Payment history's product panel: the invoices a payment
+	// was applied to, with their lines. Membership-level like the rest of
+	// the payments reads (the cashbook role can't open Invoices).
+	orgMemberProtected("GET", "/api/payments/{id}/invoice-lines", paymentOrgID, h.getPaymentInvoiceLines)
 	// Voiding a payment reverses its posted GL entry, so it's an accounting
 	// action (F104) — role-gated the same tier as journal-entry reversal.
 	orgRoleProtected("POST", "/api/payments/{id}/void", paymentOrgID, []string{"accounting"}, h.voidPayment)

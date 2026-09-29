@@ -560,10 +560,12 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 }
 
 // paymentProductsLabel is the Product cell of a payment-history row: the
-// products its Cash Book line payments paid for, "Whole invoice" for a
-// payment applied to an invoice as a whole (a cash sale's upfront amount,
-// one recorded from the invoice page), and blank for one with no invoice.
-// The Cash Book screen shows the same three cases.
+// products the payment paid for — the lines a Cash Book line payment
+// settled, or every product of an invoice it was applied to as a whole (a
+// cash sale's upfront amount, one recorded from the invoice page) — see
+// Payment.Products. "Whole invoice" is left only for an invoice with no
+// lines to name, and a payment with no invoice is blank. The Cash Book
+// screen shows the same.
 func paymentProductsLabel(p Payment) string {
 	switch {
 	case len(p.Products) > 0:

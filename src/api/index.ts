@@ -45,6 +45,7 @@ import type {
   BalanceSheet,
   Payment,
   PaymentApplication,
+  PaymentInvoiceDetail,
   CreatePaymentRequest,
 } from "src/types/models";
 
@@ -1234,6 +1235,8 @@ export const GetPayments = (organizationId: string) =>
 export const GetPayment = (id: string) => get<Payment>(`/payments/${id}`);
 export const GetPaymentApplications = (id: string) =>
   get<PaymentApplication[]>(`/payments/${id}/applications`);
+export const GetPaymentInvoiceLines = (id: string) =>
+  get<PaymentInvoiceDetail[]>(`/payments/${id}/invoice-lines`);
 export const CreatePayment = (req: CreatePaymentRequest) => post<Payment>("/payments", req);
 export const VoidPayment = (id: string) => post<Payment>(`/payments/${id}/void`, {});
 export const GetInvoicePayments = (id: string) =>
