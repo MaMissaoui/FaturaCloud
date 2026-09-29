@@ -266,15 +266,9 @@ msgstr "Admin"
 msgid "All categories"
 msgstr "Alle Kategorien"
 
-<<<<<<< HEAD
 #: src/routes/deliveries.tsx:104
-#: src/routes/invoices/index.tsx:185
-#: src/routes/orders.tsx:101
-=======
-#: src/routes/deliveries.tsx:108
 #: src/routes/invoices/index.tsx:189
-#: src/routes/orders.tsx:105
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
+#: src/routes/orders.tsx:101
 msgid "All clients"
 msgstr "Alle Kunden"
 
@@ -806,13 +800,8 @@ msgstr "Barverkauf ausgewählt — der volle Betrag wird jetzt eingenommen."
 
 #: src/components/products/form.tsx:408
 #: src/routes/inventory.tsx:404
-<<<<<<< HEAD
 #: src/routes/products.tsx:327
-#: src/routes/reporting/tax-summary.tsx:76
-=======
-#: src/routes/products.tsx:319
 #: src/routes/reporting/tax-summary.tsx:62
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 msgid "Category"
 msgstr "Kategorie"
 
@@ -856,25 +845,14 @@ msgstr "CIN"
 msgid "City"
 msgstr "Stadt"
 
-<<<<<<< HEAD
-#: src/routes/accounting/reports/ar-aging.tsx:153
-#: src/routes/dashboard.tsx:350
-#: src/routes/dashboard.tsx:438
-#: src/routes/deliveries.tsx:174
-#: src/routes/deliveries/details.tsx:381
-#: src/routes/deliveries/details.tsx:387
-#: src/routes/invoices/index.tsx:242
-#: src/routes/orders.tsx:156
-=======
 #: src/routes/accounting/reports/ar-aging.tsx:143
 #: src/routes/dashboard.tsx:342
 #: src/routes/dashboard.tsx:430
-#: src/routes/deliveries.tsx:178
+#: src/routes/deliveries.tsx:174
 #: src/routes/deliveries/details.tsx:381
 #: src/routes/deliveries/details.tsx:387
 #: src/routes/invoices/index.tsx:246
-#: src/routes/orders.tsx:160
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
+#: src/routes/orders.tsx:156
 #: src/routes/orders/details.tsx:323
 #: src/routes/reporting/sales-by-client.tsx:137
 msgid "Client"
@@ -968,21 +946,12 @@ msgstr "Endsaldo"
 #: src/components/organizations/organizations-table.tsx:69
 #: src/components/vendors/form.tsx:180
 #: src/components/vendors/form.tsx:181
-<<<<<<< HEAD
 #: src/routes/accounting/chart-of-accounts.tsx:126
 #: src/routes/accounting/journals.tsx:90
-#: src/routes/accounting/reports/balance-sheet.tsx:52
-#: src/routes/accounting/reports/profit-and-loss.tsx:73
-#: src/routes/accounting/trial-balance.tsx:168
-#: src/routes/clients.tsx:125
-=======
-#: src/routes/accounting/chart-of-accounts.tsx:132
-#: src/routes/accounting/journals.tsx:97
 #: src/routes/accounting/reports/balance-sheet.tsx:43
 #: src/routes/accounting/reports/profit-and-loss.tsx:65
 #: src/routes/accounting/trial-balance.tsx:161
-#: src/routes/clients.tsx:131
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
+#: src/routes/clients.tsx:125
 #: src/routes/settings/countries.tsx:96
 #: src/routes/vendors.tsx:125
 msgid "Code"
@@ -1310,17 +1279,10 @@ msgid "Currency"
 msgstr "Währung"
 
 #: src/components/products/bom-editor-drawer.tsx:395
-<<<<<<< HEAD
 #: src/routes/accounting/fiscal-periods.tsx:285
-#: src/routes/accounting/reports/ap-aging.tsx:79
-#: src/routes/accounting/reports/ar-aging.tsx:79
-#: src/routes/dashboard.tsx:298
-=======
-#: src/routes/accounting/fiscal-periods.tsx:291
 #: src/routes/accounting/reports/ap-aging.tsx:69
 #: src/routes/accounting/reports/ar-aging.tsx:69
 #: src/routes/dashboard.tsx:290
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 msgid "Current"
 msgstr "Aktuell"
 
@@ -1428,15 +1390,9 @@ msgid "Date is required"
 msgstr "Datum ist erforderlich"
 
 #: src/components/document-filters.tsx:88
-<<<<<<< HEAD
 #: src/routes/accounting/fiscal-periods.tsx:331
 #: src/routes/accounting/fiscal-periods.tsx:357
-#: src/routes/accounting/reports/daily-cash-movements.tsx:146
-=======
-#: src/routes/accounting/fiscal-periods.tsx:337
-#: src/routes/accounting/fiscal-periods.tsx:363
 #: src/routes/accounting/reports/daily-cash-movements.tsx:134
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 msgid "Date range"
 msgstr "Zeitraum"
 
@@ -2100,13 +2056,8 @@ msgid "Entry #"
 msgstr "Beleg-Nr."
 
 #: src/components/accounting/account-form.tsx:21
-<<<<<<< HEAD
 #: src/routes/accounting/chart-of-accounts.tsx:37
-#: src/routes/accounting/reports/balance-sheet.tsx:159
-=======
-#: src/routes/accounting/chart-of-accounts.tsx:36
 #: src/routes/accounting/reports/balance-sheet.tsx:150
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 msgid "Equity"
 msgstr "Eigenkapital"
 
@@ -3519,25 +3470,14 @@ msgstr "Bewegungen für {0}"
 #: src/components/units-of-measure/form.tsx:125
 #: src/components/vendors/form.tsx:168
 #: src/components/vendors/form.tsx:172
-<<<<<<< HEAD
 #: src/routes/accounting/chart-of-accounts.tsx:134
 #: src/routes/accounting/fiscal-periods.tsx:184
 #: src/routes/accounting/fiscal-periods.tsx:253
 #: src/routes/accounting/fiscal-periods.tsx:324
 #: src/routes/accounting/fiscal-periods.tsx:350
 #: src/routes/accounting/journals.tsx:98
-#: src/routes/accounting/trial-balance.tsx:176
-#: src/routes/bill-of-materials.tsx:149
-=======
-#: src/routes/accounting/chart-of-accounts.tsx:140
-#: src/routes/accounting/fiscal-periods.tsx:190
-#: src/routes/accounting/fiscal-periods.tsx:259
-#: src/routes/accounting/fiscal-periods.tsx:330
-#: src/routes/accounting/fiscal-periods.tsx:356
-#: src/routes/accounting/journals.tsx:105
 #: src/routes/accounting/trial-balance.tsx:169
 #: src/routes/bill-of-materials.tsx:142
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 #: src/routes/cash-book.tsx:1934
 #: src/routes/clients.tsx:111
 #: src/routes/organizations/new.tsx:127
@@ -3547,17 +3487,10 @@ msgstr "Bewegungen für {0}"
 #: src/routes/settings/payment-terms.tsx:90
 #: src/routes/settings/product-families.tsx:86
 #: src/routes/settings/tax-rates.tsx:104
-<<<<<<< HEAD
 #: src/routes/settings/units-of-measure.tsx:101
-#: src/routes/settings/users.tsx:193
-#: src/routes/settings/users.tsx:311
-#: src/routes/vendors.tsx:111
-=======
-#: src/routes/settings/units-of-measure.tsx:107
 #: src/routes/settings/users.tsx:200
 #: src/routes/settings/users.tsx:318
-#: src/routes/vendors.tsx:117
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
+#: src/routes/vendors.tsx:111
 msgid "Name"
 msgstr "Name"
 
@@ -4827,15 +4760,9 @@ msgstr "Den Rechnungsbetrag in Worten drucken, in der Dokumentsprache."
 #: src/routes/inventory.tsx:386
 #: src/routes/inventory.tsx:570
 #: src/routes/invoices/details.tsx:803
-<<<<<<< HEAD
 #: src/routes/products.tsx:193
 #: src/routes/products.tsx:317
-#: src/routes/reporting/sales-by-product.tsx:155
-=======
-#: src/routes/products.tsx:185
-#: src/routes/products.tsx:309
 #: src/routes/reporting/sales-by-product.tsx:141
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 msgid "Product"
 msgstr "Produkt"
 
@@ -5404,20 +5331,7 @@ msgid "Retry"
 msgstr "Erneut versuchen"
 
 #: src/components/accounting/account-form.tsx:23
-<<<<<<< HEAD
 #: src/routes/accounting/chart-of-accounts.tsx:39
-#: src/routes/accounting/reports/profit-and-loss.tsx:117
-#: src/routes/dashboard.tsx:273
-#: src/routes/dashboard.tsx:440
-#: src/routes/dashboard.tsx:472
-#: src/routes/reporting/revenue-trend.tsx:150
-#: src/routes/reporting/revenue-trend.tsx:168
-#: src/routes/reporting/sales-by-client.tsx:135
-#: src/routes/reporting/sales-by-client.tsx:161
-#: src/routes/reporting/sales-by-product.tsx:139
-#: src/routes/reporting/sales-by-product.tsx:165
-=======
-#: src/routes/accounting/chart-of-accounts.tsx:38
 #: src/routes/accounting/reports/profit-and-loss.tsx:109
 #: src/routes/dashboard.tsx:265
 #: src/routes/dashboard.tsx:432
@@ -5428,7 +5342,6 @@ msgstr "Erneut versuchen"
 #: src/routes/reporting/sales-by-client.tsx:147
 #: src/routes/reporting/sales-by-product.tsx:125
 #: src/routes/reporting/sales-by-product.tsx:151
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 msgid "Revenue"
 msgstr "Umsatz"
 
@@ -5607,15 +5520,9 @@ msgstr "Zeitplan gespeichert"
 #: src/routes/settings/payment-terms.tsx:44
 #: src/routes/settings/product-families.tsx:37
 #: src/routes/settings/tax-rates.tsx:52
-<<<<<<< HEAD
 #: src/routes/settings/units-of-measure.tsx:42
-#: src/routes/settings/users.tsx:156
-#: src/routes/vendors.tsx:57
-=======
-#: src/routes/settings/units-of-measure.tsx:48
 #: src/routes/settings/users.tsx:163
-#: src/routes/vendors.tsx:63
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
+#: src/routes/vendors.tsx:57
 msgid "Search"
 msgstr "Suchen"
 
@@ -5639,13 +5546,8 @@ msgstr "Produkte suchen"
 msgid "Search results"
 msgstr "Suchergebnisse"
 
-<<<<<<< HEAD
 #: src/routes/accounting/chart-of-accounts.tsx:68
-#: src/routes/invoices/index.tsx:168
-=======
-#: src/routes/accounting/chart-of-accounts.tsx:74
 #: src/routes/invoices/index.tsx:172
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
 msgid "Search text"
 msgstr "Suchtext"
 
@@ -6361,13 +6263,8 @@ msgstr "Top-Produkte"
 #: src/routes/accounting/reports/inventory-valuation.tsx:127
 #: src/routes/accounting/trial-balance.tsx:137
 #: src/routes/cash-book.tsx:1284
-<<<<<<< HEAD
-#: src/routes/dashboard.tsx:362
-#: src/routes/incoming-invoices.tsx:225
-=======
 #: src/routes/dashboard.tsx:354
-#: src/routes/incoming-invoices.tsx:228
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
+#: src/routes/incoming-invoices.tsx:225
 #: src/routes/incoming-invoices/details.tsx:558
 #: src/routes/invoices/details.tsx:956
 #: src/routes/invoices/details.tsx:1071
@@ -6678,13 +6575,8 @@ msgid "VATIN"
 msgstr "USt-IdNr."
 
 #: src/components/imports/form.tsx:443
-<<<<<<< HEAD
-#: src/routes/accounting/reports/ap-aging.tsx:153
-#: src/routes/inbound-deliveries.tsx:155
-=======
 #: src/routes/accounting/reports/ap-aging.tsx:143
-#: src/routes/inbound-deliveries.tsx:159
->>>>>>> 9ec14f4 (refactor: derive report pages' loading state with useFetch)
+#: src/routes/inbound-deliveries.tsx:155
 #: src/routes/inbound-deliveries/details.tsx:385
 #: src/routes/incoming-invoices.tsx:168
 #: src/routes/incoming-invoices/details.tsx:381
