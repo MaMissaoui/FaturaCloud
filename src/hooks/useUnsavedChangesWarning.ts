@@ -23,8 +23,12 @@ const useUnsavedChangesWarning = (isDirty: boolean) => {
   const navigate = useNavigate();
   const { modal } = App.useApp();
 
+  // The click listener below is registered once and reads the latest value
+  // through this ref, kept in sync after each render.
   const dirtyRef = useRef(isDirty);
-  dirtyRef.current = isDirty;
+  useEffect(() => {
+    dirtyRef.current = isDirty;
+  }, [isDirty]);
 
   useEffect(() => {
     if (!isDirty) return;

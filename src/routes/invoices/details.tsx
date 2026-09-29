@@ -100,6 +100,47 @@ const { Option } = Select;
 // src/components/tax-rates/form.tsx.
 const loadableInvoiceAtom = loadable(invoiceAtom);
 
+// Groups line items by tax rate and computes each group's tax, after spreading
+// the discount across the groups (see the call site).
+const groupLineItemsByTaxRate = (
+  lineItems: any[] | undefined,
+  taxRates: any[],
+  subTotal: number,
+  discountAmount: number,
+) => {
+  const groups: { [key: string]: { taxRate: any; items: any[]; subtotal: number; tax: number } } =
+    {};
+
+  if (lineItems && Array.isArray(lineItems)) {
+    lineItems.forEach((item: any) => {
+      if (isNumber(get(item, "total")) && get(item, "taxRate")) {
+        const taxRateId = get(item, "taxRate");
+        const taxRate = find(taxRates, { id: taxRateId });
+
+        if (!groups[taxRateId]) {
+          groups[taxRateId] = {
+            taxRate,
+            items: [],
+            subtotal: 0,
+            tax: 0,
+          };
+        }
+
+        groups[taxRateId].items.push(item);
+        groups[taxRateId].subtotal = addDecimal(groups[taxRateId].subtotal, item.total);
+      }
+    });
+  }
+
+  const groupList = Object.values(groups);
+  const netBases = allocateDiscount(groupList, subTotal, discountAmount);
+  groupList.forEach((group, i) => {
+    group.tax = group.taxRate?.percentage ? calculateTax(netBases[i], group.taxRate.percentage) : 0;
+  });
+
+  return groupList;
+};
+
 const InvoiceDetails: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -262,41 +303,7 @@ const InvoiceDetails: React.FC = () => {
   // of the subtotal — the same allocation db/invoice_totals.go's
   // validateInvoiceTotals uses server-side (denominator is the full
   // subtotal, not just the rated subset), so the two always agree.
-  const taxGroups = useMemo(() => {
-    const groups: { [key: string]: { taxRate: any; items: any[]; subtotal: number; tax: number } } =
-      {};
-
-    if (lineItems && Array.isArray(lineItems)) {
-      lineItems.forEach((item: any) => {
-        if (isNumber(get(item, "total")) && get(item, "taxRate")) {
-          const taxRateId = get(item, "taxRate");
-          const taxRate = find(taxRates, { id: taxRateId });
-
-          if (!groups[taxRateId]) {
-            groups[taxRateId] = {
-              taxRate,
-              items: [],
-              subtotal: 0,
-              tax: 0,
-            };
-          }
-
-          groups[taxRateId].items.push(item);
-          groups[taxRateId].subtotal = addDecimal(groups[taxRateId].subtotal, item.total);
-        }
-      });
-    }
-
-    const groupList = Object.values(groups);
-    const netBases = allocateDiscount(groupList, subTotal, discountAmount);
-    groupList.forEach((group, i) => {
-      group.tax = group.taxRate?.percentage
-        ? calculateTax(netBases[i], group.taxRate.percentage)
-        : 0;
-    });
-
-    return groupList;
-  }, [lineItems, taxRates, subTotal, discountAmount]);
+  const taxGroups = groupLineItemsByTaxRate(lineItems, taxRates, subTotal, discountAmount);
 
   const taxTotal = sum(map(taxGroups, "tax"));
   // Tunisia invoice support. fiscalStampAmount (timbre fiscal) is a flat,
