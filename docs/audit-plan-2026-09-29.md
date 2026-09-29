@@ -82,7 +82,13 @@ producing this document.
 - The 2026-09-19, 2026-09-24 and v3.54 "Explicitly excluded" lists still bind,
   and so does this document's own list at the end.
 
-**Status:** 6 findings (F156–F161), none fixed yet.
+**Status:** 6 findings (F156–F161). The owner's decisions (2026-09-29):
+
+- **F156:** Ben Salah's time zone set to `Africa/Tunis` on production by the
+  owner. Code fix (new-organization form + seed-demo) in the Phase 1 PR.
+- **F157:** fixed in the Phase 1 PR.
+- **F159:** option 2 — restrict to Sales and Cash Book users (`general` keeps
+  it, since it has Sales).
 
 ---
 
@@ -146,7 +152,8 @@ rounding for a no-zone org. For a Tunis (UTC+1) date picked as 29 Sep
 
 **Owner action (not part of the PR).** Set Ben Salah's time zone to
 `Africa/Tunis` in the Organizations drawer on production. It's a demo org;
-ELECTRO MISSAOUI already has its zone and must not be touched.
+ELECTRO MISSAOUI already has its zone and must not be touched. **Done by the
+owner, 2026-09-29.**
 
 ### 1.2 — F157: a picked day reads as the next day at UTC+12 and beyond (Low, Confirmed)
 
@@ -232,6 +239,9 @@ Section-gate `/payments/{id}/invoice-lines` to Sales ∪ Cash Book and blank
 `products` for other roles. Option 1 is the likely answer, since both roles can
 already see the payment amounts and invoice numbers; it just needs to be
 written down.
+
+**Decision (2026-09-29): option 2.** Restrict to Sales and Cash Book users;
+`general` keeps it, since it has the Sales section.
 
 ---
 

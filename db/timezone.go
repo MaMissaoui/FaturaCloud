@@ -77,6 +77,17 @@ func organizationLocation(q interface {
 	return orgLocation(tz), nil
 }
 
+// calendarDayStart turns a day-based query parameter into local midnight of
+// that day in loc. The frontend sends a picked day as calendarDayMs (UTC noon
+// of that date, src/utils/date.ts), so the day is the value's UTC date, not
+// the day that instant falls on in loc: at UTC+12 and beyond UTC noon is
+// already the next day there (audit F157). Use floorToDay for stored
+// instants, this for a day someone picked.
+func calendarDayStart(ms int64, loc *time.Location) time.Time {
+	t := time.UnixMilli(ms).UTC()
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
+}
+
 // floorToDay truncates a Unix-ms timestamp to local midnight of its
 // calendar day in loc.
 func floorToDay(ms int64, loc *time.Location) time.Time {

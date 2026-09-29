@@ -217,7 +217,7 @@ msgstr "Aktiv"
 msgid "Add"
 msgstr "Hinzufügen"
 
-#: src/routes/organizations/new.tsx:99
+#: src/routes/organizations/new.tsx:104
 msgid "Add a new organization to your account"
 msgstr "Fügen Sie Ihrem Konto eine neue Organisation hinzu"
 
@@ -431,7 +431,7 @@ msgstr "Möchten Sie diesen Lieferanten wirklich löschen?"
 msgid "as of today"
 msgstr "Stand heute"
 
-#: src/routes/organizations/new.tsx:111
+#: src/routes/organizations/new.tsx:116
 msgid "Ask an administrator to add you to their organization, then sign in again. Or create your own organization below."
 msgstr "Bitten Sie einen Administrator, Sie zu seiner Organisation hinzuzufügen, und melden Sie sich dann erneut an. Oder erstellen Sie unten Ihre eigene Organisation."
 
@@ -687,7 +687,7 @@ msgstr "Allgemeine indirekte Steuer der Kanarischen Inseln"
 #: src/routes/cash-book.tsx:1924
 #: src/routes/cash-book.tsx:1975
 #: src/routes/cash-book.tsx:2046
-#: src/routes/organizations/new.tsx:180
+#: src/routes/organizations/new.tsx:195
 #: src/routes/settings/backup.tsx:158
 #: src/routes/settings/backup.tsx:190
 #: src/routes/settings/backup.tsx:350
@@ -1179,7 +1179,7 @@ msgstr "Länder"
 #: src/components/organizations/organization-edit-drawer.tsx:166
 #: src/components/organizations/organization-edit-drawer.tsx:362
 #: src/components/vendors/form.tsx:271
-#: src/routes/organizations/new.tsx:134
+#: src/routes/organizations/new.tsx:142
 msgid "Country"
 msgstr "Land"
 
@@ -1188,7 +1188,7 @@ msgstr "Land"
 msgid "Create"
 msgstr "Erstellen"
 
-#: src/routes/organizations/new.tsx:171
+#: src/routes/organizations/new.tsx:186
 msgid "Create Organization"
 msgstr "Organisation erstellen"
 
@@ -1274,7 +1274,7 @@ msgstr "Wird mit den Fracht-/Zollkosten erkannt, die einem Wareneingang zugeordn
 #: src/components/currency/currency-fields.tsx:47
 #: src/components/organizations/organization-edit-drawer.tsx:187
 #: src/components/organizations/organizations-table.tsx:96
-#: src/routes/organizations/new.tsx:145
+#: src/routes/organizations/new.tsx:153
 msgid "Currency"
 msgstr "Währung"
 
@@ -1448,7 +1448,7 @@ msgid "Debit"
 msgstr "Soll"
 
 #: src/components/organizations/organization-edit-drawer.tsx:447
-#: src/routes/organizations/new.tsx:164
+#: src/routes/organizations/new.tsx:172
 msgid "Decimal places"
 msgstr "Dezimalstellen"
 
@@ -3480,8 +3480,8 @@ msgstr "Bewegungen für {0}"
 #: src/routes/bill-of-materials.tsx:142
 #: src/routes/cash-book.tsx:1934
 #: src/routes/clients.tsx:111
-#: src/routes/organizations/new.tsx:127
-#: src/routes/organizations/new.tsx:130
+#: src/routes/organizations/new.tsx:135
+#: src/routes/organizations/new.tsx:138
 #: src/routes/products.tsx:296
 #: src/routes/settings/countries.tsx:103
 #: src/routes/settings/payment-terms.tsx:90
@@ -3595,7 +3595,7 @@ msgstr "Neue Bestellung"
 msgid "New organization"
 msgstr "Neue Organisation"
 
-#: src/routes/organizations/new.tsx:102
+#: src/routes/organizations/new.tsx:107
 msgid "New Organization"
 msgstr "Neue Organisation"
 
@@ -4268,12 +4268,12 @@ msgid "Orders"
 msgstr "Bestellungen"
 
 #: src/atoms/organization.ts:113
-#: src/routes/organizations/new.tsx:68
+#: src/routes/organizations/new.tsx:73
 msgid "Organization created"
 msgstr "Organisation erstellt"
 
 #: src/atoms/organization.ts:124
-#: src/routes/organizations/new.tsx:73
+#: src/routes/organizations/new.tsx:78
 msgid "Organization creation failed"
 msgstr "Organisation-Erstellung fehlgeschlagen"
 
@@ -4631,7 +4631,7 @@ msgstr "Bitte geben Sie einen Prozentsatz ein!"
 #: src/components/clients/form.tsx:204
 #: src/components/tax-rates/form.tsx:174
 #: src/components/vendors/form.tsx:165
-#: src/routes/organizations/new.tsx:128
+#: src/routes/organizations/new.tsx:136
 msgid "Please input name!"
 msgstr "Bitte geben Sie einen Namen ein!"
 
@@ -5755,7 +5755,7 @@ msgstr "Mit SSO anmelden"
 
 #: src/layouts/base.tsx:1005
 #: src/layouts/base.tsx:1006
-#: src/routes/organizations/new.tsx:189
+#: src/routes/organizations/new.tsx:204
 msgid "Sign out"
 msgstr "Abmelden"
 
@@ -6087,6 +6087,7 @@ msgid "The shipment this order's goods travel in — drives landed cost (freight
 msgstr "Die Sendung, mit der die Ware dieser Bestellung transportiert wird — steuert nach dem Wareneingang die Verteilung der Einstandskosten (Fracht/Zoll)."
 
 #: src/components/organizations/organization-edit-drawer.tsx:502
+#: src/routes/organizations/new.tsx:180
 msgid "The time zone this organization works in. Exported documents, accounting exports, document numbers and the Cash Book's daily totals use it to decide which day a date falls on."
 msgstr "Die Zeitzone, in der diese Organisation arbeitet. Exportierte Dokumente, Buchhaltungsexporte, Belegnummern und die Tagessummen im Kassenbuch bestimmen damit, auf welchen Tag ein Datum fällt."
 
@@ -6218,6 +6219,7 @@ msgid "Time"
 msgstr "Uhrzeit"
 
 #: src/components/organizations/organization-edit-drawer.tsx:500
+#: src/routes/organizations/new.tsx:179
 msgid "Time zone"
 msgstr "Zeitzone"
 
@@ -6773,7 +6775,7 @@ msgstr "Quellensteuersatz"
 msgid "Yes"
 msgstr "Ja"
 
-#: src/routes/organizations/new.tsx:109
+#: src/routes/organizations/new.tsx:114
 msgid "You are not a member of any organization yet"
 msgstr "Sie sind noch kein Mitglied einer Organisation"
 

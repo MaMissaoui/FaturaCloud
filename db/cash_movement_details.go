@@ -55,13 +55,12 @@ type CashMovementDetail struct {
 // cash_movements has no client and no invoice to attach).
 //
 // Both endpoints are interpreted as *days*, not as literal instants: each
-// is floored to its day in the organization's zone (floorToDay, the same
-// bucketing GetDailyCashMovements uses) and the filter is
-// [floor(startDate), floor(endDate) + 1 day). This is deliberate, because
-// every caller today passes one instant inside the day twice to mean "this
-// whole day" (src/routes/cash-book.tsx sends UTC noon of the picked date,
-// which lands on that date in any zone within ±12h; db/report_export.go
-// passes it through), while the
+// is a calendarDayMs (UTC noon of the picked date, src/routes/cash-book.tsx;
+// db/report_export.go passes it through), decoded by its UTC date to that
+// day's midnight in the organization's zone (calendarDayStart, the same as
+// GetDailyCashMovements), and the filter is [start day, end day + 1 day).
+// This is deliberate, because every caller passes one day twice to mean
+// "this whole day", while the
 // stored timestamps carry real time-of-day — a live sale or withdrawal is
 // stamped at the moment it happened — so a literal >= / <= on that instant
 // silently matched only a row stamped exactly 00:00:00.000. Flooring here
@@ -81,8 +80,8 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 	if err != nil {
 		return nil, err
 	}
-	startMs := floorToDay(startDate, loc).UnixMilli()
-	endExclusiveMs := floorToDay(endDate, loc).AddDate(0, 0, 1).UnixMilli()
+	startMs := calendarDayStart(startDate, loc).UnixMilli()
+	endExclusiveMs := calendarDayStart(endDate, loc).AddDate(0, 0, 1).UnixMilli()
 
 	type paymentRow struct {
 		ID            string  `db:"id"`
