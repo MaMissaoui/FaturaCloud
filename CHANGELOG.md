@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.58.3] - 2026-09-29
+
+### Changed
+- Cash Book ▸ Payment history: a payment applied to a whole invoice (a
+  sale's upfront amount, one recorded from the invoice page) now names the
+  invoice's products instead of just "Whole invoice", with a "whole invoice"
+  tag. Clicking the products opens a panel with each line's quantity, unit
+  price and line total (tax included, matching Loan status), the invoice
+  total and how much this payment covered; a line the payment settled
+  directly is marked "Paid here". The PDF/Excel exports name the products
+  too (#425).
+
 ## [3.58.2] - 2026-09-28
 
 ### Fixed
