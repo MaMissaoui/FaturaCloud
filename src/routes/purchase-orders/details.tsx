@@ -44,6 +44,7 @@ import map from "lodash/map";
 import sum from "lodash/sum";
 
 import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from "src/api";
+import { useFetch } from "src/hooks/useFetch";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
@@ -90,6 +91,9 @@ import {
   updatePurchaseOrderStatusAtom,
   deletePurchaseOrderAtom,
 } from "src/atoms/purchase-order";
+
+// Stable empty value while nothing is loaded (see useFetch).
+const NO_QUANTITIES: Record<string, number> = {};
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -171,7 +175,6 @@ const PurchaseOrderDetails = () => {
 
   const [form] = Form.useForm();
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
-  const [receivedQuantities, setReceivedQuantities] = useState<Record<string, number>>({});
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -179,13 +182,21 @@ const PurchaseOrderDetails = () => {
   useSaveShortcut(form);
   useUnsavedChangesWarning(isDirty);
 
+  // A different document starts without the previous one's optimistic
+  // statusOverride — reset during render when the route id changes, not in the
+  // effect below.
+  const [statusOverrideFor, setStatusOverrideFor] = useState(id);
+  if (statusOverrideFor !== id) {
+    setStatusOverrideFor(id);
+    setStatusOverride(null);
+  }
+
   useEffect(() => {
     setVendors();
     setProducts();
     if (importsAllowed) setImports();
     setInboundDeliveries();
     setIncomingInvoices();
-    setStatusOverride(null);
     if (!isNew) {
       setOrderId(id ?? null);
     }
@@ -206,15 +217,11 @@ const PurchaseOrderDetails = () => {
 
   // Per-line fulfilment, so partial receipts are visible without opening every
   // goods receipt for this order.
-  useEffect(() => {
-    if (isNew || !id) {
-      setReceivedQuantities({});
-      return;
-    }
-    GetPurchaseOrderReceivedQuantities(id)
-      .then(setReceivedQuantities)
-      .catch(() => setReceivedQuantities({}));
-  }, [id, isNew]);
+  const { data: receivedQuantities } = useFetch<Record<string, number>>(
+    isNew || !id ? null : [id],
+    () => GetPurchaseOrderReceivedQuantities(id!).catch(() => NO_QUANTITIES),
+    NO_QUANTITIES,
+  );
 
   // Mirrors the server-side guard in db/purchase_order_freeze.go: once goods
   // have actually been received against this order, its line items are the

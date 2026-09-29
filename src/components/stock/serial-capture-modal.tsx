@@ -79,11 +79,21 @@ const SerialCaptureModal = ({
     Record<string, { prefix: string; start: number | null }>
   >({});
 
+  // Start every opening with a clean slate — reset during render when `open`
+  // flips on (React's "adjust state when a prop changes" pattern), rather
+  // than in the effect below.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setSelection({});
+      setEntryMode({});
+      setRangeValues({});
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setSelection({});
-    setEntryMode({});
-    setRangeValues({});
     if (mode === "ship") {
       uniq(lines.map((l) => l.productId)).forEach((productId) => loadSerialNumbers(productId));
     }

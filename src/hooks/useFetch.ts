@@ -20,7 +20,8 @@ export interface FetchState<T> {
 // rule). A response for a superseded key is dropped, which replaces the
 // pages' requestIdRef guards. `key` is a list of primitives (build it from
 // ids and `.valueOf()` timestamps, never from objects); null means "nothing
-// to load yet" (e.g. no organization) — not loading, `empty` data. `fetcher`
+// to load" (e.g. no organization, or a drawer creating a new record) — not
+// loading, `empty` data. `fetcher`
 // may be an inline function: it's read through useEffectEvent.
 export function useFetch<T>(
   key: readonly Primitive[] | null,
@@ -51,10 +52,16 @@ export function useFetch<T>(
     };
   }, [keyString]);
 
+  // A null key has nothing loaded, even if an earlier key had: forget that
+  // result during render, so neither "new" (a drawer switching from editing a
+  // record) nor the next record opened after it shows the old record's data
+  // while its own request is in flight.
+  if (keyString === null && result !== null) setResult(null);
+
   const reload = useCallback(() => setNonce((n) => n + 1), []);
   const settled = keyString !== null && result?.key === keyString;
   return {
-    data: result?.ok ? result.data : empty,
+    data: keyString !== null && result?.ok ? result.data : empty,
     loading: keyString !== null && !settled,
     failed: settled && !result.ok,
     reload,

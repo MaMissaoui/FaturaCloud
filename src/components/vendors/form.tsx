@@ -21,6 +21,7 @@ import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 import map from "lodash/map";
 import { GetVendorDocumentCount } from "src/api";
+import { useFetch } from "src/hooks/useFetch";
 
 import { vendorIdAtom, vendorAtom, vendorsAtom, deleteVendorAtom } from "src/atoms/vendor";
 import { generateClientCode } from "src/utils/client";
@@ -38,7 +39,12 @@ const VendorForm = () => {
   const setVendor = useSetAtom(vendorAtom);
   const [submitting, setSubmitting] = useState(false);
   const deleteVendor = useSetAtom(deleteVendorAtom);
-  const [documentCount, setDocumentCount] = useState<number | null>(null);
+  // null while no vendor is being edited (or its count hasn't arrived).
+  const { data: documentCount } = useFetch<number | null>(
+    vendorId ? [vendorId] : null,
+    () => GetVendorDocumentCount(vendorId!).catch(() => 0),
+    null,
+  );
 
   const isVisible = get(location.state, "vendorModal", false);
 
@@ -105,16 +111,6 @@ const VendorForm = () => {
       form.resetFields();
     }
   }, [vendor, vendorId, form]);
-
-  useEffect(() => {
-    if (vendorId) {
-      GetVendorDocumentCount(vendorId)
-        .then(setDocumentCount)
-        .catch(() => setDocumentCount(0));
-    } else {
-      setDocumentCount(null);
-    }
-  }, [vendorId]);
 
   const canDelete = documentCount === 0;
 

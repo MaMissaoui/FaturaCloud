@@ -28,6 +28,7 @@ import map from "lodash/map";
 
 import { GetNextImportNumber, GetImportSummary } from "src/api";
 import type { ImportSummary } from "src/types/models";
+import { useFetch } from "src/hooks/useFetch";
 import { importIdAtom, importAtom, importsAtom, deleteImportAtom } from "src/atoms/import";
 import { purchaseOrdersAtom, setPurchaseOrderImportAtom } from "src/atoms/purchase-order";
 import {
@@ -80,10 +81,15 @@ const ImportForm = () => {
   const numberLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;
 
   const [submitting, setSubmitting] = useState(false);
-  const [summary, setSummary] = useState<ImportSummary | null>(null);
   // Bumped after a link/unlink so the Allocation card's committed-value/rate
-  // re-fetches — GetImportSummary is otherwise only keyed on importId.
+  // re-fetches — linking a purchase order never touches the import record
+  // itself, so GetImportSummary would otherwise only be keyed on importId.
   const [summaryTick, setSummaryTick] = useState(0);
+  const { data: summary } = useFetch<ImportSummary | null>(
+    importId ? [importId, summaryTick] : null,
+    () => GetImportSummary(importId!).catch(() => null),
+    null,
+  );
   // Tracks edits to the import's own fields (not the linked-PO actions
   // below), so "New purchase order" can warn before navigating away with
   // unsaved changes — same isDirty idiom as src/routes/invoices/details.tsx.
@@ -152,6 +158,19 @@ const ImportForm = () => {
     }
   };
 
+  // A (re)loaded record or a fresh "New import" form starts clean — reset
+  // during render when what the form shows changes, rather than in the
+  // effect below that fills the fields.
+  const [shownFor, setShownFor] = useState({ importRecord, importId, isVisible });
+  if (
+    shownFor.importRecord !== importRecord ||
+    shownFor.importId !== importId ||
+    shownFor.isVisible !== isVisible
+  ) {
+    setShownFor({ importRecord, importId, isVisible });
+    if (importRecord || (!importId && isVisible)) setIsDirty(false);
+  }
+
   useEffect(() => {
     const navImportId = get(location.state, "importId");
     if (isVisible && navImportId) {
@@ -173,11 +192,9 @@ const ImportForm = () => {
         freightCost: centsToUnits(importRecord.freightCost),
         customsCost: centsToUnits(importRecord.customsCost),
       });
-      setIsDirty(false);
     } else if (!importId && isVisible) {
       form.resetFields();
       form.setFieldsValue({ date: dayjs() });
-      setIsDirty(false);
       if (organizationId) {
         GetNextImportNumber(organizationId).then((number) =>
           form.setFieldValue("importNumber", number),
@@ -185,19 +202,6 @@ const ImportForm = () => {
       }
     }
   }, [importRecord, importId, isVisible, organizationId, form]);
-
-  useEffect(() => {
-    if (importId) {
-      GetImportSummary(importId)
-        .then(setSummary)
-        .catch(() => setSummary(null));
-    } else {
-      setSummary(null);
-    }
-    // summaryTick: re-fetch after a linked purchase order is attached/detached
-    // from the "Purchase orders" card below, since that never touches the
-    // import record itself.
-  }, [importId, summaryTick]);
 
   // Server guard (GetImportPurchaseOrderCount) counts every linked purchase
   // order regardless of status or line items — matching that exactly here
