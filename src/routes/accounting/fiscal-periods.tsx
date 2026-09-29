@@ -60,6 +60,8 @@ const FiscalPeriods = () => {
 
   const [periodModalYearId, setPeriodModalYearId] = useState<string | null>(null);
   const [periodSubmitting, setPeriodSubmitting] = useState(false);
+  // Read the clock once per visit (render must stay pure) for the "Current" tag.
+  const [now] = useState(() => Date.now());
   const [periodForm] = Form.useForm();
 
   const loading = useLoadOnPath("/accounting/fiscal-periods", () => setFiscalYears());
@@ -275,7 +277,6 @@ const FiscalPeriods = () => {
               key="status"
               sorter={textSorter((r: FiscalYear) => r.status)}
               render={(status: string, year: FiscalYear) => {
-                const now = Date.now();
                 const isCurrent = year.startDate <= now && now <= year.endDate;
                 return (
                   <span>

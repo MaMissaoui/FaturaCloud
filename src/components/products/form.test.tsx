@@ -211,7 +211,7 @@ describe("ProductForm product code proposal", () => {
 
   it("waits for the catalog before proposing, so the series continues", async () => {
     // Hold the catalog fetch "in flight" until the name has been typed.
-    let deliver = (_: unknown) => {};
+    let deliver: (value: unknown) => void = () => {};
     vi.mocked(GetProducts).mockReturnValue(
       new Promise((resolve) => {
         deliver = resolve;
