@@ -169,7 +169,10 @@ var wantSectionRoutes = map[string]string{
 	"GET /api/organizations/{orgId}/reports/cash-movement-details":       sectionReportCashbook,
 	"GET /api/organizations/{orgId}/reports/daily-cash-movements":        sectionReportCashbook,
 	"GET /api/organizations/{orgId}/reports/daily-cash-movements/export": sectionReportCashbook,
-	"GET /api/organizations/{orgId}/reports/payment-history/export":      sectionReportCashbook,
+
+	// What a payment paid for (audit F159)
+	"GET /api/payments/{id}/invoice-lines":                          sectionPaymentProducts,
+	"GET /api/organizations/{orgId}/reports/payment-history/export": sectionPaymentProducts,
 
 	// Reports — loan status (Cash Book screen)
 	"GET /api/organizations/{orgId}/reports/loan-status":        sectionReportLoan,
@@ -239,7 +242,6 @@ func TestSharedRoutesAreUnrestricted(t *testing.T) {
 		"POST /api/payments",
 		"GET /api/payments/{id}",
 		"GET /api/payments/{id}/applications",
-		"GET /api/payments/{id}/invoice-lines",
 		"POST /api/payments/{id}/void",
 		"GET /api/invoices/{id}/payments",
 		"GET /api/incoming-invoices/{id}/payments",
@@ -305,6 +307,9 @@ func TestSectionRoleAccess(t *testing.T) {
 		{"GET /api/organizations/{orgId}/reports/daily-cash-movements", map[string]bool{"general": true, "accounting": true, "cashbook": true}},
 		{"GET /api/organizations/{orgId}/reports/cash-movement-details", map[string]bool{"general": true, "accounting": true, "cashbook": true}},
 		{"GET /api/organizations/{orgId}/reports/loan-status", map[string]bool{"general": true, "cashbook": true}},
+		// What a payment paid for is Sales content (audit F159).
+		{"GET /api/payments/{id}/invoice-lines", map[string]bool{"general": true, "sales": true, "cashbook": true}},
+		{"GET /api/organizations/{orgId}/reports/payment-history/export", map[string]bool{"general": true, "sales": true, "cashbook": true}},
 
 		// Shared routes are open to every role at the section level.
 		{"GET /api/organizations/{orgId}/dashboard", map[string]bool{"general": true, "sales": true, "purchasing": true, "accounting": true, "cashbook": true}},

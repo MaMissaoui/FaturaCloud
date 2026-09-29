@@ -74,6 +74,7 @@ import type {
   DailyCashMovementRow,
   LoanStatusRow,
 } from "src/api";
+import { normalizeInventoryValuation } from "src/types/inventory-valuation";
 import type { Account, Client, Payment } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
@@ -354,10 +355,22 @@ const CashBook = () => {
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
   // A component/intermediate isn't sellable — same filter invoices/orders use.
+  // Nor, at the counter, is a serialized stock product: the server refuses it
+  // (db/invoice_stock.go — no serial picker here yet; sell it through a
+  // delivery), so offering it only surfaced the refusal at checkout (audit
+  // F158).
   const sellableProducts = useMemo(
-    () => (products as any[]).filter((p) => p.category !== "component"),
+    () =>
+      (products as any[]).filter(
+        (p) => p.category !== "component" && !(p.stockEnabled === 1 && p.serialized === 1),
+      ),
     [products],
   );
+  // In perpetual valuation a stock product without a unit cost has no cost
+  // basis, and the sale's COGS entry is refused (resolveMovementCost) — warn
+  // when it's picked rather than at checkout (audit F158).
+  const valuedInventory =
+    normalizeInventoryValuation(organization?.inventoryValuation) === "perpetual";
   const taxRates = useAtomValue(taxRatesAtom);
   const setTaxRates = useSetAtom(setTaxRatesAtom);
 
@@ -1242,6 +1255,15 @@ const CashBook = () => {
                           const onHand = product.stockQuantity ?? 0;
                           message.warning(
                             t`${product.name}: ${onHand} in stock — this sale will take it below zero.`,
+                          );
+                        }
+                        if (
+                          valuedInventory &&
+                          product?.stockEnabled === 1 &&
+                          product.unitCost == null
+                        ) {
+                          message.warning(
+                            t`${product.name} has no unit cost, so this sale will be refused — give the product a unit cost, or switch the organization's inventory valuation to Quantities only.`,
                           );
                         }
                         if (product) {
