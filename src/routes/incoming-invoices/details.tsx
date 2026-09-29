@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import {
   Alert,
@@ -85,6 +85,10 @@ import {
   updateIncomingInvoiceStateAtom,
   deleteIncomingInvoiceAtom,
 } from "src/atoms/incoming-invoice";
+import { useFetch } from "src/hooks/useFetch";
+
+// Stable empty value while nothing is loaded (see useFetch).
+const NO_MATCH_LINES: MatchLine[] = [];
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -126,7 +130,6 @@ const IncomingInvoiceDetails = () => {
 
   const [form] = Form.useForm();
   const [stateOverride, setStateOverride] = useState<string | null>(null);
-  const [matchLines, setMatchLines] = useState<MatchLine[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -134,11 +137,19 @@ const IncomingInvoiceDetails = () => {
   useSaveShortcut(form);
   useUnsavedChangesWarning(isDirty);
 
+  // A different document starts without the previous one's optimistic
+  // stateOverride — reset during render when the route id changes, not in the
+  // effect below.
+  const [stateOverrideFor, setStateOverrideFor] = useState(id);
+  if (stateOverrideFor !== id) {
+    setStateOverrideFor(id);
+    setStateOverride(null);
+  }
+
   useEffect(() => {
     setVendors();
     setTaxRates();
     setPurchaseOrders();
-    setStateOverride(null);
     if (!isNew) {
       setInvoiceId(id ?? null);
     }
@@ -147,17 +158,12 @@ const IncomingInvoiceDetails = () => {
     };
   }, [id, isNew, setVendors, setTaxRates, setPurchaseOrders, setInvoiceId]);
 
-  const refreshMatch = useCallback(() => {
-    if (isNew || !id) {
-      setMatchLines([]);
-      return;
-    }
-    GetIncomingInvoiceMatch(id)
-      .then(setMatchLines)
-      .catch(() => setMatchLines([]));
-  }, [id, isNew]);
-
-  useEffect(refreshMatch, [refreshMatch]);
+  // refreshMatch re-runs the 3-way match after a save changes the lines.
+  const { data: matchLines, reload: refreshMatch } = useFetch<MatchLine[]>(
+    isNew || !id ? null : [id],
+    () => GetIncomingInvoiceMatch(id!).catch(() => NO_MATCH_LINES),
+    NO_MATCH_LINES,
+  );
 
   // Prefill the lines from a purchase order so they arrive already linked —
   // an unlinked line has nothing to match against.

@@ -62,6 +62,26 @@ describe("useFetch", () => {
     expect(result.current).toMatchObject({ loading: false, failed: false, data: 7 });
   });
 
+  it("returns empty data again once the key goes back to null", async () => {
+    const { fetcher, calls } = deferredFetches<number>();
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string | null }) => useFetch(id ? [id] : null, () => fetcher(), null),
+      { initialProps: { id: "client-1" as string | null } },
+    );
+    await act(async () => calls[0].resolve(3));
+    expect(result.current.data).toBe(3);
+
+    rerender({ id: null });
+    expect(result.current).toMatchObject({ data: null, loading: false, failed: false });
+
+    // The next record opened must not show the previous one's data while
+    // its own request is in flight.
+    rerender({ id: "client-2" });
+    expect(result.current).toMatchObject({ data: null, loading: true });
+    await act(async () => calls[1].resolve(0));
+    expect(result.current).toMatchObject({ data: 0, loading: false });
+  });
+
   it("does nothing while the key is null", async () => {
     const { fetcher } = deferredFetches<number>();
     const { result } = renderHook(() => useFetch(null, () => fetcher(), 0));

@@ -125,17 +125,29 @@ const ProductForm = () => {
     status: "loading" | "loaded" | "failed";
   } | null>(null);
 
+  // The product whose recipe the form must hold, or null when there's none
+  // to fetch. When it changes (including closing and reopening the drawer,
+  // which passes through null) the state is reset during render — to
+  // "loading" or to null — before the effect below starts the fetch.
+  const bomProductId =
+    bomAllowed && isVisible && productId && product?.category === "finished" ? productId : null;
+  const [bomLoadFor, setBomLoadFor] = useState<string | null>(null);
+  if (bomLoadFor !== bomProductId) {
+    setBomLoadFor(bomProductId);
+    setBomLoad(bomProductId ? { productId: bomProductId, status: "loading" } : null);
+  }
+
   // Bill of materials is a separate resource server-side (PUT
   // /api/products/{id}/bom), not a field on the product itself — loaded
   // into the same antd Form via Form.List("bom") once we know which
   // existing "finished" product is open, same "load, then let the Form
   // own it" shape as every other field here.
   useEffect(() => {
-    if (bomAllowed && isVisible && productId && product?.category === "finished") {
+    if (bomProductId) {
+      const productId = bomProductId;
       // Switching product mid-flight must not let the previous product's
       // recipe (or its failure) land on the one now open (F111).
       let cancelled = false;
-      setBomLoad({ productId, status: "loading" });
       GetProductBOM(productId)
         .then((lines) => {
           if (cancelled) return;
@@ -163,10 +175,9 @@ const ProductForm = () => {
       };
     }
     // New product, service, or component: there is no recipe to fetch, so
-    // [] is the real value, not an unknown one.
-    setBomLoad(null);
+    // [] is the real value, not an unknown one (bomLoad is already null).
     form.setFieldValue("bom", []);
-  }, [bomAllowed, isVisible, productId, product?.category, form]);
+  }, [bomProductId, form]);
 
   // The full (unpaginated) product catalog is only needed while this drawer
   // is actually open — to look up the product being edited, populate the
@@ -176,10 +187,18 @@ const ProductForm = () => {
   // previous (or empty) list would suggest a code that's already taken, e.g.
   // "MAL-001" when the series really continues at "MAL-016".
   const [catalogLoaded, setCatalogLoaded] = useState(false);
+  // Each opening starts unloaded (reset during render, not in the effect),
+  // and so does the "did the user type their own code" flag for a brand-new
+  // product, so auto-propose kicks back in.
+  const [openedFor, setOpenedFor] = useState({ isVisible, productId });
+  if (openedFor.isVisible !== isVisible || openedFor.productId !== productId) {
+    setOpenedFor({ isVisible, productId });
+    if (isVisible && !openedFor.isVisible) setCatalogLoaded(false);
+    if (isVisible && !productId) setCodeTouched(false);
+  }
   useEffect(() => {
     if (isVisible) {
       let active = true;
-      setCatalogLoaded(false);
       setProducts().finally(() => {
         if (active) setCatalogLoaded(true);
       });
@@ -202,12 +221,6 @@ const ProductForm = () => {
       form.resetFields();
     }
   }, [isVisible, location.state, setProductId, form]);
-
-  // Reset the "did the user type their own code" flag each time the drawer
-  // opens for a brand-new product, so auto-propose kicks back in.
-  useEffect(() => {
-    if (isVisible && !productId) setCodeTouched(false);
-  }, [isVisible, productId]);
 
   // Propose a PREFIX-NNN code for new products (src/utils/product-code.ts:
   // continue the series of the most similarly named product, else start one

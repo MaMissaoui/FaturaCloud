@@ -21,6 +21,7 @@ import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 import map from "lodash/map";
 import { GetClientInvoiceCount } from "src/api";
+import { useFetch } from "src/hooks/useFetch";
 
 import { clientIdAtom, clientAtom, clientsAtom, deleteClientAtom } from "src/atoms/client";
 import { generateClientCode } from "src/utils/client";
@@ -53,7 +54,12 @@ const ClientForm = () => {
   const setClient = useSetAtom(clientAtom);
   const [submitting, setSubmitting] = useState(false);
   const deleteClient = useSetAtom(deleteClientAtom);
-  const [invoiceCount, setInvoiceCount] = useState<number | null>(null);
+  // null while no client is being edited (or its count hasn't arrived).
+  const { data: invoiceCount } = useFetch<number | null>(
+    clientId ? [clientId] : null,
+    () => GetClientInvoiceCount(clientId!).catch(() => 0),
+    null,
+  );
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
   const isVisible = get(location.state, "clientModal", false);
@@ -133,16 +139,6 @@ const ClientForm = () => {
       form.resetFields();
     }
   }, [client, clientId, form]);
-
-  useEffect(() => {
-    if (clientId) {
-      GetClientInvoiceCount(clientId)
-        .then(setInvoiceCount)
-        .catch(() => setInvoiceCount(0));
-    } else {
-      setInvoiceCount(null);
-    }
-  }, [clientId]);
 
   return (
     <Drawer

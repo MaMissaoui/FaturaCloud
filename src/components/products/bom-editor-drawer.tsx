@@ -125,9 +125,31 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   // Reset the picker each time the drawer opens fresh (routeProductId only
   // set once, on the navigate() call that opened it) so a previous "New
   // recipe" pick doesn't leak into the next time it's opened that way.
-  useEffect(() => {
+  // Adjusted during render when the route state changes, not in an effect.
+  const [openedFor, setOpenedFor] = useState({ isVisible, routeProductId });
+  if (openedFor.isVisible !== isVisible || openedFor.routeProductId !== routeProductId) {
+    setOpenedFor({ isVisible, routeProductId });
     if (isVisible && !routeProductId) setPickedProductId(null);
-  }, [isVisible, routeProductId]);
+  }
+
+  // Whenever the recipe being shown changes (drawer opened/closed, another
+  // product, or Retry), drop the browsed version and reset the load state
+  // during render; the effect below only fetches and fills the form. The
+  // null initial key makes the first render reset too, so a drawer that
+  // mounts already open starts in the loading state.
+  const loadKey = JSON.stringify([isVisible, productId, reloadToken]);
+  const [resetForKey, setResetForKey] = useState<string | null>(null);
+  if (resetForKey !== loadKey) {
+    setResetForKey(loadKey);
+    setSelectedVersionId(null);
+    setViewedVersion(null);
+    setLoadFailed(false);
+    setLoading(Boolean(isVisible && productId));
+    if (!(isVisible && productId)) {
+      setVersions([]);
+      setBatchSize(1);
+    }
+  }
 
   // Load the current recipe and its version history together — a single
   // Promise.all rather than two independent effects, so the batch-size
@@ -138,12 +160,8 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   // is indistinguishable from "this product has no components yet", and
   // saving from that state would replace a real recipe with nothing.
   useEffect(() => {
-    setSelectedVersionId(null);
-    setViewedVersion(null);
     if (isVisible && productId) {
       let cancelled = false;
-      setLoadFailed(false);
-      setLoading(true);
       Promise.all([GetProductBOM(productId), GetBOMVersions(productId)])
         .then(([lines, v]) => {
           if (cancelled) return;
@@ -177,11 +195,7 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
         cancelled = true;
       };
     }
-    setLoadFailed(false);
-    setLoading(false);
     form.setFieldValue("bom", []);
-    setVersions([]);
-    setBatchSize(1);
   }, [isVisible, productId, form, reloadToken]);
 
   const handleClose = () => {

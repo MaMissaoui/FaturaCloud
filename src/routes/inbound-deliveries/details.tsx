@@ -144,11 +144,19 @@ const InboundDeliveryDetails = () => {
   useSaveShortcut(form);
   useUnsavedChangesWarning(isDirty);
 
+  // A different document starts without the previous one's optimistic
+  // statusOverride — reset during render when the route id changes, not in the
+  // effect below.
+  const [statusOverrideFor, setStatusOverrideFor] = useState(id);
+  if (statusOverrideFor !== id) {
+    setStatusOverrideFor(id);
+    setStatusOverride(null);
+  }
+
   useEffect(() => {
     setVendors();
     setProducts();
     setPurchaseOrders();
-    setStatusOverride(null);
     if (!isNew) {
       setDeliveryId(id ?? null);
     }

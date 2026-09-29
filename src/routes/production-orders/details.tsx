@@ -65,6 +65,10 @@ import {
   updateProductionOrderStatusAtom,
   deleteProductionOrderAtom,
 } from "src/atoms/production-order";
+import { useFetch } from "src/hooks/useFetch";
+
+// Stable empty value while nothing is loaded (see useFetch).
+const NO_BOM_LINES: BillOfMaterialsLine[] = [];
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -122,14 +126,10 @@ const CreateProductionOrderForm = ({
   const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [bomLines, setBomLines] = useState<BillOfMaterialsLine[]>([]);
-  const [bomLoading, setBomLoading] = useState(false);
   // A failed fetch used to be swallowed into an empty list, which the Alert
   // below then reported as "this product has no Bill of Materials" — telling
   // the user to fix data that is already correct, with Create disabled and
   // no way to retry (F85).
-  const [bomLoadFailed, setBomLoadFailed] = useState(false);
-  const [bomReloadToken, setBomReloadToken] = useState(0);
 
   const watchedProductId = Form.useWatch("finishedProductId", form);
   const watchedQuantity = Form.useWatch("quantity", form) ?? 1;
@@ -139,31 +139,24 @@ const CreateProductionOrderForm = ({
   // GetBillOfMaterials' quantityPerUnit is always per one finished unit
   // (see CLAUDE.md's Bill of Materials note), the same value
   // db.CreateProductionOrder multiplies by req.Quantity server-side.
-  useEffect(() => {
-    if (!watchedProductId) {
-      setBomLines([]);
-      return;
-    }
-    let cancelled = false;
-    setBomLoading(true);
-    setBomLoadFailed(false);
-    GetProductBOM(watchedProductId)
-      .then((lines) => {
-        if (!cancelled) setBomLines(lines ?? []);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setBomLines([]);
-        setBomLoadFailed(true);
-        message.error(error instanceof Error ? error.message : t`Failed to load bill of materials`);
-      })
-      .finally(() => {
-        if (!cancelled) setBomLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [watchedProductId, bomReloadToken]);
+  const {
+    data: bomLines,
+    loading: bomLoading,
+    failed: bomLoadFailed,
+    reload: reloadBom,
+  } = useFetch<BillOfMaterialsLine[]>(
+    watchedProductId ? [watchedProductId] : null,
+    () =>
+      GetProductBOM(watchedProductId)
+        .then((lines) => lines ?? [])
+        .catch((error) => {
+          message.error(
+            error instanceof Error ? error.message : t`Failed to load bill of materials`,
+          );
+          throw error;
+        }),
+    NO_BOM_LINES,
+  );
 
   // The create form's raw values: date is a Dayjs until submitted, and the
   // two optional fields arrive as "" from an untouched Select rather than
@@ -281,7 +274,7 @@ const CreateProductionOrderForm = ({
           style={{ marginBottom: 16 }}
           message={<Trans>Couldn't load this product's Bill of Materials</Trans>}
           action={
-            <Button size="small" onClick={() => setBomReloadToken((n) => n + 1)}>
+            <Button size="small" onClick={reloadBom}>
               <Trans>Retry</Trans>
             </Button>
           }
@@ -438,10 +431,18 @@ const ProductionOrderDetails = () => {
   // top of the success (F86).
   const [confirmingSerials, setConfirmingSerials] = useState(false);
 
+  // A different document starts without the previous one's optimistic
+  // statusOverride — reset during render when the route id changes, not in the
+  // effect below.
+  const [statusOverrideFor, setStatusOverrideFor] = useState(id);
+  if (statusOverrideFor !== id) {
+    setStatusOverrideFor(id);
+    setStatusOverride(null);
+  }
+
   useEffect(() => {
     setProducts();
     setImports();
-    setStatusOverride(null);
     if (!isNew) setOrderId(id ?? null);
     return () => setOrderId(null);
   }, [id, isNew, setProducts, setImports, setOrderId]);

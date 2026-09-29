@@ -43,6 +43,7 @@ import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import sum from "lodash/sum";
 import { ExportOrderDocument, GetOrderDeliveredQuantities } from "src/api";
+import { useFetch } from "src/hooks/useFetch";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
@@ -76,6 +77,9 @@ import {
   type OrderStatus,
 } from "src/types/order";
 import { deliveryStatusColor, deliveryStatusLabel, type DeliveryStatus } from "src/types/delivery";
+
+// Stable empty value while nothing is loaded (see useFetch).
+const NO_QUANTITIES: Record<string, number> = {};
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -141,7 +145,6 @@ const OrderDetails = () => {
   const deleteOrder = useSetAtom(deleteOrderAtom);
 
   const [form] = Form.useForm();
-  const [deliveredQuantities, setDeliveredQuantities] = useState<Record<string, number>>({});
   const [isDirty, setIsDirty] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -163,15 +166,11 @@ const OrderDetails = () => {
 
   // Track how much of each line item has already been delivered, so partial
   // fulfillment is visible without opening every delivery for this order.
-  useEffect(() => {
-    if (isNew || !id) {
-      setDeliveredQuantities({});
-      return;
-    }
-    GetOrderDeliveredQuantities(id)
-      .then(setDeliveredQuantities)
-      .catch(() => setDeliveredQuantities({}));
-  }, [id, isNew]);
+  const { data: deliveredQuantities } = useFetch<Record<string, number>>(
+    isNew || !id ? null : [id],
+    () => GetOrderDeliveredQuantities(id!).catch(() => NO_QUANTITIES),
+    NO_QUANTITIES,
+  );
 
   // After create, navigate to the new order
   useEffect(() => {

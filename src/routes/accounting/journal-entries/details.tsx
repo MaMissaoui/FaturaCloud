@@ -35,6 +35,7 @@ import { moneySorter, textSorter } from "src/utils/sort";
 import { journalEntryStatusColor, journalEntryStatusLabel } from "src/types/journal-entry";
 import { formatMoneyUnits } from "src/utils/currencies";
 import { GetJournalEntryReversal } from "src/api";
+import { useFetch } from "src/hooks/useFetch";
 import type { JournalEntry } from "src/types/models";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { journalsAtom, setJournalsAtom } from "src/atoms/journal";
@@ -70,7 +71,6 @@ const JournalEntryDetails = () => {
   const setJournals = useSetAtom(setJournalsAtom);
   const fiscalYears = useAtomValue(fiscalYearsAtom);
   const setFiscalYears = useSetAtom(setFiscalYearsAtom);
-  const [reversal, setReversal] = useState<JournalEntry | null>(null);
 
   const money = (units: number) =>
     formatMoneyUnits(
@@ -109,15 +109,11 @@ const JournalEntryDetails = () => {
 
   // The forward direction of reversalOfEntryId — only a reversed entry can
   // have one, so there's nothing to look up otherwise.
-  useEffect(() => {
-    if (!id || isNew || entry?.status !== "reversed") {
-      setReversal(null);
-      return;
-    }
-    GetJournalEntryReversal(id)
-      .then(setReversal)
-      .catch(() => setReversal(null));
-  }, [id, isNew, entry?.status]);
+  const { data: reversal } = useFetch<JournalEntry | null>(
+    id && !isNew && entry?.status === "reversed" ? [id] : null,
+    () => GetJournalEntryReversal(id!).catch(() => null),
+    null,
+  );
 
   // Mirrors the server-side guard in allocateAndFinalizeEntryTx (db/journal_entry.go)
   // — a deactivated account should never even be offered here, not just

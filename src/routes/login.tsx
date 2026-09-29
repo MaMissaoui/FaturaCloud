@@ -19,7 +19,13 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const setCurrentUser = useSetAtom(currentUserAtom);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // A failed SSO login lands here via a full-page redirect to
+  // /login?error=sso_failed, so reading it once when the page mounts is enough.
+  const [error, setError] = useState<string | null>(() =>
+    searchParams.get("error") === "sso_failed"
+      ? t`Single sign-on login failed — try again, or use your email and password below.`
+      : null,
+  );
   const [ssoEnabled, setSsoEnabled] = useState(false);
   const {
     token: { colorBgLayout },
@@ -32,12 +38,6 @@ export default function LoginPage() {
       .then(setSsoEnabled)
       .catch((error) => console.error("Failed to check OIDC status:", error));
   }, []);
-
-  useEffect(() => {
-    if (searchParams.get("error") === "sso_failed") {
-      setError(t`Single sign-on login failed — try again, or use your email and password below.`);
-    }
-  }, [searchParams]);
 
   const onFinish = async (values: { email: string; password: string }) => {
     setError(null);

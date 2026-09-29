@@ -20,6 +20,7 @@ import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
 import isEmpty from "lodash/isEmpty";
 import { GetTaxRateUsageCount } from "src/api";
+import { useFetch } from "src/hooks/useFetch";
 
 import { taxRateIdAtom, taxRateAtom, deleteTaxRateAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
@@ -44,7 +45,12 @@ const TaxRateForm = () => {
   const setTaxRate = useSetAtom(taxRateAtom);
   const deleteTaxRate = useSetAtom(deleteTaxRateAtom);
   const [submitting, setSubmitting] = useState(false);
-  const [usageCount, setUsageCount] = useState<number | null>(null);
+  // null while creating a tax rate (or before its count arrives).
+  const { data: usageCount } = useFetch<number | null>(
+    id ? [id] : null,
+    () => GetTaxRateUsageCount(id!).catch(() => 0),
+    null,
+  );
   const categoryLabels = useTaxRateCategoryLabels();
   const categoryCode = Form.useWatch("category_code", form);
   const exemptionReasonRequired = CATEGORIES_REQUIRING_EXEMPTION_REASON.has(categoryCode);
@@ -102,12 +108,8 @@ const TaxRateForm = () => {
   useEffect(() => {
     if (id) {
       setTaxRateId(id);
-      GetTaxRateUsageCount(id)
-        .then(setUsageCount)
-        .catch(() => setUsageCount(0));
     } else {
       form.resetFields();
-      setUsageCount(null);
     }
   }, [id, form, setTaxRateId]);
 

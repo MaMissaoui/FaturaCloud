@@ -128,28 +128,35 @@ export default function Organizations() {
   // response can't populate or pop open a drawer out of turn.
   const editRequestIdRef = useRef(0);
 
-  const fetchOrgs = async () => {
+  // loadOrgs only settles the loading/error state, and only inside promise
+  // callbacks; `loading` starts true and `loadError` false, so the first load
+  // needs no synchronous reset inside the mount effect (react's
+  // set-state-in-effect rule). fetchOrgs, for Retry and refreshes after an
+  // action, resets them first.
+  const loadOrgs = () =>
+    GetOrganizations()
+      .then(async (list) => {
+        setOrgs(list);
+        // One request for every organization's role (issue #147), replacing
+        // the old one-GetMyOrganizationRole-call-per-row N+1 pattern.
+        const roles = await GetMyOrganizationRoles().catch(
+          () => ({}) as Record<string, OrganizationRole>,
+        );
+        setMyOrgAdminIds(new Set(Object.keys(roles).filter((orgId) => roles[orgId] === "admin")));
+      })
+      .catch((error) => {
+        console.error("Failed to load organizations:", error);
+        setLoadError(true);
+      })
+      .finally(() => setLoading(false));
+  const fetchOrgs = () => {
     setLoading(true);
     setLoadError(false);
-    try {
-      const list = await GetOrganizations();
-      setOrgs(list);
-      // One request for every organization's role (issue #147), replacing
-      // the old one-GetMyOrganizationRole-call-per-row N+1 pattern.
-      const roles = await GetMyOrganizationRoles().catch(
-        () => ({}) as Record<string, OrganizationRole>,
-      );
-      setMyOrgAdminIds(new Set(Object.keys(roles).filter((orgId) => roles[orgId] === "admin")));
-    } catch (error) {
-      console.error("Failed to load organizations:", error);
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-    }
+    return loadOrgs();
   };
 
   useEffect(() => {
-    fetchOrgs();
+    loadOrgs();
   }, []);
 
   const filteredOrgs = search
