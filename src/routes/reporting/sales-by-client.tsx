@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Alert, Button, Card, DatePicker, Table } from "antd";
 import { Bar } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
@@ -17,6 +17,7 @@ import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 import { moneySorter, textSorter } from "src/utils/sort";
+import { useFetch } from "src/hooks/useFetch";
 
 const { RangePicker } = DatePicker;
 
@@ -28,41 +29,26 @@ const SalesByClient = () => {
   const dateFormat = useDatePickerFormat();
 
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(12, "month"), dayjs()]);
-  const [rows, setRows] = useState<ClientRevenue[]>([]);
-  const [loading, setLoading] = useState(false);
   // A failed fetch used to reset rows to [], which rendered identically to a
   // genuinely revenue-free period — tracked separately so the page can show
   // a real error instead of a false all-clear.
-  const [failed, setFailed] = useState(false);
-  // requestIdRef guards against an in-flight earlier range's request
-  // overwriting a newer one, the same shape as products.tsx's search guard.
-  const requestIdRef = useRef(0);
-
-  const refresh = () => {
-    if (!organizationId) return;
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setFailed(false);
-    GetSalesByClient(
-      organizationId,
-      range[0].startOf("day").valueOf(),
-      range[1].endOf("day").valueOf(),
-    )
-      .then((data) => {
-        if (requestId !== requestIdRef.current) return;
-        setRows(data);
-      })
-      .catch(() => {
-        if (requestId !== requestIdRef.current) return;
-        setRows([]);
-        setFailed(true);
-      })
-      .finally(() => {
-        if (requestId === requestIdRef.current) setLoading(false);
-      });
-  };
-
-  useEffect(refresh, [organizationId, range]);
+  const {
+    data: rows,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<ClientRevenue[]>(
+    organizationId
+      ? [organizationId, range[0].startOf("day").valueOf(), range[1].endOf("day").valueOf()]
+      : null,
+    () =>
+      GetSalesByClient(
+        organizationId!,
+        range[0].startOf("day").valueOf(),
+        range[1].endOf("day").valueOf(),
+      ),
+    [],
+  );
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 

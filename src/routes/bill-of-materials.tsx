@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Alert, Badge, Button, Col, Row, Table, Tooltip } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -14,6 +14,7 @@ import { GetBOMSummaries } from "src/api";
 import BOMEditorDrawer from "src/components/products/bom-editor-drawer";
 import PageHeader from "src/components/page-header";
 import { unitLabel } from "src/utils/units";
+import { useFetch } from "src/hooks/useFetch";
 
 // A focused surface for maintaining a finished product's recipe — the
 // product edit drawer (src/components/products/form.tsx) still has the
@@ -29,16 +30,7 @@ const BillOfMaterials = () => {
   const products = useAtomValue(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
 
-  const [summaries, setSummaries] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  // A failed summaries fetch used to leave summaries as {} and let every
-  // finished product fall through to the "None / no recipe defined yet"
-  // warning badge — telling the user correct recipes are missing (the F85
-  // failure mode). Tracked separately so a failed load shows a real error
-  // instead of a per-row false claim, while a genuinely-zero-count product
-  // still keeps its true empty-state badge.
-  const [failed, setFailed] = useState(false);
 
   const finishedProducts = useMemo(
     () => products.filter((p) => p.category === "finished"),
@@ -58,24 +50,25 @@ const BillOfMaterials = () => {
     );
   }, [finishedProducts, search]);
 
-  const refresh = useCallback(() => {
-    if (!organizationId) return;
-    setLoading(true);
-    setFailed(false);
-    Promise.all([setProducts(), GetBOMSummaries(organizationId)])
-      .then(([, rows]) => {
-        setSummaries(Object.fromEntries(rows.map((r) => [r.finishedProductId, r.componentCount])));
-      })
-      .catch(() => {
-        setSummaries({});
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }, [organizationId, setProducts]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  // A failed summaries fetch used to leave summaries as {} and let every
+  // finished product fall through to the "None / no recipe defined yet"
+  // warning badge — telling the user correct recipes are missing (the F85
+  // failure mode). Tracked separately so a failed load shows a real error
+  // instead of a per-row false claim, while a genuinely-zero-count product
+  // still keeps its true empty-state badge.
+  const {
+    data: summaries,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<Record<string, number>>(
+    organizationId ? [organizationId] : null,
+    () =>
+      Promise.all([setProducts(), GetBOMSummaries(organizationId!)]).then(([, rows]) =>
+        Object.fromEntries(rows.map((r) => [r.finishedProductId, r.componentCount])),
+      ),
+    {},
+  );
 
   return (
     <>

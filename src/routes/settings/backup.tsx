@@ -75,8 +75,11 @@ function SettingsBackup() {
   });
   const [savingConfig, setSavingConfig] = useState(false);
 
-  const fetchList = useCallback(() => {
-    setLoadingList(true);
+  // loadList only ends the loading state; `loadingList` starts true, so the
+  // first load needs no synchronous setLoadingList(true) inside the mount
+  // effect (react's set-state-in-effect rule). fetchList, for the Refresh
+  // button and after a backup, sets it first.
+  const loadList = useCallback(() => {
     ListBackups()
       .then((rows) => {
         setBackups(rows);
@@ -88,6 +91,10 @@ function SettingsBackup() {
       })
       .finally(() => setLoadingList(false));
   }, []);
+  const fetchList = useCallback(() => {
+    setLoadingList(true);
+    loadList();
+  }, [loadList]);
 
   const fetchConfig = useCallback(() => {
     GetBackupConfig()
@@ -99,9 +106,9 @@ function SettingsBackup() {
   }, []);
 
   useEffect(() => {
-    fetchList();
+    loadList();
     fetchConfig();
-  }, [fetchList, fetchConfig]);
+  }, [loadList, fetchConfig]);
 
   // Not memoized: it depends on the current moment as much as
   // config.scheduleHour, so a useMemo keyed only on the latter would freeze

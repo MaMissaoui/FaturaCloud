@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Button, Col, DatePicker, Row, Space, Table, Tag, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -13,6 +13,7 @@ import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import { useDatePickerFormat } from "src/utils/date";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
+import { useFetch } from "src/hooks/useFetch";
 
 const BalanceSheetReport = () => {
   const { i18n } = useLingui();
@@ -21,30 +22,20 @@ const BalanceSheetReport = () => {
   const dateFormat = useDatePickerFormat();
 
   const [asOfDate, setAsOfDate] = useState<Dayjs>(dayjs());
-  const [report, setReport] = useState<BalanceSheet | null>(null);
-  const [loading, setLoading] = useState(false);
   // A failed fetch used to reset report to null, which rendered identically
   // to a genuinely empty balance sheet — every total 0.00 and the equation
   // check hidden. Tracked separately so this page shows a real error instead
   // of a false all-clear.
-  const [failed, setFailed] = useState(false);
-
-  const refresh = useCallback(() => {
-    if (!organizationId) return;
-    setLoading(true);
-    setFailed(false);
-    GetBalanceSheet(organizationId, asOfDate.valueOf())
-      .then(setReport)
-      .catch(() => {
-        setReport(null);
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }, [organizationId, asOfDate]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const {
+    data: report,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<BalanceSheet | null>(
+    organizationId ? [organizationId, asOfDate.valueOf()] : null,
+    () => GetBalanceSheet(organizationId!, asOfDate.valueOf()),
+    null,
+  );
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 

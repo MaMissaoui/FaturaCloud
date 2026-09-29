@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import { Link, useNavigate } from "react-router";
 import { Alert, Button, Card, Col, Row, Select, Statistic, Table, theme, Typography } from "antd";
@@ -21,6 +21,7 @@ import type {
   ProductRevenue,
 } from "src/api";
 import PageHeader from "src/components/page-header";
+import { useFetch } from "src/hooks/useFetch";
 import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
 
 // Stock quantities are a display concern only — the organization's
@@ -100,35 +101,26 @@ const Dashboard = () => {
     canOpen(path) ? <Link to={path}>{t`View full report`}</Link> : undefined;
 
   const [period, setPeriod] = useState<Period>({ kind: "months", months: 12 });
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(false);
   // A failed fetch used to leave `data` untouched (stale, from a previous
   // period) or null (first load) — either way every Statistic/Table below
   // rendered a plausible-looking "nothing owed, nothing to see" reading
   // with no indication anything went wrong, on the one screen every user
   // checks daily to decide what needs attention. Same fix shape as
   // src/routes/accounting/reports/inventory-valuation.tsx.
-  const [failed, setFailed] = useState(false);
-
-  const fetchDashboard = useCallback(() => {
-    if (!organizationId) return;
-    setLoading(true);
-    setFailed(false);
-    GetDashboard(
-      organizationId,
-      period.kind === "year" ? { year: period.year } : { months: period.months },
-    )
-      .then(setData)
-      .catch(() => {
-        setData(null);
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }, [organizationId, period]);
-
-  useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
+  const {
+    data,
+    loading,
+    failed,
+    reload: fetchDashboard,
+  } = useFetch<DashboardData | null>(
+    organizationId ? [organizationId, periodToValue(period)] : null,
+    () =>
+      GetDashboard(
+        organizationId!,
+        period.kind === "year" ? { year: period.year } : { months: period.months },
+      ),
+    null,
+  );
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
   const qtyLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;

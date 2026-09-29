@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Alert, Button, Card, Col, DatePicker, Row, Table, Tooltip, Typography, theme } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -14,6 +14,7 @@ import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
 import { useDatePickerFormat } from "src/utils/date";
 import { useTaxRateCategoryLabels } from "src/utils/tax-rate-categories";
+import { useFetch } from "src/hooks/useFetch";
 
 const { RangePicker } = DatePicker;
 
@@ -25,45 +26,30 @@ const TaxSummary = () => {
   const dateFormat = useDatePickerFormat();
 
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(12, "month"), dayjs()]);
-  const [summary, setSummary] = useState<TaxSummaryData | null>(null);
-  const [loading, setLoading] = useState(false);
   // A failed fetch used to reset summary to null, which the two tables and
   // the net liability below then rendered identically to a genuinely empty
   // period (0.00 everywhere) — a slow load or transient error looked exactly
   // like "nothing to report." Tracked separately so the page can show a real
   // error instead of a false all-clear, the same fix already applied to the
   // other accounting/reporting screens.
-  const [failed, setFailed] = useState(false);
   const categoryLabels = useTaxRateCategoryLabels();
-  // requestIdRef guards against an in-flight earlier range's request
-  // overwriting a newer one, the same shape as products.tsx's search guard.
-  const requestIdRef = useRef(0);
-
-  const refresh = () => {
-    if (!organizationId) return;
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setFailed(false);
-    GetTaxSummary(
-      organizationId,
-      range[0].startOf("day").valueOf(),
-      range[1].endOf("day").valueOf(),
-    )
-      .then((data) => {
-        if (requestId !== requestIdRef.current) return;
-        setSummary(data);
-      })
-      .catch(() => {
-        if (requestId !== requestIdRef.current) return;
-        setSummary(null);
-        setFailed(true);
-      })
-      .finally(() => {
-        if (requestId === requestIdRef.current) setLoading(false);
-      });
-  };
-
-  useEffect(refresh, [organizationId, range]);
+  const {
+    data: summary,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<TaxSummaryData | null>(
+    organizationId
+      ? [organizationId, range[0].startOf("day").valueOf(), range[1].endOf("day").valueOf()]
+      : null,
+    () =>
+      GetTaxSummary(
+        organizationId!,
+        range[0].startOf("day").valueOf(),
+        range[1].endOf("day").valueOf(),
+      ),
+    null,
+  );
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 

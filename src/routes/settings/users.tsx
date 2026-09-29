@@ -43,17 +43,24 @@ export default function SettingsUsers() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const fetchUsers = async (q?: string) => {
-    setLoading(true);
+  // loadUsers only ends the loading state; `loading` starts true, so the
+  // first load needs no synchronous setLoading(true) inside the mount effect
+  // (react's set-state-in-effect rule). fetchUsers, for searches and
+  // refreshes after an action, sets it first.
+  const loadUsers = async (q?: string) => {
     try {
       setUsers(await ListUsers(q));
     } finally {
       setLoading(false);
     }
   };
+  const fetchUsers = (q?: string) => {
+    setLoading(true);
+    return loadUsers(q);
+  };
 
   useEffect(() => {
-    fetchUsers();
+    loadUsers();
   }, []);
 
   const openNew = () => {
