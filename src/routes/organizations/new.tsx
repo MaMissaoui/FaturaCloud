@@ -1,7 +1,7 @@
 import { Alert, Form, Input, InputNumber, Select, Typography, Row, Col, Button, Card } from "antd";
 import { CloseOutlined, LogoutOutlined } from "@ant-design/icons";
 import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { nanoid } from "nanoid";
 import { Trans } from "@lingui/react/macro";
@@ -21,6 +21,7 @@ import { CreateOrganization } from "src/api";
 import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
 import { message } from "src/utils/message";
+import { defaultTimezone, timezoneOptions } from "src/utils/timezones";
 
 const { Title, Text } = Typography;
 
@@ -30,6 +31,10 @@ const currencies = compact(uniq(map(countries, "currency_code")));
 const NewOrganization = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const watchedTimezone = Form.useWatch("timezone", form);
+  // ~420 zones; rebuilt only when the picked value changes (see the
+  // Organizations drawer's identical select).
+  const timezoneSelectOptions = useMemo(() => timezoneOptions(watchedTimezone), [watchedTimezone]);
 
   // Atoms
   const organizations = useAtomValue(organizationsAtom);
@@ -120,7 +125,10 @@ const NewOrganization = () => {
               layout="vertical"
               onFinish={handleSubmit}
               style={{ marginTop: 24 }}
-              initialValues={{ minimum_fraction_digits: 2 }}
+              // Prefilled with the browser's zone, like the Organizations
+              // drawer: the server never infers one, and without it every
+              // picked date reads a day early east of UTC (audit F156).
+              initialValues={{ minimum_fraction_digits: 2, timezone: defaultTimezone() }}
             >
               <Form.Item
                 name="name"
@@ -166,6 +174,13 @@ const NewOrganization = () => {
                   </Form.Item>
                 </Col>
               </Row>
+              <Form.Item
+                name="timezone"
+                label={t`Time zone`}
+                tooltip={t`The time zone this organization works in. Exported documents, accounting exports, document numbers and the Cash Book's daily totals use it to decide which day a date falls on.`}
+              >
+                <Select showSearch optionFilterProp="label" options={timezoneSelectOptions} />
+              </Form.Item>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <Button type="primary" htmlType="submit" disabled={submitting}>
                   <Trans>Create Organization</Trans>

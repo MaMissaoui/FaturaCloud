@@ -392,7 +392,8 @@ type DailyCashMovementRow struct {
 }
 
 // GetDailyCashMovements returns one row per calendar day from startDate
-// to endDate (inclusive) for accountID — see DailyCashMovementRow's doc
+// to endDate (inclusive, each a picked day's calendarDayMs — see
+// calendarDayStart) for accountID — see DailyCashMovementRow's doc
 // comment for the day-boundary and zero-activity-day handling. Reversed
 // entries are included in whichever day they were posted (same predicate as
 // GetTrialBalance) — if an entry and its reversal land on different
@@ -411,8 +412,8 @@ func (d *Database) GetDailyCashMovements(organizationID, accountID string, start
 	if err != nil {
 		return nil, err
 	}
-	startDay := floorToDay(startDate, loc)
-	endDay := floorToDay(endDate, loc)
+	startDay := calendarDayStart(startDate, loc)
+	endDay := calendarDayStart(endDate, loc)
 	endOfRange := endDay.AddDate(0, 0, 1).UnixMilli() - 1
 
 	opening, err := d.GetAccountBalance(organizationID, accountID, startDay.UnixMilli()-1)

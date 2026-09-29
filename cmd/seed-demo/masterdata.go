@@ -32,6 +32,12 @@ type orgProfile struct {
 	// (organizations.documentLayout, set on create) — "" leaves it unset,
 	// i.e. the server's generic default layout.
 	documentLayout string
+	// timezone is the organization's IANA zone (organizations.timezone,
+	// migration 0092), set on create: the server never infers one, and an
+	// organization without it reads every date's calendar day in UTC, so a
+	// picked date prints a day early east of UTC (audit F156). "" leaves it
+	// unset.
+	timezone string
 	// invoiceNumberPrefix is the prefix seeder.go's local invoiceNum
 	// numberer uses ("" means "INV") — kept in sync with invoiceNumberFormat
 	// by hand, since CreateInvoice (unlike CreateOrder/CreatePurchaseOrder/…)
@@ -74,6 +80,7 @@ type orgProfile struct {
 var orgProfiles = map[string]orgProfile{
 	"Germany": {
 		countryCode: "DE",
+		timezone:    "Europe/Berlin",
 		email:       "billing@demo-organization.example", phone: "+49 30 5550100",
 		street: "Musterstraße", houseNumber: "12", postalCode: "10115", city: "Berlin",
 		vatin: "DE111222333", bankName: "Demo Bank AG", iban: "DE89370400440532013000",
@@ -82,6 +89,7 @@ var orgProfiles = map[string]orgProfile{
 	},
 	"Tunisia": {
 		countryCode: "TN",
+		timezone:    "Africa/Tunis",
 		email:       "billing@demo-organization.example", phone: "+216 71 234 567",
 		street: "Zone Industrielle", houseNumber: "Lot 12", postalCode: "2013", city: "Ben Arous",
 		vatin: "0987654X/A/M/000", bankName: "Banque Démo Tunisie", iban: "TN5904018104004942711234",
@@ -179,6 +187,7 @@ func (s *Seeder) setupOrganization() error {
 		// per-country (e.g. Tunisia's "FAC-{year}-{number}").
 		InvoiceNumberFormat: strPtr(orDefault(p.invoiceNumberFormat, "INV-{year}-{number}")),
 		DocumentLayout:      nonEmptyStrPtr(p.documentLayout),
+		Timezone:            nonEmptyStrPtr(p.timezone),
 	}
 
 	var org db.Organization

@@ -359,3 +359,65 @@ func TestMigration0092ZonesAllLoad(t *testing.T) {
 		}
 	}
 }
+
+// A picked day arrives as calendarDayMs, UTC noon of that date. At UTC+12
+// and beyond that instant is already the next day locally, so reading it in
+// the organization's zone showed the wrong day (audit F157); it's decoded
+// by its UTC date instead.
+func TestCalendarDayStartKeepsThePickedDayInEveryZone(t *testing.T) {
+	t.Parallel()
+	picked := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC).UnixMilli()
+	for _, zone := range []string{
+		"Africa/Tunis", "Europe/Berlin", "America/Los_Angeles", "Pacific/Pago_Pago",
+		"Pacific/Auckland", "Pacific/Fiji", "Pacific/Apia", "Pacific/Tongatapu", "Pacific/Kiritimati",
+	} {
+		loc, err := time.LoadLocation(zone)
+		if err != nil {
+			t.Fatalf("LoadLocation(%s): %v", zone, err)
+		}
+		got := calendarDayStart(picked, loc)
+		if got.Format("2006-01-02") != "2026-09-29" || got.Hour() != 0 || got.Location() != loc {
+			t.Errorf("%s: calendarDayStart = %v, want 2026-09-29 00:00 local", zone, got)
+		}
+	}
+}
+
+// End to end for an organization at UTC+14: the register's day query for
+// 20 February returns that day's movements, not the 21st's.
+func TestDailyCashMovementsPickedDayAtUTCPlus14(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-tz-kiritimati")
+	setOrgTimezone(t, d, fx.orgID, "Pacific/Kiritimati")
+	register, bank, _ := cashMovementTestAccounts(t, d, fx.orgID)
+	kiritimati, err := time.LoadLocation("Pacific/Kiritimati")
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+
+	on20th := time.Date(2025, 2, 20, 9, 0, 0, 0, kiritimati).UnixMilli()
+	on21st := time.Date(2025, 2, 21, 9, 0, 0, 0, kiritimati).UnixMilli()
+	postManualEntryForBalanceTest(t, d, fx.orgID, register.ID, bank.ID, 700, on20th)
+	if _, err := d.CreateCashMovement(CreateCashMovementRequest{
+		OrganizationID: fx.orgID, AccountID: register.ID, Date: on21st,
+		CounterAccountType: "bank", CounterAccountID: bank.ID, Amount: 200,
+	}); err != nil {
+		t.Fatalf("CreateCashMovement: %v", err)
+	}
+
+	day := time.Date(2025, 2, 20, 12, 0, 0, 0, time.UTC).UnixMilli() // calendarDayMs(20 Feb)
+	rows, err := d.GetDailyCashMovements(fx.orgID, register.ID, day, day)
+	if err != nil {
+		t.Fatalf("GetDailyCashMovements: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Date != "2025-02-20" || rows[0].In != 700 || rows[0].Out != 0 {
+		t.Fatalf("rows = %+v, want one 2025-02-20 row: in 700, out 0", rows)
+	}
+	details, err := d.GetCashMovementDetails(fx.orgID, register.ID, day, day)
+	if err != nil {
+		t.Fatalf("GetCashMovementDetails: %v", err)
+	}
+	if len(details) != 0 {
+		t.Fatalf("details = %+v, want none on 20 February (the withdrawal is on the 21st)", details)
+	}
+}
