@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Order } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -21,6 +21,7 @@ import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import { useDateFormatter } from "src/utils/date";
 import type { Dayjs } from "dayjs";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const statusTag = (status: string) => (
   <Tag color={orderStatusColor[status as OrderStatus]}>{orderStatusLabel(status)}</Tag>
@@ -28,7 +29,6 @@ const statusTag = (status: string) => (
 
 const Orders = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const orders = useAtomValue(ordersAtom);
   const setOrders = useSetAtom(setOrdersAtom);
@@ -38,16 +38,12 @@ const Orders = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [loading, setLoading] = useState(false);
   const formatDate = useDateFormatter();
 
-  useEffect(() => {
-    if (location.pathname === "/orders") {
-      setLoading(true);
-      setClients();
-      setOrders().finally(() => setLoading(false));
-    }
-  }, [location, setOrders, setClients]);
+  const loading = useLoadOnPath("/orders", () => {
+    setClients();
+    return setOrders();
+  });
 
   const clientOptions = useMemo(
     () =>

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FiscalYear, FiscalPeriod } from "src/types/models";
-import { useLocation } from "react-router";
+
 import {
   Alert,
   Button,
@@ -36,10 +36,10 @@ import { isOrgAdminOrAccountingAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 import { dateSorter, textSorter } from "src/utils/sort";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const FiscalPeriods = () => {
   useLingui();
-  const location = useLocation();
   const dateFormat = useDatePickerFormat();
 
   const fiscalYears = useAtomValue(fiscalYearsAtom);
@@ -53,7 +53,6 @@ const FiscalPeriods = () => {
   const canCloseFiscalYear = useAtomValue(isOrgAdminOrAccountingAtom);
   const [modalApi, modalContextHolder] = Modal.useModal();
 
-  const [loading, setLoading] = useState(false);
   const [yearModalOpen, setYearModalOpen] = useState(false);
   const [yearSubmitting, setYearSubmitting] = useState(false);
   const [yearForm] = Form.useForm();
@@ -63,12 +62,7 @@ const FiscalPeriods = () => {
   const [periodSubmitting, setPeriodSubmitting] = useState(false);
   const [periodForm] = Form.useForm();
 
-  useEffect(() => {
-    if (location.pathname === "/accounting/fiscal-periods") {
-      setLoading(true);
-      setFiscalYears().finally(() => setLoading(false));
-    }
-  }, [location, setFiscalYears]);
+  const loading = useLoadOnPath("/accounting/fiscal-periods", () => setFiscalYears());
 
   const handleCreateYear = async (values: any) => {
     setYearSubmitting(true);

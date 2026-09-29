@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { UnitOfMeasure } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Row, Space, Table, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -13,24 +13,18 @@ import { organizationIdAtom } from "src/atoms/organization";
 import UnitOfMeasureForm from "src/components/units-of-measure/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 function SettingsUnitsOfMeasure() {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const unitsOfMeasure = useAtomValue(unitsOfMeasureAtom);
   const setUnitsOfMeasure = useSetAtom(setUnitsOfMeasureAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/settings/units-of-measure") {
-      setLoading(true);
-      setUnitsOfMeasure().finally(() => setLoading(false));
-    }
-  }, [location, setUnitsOfMeasure]);
+  const loading = useLoadOnPath("/settings/units-of-measure", () => setUnitsOfMeasure());
 
   // useState + useMemo, matching bill-of-materials.tsx — see the same note
   // in production-orders.tsx (audit 2026-09-14 F91).

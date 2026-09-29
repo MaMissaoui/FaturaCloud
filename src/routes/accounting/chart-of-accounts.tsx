@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Account } from "src/types/models";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useNavigate } from "react-router";
 import { Button, Table, Tag, Col, Row, Space, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -17,6 +17,7 @@ import { organizationIdAtom } from "src/atoms/organization";
 import AccountForm from "src/components/accounting/account-form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const accountTypeColor: Record<string, string> = {
   asset: "blue",
@@ -45,20 +46,13 @@ const accountTypeLabel = (type: string): string => {
 
 const ChartOfAccounts = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const accounts = useAtomValue(accountsAtom);
   const setAccounts = useSetAtom(setAccountsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/accounting/chart-of-accounts") {
-      setLoading(true);
-      setAccounts().finally(() => setLoading(false));
-    }
-  }, [location, setAccounts]);
+  const loading = useLoadOnPath("/accounting/chart-of-accounts", () => setAccounts());
 
   const filtered = useMemo(
     () =>

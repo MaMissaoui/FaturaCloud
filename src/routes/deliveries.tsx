@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Delivery } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -21,6 +21,7 @@ import DocumentFilters, { matchesDocumentFilters } from "src/components/document
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { useDateFormatter } from "src/utils/date";
 import type { Dayjs } from "dayjs";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const statusTag = (status: string) => (
   <Tag color={deliveryStatusColor[status as DeliveryStatus]}>{deliveryStatusLabel(status)}</Tag>
@@ -28,7 +29,6 @@ const statusTag = (status: string) => (
 
 const Deliveries = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
@@ -39,15 +39,11 @@ const Deliveries = () => {
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const clients = useAtomValue(clientsAtom);
   const formatDate = useDateFormatter();
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/deliveries") {
-      setLoading(true);
-      setClients();
-      setDeliveries().finally(() => setLoading(false));
-    }
-  }, [location, setDeliveries, setClients]);
+  const loading = useLoadOnPath("/deliveries", () => {
+    setClients();
+    return setDeliveries();
+  });
 
   const clientOptions = useMemo(
     () =>

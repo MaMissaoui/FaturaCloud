@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ProductionOrder } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -19,10 +19,10 @@ import { productionOrdersAtom, setProductionOrdersAtom } from "src/atoms/product
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const ProductionOrders = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();
   const orders = useAtomValue(productionOrdersAtom);
@@ -30,14 +30,8 @@ const ProductionOrders = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProductionOrderStatus | "">("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/production-orders") {
-      setLoading(true);
-      setOrders().finally(() => setLoading(false));
-    }
-  }, [location, setOrders]);
+  const loading = useLoadOnPath("/production-orders", () => setOrders());
 
   // useState + useMemo, matching bill-of-materials.tsx rather than the older
   // module-level searchAtom + unmemoized filter this used to share with the

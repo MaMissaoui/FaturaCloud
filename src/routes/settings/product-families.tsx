@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ProductFamily } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Row, Table, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -11,23 +11,17 @@ import { ClusterOutlined } from "@ant-design/icons";
 import { productFamiliesAtom, setProductFamiliesAtom } from "src/atoms/product-family";
 import ProductFamilyForm from "src/components/product-families/form";
 import PageHeader from "src/components/page-header";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 function SettingsProductFamilies() {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const productFamilies = useAtomValue(productFamiliesAtom);
   const setProductFamilies = useSetAtom(setProductFamiliesAtom);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/settings/product-families") {
-      setLoading(true);
-      setProductFamilies().finally(() => setLoading(false));
-    }
-  }, [location, setProductFamilies]);
+  const loading = useLoadOnPath("/settings/product-families", () => setProductFamilies());
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
