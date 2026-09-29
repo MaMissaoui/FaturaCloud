@@ -25,7 +25,10 @@ import (
 //     PaymentPanel and the Cash Book's withdraw modal both list accounts, and
 //     the organization edit drawer picks default GL accounts.
 //   - every payments route: PaymentPanel (sales/purchasing detail pages) and
-//     the Cash Book's loan settlement both read and write payments.
+//     the Cash Book's loan settlement both read and write payments — except
+//     what a payment paid for (GET /api/payments/{id}/invoice-lines, the
+//     payment-history export, and the list's `products` field), which is
+//     sales content and limited to Sales and Cash Book users (audit F159).
 //   - GET /api/{invoices,incoming-invoices}/{id}/payments — same reason.
 //   - dashboard, exchange-rate, document templates/numbering, countries, auth,
 //     users, backups, restore.
@@ -45,6 +48,7 @@ const (
 	sectionReportTaxSummary = "report-tax-summary"
 	sectionReportCashbook   = "report-cashbook"
 	sectionReportLoan       = "report-loan"
+	sectionPaymentProducts  = "payment-products"
 )
 
 // sectionRoles lists, per section, the org roles allowed to use it. admin and
@@ -69,6 +73,10 @@ var sectionRoles = map[string][]string{
 	sectionReportTaxSummary: {"general", "accounting"},
 	sectionReportCashbook:   {"general", "accounting", "cashbook"},
 	sectionReportLoan:       {"general", "cashbook"},
+	// What a payment paid for (sales invoice lines, products, amounts) —
+	// Sales content, shown only on the Cash Book: Sales and Cash Book users
+	// (audit F159, owner decision 2026-09-29).
+	sectionPaymentProducts: {"general", "sales", "cashbook"},
 }
 
 // roleCanUseSection reports whether role may use a section. admin, power_user
@@ -147,8 +155,15 @@ func routeSections(pattern string) []string {
 		path == "reports/account-balance":
 		return []string{sectionReportGL}
 	case path == "reports/daily-cash-movements", strings.HasPrefix(path, "reports/daily-cash-movements/"),
-		path == "reports/cash-movement-details", path == "reports/payment-history/export":
+		path == "reports/cash-movement-details":
 		return []string{sectionReportCashbook}
+	case path == "payments/{id}/invoice-lines", path == "reports/payment-history/export":
+		// What a payment paid for — sales invoice lines, products and
+		// amounts — is Sales content, so only Sales and Cash Book users see
+		// it (audit F159, owner decision 2026-09-29), even though payments
+		// themselves stay membership-level. The payments list's own
+		// `products` field is stripped for everyone else in listPayments.
+		return []string{sectionPaymentProducts}
 	case path == "reports/loan-status", strings.HasPrefix(path, "reports/loan-status/"):
 		return []string{sectionReportLoan}
 	}

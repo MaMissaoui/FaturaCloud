@@ -89,6 +89,7 @@ producing this document.
 - **F157:** fixed in the Phase 1 PR.
 - **F159:** option 2 — restrict to Sales and Cash Book users (`general` keeps
   it, since it has Sales).
+- **F158, F159:** fixed in the Phase 2 PR.
 
 ---
 

@@ -14,6 +14,19 @@ func (h *handler) listPayments(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
+	// The list is membership-level (PaymentPanel on purchasing pages reads
+	// it), but what a payment paid for is sales content: only Sales and Cash
+	// Book users get the product names (audit F159, see api/sections.go).
+	role, _, err := h.db.GetOrganizationRole(orgID, getClaims(r).UserID)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	if !roleCanUseSection(role, sectionPaymentProducts) {
+		for i := range payments {
+			payments[i].Products = []string{}
+		}
+	}
 	writeJSON(w, http.StatusOK, payments)
 }
 
