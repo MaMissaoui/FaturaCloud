@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Row, Statistic, Table, theme, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -12,6 +11,7 @@ import PageHeader from "src/components/page-header";
 import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
 import { formatCents } from "src/utils/currency";
 import { moneySorter, numberSorter, textSorter } from "src/utils/sort";
+import { useFetch } from "src/hooks/useFetch";
 
 const PayableAging = () => {
   const { i18n } = useLingui();
@@ -19,30 +19,20 @@ const PayableAging = () => {
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
 
-  const [summary, setSummary] = useState<PayableAgingSummary | null>(null);
-  const [loading, setLoading] = useState(false);
   // A failed fetch used to reset summary to null, which the cards and table
   // below rendered identically to a genuinely balances-free ledger — a
   // transient 500 told an accountant their payables were €0.00. Tracked
   // separately so this page shows a real error instead of a false all-clear.
-  const [failed, setFailed] = useState(false);
-
-  const refresh = useCallback(() => {
-    if (!organizationId) return;
-    setLoading(true);
-    setFailed(false);
-    GetPayableAging(organizationId)
-      .then(setSummary)
-      .catch(() => {
-        setSummary(null);
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }, [organizationId]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const {
+    data: summary,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<PayableAgingSummary | null>(
+    organizationId ? [organizationId] : null,
+    () => GetPayableAging(organizationId!),
+    null,
+  );
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 

@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Row, Statistic, Table, theme, Typography } from "antd";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -11,6 +10,7 @@ import type { InventoryValuation, InventoryValuationLine } from "src/api";
 import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
+import { useFetch } from "src/hooks/useFetch";
 
 const InventoryValuationReport = () => {
   const { i18n } = useLingui();
@@ -18,32 +18,22 @@ const InventoryValuationReport = () => {
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
 
-  const [report, setReport] = useState<InventoryValuation | null>(null);
-  const [loading, setLoading] = useState(false);
   // A failed fetch used to reset report to null, which the Statistic cards
   // below then rendered identically to "still loading" — both as
   // 0.00/0.00/0.00, and a zero Difference is this report's *good* outcome,
   // so a slow load or a transient error looked exactly like "books
   // reconcile." Tracked separately so the cards can show a real error
   // instead of a false all-clear.
-  const [failed, setFailed] = useState(false);
-
-  const refresh = useCallback(() => {
-    if (!organizationId) return;
-    setLoading(true);
-    setFailed(false);
-    GetInventoryValuation(organizationId)
-      .then(setReport)
-      .catch(() => {
-        setReport(null);
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }, [organizationId]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const {
+    data: report,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<InventoryValuation | null>(
+    organizationId ? [organizationId] : null,
+    () => GetInventoryValuation(organizationId!),
+    null,
+  );
 
   const quantityOnly = report?.inventoryValuation === "quantity_only";
 

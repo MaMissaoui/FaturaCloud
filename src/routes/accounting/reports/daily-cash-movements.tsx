@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Button,
@@ -24,6 +24,7 @@ import { GetAccounts, GetDailyCashMovements } from "src/api";
 import type { DailyCashMovementRow } from "src/api";
 import type { Account } from "src/types/models";
 import PageHeader from "src/components/page-header";
+import { useFetch } from "src/hooks/useFetch";
 import { formatOrgCents } from "src/utils/currencies";
 import { calendarDayMs, useDatePickerFormat } from "src/utils/date";
 import { dateSorter, moneySorter } from "src/utils/sort";
@@ -49,15 +50,15 @@ const DailyCashMovements = () => {
   const dateFormat = useDatePickerFormat();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [accountId, setAccountId] = useState<string>("");
+  // The account the user picked (null until they pick one). Until then the
+  // report shows the organization's configured cash register account, once
+  // the account list has loaded — derived, so a user's own choice is never
+  // reset by an unrelated re-render.
+  const [pickedAccountId, setPickedAccountId] = useState<string | null>(null);
+  const accountId =
+    pickedAccountId ??
+    (accounts.length > 0 ? (organization?.defaultCashRegisterAccountId ?? "") : "");
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(6, "day"), dayjs()]);
-  const [rows, setRows] = useState<DailyCashMovementRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  // A failed fetch used to reset rows to [], which rendered identically to a
-  // genuinely activity-free range ("No activity in this range") — a
-  // transient 500 told an accountant there were no movements. Tracked
-  // separately so this page shows a real error instead of a false all-clear.
-  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -66,41 +67,28 @@ const DailyCashMovements = () => {
       .catch((error) => console.error("Failed to fetch accounts:", error));
   }, [organizationId]);
 
-  // Defaults to the organization's configured cash register account once
-  // both the account list and the organization have loaded, but only ever
-  // once — a user picking a different account to review afterward must not
-  // get silently reset back on an unrelated re-render.
-  const [defaulted, setDefaulted] = useState(false);
-  useEffect(() => {
-    if (defaulted || !organization?.defaultCashRegisterAccountId || accounts.length === 0) return;
-    setAccountId(organization.defaultCashRegisterAccountId);
-    setDefaulted(true);
-  }, [defaulted, organization, accounts]);
-
-  const refresh = useCallback(() => {
-    if (!organizationId || !accountId) return;
-    setLoading(true);
-    setFailed(false);
-    GetDailyCashMovements(
-      organizationId,
-      accountId,
-      // Day-based: the server floors each end to a day in the
-      // organization's time zone — see calendarDayMs.
-      calendarDayMs(range[0]),
-      calendarDayMs(range[1]),
-    )
-      .then(setRows)
-      .catch((error) => {
+  // A failed fetch used to reset rows to [], which rendered identically to a
+  // genuinely activity-free range ("No activity in this range") — a
+  // transient 500 told an accountant there were no movements. Tracked
+  // separately so this page shows a real error instead of a false all-clear.
+  // Day-based: the server floors each end to a day in the organization's
+  // time zone — see calendarDayMs.
+  const from = calendarDayMs(range[0]);
+  const to = calendarDayMs(range[1]);
+  const {
+    data: rows,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<DailyCashMovementRow[]>(
+    organizationId && accountId ? [organizationId, accountId, from, to] : null,
+    () =>
+      GetDailyCashMovements(organizationId!, accountId, from, to).catch((error) => {
         console.error("Failed to fetch daily cash movements:", error);
-        setRows([]);
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }, [organizationId, accountId, range]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+        throw error;
+      }),
+    [],
+  );
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
@@ -125,7 +113,7 @@ const DailyCashMovements = () => {
       <Space style={{ marginTop: 16, marginBottom: 16 }} wrap>
         <Select
           value={accountId || undefined}
-          onChange={setAccountId}
+          onChange={setPickedAccountId}
           placeholder={t`Account`}
           aria-label={t`Account`}
           showSearch

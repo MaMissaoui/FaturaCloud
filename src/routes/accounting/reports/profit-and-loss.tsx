@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Card, Col, Row, Select, Table, Typography, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -12,6 +12,7 @@ import { organizationIdAtom, organizationAtom } from "src/atoms/organization";
 import { fiscalYearsAtom, setFiscalYearsAtom } from "src/atoms/fiscal-period";
 import PageHeader from "src/components/page-header";
 import { formatOrgCents } from "src/utils/currencies";
+import { useFetch } from "src/hooks/useFetch";
 
 const ProfitAndLossReport = () => {
   const { i18n } = useLingui();
@@ -21,51 +22,42 @@ const ProfitAndLossReport = () => {
   const fiscalYears = useAtomValue(fiscalYearsAtom);
   const setFiscalYears = useSetAtom(setFiscalYearsAtom);
 
-  const [fiscalYearId, setFiscalYearId] = useState<string>("");
-  const [report, setReport] = useState<ProfitAndLoss | null>(null);
-  const [loading, setLoading] = useState(false);
-  // A failed fetch used to reset report to null, which rendered identically
-  // to a genuinely empty period — every total 0.00 and a green Net income
-  // card. Tracked separately so this page shows a real error instead of a
-  // false all-clear.
-  const [failed, setFailed] = useState(false);
+  // The fiscal year the user picked; until they pick one, the year covering
+  // today, falling back to the most recent one — same "pick a sensible
+  // starting scope" idea as the trial balance page, just auto-selected since
+  // a P&L with no range is meaningless (the backend rejects an all-zero range
+  // outright). Derived, rather than set from an effect once the years load.
+  const [pickedYearId, setPickedYearId] = useState<string>("");
+  const [now] = useState(() => Date.now());
+  const selectedYear = useMemo(
+    () =>
+      fiscalYears.find((y) => y.id === pickedYearId) ??
+      fiscalYears.find((y) => y.startDate <= now && now <= y.endDate) ??
+      fiscalYears[0],
+    [fiscalYears, pickedYearId, now],
+  );
+  const fiscalYearId = selectedYear?.id ?? "";
 
   useEffect(() => {
     setFiscalYears();
   }, [setFiscalYears]);
 
-  // Default to the fiscal year covering today, falling back to the most
-  // recent one — same "pick a sensible starting scope" idea as the trial
-  // balance page, just auto-selected since a P&L with no range is
-  // meaningless (the backend rejects an all-zero range outright).
-  useEffect(() => {
-    if (fiscalYearId || fiscalYears.length === 0) return;
-    const now = Date.now();
-    const current = fiscalYears.find((y) => y.startDate <= now && now <= y.endDate);
-    setFiscalYearId((current ?? fiscalYears[0]).id);
-  }, [fiscalYears, fiscalYearId]);
-
-  const selectedYear = useMemo(
-    () => fiscalYears.find((y) => y.id === fiscalYearId),
-    [fiscalYears, fiscalYearId],
+  // A failed fetch used to reset report to null, which rendered identically
+  // to a genuinely empty period — every total 0.00 and a green Net income
+  // card. Tracked separately so this page shows a real error instead of a
+  // false all-clear.
+  const {
+    data: report,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<ProfitAndLoss | null>(
+    organizationId && selectedYear
+      ? [organizationId, selectedYear.startDate, selectedYear.endDate]
+      : null,
+    () => GetProfitAndLoss(organizationId!, selectedYear!.startDate, selectedYear!.endDate),
+    null,
   );
-
-  const refresh = useCallback(() => {
-    if (!organizationId || !selectedYear) return;
-    setLoading(true);
-    setFailed(false);
-    GetProfitAndLoss(organizationId, selectedYear.startDate, selectedYear.endDate)
-      .then(setReport)
-      .catch(() => {
-        setReport(null);
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  }, [organizationId, selectedYear]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
@@ -91,7 +83,7 @@ const ProfitAndLossReport = () => {
             placeholder={t`Select a fiscal year`}
             style={{ width: 180 }}
             value={fiscalYearId || undefined}
-            onChange={setFiscalYearId}
+            onChange={setPickedYearId}
             options={fiscalYears.map((y) => ({ value: y.id, label: y.name }))}
           />
         }

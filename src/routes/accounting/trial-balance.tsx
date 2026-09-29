@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { TrialBalanceRow } from "src/types/models";
 import { useLocation } from "react-router";
 import { Alert, Button, Col, Row, Select, Space, Table, Tag, Typography } from "antd";
@@ -19,6 +19,7 @@ import {
   loadFiscalPeriodsAtom,
 } from "src/atoms/fiscal-period";
 import PageHeader from "src/components/page-header";
+import { useFetch } from "src/hooks/useFetch";
 import { formatOrgCents } from "src/utils/currencies";
 
 const fiscalYearFilterAtom = atom<string>("");
@@ -38,15 +39,22 @@ const TrialBalance = () => {
   const [fiscalYearId, setFiscalYearId] = useAtom(fiscalYearFilterAtom);
   const [fiscalPeriodId, setFiscalPeriodId] = useAtom(fiscalPeriodFilterAtom);
 
-  const [rows, setRows] = useState<TrialBalanceRow[]>([]);
-  const [loading, setLoading] = useState(false);
   // A failed fetch used to reset rows to [], which rendered identically to a
   // genuinely empty/balanced trial balance (0.00 debit, 0.00 credit is this
   // report's whole point, not a red flag) — a slow load or transient error
   // looked exactly like "books reconcile." Tracked separately so the page can
   // show a real error instead of a false all-clear, the same fix already
   // applied to inventory-valuation.tsx and the other accounting reports.
-  const [failed, setFailed] = useState(false);
+  const {
+    data: rows,
+    loading,
+    failed,
+    reload: refresh,
+  } = useFetch<TrialBalanceRow[]>(
+    organizationId ? [organizationId, fiscalYearId, fiscalPeriodId] : null,
+    () => GetTrialBalance(organizationId!, fiscalYearId || undefined, fiscalPeriodId || undefined),
+    [],
+  );
 
   useEffect(() => {
     if (location.pathname === "/accounting/trial-balance") {
@@ -57,21 +65,6 @@ const TrialBalance = () => {
   useEffect(() => {
     if (fiscalYearId) loadFiscalPeriods(fiscalYearId);
   }, [fiscalYearId, loadFiscalPeriods]);
-
-  const refresh = () => {
-    if (!organizationId) return;
-    setLoading(true);
-    setFailed(false);
-    GetTrialBalance(organizationId, fiscalYearId || undefined, fiscalPeriodId || undefined)
-      .then(setRows)
-      .catch(() => {
-        setRows([]);
-        setFailed(true);
-      })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(refresh, [organizationId, fiscalYearId, fiscalPeriodId]);
 
   const periods = fiscalYearId ? (fiscalPeriodsByYear[fiscalYearId] ?? []) : [];
   const totalDebit = sum(rows.map((r) => r.debit));

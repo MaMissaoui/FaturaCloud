@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Button,
@@ -38,6 +38,7 @@ import { getFormattedNumber } from "src/utils/currencies";
 import { useDateFormatter } from "src/utils/date";
 import InvoiceStateSelect from "src/components/invoices/state-select";
 import PageHeader from "src/components/page-header";
+import { useFetch } from "src/hooks/useFetch";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import { INVOICE_STATES, invoiceStateLabel } from "src/types/invoice";
 import type { InvoiceDisplay } from "src/types/invoice";
@@ -59,7 +60,6 @@ const Invoices = () => {
   const [stateFilterValue, setStateFilterValue] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [loading, setLoading] = useState(false);
   const clients = useAtomValue(clientsAtom);
   // Computed once per component render rather than inside the Due date
   // column's per-row render callback, so every row's overdue comparison
@@ -72,13 +72,17 @@ const Invoices = () => {
   // oxlint-disable-next-line react/purity
   const now = Date.now();
 
-  useEffect(() => {
-    setLoading(true);
-    // Load the client list so the header's customer picker has options —
-    // the list pages don't otherwise fetch it.
-    setClients();
-    setInvoices().finally(() => setLoading(false));
-  }, [setInvoices, setClients]);
+  // Loaded once per visit (a constant key). Loads the client list too, so
+  // the header's customer picker has options — the list pages don't
+  // otherwise fetch it.
+  const { loading } = useFetch(
+    ["invoices"],
+    () => {
+      setClients();
+      return setInvoices();
+    },
+    undefined,
+  );
 
   const clientOptions = useMemo(
     () =>

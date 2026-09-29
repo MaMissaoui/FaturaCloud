@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Select, Space, Typography } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -19,20 +19,26 @@ const SettingsGLExport = () => {
   const fiscalYears = useAtomValue(fiscalYearsAtom);
   const setFiscalYears = useSetAtom(setFiscalYearsAtom);
 
-  const [fiscalYearId, setFiscalYearId] = useState<string>("");
+  // The fiscal year the user picked; until then the one covering today,
+  // falling back to the most recent — derived, not set from an effect once
+  // the years load.
+  const [pickedYearId, setPickedYearId] = useState<string>("");
+  const [now] = useState(() => Date.now());
+  const fiscalYearId = useMemo(
+    () =>
+      (
+        fiscalYears.find((y) => y.id === pickedYearId) ??
+        fiscalYears.find((y) => y.startDate <= now && now <= y.endDate) ??
+        fiscalYears[0]
+      )?.id ?? "",
+    [fiscalYears, pickedYearId, now],
+  );
   const [downloadingFEC, setDownloadingFEC] = useState(false);
   const [downloadingDATEV, setDownloadingDATEV] = useState(false);
 
   useEffect(() => {
     setFiscalYears();
   }, [setFiscalYears]);
-
-  useEffect(() => {
-    if (fiscalYearId || fiscalYears.length === 0) return;
-    const now = Date.now();
-    const current = fiscalYears.find((y) => y.startDate <= now && now <= y.endDate);
-    setFiscalYearId((current ?? fiscalYears[0]).id);
-  }, [fiscalYears, fiscalYearId]);
 
   const handleDownloadFEC = async () => {
     if (!organizationId || !fiscalYearId) return;
@@ -81,7 +87,7 @@ const SettingsGLExport = () => {
                 placeholder={t`Select a fiscal year`}
                 style={{ width: 180 }}
                 value={fiscalYearId || undefined}
-                onChange={setFiscalYearId}
+                onChange={setPickedYearId}
                 options={fiscalYears.map((y) => ({ value: y.id, label: y.name }))}
               />
               <Button
@@ -113,7 +119,7 @@ const SettingsGLExport = () => {
                 placeholder={t`Select a fiscal year`}
                 style={{ width: 180 }}
                 value={fiscalYearId || undefined}
-                onChange={setFiscalYearId}
+                onChange={setPickedYearId}
                 options={fiscalYears.map((y) => ({ value: y.id, label: y.name }))}
               />
               <Button
