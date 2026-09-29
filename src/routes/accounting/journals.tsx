@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import type { Journal } from "src/types/models";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useNavigate } from "react-router";
 import { Button, Col, Row, Table, Tag, Empty } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -11,6 +10,7 @@ import { BookOutlined } from "@ant-design/icons";
 import { journalsAtom, setJournalsAtom } from "src/atoms/journal";
 import JournalForm from "src/components/accounting/journal-form";
 import PageHeader from "src/components/page-header";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const journalTypeLabel = (type: string): string => {
   switch (type) {
@@ -31,18 +31,11 @@ const journalTypeLabel = (type: string): string => {
 
 const Journals = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const journals = useAtomValue(journalsAtom);
   const setJournals = useSetAtom(setJournalsAtom);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/accounting/journals") {
-      setLoading(true);
-      setJournals().finally(() => setLoading(false));
-    }
-  }, [location, setJournals]);
+  const loading = useLoadOnPath("/accounting/journals", () => setJournals());
 
   return (
     <>

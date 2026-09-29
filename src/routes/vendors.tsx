@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Vendor } from "src/types/models";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useNavigate } from "react-router";
 import { Button, Col, Empty, Space, Table, Row, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -20,23 +20,17 @@ import VendorForm from "src/components/vendors/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 import { formatAddressOneLine } from "src/utils/address";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const Vendors = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const vendors = useAtomValue(vendorsAtom);
   const setVendors = useSetAtom(setVendorsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/vendors") {
-      setLoading(true);
-      setVendors().finally(() => setLoading(false));
-    }
-  }, [location, setVendors]);
+  const loading = useLoadOnPath("/vendors", () => setVendors());
 
   const filtered = useMemo(
     () =>

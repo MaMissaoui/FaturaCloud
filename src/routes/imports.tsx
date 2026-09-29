@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Import, ImportSummary, PurchaseOrder } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Empty, Table, Row, Tag, Tooltip } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -20,10 +20,10 @@ import DocumentFilters, { matchesDocumentFilters } from "src/components/document
 import type { Dayjs } from "dayjs";
 import { useDateFormatter } from "src/utils/date";
 import { formatOrgCents } from "src/utils/currencies";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const Imports = () => {
   const { i18n } = useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const imports = useAtomValue(importsAtom);
   const setImports = useSetAtom(setImportsAtom);
@@ -38,7 +38,6 @@ const Imports = () => {
   // rebuilt the dataSource on every keystroke, re-rendering every visible row
   // (audit 2026-09-19 F130).
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
   const [summaries, setSummaries] = useState<Record<string, ImportSummary>>({});
   // Gates the Committed value column so it shows "—" until the summaries
   // request lands, instead of a plausible-looking 0,00 for every row.
@@ -47,24 +46,21 @@ const Imports = () => {
   const [vendorFilter, setVendorFilter] = useState("");
   const formatDate = useDateFormatter();
 
-  useEffect(() => {
-    if (location.pathname === "/imports") {
-      setLoading(true);
-      setVendors();
-      setImports().finally(() => setLoading(false));
-      // Needed for both this page's own "Purchase orders" column and the
-      // drawer's linked-purchase-orders card — fetched here (once, on list
-      // mount) rather than inside the drawer so it's already warm by the
-      // time a row is clicked.
-      setPurchaseOrders();
-      if (organizationId) {
-        GetImportSummaries(organizationId)
-          .then(setSummaries)
-          .catch(() => setSummaries({}))
-          .finally(() => setSummariesLoaded(true));
-      }
+  const loading = useLoadOnPath("/imports", () => {
+    setVendors();
+    // Needed for both this page's own "Purchase orders" column and the
+    // drawer's linked-purchase-orders card — fetched here (once, on list
+    // mount) rather than inside the drawer so it's already warm by the
+    // time a row is clicked.
+    setPurchaseOrders();
+    if (organizationId) {
+      GetImportSummaries(organizationId)
+        .then(setSummaries)
+        .catch(() => setSummaries({}))
+        .finally(() => setSummariesLoaded(true));
     }
-  }, [location, setImports, setPurchaseOrders, setVendors, organizationId]);
+    return setImports();
+  });
 
   // Order numbers per import, from the already-fetched purchaseOrdersAtom —
   // no extra request, same data the drawer's own linked-PO card filters.

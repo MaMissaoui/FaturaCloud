@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product, TaxRate } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   App,
   Badge,
@@ -32,6 +32,7 @@ import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actio
 import PageHeader from "src/components/page-header";
 import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
 import { unitLabel } from "src/utils/units";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 // Stock quantities are displayed with the organization's country-derived
 // locale (falling back to the viewer's UI language) so a fractional value
@@ -49,7 +50,6 @@ const DEFAULT_PAGE_SIZE = 25;
 const Products = () => {
   const { i18n } = useLingui();
   const { message } = App.useApp();
-  const location = useLocation();
   const navigate = useNavigate();
   const organizationId = useAtomValue(organizationIdAtom);
   const organization = useAtomValue(organizationAtom);
@@ -76,7 +76,6 @@ const Products = () => {
 
   const [products, setPageProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [searchInput, setSearchInput] = useState("");
@@ -104,8 +103,7 @@ const Products = () => {
   const fetchProducts = useCallback(() => {
     if (!organizationId) return;
     const requestId = ++requestIdRef.current;
-    setLoading(true);
-    GetProducts(organizationId, {
+    return GetProducts(organizationId, {
       search: search || undefined,
       type: typeFilter,
       category: categoryFilter,
@@ -124,9 +122,6 @@ const Products = () => {
         if (requestId !== requestIdRef.current) return;
         console.error("Failed to load products:", error);
         message.error(error instanceof Error ? error.message : t`Failed to load products`);
-      })
-      .finally(() => {
-        if (requestId === requestIdRef.current) setLoading(false);
       });
   }, [
     organizationId,
@@ -141,16 +136,29 @@ const Products = () => {
     message,
   ]);
 
-  useEffect(() => {
-    if (location.pathname === "/products") {
-      // Re-runs whenever `location` changes — including when ProductForm
-      // closes its drawer via navigate(), which is what refreshes this page
-      // after a create/update/delete without a dedicated callback prop.
+  // Re-runs whenever `location` changes — including when ProductForm closes
+  // its drawer via navigate(), which is what refreshes this page after a
+  // create/update/delete without a dedicated callback prop — and whenever the
+  // page, sort or a filter changes.
+  const loading = useLoadOnPath(
+    "/products",
+    () => {
       setTaxRates();
       setProductFamilies();
-      fetchProducts();
-    }
-  }, [location, fetchProducts, setTaxRates, setProductFamilies]);
+      return fetchProducts();
+    },
+    [
+      organizationId,
+      page,
+      pageSize,
+      search,
+      typeFilter,
+      categoryFilter,
+      familyFilter,
+      sortField,
+      sortOrder,
+    ],
+  );
 
   const handleTableChange: TableProps<Product>["onChange"] = (pagination, _filters, sorter) => {
     setPage(pagination.current ?? 1);

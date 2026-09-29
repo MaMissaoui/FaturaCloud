@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { InboundDelivery } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -21,10 +21,10 @@ import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const InboundDeliveries = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();
   const deliveries = useAtomValue(inboundDeliveriesAtom);
@@ -35,15 +35,11 @@ const InboundDeliveries = () => {
   const [vendorFilter, setVendorFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const vendors = useAtomValue(vendorsAtom);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/inbound-deliveries") {
-      setLoading(true);
-      setVendors();
-      setDeliveries().finally(() => setLoading(false));
-    }
-  }, [location, setDeliveries, setVendors]);
+  const loading = useLoadOnPath("/inbound-deliveries", () => {
+    setVendors();
+    return setDeliveries();
+  });
 
   const vendorOptions = useMemo(
     () =>

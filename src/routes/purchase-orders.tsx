@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { PurchaseOrder } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Empty, Row, Table, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -21,10 +21,10 @@ import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const PurchaseOrders = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();
   const orders = useAtomValue(purchaseOrdersAtom);
@@ -35,15 +35,11 @@ const PurchaseOrders = () => {
   const [vendorFilter, setVendorFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const vendors = useAtomValue(vendorsAtom);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/purchase-orders") {
-      setLoading(true);
-      setVendors();
-      setOrders().finally(() => setLoading(false));
-    }
-  }, [location, setOrders, setVendors]);
+  const loading = useLoadOnPath("/purchase-orders", () => {
+    setVendors();
+    return setOrders();
+  });
 
   const vendorOptions = useMemo(
     () =>

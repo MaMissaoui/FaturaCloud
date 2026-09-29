@@ -25,6 +25,7 @@ import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
 import type { Dayjs } from "dayjs";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const IncomingInvoices = () => {
   const { i18n } = useLingui();
@@ -40,16 +41,12 @@ const IncomingInvoices = () => {
   const [vendorFilter, setVendorFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const vendors = useAtomValue(vendorsAtom);
-  const [loading, setLoading] = useState(false);
   const [variances, setVariances] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (location.pathname === "/incoming-invoices") {
-      setLoading(true);
-      setVendors();
-      setInvoices().finally(() => setLoading(false));
-    }
-  }, [location, setInvoices, setVendors]);
+  const loading = useLoadOnPath("/incoming-invoices", () => {
+    setVendors();
+    return setInvoices();
+  });
 
   useEffect(() => {
     if (location.pathname !== "/incoming-invoices" || !organization?.id) return;

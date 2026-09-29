@@ -205,8 +205,8 @@ msgid "Accounts receivable"
 msgstr "Comptes clients"
 
 #: src/components/accounting/account-form.tsx:198
-#: src/routes/accounting/chart-of-accounts.tsx:188
-#: src/routes/accounting/chart-of-accounts.tsx:196
+#: src/routes/accounting/chart-of-accounts.tsx:182
+#: src/routes/accounting/chart-of-accounts.tsx:190
 #: src/routes/settings/countries.tsx:109
 #: src/routes/settings/users.tsx:222
 #: src/routes/settings/users.tsx:321
@@ -239,8 +239,8 @@ msgstr "Ajouter une ligne"
 #: src/components/organizations/organization-edit-drawer.tsx:355
 #: src/components/vendors/form.tsx:246
 #: src/routes/cash-book.tsx:1953
-#: src/routes/clients.tsx:138
-#: src/routes/vendors.tsx:138
+#: src/routes/clients.tsx:132
+#: src/routes/vendors.tsx:132
 msgid "Address"
 msgstr "Adresse"
 
@@ -262,13 +262,13 @@ msgstr "Ajustement — définir le compte à"
 msgid "Admin"
 msgstr "Administrateur"
 
-#: src/routes/products.tsx:191
+#: src/routes/products.tsx:199
 msgid "All categories"
 msgstr "Toutes les catégories"
 
-#: src/routes/deliveries.tsx:108
+#: src/routes/deliveries.tsx:104
 #: src/routes/invoices/index.tsx:185
-#: src/routes/orders.tsx:105
+#: src/routes/orders.tsx:101
 msgid "All clients"
 msgstr "Tous les clients"
 
@@ -276,7 +276,7 @@ msgstr "Tous les clients"
 msgid "All customers"
 msgstr "Tous les clients"
 
-#: src/routes/products.tsx:206
+#: src/routes/products.tsx:214
 msgid "All families"
 msgstr "Toutes les familles"
 
@@ -297,22 +297,22 @@ msgid "All states"
 msgstr "Tous les états"
 
 #: src/routes/accounting/journal-entries.tsx:66
-#: src/routes/deliveries.tsx:99
-#: src/routes/inbound-deliveries.tsx:95
-#: src/routes/orders.tsx:99
-#: src/routes/production-orders.tsx:85
-#: src/routes/purchase-orders.tsx:95
+#: src/routes/deliveries.tsx:95
+#: src/routes/inbound-deliveries.tsx:91
+#: src/routes/orders.tsx:95
+#: src/routes/production-orders.tsx:79
+#: src/routes/purchase-orders.tsx:91
 msgid "All statuses"
 msgstr "Tous les statuts"
 
-#: src/routes/products.tsx:177
+#: src/routes/products.tsx:185
 msgid "All types"
 msgstr "Tous les types"
 
-#: src/routes/imports.tsx:142
-#: src/routes/inbound-deliveries.tsx:104
-#: src/routes/incoming-invoices.tsx:115
-#: src/routes/purchase-orders.tsx:104
+#: src/routes/imports.tsx:138
+#: src/routes/inbound-deliveries.tsx:100
+#: src/routes/incoming-invoices.tsx:112
+#: src/routes/purchase-orders.tsx:100
 msgid "All vendors"
 msgstr "Tous les fournisseurs"
 
@@ -436,7 +436,7 @@ msgid "Ask an administrator to add you to their organization, then sign in again
 msgstr "Demandez à un administrateur de vous ajouter à son organisation, puis reconnectez-vous. Ou créez votre propre organisation ci-dessous."
 
 #: src/components/accounting/account-form.tsx:17
-#: src/routes/accounting/chart-of-accounts.tsx:32
+#: src/routes/accounting/chart-of-accounts.tsx:33
 msgid "Asset"
 msgstr "Actif"
 
@@ -636,8 +636,8 @@ msgstr "version(s) de nomenclature"
 msgid "Brand color"
 msgstr "Couleur de marque"
 
-#: src/routes/accounting/journals.tsx:126
-#: src/routes/accounting/journals.tsx:132
+#: src/routes/accounting/journals.tsx:119
+#: src/routes/accounting/journals.tsx:125
 msgid "Built-in"
 msgstr "Intégré"
 
@@ -682,7 +682,7 @@ msgstr "Taxe générale indirecte des îles Canaries"
 #: src/components/tax-rates/form.tsx:147
 #: src/components/units-of-measure/form.tsx:113
 #: src/components/vendors/form.tsx:152
-#: src/routes/accounting/fiscal-periods.tsx:116
+#: src/routes/accounting/fiscal-periods.tsx:110
 #: src/routes/cash-book.tsx:802
 #: src/routes/cash-book.tsx:1924
 #: src/routes/cash-book.tsx:1975
@@ -800,7 +800,7 @@ msgstr "Vente au comptant sélectionnée — le montant total est encaissé main
 
 #: src/components/products/form.tsx:408
 #: src/routes/inventory.tsx:404
-#: src/routes/products.tsx:319
+#: src/routes/products.tsx:327
 #: src/routes/reporting/tax-summary.tsx:76
 msgid "Category"
 msgstr "Catégorie"
@@ -819,7 +819,7 @@ msgid "Chart"
 msgstr "Graphique"
 
 #: src/layouts/base.tsx:668
-#: src/routes/accounting/chart-of-accounts.tsx:73
+#: src/routes/accounting/chart-of-accounts.tsx:67
 msgid "Chart of Accounts"
 msgstr "Plan comptable"
 
@@ -848,11 +848,11 @@ msgstr "Ville"
 #: src/routes/accounting/reports/ar-aging.tsx:153
 #: src/routes/dashboard.tsx:350
 #: src/routes/dashboard.tsx:438
-#: src/routes/deliveries.tsx:178
+#: src/routes/deliveries.tsx:174
 #: src/routes/deliveries/details.tsx:381
 #: src/routes/deliveries/details.tsx:387
 #: src/routes/invoices/index.tsx:242
-#: src/routes/orders.tsx:160
+#: src/routes/orders.tsx:156
 #: src/routes/orders/details.tsx:323
 #: src/routes/reporting/sales-by-client.tsx:151
 msgid "Client"
@@ -897,7 +897,7 @@ msgid "client(s)"
 msgstr "client(s)"
 
 #: src/layouts/base.tsx:419
-#: src/routes/clients.tsx:62
+#: src/routes/clients.tsx:56
 msgid "Clients"
 msgstr "Clients"
 
@@ -906,26 +906,26 @@ msgid "clients, vendors, products, tax rates"
 msgstr "clients, fournisseurs, produits, taux de taxe"
 
 #: src/components/mass-data/mass-data-excel-actions.tsx:98
-#: src/routes/accounting/fiscal-periods.tsx:243
+#: src/routes/accounting/fiscal-periods.tsx:237
 msgid "Close"
 msgstr "Clôturer"
 
 #. placeholder {0}: year.name
-#: src/routes/accounting/fiscal-periods.tsx:105
+#: src/routes/accounting/fiscal-periods.tsx:99
 msgid "Close fiscal year \"{0}\"?"
 msgstr "Clôturer l'exercice « {0} » ?"
 
-#: src/routes/accounting/fiscal-periods.tsx:227
+#: src/routes/accounting/fiscal-periods.tsx:221
 msgid "Close this period? New entries will be blocked."
 msgstr "Clôturer cette période ? Les nouvelles écritures seront bloquées."
 
-#: src/routes/accounting/fiscal-periods.tsx:114
-#: src/routes/accounting/fiscal-periods.tsx:309
+#: src/routes/accounting/fiscal-periods.tsx:108
+#: src/routes/accounting/fiscal-periods.tsx:303
 msgid "Close year"
 msgstr "Clôturer l'exercice"
 
-#: src/routes/accounting/fiscal-periods.tsx:216
-#: src/routes/accounting/fiscal-periods.tsx:289
+#: src/routes/accounting/fiscal-periods.tsx:210
+#: src/routes/accounting/fiscal-periods.tsx:283
 msgid "Closed"
 msgstr "Clôturée"
 
@@ -946,14 +946,14 @@ msgstr "Solde de clôture"
 #: src/components/organizations/organizations-table.tsx:69
 #: src/components/vendors/form.tsx:180
 #: src/components/vendors/form.tsx:181
-#: src/routes/accounting/chart-of-accounts.tsx:132
-#: src/routes/accounting/journals.tsx:97
+#: src/routes/accounting/chart-of-accounts.tsx:126
+#: src/routes/accounting/journals.tsx:90
 #: src/routes/accounting/reports/balance-sheet.tsx:52
 #: src/routes/accounting/reports/profit-and-loss.tsx:73
 #: src/routes/accounting/trial-balance.tsx:168
-#: src/routes/clients.tsx:131
+#: src/routes/clients.tsx:125
 #: src/routes/settings/countries.tsx:96
-#: src/routes/vendors.tsx:131
+#: src/routes/vendors.tsx:125
 msgid "Code"
 msgstr "Code"
 
@@ -966,7 +966,7 @@ msgid "Column chart showing revenue over time"
 msgstr "Histogramme du chiffre d'affaires dans le temps"
 
 #: src/components/imports/form.tsx:490
-#: src/routes/imports.tsx:239
+#: src/routes/imports.tsx:235
 msgid "Committed value"
 msgstr "Valeur engagée"
 
@@ -980,12 +980,12 @@ msgstr "Terminé"
 #: src/routes/inventory.tsx:477
 #: src/routes/production-orders/details.tsx:314
 #: src/routes/production-orders/details.tsx:601
-#: src/routes/products.tsx:329
+#: src/routes/products.tsx:337
 msgid "Component"
 msgstr "Composant"
 
 #: src/components/products/form.tsx:422
-#: src/routes/products.tsx:200
+#: src/routes/products.tsx:208
 msgid "Component / intermediate"
 msgstr "Composant / intermédiaire"
 
@@ -1044,7 +1044,7 @@ msgstr "Copier"
 msgid "Copy product"
 msgstr "Copier le produit"
 
-#: src/routes/products.tsx:351
+#: src/routes/products.tsx:359
 msgid "Cost"
 msgstr "Coût"
 
@@ -1192,27 +1192,27 @@ msgstr "Créer"
 msgid "Create Organization"
 msgstr "Créer une organisation"
 
-#: src/routes/accounting/chart-of-accounts.tsx:107
+#: src/routes/accounting/chart-of-accounts.tsx:101
 msgid "Create your first account"
 msgstr "Créez votre premier compte"
 
-#: src/routes/clients.tsx:96
+#: src/routes/clients.tsx:90
 msgid "Create your first client"
 msgstr "Créez votre premier client"
 
-#: src/routes/deliveries.tsx:131
+#: src/routes/deliveries.tsx:127
 msgid "Create your first delivery"
 msgstr "Créez votre première livraison"
 
-#: src/routes/inbound-deliveries.tsx:128
+#: src/routes/inbound-deliveries.tsx:124
 msgid "Create your first goods receipt"
 msgstr "Créez votre première réception"
 
-#: src/routes/imports.tsx:168
+#: src/routes/imports.tsx:164
 msgid "Create your first import"
 msgstr "Créez votre premier import"
 
-#: src/routes/incoming-invoices.tsx:140
+#: src/routes/incoming-invoices.tsx:137
 msgid "Create your first incoming invoice"
 msgstr "Créez votre première facture fournisseur"
 
@@ -1220,27 +1220,27 @@ msgstr "Créez votre première facture fournisseur"
 msgid "Create your first invoice"
 msgstr "Créez votre première facture"
 
-#: src/routes/accounting/journals.tsx:72
+#: src/routes/accounting/journals.tsx:65
 msgid "Create your first journal"
 msgstr "Créez votre premier journal"
 
-#: src/routes/orders.tsx:129
+#: src/routes/orders.tsx:125
 msgid "Create your first order"
 msgstr "Créez votre première commande"
 
-#: src/routes/products.tsx:268
+#: src/routes/products.tsx:276
 msgid "Create your first product"
 msgstr "Créez votre premier produit"
 
-#: src/routes/settings/product-families.tsx:67
+#: src/routes/settings/product-families.tsx:61
 msgid "Create your first product family"
 msgstr "Créez votre première famille de produits"
 
-#: src/routes/production-orders.tsx:114
+#: src/routes/production-orders.tsx:108
 msgid "Create your first production order"
 msgstr "Créez votre premier ordre de fabrication"
 
-#: src/routes/purchase-orders.tsx:128
+#: src/routes/purchase-orders.tsx:124
 msgid "Create your first purchase order"
 msgstr "Créez votre premier bon de commande"
 
@@ -1248,11 +1248,11 @@ msgstr "Créez votre premier bon de commande"
 msgid "Create your first tax rate"
 msgstr "Créez votre premier taux de taxe"
 
-#: src/routes/settings/units-of-measure.tsx:82
+#: src/routes/settings/units-of-measure.tsx:76
 msgid "Create your first unit of measure"
 msgstr "Créez votre première unité de mesure"
 
-#: src/routes/vendors.tsx:96
+#: src/routes/vendors.tsx:90
 msgid "Create your first vendor"
 msgstr "Créez votre premier fournisseur"
 
@@ -1279,7 +1279,7 @@ msgid "Currency"
 msgstr "Devise"
 
 #: src/components/products/bom-editor-drawer.tsx:395
-#: src/routes/accounting/fiscal-periods.tsx:291
+#: src/routes/accounting/fiscal-periods.tsx:285
 #: src/routes/accounting/reports/ap-aging.tsx:79
 #: src/routes/accounting/reports/ar-aging.tsx:79
 #: src/routes/dashboard.tsx:298
@@ -1318,7 +1318,7 @@ msgstr "N° client"
 msgid "Customer note"
 msgstr "Note client"
 
-#: src/routes/imports.tsx:261
+#: src/routes/imports.tsx:257
 msgid "Customs"
 msgstr "Douane"
 
@@ -1361,17 +1361,17 @@ msgstr "Base de données restaurée — actualisez pour voir les changements"
 #: src/routes/cash-book.tsx:1207
 #: src/routes/cash-book.tsx:1720
 #: src/routes/cash-book.tsx:1868
-#: src/routes/imports.tsx:138
-#: src/routes/imports.tsx:203
-#: src/routes/incoming-invoices.tsx:105
-#: src/routes/incoming-invoices.tsx:212
+#: src/routes/imports.tsx:134
+#: src/routes/imports.tsx:199
+#: src/routes/incoming-invoices.tsx:102
+#: src/routes/incoming-invoices.tsx:209
 #: src/routes/inventory.tsx:563
 #: src/routes/invoices/details.tsx:680
 #: src/routes/invoices/index.tsx:178
 #: src/routes/invoices/index.tsx:250
 #: src/routes/orders/details.tsx:554
-#: src/routes/production-orders.tsx:82
-#: src/routes/production-orders.tsx:183
+#: src/routes/production-orders.tsx:76
+#: src/routes/production-orders.tsx:177
 #: src/routes/production-orders/details.tsx:246
 #: src/routes/production-orders/details.tsx:583
 #: src/routes/purchase-orders/details.tsx:693
@@ -1390,8 +1390,8 @@ msgid "Date is required"
 msgstr "La date est obligatoire"
 
 #: src/components/document-filters.tsx:88
-#: src/routes/accounting/fiscal-periods.tsx:337
-#: src/routes/accounting/fiscal-periods.tsx:363
+#: src/routes/accounting/fiscal-periods.tsx:331
+#: src/routes/accounting/fiscal-periods.tsx:357
 #: src/routes/accounting/reports/daily-cash-movements.tsx:146
 msgid "Date range"
 msgstr "Période"
@@ -1455,9 +1455,9 @@ msgstr "Décimales"
 #: src/components/organizations/brand-color-picker.tsx:74
 #: src/components/tax-rates/form.tsx:192
 #: src/routes/settings/document-templates.tsx:142
-#: src/routes/settings/payment-terms.tsx:110
+#: src/routes/settings/payment-terms.tsx:104
 #: src/routes/settings/tax-rates.tsx:130
-#: src/routes/settings/units-of-measure.tsx:121
+#: src/routes/settings/units-of-measure.tsx:115
 #: src/types/document-layout.ts:25
 msgid "Default"
 msgstr "Par défaut"
@@ -1648,11 +1648,11 @@ msgstr "Livraison créée"
 msgid "Delivery creation failed"
 msgstr "Échec de la création de la livraison"
 
-#: src/routes/deliveries.tsx:96
-#: src/routes/deliveries.tsx:187
+#: src/routes/deliveries.tsx:92
+#: src/routes/deliveries.tsx:183
 #: src/routes/deliveries/details.tsx:414
-#: src/routes/inbound-deliveries.tsx:92
-#: src/routes/orders.tsx:183
+#: src/routes/inbound-deliveries.tsx:88
+#: src/routes/orders.tsx:179
 #: src/routes/orders/details.tsx:397
 msgid "Delivery date"
 msgstr "Date de livraison"
@@ -1819,7 +1819,7 @@ msgstr "Brouillon"
 
 #: src/components/invoices/pdf-tunisia.tsx:175
 #: src/components/invoices/pdf.tsx:228
-#: src/routes/incoming-invoices.tsx:219
+#: src/routes/incoming-invoices.tsx:216
 #: src/routes/incoming-invoices/details.tsx:443
 #: src/routes/invoices/details.tsx:689
 #: src/routes/invoices/index.tsx:259
@@ -1879,7 +1879,7 @@ msgstr "ex. 1200"
 msgid "e.g. 1234567A/B/C/000"
 msgstr "p. ex. 1234567A/B/C/000"
 
-#: src/routes/accounting/fiscal-periods.tsx:333
+#: src/routes/accounting/fiscal-periods.tsx:327
 msgid "e.g. 2026"
 msgstr "ex. 2026"
 
@@ -1903,7 +1903,7 @@ msgstr "ex. Caisse"
 msgid "e.g. Intra-community supply"
 msgstr "p. ex. livraison intracommunautaire"
 
-#: src/routes/accounting/fiscal-periods.tsx:359
+#: src/routes/accounting/fiscal-periods.tsx:353
 msgid "e.g. January"
 msgstr "ex. Janvier"
 
@@ -1997,8 +1997,8 @@ msgstr "Email"
 msgid "Email of an existing user"
 msgstr "E-mail d'un utilisateur existant"
 
-#: src/routes/clients.tsx:146
-#: src/routes/vendors.tsx:146
+#: src/routes/clients.tsx:140
+#: src/routes/vendors.tsx:140
 msgid "Emails"
 msgstr "E-mails"
 
@@ -2022,8 +2022,8 @@ msgstr "Activer le timbre fiscal"
 msgid "Enable withholding tax"
 msgstr "Activer la retenue à la source"
 
-#: src/routes/accounting/fiscal-periods.tsx:203
-#: src/routes/accounting/fiscal-periods.tsx:272
+#: src/routes/accounting/fiscal-periods.tsx:197
+#: src/routes/accounting/fiscal-periods.tsx:266
 msgid "End"
 msgstr "Fin"
 
@@ -2056,7 +2056,7 @@ msgid "Entry #"
 msgstr "N° d'écriture"
 
 #: src/components/accounting/account-form.tsx:21
-#: src/routes/accounting/chart-of-accounts.tsx:36
+#: src/routes/accounting/chart-of-accounts.tsx:37
 #: src/routes/accounting/reports/balance-sheet.tsx:159
 msgid "Equity"
 msgstr "Capitaux propres"
@@ -2095,13 +2095,13 @@ msgstr "Motif d'exonération"
 msgid "Expand sidebar"
 msgstr "Déployer la barre latérale"
 
-#: src/routes/purchase-orders.tsx:212
+#: src/routes/purchase-orders.tsx:208
 #: src/routes/purchase-orders/details.tsx:532
 msgid "Expected date"
 msgstr "Date prévue"
 
 #: src/components/accounting/account-form.tsx:25
-#: src/routes/accounting/chart-of-accounts.tsx:40
+#: src/routes/accounting/chart-of-accounts.tsx:41
 msgid "Expense"
 msgstr "Charge"
 
@@ -2353,7 +2353,7 @@ msgstr "Échec du chargement de l'orientation de la page"
 msgid "Failed to load payment history"
 msgstr "Échec du chargement de l'historique des paiements"
 
-#: src/routes/products.tsx:126
+#: src/routes/products.tsx:124
 msgid "Failed to load products"
 msgstr "Impossible de charger les produits"
 
@@ -2492,7 +2492,7 @@ msgid "Failed to void payment"
 msgstr "Échec de l'annulation du paiement"
 
 #: src/components/products/form.tsx:599
-#: src/routes/products.tsx:335
+#: src/routes/products.tsx:343
 msgid "Family"
 msgstr "Famille"
 
@@ -2535,11 +2535,11 @@ msgstr "Filtrer par référence"
 msgid "Filter by state"
 msgstr "Filtrer par état"
 
-#: src/routes/deliveries.tsx:100
-#: src/routes/inbound-deliveries.tsx:96
-#: src/routes/orders.tsx:100
-#: src/routes/production-orders.tsx:86
-#: src/routes/purchase-orders.tsx:96
+#: src/routes/deliveries.tsx:96
+#: src/routes/inbound-deliveries.tsx:92
+#: src/routes/orders.tsx:96
+#: src/routes/production-orders.tsx:80
+#: src/routes/purchase-orders.tsx:92
 msgid "Filter by status"
 msgstr "Filtrer par statut"
 
@@ -2551,13 +2551,13 @@ msgstr "Filtré par type de produit, défini ci-dessus"
 #: src/routes/inventory.tsx:351
 #: src/routes/inventory.tsx:410
 #: src/routes/inventory.tsx:475
-#: src/routes/products.tsx:199
-#: src/routes/products.tsx:325
+#: src/routes/products.tsx:207
+#: src/routes/products.tsx:333
 msgid "Finished good"
 msgstr "Produit fini"
 
 #: src/components/products/bom-editor-drawer.tsx:369
-#: src/routes/production-orders.tsx:145
+#: src/routes/production-orders.tsx:139
 #: src/routes/production-orders/details.tsx:209
 #: src/routes/production-orders/details.tsx:577
 msgid "Finished product"
@@ -2588,7 +2588,7 @@ msgid "fiscal period(s)"
 msgstr "période(s) fiscale(s)"
 
 #: src/layouts/base.tsx:686
-#: src/routes/accounting/fiscal-periods.tsx:133
+#: src/routes/accounting/fiscal-periods.tsx:127
 msgid "Fiscal Periods"
 msgstr "Exercices comptables"
 
@@ -2647,7 +2647,7 @@ msgstr "Adresse libre pour le formulaire rapide « Nouveau client » du livre de
 #~ msgid "Free-text address for the Cash Book's quick \"New customer\\"
 #~ msgstr "Adresse libre pour le formulaire rapide « Nouveau client » du livre de caisse. Ce sont les champs d'adresse structurés qui apparaissent sur les documents."
 
-#: src/routes/imports.tsx:253
+#: src/routes/imports.tsx:249
 msgid "Freight"
 msgstr "Fret"
 
@@ -2726,7 +2726,7 @@ msgid "Goods receipts"
 msgstr "Réceptions de marchandises"
 
 #: src/layouts/base.tsx:583
-#: src/routes/inbound-deliveries.tsx:80
+#: src/routes/inbound-deliveries.tsx:76
 msgid "Goods Receipts"
 msgstr "Réceptions de marchandises"
 
@@ -2734,7 +2734,7 @@ msgstr "Réceptions de marchandises"
 msgid "Goods Received Not Invoiced — accrues a liability when a receipt is received, cleared when the matching vendor bill is approved."
 msgstr "Marchandises reçues non facturées — comptabilise un passif à la réception d'un bon de réception, soldé lors de l'approbation de la facture fournisseur correspondante."
 
-#: src/routes/accounting/chart-of-accounts.tsx:179
+#: src/routes/accounting/chart-of-accounts.tsx:173
 msgid "Group"
 msgstr "Groupe"
 
@@ -2745,7 +2745,7 @@ msgstr "Groupe"
 msgid "Guarantor"
 msgstr "Garant"
 
-#: src/routes/accounting/chart-of-accounts.tsx:185
+#: src/routes/accounting/chart-of-accounts.tsx:179
 msgid "Header"
 msgstr "En-tête"
 
@@ -2790,14 +2790,14 @@ msgstr "IBAN"
 #: src/components/clients/form.tsx:363
 #: src/components/clients/form.tsx:371
 #: src/routes/cash-book.tsx:1956
-#: src/routes/clients.tsx:184
+#: src/routes/clients.tsx:178
 msgid "Identity number"
 msgstr "Numéro d'identité"
 
-#: src/routes/production-orders.tsx:161
+#: src/routes/production-orders.tsx:155
 #: src/routes/production-orders/details.tsx:255
 #: src/routes/production-orders/details.tsx:586
-#: src/routes/purchase-orders.tsx:168
+#: src/routes/purchase-orders.tsx:164
 #: src/routes/purchase-orders/details.tsx:477
 msgid "Import"
 msgstr "Import"
@@ -2860,7 +2860,7 @@ msgid "import(s)"
 msgstr "importation(s)"
 
 #: src/layouts/base.tsx:565
-#: src/routes/imports.tsx:126
+#: src/routes/imports.tsx:122
 msgid "Imports"
 msgstr "Imports"
 
@@ -2875,7 +2875,7 @@ msgid "In stock"
 msgstr "En stock"
 
 #: src/components/organizations/organization-members-panel.tsx:70
-#: src/routes/accounting/chart-of-accounts.tsx:198
+#: src/routes/accounting/chart-of-accounts.tsx:192
 msgid "Inactive"
 msgstr "Inactif"
 
@@ -2927,7 +2927,7 @@ msgid "Incoming invoices"
 msgstr "Factures fournisseurs"
 
 #: src/layouts/base.tsx:592
-#: src/routes/incoming-invoices.tsx:93
+#: src/routes/incoming-invoices.tsx:90
 msgid "Incoming Invoices"
 msgstr "Factures fournisseurs"
 
@@ -3118,7 +3118,7 @@ msgstr "écriture(s)"
 msgid "Journal Entries"
 msgstr "Écritures"
 
-#: src/routes/accounting/fiscal-periods.tsx:148
+#: src/routes/accounting/fiscal-periods.tsx:142
 msgid "Journal entries can only be posted within an open fiscal year. Create one to start using the general ledger."
 msgstr "Les écritures ne peuvent être comptabilisées que dans un exercice ouvert. Créez-en un pour commencer à utiliser la comptabilité générale."
 
@@ -3163,7 +3163,7 @@ msgid "journal(s)"
 msgstr "journal(aux)"
 
 #: src/layouts/base.tsx:677
-#: src/routes/accounting/journals.tsx:51
+#: src/routes/accounting/journals.tsx:44
 msgid "Journals"
 msgstr "Journaux"
 
@@ -3239,7 +3239,7 @@ msgid "Liabilities"
 msgstr "Passifs"
 
 #: src/components/accounting/account-form.tsx:19
-#: src/routes/accounting/chart-of-accounts.tsx:34
+#: src/routes/accounting/chart-of-accounts.tsx:35
 msgid "Liability"
 msgstr "Passif"
 
@@ -3470,27 +3470,27 @@ msgstr "Mouvements du {0}"
 #: src/components/units-of-measure/form.tsx:125
 #: src/components/vendors/form.tsx:168
 #: src/components/vendors/form.tsx:172
-#: src/routes/accounting/chart-of-accounts.tsx:140
-#: src/routes/accounting/fiscal-periods.tsx:190
-#: src/routes/accounting/fiscal-periods.tsx:259
-#: src/routes/accounting/fiscal-periods.tsx:330
-#: src/routes/accounting/fiscal-periods.tsx:356
-#: src/routes/accounting/journals.tsx:105
+#: src/routes/accounting/chart-of-accounts.tsx:134
+#: src/routes/accounting/fiscal-periods.tsx:184
+#: src/routes/accounting/fiscal-periods.tsx:253
+#: src/routes/accounting/fiscal-periods.tsx:324
+#: src/routes/accounting/fiscal-periods.tsx:350
+#: src/routes/accounting/journals.tsx:98
 #: src/routes/accounting/trial-balance.tsx:176
 #: src/routes/bill-of-materials.tsx:149
 #: src/routes/cash-book.tsx:1934
-#: src/routes/clients.tsx:117
+#: src/routes/clients.tsx:111
 #: src/routes/organizations/new.tsx:127
 #: src/routes/organizations/new.tsx:130
-#: src/routes/products.tsx:288
+#: src/routes/products.tsx:296
 #: src/routes/settings/countries.tsx:103
-#: src/routes/settings/payment-terms.tsx:96
-#: src/routes/settings/product-families.tsx:92
+#: src/routes/settings/payment-terms.tsx:90
+#: src/routes/settings/product-families.tsx:86
 #: src/routes/settings/tax-rates.tsx:104
-#: src/routes/settings/units-of-measure.tsx:107
+#: src/routes/settings/units-of-measure.tsx:101
 #: src/routes/settings/users.tsx:193
 #: src/routes/settings/users.tsx:311
-#: src/routes/vendors.tsx:117
+#: src/routes/vendors.tsx:111
 msgid "Name"
 msgstr "Nom"
 
@@ -3517,12 +3517,12 @@ msgid "Net VAT liability"
 msgstr "TVA nette due"
 
 #: src/components/accounting/account-form.tsx:118
-#: src/routes/accounting/chart-of-accounts.tsx:87
+#: src/routes/accounting/chart-of-accounts.tsx:81
 msgid "New account"
 msgstr "Nouveau compte"
 
 #: src/components/clients/form.tsx:149
-#: src/routes/clients.tsx:76
+#: src/routes/clients.tsx:70
 #: src/routes/invoices/details.tsx:534
 msgid "New client"
 msgstr "Nouveau client"
@@ -3533,33 +3533,33 @@ msgstr "Nouveau client"
 msgid "New customer"
 msgstr "Nouveau client"
 
-#: src/routes/deliveries.tsx:113
+#: src/routes/deliveries.tsx:109
 #: src/routes/deliveries/details.tsx:356
 #: src/routes/orders/details.tsx:646
 msgid "New delivery"
 msgstr "Nouvelle livraison"
 
-#: src/routes/accounting/fiscal-periods.tsx:346
+#: src/routes/accounting/fiscal-periods.tsx:340
 msgid "New fiscal period"
 msgstr "Nouvelle période"
 
-#: src/routes/accounting/fiscal-periods.tsx:136
-#: src/routes/accounting/fiscal-periods.tsx:320
+#: src/routes/accounting/fiscal-periods.tsx:130
+#: src/routes/accounting/fiscal-periods.tsx:314
 msgid "New fiscal year"
 msgstr "Nouvel exercice"
 
-#: src/routes/inbound-deliveries.tsx:109
+#: src/routes/inbound-deliveries.tsx:105
 #: src/routes/inbound-deliveries/details.tsx:371
 #: src/routes/purchase-orders/details.tsx:818
 msgid "New goods receipt"
 msgstr "Nouvelle réception"
 
 #: src/components/imports/form.tsx:231
-#: src/routes/imports.tsx:148
+#: src/routes/imports.tsx:144
 msgid "New import"
 msgstr "Nouvel import"
 
-#: src/routes/incoming-invoices.tsx:120
+#: src/routes/incoming-invoices.tsx:117
 #: src/routes/incoming-invoices/details.tsx:366
 #: src/routes/purchase-orders/details.tsx:823
 msgid "New incoming invoice"
@@ -3571,7 +3571,7 @@ msgid "New invoice"
 msgstr "Nouvelle facture"
 
 #: src/components/accounting/journal-form.tsx:98
-#: src/routes/accounting/journals.tsx:55
+#: src/routes/accounting/journals.tsx:48
 msgid "New journal"
 msgstr "Nouveau journal"
 
@@ -3584,7 +3584,7 @@ msgstr "Nouvelle écriture"
 msgid "New member role"
 msgstr "Rôle du nouveau membre"
 
-#: src/routes/orders.tsx:110
+#: src/routes/orders.tsx:106
 #: src/routes/orders/details.tsx:309
 msgid "New order"
 msgstr "Nouvelle commande"
@@ -3604,31 +3604,31 @@ msgid "New password (leave blank to keep current)"
 msgstr "Nouveau mot de passe (laisser vide pour conserver l'actuel)"
 
 #: src/components/payment-terms/form.tsx:83
-#: src/routes/settings/payment-terms.tsx:63
+#: src/routes/settings/payment-terms.tsx:57
 msgid "New payment term"
 msgstr "Nouvelle condition de paiement"
 
-#: src/routes/accounting/fiscal-periods.tsx:185
+#: src/routes/accounting/fiscal-periods.tsx:179
 msgid "New period"
 msgstr "Nouvelle période"
 
 #: src/components/products/form.tsx:325
-#: src/routes/products.tsx:240
+#: src/routes/products.tsx:248
 msgid "New product"
 msgstr "Nouveau produit"
 
 #: src/components/product-families/form.tsx:84
-#: src/routes/settings/product-families.tsx:47
+#: src/routes/settings/product-families.tsx:41
 msgid "New product family"
 msgstr "Nouvelle famille de produits"
 
-#: src/routes/production-orders.tsx:95
+#: src/routes/production-orders.tsx:89
 msgid "New production order"
 msgstr "Nouvel ordre de fabrication"
 
 #: src/components/imports/form.tsx:389
 #: src/components/imports/form.tsx:394
-#: src/routes/purchase-orders.tsx:109
+#: src/routes/purchase-orders.tsx:105
 #: src/routes/purchase-orders/details.tsx:405
 msgid "New purchase order"
 msgstr "Nouvelle commande d'achat"
@@ -3651,7 +3651,7 @@ msgid "New tax rate"
 msgstr "Nouveau taux de taxe"
 
 #: src/components/units-of-measure/form.tsx:88
-#: src/routes/settings/units-of-measure.tsx:61
+#: src/routes/settings/units-of-measure.tsx:55
 msgid "New unit of measure"
 msgstr "Nouvelle unité de mesure"
 
@@ -3661,7 +3661,7 @@ msgid "New user"
 msgstr "Nouvel utilisateur"
 
 #: src/components/vendors/form.tsx:123
-#: src/routes/vendors.tsx:76
+#: src/routes/vendors.tsx:70
 msgid "New vendor"
 msgstr "Nouveau fournisseur"
 
@@ -3690,7 +3690,7 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 #: src/components/tax-rates/form.tsx:136
 #: src/components/units-of-measure/form.tsx:102
 #: src/components/vendors/form.tsx:136
-#: src/routes/accounting/fiscal-periods.tsx:239
+#: src/routes/accounting/fiscal-periods.tsx:233
 #: src/routes/accounting/journal-entries/details.tsx:394
 #: src/routes/accounting/journal-entries/details.tsx:404
 #: src/routes/deliveries/details.tsx:584
@@ -3713,11 +3713,11 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 msgid "No"
 msgstr "Non"
 
-#: src/routes/accounting/chart-of-accounts.tsx:102
+#: src/routes/accounting/chart-of-accounts.tsx:96
 msgid "No accounts match your search"
 msgstr "Aucun compte ne correspond à votre recherche"
 
-#: src/routes/accounting/chart-of-accounts.tsx:104
+#: src/routes/accounting/chart-of-accounts.tsx:98
 msgid "No accounts yet"
 msgstr "Aucun compte pour le moment"
 
@@ -3738,15 +3738,15 @@ msgstr "Aucun compte de caisse configuré — définissez defaultCashRegisterAcc
 msgid "No cash register account configured — set one in Organization settings to see movements here."
 msgstr "Aucun compte de caisse configuré — configurez-en un dans les paramètres de l'organisation pour voir les mouvements ici."
 
-#: src/routes/clients.tsx:91
+#: src/routes/clients.tsx:85
 msgid "No clients match your search"
 msgstr "Aucun client ne correspond à votre recherche"
 
-#: src/routes/clients.tsx:93
+#: src/routes/clients.tsx:87
 msgid "No clients yet"
 msgstr "Aucun client pour le moment"
 
-#: src/routes/deliveries.tsx:126
+#: src/routes/deliveries.tsx:122
 msgid "No deliveries match your filters"
 msgstr "Aucune livraison ne correspond à vos filtres"
 
@@ -3754,15 +3754,15 @@ msgstr "Aucune livraison ne correspond à vos filtres"
 #~ msgid "No deliveries match your search"
 #~ msgstr "Aucune livraison ne correspond à votre recherche"
 
-#: src/routes/deliveries.tsx:128
+#: src/routes/deliveries.tsx:124
 msgid "No deliveries yet"
 msgstr "Aucune livraison pour le moment"
 
-#: src/routes/settings/product-families.tsx:62
+#: src/routes/settings/product-families.tsx:56
 msgid "No families match your search"
 msgstr "Aucune famille ne correspond à votre recherche"
 
-#: src/routes/products.tsx:215
+#: src/routes/products.tsx:223
 msgid "No family"
 msgstr "Sans famille"
 
@@ -3774,11 +3774,11 @@ msgstr "Aucun produit fini ne correspond à « {search} »"
 msgid "No finished-good products yet — set a product's category to \"Finished good\" to define a recipe for it."
 msgstr "Aucun produit fini pour le moment — définissez la catégorie d'un produit sur « Produit fini » pour lui créer une nomenclature."
 
-#: src/routes/accounting/fiscal-periods.tsx:146
+#: src/routes/accounting/fiscal-periods.tsx:140
 msgid "No fiscal year yet"
 msgstr "Aucun exercice pour l'instant"
 
-#: src/routes/inbound-deliveries.tsx:123
+#: src/routes/inbound-deliveries.tsx:119
 msgid "No goods receipts match your filters"
 msgstr "Aucune réception ne correspond à vos filtres"
 
@@ -3786,11 +3786,11 @@ msgstr "Aucune réception ne correspond à vos filtres"
 #~ msgid "No goods receipts match your search"
 #~ msgstr "Aucune réception ne correspond à votre recherche"
 
-#: src/routes/inbound-deliveries.tsx:125
+#: src/routes/inbound-deliveries.tsx:121
 msgid "No goods receipts yet"
 msgstr "Aucune réception pour le moment"
 
-#: src/routes/imports.tsx:163
+#: src/routes/imports.tsx:159
 msgid "No imports match your filters"
 msgstr "Aucun import ne correspond à vos filtres"
 
@@ -3798,11 +3798,11 @@ msgstr "Aucun import ne correspond à vos filtres"
 #~ msgid "No imports match your search"
 #~ msgstr "Aucun import ne correspond à votre recherche"
 
-#: src/routes/imports.tsx:165
+#: src/routes/imports.tsx:161
 msgid "No imports yet"
 msgstr "Aucun import pour le moment"
 
-#: src/routes/incoming-invoices.tsx:135
+#: src/routes/incoming-invoices.tsx:132
 msgid "No incoming invoices match your filters"
 msgstr "Aucune facture fournisseur ne correspond à vos filtres"
 
@@ -3810,7 +3810,7 @@ msgstr "Aucune facture fournisseur ne correspond à vos filtres"
 #~ msgid "No incoming invoices match your search"
 #~ msgstr "Aucune facture fournisseur ne correspond à votre recherche"
 
-#: src/routes/incoming-invoices.tsx:137
+#: src/routes/incoming-invoices.tsx:134
 msgid "No incoming invoices yet"
 msgstr "Aucune facture fournisseur pour le moment"
 
@@ -3826,7 +3826,7 @@ msgstr "Aucune facture ne correspond à vos filtres"
 msgid "No invoices yet"
 msgstr "Aucune facture pour le moment"
 
-#: src/routes/accounting/journals.tsx:69
+#: src/routes/accounting/journals.tsx:62
 msgid "No journals yet"
 msgstr "Aucun journal pour le moment"
 
@@ -3854,7 +3854,7 @@ msgstr "Aucun exercice ouvert"
 #~ msgid "No open invoices for this customer"
 #~ msgstr "Aucune facture ouverte pour ce client"
 
-#: src/routes/orders.tsx:124
+#: src/routes/orders.tsx:120
 msgid "No orders match your filters"
 msgstr "Aucune commande ne correspond à vos filtres"
 
@@ -3862,7 +3862,7 @@ msgstr "Aucune commande ne correspond à vos filtres"
 #~ msgid "No orders match your search"
 #~ msgstr "Aucune commande ne correspond à votre recherche"
 
-#: src/routes/orders.tsx:126
+#: src/routes/orders.tsx:122
 msgid "No orders yet"
 msgstr "Aucune commande pour le moment"
 
@@ -3883,15 +3883,15 @@ msgstr "Aucun paiement enregistré pour le moment"
 msgid "No payments yet"
 msgstr "Aucun paiement pour le moment"
 
-#: src/routes/accounting/fiscal-periods.tsx:177
+#: src/routes/accounting/fiscal-periods.tsx:171
 msgid "No periods in this year"
 msgstr "Aucune période cette année"
 
-#: src/routes/settings/product-families.tsx:64
+#: src/routes/settings/product-families.tsx:58
 msgid "No product families yet"
 msgstr "Aucune famille de produits pour l'instant"
 
-#: src/routes/production-orders.tsx:109
+#: src/routes/production-orders.tsx:103
 msgid "No production orders match your filters"
 msgstr "Aucun ordre de production ne correspond à vos filtres"
 
@@ -3899,7 +3899,7 @@ msgstr "Aucun ordre de production ne correspond à vos filtres"
 #~ msgid "No production orders match your search"
 #~ msgstr "Aucun ordre de fabrication ne correspond à votre recherche"
 
-#: src/routes/production-orders.tsx:111
+#: src/routes/production-orders.tsx:105
 msgid "No production orders yet"
 msgstr "Aucun ordre de fabrication pour le moment"
 
@@ -3908,11 +3908,11 @@ msgid "No products are tracking stock yet"
 msgstr "Aucun produit ne suit encore le stock"
 
 #: src/routes/inventory.tsx:383
-#: src/routes/products.tsx:263
+#: src/routes/products.tsx:271
 msgid "No products match your filters"
 msgstr "Aucun produit ne correspond à vos filtres"
 
-#: src/routes/products.tsx:265
+#: src/routes/products.tsx:273
 msgid "No products yet"
 msgstr "Aucun produit pour le moment"
 
@@ -3920,7 +3920,7 @@ msgstr "Aucun produit pour le moment"
 msgid "No purchase orders linked to this shipment yet."
 msgstr "Aucune commande d'achat liée à cet import pour le moment."
 
-#: src/routes/purchase-orders.tsx:123
+#: src/routes/purchase-orders.tsx:119
 msgid "No purchase orders match your filters"
 msgstr "Aucune commande fournisseur ne correspond à vos filtres"
 
@@ -3928,7 +3928,7 @@ msgstr "Aucune commande fournisseur ne correspond à vos filtres"
 #~ msgid "No purchase orders match your search"
 #~ msgstr "Aucun bon de commande ne correspond à votre recherche"
 
-#: src/routes/purchase-orders.tsx:125
+#: src/routes/purchase-orders.tsx:121
 msgid "No purchase orders yet"
 msgstr "Aucun bon de commande pour le moment"
 
@@ -3964,11 +3964,11 @@ msgstr "Aucun taux de taxe ne correspond à votre recherche"
 msgid "No tax rates yet"
 msgstr "Aucun taux de taxe pour le moment"
 
-#: src/routes/settings/units-of-measure.tsx:77
+#: src/routes/settings/units-of-measure.tsx:71
 msgid "No units match your search"
 msgstr "Aucune unité ne correspond à votre recherche"
 
-#: src/routes/settings/units-of-measure.tsx:79
+#: src/routes/settings/units-of-measure.tsx:73
 msgid "No units of measure yet"
 msgstr "Aucune unité de mesure pour le moment"
 
@@ -3980,11 +3980,11 @@ msgstr "Aucune commande d'achat non liée en brouillon ou confirmée"
 msgid "No vendor"
 msgstr "Aucun fournisseur"
 
-#: src/routes/vendors.tsx:91
+#: src/routes/vendors.tsx:85
 msgid "No vendors match your search"
 msgstr "Aucun fournisseur ne correspond à votre recherche"
 
-#: src/routes/vendors.tsx:93
+#: src/routes/vendors.tsx:87
 msgid "No vendors yet"
 msgstr "Aucun fournisseur pour le moment"
 
@@ -4038,7 +4038,7 @@ msgstr "Note"
 #: src/components/invoices/pdf.tsx:339
 #: src/components/payments/payment-panel.tsx:360
 #: src/routes/deliveries/details.tsx:452
-#: src/routes/imports.tsx:269
+#: src/routes/imports.tsx:265
 #: src/routes/inbound-deliveries/details.tsx:512
 #: src/routes/incoming-invoices/details.tsx:489
 #: src/routes/orders/details.tsx:431
@@ -4057,8 +4057,8 @@ msgstr "Rien ne correspond à la sélection actuelle."
 msgid "Nothing to delete — this organization was empty"
 msgstr "Rien à supprimer — cette organisation était vide"
 
-#: src/routes/deliveries.tsx:150
-#: src/routes/imports.tsx:189
+#: src/routes/deliveries.tsx:146
+#: src/routes/imports.tsx:185
 #: src/routes/orders/details.tsx:544
 #: src/routes/purchase-orders/details.tsx:683
 msgid "Number"
@@ -4102,8 +4102,8 @@ msgstr "Seul un produit « Produit fini » peut avoir une nomenclature — modif
 msgid "Only active countries appear in the country picklist on organizations, vendors and clients. Existing records keep whatever country they already have, even if it's later deactivated here."
 msgstr "Seuls les pays actifs apparaissent dans la liste des pays des organisations, fournisseurs et clients. Les enregistrements existants conservent leur pays actuel, même s'il est désactivé ici par la suite."
 
-#: src/routes/accounting/fiscal-periods.tsx:216
-#: src/routes/accounting/fiscal-periods.tsx:289
+#: src/routes/accounting/fiscal-periods.tsx:210
+#: src/routes/accounting/fiscal-periods.tsx:283
 msgid "Open"
 msgstr "Ouvert"
 
@@ -4180,7 +4180,7 @@ msgstr "Acompte initial facultatif — laisser à 0 pour un crédit sans acompte
 msgid "or"
 msgstr "ou"
 
-#: src/routes/deliveries.tsx:162
+#: src/routes/deliveries.tsx:158
 #: src/routes/orders/details.tsx:284
 #: src/routes/settings/document-numbering.tsx:43
 #: src/routes/settings/document-templates.tsx:263
@@ -4192,10 +4192,10 @@ msgid "Order {orderNumber}"
 msgstr "Commande {orderNumber}"
 
 #: src/components/imports/form.tsx:435
-#: src/routes/orders.tsx:148
-#: src/routes/production-orders.tsx:133
+#: src/routes/orders.tsx:144
+#: src/routes/production-orders.tsx:127
 #: src/routes/production-orders/details.tsx:560
-#: src/routes/purchase-orders.tsx:147
+#: src/routes/purchase-orders.tsx:143
 msgid "Order #"
 msgstr "Commande n°"
 
@@ -4207,11 +4207,11 @@ msgstr "Commande créée"
 msgid "Order creation failed"
 msgstr "Échec de la création de la commande"
 
-#: src/routes/orders.tsx:96
-#: src/routes/orders.tsx:176
+#: src/routes/orders.tsx:92
+#: src/routes/orders.tsx:172
 #: src/routes/orders/details.tsx:389
-#: src/routes/purchase-orders.tsx:92
-#: src/routes/purchase-orders.tsx:203
+#: src/routes/purchase-orders.tsx:88
+#: src/routes/purchase-orders.tsx:199
 #: src/routes/purchase-orders/details.tsx:524
 msgid "Order date"
 msgstr "Date de commande"
@@ -4263,7 +4263,7 @@ msgid "Ordered"
 msgstr "Commandé"
 
 #: src/layouts/base.tsx:549
-#: src/routes/orders.tsx:84
+#: src/routes/orders.tsx:80
 msgid "Orders"
 msgstr "Commandes"
 
@@ -4327,7 +4327,7 @@ msgid "Out of balance"
 msgstr "Déséquilibré"
 
 #: src/layouts/base.tsx:540
-#: src/routes/deliveries.tsx:84
+#: src/routes/deliveries.tsx:80
 msgid "Outbound Deliveries"
 msgstr "Livraisons sortantes"
 
@@ -4382,7 +4382,7 @@ msgstr "En retard"
 msgid "Overdue charge"
 msgstr "Frais de retard"
 
-#: src/routes/incoming-invoices.tsx:200
+#: src/routes/incoming-invoices.tsx:197
 msgid "Override"
 msgstr "Dérogation"
 
@@ -4419,7 +4419,7 @@ msgstr "Payée"
 msgid "Paid here"
 msgstr "Payé ici"
 
-#: src/routes/accounting/chart-of-accounts.tsx:164
+#: src/routes/accounting/chart-of-accounts.tsx:158
 msgid "Parent"
 msgstr "Parent"
 
@@ -4498,7 +4498,7 @@ msgstr "condition(s) de paiement"
 #: src/components/invoices/pdf-tunisia.tsx:235
 #: src/layouts/base.tsx:300
 #: src/routes/invoices/details.tsx:561
-#: src/routes/settings/payment-terms.tsx:49
+#: src/routes/settings/payment-terms.tsx:43
 msgid "Payment terms"
 msgstr "Conditions de paiement"
 
@@ -4547,8 +4547,8 @@ msgstr "Numéro de CIN — sert à retrouver ce client dans le Cash Book, ce n'e
 #: src/components/organizations/organizations-table.tsx:82
 #: src/components/vendors/form.tsx:209
 #: src/components/vendors/form.tsx:210
-#: src/routes/clients.tsx:162
-#: src/routes/vendors.tsx:162
+#: src/routes/clients.tsx:156
+#: src/routes/vendors.tsx:156
 msgid "Phone"
 msgstr "Téléphone"
 
@@ -4615,8 +4615,8 @@ msgstr "Veuillez saisir une description !"
 
 #: src/components/accounting/account-form.tsx:162
 #: src/components/accounting/journal-form.tsx:147
-#: src/routes/accounting/fiscal-periods.tsx:331
-#: src/routes/accounting/fiscal-periods.tsx:357
+#: src/routes/accounting/fiscal-periods.tsx:325
+#: src/routes/accounting/fiscal-periods.tsx:351
 msgid "Please input a name!"
 msgstr "Veuillez saisir un nom !"
 
@@ -4639,8 +4639,8 @@ msgstr "Veuillez saisir un nom !"
 msgid "Please select a .db file"
 msgstr "Veuillez sélectionner un fichier .db"
 
-#: src/routes/accounting/fiscal-periods.tsx:338
-#: src/routes/accounting/fiscal-periods.tsx:364
+#: src/routes/accounting/fiscal-periods.tsx:332
+#: src/routes/accounting/fiscal-periods.tsx:358
 msgid "Please select a date range!"
 msgstr "Veuillez sélectionner une période !"
 
@@ -4716,7 +4716,7 @@ msgstr "Aperçu"
 #: src/components/invoices/pdf.tsx:285
 #: src/components/products/form.tsx:511
 #: src/routes/invoices/details.tsx:887
-#: src/routes/products.tsx:341
+#: src/routes/products.tsx:349
 msgid "Price"
 msgstr "Prix"
 
@@ -4760,8 +4760,8 @@ msgstr "Imprimer le total de la facture en toutes lettres, dans la langue des do
 #: src/routes/inventory.tsx:386
 #: src/routes/inventory.tsx:570
 #: src/routes/invoices/details.tsx:803
-#: src/routes/products.tsx:185
-#: src/routes/products.tsx:309
+#: src/routes/products.tsx:193
+#: src/routes/products.tsx:317
 #: src/routes/reporting/sales-by-product.tsx:155
 msgid "Product"
 msgstr "Produit"
@@ -4788,7 +4788,7 @@ msgid "Product deletion failed"
 msgstr "Échec de la suppression du produit"
 
 #: src/layouts/base.tsx:318
-#: src/routes/settings/product-families.tsx:42
+#: src/routes/settings/product-families.tsx:36
 msgid "Product families"
 msgstr "Familles de produits"
 
@@ -4873,12 +4873,12 @@ msgid "production order(s)"
 msgstr "ordre(s) de fabrication"
 
 #: src/layouts/base.tsx:617
-#: src/routes/production-orders.tsx:70
+#: src/routes/production-orders.tsx:64
 msgid "Production Orders"
 msgstr "Ordres de fabrication"
 
 #: src/layouts/base.tsx:643
-#: src/routes/products.tsx:172
+#: src/routes/products.tsx:180
 msgid "Products"
 msgstr "Produits"
 
@@ -4887,9 +4887,9 @@ msgstr "Produits"
 msgid "Profit & Loss"
 msgstr "Compte de résultat"
 
-#: src/routes/inbound-deliveries.tsx:168
+#: src/routes/inbound-deliveries.tsx:164
 #: src/routes/inbound-deliveries/details.tsx:440
-#: src/routes/incoming-invoices.tsx:180
+#: src/routes/incoming-invoices.tsx:177
 #: src/routes/incoming-invoices/details.tsx:423
 msgid "Purchase order"
 msgstr "Commande d'achat"
@@ -4946,12 +4946,12 @@ msgid "purchase order(s)"
 msgstr "commande(s) d'achat"
 
 #: src/components/imports/form.tsx:378
-#: src/routes/imports.tsx:210
+#: src/routes/imports.tsx:206
 msgid "Purchase orders"
 msgstr "Commandes d'achat"
 
 #: src/layouts/base.tsx:574
-#: src/routes/purchase-orders.tsx:80
+#: src/routes/purchase-orders.tsx:76
 msgid "Purchase Orders"
 msgstr "Commandes d'achat"
 
@@ -5012,7 +5012,7 @@ msgstr "Quantités uniquement (aucun coût unitaire requis)"
 #: src/routes/accounting/reports/inventory-valuation.tsx:174
 #: src/routes/dashboard.tsx:396
 #: src/routes/inventory.tsx:593
-#: src/routes/production-orders.tsx:154
+#: src/routes/production-orders.tsx:148
 #: src/routes/production-orders/details.tsx:224
 #: src/routes/production-orders/details.tsx:580
 msgid "Quantity"
@@ -5063,11 +5063,11 @@ msgstr "Motif"
 msgid "Receipt {deliveryNumber}"
 msgstr "Réception {deliveryNumber}"
 
-#: src/routes/inbound-deliveries.tsx:147
+#: src/routes/inbound-deliveries.tsx:143
 msgid "Receipt #"
 msgstr "Réception n°"
 
-#: src/routes/inbound-deliveries.tsx:190
+#: src/routes/inbound-deliveries.tsx:186
 #: src/routes/inbound-deliveries/details.tsx:461
 msgid "Receipt date"
 msgstr "Date de réception"
@@ -5181,11 +5181,11 @@ msgstr "Supprimer le membre"
 msgid "Remove this member?"
 msgstr "Supprimer ce membre ?"
 
-#: src/routes/accounting/fiscal-periods.tsx:245
+#: src/routes/accounting/fiscal-periods.tsx:239
 msgid "Reopen"
 msgstr "Rouvrir"
 
-#: src/routes/accounting/fiscal-periods.tsx:229
+#: src/routes/accounting/fiscal-periods.tsx:223
 msgid "Reopen this period?"
 msgstr "Rouvrir cette période ?"
 
@@ -5331,7 +5331,7 @@ msgid "Retry"
 msgstr "Réessayer"
 
 #: src/components/accounting/account-form.tsx:23
-#: src/routes/accounting/chart-of-accounts.tsx:38
+#: src/routes/accounting/chart-of-accounts.tsx:39
 #: src/routes/accounting/reports/profit-and-loss.tsx:117
 #: src/routes/dashboard.tsx:273
 #: src/routes/dashboard.tsx:440
@@ -5506,23 +5506,23 @@ msgstr "Scannez avec votre application bancaire pour payer cette facture."
 msgid "Schedule saved"
 msgstr "Planification enregistrée"
 
-#: src/routes/clients.tsx:63
-#: src/routes/deliveries.tsx:86
-#: src/routes/imports.tsx:128
-#: src/routes/inbound-deliveries.tsx:82
-#: src/routes/incoming-invoices.tsx:95
-#: src/routes/orders.tsx:86
+#: src/routes/clients.tsx:57
+#: src/routes/deliveries.tsx:82
+#: src/routes/imports.tsx:124
+#: src/routes/inbound-deliveries.tsx:78
+#: src/routes/incoming-invoices.tsx:92
+#: src/routes/orders.tsx:82
 #: src/routes/organizations/index.tsx:486
-#: src/routes/production-orders.tsx:72
-#: src/routes/products.tsx:221
-#: src/routes/purchase-orders.tsx:82
+#: src/routes/production-orders.tsx:66
+#: src/routes/products.tsx:229
+#: src/routes/purchase-orders.tsx:78
 #: src/routes/settings/countries.tsx:68
-#: src/routes/settings/payment-terms.tsx:50
-#: src/routes/settings/product-families.tsx:43
+#: src/routes/settings/payment-terms.tsx:44
+#: src/routes/settings/product-families.tsx:37
 #: src/routes/settings/tax-rates.tsx:52
-#: src/routes/settings/units-of-measure.tsx:48
+#: src/routes/settings/units-of-measure.tsx:42
 #: src/routes/settings/users.tsx:156
-#: src/routes/vendors.tsx:63
+#: src/routes/vendors.tsx:57
 msgid "Search"
 msgstr "Rechercher"
 
@@ -5546,7 +5546,7 @@ msgstr "Rechercher des produits"
 msgid "Search results"
 msgstr "Résultats de recherche"
 
-#: src/routes/accounting/chart-of-accounts.tsx:74
+#: src/routes/accounting/chart-of-accounts.tsx:68
 #: src/routes/invoices/index.tsx:168
 msgid "Search text"
 msgstr "Rechercher du texte"
@@ -5689,8 +5689,8 @@ msgid "Serial numbers to remove"
 msgstr "Numéros de série à retirer"
 
 #: src/components/products/form.tsx:394
-#: src/routes/products.tsx:186
-#: src/routes/products.tsx:313
+#: src/routes/products.tsx:194
+#: src/routes/products.tsx:321
 msgid "Service"
 msgstr "Service"
 
@@ -5778,7 +5778,7 @@ msgstr "Code de compte numérique de style SKR03/SKR04 pour la colonne « Konto 
 #: src/routes/accounting/reports/inventory-valuation.tsx:166
 #: src/routes/bill-of-materials.tsx:165
 #: src/routes/inventory.tsx:398
-#: src/routes/products.tsx:339
+#: src/routes/products.tsx:347
 msgid "SKU"
 msgstr "SKU"
 
@@ -5811,12 +5811,12 @@ msgstr "Compte de timbre fiscal"
 msgid "Standard rate"
 msgstr "Taux normal"
 
-#: src/routes/accounting/fiscal-periods.tsx:196
-#: src/routes/accounting/fiscal-periods.tsx:265
+#: src/routes/accounting/fiscal-periods.tsx:190
+#: src/routes/accounting/fiscal-periods.tsx:259
 msgid "Start"
 msgstr "Début"
 
-#: src/routes/incoming-invoices.tsx:189
+#: src/routes/incoming-invoices.tsx:186
 #: src/routes/incoming-invoices/details.tsx:458
 #: src/routes/invoices/index.tsx:291
 #: src/routes/purchase-orders/details.tsx:733
@@ -5825,21 +5825,21 @@ msgstr "État"
 
 #: src/components/imports/form.tsx:451
 #: src/components/payments/payment-panel.tsx:420
-#: src/routes/accounting/fiscal-periods.tsx:210
-#: src/routes/accounting/fiscal-periods.tsx:279
+#: src/routes/accounting/fiscal-periods.tsx:204
+#: src/routes/accounting/fiscal-periods.tsx:273
 #: src/routes/accounting/journal-entries.tsx:160
-#: src/routes/deliveries.tsx:194
+#: src/routes/deliveries.tsx:190
 #: src/routes/deliveries/details.tsx:427
-#: src/routes/inbound-deliveries.tsx:177
+#: src/routes/inbound-deliveries.tsx:173
 #: src/routes/inbound-deliveries/details.tsx:469
 #: src/routes/incoming-invoices/details.tsx:623
 #: src/routes/invoices/details.tsx:605
-#: src/routes/orders.tsx:169
+#: src/routes/orders.tsx:165
 #: src/routes/orders/details.tsx:407
 #: src/routes/orders/details.tsx:560
-#: src/routes/production-orders.tsx:170
+#: src/routes/production-orders.tsx:164
 #: src/routes/production-orders/details.tsx:563
-#: src/routes/purchase-orders.tsx:188
+#: src/routes/purchase-orders.tsx:184
 #: src/routes/purchase-orders/details.tsx:537
 #: src/routes/purchase-orders/details.tsx:699
 msgid "Status"
@@ -5858,7 +5858,7 @@ msgstr "Rester ici"
 msgid "Stay on this page"
 msgstr "Rester sur cette page"
 
-#: src/routes/products.tsx:372
+#: src/routes/products.tsx:380
 msgid "Stock"
 msgstr "Stock"
 
@@ -5983,7 +5983,7 @@ msgid "Tax number"
 msgstr "Numéro fiscal"
 
 #: src/components/tax-rates/form.tsx:167
-#: src/routes/products.tsx:361
+#: src/routes/products.tsx:369
 msgid "Tax rate"
 msgstr "Taux de taxe"
 
@@ -6158,7 +6158,7 @@ msgstr "Cette organisation suit le stock en quantités uniquement : rien n'est c
 msgid "This payment"
 msgstr "Ce paiement"
 
-#: src/routes/accounting/fiscal-periods.tsx:108
+#: src/routes/accounting/fiscal-periods.tsx:102
 msgid "This posts a closing entry moving net revenue and expense into retained earnings, then permanently blocks posting any new journal entry dated within this year. This cannot be undone — there is no way to reopen a closed fiscal year."
 msgstr "Ceci comptabilise une écriture de clôture qui transfère le résultat net (produits moins charges) vers les réserves, puis bloque définitivement toute nouvelle écriture datée dans cet exercice. Cette action est irréversible — un exercice clôturé ne peut pas être rouvert."
 
@@ -6264,7 +6264,7 @@ msgstr "Meilleurs produits"
 #: src/routes/accounting/trial-balance.tsx:144
 #: src/routes/cash-book.tsx:1284
 #: src/routes/dashboard.tsx:362
-#: src/routes/incoming-invoices.tsx:228
+#: src/routes/incoming-invoices.tsx:225
 #: src/routes/incoming-invoices/details.tsx:558
 #: src/routes/invoices/details.tsx:956
 #: src/routes/invoices/details.tsx:1071
@@ -6333,7 +6333,7 @@ msgstr "Suivre l'inventaire"
 msgid "Track serial numbers"
 msgstr "Suivre les numéros de série"
 
-#: src/routes/orders.tsx:190
+#: src/routes/orders.tsx:186
 msgid "Tracking"
 msgstr "Suivi"
 
@@ -6360,11 +6360,11 @@ msgstr "Tunisie"
 #: src/components/accounting/journal-form.tsx:153
 #: src/components/products/form.tsx:387
 #: src/components/stock/movement-form.tsx:151
-#: src/routes/accounting/chart-of-accounts.tsx:155
-#: src/routes/accounting/journals.tsx:119
+#: src/routes/accounting/chart-of-accounts.tsx:149
+#: src/routes/accounting/journals.tsx:112
 #: src/routes/cash-book.tsx:1584
 #: src/routes/inventory.tsx:587
-#: src/routes/products.tsx:302
+#: src/routes/products.tsx:310
 msgid "Type"
 msgstr "Type"
 
@@ -6378,7 +6378,7 @@ msgid "Type manually"
 msgstr "Saisie manuelle"
 
 #: src/components/products/form.tsx:417
-#: src/routes/products.tsx:201
+#: src/routes/products.tsx:209
 msgid "Unclassified"
 msgstr "Non classé"
 
@@ -6432,12 +6432,12 @@ msgstr "PU HT"
 msgid "unit(s) of measure"
 msgstr "unité(s) de mesure"
 
-#: src/routes/products.tsx:382
+#: src/routes/products.tsx:390
 msgid "units"
 msgstr "unités"
 
 #: src/layouts/base.tsx:309
-#: src/routes/settings/units-of-measure.tsx:47
+#: src/routes/settings/units-of-measure.tsx:41
 msgid "Units of measure"
 msgstr "Unités de mesure"
 
@@ -6550,7 +6550,7 @@ msgstr "Valorisé (comptabiliser la valeur du stock)"
 msgid "Valued: receipts, shipments and stock adjustments post their value to the accounts below, and a product needs a unit cost before it can leave stock. Quantities only: stock is tracked by quantity alone, nothing is posted for it, no unit cost is ever required, and bills for stock products are expensed. Can only be changed before any stock is recorded."
 msgstr "Valorisé : les réceptions, expéditions et ajustements de stock comptabilisent leur valeur sur les comptes ci-dessous, et un produit doit avoir un coût unitaire avant de sortir du stock. Quantités uniquement : le stock est suivi en quantités seulement, rien n'est comptabilisé, aucun coût unitaire n'est jamais requis et les factures fournisseurs des produits stockés sont passées en charges. Modifiable uniquement avant tout mouvement de stock."
 
-#: src/routes/incoming-invoices.tsx:205
+#: src/routes/incoming-invoices.tsx:202
 msgid "Variance"
 msgstr "Écart"
 
@@ -6569,18 +6569,18 @@ msgstr "Matricule fiscal"
 msgid "VAT reverse charge"
 msgstr "Autoliquidation de la TVA"
 
-#: src/routes/clients.tsx:178
-#: src/routes/vendors.tsx:178
+#: src/routes/clients.tsx:172
+#: src/routes/vendors.tsx:172
 msgid "VATIN"
 msgstr "Matricule fiscal"
 
 #: src/components/imports/form.tsx:443
 #: src/routes/accounting/reports/ap-aging.tsx:153
-#: src/routes/inbound-deliveries.tsx:159
+#: src/routes/inbound-deliveries.tsx:155
 #: src/routes/inbound-deliveries/details.tsx:385
-#: src/routes/incoming-invoices.tsx:171
+#: src/routes/incoming-invoices.tsx:168
 #: src/routes/incoming-invoices/details.tsx:381
-#: src/routes/purchase-orders.tsx:159
+#: src/routes/purchase-orders.tsx:155
 #: src/routes/purchase-orders/details.tsx:420
 #: src/routes/reporting/purchases-by-vendor.tsx:151
 msgid "Vendor"
@@ -6607,7 +6607,7 @@ msgstr "Échec de la suppression du fournisseur"
 msgid "Vendor delivery note"
 msgstr "Bon de livraison du fournisseur"
 
-#: src/routes/incoming-invoices.tsx:159
+#: src/routes/incoming-invoices.tsx:156
 #: src/routes/incoming-invoices/details.tsx:415
 #: src/routes/purchase-orders/details.tsx:715
 msgid "Vendor invoice #"
@@ -6640,7 +6640,7 @@ msgid "vendor(s)"
 msgstr "fournisseur(s)"
 
 #: src/layouts/base.tsx:634
-#: src/routes/vendors.tsx:62
+#: src/routes/vendors.tsx:56
 msgid "Vendors"
 msgstr "Fournisseurs"
 
@@ -6750,7 +6750,7 @@ msgstr "Taux de retenue à la source"
 #: src/components/tax-rates/form.tsx:135
 #: src/components/units-of-measure/form.tsx:101
 #: src/components/vendors/form.tsx:135
-#: src/routes/accounting/fiscal-periods.tsx:238
+#: src/routes/accounting/fiscal-periods.tsx:232
 #: src/routes/accounting/journal-entries/details.tsx:393
 #: src/routes/accounting/journal-entries/details.tsx:403
 #: src/routes/deliveries/details.tsx:583

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Client } from "src/types/models";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useNavigate } from "react-router";
 import { Button, Col, Empty, Space, Table, Row, Tag } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -20,23 +20,17 @@ import ClientForm from "src/components/clients/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
 import { formatAddressOneLine } from "src/utils/address";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const Clients = () => {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/clients") {
-      setLoading(true);
-      setClients().finally(() => setLoading(false));
-    }
-  }, [location, setClients]);
+  const loading = useLoadOnPath("/clients", () => setClients());
 
   const filtered = useMemo(
     () =>

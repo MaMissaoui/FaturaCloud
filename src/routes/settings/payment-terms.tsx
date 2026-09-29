@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { PaymentTerm } from "src/types/models";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Col, Row, Space, Table } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
@@ -15,24 +15,18 @@ import { organizationIdAtom } from "src/atoms/organization";
 import PaymentTermForm from "src/components/payment-terms/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
+import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 function SettingsPaymentTerms() {
   useLingui();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const paymentTerms = useAtomValue(paymentTermsAtom);
   const setPaymentTerms = useSetAtom(setPaymentTermsAtom);
   const organizationId = useAtomValue(organizationIdAtom);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (location.pathname === "/settings/payment-terms") {
-      setLoading(true);
-      setPaymentTerms().finally(() => setLoading(false));
-    }
-  }, [location, setPaymentTerms]);
+  const loading = useLoadOnPath("/settings/payment-terms", () => setPaymentTerms());
 
   const filtered = useMemo(
     () =>
