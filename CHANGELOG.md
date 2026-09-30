@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.60.1] - 2026-09-30
+
+### Fixed
+- The panel that opens from a Cash Book payment history row shows every
+  column again. A long product name used to push the unit price and line
+  total out of view; names now wrap, with the product code on a second line
+  (#452).
+
 ## [3.60.0] - 2026-09-30
 
 ### Added
