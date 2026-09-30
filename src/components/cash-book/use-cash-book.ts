@@ -5,7 +5,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { App, Form } from "antd";
+import { App, Form, type FormInstance } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -46,6 +46,7 @@ import {
   addDecimal,
   calculateTax,
   centsToUnits,
+  grossFromNet,
   multiplyDecimal,
   netFromGross,
   unitsToCents,
@@ -61,7 +62,23 @@ import type { NewClientDraft } from "src/components/cash-book/shared";
 // (paid iff amountReceived == total), see the "Amount received"/"Deposit
 // received" field below for how the two stay in sync without fighting
 // each other.
-export const useCashBook = () => {
+interface UseCashBookOptions {
+  // Whether serving a customer narrows the loan-status query to them. The
+  // stacked layout does (its report then shows only their loans); the
+  // two-tab layout keeps every customer's rows for its loan register and
+  // narrows on the client side instead.
+  scopeLoanStatusToClient?: boolean;
+}
+
+// Optional scope for the loan-status / payment-history exports, for a layout
+// whose report shows a customer the hook isn't serving (the loan register's
+// selected customer). Anything left out falls back to the hook's own state.
+export interface CashBookExportScope {
+  clientId?: string;
+  openOnly?: boolean;
+}
+
+export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptions = {}) => {
   const { i18n } = useLingui();
   const { message, modal } = App.useApp();
   const dateFormat = useDatePickerFormat();
@@ -315,44 +332,46 @@ export const useCashBook = () => {
     }
   };
 
-  const handleExportLoanStatus = (format: "xlsx" | "pdf") => async () => {
-    if (!organizationId) return;
-    const setDownloading = format === "xlsx" ? setDownloadingLoanExcel : setDownloadingLoanPdf;
-    setDownloading(true);
-    try {
-      await ExportLoanStatus(
-        organizationId,
-        format,
-        loanStatusClientId || undefined,
-        openLoansOnly,
-      );
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const handleExportLoanStatus =
+    (format: "xlsx" | "pdf", scope?: CashBookExportScope) => async () => {
+      if (!organizationId) return;
+      const setDownloading = format === "xlsx" ? setDownloadingLoanExcel : setDownloadingLoanPdf;
+      setDownloading(true);
+      try {
+        await ExportLoanStatus(
+          organizationId,
+          format,
+          (scope ? scope.clientId : loanStatusClientId) || undefined,
+          scope?.openOnly ?? openLoansOnly,
+        );
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : t`Export failed`);
+      } finally {
+        setDownloading(false);
+      }
+    };
 
   // Scoped the same way the card's own table is (paymentHistory's scopeId):
   // the customer being served while a sale is in progress, else the loan
   // report's customer filter, else every customer.
-  const handleExportPaymentHistory = (format: "xlsx" | "pdf") => async () => {
-    if (!organizationId) return;
-    const setDownloading =
-      format === "xlsx" ? setDownloadingPaymentsExcel : setDownloadingPaymentsPdf;
-    setDownloading(true);
-    try {
-      await ExportPaymentHistory(
-        organizationId,
-        format,
-        selectedClient?.id || loanStatusClientId || undefined,
-      );
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const handleExportPaymentHistory =
+    (format: "xlsx" | "pdf", scope?: CashBookExportScope) => async () => {
+      if (!organizationId) return;
+      const setDownloading =
+        format === "xlsx" ? setDownloadingPaymentsExcel : setDownloadingPaymentsPdf;
+      setDownloading(true);
+      try {
+        await ExportPaymentHistory(
+          organizationId,
+          format,
+          (scope ? scope.clientId : selectedClient?.id || loanStatusClientId) || undefined,
+        );
+      } catch (error) {
+        message.error(error instanceof Error ? error.message : t`Export failed`);
+      } finally {
+        setDownloading(false);
+      }
+    };
 
   const bankAccounts = useMemo(() => accounts.filter((a: any) => a.type === "asset"), [accounts]);
   const expenseAccounts = useMemo(
@@ -427,7 +446,7 @@ export const useCashBook = () => {
     resetSaleForm();
     // Serving this customer: scope the loan-status report to them so the
     // cashier sees what they still owe without re-picking them.
-    setLoanStatusClientId(client.id);
+    if (scopeLoanStatusToClient) setLoanStatusClientId(client.id);
   };
 
   const backToSearch = () => {
@@ -660,7 +679,7 @@ export const useCashBook = () => {
       );
       setSelectedClient(result.client);
       setNewClientDraft(null);
-      setLoanStatusClientId(result.client.id);
+      if (scopeLoanStatusToClient) setLoanStatusClientId(result.client.id);
       await setClients();
       // The sale took its stock-tracked lines out of stock server-side
       // (db/invoice_stock.go) — refresh so the next pick sees current stock.
@@ -717,92 +736,95 @@ export const useCashBook = () => {
     await refreshPayments();
   };
 
+  // A product picked on a sale line: warn about stock and cost basis, then
+  // prefill the line's description, tax rate and gross (tax-inclusive)
+  // price. Shared by every layout's line-items table.
+  const onProductSelect = (productId: string, fieldName: number, formInstance: FormInstance) => {
+    const product = find(products, { id: productId }) as any;
+    if (product?.stockEnabled === 1 && (product.stockQuantity ?? 0) <= 0) {
+      // Never blocks the sale (a decision: the counter keeps
+      // selling when the records are off) — stock just
+      // goes negative, the signal that a count is due.
+      const onHand = product.stockQuantity ?? 0;
+      message.warning(t`${product.name}: ${onHand} in stock — this sale will take it below zero.`);
+    }
+    if (valuedInventory && product?.stockEnabled === 1 && product.unitCost == null) {
+      message.warning(
+        t`${product.name} has no unit cost, so this sale will be refused — give the product a unit cost, or switch the organization's inventory valuation to Quantities only.`,
+      );
+    }
+    if (product) {
+      const items = formInstance.getFieldValue("lineItems");
+      // A picked product's own tax rate wins when it has
+      // one; otherwise the row keeps whatever default
+      // it already carried (the table's defaultNewRow) —
+      // either way, that rate is what grossFromNet needs
+      // to prefill a tax-inclusive price the cashier
+      // never has to compute themselves.
+      const taxRateId = product.taxRateId || items[fieldName]?.taxRate;
+      const rate = find(taxRates, { id: taxRateId });
+      items[fieldName] = {
+        ...items[fieldName],
+        description: product.name,
+        unitPrice: grossFromNet(centsToUnits(product.price ?? 0), rate?.percentage ?? 0),
+        ...(product.taxRateId ? { taxRate: product.taxRateId } : {}),
+      };
+      formInstance.setFieldValue("lineItems", [...items]);
+    }
+  };
+
   const clientName = selectedClient?.name || newClientDraft?.name || "";
 
   return {
-    i18n,
-    message,
-    modal,
+    onProductSelect,
     dateFormat,
-    organizationId,
     organization,
     clients,
-    setClients,
     products,
-    setProducts,
     sellableProducts,
-    valuedInventory,
     taxRates,
-    setTaxRates,
-    accounts,
-    setAccounts,
     search,
     setSearch,
     selectedClient,
-    setSelectedClient,
     newClientDraft,
-    setNewClientDraft,
     newClientModalOpen,
     setNewClientModalOpen,
     newClientForm,
-    amountReceivedTouched,
     setAmountReceivedTouched,
     saleMode,
     setSaleMode,
     submitting,
-    setSubmitting,
     form,
     registerAccountId,
     selectedDate,
     setSelectedDate,
     dailyMovement,
-    setDailyMovement,
     movementDetails,
-    setMovementDetails,
     loadingDailyMovement,
-    setLoadingDailyMovement,
     withdrawModalOpen,
     setWithdrawModalOpen,
     withdrawSubmitting,
-    setWithdrawSubmitting,
     withdrawForm,
     downloadingDailyPdf,
-    setDownloadingDailyPdf,
     downloadingDailyExcel,
-    setDownloadingDailyExcel,
     loanStatusClientId,
     setLoanStatusClientId,
     loanStatusRows,
-    setLoanStatusRows,
     loadingLoanStatus,
-    setLoadingLoanStatus,
     loanStatusFailed,
-    setLoanStatusFailed,
     openLoansOnly,
     setOpenLoansOnly,
     payingLine,
     setPayingLine,
     payingSubmitting,
-    setPayingSubmitting,
     payLineForm,
     downloadingLoanPdf,
-    setDownloadingLoanPdf,
     downloadingLoanExcel,
-    setDownloadingLoanExcel,
     payments,
-    setPayments,
     loadingPayments,
-    setLoadingPayments,
     downloadingPaymentsPdf,
-    setDownloadingPaymentsPdf,
     downloadingPaymentsExcel,
-    setDownloadingPaymentsExcel,
-    dailyMovementRequestIdRef,
-    loanStatusRequestIdRef,
     isToday,
-    refreshDailyMovement,
-    refreshLoanStatus,
-    refreshPayments,
     filteredLoanStatusRows,
     openLoanByClient,
     clientNameById,
@@ -816,7 +838,6 @@ export const useCashBook = () => {
     openWithdrawModal,
     handleWithdrawSubmit,
     inSale,
-    resetSaleForm,
     selectClient,
     backToSearch,
     needle,
@@ -832,13 +853,7 @@ export const useCashBook = () => {
     resultAriaLabel,
     openNewClientModal,
     handleNewClientSubmit,
-    lineItems,
     defaultTaxRateId,
-    effectiveTaxRateId,
-    netCentsFor,
-    taxGroups,
-    subTotal,
-    taxTotal,
     total,
     amountReceivedWatched,
     currency,

@@ -1,12 +1,10 @@
 import {
-  Alert,
   Button,
   Card,
   Checkbox,
   Col,
   DatePicker,
   Divider,
-  Empty,
   Form,
   Grid,
   Input,
@@ -40,17 +38,20 @@ import type { Payment } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
 import { dateSorter, moneySorter, numberSorter, textSorter } from "src/utils/sort";
-import { centsToUnits, grossFromNet, unitsToCents } from "src/utils/currency";
+import { unitsToCents } from "src/utils/currency";
 import PaymentProductsCell, {
   paymentProductsLabel,
 } from "src/components/payments/payment-products-cell";
 import { PAYMENT_METHODS, paymentMethodLabel, paymentRowMethodLabel } from "src/types/payment";
 import { useCashBook } from "src/components/cash-book/use-cash-book";
 import CashBookModals from "src/components/cash-book/modals";
+import CustomerSearchResults from "src/components/cash-book/search-results";
+import CashBookLayoutSwitch from "src/components/cash-book/layout-switch";
+import CashBookV2 from "src/components/cash-book/cash-book-v2";
+import { cashBookLayoutAtom } from "src/atoms/generic";
+import { useAtomValue } from "jotai";
 import {
-  CashBookCustomerRow,
   clientDetailLine,
-  customerIdentifiers,
   movementKindColor,
   movementKindLabel,
 } from "src/components/cash-book/shared";
@@ -65,15 +66,14 @@ const { Option } = Select;
 // (paid iff amountReceived == total), see the "Amount received"/"Deposit
 // received" field below for how the two stay in sync without fighting
 // each other.
-const CashBook = () => {
+const CashBookV1 = () => {
   const cb = useCashBook();
   const {
-    message,
+    onProductSelect,
     dateFormat,
     clients,
     products,
     sellableProducts,
-    valuedInventory,
     taxRates,
     search,
     setSearch,
@@ -94,7 +94,6 @@ const CashBook = () => {
     loanStatusClientId,
     setLoanStatusClientId,
     loadingLoanStatus,
-    loanStatusFailed,
     openLoansOnly,
     setOpenLoansOnly,
     downloadingLoanPdf,
@@ -104,7 +103,6 @@ const CashBook = () => {
     downloadingPaymentsExcel,
     isToday,
     filteredLoanStatusRows,
-    openLoanByClient,
     clientNameById,
     paymentHistory,
     handleExportDailyMovements,
@@ -116,15 +114,10 @@ const CashBook = () => {
     backToSearch,
     needle,
     searchResults,
-    MAX_SEARCH_RESULTS,
     visibleSearchResults,
-    hiddenResultCount,
-    debtorCount,
     activeResultIndex,
-    setActiveResultIndex,
     onSearchKeyDown,
     activeResultId,
-    resultAriaLabel,
     openNewClientModal,
     total,
     amountReceivedWatched,
@@ -138,25 +131,8 @@ const CashBook = () => {
   // doesn't take a third of a phone-width table.
   const compactActions = !Grid.useBreakpoint().md;
   const {
-    token: { colorSuccess, colorError, colorBorder, colorPrimary, colorTextSecondary },
+    token: { colorSuccess, colorError, colorBorder },
   } = theme.useToken();
-  // Renders `text` with its first case-insensitive occurrence of `term`
-  // highlighted, so a phone/CIN match is obvious rather than something to
-  // trust.
-  const highlight = (text: string, term: string) => {
-    if (!term) return text;
-    const at = text.toLowerCase().indexOf(term);
-    if (at < 0) return text;
-    return (
-      <>
-        {text.slice(0, at)}
-        <Typography.Text style={{ color: colorPrimary, fontWeight: 600 }}>
-          {text.slice(at, at + term.length)}
-        </Typography.Text>
-        {text.slice(at + term.length)}
-      </>
-    );
-  };
   // A stronger border than antd's default (`colorBorderSecondary`, which is
   // nearly invisible in both themes) so the stacked Cash Book panels read as
   // distinct cards, plus one consistent gap between them. Shared by the
@@ -174,6 +150,7 @@ const CashBook = () => {
       <PageHeader
         icon={<WalletOutlined />}
         title={<Trans>Cash Book</Trans>}
+        extra={<CashBookLayoutSwitch disabled={inSale} />}
         style={{ marginBottom: 16 }}
         search={
           isToday && !inSale
@@ -228,83 +205,7 @@ const CashBook = () => {
         }
       />
 
-      {isToday && !inSale && needle && (
-        <>
-          {loanStatusFailed && (
-            <Alert
-              type="warning"
-              showIcon
-              style={{ marginBottom: 12 }}
-              message={
-                <Trans>
-                  Open-loan figures couldn't be loaded — any loan shown may be incomplete
-                </Trans>
-              }
-            />
-          )}
-
-          <div
-            aria-live="polite"
-            style={{
-              marginBottom: 4,
-              fontSize: 13,
-              fontWeight: 600,
-              color: colorTextSecondary,
-            }}
-          >
-            <Trans>
-              {searchResults.length} matches · {debtorCount} with an open loan
-            </Trans>
-          </div>
-          {visibleSearchResults.length === 0 ? (
-            <Empty description={t`No matching customers`} style={{ marginBottom: 16 }}>
-              <Button
-                type="dashed"
-                icon={<UserAddOutlined />}
-                onClick={() => openNewClientModal(search)}
-              >
-                {t`Create`} "{search}"
-              </Button>
-            </Empty>
-          ) : (
-            <>
-              <div
-                id="cash-book-results"
-                role="listbox"
-                aria-label={t`Search results`}
-                style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
-              >
-                {visibleSearchResults.map((client: any, index: number) => {
-                  const openLoan = openLoanByClient.get(client.id) ?? 0;
-                  return (
-                    <CashBookCustomerRow
-                      key={client.id}
-                      id={`cash-book-result-${client.id}`}
-                      active={index === activeResultIndex}
-                      ariaLabel={resultAriaLabel(client)}
-                      title={clientDetailLine(client)}
-                      name={highlight(client.name, needle)}
-                      meta={customerIdentifiers(client, (text) => highlight(text, needle))}
-                      outstanding={openLoan}
-                      moneyText={money(openLoan)}
-                      onSelect={() => selectClient(client)}
-                      onHover={() => setActiveResultIndex(index)}
-                    />
-                  );
-                })}
-              </div>
-              {hiddenResultCount > 0 && (
-                <div style={{ marginBottom: 16, fontSize: 12, color: colorTextSecondary }}>
-                  <Trans>
-                    Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow{" "}
-                    {hiddenResultCount} more
-                  </Trans>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
+      {isToday && !inSale && needle && <CustomerSearchResults cb={cb} />}
 
       {/* Sale-in-progress flow. The cash-register report is hidden while a
       sale is in progress (a standing back-office panel a cashier doesn't
@@ -384,48 +285,7 @@ const CashBook = () => {
                       allProducts: products,
                       // The dropdown shows the product name (the shared default
                       // also appends its SKU); the closed cell shows the SKU.
-                      onSelect: (productId, fieldName, formInstance) => {
-                        const product = find(products, { id: productId }) as any;
-                        if (product?.stockEnabled === 1 && (product.stockQuantity ?? 0) <= 0) {
-                          // Never blocks the sale (a decision: the counter keeps
-                          // selling when the records are off) — stock just
-                          // goes negative, the signal that a count is due.
-                          const onHand = product.stockQuantity ?? 0;
-                          message.warning(
-                            t`${product.name}: ${onHand} in stock — this sale will take it below zero.`,
-                          );
-                        }
-                        if (
-                          valuedInventory &&
-                          product?.stockEnabled === 1 &&
-                          product.unitCost == null
-                        ) {
-                          message.warning(
-                            t`${product.name} has no unit cost, so this sale will be refused — give the product a unit cost, or switch the organization's inventory valuation to Quantities only.`,
-                          );
-                        }
-                        if (product) {
-                          const items = formInstance.getFieldValue("lineItems");
-                          // A picked product's own tax rate wins when it has
-                          // one; otherwise the row keeps whatever default
-                          // it already carried (see defaultNewRow above) —
-                          // either way, that rate is what grossFromNet needs
-                          // to prefill a tax-inclusive price the cashier
-                          // never has to compute themselves.
-                          const taxRateId = product.taxRateId || items[fieldName]?.taxRate;
-                          const rate = find(taxRates, { id: taxRateId });
-                          items[fieldName] = {
-                            ...items[fieldName],
-                            description: product.name,
-                            unitPrice: grossFromNet(
-                              centsToUnits(product.price ?? 0),
-                              rate?.percentage ?? 0,
-                            ),
-                            ...(product.taxRateId ? { taxRate: product.taxRateId } : {}),
-                          };
-                          formInstance.setFieldValue("lineItems", [...items]);
-                        }
-                      },
+                      onSelect: onProductSelect,
                     },
                     { kind: "description", required: true },
                     { kind: "quantity" },
@@ -1081,6 +941,14 @@ const CashBook = () => {
       <CashBookModals cb={cb} />
     </>
   );
+};
+
+// Both layouts stay available side by side until one is chosen; the header
+// switch (CashBookLayoutSwitch) picks one per browser, the current layout by
+// default.
+const CashBook = () => {
+  const layout = useAtomValue(cashBookLayoutAtom);
+  return layout === "v2" ? <CashBookV2 /> : <CashBookV1 />;
 };
 
 export default CashBook;
