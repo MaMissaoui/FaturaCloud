@@ -374,3 +374,46 @@ func TestOpeningLoanSettledByOrdinaryPayment(t *testing.T) {
 		t.Fatalf("amount paid = %d, %v; want 100000", paid, err)
 	}
 }
+
+// Receivables include migrated loans: the Dashboard's outstanding and AR
+// aging show what's still owed, aged from the sale date (its due date),
+// while the Dashboard's revenue leaves the loans out.
+func TestOpeningLoansAreReceivables(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-opening-receivables")
+
+	open, err := d.CreateOpeningLoan(openingLoanRequest(fx, "OPEN-1", 30000))
+	if err != nil {
+		t.Fatalf("CreateOpeningLoan: %v", err)
+	}
+	if open.DueDate == nil || *open.DueDate != openingLoanSaleDate {
+		t.Fatalf("due date = %v, want the sale date", open.DueDate)
+	}
+
+	aging, err := d.GetReceivableAging(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetReceivableAging: %v", err)
+	}
+	if aging.Total != 70000 || aging.Days90Plus != 70000 || len(aging.Invoices) != 1 || aging.Invoices[0].ID != open.ID {
+		t.Fatalf("aging = %+v, want the loan's 70000 outstanding, 90+ days old", aging)
+	}
+
+	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
+	to := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC).UnixMilli()
+	dashboard, err := d.GetDashboardData(fx.orgID, from, to)
+	if err != nil {
+		t.Fatalf("GetDashboardData: %v", err)
+	}
+	if dashboard.Outstanding.Total != 70000 {
+		t.Fatalf("dashboard outstanding = %d, want 70000", dashboard.Outstanding.Total)
+	}
+	if len(dashboard.TopClients) != 0 || len(dashboard.TopProducts) != 0 {
+		t.Fatalf("dashboard top clients/products = %+v / %+v, want none from migrated loans", dashboard.TopClients, dashboard.TopProducts)
+	}
+	for _, m := range dashboard.RevenueByMonth {
+		if m.Revenue != 0 {
+			t.Fatalf("dashboard revenue = %+v, want none from migrated loans", dashboard.RevenueByMonth)
+		}
+	}
+}

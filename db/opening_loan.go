@@ -279,10 +279,13 @@ func applyOpeningLoanTx(tx *sqlx.Tx, plan *openingLoanPlan) (string, error) {
 	}
 	if _, err := tx.Exec(`
 		INSERT INTO invoices (
-			id, organizationId, number, state, clientId, date, currency,
+			id, organizationId, number, state, clientId, date, dueDate, currency,
 			customerNotes, total, taxTotal, subTotal, origin, importBatchId
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
-		invoiceID, req.OrganizationID, req.Number, plan.state, req.ClientID, req.Date, plan.currency,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+		// Due on its sale date, like a Cash Book sale (CreateCashSale): a
+		// counter loan has no invoicing terms, and AR aging then shows how
+		// old the loan really is.
+		invoiceID, req.OrganizationID, req.Number, plan.state, req.ClientID, req.Date, req.Date, plan.currency,
 		req.Notes, plan.total, plan.total, OpeningOrigin, req.ImportBatchID,
 	); err != nil {
 		return "", fmt.Errorf("apply_opening_loan insert_invoice: %w", err)
