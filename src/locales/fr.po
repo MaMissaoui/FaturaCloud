@@ -4146,12 +4146,12 @@ msgstr "Aucune commande pour le moment"
 
 #: src/routes/accounting/reports/ap-aging.tsx:120
 msgid "No outstanding bills"
-msgstr "Aucune facture en attente"
+msgstr "Aucune facture fournisseur impayée"
 
 #: src/routes/accounting/reports/ar-aging.tsx:120
 #: src/routes/dashboard.tsx:335
 msgid "No outstanding invoices"
-msgstr "Aucune facture en attente"
+msgstr "Aucune facture impayée"
 
 #. placeholder {0}: stale.length
 #: src/components/cash-book/loan-register.tsx:487
@@ -4663,11 +4663,11 @@ msgstr "Hors champ d'application de la taxe"
 #: src/routes/settings/loan-import.tsx:389
 #: src/routes/settings/loan-import.tsx:421
 msgid "Outstanding"
-msgstr "En attente"
+msgstr "Reste à payer"
 
 #: src/routes/dashboard.tsx:283
 msgid "Outstanding invoices"
-msgstr "Factures en attente"
+msgstr "Factures impayées"
 
 #: src/types/incoming-invoice.ts:62
 msgid "Over ordered"
