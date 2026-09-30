@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.58.4] - 2026-09-30
+
+### Fixed
+- New organizations get a time zone: the "create organization" screen (for a
+  new user, and the header's "New organization") now has a Time zone field
+  prefilled with the browser's zone. Without one, an organization read dates
+  in UTC and printed picked dates a day early east of UTC (#434).
+- Cash Book register and Daily Cash Movements: a picked day is read
+  correctly in every time zone, including UTC+12 and beyond, where it used to
+  show the next day (#434).
+- Cash Book: serialized products are no longer offered at the counter (the
+  sale refuses them), and picking a stock product with no unit cost now warns
+  straight away when the sale would be refused, instead of at checkout (#435).
+
+### Changed
+- What a payment paid for (the Payment history product panel, its export and
+  the product names in the payments list) is visible only to Sales and Cash
+  Book users; Purchasing and Accounting no longer see sales line details
+  through payments (#435).
+- Internal: page data loading moved to shared hooks, and lint now fails the
+  build on any warning (#428–#431, #436).
+
 ## [3.58.3] - 2026-09-29
 
 ### Changed
