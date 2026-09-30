@@ -662,7 +662,7 @@ func (idx *loanImportIndex) matchCustomer(c loanSheetCustomer) (client *Client, 
 		}
 		return named[0], "name", "", nil
 	default:
-		return nil, "", "", fmt.Errorf("%d customers are named %q — add the CIN or phone", len(named), c.name)
+		return nil, "", "", fmt.Errorf("%d customers are named %q — record the CIN or phone on the right one in Clients (and in this file), then check again", len(named), c.name)
 	}
 }
 
