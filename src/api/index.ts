@@ -651,6 +651,102 @@ const downloadDocumentExport = async (url: string, fallbackFilename: string): Pr
   }, 1000);
 };
 
+// ---- Paper loan register import (db/loan_import.go) — org admin only ----
+
+export interface LoanImportProblem {
+  row: number;
+  ref: string;
+  severity: "error" | "warning" | "skipped";
+  message: string;
+}
+
+export interface LoanImportCustomer {
+  name: string;
+  cin: string;
+  phone: string;
+  new: boolean;
+  loans: number;
+  total: number;
+  paid: number;
+  outstanding: number;
+}
+
+// Money in cents. imported is true only when the import wrote its batch; a
+// file with errors comes back as a report with imported false.
+export interface LoanImportReport {
+  dryRun: boolean;
+  imported: boolean;
+  batchId?: string;
+  cutoverDate: number;
+  loans: number;
+  openLoans: number;
+  settledLoans: number;
+  lines: number;
+  skippedLoans: number;
+  customersMatched: number;
+  customersCreated: number;
+  total: number;
+  paid: number;
+  outstanding: number;
+  errors: number;
+  warnings: number;
+  customers: LoanImportCustomer[];
+  problems: LoanImportProblem[];
+}
+
+export interface LoanImportBatch {
+  id: string;
+  organizationId: string;
+  fileName: string | null;
+  cutoverDate: number;
+  loanCount: number;
+  customersCreated: number;
+  total: number;
+  outstanding: number;
+  createdBy: string | null;
+  createdAt: number;
+  undoneAt: number | null;
+}
+
+export interface LoanImportUndoResult {
+  loansRemoved: number;
+  customersRemoved: number;
+  customersKept: number;
+}
+
+export const DownloadLoanImportTemplate = (orgId: string) =>
+  downloadDocumentExport(`/api/organizations/${orgId}/loan-imports/template`, "loan-register.xlsx");
+
+// cutoverDay is calendarDayMs of the picked cutover date; dryRun false
+// imports, true only reports.
+export const UploadLoanRegister = async (
+  orgId: string,
+  file: File,
+  cutoverDay: number,
+  dryRun: boolean,
+): Promise<LoanImportReport> => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("cutoverDate", String(cutoverDay));
+  form.append("dryRun", dryRun ? "true" : "false");
+  const res = await fetch(`/api/organizations/${orgId}/loan-imports`, {
+    method: "POST",
+    headers: { [CSRF_HEADER]: "1" },
+    credentials: "same-origin",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error ?? res.statusText);
+  }
+  return res.json();
+};
+
+export const GetLoanImports = (orgId: string) =>
+  get<LoanImportBatch[]>(`/organizations/${orgId}/loan-imports`);
+
+export const UndoLoanImport = (id: string) => del<LoanImportUndoResult>(`/loan-imports/${id}`);
+
 // Exports an invoice through the org's custom Excel template (an uploaded
 // override, or the embedded default) filled with this invoice's persisted
 // data — as opposed to the default/tunisia PDF button, which renders live

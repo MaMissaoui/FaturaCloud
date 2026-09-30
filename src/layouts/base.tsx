@@ -82,6 +82,7 @@ import {
   organizationIdAtom,
   organizationAtom,
   isOrgAdminOrAccountingAtom,
+  isOrgAdminAtom,
   isCashbookAtom,
   myOrgRoleAtom,
 } from "src/atoms/organization";
@@ -157,6 +158,7 @@ export default function BaseLayout() {
   const currentUser = useAtomValue(currentUserAtom);
   const isPlatformAdmin = useAtomValue(isPlatformAdminAtom);
   const canAccessGLExport = useAtomValue(isOrgAdminOrAccountingAtom);
+  const isOrgAdmin = useAtomValue(isOrgAdminAtom);
   const isCashbook = useAtomValue(isCashbookAtom);
   const orgRole = useAtomValue(myOrgRoleAtom);
 
@@ -395,6 +397,21 @@ export default function BaseLayout() {
               </Link>
             ),
             key: "settings.gl-export",
+          },
+        ]
+      : []),
+    // The paper loan register import (src/routes/settings/loan-import.tsx) —
+    // org admin only, like its API.
+    ...(isOrgAdmin
+      ? [
+          {
+            icon: <ImportOutlined />,
+            label: (
+              <Link to="/settings/loan-import">
+                <Trans>Import loan register</Trans>
+              </Link>
+            ),
+            key: "settings.loan-import",
           },
         ]
       : []),

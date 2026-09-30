@@ -34,6 +34,8 @@ import type { Account, Payment, PaymentApplication } from "src/types/models";
 import {
   PAYMENT_METHODS,
   paymentMethodLabel,
+  paymentRowMethodLabel,
+  isOpeningPayment,
   paymentStatusColor,
   paymentStatusLabel,
   type PaymentMethod,
@@ -400,8 +402,8 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
           <Table.Column
             title={<Trans>Method</Trans>}
             key="method"
-            sorter={textSorter((row: PaymentRow) => paymentMethodLabel(row.payment.method))}
-            render={(row: PaymentRow) => paymentMethodLabel(row.payment.method)}
+            sorter={textSorter((row: PaymentRow) => paymentRowMethodLabel(row.payment))}
+            render={(row: PaymentRow) => paymentRowMethodLabel(row.payment)}
           />
           <Table.Column
             title={<Trans>Amount</Trans>}
@@ -429,7 +431,11 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
           <Table.Column
             key="actions"
             render={(row: PaymentRow) =>
-              canWritePayments && row.payment.status === "posted" ? (
+              // A migrated loan's paid-to-date isn't a real receipt: the
+              // server refuses to void it, so no button is offered.
+              canWritePayments &&
+              row.payment.status === "posted" &&
+              !isOpeningPayment(row.payment) ? (
                 <Popconfirm
                   title={t`Void this payment?`}
                   description={t`This reverses its journal entry and restores the balance due.`}

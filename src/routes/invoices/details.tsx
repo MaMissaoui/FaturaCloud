@@ -355,66 +355,77 @@ const InvoiceDetails: React.FC = () => {
       : "draft";
   const invoiceNumber =
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
-      ? (invoice as any).invoiceNumber
+      ? // The API's field is `number`; `invoiceNumber` never existed, so the
+        // page title showed a blank number before this fallback.
+        ((invoice as any).number ?? (invoice as any).invoiceNumber)
       : undefined;
+
+  // A loan brought forward from the paper register (db/opening_loan.go) is
+  // frozen: only collections change it, so the page shows it read-only —
+  // no save, delete or export — with a banner saying why.
+  const isOpeningLoan =
+    !isNew && !!invoice && typeof invoice === "object" && (invoice as any).origin === "opening";
 
   // Footer action groups — built as arrays and filtered before being handed
   // to <Space split>, so a group that's conditionally empty (e.g. every
   // button here needs !isNew) never becomes a stray leading/doubled
   // separator the way a raw conditional child of <Space split> would.
-  const exportActions = !isNew
-    ? [
-        <Tooltip key="pdf" title={isDirty ? t`Save your changes before exporting` : undefined}>
-          <Button disabled={isDirty} loading={downloadingPdf} onClick={handleServerExport("pdf")}>
-            <FilePdfOutlined /> PDF
-          </Button>
-        </Tooltip>,
-        // Always the server fill-and-convert path (db/xlsx_export.go) — every
-        // invoice has an embedded fallback template (resolveTemplateBytes) to
-        // fill even with no org override, so both buttons always work.
-        <Tooltip key="excel" title={isDirty ? t`Save your changes before exporting` : undefined}>
+  const exportActions =
+    !isNew && !isOpeningLoan
+      ? [
+          <Tooltip key="pdf" title={isDirty ? t`Save your changes before exporting` : undefined}>
+            <Button disabled={isDirty} loading={downloadingPdf} onClick={handleServerExport("pdf")}>
+              <FilePdfOutlined /> PDF
+            </Button>
+          </Tooltip>,
+          // Always the server fill-and-convert path (db/xlsx_export.go) — every
+          // invoice has an embedded fallback template (resolveTemplateBytes) to
+          // fill even with no org override, so both buttons always work.
+          <Tooltip key="excel" title={isDirty ? t`Save your changes before exporting` : undefined}>
+            <Button
+              disabled={isDirty}
+              loading={downloadingExcel}
+              onClick={handleServerExport("xlsx")}
+            >
+              <FileExcelOutlined /> <Trans>Excel</Trans>
+            </Button>
+          </Tooltip>,
+          // Deliberately NOT isDirty-gated like PDF/Excel above: db/einvoice.go
+          // 409s with a list of every missing mandatory field at once, and
+          // that's the retry workflow this button exists for — a user fixing
+          // a field the 409 just named needs to be able to retry immediately,
+          // not be forced to Save first. It reads persisted data too, but that
+          // hazard (a stale-looking export) doesn't apply the same way to a
+          // validation-error response.
           <Button
-            disabled={isDirty}
-            loading={downloadingExcel}
-            onClick={handleServerExport("xlsx")}
+            key="einvoice"
+            loading={downloadingEInvoice}
+            onClick={async () => {
+              setDownloadingEInvoice(true);
+              try {
+                await DownloadInvoiceEInvoice(id!);
+              } catch (error) {
+                message.error(error instanceof Error ? error.message : t`E-invoice export failed`);
+              } finally {
+                setDownloadingEInvoice(false);
+              }
+            }}
           >
-            <FileExcelOutlined /> <Trans>Excel</Trans>
-          </Button>
-        </Tooltip>,
-        // Deliberately NOT isDirty-gated like PDF/Excel above: db/einvoice.go
-        // 409s with a list of every missing mandatory field at once, and
-        // that's the retry workflow this button exists for — a user fixing
-        // a field the 409 just named needs to be able to retry immediately,
-        // not be forced to Save first. It reads persisted data too, but that
-        // hazard (a stale-looking export) doesn't apply the same way to a
-        // validation-error response.
-        <Button
-          key="einvoice"
-          loading={downloadingEInvoice}
-          onClick={async () => {
-            setDownloadingEInvoice(true);
-            try {
-              await DownloadInvoiceEInvoice(id!);
-            } catch (error) {
-              message.error(error instanceof Error ? error.message : t`E-invoice export failed`);
-            } finally {
-              setDownloadingEInvoice(false);
-            }
-          }}
-        >
-          <FileTextOutlined /> <Trans>E-Invoice (XML)</Trans>
-        </Button>,
-      ]
-    : [];
+            <FileTextOutlined /> <Trans>E-Invoice (XML)</Trans>
+          </Button>,
+        ]
+      : [];
 
   // Cancelling is just another state transition now, available from the
   // state dropdown in the "Invoice details" card header (like every other
   // transition) rather than a special-cased footer button.
-  const stateActions = [
-    <Button key="save" type="primary" onClick={() => form.submit()}>
-      <SaveOutlined /> <Trans>Save</Trans>
-    </Button>,
-  ];
+  const stateActions = isOpeningLoan
+    ? []
+    : [
+        <Button key="save" type="primary" onClick={() => form.submit()}>
+          <SaveOutlined /> <Trans>Save</Trans>
+        </Button>,
+      ];
 
   const footerActionGroups = [exportActions, stateActions].filter((group) => group.length > 0);
 
@@ -463,10 +474,25 @@ const InvoiceDetails: React.FC = () => {
         title={isNew ? <Trans>New invoice</Trans> : <Trans>Invoice {invoiceNumber}</Trans>}
         style={{ marginBottom: 24 }}
       />
+      {isOpeningLoan && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={<Trans>Loan brought forward from the paper loan register</Trans>}
+          description={
+            <Trans>
+              Reference {invoiceNumber}. It can only be collected — from the Cash Book, or with a
+              payment below — not edited, exported or deleted.
+            </Trans>
+          }
+        />
+      )}
       <Row>
         <Col span={24}>
           <Form
             form={form}
+            disabled={isOpeningLoan}
             onFinish={handleSubmit}
             scrollToFirstError
             onValuesChange={() => setIsDirty(true)}
@@ -1117,7 +1143,7 @@ const InvoiceDetails: React.FC = () => {
                         <CopyOutlined /> <Trans>Duplicate</Trans>
                       </Button>
                     )}
-                    {id && !isNew && currentInvoiceState !== "paid" && (
+                    {id && !isNew && !isOpeningLoan && currentInvoiceState !== "paid" && (
                       <Popconfirm
                         title={t`Delete this invoice?`}
                         onConfirm={handleDelete(id)}
