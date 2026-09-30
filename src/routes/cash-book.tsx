@@ -1,26 +1,14 @@
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-} from "react";
-import {
-  Alert,
-  App,
   Button,
   Card,
   Checkbox,
   Col,
   DatePicker,
   Divider,
-  Empty,
   Form,
   Grid,
   Input,
   InputNumber,
-  Modal,
   Radio,
   Row,
   Select,
@@ -31,10 +19,8 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { useLingui } from "@lingui/react";
 import {
   ArrowLeftOutlined,
   DollarOutlined,
@@ -44,290 +30,33 @@ import {
   UserAddOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
-import dayjs, { type Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import get from "lodash/get";
 import find from "lodash/find";
-import map from "lodash/map";
-import sum from "lodash/sum";
-import toNumber from "lodash/toNumber";
-
-import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
-import { clientsAtom, setClientsAtom } from "src/atoms/client";
-import { productsAtom, setProductsAtom } from "src/atoms/product";
-import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
-import {
-  CreateCashMovement,
-  CreateCashSalePayment,
-  CreateCashSale,
-  ExportDailyCashMovements,
-  ExportLoanStatus,
-  ExportPaymentHistory,
-  GetAccounts,
-  GetCashMovementDetails,
-  GetDailyCashMovements,
-  GetLoanStatus,
-  GetPayments,
-} from "src/api";
-import type {
-  CashMovementDetail,
-  CreateCashSaleRequest,
-  DailyCashMovementRow,
-  LoanStatusRow,
-} from "src/api";
-import { normalizeInventoryValuation } from "src/types/inventory-valuation";
-import type { Account, Client, Payment } from "src/types/models";
+import type { CashMovementDetail, LoanStatusRow } from "src/api";
+import type { Payment } from "src/types/models";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
-import { calendarDayMs, useDatePickerFormat } from "src/utils/date";
-import { searchClients } from "src/utils/client-search";
 import { dateSorter, moneySorter, numberSorter, textSorter } from "src/utils/sort";
-import {
-  addDecimal,
-  calculateTax,
-  centsToUnits,
-  grossFromNet,
-  multiplyDecimal,
-  netFromGross,
-  unitsToCents,
-} from "src/utils/currency";
-import { formatOrgCents } from "src/utils/currencies";
+import { unitsToCents } from "src/utils/currency";
 import PaymentProductsCell, {
   paymentProductsLabel,
 } from "src/components/payments/payment-products-cell";
 import { PAYMENT_METHODS, paymentMethodLabel, paymentRowMethodLabel } from "src/types/payment";
+import { useCashBook } from "src/components/cash-book/use-cash-book";
+import CashBookModals from "src/components/cash-book/modals";
+import CustomerSearchResults from "src/components/cash-book/search-results";
+import CashBookLayoutSwitch from "src/components/cash-book/layout-switch";
+import CashBookV2 from "src/components/cash-book/cash-book-v2";
+import { cashBookLayoutAtom } from "src/atoms/generic";
+import { useAtomValue } from "jotai";
+import {
+  clientDetailLine,
+  movementKindColor,
+  movementKindLabel,
+} from "src/components/cash-book/shared";
 
 const { Option } = Select;
-const { TextArea } = Input;
-
-// A new customer picked in the "New customer" modal below — kept as local
-// draft state, not created via a separate API call, until the whole sale is
-// submitted. This is what makes CreateCashSale's client+invoice+payment
-// creation genuinely atomic (see db/cash_sale.go's CreateCashSale doc
-// comment) rather than a client-creation call followed by a separate sale.
-interface NewClientDraft {
-  name: string;
-  // Mandatory, like the modal field (a walk-in is identified by phone).
-  phone: string;
-  phone2?: string;
-  phone3?: string;
-  address?: string;
-  identity_number?: string;
-  iban?: string;
-  guarantor?: string;
-}
-
-// Labels/colors for CashMovementDetail.kind — see
-// db/cash_movement_details.go's CashMovementDetail doc comment for what
-// each one means and why it's computed from payment history, not the
-// invoice's current state.
-const movementKindLabel = (kind: CashMovementDetail["kind"]) => {
-  switch (kind) {
-    case "sale":
-      return t`Sale`;
-    case "loan":
-      return t`Loan (deposit)`;
-    case "repayment":
-      return t`Loan repayment`;
-    case "withdrawal":
-      return t`Withdrawal`;
-  }
-};
-const movementKindColor = (kind: CashMovementDetail["kind"]) => {
-  switch (kind) {
-    case "sale":
-      return "green";
-    case "loan":
-      return "gold";
-    case "repayment":
-      return "blue";
-    case "withdrawal":
-      return "default";
-  }
-};
-
-// One-line customer summary — the same identifying fields the search results
-// show (customer no., phone, CIN, IBAN, address). Shared by the search list
-// and the loan-status customer filter so a cashier can tell two same-named
-// customers apart without leaving the report.
-const clientDetailLine = (c: any): string => {
-  const address =
-    c.address ||
-    [
-      [c.house_number, c.street].filter(Boolean).join(" "),
-      [c.postal_code, c.city].filter(Boolean).join(" "),
-    ]
-      .filter(Boolean)
-      .join(", ");
-  return [
-    c.code ? `${t`Customer no.`} ${c.code}` : null,
-    [c.phone, c.phone2, c.phone3].filter(Boolean).join(" / ") || null,
-    c.identity_number ? `${t`CIN`} ${c.identity_number}` : null,
-    c.iban,
-    address || null,
-    c.guarantor ? `${t`Guarantor`}: ${c.guarantor}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-};
-
-// One selectable customer in the Cash Book pick-list. A grid rather than
-// List.Item.Meta: the name and its identifying fields on the left, a
-// fixed-width right rail for the open-loan amount so the figures line up as a
-// real column, and a single row height so a screenful holds ~11 results
-// instead of 8. A `listbox` option driven from the search field's arrow keys —
-// the row itself isn't focusable (the combobox is the single tab stop).
-const CashBookCustomerRow = ({
-  name,
-  meta,
-  outstanding,
-  moneyText,
-  active,
-  id,
-  ariaLabel,
-  title,
-  onSelect,
-  onHover,
-}: {
-  name: ReactNode;
-  meta: ReactNode;
-  outstanding: number;
-  moneyText: string;
-  active: boolean;
-  id?: string;
-  ariaLabel: string;
-  title?: string;
-  onSelect: () => void;
-  onHover?: () => void;
-}) => {
-  const {
-    token: {
-      colorPrimary,
-      colorTextSecondary,
-      colorWarningText,
-      colorBorderSecondary,
-      controlItemBgHover,
-      controlItemBgActive,
-      borderRadius,
-    },
-  } = theme.useToken();
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      id={id}
-      role="option"
-      aria-selected={active}
-      aria-label={ariaLabel}
-      title={title}
-      onClick={onSelect}
-      onMouseEnter={() => {
-        setHovered(true);
-        onHover?.();
-      }}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) max-content",
-        columnGap: 16,
-        alignItems: "center",
-        minHeight: 56,
-        padding: "8px 12px",
-        borderBottom: `1px solid ${colorBorderSecondary}`,
-        // The grid's left track is minmax(0, 1fr) so this row's own min-width
-        // never lets a long name push the money rail off-screen.
-        minWidth: 0,
-        borderRadius,
-        cursor: "pointer",
-        transition: "background-color 120ms ease",
-        background: active ? controlItemBgActive : hovered ? controlItemBgHover : undefined,
-        outline: active ? `2px solid ${colorPrimary}` : undefined,
-        outlineOffset: active ? -2 : undefined,
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 600,
-            lineHeight: 1.35,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {name}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-            marginTop: 2,
-            fontSize: 13,
-            lineHeight: 1.4,
-            color: colorTextSecondary,
-          }}
-        >
-          {meta}
-        </div>
-      </div>
-      {/* The rail keeps its width even with nothing to show, so the amounts
-          above and below it stay in one column; a zero balance renders
-          nothing rather than "0,00". */}
-      <div
-        style={{
-          minWidth: 132,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          gap: 2,
-        }}
-      >
-        {outstanding > 0 ? (
-          <>
-            <span style={{ fontSize: 11, letterSpacing: ".02em", color: colorTextSecondary }}>
-              {t`Open loan`}
-            </span>
-            <span
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: colorWarningText,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {moneyText}
-            </span>
-          </>
-        ) : null}
-      </div>
-    </div>
-  );
-};
-
-// The identifiers that actually tell two same-named customers apart, in
-// priority order: the customer number (the organization's own unique key),
-// then the mobile number, then the CIN. IBAN/address/guarantor stay available
-// through the row's title tooltip rather than competing for the one line.
-const customerIdentifiers = (c: any, highlight: (text: string) => ReactNode): ReactNode => (
-  <>
-    {c.code ? (
-      <Typography.Text code style={{ fontSize: 12 }}>
-        {String(c.code)}
-      </Typography.Text>
-    ) : null}
-    {[c.phone, c.phone2, c.phone3].filter(Boolean).length ? (
-      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>
-        {highlight([c.phone, c.phone2, c.phone3].filter(Boolean).join(" / "))}
-      </span>
-    ) : null}
-    {c.identity_number ? (
-      <span>
-        {t`CIN`} {highlight(String(c.identity_number))}
-      </span>
-    ) : null}
-  </>
-);
 
 // search for a customer by name/mobile/IBAN/identity number, then either
 // pay off one of their open (loan sale) invoices or record a new sale.
@@ -337,574 +66,73 @@ const customerIdentifiers = (c: any, highlight: (text: string) => ReactNode): Re
 // (paid iff amountReceived == total), see the "Amount received"/"Deposit
 // received" field below for how the two stay in sync without fighting
 // each other.
-const CashBook = () => {
-  const { i18n } = useLingui();
+const CashBookV1 = () => {
+  const cb = useCashBook();
+  const {
+    onProductSelect,
+    dateFormat,
+    clients,
+    products,
+    sellableProducts,
+    taxRates,
+    search,
+    setSearch,
+    newClientDraft,
+    setAmountReceivedTouched,
+    saleMode,
+    setSaleMode,
+    submitting,
+    form,
+    registerAccountId,
+    selectedDate,
+    setSelectedDate,
+    dailyMovement,
+    movementDetails,
+    loadingDailyMovement,
+    downloadingDailyPdf,
+    downloadingDailyExcel,
+    loanStatusClientId,
+    setLoanStatusClientId,
+    loadingLoanStatus,
+    openLoansOnly,
+    setOpenLoansOnly,
+    downloadingLoanPdf,
+    downloadingLoanExcel,
+    loadingPayments,
+    downloadingPaymentsPdf,
+    downloadingPaymentsExcel,
+    isToday,
+    filteredLoanStatusRows,
+    clientNameById,
+    paymentHistory,
+    handleExportDailyMovements,
+    handleExportLoanStatus,
+    handleExportPaymentHistory,
+    openWithdrawModal,
+    inSale,
+    selectClient,
+    backToSearch,
+    needle,
+    searchResults,
+    visibleSearchResults,
+    activeResultIndex,
+    onSearchKeyDown,
+    activeResultId,
+    openNewClientModal,
+    total,
+    amountReceivedWatched,
+    currency,
+    money,
+    handleSubmitSale,
+    openPayment,
+    clientName,
+  } = cb;
   // Below md the loan table's pinned "Record payment" goes icon-only, so it
   // doesn't take a third of a phone-width table.
   const compactActions = !Grid.useBreakpoint().md;
-  const { message, modal } = App.useApp();
-  const dateFormat = useDatePickerFormat();
   const {
-    token: { colorSuccess, colorError, colorBorder, colorPrimary, colorTextSecondary },
+    token: { colorSuccess, colorError, colorBorder },
   } = theme.useToken();
-
-  const organizationId = useAtomValue(organizationIdAtom);
-  const organization = useAtomValue(organizationAtom);
-  const clients = useAtomValue(clientsAtom);
-  const setClients = useSetAtom(setClientsAtom);
-  const products = useAtomValue(productsAtom);
-  const setProducts = useSetAtom(setProductsAtom);
-  // A component/intermediate isn't sellable — same filter invoices/orders use.
-  // Nor, at the counter, is a serialized stock product: the server refuses it
-  // (db/invoice_stock.go — no serial picker here yet; sell it through a
-  // delivery), so offering it only surfaced the refusal at checkout (audit
-  // F158).
-  const sellableProducts = useMemo(
-    () =>
-      (products as any[]).filter(
-        (p) => p.category !== "component" && !(p.stockEnabled === 1 && p.serialized === 1),
-      ),
-    [products],
-  );
-  // In perpetual valuation a stock product without a unit cost has no cost
-  // basis, and the sale's COGS entry is refused (resolveMovementCost) — warn
-  // when it's picked rather than at checkout (audit F158).
-  const valuedInventory =
-    normalizeInventoryValuation(organization?.inventoryValuation) === "perpetual";
-  const taxRates = useAtomValue(taxRatesAtom);
-  const setTaxRates = useSetAtom(setTaxRatesAtom);
-
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [newClientDraft, setNewClientDraft] = useState<NewClientDraft | null>(null);
-  const [newClientModalOpen, setNewClientModalOpen] = useState(false);
-  const [newClientForm] = Form.useForm();
-  const [amountReceivedTouched, setAmountReceivedTouched] = useState(false);
-  // Sale type is an explicit choice, not inferred from whatever happens to
-  // be in the amount field — the old design defaulted that field to the
-  // full total and only became a loan sale via an active downward edit, so
-  // the *safe-looking* default (touch nothing, click submit) was actually
-  // the unsafe one: a cashier who forgot to lower it recorded a real debt
-  // as collected. Defaulting to "loan" here fails the other direction
-  // instead — forgetting to switch to Cash leaves a fully-paid sale
-  // looking unpaid in AR, which is visible and correctable rather than
-  // silently wrong, and this is a retailer where installment sales on
-  // big-ticket items are routine, not the exception.
-  const [saleMode, setSaleMode] = useState<"cash" | "loan">("loan");
-  const [submitting, setSubmitting] = useState(false);
-  const [form] = Form.useForm();
-
-  // Register daily-movement panel + withdrawal modal — see
-  // db/gl_reports.go's GetDailyCashMovements and db/cash_movement.go's
-  // CreateCashMovement doc comments. Opening/In/Out/Closing are a GL
-  // derivation ("what the books say"), not a physically-counted till
-  // figure — labeled accordingly below rather than as "cash in the
-  // drawer", the same scoped-out-till-session boundary this screen has
-  // always had.
-  const registerAccountId = organization?.defaultCashRegisterAccountId;
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(() => dayjs());
-  const [dailyMovement, setDailyMovement] = useState<DailyCashMovementRow | null>(null);
-  const [movementDetails, setMovementDetails] = useState<CashMovementDetail[]>([]);
-  const [loadingDailyMovement, setLoadingDailyMovement] = useState(false);
-  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
-  const [withdrawForm] = Form.useForm();
-  const [downloadingDailyPdf, setDownloadingDailyPdf] = useState(false);
-  const [downloadingDailyExcel, setDownloadingDailyExcel] = useState(false);
-
-  // Loan status — a standing report of who owes what, not scoped to
-  // selectedDate/isToday at all (unlike everything else on this screen):
-  // it should stay visible and useful while glancing at a past day above.
-  // Defaults to open loans only, and is prefiltered to the customer being
-  // served while a sale is in progress (see selectClient/handleSubmitSale).
-  const [loanStatusClientId, setLoanStatusClientId] = useState<string>("");
-  const [loanStatusRows, setLoanStatusRows] = useState<LoanStatusRow[]>([]);
-  const [loadingLoanStatus, setLoadingLoanStatus] = useState(false);
-  // A failed fetch leaves loanStatusRows empty, which would otherwise render
-  // every customer as debt-free on the search list — "no loan" and "we don't
-  // know" must not be the same pixels on a counter screen.
-  const [loanStatusFailed, setLoanStatusFailed] = useState(false);
-  const [openLoansOnly, setOpenLoansOnly] = useState(true);
-  // The loan line whose "Record payment" modal is open. Payments settle one
-  // line at a time (POST /api/cash-sales/{invoiceId}/payments), capped at
-  // that line's outstanding balance.
-  const [payingLine, setPayingLine] = useState<LoanStatusRow | null>(null);
-  const [payingSubmitting, setPayingSubmitting] = useState(false);
-  const [payLineForm] = Form.useForm();
-  const [downloadingLoanPdf, setDownloadingLoanPdf] = useState(false);
-  const [downloadingLoanExcel, setDownloadingLoanExcel] = useState(false);
-
-  // Payment history — every inbound payment for the organization (or the
-  // customer being served), shown in its own card below the loan report.
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loadingPayments, setLoadingPayments] = useState(false);
-  const [downloadingPaymentsPdf, setDownloadingPaymentsPdf] = useState(false);
-  const [downloadingPaymentsExcel, setDownloadingPaymentsExcel] = useState(false);
-
-  // Guards against an in-flight earlier request overwriting a newer one —
-  // rapid date picker changes (daily movement) or customer-filter changes
-  // (loan status) could otherwise apply whichever response resolved last,
-  // leaving stale rows under a newly-selected date/customer. Same shape as
-  // products.tsx/inventory.tsx's debounced-search guards.
-  const dailyMovementRequestIdRef = useRef(0);
-  const loanStatusRequestIdRef = useRef(0);
-
-  // Local-calendar comparison — "today" is what the cashier at the counter
-  // means by it, and it's what gates whether new sales/payments/withdrawals
-  // can be entered at all. The server buckets the register by the
-  // organization's own days (organizations.timezone), so a sale rung up
-  // just after midnight, or backdated with the date picker, lands on the
-  // day the cashier sees; an organization with no time zone set still gets
-  // UTC days (see db/gl_reports.go's DailyCashMovementRow).
-  const isToday = selectedDate.isSame(dayjs(), "day");
-
-  useEffect(() => {
-    setClients();
-    setProducts();
-    setTaxRates();
-  }, [setClients, setProducts, setTaxRates]);
-
-  useEffect(() => {
-    if (!organizationId) return;
-    GetAccounts(organizationId)
-      .then((accts) => setAccounts((accts as any[]).filter((a) => !a.isGroup)))
-      .catch((error) => console.error("Failed to fetch accounts:", error));
-  }, [organizationId]);
-
-  const refreshDailyMovement = async () => {
-    if (!organizationId || !registerAccountId) return;
-    const requestId = ++dailyMovementRequestIdRef.current;
-    setLoadingDailyMovement(true);
-    try {
-      const dayMs = calendarDayMs(selectedDate);
-      const [[row], details] = await Promise.all([
-        GetDailyCashMovements(organizationId, registerAccountId, dayMs, dayMs),
-        GetCashMovementDetails(organizationId, registerAccountId, dayMs, dayMs),
-      ]);
-      if (requestId !== dailyMovementRequestIdRef.current) return;
-      setDailyMovement(row ?? null);
-      setMovementDetails(details);
-    } catch (error) {
-      if (requestId !== dailyMovementRequestIdRef.current) return;
-      console.error("Failed to fetch daily cash movements:", error);
-      message.error(t`Failed to load cash register movements`);
-      setDailyMovement(null);
-      setMovementDetails([]);
-    } finally {
-      if (requestId === dailyMovementRequestIdRef.current) setLoadingDailyMovement(false);
-    }
-  };
-
-  useEffect(() => {
-    refreshDailyMovement();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, registerAccountId, selectedDate.valueOf()]);
-
-  const refreshLoanStatus = async () => {
-    if (!organizationId) return;
-    const requestId = ++loanStatusRequestIdRef.current;
-    setLoadingLoanStatus(true);
-    try {
-      const rows = await GetLoanStatus(organizationId, loanStatusClientId || undefined);
-      if (requestId !== loanStatusRequestIdRef.current) return;
-      setLoanStatusRows(rows);
-      setLoanStatusFailed(false);
-    } catch (error) {
-      if (requestId !== loanStatusRequestIdRef.current) return;
-      console.error("Failed to fetch loan status:", error);
-      message.error(t`Failed to load loan status`);
-      setLoanStatusRows([]);
-      setLoanStatusFailed(true);
-    } finally {
-      if (requestId === loanStatusRequestIdRef.current) setLoadingLoanStatus(false);
-    }
-  };
-
-  useEffect(() => {
-    refreshLoanStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, loanStatusClientId]);
-
-  const refreshPayments = async () => {
-    if (!organizationId) return;
-    setLoadingPayments(true);
-    try {
-      setPayments(await GetPayments(organizationId));
-    } catch (error) {
-      console.error("Failed to fetch payments:", error);
-      message.error(t`Failed to load payment history`);
-      setPayments([]);
-    } finally {
-      setLoadingPayments(false);
-    }
-  };
-
-  useEffect(() => {
-    refreshPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId]);
-
-  const filteredLoanStatusRows = useMemo(
-    () => (openLoansOnly ? loanStatusRows.filter((row) => row.outstanding !== 0) : loanStatusRows),
-    [loanStatusRows, openLoansOnly],
-  );
-
-  // Per-customer open-loan total, derived from the loan-status rows already
-  // fetched for the report below (the screen's standing "who owes what"
-  // query, unfiltered by client on the search screen) — so the search result
-  // can show what a returning customer still owes without a second request.
-  const openLoanByClient = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const row of loanStatusRows) {
-      if (row.outstanding) {
-        totals.set(row.clientId, (totals.get(row.clientId) ?? 0) + row.outstanding);
-      }
-    }
-    return totals;
-  }, [loanStatusRows]);
-
-  // Payment history: inbound payments, scoped to the customer being served
-  // (or the loan-report filter) when one is selected, newest first (GetPayments
-  // already orders by date DESC).
-  const clientNameById = useMemo(() => {
-    const names = new Map<string, string>();
-    for (const c of clients as any[]) names.set(c.id, c.name);
-    return names;
-  }, [clients]);
-  const paymentHistory = useMemo(() => {
-    const scopeId = selectedClient?.id || loanStatusClientId || "";
-    return payments.filter(
-      (p) => p.direction === "inbound" && (!scopeId || p.clientId === scopeId),
-    );
-  }, [payments, selectedClient, loanStatusClientId]);
-
-  const handleExportDailyMovements = (format: "xlsx" | "pdf") => async () => {
-    if (!organizationId || !registerAccountId) return;
-    const setDownloading = format === "xlsx" ? setDownloadingDailyExcel : setDownloadingDailyPdf;
-    setDownloading(true);
-    try {
-      await ExportDailyCashMovements(
-        organizationId,
-        registerAccountId,
-        calendarDayMs(selectedDate),
-        format,
-      );
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handleExportLoanStatus = (format: "xlsx" | "pdf") => async () => {
-    if (!organizationId) return;
-    const setDownloading = format === "xlsx" ? setDownloadingLoanExcel : setDownloadingLoanPdf;
-    setDownloading(true);
-    try {
-      await ExportLoanStatus(
-        organizationId,
-        format,
-        loanStatusClientId || undefined,
-        openLoansOnly,
-      );
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  // Scoped the same way the card's own table is (paymentHistory's scopeId):
-  // the customer being served while a sale is in progress, else the loan
-  // report's customer filter, else every customer.
-  const handleExportPaymentHistory = (format: "xlsx" | "pdf") => async () => {
-    if (!organizationId) return;
-    const setDownloading =
-      format === "xlsx" ? setDownloadingPaymentsExcel : setDownloadingPaymentsPdf;
-    setDownloading(true);
-    try {
-      await ExportPaymentHistory(
-        organizationId,
-        format,
-        selectedClient?.id || loanStatusClientId || undefined,
-      );
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const bankAccounts = useMemo(() => accounts.filter((a: any) => a.type === "asset"), [accounts]);
-  const expenseAccounts = useMemo(
-    () => accounts.filter((a: any) => a.type === "expense"),
-    [accounts],
-  );
-  const withdrawDestination = Form.useWatch("counterAccountType", withdrawForm);
-
-  const openWithdrawModal = () => {
-    withdrawForm.resetFields();
-    // Default the destination to a bank deposit and prefill its receiving
-    // account from the organization's Default cash account (the Bank account,
-    // code 1020 in the default chart) — the same org-level setting the
-    // "Deposit to the bank" picker offers, so the cashier usually just
-    // confirms it.
-    withdrawForm.setFieldsValue({
-      counterAccountType: "bank",
-      counterAccountId: organization?.defaultCashAccountId ?? undefined,
-    });
-    setWithdrawModalOpen(true);
-  };
-
-  const handleWithdrawSubmit = async (values: any) => {
-    if (!organizationId || !registerAccountId || !isToday) return;
-    setWithdrawSubmitting(true);
-    try {
-      await CreateCashMovement({
-        organizationId,
-        accountId: registerAccountId,
-        date: Date.now(),
-        counterAccountType: values.counterAccountType,
-        counterAccountId: values.counterAccountId,
-        amount: unitsToCents(toNumber(values.amount) || 0),
-        note: values.note || undefined,
-      });
-      message.success(t`Cash movement recorded`);
-      setWithdrawModalOpen(false);
-      await refreshDailyMovement();
-    } catch (error) {
-      console.error("Failed to record cash movement:", error);
-      message.error(error instanceof Error ? error.message : t`Failed to record cash movement`);
-    } finally {
-      setWithdrawSubmitting(false);
-    }
-  };
-
-  const inSale = !!selectedClient || !!newClientDraft;
-
-  const resetSaleForm = () => {
-    form.resetFields();
-    form.setFieldsValue({
-      date: dayjs(),
-      paymentMethod: "cash",
-      // taxRate is still assigned per line (needed for the net/tax split
-      // below and the posted GL entry) even though the screen no longer
-      // shows a Tax column — every counter sale silently uses the
-      // organization's default tax rate unless a picked product overrides
-      // it with its own. An organization with no default tax rate records
-      // every Cash Book sale as tax-free; that's a master-data
-      // precondition for this screen, not something recoverable here.
-      lineItems: [{ quantity: 1, taxRate: get(find(taxRates, { isDefault: 1 }), "id") }],
-      amountReceived: 0,
-    });
-    setAmountReceivedTouched(false);
-    setSaleMode("loan");
-  };
-
-  const selectClient = (client: Client) => {
-    setSelectedClient(client);
-    setNewClientDraft(null);
-    setSearch("");
-    resetSaleForm();
-    // Serving this customer: scope the loan-status report to them so the
-    // cashier sees what they still owe without re-picking them.
-    setLoanStatusClientId(client.id);
-  };
-
-  const backToSearch = () => {
-    setSelectedClient(null);
-    setNewClientDraft(null);
-    setLoanStatusClientId("");
-    setSearch("");
-  };
-
-  const needle = search.trim().toLowerCase();
-  const searchResults = useMemo(
-    () => searchClients(clients as any[], needle, openLoanByClient),
-    [clients, needle, openLoanByClient],
-  );
-
-  // A one-character query on a large client book shouldn't render thousands of
-  // rows; 25 fills any viewport and the footer says how many were held back.
-  const MAX_SEARCH_RESULTS = 25;
-  const visibleSearchResults = searchResults.slice(0, MAX_SEARCH_RESULTS);
-  const hiddenResultCount = searchResults.length - visibleSearchResults.length;
-  const debtorCount = searchResults.reduce(
-    (n, c) => n + ((openLoanByClient.get(c.id) ?? 0) > 0 ? 1 : 0),
-    0,
-  );
-
-  // Renders `text` with its first case-insensitive occurrence of `term`
-  // highlighted, so a phone/CIN match is obvious rather than something to
-  // trust.
-  const highlight = (text: string, term: string) => {
-    if (!term) return text;
-    const at = text.toLowerCase().indexOf(term);
-    if (at < 0) return text;
-    return (
-      <>
-        {text.slice(0, at)}
-        <Typography.Text style={{ color: colorPrimary, fontWeight: 600 }}>
-          {text.slice(at, at + term.length)}
-        </Typography.Text>
-        {text.slice(at + term.length)}
-      </>
-    );
-  };
-
-  // Active row for the combobox: moved by the search field's ArrowUp/Down and
-  // by mouse hover, and read by Enter in `onSearch`. Reset whenever the query
-  // changes so the arrows start from the top of the new list.
-  const [activeResultIndex, setActiveResultIndex] = useState(-1);
-  useEffect(() => {
-    setActiveResultIndex(-1);
-  }, [needle]);
-
-  const onSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (!visibleSearchResults.length) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveResultIndex((i) => Math.min(i + 1, visibleSearchResults.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveResultIndex((i) => Math.max(i - 1, 0));
-    }
-  };
-
-  const activeResultId =
-    activeResultIndex >= 0 && visibleSearchResults[activeResultIndex]
-      ? `cash-book-result-${visibleSearchResults[activeResultIndex].id}`
-      : undefined;
-
-  // A row's accessible name: the same facts the row shows, rather than the
-  // browser deriving it from the whole cell.
-  const resultAriaLabel = (c: any): string => {
-    const outstanding = openLoanByClient.get(c.id) ?? 0;
-    return [
-      c.name,
-      c.code ? `${t`Customer no.`} ${c.code}` : null,
-      [c.phone, c.phone2, c.phone3].filter(Boolean).join(" / ") || null,
-      c.identity_number ? `${t`CIN`} ${c.identity_number}` : null,
-      outstanding > 0 ? `${t`Open loan`} ${money(outstanding)}` : null,
-    ]
-      .filter(Boolean)
-      .join(". ");
-  };
-
-  const openNewClientModal = (prefillName?: string) => {
-    newClientForm.resetFields();
-    if (prefillName) newClientForm.setFieldValue("name", prefillName);
-    setNewClientModalOpen(true);
-  };
-
-  const handleNewClientSubmit = (values: any) => {
-    const phone = values.phone?.trim();
-    // Client-side duplicate-phone check — the primary UX path. The server
-    // repeats this check inside CreateCashSale as a backstop (see its doc
-    // comment); this is what avoids splitting a returning walk-in
-    // customer's history across two client records.
-    const existingByPhone = phone
-      ? (clients as any[]).find((c) => c.phone && c.phone === phone)
-      : null;
-    if (existingByPhone) {
-      modal.confirm({
-        title: t`A customer with this phone number already exists`,
-        content: `${existingByPhone.name || ""} — ${phone}`,
-        okText: t`Use this customer`,
-        cancelText: t`Cancel`,
-        onOk: () => {
-          setNewClientModalOpen(false);
-          selectClient(existingByPhone);
-        },
-      });
-      return;
-    }
-    setNewClientModalOpen(false);
-    setSelectedClient(null);
-    setLoanStatusClientId("");
-    setNewClientDraft({
-      name: values.name,
-      phone,
-      phone2: values.phone2?.trim() || undefined,
-      phone3: values.phone3?.trim() || undefined,
-      address: values.address?.trim() || undefined,
-      identity_number: values.identity_number || undefined,
-      iban: values.iban || undefined,
-      guarantor: values.guarantor?.trim() || undefined,
-    });
-    resetSaleForm();
-  };
-
-  // ---- New sale totals ----
-  // Counter prices are entered GROSS (tax-inclusive) — the opposite of
-  // every other document's unitPrice, which is net with tax added on top.
-  // netCentsFor is the single source of truth for the net price behind a
-  // gross-priced line: it rounds to cents once, and every downstream
-  // number (the totals below, and handleSubmitSale's payload) is derived
-  // from that same integer rather than re-deriving from the unrounded
-  // gross/(1+rate) value in more than one place — the two can disagree by
-  // a cent once quantity amplifies the sub-cent gap, and
-  // db/invoice_totals.go's validateInvoiceTotals requires an exact match.
-  const lineItems = Form.useWatch("lineItems", form);
-  // The tax rate a line should use: its own (from a picked product or an
-  // explicit choice) or, when it has none, the organization's default. This
-  // is what makes "the price is gross, the tax is determined in the
-  // background" hold even for a line added before tax rates loaded (or a
-  // hand-typed line that never went through a product's onSelect) — the net
-  // and tax are derived from it here and in handleSubmitSale, so a sale is
-  // never silently recorded tax-free just because the line carried no rate.
-  const defaultTaxRateId = get(find(taxRates, { isDefault: 1 }), "id");
-  const effectiveTaxRateId = (item: any) => item?.taxRate || defaultTaxRateId;
-  const netCentsFor = (item: any) => {
-    const rate = find(taxRates, { id: effectiveTaxRateId(item) });
-    return unitsToCents(netFromGross(toNumber(item?.unitPrice) || 0, rate?.percentage ?? 0));
-  };
-  const taxGroups = useMemo(() => {
-    const groups: Record<string, { taxRate: any; subtotal: number; tax: number }> = {};
-    ((lineItems || []) as any[]).forEach((item) => {
-      const key = effectiveTaxRateId(item) || "";
-      const lineNetTotal = multiplyDecimal(
-        toNumber(item?.quantity) || 0,
-        centsToUnits(netCentsFor(item)),
-      );
-      if (!groups[key]) {
-        groups[key] = {
-          taxRate: find(taxRates, { id: effectiveTaxRateId(item) }),
-          subtotal: 0,
-          tax: 0,
-        };
-      }
-      groups[key].subtotal = addDecimal(groups[key].subtotal, lineNetTotal);
-    });
-    Object.values(groups).forEach((g) => {
-      g.tax = g.taxRate?.percentage ? calculateTax(g.subtotal, g.taxRate.percentage) : 0;
-    });
-    return Object.values(groups);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineItems, taxRates]);
-  const subTotal = sum(map(taxGroups, "subtotal"));
-  const taxTotal = sum(map(taxGroups, "tax"));
-  const total = addDecimal(subTotal, taxTotal);
-  const amountReceivedWatched = toNumber(Form.useWatch("amountReceived", form));
-
-  // Defaults the amount field to what each mode naturally means — the full
-  // total for a cash sale (kept in sync as line items change, so it's
-  // still correct if the cashier never touches the field), zero for a
-  // loan sale's deposit — but only ever while the cashier hasn't typed a
-  // value themselves. Switching modes never overwrites a value they
-  // already entered: a cashier who typed a 300 TND deposit, toggled to
-  // Cash to glance at it, and toggled back to Loan must still see 300, not
-  // a value silently reset out from under them.
-  useEffect(() => {
-    if (!amountReceivedTouched) {
-      form.setFieldValue("amountReceived", saleMode === "cash" ? total : 0);
-    }
-  }, [total, saleMode, amountReceivedTouched, form]);
-
-  const currency = organization?.currency || "EUR";
-  const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
-
   // A stronger border than antd's default (`colorBorderSecondary`, which is
   // nearly invisible in both themes) so the stacked Cash Book panels read as
   // distinct cards, plus one consistent gap between them. Shared by the
@@ -917,125 +145,12 @@ const CashBook = () => {
   // heading than antd's default so they stand out on the counter screen.
   const sectionCardStyles = { header: { fontSize: 18, fontWeight: 600 } };
 
-  const handleSubmitSale = async (values: any) => {
-    if (!organizationId || !isToday) return;
-    if (!selectedClient && !newClientDraft) {
-      message.error(t`Pick or create a customer first`);
-      return;
-    }
-    // F101: the register/till account is the only correct destination for
-    // money received at the counter — never defaultCashAccountId, which every
-    // chart-of-accounts template wires to Bank. Sent explicitly so a sale
-    // can't silently fall back server-side, and required up front (below)
-    // whenever an amount is actually being recorded so the cashier gets a
-    // clear message instead of a Bank posting. A zero-deposit loan sale has
-    // no payment to post and so doesn't need one.
-    const totalCents = unitsToCents(total);
-    const amountReceivedCents = Math.min(
-      unitsToCents(toNumber(values.amountReceived) || 0),
-      totalCents,
-    );
-    const bankAccountId = organization?.defaultCashRegisterAccountId ?? undefined;
-    if (amountReceivedCents > 0 && !bankAccountId) {
-      message.error(
-        t`No cash register account configured — set defaultCashRegisterAccountId in Organization settings → Accounting before recording a sale with an amount received`,
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const req: CreateCashSaleRequest = {
-        organizationId,
-        date: values.date.valueOf(),
-        currency,
-        lineItems: (values.lineItems || []).map((item: any) => ({
-          description: item.description || null,
-          quantity: item.quantity,
-          unitPrice: netCentsFor(item),
-          taxRate: effectiveTaxRateId(item) || null,
-          productId: item.productId || null,
-        })),
-        subTotal: unitsToCents(subTotal),
-        taxTotal: unitsToCents(taxTotal),
-        total: totalCents,
-        amountReceived: amountReceivedCents,
-        paymentMethod: values.paymentMethod || "cash",
-        bankAccountId,
-        reference: values.reference || undefined,
-        ...(selectedClient ? { clientId: selectedClient.id } : { newClient: newClientDraft! }),
-      };
-
-      const result = await CreateCashSale(req);
-      message.success(
-        amountReceivedCents >= totalCents ? t`Cash sale recorded` : t`Loan sale recorded`,
-      );
-      setSelectedClient(result.client);
-      setNewClientDraft(null);
-      setLoanStatusClientId(result.client.id);
-      await setClients();
-      // The sale took its stock-tracked lines out of stock server-side
-      // (db/invoice_stock.go) — refresh so the next pick sees current stock.
-      await setProducts();
-      await refreshDailyMovement();
-      await refreshLoanStatus();
-      await refreshPayments();
-      resetSaleForm();
-    } catch (error) {
-      console.error("Failed to record sale:", error);
-      message.error(error instanceof Error ? error.message : t`Failed to record sale`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openPayment = (row: LoanStatusRow) => {
-    payLineForm.setFieldsValue({ amount: centsToUnits(row.outstanding) });
-    setPayingLine(row);
-  };
-
-  // Records the payment against the one loan line, server-side in a single
-  // transaction that also moves the invoice to "paid" once its whole balance
-  // clears (db/cash_sale_payment.go) — no follow-up state call from here.
-  const handlePayLineSubmit = async (values: any) => {
-    if (!payingLine) return;
-    setPayingSubmitting(true);
-    try {
-      const result = await CreateCashSalePayment(payingLine.invoiceId, {
-        invoiceLineItemId: payingLine.lineId,
-        amount: unitsToCents(toNumber(values.amount) || 0),
-        date: Date.now(),
-        reference: values.reference || undefined,
-      });
-      message.success(
-        result.invoice.state === "paid"
-          ? t`Payment recorded — loan fully settled`
-          : t`Payment recorded`,
-      );
-      setPayingLine(null);
-    } catch (error) {
-      console.error("Failed to record payment:", error);
-      message.error(error instanceof Error ? error.message : t`Failed to record payment`);
-      return;
-    } finally {
-      setPayingSubmitting(false);
-    }
-    // A payment posts to the cash register as well as against the loan, so
-    // refresh the register's movements too — a payment recorded while a sale
-    // is in progress (the register card is hidden then, see the !inSale gate)
-    // would otherwise stay missing from the movements list afterwards.
-    await refreshLoanStatus();
-    await refreshDailyMovement();
-    await refreshPayments();
-  };
-
-  const clientName = selectedClient?.name || newClientDraft?.name || "";
-
   return (
     <>
       <PageHeader
         icon={<WalletOutlined />}
         title={<Trans>Cash Book</Trans>}
+        extra={<CashBookLayoutSwitch disabled={inSale} />}
         style={{ marginBottom: 16 }}
         search={
           isToday && !inSale
@@ -1090,83 +205,7 @@ const CashBook = () => {
         }
       />
 
-      {isToday && !inSale && needle && (
-        <>
-          {loanStatusFailed && (
-            <Alert
-              type="warning"
-              showIcon
-              style={{ marginBottom: 12 }}
-              message={
-                <Trans>
-                  Open-loan figures couldn't be loaded — any loan shown may be incomplete
-                </Trans>
-              }
-            />
-          )}
-
-          <div
-            aria-live="polite"
-            style={{
-              marginBottom: 4,
-              fontSize: 13,
-              fontWeight: 600,
-              color: colorTextSecondary,
-            }}
-          >
-            <Trans>
-              {searchResults.length} matches · {debtorCount} with an open loan
-            </Trans>
-          </div>
-          {visibleSearchResults.length === 0 ? (
-            <Empty description={t`No matching customers`} style={{ marginBottom: 16 }}>
-              <Button
-                type="dashed"
-                icon={<UserAddOutlined />}
-                onClick={() => openNewClientModal(search)}
-              >
-                {t`Create`} "{search}"
-              </Button>
-            </Empty>
-          ) : (
-            <>
-              <div
-                id="cash-book-results"
-                role="listbox"
-                aria-label={t`Search results`}
-                style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
-              >
-                {visibleSearchResults.map((client: any, index: number) => {
-                  const openLoan = openLoanByClient.get(client.id) ?? 0;
-                  return (
-                    <CashBookCustomerRow
-                      key={client.id}
-                      id={`cash-book-result-${client.id}`}
-                      active={index === activeResultIndex}
-                      ariaLabel={resultAriaLabel(client)}
-                      title={clientDetailLine(client)}
-                      name={highlight(client.name, needle)}
-                      meta={customerIdentifiers(client, (text) => highlight(text, needle))}
-                      outstanding={openLoan}
-                      moneyText={money(openLoan)}
-                      onSelect={() => selectClient(client)}
-                      onHover={() => setActiveResultIndex(index)}
-                    />
-                  );
-                })}
-              </div>
-              {hiddenResultCount > 0 && (
-                <div style={{ marginBottom: 16, fontSize: 12, color: colorTextSecondary }}>
-                  <Trans>
-                    Showing the first {MAX_SEARCH_RESULTS} — keep typing to narrow{" "}
-                    {hiddenResultCount} more
-                  </Trans>
-                </div>
-              )}
-            </>
-          )}
-        </>
-      )}
+      {isToday && !inSale && needle && <CustomerSearchResults cb={cb} />}
 
       {/* Sale-in-progress flow. The cash-register report is hidden while a
       sale is in progress (a standing back-office panel a cashier doesn't
@@ -1246,48 +285,7 @@ const CashBook = () => {
                       allProducts: products,
                       // The dropdown shows the product name (the shared default
                       // also appends its SKU); the closed cell shows the SKU.
-                      onSelect: (productId, fieldName, formInstance) => {
-                        const product = find(products, { id: productId }) as any;
-                        if (product?.stockEnabled === 1 && (product.stockQuantity ?? 0) <= 0) {
-                          // Never blocks the sale (a decision: the counter keeps
-                          // selling when the records are off) — stock just
-                          // goes negative, the signal that a count is due.
-                          const onHand = product.stockQuantity ?? 0;
-                          message.warning(
-                            t`${product.name}: ${onHand} in stock — this sale will take it below zero.`,
-                          );
-                        }
-                        if (
-                          valuedInventory &&
-                          product?.stockEnabled === 1 &&
-                          product.unitCost == null
-                        ) {
-                          message.warning(
-                            t`${product.name} has no unit cost, so this sale will be refused — give the product a unit cost, or switch the organization's inventory valuation to Quantities only.`,
-                          );
-                        }
-                        if (product) {
-                          const items = formInstance.getFieldValue("lineItems");
-                          // A picked product's own tax rate wins when it has
-                          // one; otherwise the row keeps whatever default
-                          // it already carried (see defaultNewRow above) —
-                          // either way, that rate is what grossFromNet needs
-                          // to prefill a tax-inclusive price the cashier
-                          // never has to compute themselves.
-                          const taxRateId = product.taxRateId || items[fieldName]?.taxRate;
-                          const rate = find(taxRates, { id: taxRateId });
-                          items[fieldName] = {
-                            ...items[fieldName],
-                            description: product.name,
-                            unitPrice: grossFromNet(
-                              centsToUnits(product.price ?? 0),
-                              rate?.percentage ?? 0,
-                            ),
-                            ...(product.taxRateId ? { taxRate: product.taxRateId } : {}),
-                          };
-                          formInstance.setFieldValue("lineItems", [...items]);
-                        }
-                      },
+                      onSelect: onProductSelect,
                     },
                     { kind: "description", required: true },
                     { kind: "quantity" },
@@ -1940,200 +938,17 @@ const CashBook = () => {
         </Table>
       </Card>
 
-      <Modal
-        title={<Trans>New customer</Trans>}
-        open={newClientModalOpen}
-        onCancel={() => setNewClientModalOpen(false)}
-        onOk={() => newClientForm.submit()}
-        okText={t`Continue`}
-        cancelText={t`Cancel`}
-        destroyOnHidden
-      >
-        <Form
-          form={newClientForm}
-          layout="vertical"
-          onFinish={handleNewClientSubmit}
-          scrollToFirstError
-        >
-          <Form.Item
-            label={t`Name`}
-            name="name"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Input autoFocus />
-          </Form.Item>
-          <Form.Item
-            label={t`Mobile number`}
-            name="phone"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item label={t`Phone 2`} name="phone2">
-            <Input />
-          </Form.Item>
-          <Form.Item label={t`Phone 3`} name="phone3">
-            <Input />
-          </Form.Item>
-          <Form.Item label={t`Address`} name="address">
-            <Input />
-          </Form.Item>
-          <Form.Item label={t`Identity number`} name="identity_number">
-            <Input />
-          </Form.Item>
-          <Form.Item label={t`IBAN`} name="iban">
-            <Input />
-          </Form.Item>
-          <Form.Item label={t`Guarantor`} name="guarantor">
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title={<Trans>Withdraw from cash register</Trans>}
-        open={withdrawModalOpen}
-        onCancel={() => setWithdrawModalOpen(false)}
-        onOk={() => withdrawForm.submit()}
-        confirmLoading={withdrawSubmitting}
-        okText={t`Record`}
-        cancelText={t`Cancel`}
-        destroyOnHidden
-      >
-        <Form form={withdrawForm} layout="vertical" onFinish={handleWithdrawSubmit}>
-          <Form.Item
-            label={t`Amount (${currency})`}
-            name="amount"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <InputNumber style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
-          </Form.Item>
-          <Form.Item
-            label={t`Destination`}
-            name="counterAccountType"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Select
-              onChange={(value) =>
-                // Prefill the receiving account from the organization's own
-                // defaults: Default cash account (Bank, 1020) for a deposit,
-                // Default expense account (5100) for an expense.
-                withdrawForm.setFieldValue(
-                  "counterAccountId",
-                  (value === "expense"
-                    ? organization?.defaultExpenseAccountId
-                    : organization?.defaultCashAccountId) ?? undefined,
-                )
-              }
-            >
-              <Option value="bank">
-                <Trans>Deposit to the bank</Trans>
-              </Option>
-              <Option value="expense">
-                <Trans>Spend on an expense (no vendor bill)</Trans>
-              </Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            label={
-              withdrawDestination === "expense" ? (
-                <Trans>Expense account</Trans>
-              ) : (
-                <Trans>Bank account</Trans>
-              )
-            }
-            name="counterAccountId"
-            rules={[{ required: true, message: t`This field is required!` }]}
-          >
-            <Select showSearch optionFilterProp="children">
-              {(withdrawDestination === "expense" ? expenseAccounts : bankAccounts).map(
-                (a: any) => (
-                  <Option key={a.id} value={a.id}>
-                    {a.code} — {a.name}
-                  </Option>
-                ),
-              )}
-            </Select>
-          </Form.Item>
-          <Form.Item label={t`Note`} name="note">
-            <TextArea rows={2} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title={<Trans>Record payment</Trans>}
-        open={!!payingLine}
-        onCancel={() => setPayingLine(null)}
-        onOk={() => payLineForm.submit()}
-        confirmLoading={payingSubmitting}
-        okText={t`Record`}
-        cancelText={t`Cancel`}
-        destroyOnHidden
-      >
-        {payingLine && (
-          <>
-            <Typography.Paragraph>
-              <Typography.Text strong>{payingLine.clientName}</Typography.Text>
-              {payingLine.invoiceNumber && (
-                <Typography.Text type="secondary">
-                  {" · "}
-                  <Trans>Invoice {payingLine.invoiceNumber}</Trans>
-                </Typography.Text>
-              )}
-              <br />
-              {payingLine.productName}
-              {payingLine.sku ? ` (${payingLine.sku})` : ""} × {payingLine.quantity}
-            </Typography.Paragraph>
-            <Row gutter={16} style={{ marginBottom: 16 }}>
-              <Col span={8}>
-                <Typography.Text type="secondary">
-                  <Trans>Amount</Trans>
-                </Typography.Text>
-                <div style={{ whiteSpace: "nowrap" }}>{money(payingLine.amount)}</div>
-              </Col>
-              <Col span={8}>
-                <Typography.Text type="secondary">
-                  <Trans>Paid</Trans>
-                </Typography.Text>
-                <div style={{ whiteSpace: "nowrap" }}>{money(payingLine.paid)}</div>
-              </Col>
-              <Col span={8}>
-                <Typography.Text type="secondary">
-                  <Trans>Outstanding</Trans>
-                </Typography.Text>
-                <div style={{ whiteSpace: "nowrap" }}>
-                  <Typography.Text strong>{money(payingLine.outstanding)}</Typography.Text>
-                </div>
-              </Col>
-            </Row>
-          </>
-        )}
-        <Form form={payLineForm} layout="vertical" onFinish={handlePayLineSubmit}>
-          <Form.Item
-            label={t`Amount received (${currency})`}
-            name="amount"
-            rules={[
-              { required: true, message: t`This field is required!` },
-              {
-                validator: (_, value) =>
-                  payingLine && unitsToCents(toNumber(value) || 0) > payingLine.outstanding
-                    ? Promise.reject(
-                        new Error(t`Cannot exceed the outstanding balance of this item`),
-                      )
-                    : Promise.resolve(),
-              },
-            ]}
-          >
-            <InputNumber style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
-          </Form.Item>
-          <Form.Item label={t`Reference`} name="reference">
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <CashBookModals cb={cb} />
     </>
   );
+};
+
+// Both layouts stay available side by side until one is chosen; the header
+// switch (CashBookLayoutSwitch) picks one per browser, the current layout by
+// default.
+const CashBook = () => {
+  const layout = useAtomValue(cashBookLayoutAtom);
+  return layout === "v2" ? <CashBookV2 /> : <CashBookV1 />;
 };
 
 export default CashBook;

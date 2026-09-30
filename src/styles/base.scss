@@ -69,3 +69,20 @@ body {
     row-gap: 8px;
   }
 }
+
+// The new Cash Book layout's counter tab (src/components/cash-book/counter.tsx):
+// the sale and the till side by side only from 1440px. Below that the sale
+// column is too narrow for the shared line-items table (its price column
+// slid behind a horizontal scroll at 1280px), so the till stacks under it.
+.cash-book-counter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1440px) {
+  .cash-book-counter {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
