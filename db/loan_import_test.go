@@ -326,3 +326,122 @@ func TestParseLoanSheetValues(t *testing.T) {
 		t.Errorf("headers changed: %v", loanImportHeaders)
 	}
 }
+
+// One customer written several times in the register — the CIN on one page
+// only, name only (or name + phone) on others — is created once, whichever
+// comes first, with every loan on it and the details merged.
+func TestLoanImportCreatesARepeatedCustomerOnce(t *testing.T) {
+	t.Parallel()
+	for name, rows := range map[string][][]any{
+		"CIN first": {
+			{"A-1", "01/01/2024", "Salma Jaziri", "01112223", "", "", "", "", "TV", 1, 500, 500, "", ""},
+			{"A-2", "01/02/2024", "Salma Jaziri", "", "22 333 444", "", "", "", "TV", 1, 500, 500, "", ""},
+			{"A-3", "01/03/2024", "salma  jaziri", "", "", "", "Monastir", "", "TV", 1, 500, 100, "", ""},
+		},
+		"name first": {
+			{"A-1", "01/01/2024", "Salma Jaziri", "", "", "", "", "", "TV", 1, 500, 500, "", ""},
+			{"A-2", "01/02/2024", "Salma Jaziri", "01112223", "22 333 444", "", "Monastir", "", "TV", 1, 500, 500, "", ""},
+			{"A-3", "01/03/2024", "Salma Jaziri", "", "22333444", "", "", "", "TV", 1, 500, 100, "", ""},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			d := newTestDB(t)
+			fx := newLoanImportFixture(t, d, "org-loanimport-dedupe-"+strings.ReplaceAll(name, " ", "-"))
+			sheet := make([][]any, len(rows))
+			copy(sheet, rows)
+			report, err := d.ImportLoanRegister(fx.orgID, "u", "f.xlsx", fx.cutoverDay, loanSheet(t, sheet...))
+			if err != nil || !report.Imported {
+				t.Fatalf("import: %+v, %v", report, err)
+			}
+			if report.CustomersCreated != 1 || len(report.Customers) != 1 || report.Customers[0].Loans != 3 {
+				t.Fatalf("report = %+v, want one new customer with 3 loans", report)
+			}
+			var created []Client
+			if err := d.DB.Select(&created, `SELECT * FROM clients WHERE importBatchId = ?`, report.BatchID); err != nil || len(created) != 1 {
+				t.Fatalf("created customers = %d, %v; want 1", len(created), err)
+			}
+			c := created[0]
+			if c.IdentityNumber == nil || *c.IdentityNumber != "01112223" || c.Phone == nil || normalizePhone(*c.Phone) != "22333444" ||
+				c.Address == nil || *c.Address != "Monastir" {
+				t.Fatalf("created customer = %+v, want CIN, phone and address merged from every loan", c)
+			}
+		})
+	}
+}
+
+// A CIN typed into a number cell loses its leading zero; it still matches.
+func TestLoanImportMatchesACINThatLostItsLeadingZero(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newLoanImportFixture(t, d, "org-loanimport-cin-zero")
+	report, err := d.ImportLoanRegister(fx.orgID, "u", "f.xlsx", fx.cutoverDay, loanSheet(t,
+		[]any{"Z-1", "01/01/2024", "Karim Trabelsi", 7654321, "", "", "", "", "TV", 1, 500, 0, "", ""},
+	))
+	if err != nil || !report.Imported || report.CustomersCreated != 0 || report.CustomersMatched != 1 {
+		t.Fatalf("import = %+v, %v; want the existing customer with CIN 07654321 matched", report, err)
+	}
+}
+
+// The downloaded template, filled in, imports as-is — even with its help
+// sheet moved first — so the template and the reader can't drift apart.
+func TestLoanImportTemplateRoundTrip(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newLoanImportFixture(t, d, "org-loanimport-template")
+	template, err := d.LoanImportTemplateXLSX()
+	if err != nil {
+		t.Fatalf("LoanImportTemplateXLSX: %v", err)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(template))
+	if err != nil {
+		t.Fatalf("open template: %v", err)
+	}
+	defer f.Close() //nolint:errcheck
+	if sheets := f.GetSheetList(); len(sheets) != 2 || sheets[0] != loanImportSheet {
+		t.Fatalf("sheets = %v, want [%s, Mode d'emploi]", sheets, loanImportSheet)
+	}
+	if rows, _ := f.GetRows(loanImportSheet); len(rows) != 1 {
+		t.Fatalf("data sheet has %d rows, want the header only (no example to import by mistake)", len(rows))
+	}
+	for c, v := range []any{"T-1", "15/06/2024", "Ahmed Gharbi", "00123456", "98 000 111", "", "", "", "TV", 1, "750,5", "", "", "0 payé"} {
+		cell, _ := excelize.CoordinatesToCellName(c+1, 2)
+		_ = f.SetCellValue(loanImportSheet, cell, v)
+	}
+	for c, v := range []any{"T-1", "", "", "", "", "", "", "", "Radio", 2, 100, 0, "", ""} {
+		cell, _ := excelize.CoordinatesToCellName(c+1, 3)
+		_ = f.SetCellValue(loanImportSheet, cell, v)
+	}
+	if err := f.MoveSheet("Mode d'emploi", loanImportSheet); err != nil {
+		t.Fatalf("MoveSheet: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	report, err := d.DryRunLoanImport(fx.orgID, fx.cutoverDay, buf.Bytes())
+	if err != nil {
+		t.Fatalf("DryRunLoanImport: %v", err)
+	}
+	if report.Errors != 0 || report.Loans != 1 || report.Lines != 2 || report.Total != 85050 || report.Paid != 0 {
+		t.Fatalf("report = %+v, want one clean 850.50 loan (the 0 on row 3 is not a conflict)", report)
+	}
+}
+
+// Undo removes a customer the import created when nothing references it —
+// here one whose only loan was settled, so no GL line names it.
+func TestLoanImportUndoRemovesAnUnreferencedCustomer(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newLoanImportFixture(t, d, "org-loanimport-undo-client")
+	report, err := d.ImportLoanRegister(fx.orgID, "u", "f.xlsx", fx.cutoverDay, loanSheet(t,
+		[]any{"S-1", "01/01/2024", "Settled Only", "", "", "", "", "", "TV", 1, 500, 500, "", ""},
+	))
+	if err != nil || !report.Imported {
+		t.Fatalf("import: %+v, %v", report, err)
+	}
+	result, err := d.UndoLoanImportBatch(report.BatchID)
+	if err != nil || result.LoansRemoved != 1 || result.CustomersRemoved != 1 || result.CustomersKept != 0 {
+		t.Fatalf("undo = %+v, %v; want the loan and its customer removed", result, err)
+	}
+}

@@ -141,12 +141,18 @@ type LoanImportBatch struct {
 
 // ---- Template ----
 
+// loanImportSheet is the data sheet's name. The reader looks for it by name
+// (falling back to the first sheet, for a file typed from scratch), so
+// reordering the sheets never makes it read the help text.
+const loanImportSheet = "Prêts"
+
 // LoanImportTemplateXLSX is the empty register template: the loan sheet
-// (headers only) and a "Mode d'emploi" sheet explaining each column.
+// (headers only — the example lives on the help sheet, so it can never be
+// imported by mistake) and a "Mode d'emploi" sheet explaining each column.
 func (d *Database) LoanImportTemplateXLSX() ([]byte, error) {
 	f := excelize.NewFile()
 	defer f.Close() //nolint:errcheck
-	sheet := "Prêts"
+	sheet := loanImportSheet
 	if err := f.SetSheetName("Sheet1", sheet); err != nil {
 		return nil, fmt.Errorf("loan_import template: %w", err)
 	}
@@ -163,16 +169,15 @@ func (d *Database) LoanImportTemplateXLSX() ([]byte, error) {
 		_ = f.SetColWidth(sheet, col, col, 18)
 	}
 	_ = f.SetRowStyle(sheet, 1, 1, bold)
-	// An example loan of two items, the second row repeating the reference.
-	example := [][]any{
-		{"C1-P012-3", "15/06/2024", "Ben Ali Mohamed", "01234567", "98 123 456", "", "Rue de Tunis, Sousse", "Ben Ali Salah", "Réfrigérateur Condor 400L", 1, 1200, 450, "10/01/2025", "Exemple — à supprimer"},
-		{"C1-P012-3", "15/06/2024", "Ben Ali Mohamed", "", "", "", "", "", "Micro-ondes", 1, 300, "", "", ""},
+	// Text columns: Excel would drop a CIN's or phone's leading zero from a
+	// number cell (01234567 -> 1234567), and a reference like 0012 likewise.
+	text, err := f.NewStyle(&excelize.Style{NumFmt: 49})
+	if err != nil {
+		return nil, fmt.Errorf("loan_import template text style: %w", err)
 	}
-	for r, row := range example {
-		for c, v := range row {
-			cell, _ := excelize.CoordinatesToCellName(c+1, r+2)
-			_ = f.SetCellValue(sheet, cell, v)
-		}
+	for _, col := range []int{loanColRef, loanColCIN, loanColPhone, loanColPhone2} {
+		name, _ := excelize.ColumnNumberToName(col + 1)
+		_ = f.SetColStyle(sheet, name, text)
 	}
 
 	help := "Mode d'emploi"
@@ -192,11 +197,24 @@ func (d *Database) LoanImportTemplateXLSX() ([]byte, error) {
 		{"Dernier paiement", "Facultatif : la date du dernier versement."},
 		{"Note", "Facultatif : échéancier, remarques…"},
 		{"", ""},
-		{"Avant l'import", "L'import se fait d'abord à blanc : il n'enregistre rien et affiche les totaux par client, à comparer avec le registre, et chaque problème ligne par ligne. Supprimer les deux lignes d'exemple."},
+		{"Avant l'import", "L'import se fait d'abord à blanc : il n'enregistre rien et affiche les totaux par client, à comparer avec le registre, et chaque problème ligne par ligne."},
+		{"", ""},
+		{"Exemple", "Un prêt de deux articles (la deuxième ligne répète la référence). À saisir dans la feuille « Prêts », pas ici :"},
 	}
 	for r, row := range lines {
 		for c, v := range row {
 			cell, _ := excelize.CoordinatesToCellName(c+1, r+1)
+			_ = f.SetCellValue(help, cell, v)
+		}
+	}
+	example := [][]any{
+		loanImportHeadersAny(),
+		{"C1-P012-3", "15/06/2024", "Ben Ali Mohamed", "01234567", "98 123 456", "", "Rue de Tunis, Sousse", "Ben Ali Salah", "Réfrigérateur Condor 400L", 1, 1200, 450, "10/01/2025", "12 x 100"},
+		{"C1-P012-3", "15/06/2024", "Ben Ali Mohamed", "", "", "", "", "", "Micro-ondes", 1, 300, "", "", ""},
+	}
+	for r, row := range example {
+		for c, v := range row {
+			cell, _ := excelize.CoordinatesToCellName(c+1, len(lines)+r+2)
 			_ = f.SetCellValue(help, cell, v)
 		}
 	}
@@ -210,6 +228,14 @@ func (d *Database) LoanImportTemplateXLSX() ([]byte, error) {
 		return nil, fmt.Errorf("loan_import template write: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+func loanImportHeadersAny() []any {
+	out := make([]any, len(loanImportHeaders))
+	for i, h := range loanImportHeaders {
+		out[i] = h
+	}
+	return out
 }
 
 // ---- Parsing ----
@@ -330,7 +356,13 @@ func readLoanSheet(content []byte, loc *time.Location, cutover int64, report *Lo
 		return nil, newValidationError("file is not a valid Excel (.xlsx) workbook")
 	}
 	defer f.Close() //nolint:errcheck
-	rows, err := f.GetRows(f.GetSheetName(0), excelize.Options{RawCellValue: true})
+	sheet := f.GetSheetName(0)
+	for _, name := range f.GetSheetList() {
+		if name == loanImportSheet {
+			sheet = name
+		}
+	}
+	rows, err := f.GetRows(sheet, excelize.Options{RawCellValue: true})
 	if err != nil {
 		return nil, fmt.Errorf("loan_import read rows: %w", err)
 	}
@@ -393,6 +425,15 @@ func readLoanHeader(loan *loanSheetLoan, loc *time.Location, cutover int64, repo
 		return value, at
 	}
 
+	// A 0 typed in "paid to date" on a loan's later rows means nothing was
+	// written there, not a conflicting amount.
+	for _, r := range loan.rows[1:] {
+		if v := r.cells[loanColPaid]; v != "" {
+			if f, err := parseLoanSheetNumber(v); err == nil && f == 0 {
+				r.cells[loanColPaid] = ""
+			}
+		}
+	}
 	saleDate, _ := pick(loanColSaleDate, "sale date")
 	name, _ := pick(loanColCustomer, "customer")
 	cin, _ := pick(loanColCIN, "CIN")
@@ -448,12 +489,79 @@ func readLoanHeader(loan *loanSheetLoan, loc *time.Location, cutover int64, repo
 // ---- Planning ----
 
 type loanImportIndex struct {
-	byCIN       map[string][]Client
-	byName      map[string][]Client
-	byPhone     map[string][]Client
+	byCIN       map[string][]*Client
+	byName      map[string][]*Client
+	byPhone     map[string][]*Client
 	productSKU  map[string]string
 	productName map[string][]Product
 	imported    map[string]bool
+}
+
+// normalizeCIN folds a CIN for matching: case and spaces don't count, and an
+// all-digit one ignores leading zeros — Excel drops them from a CIN typed
+// into a number cell (01234567 becomes 1234567).
+func normalizeCIN(v string) string {
+	s := strings.ToUpper(strings.Join(strings.Fields(v), ""))
+	if s != "" && strings.Trim(s, "0123456789") == "" {
+		if t := strings.TrimLeft(s, "0"); t != "" {
+			return t
+		}
+		return "0"
+	}
+	return s
+}
+
+// addClient indexes a client — one from the database, or one this import
+// creates, so a later loan of the same customer finds it by the same rules.
+func (idx *loanImportIndex) addClient(c *Client) {
+	if c.IdentityNumber != nil {
+		if k := normalizeCIN(*c.IdentityNumber); k != "" {
+			idx.byCIN[k] = append(idx.byCIN[k], c)
+		}
+	}
+	if c.Name != nil {
+		k := foldName(*c.Name)
+		idx.byName[k] = append(idx.byName[k], c)
+	}
+	for _, p := range []*string{c.Phone, c.Phone2, c.Phone3} {
+		if p != nil {
+			if k := normalizePhone(*p); k != "" {
+				idx.byPhone[k] = append(idx.byPhone[k], c)
+			}
+		}
+	}
+}
+
+// enrichNewClient copies onto a customer this import creates what a later
+// loan of theirs adds — the CIN written on one page only, a second phone,
+// the address — so the created record is as complete as the register.
+func (idx *loanImportIndex) enrichNewClient(c *Client, s loanSheetCustomer) {
+	if c.IdentityNumber == nil && s.cin != "" {
+		c.IdentityNumber = &s.cin
+		idx.byCIN[normalizeCIN(s.cin)] = append(idx.byCIN[normalizeCIN(s.cin)], c)
+	}
+	for _, phone := range []string{s.phone, s.phone2} {
+		n := normalizePhone(phone)
+		if n == "" || clientHasPhone(c, n) {
+			continue
+		}
+		p := phone
+		switch {
+		case c.Phone == nil:
+			c.Phone = &p
+		case c.Phone2 == nil:
+			c.Phone2 = &p
+		default:
+			continue
+		}
+		idx.byPhone[n] = append(idx.byPhone[n], c)
+	}
+	if c.Address == nil && s.address != "" {
+		c.Address = &s.address
+	}
+	if c.Guarantor == nil && s.guarantor != "" {
+		c.Guarantor = &s.guarantor
+	}
 }
 
 func (d *Database) loanImportIndex(organizationID string) (*loanImportIndex, error) {
@@ -472,22 +580,11 @@ func (d *Database) loanImportIndex(organizationID string) (*loanImportIndex, err
 		return nil, fmt.Errorf("loan_import imported refs: %w", err)
 	}
 	idx := &loanImportIndex{
-		byCIN: map[string][]Client{}, byName: map[string][]Client{}, byPhone: map[string][]Client{},
+		byCIN: map[string][]*Client{}, byName: map[string][]*Client{}, byPhone: map[string][]*Client{},
 		productSKU: map[string]string{}, productName: map[string][]Product{}, imported: map[string]bool{},
 	}
-	for _, c := range clients {
-		if c.IdentityNumber != nil && strings.TrimSpace(*c.IdentityNumber) != "" {
-			key := strings.ToUpper(strings.TrimSpace(*c.IdentityNumber))
-			idx.byCIN[key] = append(idx.byCIN[key], c)
-		}
-		if c.Name != nil {
-			idx.byName[foldName(*c.Name)] = append(idx.byName[foldName(*c.Name)], c)
-		}
-		for _, p := range []*string{c.Phone, c.Phone2, c.Phone3} {
-			if p != nil && normalizePhone(*p) != "" {
-				idx.byPhone[normalizePhone(*p)] = append(idx.byPhone[normalizePhone(*p)], c)
-			}
-		}
+	for i := range clients {
+		idx.addClient(&clients[i])
 	}
 	for _, p := range products {
 		if p.SKU != nil && *p.SKU != "" {
@@ -501,7 +598,7 @@ func (d *Database) loanImportIndex(organizationID string) (*loanImportIndex, err
 	return idx, nil
 }
 
-func clientHasPhone(c Client, phone string) bool {
+func clientHasPhone(c *Client, phone string) bool {
 	for _, p := range []*string{c.Phone, c.Phone2, c.Phone3} {
 		if p != nil && normalizePhone(*p) == phone {
 			return true
@@ -510,62 +607,62 @@ func clientHasPhone(c Client, phone string) bool {
 	return false
 }
 
-func clientName(c Client) string {
+func clientName(c *Client) string {
 	if c.Name == nil {
 		return ""
 	}
 	return *c.Name
 }
 
-// matchExistingCustomer finds the existing client a sheet customer is, or
-// returns ("", nil) for a new one. A phone alone never matches — families
-// share one — and anything ambiguous is an error rather than a guess.
-func (idx *loanImportIndex) matchExistingCustomer(c loanSheetCustomer) (string, string, error) {
-	if c.cin != "" {
-		switch matches := idx.byCIN[c.cin]; len(matches) {
+// matchCustomer finds the client a sheet customer is — in the database or
+// created earlier in this file — or returns nil for a new one. how says what
+// matched ("cin", "name+phone" or "name"). A phone alone never matches —
+// families share one — and anything ambiguous is an error, not a guess.
+func (idx *loanImportIndex) matchCustomer(c loanSheetCustomer) (client *Client, how, warning string, err error) {
+	if cin := normalizeCIN(c.cin); cin != "" {
+		switch matches := idx.byCIN[cin]; len(matches) {
 		case 0:
 			// fall through to the name
 		case 1:
-			warning := ""
 			if foldName(clientName(matches[0])) != foldName(c.name) {
-				warning = fmt.Sprintf("CIN %s belongs to existing customer %q; the loan goes to that customer", c.cin, clientName(matches[0]))
+				warning = fmt.Sprintf("CIN %s belongs to customer %q; the loan goes to that customer", c.cin, clientName(matches[0]))
 			}
-			return matches[0].ID, warning, nil
+			return matches[0], "cin", warning, nil
 		default:
-			return "", "", fmt.Errorf("%d existing customers have CIN %s — merge them first", len(matches), c.cin)
+			return nil, "", "", fmt.Errorf("%d customers have CIN %s — merge them first", len(matches), c.cin)
 		}
 	}
 	phone := normalizePhone(c.phone)
 	named := idx.byName[foldName(c.name)]
 	if phone != "" {
-		var both []Client
+		var both []*Client
 		for _, cl := range named {
 			if clientHasPhone(cl, phone) {
 				both = append(both, cl)
 			}
 		}
 		if len(both) == 1 {
-			return both[0].ID, "", nil
+			return both[0], "name+phone", "", nil
 		}
 		if len(both) > 1 {
-			return "", "", fmt.Errorf("%d existing customers are named %q with phone %s — add the CIN", len(both), c.name, c.phone)
+			return nil, "", "", fmt.Errorf("%d customers are named %q with phone %s — add the CIN", len(both), c.name, c.phone)
 		}
 		for _, owner := range idx.byPhone[phone] {
 			if foldName(clientName(owner)) != foldName(c.name) {
-				return "", "", fmt.Errorf("phone %s belongs to existing customer %q, not %q — add the CIN or check the name", c.phone, clientName(owner), c.name)
+				return nil, "", "", fmt.Errorf("phone %s belongs to customer %q, not %q — add the CIN or check the name", c.phone, clientName(owner), c.name)
 			}
 		}
 	}
 	switch len(named) {
 	case 0:
-		return "", "", nil
+		return nil, "", "", nil
 	case 1:
 		if phone != "" && (named[0].Phone != nil || named[0].Phone2 != nil || named[0].Phone3 != nil) && !clientHasPhone(named[0], phone) {
-			return "", "", fmt.Errorf("existing customer %q has a different phone — add the CIN if it's the same person", c.name)
+			return nil, "", "", fmt.Errorf("customer %q has a different phone — add the CIN if it's the same person", c.name)
 		}
-		return named[0].ID, "", nil
+		return named[0], "name", "", nil
 	default:
-		return "", "", fmt.Errorf("%d existing customers are named %q — add the CIN or phone", len(named), c.name)
+		return nil, "", "", fmt.Errorf("%d customers are named %q — add the CIN or phone", len(named), c.name)
 	}
 }
 
@@ -583,14 +680,9 @@ func (idx *loanImportIndex) matchProduct(v string) (*string, string) {
 	}
 }
 
-type loanImportNewClient struct {
-	id       string
-	customer loanSheetCustomer
-}
-
 type loanImportPlan struct {
 	plans      []*openingLoanPlan
-	newClients []loanImportNewClient
+	newClients []*Client
 }
 
 // planLoanImport reads and resolves the whole file without writing anything.
@@ -618,10 +710,9 @@ func (d *Database) planLoanImport(organizationID string, cutoverDay int64, conte
 	}
 
 	plan := &loanImportPlan{}
-	type customerKey = string
-	resolved := map[customerKey]string{} // sheet customer -> client id (existing or new)
-	isNew := map[string]bool{}
+	newFromLoan := map[string]string{} // created customer id -> the loan that created it
 	cinName := map[string]string{}
+	clients := map[string]*Client{}
 	totals := map[string]*LoanImportCustomer{}
 	var order []string
 	needsFiscalYear := false
@@ -633,38 +724,45 @@ func (d *Database) planLoanImport(organizationID string, cutoverDay int64, conte
 			continue
 		}
 		c := loan.customer
-		if c.cin != "" && c.name != "" {
-			if prev, ok := cinName[c.cin]; ok && foldName(prev) != foldName(c.name) {
+		if cin := normalizeCIN(c.cin); cin != "" && c.name != "" {
+			if prev, ok := cinName[cin]; ok && foldName(prev) != foldName(c.name) {
 				report.add(loan.firstRow, loan.ref, "error", "CIN %s is on both %q and %q in this file", c.cin, prev, c.name)
 				loan.hasErrors = true
 			} else {
-				cinName[c.cin] = c.name
+				cinName[cin] = c.name
 			}
 		}
 
-		key := "name:" + foldName(c.name) + "|" + normalizePhone(c.phone)
-		if c.cin != "" {
-			key = "cin:" + c.cin
-		}
-		clientID, known := resolved[key]
-		if !known && c.name != "" {
-			existing, warning, err := idx.matchExistingCustomer(c)
+		var client *Client
+		if c.name != "" && !loan.hasErrors {
+			matched, how, warning, err := idx.matchCustomer(c)
 			switch {
 			case err != nil:
 				report.add(loan.firstRow, loan.ref, "error", "%v", err)
 				loan.hasErrors = true
-			case existing != "":
-				clientID = existing
-				if warning != "" {
+			case matched != nil:
+				client = matched
+				if from, isNew := newFromLoan[matched.ID]; isNew {
+					idx.enrichNewClient(matched, c)
+					if how == "name" {
+						report.add(loan.firstRow, loan.ref, "warning",
+							"matched to the new customer %q from loan %s by name only — check it's the same person", clientName(matched), from)
+					}
+				} else if warning != "" {
 					report.add(loan.firstRow, loan.ref, "warning", "%s", warning)
 				}
 			default:
-				clientID, _ = gonanoid.New()
-				isNew[clientID] = true
-				plan.newClients = append(plan.newClients, loanImportNewClient{id: clientID, customer: c})
-			}
-			if clientID != "" {
-				resolved[key] = clientID
+				id, _ := gonanoid.New()
+				name := c.name
+				client = &Client{
+					ID: id, OrganizationID: organizationID, Name: &name,
+					Code:           nilIfEmpty(generateClientCodeGo(name)),
+					IdentityNumber: nilIfEmpty(c.cin), Phone: nilIfEmpty(c.phone), Phone2: nilIfEmpty(c.phone2),
+					Address: nilIfEmpty(c.address), Guarantor: nilIfEmpty(c.guarantor),
+				}
+				idx.addClient(client)
+				newFromLoan[id] = loan.ref
+				plan.newClients = append(plan.newClients, client)
 			}
 		}
 
@@ -698,7 +796,7 @@ func (d *Database) planLoanImport(organizationID string, cutoverDay int64, conte
 			}
 			lines = append(lines, OpeningLoanLine{ProductID: productID, Description: product, Quantity: qty, Amount: amount})
 		}
-		if loan.hasErrors || clientID == "" {
+		if loan.hasErrors || client == nil {
 			continue
 		}
 
@@ -708,7 +806,7 @@ func (d *Database) planLoanImport(organizationID string, cutoverDay int64, conte
 			notes = &n
 		}
 		planned, err := d.planOpeningLoan(org, OpeningLoanRequest{
-			OrganizationID: organizationID, ClientID: clientID, Number: loan.ref,
+			OrganizationID: organizationID, ClientID: client.ID, Number: loan.ref,
 			Date: loan.saleDate, CutoverDate: cutoverDate, Lines: lines,
 			PaidToDate: loan.paid, LastPaymentDate: loan.lastPaid, Notes: notes,
 		})
@@ -734,11 +832,13 @@ func (d *Database) planLoanImport(organizationID string, cutoverDay int64, conte
 			report.OpenLoans++
 			needsFiscalYear = true
 		}
-		t, ok := totals[clientID]
+		t, ok := totals[client.ID]
 		if !ok {
-			t = &LoanImportCustomer{Name: c.name, CIN: c.cin, Phone: c.phone, New: isNew[clientID]}
-			totals[clientID] = t
-			order = append(order, clientID)
+			_, isNew := newFromLoan[client.ID]
+			t = &LoanImportCustomer{New: isNew}
+			totals[client.ID] = t
+			clients[client.ID] = client
+			order = append(order, client.ID)
 		}
 		t.Loans++
 		t.Total += planned.total
@@ -753,15 +853,22 @@ func (d *Database) planLoanImport(organizationID string, cutoverDay int64, conte
 	}
 
 	// Only customers that end up with a planned loan are created.
-	var kept []loanImportNewClient
+	var kept []*Client
 	for _, nc := range plan.newClients {
-		if _, ok := totals[nc.id]; ok {
+		if _, ok := totals[nc.ID]; ok {
 			kept = append(kept, nc)
 		}
 	}
 	plan.newClients = kept
 	for _, id := range order {
-		t := totals[id]
+		t, c := totals[id], clients[id]
+		t.Name = clientName(c)
+		if c.IdentityNumber != nil {
+			t.CIN = *c.IdentityNumber
+		}
+		if c.Phone != nil {
+			t.Phone = *c.Phone
+		}
 		if t.New {
 			report.CustomersCreated++
 		} else {
@@ -817,13 +924,11 @@ func (d *Database) ImportLoanRegister(organizationID, userID, fileName string, c
 	); err != nil {
 		return nil, fmt.Errorf("loan_import insert_batch: %w", err)
 	}
-	for _, nc := range plan.newClients {
-		c := nc.customer
+	for _, c := range plan.newClients {
 		if _, err := tx.Exec(`
 			INSERT INTO clients (id, organizationId, name, code, identity_number, phone, phone2, address, guarantor, importBatchId)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			nc.id, organizationID, c.name, nilIfEmpty(generateClientCodeGo(c.name)), nilIfEmpty(c.cin),
-			nilIfEmpty(c.phone), nilIfEmpty(c.phone2), nilIfEmpty(c.address), nilIfEmpty(c.guarantor), batchID,
+			c.ID, organizationID, c.Name, c.Code, c.IdentityNumber, c.Phone, c.Phone2, c.Address, c.Guarantor, batchID,
 		); err != nil {
 			return nil, fmt.Errorf("loan_import insert_client: %w", err)
 		}

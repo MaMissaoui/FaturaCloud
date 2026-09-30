@@ -51,8 +51,8 @@ func (h *handler) importLoanRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fileName := ""
-	if _, header, err := r.FormFile("file"); err == nil {
-		fileName = header.Filename
+	if files := r.MultipartForm.File["file"]; len(files) > 0 {
+		fileName = files[0].Filename
 	}
 	report, err := h.db.ImportLoanRegister(orgID, getClaims(r).UserID, fileName, cutoverDay, data)
 	if err != nil {
