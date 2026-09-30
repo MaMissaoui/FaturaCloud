@@ -131,7 +131,7 @@ const PaymentProductsCell = ({ payment, money }: Props) => {
           title={label}
           style={{
             display: "inline-block",
-            maxWidth: 280,
+            maxWidth: 220,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
