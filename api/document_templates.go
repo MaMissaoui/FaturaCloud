@@ -218,7 +218,12 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 	invoice, lineItems, org, client, templateBytes, taxRates, logo, orientation, err := h.db.FetchInvoiceExportData(id)
 	h.dbMu.RUnlock()
 	if err != nil {
-		writeDBError(w, err, "invoice not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			writeDBError(w, err, "invoice not found")
+			return
+		}
+		// A migrated loan has no invoice document (db/opening_loan.go).
+		writeMutationError(w, err)
 		return
 	}
 

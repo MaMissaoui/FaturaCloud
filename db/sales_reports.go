@@ -95,7 +95,7 @@ func (d *Database) GetRevenueByMonth(organizationID string, startDate, endDate i
 	err = d.DB.Select(&invoices, `
 		SELECT date, total * COALESCE(exchangeRate, 1) AS revenue
 		FROM invoices
-		WHERE organizationId = ? AND state IN `+revenueStates+rangeClause,
+		WHERE organizationId = ? AND origin IS NULL AND state IN `+revenueStates+rangeClause,
 		args...,
 	)
 	if err != nil {
@@ -128,7 +128,7 @@ func (d *Database) GetSalesByClient(organizationID string, startDate, endDate in
 		       CAST(ROUND(SUM(i.total * COALESCE(i.exchangeRate, 1))) AS INTEGER) AS revenue
 		FROM invoices i
 		JOIN clients c ON i.clientId = c.id
-		WHERE i.organizationId = ? AND i.state IN ` + revenueStates + rangeClause + `
+		WHERE i.organizationId = ? AND ` + openingLoanExclusion + ` AND i.state IN ` + revenueStates + rangeClause + `
 		GROUP BY i.clientId
 		ORDER BY revenue DESC`
 	if limit > 0 {
@@ -156,7 +156,7 @@ func (d *Database) GetSalesByProduct(organizationID string, startDate, endDate i
 		FROM invoiceLineItems ili
 		JOIN invoices i ON ili.invoiceId = i.id
 		JOIN products p ON ili.productId = p.id
-		WHERE i.organizationId = ? AND i.state IN ` + revenueStates + rangeClause + `
+		WHERE i.organizationId = ? AND ` + openingLoanExclusion + ` AND i.state IN ` + revenueStates + rangeClause + `
 		      AND ili.productId IS NOT NULL
 		GROUP BY ili.productId
 		ORDER BY revenue DESC`
@@ -299,7 +299,7 @@ func (d *Database) getOutputTaxSummary(organizationID string, startDate, endDate
 			FROM invoiceLineItems ili
 			JOIN invoices i ON ili.invoiceId = i.id
 			LEFT JOIN taxRates tr ON ili.taxRate = tr.id
-			WHERE i.organizationId = ? AND i.state IN `+revenueStates+rangeClause+`
+			WHERE i.organizationId = ? AND `+openingLoanExclusion+` AND i.state IN `+revenueStates+rangeClause+`
 			GROUP BY ili.invoiceId, tr.id
 		)
 		GROUP BY taxRateId

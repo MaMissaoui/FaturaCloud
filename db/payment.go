@@ -35,6 +35,10 @@ type Payment struct {
 	JournalEntryID   *string `db:"journalEntryId"   json:"journalEntryId"`
 	VoidingEntryID   *string `db:"voidingEntryId"   json:"voidingEntryId"`
 	CreatedAt        int64   `db:"createdAt"        json:"createdAt"`
+	// Origin (migration 0097) is "opening" for a migrated loan's paid-to-date
+	// (db/opening_loan.go): money received before the cutover, with no GL
+	// entry and no register. nil for every other payment.
+	Origin *string `db:"origin" json:"origin"`
 	// InvoiceNumbers lists the numbers of the sales invoices this payment
 	// was applied to, in application order — on the Cash Book, the loan
 	// number(s) a collection belongs to. Filled by GetPayments only; empty
@@ -429,7 +433,7 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 					"application %d: invoice currency %q does not match payment currency %q", i+1, invoice.Currency, req.Currency,
 				)
 			}
-			if postedEntry, err := d.FindPostedEntryForSourceDocument("invoice", app.DocumentID); err != nil {
+			if postedEntry, err := d.findInvoiceReceivableEntry(invoice); err != nil {
 				return nil, err
 			} else if postedEntry == nil {
 				return nil, newValidationError("application %d: invoice has no posted GL entry — send it first", i+1)
@@ -643,6 +647,11 @@ func (d *Database) VoidPayment(paymentID string, reversalDate int64) (*Payment, 
 	}
 	if payment.Status != "posted" {
 		return nil, newValidationError("only a posted payment can be voided")
+	}
+	if payment.Origin != nil && *payment.Origin == OpeningOrigin {
+		return nil, newValidationError(
+			"this is a migrated loan's paid-to-date, not a real receipt — it can't be voided",
+		)
 	}
 	if payment.JournalEntryID == nil {
 		return nil, fmt.Errorf("void_payment: posted payment %s has no journal entry", paymentID)

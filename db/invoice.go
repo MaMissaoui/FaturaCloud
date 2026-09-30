@@ -68,6 +68,13 @@ type Invoice struct {
 	// stock out while sent/paid — see db/invoice_stock.go. Set only by
 	// CreateCashSale; never settable through the API.
 	MovesStock int `db:"movesStock" json:"movesStock"`
+
+	// Origin (migration 0097) is "opening" for a loan migrated from a paper
+	// loan register (db/opening_loan.go) — a receivable brought forward, not a
+	// sale made in the app — and nil for every other invoice. Never settable
+	// through the invoice API. ImportBatchID groups one import's invoices.
+	Origin        *string `db:"origin"        json:"origin"`
+	ImportBatchID *string `db:"importBatchId" json:"importBatchId"`
 }
 
 // InvoiceLineItem mirrors the invoiceLineItems table.
@@ -305,6 +312,9 @@ func invoiceUpdateTouchesGLFields(updates UpdateInvoiceRequest) bool {
 }
 
 func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest) (*Invoice, error) {
+	if err := d.refuseOpeningLoanChange(invoiceID, "edited"); err != nil {
+		return nil, err
+	}
 	// F94: an empty-string optional FK id means "unset"; normalize it to
 	// nil before the guard and the INSERT both see it (db/optional_id.go).
 	updates.ClientID = nilIfEmptyID(updates.ClientID)
@@ -541,6 +551,11 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 	if err != nil {
 		return nil, fmt.Errorf("update_invoice_state lookup: %w", err)
 	}
+	// A migrated loan has no sale entry to post or reverse; the general path
+	// below would post revenue for it (db/opening_loan.go).
+	if isOpeningLoan(invoice) {
+		return d.updateOpeningLoanState(invoice, state)
+	}
 	existingEntry, err := d.FindPostedEntryForSourceDocument("invoice", invoiceID)
 	if err != nil {
 		return nil, err
@@ -688,6 +703,9 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 			return false, nil
 		}
 		return false, err
+	}
+	if isOpeningLoan(current) {
+		return false, openingLoanFrozenError(current, "deleted")
 	}
 	if current.State == "paid" {
 		return false, newValidationError("cannot delete a paid invoice — cancel it instead")
