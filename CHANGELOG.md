@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.59.1] - 2026-09-30
+
+### Fixed
+- Going from a document to that type's "new" page (for example with the
+  browser's Back button after saving a new document) no longer jumps straight
+  back to the previous document, and the new form opens blank instead of
+  still showing the previous document's fields. This affected invoices,
+  orders, purchase orders, outbound deliveries, goods receipts, incoming
+  invoices, production orders and journal entries (#444).
+- After creating an order, purchase order, outbound delivery, goods receipt or
+  production order, the next new one proposes the next free number instead of
+  the one just used, which, if saved unchanged, gave two documents the same
+  number (#446).
+
 ## [3.59.0] - 2026-09-30
 
 ### Added
