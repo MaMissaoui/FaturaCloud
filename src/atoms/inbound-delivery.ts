@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithRefresh } from "jotai/utils";
 import type { Dayjs } from "dayjs";
 import type { InboundDelivery, InboundDeliveryLineItem } from "src/types/models";
 import { message } from "src/utils/message";
@@ -41,7 +42,7 @@ export const setInboundDeliveriesAtom = atom(null, async (get, set) => {
 });
 
 // Server-side MAX-based numbering, like outbound deliveries.
-export const nextInboundDeliveryNumberAtom = atom(async (get) => {
+export const nextInboundDeliveryNumberAtom = atomWithRefresh(async (get) => {
   const organizationId = get(organizationIdAtom);
   if (!organizationId) return "GR-0001";
   try {
@@ -125,6 +126,7 @@ export const inboundDeliveryAtom = atom(
         };
         const created = await CreateInboundDelivery(data);
         set(inboundDeliveryIdAtom, created.id);
+        set(nextInboundDeliveryNumberAtom);
         message.success(t`Goods receipt created`);
         const list = get(inboundDeliveriesAtom);
         set(inboundDeliveriesAtom, [created, ...list]);

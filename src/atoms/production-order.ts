@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithRefresh } from "jotai/utils";
 import type { ProductionOrder, ProductionOrderComponentLine } from "src/types/models";
 import { message } from "src/utils/message";
 import { nanoid } from "nanoid";
@@ -36,7 +37,7 @@ export const setProductionOrdersAtom = atom(null, async (get, set) => {
 });
 
 // Server-side MAX-based numbering, like inbound/outbound deliveries.
-export const nextProductionOrderNumberAtom = atom(async (get) => {
+export const nextProductionOrderNumberAtom = atomWithRefresh(async (get) => {
   const organizationId = get(organizationIdAtom);
   if (!organizationId) return "PRO-0001";
   try {
@@ -89,6 +90,7 @@ export const createProductionOrderAtom = atom(
       };
       const created = await CreateProductionOrder(data);
       set(productionOrderIdAtom, created.id);
+      set(nextProductionOrderNumberAtom);
       message.success(t`Production order created`);
       const list = get(productionOrdersAtom);
       set(productionOrdersAtom, [created, ...list]);

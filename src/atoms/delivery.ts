@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithRefresh } from "jotai/utils";
 import type { Dayjs } from "dayjs";
 import type { Delivery, DeliveryLineItem } from "src/types/models";
 import { message } from "src/utils/message";
@@ -22,7 +23,7 @@ import {
 import { organizationIdAtom } from "./organization";
 
 export const deliveriesAtom = atom<Delivery[]>([]);
-export const nextDeliveryNumberAtom = atom(async (get) => {
+export const nextDeliveryNumberAtom = atomWithRefresh(async (get) => {
   const organizationId = get(organizationIdAtom);
   if (!organizationId) return "DEL-0001";
   try {
@@ -91,6 +92,7 @@ export const deliveryAtom = atom(
         };
         const created = await CreateDelivery(data);
         set(deliveryIdAtom, created.id);
+        set(nextDeliveryNumberAtom);
         message.success(t`Delivery created`);
         const list = get(deliveriesAtom);
         set(deliveriesAtom, [created, ...list]);

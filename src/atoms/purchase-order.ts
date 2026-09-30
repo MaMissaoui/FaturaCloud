@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithRefresh } from "jotai/utils";
 import type { Dayjs } from "dayjs";
 import type { PurchaseOrder, PurchaseOrderLineItem } from "src/types/models";
 import { message } from "src/utils/message";
@@ -44,7 +45,7 @@ export const setPurchaseOrdersAtom = atom(null, async (get, set) => {
 // Next suggested number comes from the server (MAX-based), not a client-side
 // scan of the loaded list — the latter is racy and reissues numbers whenever
 // the list is stale or an order was deleted.
-export const nextPurchaseOrderNumberAtom = atom(async (get) => {
+export const nextPurchaseOrderNumberAtom = atomWithRefresh(async (get) => {
   const organizationId = get(organizationIdAtom);
   if (!organizationId) return "PO-0001";
   try {
@@ -134,6 +135,10 @@ export const purchaseOrderAtom = atom(
         };
         const created = await CreatePurchaseOrder(data);
         set(purchaseOrderIdAtom, created.id);
+        // Invalidate the cached next-number proposal so the next "/new" form
+        // fetches the server's updated counter instead of reusing the number
+        // that was just assigned.
+        set(nextPurchaseOrderNumberAtom);
         message.success(t`Purchase order created`);
         const orders = get(purchaseOrdersAtom);
         set(purchaseOrdersAtom, [created, ...orders]);
