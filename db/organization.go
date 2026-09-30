@@ -690,6 +690,7 @@ type OrganizationUsageCount struct {
 	CashMovements        int64 `db:"cashMovements"        json:"cashMovements"`
 	ProductSerialNumbers int64 `db:"productSerialNumbers" json:"productSerialNumbers"`
 	ReconciliationGroups int64 `db:"reconciliationGroups" json:"reconciliationGroups"`
+	LoanImportBatches    int64 `db:"loanImportBatches"    json:"loanImportBatches"`
 
 	FiscalYears              int64 `db:"fiscalYears"              json:"fiscalYears"`
 	FiscalPeriods            int64 `db:"fiscalPeriods"            json:"fiscalPeriods"`
@@ -733,6 +734,7 @@ var organizationUsageCountTables = []struct{ Alias, Table string }{
 	{"cashMovements", "cash_movements"},
 	{"productSerialNumbers", "product_serial_numbers"},
 	{"reconciliationGroups", "reconciliation_groups"},
+	{"loanImportBatches", "loan_import_batches"},
 	{"fiscalYears", "fiscal_years"},
 	{"fiscalPeriods", "fiscal_periods"},
 	{"paymentTerms", "payment_terms"},

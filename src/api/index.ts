@@ -254,6 +254,7 @@ export type OrganizationUsageCount = {
   journals: number;
   journalEntries: number;
   payments: number;
+  loanImportBatches: number;
 };
 export const GetOrganizationUsageCount = (id: string) =>
   get<OrganizationUsageCount>(`/organizations/${id}/usage-count`);

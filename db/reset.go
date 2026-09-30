@@ -63,6 +63,11 @@ var transactionalDataTables = []string{
 	"cash_movements",
 	"journal_entries",
 	"reconciliation_groups",
+	// The record of each paper loan register import (db/loan_import.go):
+	// meaningless once the invoices and customers it points at are gone.
+	// Nothing references it by foreign key (invoices/clients.importBatchId
+	// are plain ids), so its position doesn't matter.
+	"loan_import_batches",
 }
 
 // masterDataTables lists the organizationId-scoped reference-data tables.
