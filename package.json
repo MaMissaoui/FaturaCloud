@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "type-check": "tsc --noEmit",
-    "lint": "tsc --noEmit && oxlint src/",
+    "lint": "tsc --noEmit && oxlint --deny-warnings src/",
     "format": "oxfmt --write src/",
     "format:check": "oxfmt --check src/",
     "preview": "vite preview",

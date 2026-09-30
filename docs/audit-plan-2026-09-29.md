@@ -47,7 +47,7 @@ volume, 2026-09-29, schema version 96, not dirty):
 | Check                                                                 | Result                                                                                       |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `organizations.timezone`                                              | Atlas Moto: `Africa/Tunis`; ELECTRO MISSAOUI: `Africa/Tunis`; **Ben Salah: NULL** (see F156) |
-| Cash Book sales (`movesStock = 1`)                                    | 1,245                                                                                        |
+| Cash Book sales (`movesStock = 1`)                                    | 1,245, all Ben Salah (demo data); ELECTRO 0, Atlas Moto 0                                    |
 | Sent/paid sales with a stock line but no stock-out movement           | 0                                                                                            |
 | Stock-enabled products whose `stockQuantity` ≠ sum of their movements | 0                                                                                            |
 | Stock-enabled products below zero                                     | 0                                                                                            |
@@ -85,11 +85,12 @@ producing this document.
 **Status:** 6 findings (F156–F161). The owner's decisions (2026-09-29):
 
 - **F156:** Ben Salah's time zone set to `Africa/Tunis` on production by the
-  owner. Code fix (new-organization form + seed-demo) in the Phase 1 PR.
-- **F157:** fixed in the Phase 1 PR.
+  owner. Code fix (new-organization form + seed-demo) in the Phase 1 PR (#434).
+- **F157:** fixed in the Phase 1 PR (#434).
 - **F159:** option 2 — restrict to Sales and Cash Book users (`general` keeps
   it, since it has Sales).
-- **F158, F159:** fixed in the Phase 2 PR.
+- **F158, F159:** fixed in the Phase 2 PR (#435).
+- **F160, F161:** fixed in the Phase 3 PR.
 
 ---
 
@@ -324,8 +325,9 @@ warning fails the build where it's introduced.
 
 - `GetPayments` loads the product names of every invoice the organization
   has ever received a payment for, on each call, alongside an already
-  unpaginated payments list. Fine at today's volume (1,245 Cash Book sales on
-  ELECTRO); revisit if the Cash Book screen slows down.
+  unpaginated payments list. Fine at today's volume (1,245 Cash Book sales in
+  the largest organization, Ben Salah's demo data; ELECTRO has none yet);
+  revisit if the Cash Book screen slows down.
 - Migration `0096` would fail on a database holding two families whose names
   differ only in ASCII case. Production passed it; any other deployment that
   ran `0095` for a while could hit it.
