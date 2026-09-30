@@ -1,6 +1,6 @@
 # Migrating a paper loan register — plan
 
-Status: decided, not started (2026-09-30). The owner's answers are recorded under
+Status: built (2026-09-30) — phases 1–3 in #439, #440, #441; the French cutover guide is `docs/guide-reprise-registre-credits.md`. The owner's answers are recorded under
 "Decisions". Motivated by counter businesses such as ELECTRO MISSAOUI that run their credit sales from a
 paper register (a customer, what was sold, the price, the deposit, then installments written in
 by hand) and want the Cash Book's Loan status to take over from it.
@@ -215,4 +215,4 @@ Four phases, each its own PR:
    ref, and batch undo. Tests: matching, ambiguity, re-upload.
 3. **Screen:** download, upload, dry-run report, confirm, and batch history with undo. Browser
    verification with a 50-loan sample sheet.
-4. **Docs and a French user guide** for the cutover procedure.
+4. **Docs and a French user guide** for the cutover procedure: `docs/guide-reprise-registre-credits.md`.
