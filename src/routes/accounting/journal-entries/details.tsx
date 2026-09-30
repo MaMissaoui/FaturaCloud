@@ -20,7 +20,7 @@ import {
   Tag,
   Typography,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -80,7 +80,7 @@ const JournalEntryDetails = () => {
       organization?.minimum_fraction_digits ?? undefined,
     );
 
-  const [entryId, setEntryId] = useAtom(journalEntryIdAtom);
+  const setEntryId = useSetAtom(journalEntryIdAtom);
   const entryLoadable = useAtomValue(loadableEntryAtom);
   const setEntry = useSetAtom(journalEntryAtom);
   const entry = entryLoadable.state === "hasData" ? entryLoadable.data : undefined;
@@ -100,12 +100,6 @@ const JournalEntryDetails = () => {
     if (!isNew) setEntryId(id ?? null);
     return () => setEntryId(null);
   }, [id, isNew, setAccounts, setJournals, setFiscalYears, setEntryId]);
-
-  useEffect(() => {
-    if (isNew && entryId) {
-      navigate(`/accounting/journal-entries/${entryId}`);
-    }
-  }, [isNew, entryId, navigate]);
 
   // The forward direction of reversalOfEntryId — only a reversed entry can
   // have one, so there's nothing to look up otherwise.
@@ -128,7 +122,8 @@ const JournalEntryDetails = () => {
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
     try {
-      await setEntry(values);
+      const created = await setEntry(values);
+      navigate(`/accounting/journal-entries/${created.id}`);
     } finally {
       setSubmitting(false);
     }

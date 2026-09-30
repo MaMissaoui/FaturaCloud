@@ -18,7 +18,7 @@ import {
   Typography,
   message,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -37,6 +37,7 @@ import { useDatePickerFormat } from "src/utils/date";
 import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
+import useResetFormOnNew from "src/hooks/useResetFormOnNew";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { organizationAtom } from "src/atoms/organization";
@@ -109,7 +110,7 @@ const DeliveryDetails = () => {
   const setProducts = useSetAtom(setProductsAtom);
   const nextNumber = useAtomValue(nextDeliveryNumberAtom);
 
-  const [deliveryId, setDeliveryId] = useAtom(deliveryIdAtom);
+  const setDeliveryId = useSetAtom(deliveryIdAtom);
   const deliveryLoadable = useAtomValue(loadableDeliveryAtom);
   const setDelivery = useSetAtom(deliveryAtom);
   const delivery = deliveryLoadable.state === "hasData" ? deliveryLoadable.data : undefined;
@@ -129,6 +130,7 @@ const DeliveryDetails = () => {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useSaveShortcut(form);
+  useResetFormOnNew(form, id);
   useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
@@ -186,13 +188,6 @@ const DeliveryDetails = () => {
     };
   }, [isNew, prefillOrderId, products, form]);
 
-  // After create, navigate to the new delivery
-  useEffect(() => {
-    if (isNew && deliveryId) {
-      navigate(`/deliveries/${deliveryId}`);
-    }
-  }, [isNew, deliveryId, navigate]);
-
   // Populate form when delivery loads. The "clientId" form field always
   // represents this delivery's *own* directly-recorded client (ownClientId)
   // — never delivery.clientId, which is the order-derived effective value
@@ -205,8 +200,9 @@ const DeliveryDetails = () => {
   }, [delivery, isNew, form]);
 
   const handleSubmit = async (values: any) => {
-    await setDelivery(values);
+    const created = await setDelivery(values);
     setIsDirty(false);
+    if (isNew && created) navigate(`/deliveries/${created.id}`);
   };
 
   const handleDelete = async () => {

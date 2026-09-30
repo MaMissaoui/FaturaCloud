@@ -179,6 +179,7 @@ export const invoiceAtom = atom(
           set(organizationIdAtom, null);
           set(organizationIdAtom, currentOrgId);
         }
+        return createdInvoice;
       } else {
         // Update
         const updateData = {

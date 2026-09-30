@@ -21,7 +21,7 @@ import {
   Tooltip,
   message,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -46,6 +46,7 @@ import {
 } from "src/api";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
+import useResetFormOnNew from "src/hooks/useResetFormOnNew";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat } from "src/utils/date";
@@ -121,7 +122,7 @@ const IncomingInvoiceDetails = () => {
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
   const products = useAtomValue(productsAtom);
 
-  const [invoiceId, setInvoiceId] = useAtom(incomingInvoiceIdAtom);
+  const setInvoiceId = useSetAtom(incomingInvoiceIdAtom);
   const invoiceLoadable = useAtomValue(loadableIncomingInvoiceAtom);
   const setInvoice = useSetAtom(incomingInvoiceAtom);
   const invoice = invoiceLoadable.state === "hasData" ? invoiceLoadable.data : undefined;
@@ -135,6 +136,7 @@ const IncomingInvoiceDetails = () => {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useSaveShortcut(form);
+  useResetFormOnNew(form, id);
   useUnsavedChangesWarning(isDirty);
 
   // A different document starts without the previous one's optimistic
@@ -209,12 +211,6 @@ const IncomingInvoiceDetails = () => {
   }, [isNew, prefillOrderId, purchaseOrders, organization, form]);
 
   useEffect(() => {
-    if (isNew && invoiceId) {
-      navigate(`/incoming-invoices/${invoiceId}`);
-    }
-  }, [isNew, invoiceId, navigate]);
-
-  useEffect(() => {
     if (!isNew && invoice && typeof invoice === "object" && !("then" in invoice)) {
       form.resetFields();
       form.setFieldsValue(invoice);
@@ -266,14 +262,16 @@ const IncomingInvoiceDetails = () => {
   // purchasing detail pages.
   const handleSubmit = async () => {
     const values = form.getFieldsValue(true);
-    const ok = await setInvoice({
+    const saved = await setInvoice({
       ...values,
       matchOverride: values.matchOverride ? 1 : 0,
       ...totals,
     });
-    if (ok) {
+    if (saved) {
       setIsDirty(false);
-      refreshMatch();
+      // A create resolves to the new record, an update to true.
+      if (isNew && typeof saved === "object") navigate(`/incoming-invoices/${saved.id}`);
+      else refreshMatch();
     }
   };
 

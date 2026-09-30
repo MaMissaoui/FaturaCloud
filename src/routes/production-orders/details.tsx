@@ -20,7 +20,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -119,11 +119,12 @@ const CreateProductionOrderForm = ({
   products: Product[];
   imports: Import[];
   nextNumber: string;
-  createOrder: (values: Partial<ProductionOrder>) => Promise<unknown>;
+  createOrder: (values: Partial<ProductionOrder>) => Promise<ProductionOrder>;
   dateFormat: string;
   qtyLocale: string;
 }) => {
   const { token } = theme.useToken();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   // A failed fetch used to be swallowed into an empty list, which the Alert
@@ -173,7 +174,7 @@ const CreateProductionOrderForm = ({
   const handleCreate = async (values: CreateFormValues) => {
     setSubmitting(true);
     try {
-      await createOrder({
+      const created = await createOrder({
         orderNumber: values.orderNumber,
         finishedProductId: values.finishedProductId,
         quantity: values.quantity,
@@ -181,6 +182,7 @@ const CreateProductionOrderForm = ({
         importId: values.importId || null,
         notes: values.notes || null,
       });
+      navigate(`/production-orders/${created.id}`);
     } catch {
       // createProductionOrderAtom already toasted the error — keep the form.
     } finally {
@@ -416,7 +418,7 @@ const ProductionOrderDetails = () => {
   const setImports = useSetAtom(setImportsAtom);
   const nextNumber = useAtomValue(nextProductionOrderNumberAtom);
 
-  const [orderId, setOrderId] = useAtom(productionOrderIdAtom);
+  const setOrderId = useSetAtom(productionOrderIdAtom);
   const orderLoadable = useAtomValue(loadableOrderAtom);
   const order = orderLoadable.state === "hasData" ? orderLoadable.data : undefined;
   const createOrder = useSetAtom(createProductionOrderAtom);
@@ -446,13 +448,6 @@ const ProductionOrderDetails = () => {
     if (!isNew) setOrderId(id ?? null);
     return () => setOrderId(null);
   }, [id, isNew, setProducts, setImports, setOrderId]);
-
-  // After create, navigate to the new order.
-  useEffect(() => {
-    if (isNew && orderId) {
-      navigate(`/production-orders/${orderId}`);
-    }
-  }, [isNew, orderId, navigate]);
 
   const handleDelete = async () => {
     if (!id || isNew) return;

@@ -128,6 +128,7 @@ export const inboundDeliveryAtom = atom(
         message.success(t`Goods receipt created`);
         const list = get(inboundDeliveriesAtom);
         set(inboundDeliveriesAtom, [created, ...list]);
+        return created;
       } else {
         const data = {
           ...delivery,
