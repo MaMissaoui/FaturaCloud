@@ -1,13 +1,13 @@
 # Migrating a paper loan register — plan
 
-Status: proposal, not started (2026-09-30). Four decisions need the owner (see "Decisions
-needed"). Motivated by counter businesses such as ELECTRO MISSAOUI that run their credit sales from a
+Status: decided, not started (2026-09-30). The owner's answers are recorded under
+"Decisions". Motivated by counter businesses such as ELECTRO MISSAOUI that run their credit sales from a
 paper register (a customer, what was sold, the price, the deposit, then installments written in
 by hand) and want the Cash Book's Loan status to take over from it.
 
 ## Goal
 
-At a chosen **cutover date**, every loan still open in the paper register exists in the app, with
+At a chosen **cutover date**, every loan in the paper register — open ones and, for the customer's history, settled ones (decision A) — exists in the app, with
 the following, so that from the next morning every collection is recorded at the counter:
 
 - the right customer (with CIN, phones and guarantor);
@@ -38,25 +38,32 @@ So a migrated loan must be a **receivable brought forward**, not a sale.
 
 ## Proposed approach: an opening-balance loan import
 
-### The accounting
+### The accounting (kept minimal, decision C)
 
-Each migrated loan becomes an invoice marked as migrated (a new column, e.g.
-`invoices.origin = 'opening'`, migration `0097`), dated with its **original sale date**. Its GL
-effect is posted on the **cutover date**:
+Real accounting is done outside the app, so the app only needs its own books to stay coherent.
+There's no new account, and no accountant step.
 
-- **The invoice's entry:** Dr Accounts Receivable, Cr **Opening balance** (an equity account;
-  a new default-account role `openingBalanceAccountId`, created by the chart templates and
-  backfilled for existing organizations), for the original total.
-- **Paid to date:** one payment record, method `opening`, dated the cutover, applied to the
-  invoice as a whole: Dr Opening balance, Cr Accounts Receivable. It never touches the register,
-  so the Cash Book's daily cash stays true.
-- **Net effect:** AR = the outstanding total and Opening balance = the same amount. That's the
-  standard opening-balance treatment the accountant reconciles against the old books. Nothing
-  touches revenue, VAT, COGS, stock or cash.
+Each migrated loan becomes an invoice marked as migrated (a new column,
+`invoices.origin = 'opening'`, migration `0097`), dated with its **original sale date**.
+
+- **An open loan** posts **one** entry, dated the **cutover date**, for its **outstanding**
+  balance: Dr Accounts Receivable, Cr the organization's existing **Retained Earnings** account
+  (`organizations.retainedEarningsAccountId`, which every chart template already sets). Later
+  Cash Book collections post as usual (Dr register, Cr AR), so AR runs down to zero as the loan
+  is paid.
+- **A settled loan** (paid to date = total) posts **nothing**: it's history only.
+- **Paid to date** is one payment record, method `opening`, dated the cutover, applied to the
+  invoice as a whole, with **no GL entry**, since the invoice's entry already carries only the
+  outstanding balance. It never touches the register, so the Cash Book's daily cash stays true.
+- **No revenue, VAT, COGS, stock or cash** anywhere.
 - **Lines:** product, quantity and gross amount, with **no tax rate**.
 - **Visibility:** the paid-to-date payment shows as **"Opening balance"** in the Cash Book's
   Payment history and on the invoice's PaymentPanel, not as "Cash". It stays out of the register's
   day totals, which are filtered by the register account.
+- **Loan status lists every migrated loan,** settled ones included. Its filter hides an invoice
+  cleared by exactly one whole-invoice payment (a pure cash sale), which is exactly what a
+  settled migrated loan looks like, so `origin = 'opening'` always counts as a loan there.
+- **A fiscal year must cover the cutover date,** the same requirement as any Cash Book sale.
 
 ### Reports
 
@@ -156,8 +163,9 @@ template, then upload. It adds a **dry run**, because it creates financial recor
 1. **Pick the cutover date,** e.g. the first of a month, a day the shop is closed.
 2. **Customers:** optionally import them first with the existing Clients Excel import. The loan
    import can also create them.
-3. **Transcribe** the open loans into the template. This is the real effort, and it can be split
-   across people by book or page range. Skip settled loans (see decision A).
+3. **Transcribe** the loans into the template, open and settled. This is the real effort, and
+   it can be split across people by book or page range. Open loans first: they're what the
+   counter needs on day one, and settled ones can follow in a second batch.
 4. **Dry run.** Compare the report's grand total and per-customer totals with the paper book.
    Fix, then repeat.
 5. **Stock count:** the stock upload, the same day.
@@ -167,27 +175,22 @@ template, then upload. It adds a **dry run**, because it creates financial recor
    or record them in the Cash Book right after it.
 8. **Freeze and archive the paper register,** noting the cutover date on its last page.
 
-## Decisions needed
+## Decisions (owner, 2026-09-30)
 
-- **A. Scope:** open loans only (recommended), or also settled loans for customer history? Settled
-  loans add typing for no balance. Their value is "this customer always pays", which a note
-  field can carry.
-- **B. Past installments:** a single "Paid to date" per loan (recommended), or every installment
-  as its own dated row on a second sheet? Individual rows give a full history in the app, but
-  roughly triple the transcription work and all post on the cutover date anyway.
-  - **Consequence for multi-item loans:** a whole-loan paid amount is spread across the lines
-    (`allocateInvoiceLines`), so every line shows a partial balance. The counter settles one line
-    per payment, capped at that line's outstanding, so the cashier would split each collection
-    across lines.
-  - To avoid that, the template can take an optional **Paid to date per line**. The book usually
-    records one running balance per loan, though, so it would have to be apportioned by hand.
-  - Alternatively, the Cash Book could gain a "pay the whole loan" collection. That's a small,
-    separate change, useful beyond the migration too.
-- **C. Accounting treatment:** opening balance at cutover (recommended, above), to be confirmed
-  with the accountant, including which equity account to credit. The alternative is posting to
-  a temporary suspense account the accountant clears.
-- **D. Reports:** exclude migrated loans from Sales analytics and Tax Summary (recommended), or
-  include them in their original months?
+- **A. Scope: open and settled loans.** Settled loans give the customer's history ("this customer
+  always pays"). They post no GL entry, and Loan status lists them as settled. The import can
+  take them in the same file or a later batch.
+- **B. Past installments: one "Paid to date" amount per loan.** It's the simplest to transcribe.
+  - **Consequence for multi-item loans:** the amount is spread across the lines
+    (`allocateInvoiceLines`), so every line shows a partial balance, and the counter settles one
+    line per payment, capped at that line's outstanding.
+  - Most paper loans are one item, so this matters little. If it bothers the cashiers, a "pay the
+    whole loan" collection in the Cash Book is the follow-up, useful beyond the migration too.
+- **C. Accounting: as simple as possible.** Real accounting is done elsewhere. See "The
+  accounting" above: one entry per open loan against Retained Earnings, nothing for settled
+  loans, and no new account.
+- **D. Reports: exclude migrated loans** from the sales analytics, Tax Summary and the
+  Dashboard's revenue figures.
 
 ## Out of scope, possibly later
 
@@ -202,8 +205,8 @@ template, then upload. It adds a **dry run**, because it creates financial recor
 
 Four phases, each its own PR:
 
-1. **Migration and posting:** migration `0097` (`invoices.origin`, `importBatchId`, the opening
-   balance account role and backfill), plus the posting path for opening invoices and payments,
+1. **Migration and posting:** migration `0097` (`invoices.origin`, `importBatchId`), plus the
+   posting path for opening invoices and payments (outstanding against Retained Earnings),
    the report exclusions, and the frozen-invoice guards. Go tests: GL balances, Loan status, each
    excluded report, and one test per path in the frozen-invoice table.
 2. **Server-side import:** template export, dry run, all-or-nothing import, idempotency by Loan
