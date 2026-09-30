@@ -6934,7 +6934,7 @@ msgstr "Which built-in template this organization's invoices, orders, purchase o
 #~ msgid "Which template invoices for this organization render with."
 #~ msgstr "Which template invoices for this organization render with."
 
-#: src/components/payments/payment-products-cell.tsx:128
+#: src/components/payments/payment-products-cell.tsx:145
 msgid "whole invoice"
 msgstr "whole invoice"
 

@@ -6938,7 +6938,7 @@ msgstr "Mit welcher integrierten Vorlage Rechnungen, Aufträge, Bestellungen, Li
 #~ msgid "Which template invoices for this organization render with."
 #~ msgstr "Mit welcher Vorlage Rechnungen dieser Organisation gerendert werden."
 
-#: src/components/payments/payment-products-cell.tsx:128
+#: src/components/payments/payment-products-cell.tsx:145
 msgid "whole invoice"
 msgstr "ganze Rechnung"
 

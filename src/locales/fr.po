@@ -6938,7 +6938,7 @@ msgstr "Modèle intégré utilisé pour exporter les factures, commandes, comman
 #~ msgid "Which template invoices for this organization render with."
 #~ msgstr "Le modèle avec lequel les factures de cette organisation sont générées."
 
-#: src/components/payments/payment-products-cell.tsx:128
+#: src/components/payments/payment-products-cell.tsx:145
 msgid "whole invoice"
 msgstr "facture entière"
 
