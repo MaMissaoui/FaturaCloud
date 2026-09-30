@@ -418,7 +418,7 @@ msgstr "Erhaltener Betrag"
 msgid "Amount received ({currency})"
 msgstr "Erhaltener Betrag ({currency})"
 
-#: src/components/payments/payment-products-cell.tsx:116
+#: src/components/payments/payment-products-cell.tsx:126
 msgid "Amounts include tax and any discount."
 msgstr "Beträge inklusive Steuer und etwaigem Rabatt."
 
@@ -1215,7 +1215,7 @@ msgstr "Das Dashboard konnte nicht geladen werden"
 msgid "Couldn't load the inventory valuation report"
 msgstr "Der Lagerbewertungsbericht konnte nicht geladen werden"
 
-#: src/components/payments/payment-products-cell.tsx:56
+#: src/components/payments/payment-products-cell.tsx:59
 msgid "Couldn't load the invoice lines"
 msgstr "Die Rechnungspositionen konnten nicht geladen werden"
 
@@ -3182,7 +3182,7 @@ msgstr "Bestandsbewertung"
 #: src/components/cash-book/loan-register.tsx:355
 #: src/components/invoices/pdf-tunisia.tsx:167
 #: src/components/invoices/pdf.tsx:214
-#: src/components/payments/payment-products-cell.tsx:60
+#: src/components/payments/payment-products-cell.tsx:63
 #: src/layouts/base.tsx:284
 #: src/routes/accounting/reports/ar-aging.tsx:137
 #: src/routes/cash-book.tsx:612
@@ -3272,7 +3272,7 @@ msgstr "Rechnungseinstellungen"
 msgid "Invoice state updated"
 msgstr "Rechnungsstatus aktualisiert"
 
-#: src/components/payments/payment-products-cell.tsx:62
+#: src/components/payments/payment-products-cell.tsx:65
 msgid "Invoice total"
 msgstr "Rechnungsbetrag"
 
@@ -3487,7 +3487,7 @@ msgstr "Die Positionen sind gesperrt, weil für diese Bestellung bereits Ware ei
 msgid "Line items are locked because this delivery has already shipped."
 msgstr "Die Positionen sind gesperrt, da diese Lieferung bereits versandt wurde."
 
-#: src/components/payments/payment-products-cell.tsx:105
+#: src/components/payments/payment-products-cell.tsx:115
 msgid "Line total"
 msgstr "Positionssumme"
 
@@ -4734,7 +4734,7 @@ msgstr "Seitenausrichtung"
 msgid "Paid"
 msgstr "Bezahlt"
 
-#: src/components/payments/payment-products-cell.tsx:84
+#: src/components/payments/payment-products-cell.tsx:92
 msgid "Paid here"
 msgstr "Hier bezahlt"
 
@@ -5082,7 +5082,7 @@ msgstr "Probleme"
 #: src/components/cash-book/loan-register.tsx:249
 #: src/components/cash-book/loan-register.tsx:360
 #: src/components/line-items/table.tsx:331
-#: src/components/payments/payment-products-cell.tsx:76
+#: src/components/payments/payment-products-cell.tsx:78
 #: src/components/products/form.tsx:410
 #: src/components/stock/movement-form.tsx:138
 #: src/routes/accounting/reports/inventory-valuation.tsx:143
@@ -5309,7 +5309,7 @@ msgstr "Einkauf"
 
 #: src/components/cash-book/loan-register.tsx:260
 #: src/components/line-items/table.tsx:394
-#: src/components/payments/payment-products-cell.tsx:90
+#: src/components/payments/payment-products-cell.tsx:100
 #: src/routes/cash-book.tsx:784
 msgid "Qty"
 msgstr "Menge"
@@ -6573,7 +6573,7 @@ msgstr "Dieser Monat"
 msgid "This organization tracks stock by quantity only, so nothing is posted to the Inventory account. Values are shown only for products with a unit cost."
 msgstr "Diese Organisation führt den Bestand nur nach Mengen, daher wird nichts auf das Bestandskonto gebucht. Werte werden nur für Produkte mit Stückkosten angezeigt."
 
-#: src/components/payments/payment-products-cell.tsx:65
+#: src/components/payments/payment-products-cell.tsx:68
 msgid "This payment"
 msgstr "Diese Zahlung"
 
@@ -6871,7 +6871,7 @@ msgid "Unit of measure updated"
 msgstr "Maßeinheit aktualisiert"
 
 #: src/components/line-items/table.tsx:447
-#: src/components/payments/payment-products-cell.tsx:92
+#: src/components/payments/payment-products-cell.tsx:102
 msgid "Unit price"
 msgstr "Einzelpreis"
 
@@ -7163,7 +7163,7 @@ msgstr "Mit welcher integrierten Vorlage Rechnungen, Aufträge, Bestellungen, Li
 #~ msgid "Which template invoices for this organization render with."
 #~ msgstr "Mit welcher Vorlage Rechnungen dieser Organisation gerendert werden."
 
-#: src/components/payments/payment-products-cell.tsx:145
+#: src/components/payments/payment-products-cell.tsx:155
 msgid "whole invoice"
 msgstr "ganze Rechnung"
 
