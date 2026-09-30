@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { atomWithRefresh } from "jotai/utils";
 import type { Dayjs } from "dayjs";
 import type { Order, OrderLineItem } from "src/types/models";
 import { message } from "src/utils/message";
@@ -44,7 +45,7 @@ export const setOrdersAtom = atom(null, async (get, set) => {
 // client-side scan of the loaded list, which was fragile under pagination
 // or filtering (it only ever saw whatever page of orders happened to be
 // loaded into ordersAtom).
-export const nextOrderNumberAtom = atom(async (get) => {
+export const nextOrderNumberAtom = atomWithRefresh(async (get) => {
   const organizationId = get(organizationIdAtom);
   if (!organizationId) return "ORD-001";
   try {
@@ -123,6 +124,7 @@ export const orderAtom = atom(
         };
         const created = await CreateOrder(data);
         set(orderIdAtom, created.id);
+        set(nextOrderNumberAtom);
         message.success(t`Order created`);
         const orders = get(ordersAtom);
         set(ordersAtom, [created, ...orders]);

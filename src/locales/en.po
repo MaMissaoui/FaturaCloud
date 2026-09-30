@@ -1706,11 +1706,11 @@ msgstr "Delivery {deliveryNumber}"
 msgid "Delivery address"
 msgstr "Delivery address"
 
-#: src/atoms/delivery.ts:94
+#: src/atoms/delivery.ts:96
 msgid "Delivery created"
 msgstr "Delivery created"
 
-#: src/atoms/delivery.ts:109
+#: src/atoms/delivery.ts:111
 msgid "Delivery creation failed"
 msgstr "Delivery creation failed"
 
@@ -1727,12 +1727,12 @@ msgstr "Delivery date"
 msgid "Delivery date is required"
 msgstr "Delivery date is required"
 
-#: src/atoms/delivery.ts:148
+#: src/atoms/delivery.ts:150
 msgid "Delivery deleted"
 msgstr "Delivery deleted"
 
-#: src/atoms/delivery.ts:150
-#: src/atoms/delivery.ts:155
+#: src/atoms/delivery.ts:152
+#: src/atoms/delivery.ts:157
 msgid "Delivery deletion failed"
 msgstr "Delivery deletion failed"
 
@@ -1740,15 +1740,15 @@ msgstr "Delivery deletion failed"
 msgid "Delivery number"
 msgstr "Delivery number"
 
-#: src/atoms/delivery.ts:105
+#: src/atoms/delivery.ts:107
 msgid "Delivery saved"
 msgstr "Delivery saved"
 
-#: src/atoms/delivery.ts:132
+#: src/atoms/delivery.ts:134
 msgid "Delivery status updated"
 msgstr "Delivery status updated"
 
-#: src/atoms/delivery.ts:109
+#: src/atoms/delivery.ts:111
 msgid "Delivery update failed"
 msgstr "Delivery update failed"
 
@@ -2256,11 +2256,11 @@ msgstr "Failed to fetch clients"
 msgid "Failed to fetch countries"
 msgstr "Failed to fetch countries"
 
-#: src/atoms/delivery.ts:42
+#: src/atoms/delivery.ts:43
 msgid "Failed to fetch deliveries"
 msgstr "Failed to fetch deliveries"
 
-#: src/atoms/delivery.ts:72
+#: src/atoms/delivery.ts:73
 msgid "Failed to fetch delivery"
 msgstr "Failed to fetch delivery"
 
@@ -2272,11 +2272,11 @@ msgstr "Failed to fetch fiscal periods"
 msgid "Failed to fetch fiscal years"
 msgstr "Failed to fetch fiscal years"
 
-#: src/atoms/inbound-delivery.ts:92
+#: src/atoms/inbound-delivery.ts:93
 msgid "Failed to fetch goods receipt"
 msgstr "Failed to fetch goods receipt"
 
-#: src/atoms/inbound-delivery.ts:38
+#: src/atoms/inbound-delivery.ts:39
 msgid "Failed to fetch goods receipts"
 msgstr "Failed to fetch goods receipts"
 
@@ -2316,11 +2316,11 @@ msgstr "Failed to fetch journal entry"
 msgid "Failed to fetch journals"
 msgstr "Failed to fetch journals"
 
-#: src/atoms/order.ts:97
+#: src/atoms/order.ts:98
 msgid "Failed to fetch order"
 msgstr "Failed to fetch order"
 
-#: src/atoms/order.ts:37
+#: src/atoms/order.ts:38
 msgid "Failed to fetch orders"
 msgstr "Failed to fetch orders"
 
@@ -2348,11 +2348,11 @@ msgstr "Failed to fetch product"
 msgid "Failed to fetch product families"
 msgstr "Failed to fetch product families"
 
-#: src/atoms/production-order.ts:76
+#: src/atoms/production-order.ts:77
 msgid "Failed to fetch production order"
 msgstr "Failed to fetch production order"
 
-#: src/atoms/production-order.ts:33
+#: src/atoms/production-order.ts:34
 msgid "Failed to fetch production orders"
 msgstr "Failed to fetch production orders"
 
@@ -2360,11 +2360,11 @@ msgstr "Failed to fetch production orders"
 msgid "Failed to fetch products"
 msgstr "Failed to fetch products"
 
-#: src/atoms/purchase-order.ts:98
+#: src/atoms/purchase-order.ts:99
 msgid "Failed to fetch purchase order"
 msgstr "Failed to fetch purchase order"
 
-#: src/atoms/purchase-order.ts:39
+#: src/atoms/purchase-order.ts:40
 msgid "Failed to fetch purchase orders"
 msgstr "Failed to fetch purchase orders"
 
@@ -2528,11 +2528,11 @@ msgstr "Failed to send feedback. Please try again."
 msgid "Failed to update country"
 msgstr "Failed to update country"
 
-#: src/atoms/delivery.ts:136
+#: src/atoms/delivery.ts:138
 msgid "Failed to update delivery status"
 msgstr "Failed to update delivery status"
 
-#: src/atoms/inbound-delivery.ts:185
+#: src/atoms/inbound-delivery.ts:187
 msgid "Failed to update goods receipt status"
 msgstr "Failed to update goods receipt status"
 
@@ -2548,19 +2548,19 @@ msgstr "Failed to update invoice state"
 msgid "Failed to update member role"
 msgstr "Failed to update member role"
 
-#: src/atoms/order.ts:170
+#: src/atoms/order.ts:172
 msgid "Failed to update order status"
 msgstr "Failed to update order status"
 
-#: src/atoms/production-order.ts:127
+#: src/atoms/production-order.ts:129
 msgid "Failed to update production order status"
 msgstr "Failed to update production order status"
 
-#: src/atoms/purchase-order.ts:232
+#: src/atoms/purchase-order.ts:237
 msgid "Failed to update purchase order"
 msgstr "Failed to update purchase order"
 
-#: src/atoms/purchase-order.ts:186
+#: src/atoms/purchase-order.ts:191
 msgid "Failed to update purchase order status"
 msgstr "Failed to update purchase order status"
 
@@ -2766,32 +2766,32 @@ msgstr "GL Export"
 msgid "Goods Receipt"
 msgstr "Goods Receipt"
 
-#: src/atoms/inbound-delivery.ts:128
+#: src/atoms/inbound-delivery.ts:130
 msgid "Goods receipt created"
 msgstr "Goods receipt created"
 
-#: src/atoms/inbound-delivery.ts:151
+#: src/atoms/inbound-delivery.ts:153
 msgid "Goods receipt creation failed"
 msgstr "Goods receipt creation failed"
 
-#: src/atoms/inbound-delivery.ts:198
+#: src/atoms/inbound-delivery.ts:200
 msgid "Goods receipt deleted"
 msgstr "Goods receipt deleted"
 
-#: src/atoms/inbound-delivery.ts:200
-#: src/atoms/inbound-delivery.ts:205
+#: src/atoms/inbound-delivery.ts:202
+#: src/atoms/inbound-delivery.ts:207
 msgid "Goods receipt deletion failed"
 msgstr "Goods receipt deletion failed"
 
-#: src/atoms/inbound-delivery.ts:142
+#: src/atoms/inbound-delivery.ts:144
 msgid "Goods receipt saved"
 msgstr "Goods receipt saved"
 
-#: src/atoms/inbound-delivery.ts:175
+#: src/atoms/inbound-delivery.ts:177
 msgid "Goods receipt status updated"
 msgstr "Goods receipt status updated"
 
-#: src/atoms/inbound-delivery.ts:150
+#: src/atoms/inbound-delivery.ts:152
 msgid "Goods receipt update failed"
 msgstr "Goods receipt update failed"
 
@@ -4348,11 +4348,11 @@ msgstr "Order {orderNumber}"
 msgid "Order #"
 msgstr "Order #"
 
-#: src/atoms/order.ts:126
+#: src/atoms/order.ts:128
 msgid "Order created"
 msgstr "Order created"
 
-#: src/atoms/order.ts:149
+#: src/atoms/order.ts:151
 msgid "Order creation failed"
 msgstr "Order creation failed"
 
@@ -4370,12 +4370,12 @@ msgstr "Order date"
 msgid "Order date is required"
 msgstr "Order date is required"
 
-#: src/atoms/order.ts:181
+#: src/atoms/order.ts:183
 msgid "Order deleted"
 msgstr "Order deleted"
 
-#: src/atoms/order.ts:183
-#: src/atoms/order.ts:188
+#: src/atoms/order.ts:185
+#: src/atoms/order.ts:190
 msgid "Order deletion failed"
 msgstr "Order deletion failed"
 
@@ -4391,15 +4391,15 @@ msgstr "Order number"
 msgid "Order number is required"
 msgstr "Order number is required"
 
-#: src/atoms/order.ts:142
+#: src/atoms/order.ts:144
 msgid "Order saved"
 msgstr "Order saved"
 
-#: src/atoms/order.ts:164
+#: src/atoms/order.ts:166
 msgid "Order status updated"
 msgstr "Order status updated"
 
-#: src/atoms/order.ts:149
+#: src/atoms/order.ts:151
 msgid "Order update failed"
 msgstr "Order update failed"
 
@@ -5006,24 +5006,24 @@ msgstr "product(s)"
 msgid "Production Order"
 msgstr "Production Order"
 
-#: src/atoms/production-order.ts:92
+#: src/atoms/production-order.ts:94
 msgid "Production order created"
 msgstr "Production order created"
 
-#: src/atoms/production-order.ts:98
+#: src/atoms/production-order.ts:100
 msgid "Production order creation failed"
 msgstr "Production order creation failed"
 
-#: src/atoms/production-order.ts:140
+#: src/atoms/production-order.ts:142
 msgid "Production order deleted"
 msgstr "Production order deleted"
 
-#: src/atoms/production-order.ts:142
-#: src/atoms/production-order.ts:147
+#: src/atoms/production-order.ts:144
+#: src/atoms/production-order.ts:149
 msgid "Production order deletion failed"
 msgstr "Production order deletion failed"
 
-#: src/atoms/production-order.ts:117
+#: src/atoms/production-order.ts:119
 msgid "Production order status updated"
 msgstr "Production order status updated"
 
@@ -5063,40 +5063,40 @@ msgstr "Purchase Order"
 msgid "Purchase order {orderNumber}"
 msgstr "Purchase order {orderNumber}"
 
-#: src/atoms/purchase-order.ts:137
+#: src/atoms/purchase-order.ts:142
 msgid "Purchase order created"
 msgstr "Purchase order created"
 
-#: src/atoms/purchase-order.ts:161
+#: src/atoms/purchase-order.ts:166
 msgid "Purchase order creation failed"
 msgstr "Purchase order creation failed"
 
-#: src/atoms/purchase-order.ts:244
+#: src/atoms/purchase-order.ts:249
 msgid "Purchase order deleted"
 msgstr "Purchase order deleted"
 
-#: src/atoms/purchase-order.ts:246
 #: src/atoms/purchase-order.ts:251
+#: src/atoms/purchase-order.ts:256
 msgid "Purchase order deletion failed"
 msgstr "Purchase order deletion failed"
 
-#: src/atoms/purchase-order.ts:228
+#: src/atoms/purchase-order.ts:233
 msgid "Purchase order linked"
 msgstr "Purchase order linked"
 
-#: src/atoms/purchase-order.ts:150
+#: src/atoms/purchase-order.ts:155
 msgid "Purchase order saved"
 msgstr "Purchase order saved"
 
-#: src/atoms/purchase-order.ts:178
+#: src/atoms/purchase-order.ts:183
 msgid "Purchase order status updated"
 msgstr "Purchase order status updated"
 
-#: src/atoms/purchase-order.ts:228
+#: src/atoms/purchase-order.ts:233
 msgid "Purchase order unlinked"
 msgstr "Purchase order unlinked"
 
-#: src/atoms/purchase-order.ts:160
+#: src/atoms/purchase-order.ts:165
 msgid "Purchase order update failed"
 msgstr "Purchase order update failed"
 
