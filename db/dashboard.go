@@ -313,7 +313,8 @@ func loanLinesQuery(where string) string {
 // amount and then line id breaking ties so the order is deterministic.
 func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusRow, error) {
 	query := `SELECT * FROM (` + loanLinesQuery(`i.organizationId = ? AND i.state IN ('sent', 'paid')`) + `)
-		WHERE (appCount = 0 OR appCount > 1 OR invoicePaid < invoiceTotal OR lineAppCount > 0)`
+		WHERE (appCount = 0 OR appCount > 1 OR invoicePaid < invoiceTotal OR lineAppCount > 0
+		       OR invoiceId IN (SELECT id FROM invoices WHERE origin = '` + OpeningOrigin + `'))`
 	args := []any{organizationID}
 	if clientID != "" {
 		query += " AND clientId = ?"

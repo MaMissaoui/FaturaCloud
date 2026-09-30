@@ -30,6 +30,16 @@ func movementKindLabel(kind string) string {
 
 // paymentMethodLabel mirrors src/types/payment.ts's paymentMethodLabel —
 // English only, for the same reason movementKindLabel above is.
+// paymentHistoryMethodLabel is paymentMethodLabel for a payment row: a
+// migrated loan's paid-to-date (db/opening_loan.go) is labelled as such, not
+// by its placeholder method "other" — it wasn't a payment taken in the app.
+func paymentHistoryMethodLabel(p Payment) string {
+	if p.Origin != nil && *p.Origin == OpeningOrigin {
+		return "Opening balance"
+	}
+	return paymentMethodLabel(p.Method)
+}
+
 func paymentMethodLabel(method string) string {
 	switch method {
 	case "bank_transfer":
@@ -516,7 +526,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 		}
 		if err := setRow(f, sheet, row, []any{
 			formatOrgDate(p.Date, org.DateFormat, orgLocation(org.Timezone)), customer, strings.Join(p.InvoiceNumbers, ", "),
-			paymentProductsLabel(p), paymentMethodLabel(p.Method), reference,
+			paymentProductsLabel(p), paymentHistoryMethodLabel(p), reference,
 			paymentStatusLabel(p.Status), money(p.Amount),
 		}); err != nil {
 			return nil, "", err

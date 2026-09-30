@@ -346,6 +346,9 @@ func (d *Database) FetchInvoiceExportData(invoiceID string) (*Invoice, []Invoice
 	if err != nil {
 		return fail(fmt.Errorf("fetch_invoice_export_data: get invoice: %w", err))
 	}
+	if isOpeningLoan(invoice) {
+		return fail(openingLoanFrozenError(invoice, "exported (it's a loan brought forward, not an invoice the app issued — use the Loan status export)"))
+	}
 	lineItems, err := d.GetInvoiceLineItems(invoiceID)
 	if err != nil {
 		return fail(fmt.Errorf("fetch_invoice_export_data: get line items: %w", err))

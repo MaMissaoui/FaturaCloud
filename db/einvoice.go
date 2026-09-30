@@ -88,6 +88,9 @@ func (d *Database) GenerateEInvoice(invoiceID string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("einvoice get_invoice: %w", err)
 	}
+	if isOpeningLoan(invoice) {
+		return nil, openingLoanFrozenError(invoice, "exported as an e-invoice")
+	}
 	lineItems, err := d.GetInvoiceLineItems(invoiceID)
 	if err != nil {
 		return nil, fmt.Errorf("einvoice get_line_items: %w", err)

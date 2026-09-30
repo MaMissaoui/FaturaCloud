@@ -101,7 +101,7 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 	if invoice.ExchangeRate != nil {
 		return nil, newValidationError("a foreign-currency invoice can't be settled from the Cash Book — record the payment from the invoice page")
 	}
-	if postedEntry, err := d.FindPostedEntryForSourceDocument("invoice", invoice.ID); err != nil {
+	if postedEntry, err := d.findInvoiceReceivableEntry(invoice); err != nil {
 		return nil, err
 	} else if postedEntry == nil {
 		return nil, newValidationError("invoice has no posted GL entry — send it first")
