@@ -2965,7 +2965,7 @@ msgstr "Importé le"
 
 #: src/routes/settings/loan-import.tsx:244
 msgid "Imported. The loans are now in the Cash Book's Loan status."
-msgstr "Importé. Les prêts figurent maintenant dans l'état des crédits de la caisse."
+msgstr "Importé. Les prêts figurent maintenant dans le Statut des crédits du Livre de caisse."
 
 #: src/layouts/base.tsx:582
 #: src/routes/imports.tsx:122
