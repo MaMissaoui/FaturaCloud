@@ -94,6 +94,7 @@ export const deliveryAtom = atom(
         message.success(t`Delivery created`);
         const list = get(deliveriesAtom);
         set(deliveriesAtom, [created, ...list]);
+        return created;
       } else {
         const data = {
           ...delivery,

@@ -126,6 +126,7 @@ export const orderAtom = atom(
         message.success(t`Order created`);
         const orders = get(ordersAtom);
         set(ordersAtom, [created, ...orders]);
+        return created;
       } else {
         const data = {
           ...order,

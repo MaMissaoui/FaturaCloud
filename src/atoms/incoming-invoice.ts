@@ -122,6 +122,7 @@ export const incomingInvoiceAtom = atom(
         message.success(t`Incoming invoice created`);
         const list = get(incomingInvoicesAtom);
         set(incomingInvoicesAtom, [created, ...list]);
+        return created;
       } else {
         const updated = await UpdateIncomingInvoice(invoiceId, toPayload(invoice));
         message.success(t`Incoming invoice saved`);

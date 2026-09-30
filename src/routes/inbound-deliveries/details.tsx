@@ -17,7 +17,7 @@ import {
   Tooltip,
   message,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -38,6 +38,7 @@ import lowerCase from "lodash/lowerCase";
 import map from "lodash/map";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
+import useResetFormOnNew from "src/hooks/useResetFormOnNew";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 
@@ -116,7 +117,7 @@ const InboundDeliveryDetails = () => {
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
   const nextNumber = useAtomValue(nextInboundDeliveryNumberAtom);
 
-  const [deliveryId, setDeliveryId] = useAtom(inboundDeliveryIdAtom);
+  const setDeliveryId = useSetAtom(inboundDeliveryIdAtom);
   const deliveryLoadable = useAtomValue(loadableDeliveryAtom);
   const setDelivery = useSetAtom(inboundDeliveryAtom);
   const delivery = deliveryLoadable.state === "hasData" ? deliveryLoadable.data : undefined;
@@ -142,6 +143,7 @@ const InboundDeliveryDetails = () => {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useSaveShortcut(form);
+  useResetFormOnNew(form, id);
   useUnsavedChangesWarning(isDirty);
 
   // A different document starts without the previous one's optimistic
@@ -217,13 +219,6 @@ const InboundDeliveryDetails = () => {
     };
   }, [isNew, prefillOrderId, purchaseOrders, organization, form]);
 
-  // After create, navigate to the new receipt.
-  useEffect(() => {
-    if (isNew && deliveryId) {
-      navigate(`/inbound-deliveries/${deliveryId}`);
-    }
-  }, [isNew, deliveryId, navigate]);
-
   useEffect(() => {
     if (!isNew && delivery && typeof delivery === "object" && !("then" in delivery)) {
       form.resetFields();
@@ -242,8 +237,9 @@ const InboundDeliveryDetails = () => {
   // note on the purchase order page: under StrictMode the Form can remount
   // with no registered fields, and onFinish then reports nothing.
   const handleSubmit = async () => {
-    await setDelivery(form.getFieldsValue(true));
+    const created = await setDelivery(form.getFieldsValue(true));
     setIsDirty(false);
+    if (isNew && created) navigate(`/inbound-deliveries/${created.id}`);
   };
 
   const handleDelete = async () => {

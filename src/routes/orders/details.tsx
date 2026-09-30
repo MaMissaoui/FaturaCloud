@@ -20,7 +20,7 @@ import {
   Tag,
   Tooltip,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -46,6 +46,7 @@ import { ExportOrderDocument, GetOrderDeliveredQuantities } from "src/api";
 import { useFetch } from "src/hooks/useFetch";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
+import useResetFormOnNew from "src/hooks/useResetFormOnNew";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
@@ -137,7 +138,7 @@ const OrderDetails = () => {
     [linkedDeliveries],
   );
 
-  const [orderId, setOrderId] = useAtom(orderIdAtom);
+  const setOrderId = useSetAtom(orderIdAtom);
   const orderLoadable = useAtomValue(loadableOrderAtom);
   const setOrder = useSetAtom(orderAtom);
   const order = orderLoadable.state === "hasData" ? orderLoadable.data : undefined;
@@ -150,6 +151,7 @@ const OrderDetails = () => {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useSaveShortcut(form);
+  useResetFormOnNew(form, id);
   useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
@@ -171,13 +173,6 @@ const OrderDetails = () => {
     () => GetOrderDeliveredQuantities(id!).catch(() => NO_QUANTITIES),
     NO_QUANTITIES,
   );
-
-  // After create, navigate to the new order
-  useEffect(() => {
-    if (isNew && orderId) {
-      navigate(`/orders/${orderId}`);
-    }
-  }, [isNew, orderId, navigate]);
 
   // Populate form when order loads
   useEffect(() => {
@@ -204,8 +199,9 @@ const OrderDetails = () => {
   );
 
   const handleSubmit = async (values: any) => {
-    await setOrder(values);
+    const created = await setOrder(values);
     setIsDirty(false);
+    if (isNew && created) navigate(`/orders/${created.id}`);
   };
 
   const handleDelete = async () => {

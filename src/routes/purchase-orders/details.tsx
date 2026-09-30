@@ -20,7 +20,7 @@ import {
   Tag,
   Tooltip,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -47,6 +47,7 @@ import { ExportPurchaseOrderDocument, GetPurchaseOrderReceivedQuantities } from 
 import { useFetch } from "src/hooks/useFetch";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
+import useResetFormOnNew from "src/hooks/useResetFormOnNew";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
@@ -166,7 +167,7 @@ const PurchaseOrderDetails = () => {
   // is exactly what NextPurchaseOrderNumber's MAX-based query exists to avoid.
   const nextNumber = useAtomValue(nextPurchaseOrderNumberAtom);
 
-  const [orderId, setOrderId] = useAtom(purchaseOrderIdAtom);
+  const setOrderId = useSetAtom(purchaseOrderIdAtom);
   const orderLoadable = useAtomValue(loadableOrderAtom);
   const setOrder = useSetAtom(purchaseOrderAtom);
   const order = orderLoadable.state === "hasData" ? orderLoadable.data : undefined;
@@ -180,6 +181,7 @@ const PurchaseOrderDetails = () => {
   const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useSaveShortcut(form);
+  useResetFormOnNew(form, id);
   useUnsavedChangesWarning(isDirty);
 
   // A different document starts without the previous one's optimistic
@@ -235,13 +237,6 @@ const PurchaseOrderDetails = () => {
   // over-freeze, and the server is the authority either way (it answers a
   // changed payload with a 409 naming the receipt).
   const lineItemsFrozen = !isNew && Object.keys(receivedQuantities).length > 0;
-
-  // After create, navigate to the new purchase order
-  useEffect(() => {
-    if (isNew && orderId) {
-      navigate(`/purchase-orders/${orderId}`);
-    }
-  }, [isNew, orderId, navigate]);
 
   // Populate form when the order loads. The `"then" in order` guard is because
   // the async read atom's value can transiently be a promise.
@@ -305,8 +300,9 @@ const PurchaseOrderDetails = () => {
   // Validation is unaffected: form.submit() still runs validateFields first and
   // only reaches this on success.
   const handleSubmit = async () => {
-    await setOrder(form.getFieldsValue(true));
+    const created = await setOrder(form.getFieldsValue(true));
     setIsDirty(false);
+    if (isNew && created) navigate(`/purchase-orders/${created.id}`);
   };
 
   const handleDelete = async () => {

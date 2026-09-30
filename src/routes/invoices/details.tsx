@@ -21,7 +21,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -40,6 +40,7 @@ import LineItemsTable, { ProductSelectCell } from "src/components/line-items/tab
 import { FieldFeedback } from "src/components/form-field-feedback";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
+import useResetFormOnNew from "src/hooks/useResetFormOnNew";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
 import { DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
@@ -151,7 +152,7 @@ const InvoiceDetails: React.FC = () => {
   } = theme.useToken();
   const { message } = App.useApp();
   const organization = useAtomValue(organizationAtom);
-  const [invoiceId, setInvoiceId] = useAtom(invoiceIdAtom);
+  const setInvoiceId = useSetAtom(invoiceIdAtom);
   const invoiceLoadable = useAtomValue(loadableInvoiceAtom);
   const setInvoice = useSetAtom(invoiceAtom);
   const invoice = invoiceLoadable.state === "hasData" ? invoiceLoadable.data : undefined;
@@ -204,13 +205,6 @@ const InvoiceDetails: React.FC = () => {
     };
   }, [id, isNew, setClients, setProducts, setInvoiceId, setTaxRates, setPaymentTerms]);
 
-  // Navigate to the new invoice after successful creation
-  useEffect(() => {
-    if (isNew && invoiceId) {
-      navigate(`/invoices/${invoiceId}`);
-    }
-  }, [isNew, invoiceId, navigate]);
-
   const getInitialValues = (): Record<string, unknown> => {
     // Antd form values are a heterogeneous bag (Dayjs dates, nested line
     // items, strings) that differs between the new-invoice and edit branches,
@@ -246,6 +240,7 @@ const InvoiceDetails: React.FC = () => {
   const [form] = Form.useForm();
 
   useSaveShortcut(form);
+  useResetFormOnNew(form, id);
 
   // Reset form when invoice data changes (e.g., after duplication)
   useEffect(() => {
@@ -263,7 +258,7 @@ const InvoiceDetails: React.FC = () => {
   }, [invoice, isNew, form]);
 
   const handleSubmit = async (values: any) => {
-    await setInvoice({
+    const created = await setInvoice({
       ...values,
       subTotal,
       taxTotal,
@@ -273,6 +268,7 @@ const InvoiceDetails: React.FC = () => {
       overdueCharge: values.overdueCharge,
     });
     setIsDirty(false);
+    if (isNew && created) navigate(`/invoices/${created.id}`);
   };
 
   const handleDelete = (id: string) => async () => {
