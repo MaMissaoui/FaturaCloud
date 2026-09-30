@@ -572,7 +572,8 @@ const RegisterPanel = ({ cb }: { cb: CashBookState }) => {
 };
 
 // The new layout's counter tab: search or serve a customer and ring up the
-// sale on the left, the till on the right (stacked on a narrow screen).
+// sale on the left, the till on the right from 1440px, stacked under the
+// sale below that (the .cash-book-counter rule in src/styles/base.scss).
 const Counter = ({ cb }: { cb: CashBookState }) => {
   const {
     isToday,
@@ -590,8 +591,8 @@ const Counter = ({ cb }: { cb: CashBookState }) => {
     setSelectedDate,
   } = cb;
   return (
-    <Row gutter={[16, 16]}>
-      <Col xs={24} xl={16} style={{ minWidth: 0 }}>
+    <div className="cash-book-counter">
+      <div style={{ minWidth: 0 }}>
         {!isToday && (
           <Alert
             type="info"
@@ -666,11 +667,11 @@ const Counter = ({ cb }: { cb: CashBookState }) => {
             <SaleForm cb={cb} />
           </>
         )}
-      </Col>
-      <Col xs={24} xl={8} style={{ minWidth: 0 }}>
+      </div>
+      <div style={{ minWidth: 0 }}>
         <RegisterPanel cb={cb} />
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 };
 

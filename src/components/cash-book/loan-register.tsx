@@ -274,6 +274,9 @@ const CustomerDetail = ({
                   title: t`Balance owing`,
                   key: "outstanding",
                   align: "right",
+                  // Pinned with the action: on a narrow screen Amount and Paid
+                  // scroll, but the balance and its Collect button stay.
+                  fixed: "right",
                   render: (_, row) => (
                     <Typography.Text strong style={figure}>
                       {money(row.outstanding)}
