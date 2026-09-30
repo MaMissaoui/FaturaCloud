@@ -85,11 +85,12 @@ producing this document.
 **Status:** 6 findings (F156–F161). The owner's decisions (2026-09-29):
 
 - **F156:** Ben Salah's time zone set to `Africa/Tunis` on production by the
-  owner. Code fix (new-organization form + seed-demo) in the Phase 1 PR.
-- **F157:** fixed in the Phase 1 PR.
+  owner. Code fix (new-organization form + seed-demo) in the Phase 1 PR (#434).
+- **F157:** fixed in the Phase 1 PR (#434).
 - **F159:** option 2 — restrict to Sales and Cash Book users (`general` keeps
   it, since it has Sales).
-- **F158, F159:** fixed in the Phase 2 PR.
+- **F158, F159:** fixed in the Phase 2 PR (#435).
+- **F160, F161:** fixed in the Phase 3 PR.
 
 ---
 
