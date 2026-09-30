@@ -47,7 +47,7 @@ volume, 2026-09-29, schema version 96, not dirty):
 | Check                                                                 | Result                                                                                       |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `organizations.timezone`                                              | Atlas Moto: `Africa/Tunis`; ELECTRO MISSAOUI: `Africa/Tunis`; **Ben Salah: NULL** (see F156) |
-| Cash Book sales (`movesStock = 1`)                                    | 1,245                                                                                        |
+| Cash Book sales (`movesStock = 1`)                                    | 1,245, all Ben Salah (demo data); ELECTRO 0, Atlas Moto 0                                    |
 | Sent/paid sales with a stock line but no stock-out movement           | 0                                                                                            |
 | Stock-enabled products whose `stockQuantity` ≠ sum of their movements | 0                                                                                            |
 | Stock-enabled products below zero                                     | 0                                                                                            |
@@ -325,8 +325,9 @@ warning fails the build where it's introduced.
 
 - `GetPayments` loads the product names of every invoice the organization
   has ever received a payment for, on each call, alongside an already
-  unpaginated payments list. Fine at today's volume (1,245 Cash Book sales on
-  ELECTRO); revisit if the Cash Book screen slows down.
+  unpaginated payments list. Fine at today's volume (1,245 Cash Book sales in
+  the largest organization, Ben Salah's demo data; ELECTRO has none yet);
+  revisit if the Cash Book screen slows down.
 - Migration `0096` would fail on a database holding two families whose names
   differ only in ASCII case. Production passed it; any other deployment that
   ran `0095` for a while could hit it.
