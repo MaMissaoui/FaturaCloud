@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.60.0] - 2026-09-30
+
+### Added
+- A new Cash Book layout, available beside the current one so both can be
+  tried at the counter before choosing. Switch with "Current layout / New
+  layout" in the Cash Book header; each browser remembers its choice, starts
+  on the current layout, and can't switch in the middle of a sale (#449).
+  The new layout has two tabs:
+  - **Counter**: find or add the customer and ring up the sale. The
+    customer's open loan items show as slips, each with its own Collect
+    button, and the till stays visible during the sale (beside it on wide
+    screens, below it on smaller ones).
+  - **Customer loans**: every customer with a loan, filtered by owing, no
+    payment for more than 60 days, or settled. Each customer's loans can be
+    collected item by item, with their payment history and a button to serve
+    them at the counter.
+
+### Fixed
+- The Cash Book's payment history shows the amount again. Since the product
+  column started listing every product of an invoice paid as a whole, the
+  table grew wider than its card and pushed Method, Reference and Amount out
+  of view. The product list is now shortened (the full list stays on hover
+  and on click), and the amount stays pinned on the right at any screen
+  width (#448).
+- In French, amounts still owed read "Reste à payer" instead of "En
+  attente" (pending) on the Cash Book, the dashboard and the loan import
+  report, and unpaid invoices read "impayées" (#450).
+
 ## [3.59.1] - 2026-09-30
 
 ### Fixed
