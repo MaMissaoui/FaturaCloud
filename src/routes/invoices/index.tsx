@@ -237,9 +237,21 @@ const Invoices = () => {
             a.number < b.number ? -1 : a.number === b.number ? 0 : 1
           }
           render={(number, invoice: InvoiceDisplay) => (
-            <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>
-              {number}
-            </Link>
+            <>
+              <Link to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>
+                {number}
+              </Link>
+              {/* A loan brought forward from the paper register (its number
+                  is the register reference) — see db/opening_loan.go. */}
+              {invoice.origin === "opening" && (
+                <Tag
+                  style={{ marginLeft: 8 }}
+                  title={t`Brought forward from the paper loan register`}
+                >
+                  {t`Migrated`}
+                </Tag>
+              )}
+            </>
           )}
         />
         <Table.Column

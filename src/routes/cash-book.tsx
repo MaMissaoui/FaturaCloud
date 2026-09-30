@@ -94,7 +94,7 @@ import { formatOrgCents } from "src/utils/currencies";
 import PaymentProductsCell, {
   paymentProductsLabel,
 } from "src/components/payments/payment-products-cell";
-import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
+import { PAYMENT_METHODS, paymentMethodLabel, paymentRowMethodLabel } from "src/types/payment";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -1918,8 +1918,8 @@ const CashBook = () => {
           <Table.Column
             title={<Trans>Method</Trans>}
             key="method"
-            sorter={textSorter((p: Payment) => paymentMethodLabel(p.method))}
-            render={(p: Payment) => paymentMethodLabel(p.method)}
+            sorter={textSorter((p: Payment) => paymentRowMethodLabel(p))}
+            render={(p: Payment) => paymentRowMethodLabel(p)}
           />
           <Table.Column
             title={<Trans>Reference</Trans>}

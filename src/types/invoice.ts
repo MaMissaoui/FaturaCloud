@@ -46,6 +46,10 @@ export interface Invoice {
   // sent/paid, and cancelling it puts the stock back — see
   // db/invoice_stock.go. Server-set only; 0 on every other invoice.
   movesStock: number;
+  // "opening" for a loan brought forward from the paper loan register
+  // (db/opening_loan.go): frozen — only collections change it. null otherwise.
+  origin?: string | null;
+  importBatchId?: string | null;
 }
 
 // invoicesAtom's shape: invoiceToDisplay (src/atoms/invoice.ts) converts

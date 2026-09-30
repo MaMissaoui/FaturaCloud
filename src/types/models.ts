@@ -677,6 +677,10 @@ export interface Payment {
   journalEntryId: string | null;
   voidingEntryId: string | null;
   createdAt: number;
+  // "opening" for a loan brought forward from the paper register: its paid
+  // to date, recorded at import with no GL entry and no register — shown as
+  // "Opening balance", never voidable (db/opening_loan.go).
+  origin?: string | null;
   // Numbers of the sales invoices this payment was applied to (the loan
   // number(s) on the Cash Book). Filled by the org payments list only.
   invoiceNumbers?: string[];

@@ -34,6 +34,16 @@ export function paymentMethodLabel(method: string): string {
   }
 }
 
+// paymentRowMethodLabel labels a recorded payment: a loan's paid-to-date
+// brought forward from the paper register (origin "opening") wasn't a payment
+// taken in the app, so it reads "Opening balance", not its placeholder method.
+export function paymentRowMethodLabel(payment: { method: string; origin?: string | null }): string {
+  return payment.origin === "opening" ? t`Opening balance` : paymentMethodLabel(payment.method);
+}
+
+export const isOpeningPayment = (payment: { origin?: string | null }) =>
+  payment.origin === "opening";
+
 export type PaymentStatus = "posted" | "voided";
 
 export const paymentStatusColor: Record<PaymentStatus, string | undefined> = {
