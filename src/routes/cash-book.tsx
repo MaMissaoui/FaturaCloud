@@ -1931,6 +1931,9 @@ const CashBook = () => {
             title={<Trans>Amount</Trans>}
             key="amount"
             align="right"
+            // Pinned so the amount stays on screen when the table is wider
+            // than its card (a long product list at 1280px, or any phone).
+            fixed="right"
             sorter={moneySorter((p: Payment) => p.amount)}
             render={(p: Payment) => <span style={{ whiteSpace: "nowrap" }}>{money(p.amount)}</span>}
           />

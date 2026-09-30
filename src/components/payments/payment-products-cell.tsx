@@ -119,16 +119,33 @@ const PaymentProductsCell = ({ payment, money }: Props) => {
     </div>
   );
 
+  // The label is capped and truncated in the cell, like the loan report's
+  // Product column: uncapped, a whole-invoice payment's full product list
+  // widened the table (scroll.x "max-content") until Method, Reference and
+  // Amount fell past the card edge. The full list stays in the hover title
+  // and the click panel.
   return (
     <Popover trigger="click" placement="bottomLeft" content={content} onOpenChange={load}>
-      <Space size={4} wrap>
-        <Link>{label}</Link>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+        <Link
+          title={label}
+          style={{
+            display: "inline-block",
+            maxWidth: 220,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            verticalAlign: "bottom",
+          }}
+        >
+          {label}
+        </Link>
         {payment.wholeInvoice && (
-          <Tag>
+          <Tag style={{ marginInlineEnd: 0 }}>
             <Trans>whole invoice</Trans>
           </Tag>
         )}
-      </Space>
+      </span>
     </Popover>
   );
 };
