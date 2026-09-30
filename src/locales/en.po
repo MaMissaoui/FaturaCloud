@@ -418,7 +418,7 @@ msgstr "Amount received"
 msgid "Amount received ({currency})"
 msgstr "Amount received ({currency})"
 
-#: src/components/payments/payment-products-cell.tsx:116
+#: src/components/payments/payment-products-cell.tsx:126
 msgid "Amounts include tax and any discount."
 msgstr "Amounts include tax and any discount."
 
@@ -1215,7 +1215,7 @@ msgstr "Couldn't load the dashboard"
 msgid "Couldn't load the inventory valuation report"
 msgstr "Couldn't load the inventory valuation report"
 
-#: src/components/payments/payment-products-cell.tsx:56
+#: src/components/payments/payment-products-cell.tsx:59
 msgid "Couldn't load the invoice lines"
 msgstr "Couldn't load the invoice lines"
 
@@ -3178,7 +3178,7 @@ msgstr "Inventory Valuation"
 #: src/components/cash-book/loan-register.tsx:355
 #: src/components/invoices/pdf-tunisia.tsx:167
 #: src/components/invoices/pdf.tsx:214
-#: src/components/payments/payment-products-cell.tsx:60
+#: src/components/payments/payment-products-cell.tsx:63
 #: src/layouts/base.tsx:284
 #: src/routes/accounting/reports/ar-aging.tsx:137
 #: src/routes/cash-book.tsx:612
@@ -3268,7 +3268,7 @@ msgstr "Invoice settings"
 msgid "Invoice state updated"
 msgstr "Invoice state updated"
 
-#: src/components/payments/payment-products-cell.tsx:62
+#: src/components/payments/payment-products-cell.tsx:65
 msgid "Invoice total"
 msgstr "Invoice total"
 
@@ -3483,7 +3483,7 @@ msgstr "Line items are locked because goods have already been received against t
 msgid "Line items are locked because this delivery has already shipped."
 msgstr "Line items are locked because this delivery has already shipped."
 
-#: src/components/payments/payment-products-cell.tsx:105
+#: src/components/payments/payment-products-cell.tsx:115
 msgid "Line total"
 msgstr "Line total"
 
@@ -4730,7 +4730,7 @@ msgstr "Page orientation"
 msgid "Paid"
 msgstr "Paid"
 
-#: src/components/payments/payment-products-cell.tsx:84
+#: src/components/payments/payment-products-cell.tsx:92
 msgid "Paid here"
 msgstr "Paid here"
 
@@ -5078,7 +5078,7 @@ msgstr "Problems"
 #: src/components/cash-book/loan-register.tsx:249
 #: src/components/cash-book/loan-register.tsx:360
 #: src/components/line-items/table.tsx:331
-#: src/components/payments/payment-products-cell.tsx:76
+#: src/components/payments/payment-products-cell.tsx:78
 #: src/components/products/form.tsx:410
 #: src/components/stock/movement-form.tsx:138
 #: src/routes/accounting/reports/inventory-valuation.tsx:143
@@ -5305,7 +5305,7 @@ msgstr "Purchasing"
 
 #: src/components/cash-book/loan-register.tsx:260
 #: src/components/line-items/table.tsx:394
-#: src/components/payments/payment-products-cell.tsx:90
+#: src/components/payments/payment-products-cell.tsx:100
 #: src/routes/cash-book.tsx:784
 msgid "Qty"
 msgstr "Qty"
@@ -6569,7 +6569,7 @@ msgstr "This month"
 msgid "This organization tracks stock by quantity only, so nothing is posted to the Inventory account. Values are shown only for products with a unit cost."
 msgstr "This organization tracks stock by quantity only, so nothing is posted to the Inventory account. Values are shown only for products with a unit cost."
 
-#: src/components/payments/payment-products-cell.tsx:65
+#: src/components/payments/payment-products-cell.tsx:68
 msgid "This payment"
 msgstr "This payment"
 
@@ -6867,7 +6867,7 @@ msgid "Unit of measure updated"
 msgstr "Unit of measure updated"
 
 #: src/components/line-items/table.tsx:447
-#: src/components/payments/payment-products-cell.tsx:92
+#: src/components/payments/payment-products-cell.tsx:102
 msgid "Unit price"
 msgstr "Unit price"
 
@@ -7159,7 +7159,7 @@ msgstr "Which built-in template this organization's invoices, orders, purchase o
 #~ msgid "Which template invoices for this organization render with."
 #~ msgstr "Which template invoices for this organization render with."
 
-#: src/components/payments/payment-products-cell.tsx:145
+#: src/components/payments/payment-products-cell.tsx:155
 msgid "whole invoice"
 msgstr "whole invoice"
 

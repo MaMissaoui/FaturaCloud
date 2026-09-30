@@ -51,7 +51,10 @@ const PaymentProductsCell = ({ payment, money }: Props) => {
   };
 
   const content = (
-    <div style={{ maxWidth: "min(560px, calc(100vw - 48px))" }}>
+    // A definite width, and a table that fits it (no scroll.x "max-content"):
+    // sized to its unwrapped content, a long product name plus SKU pushed
+    // Unit price and Line total out of the panel. The name wraps instead.
+    <div style={{ width: "min(560px, calc(100vw - 80px))" }}>
       {loading && <Spin size="small" />}
       {failed && <Alert type="error" showIcon message={t`Couldn't load the invoice lines`} />}
       {details?.map((invoice) => (
@@ -70,21 +73,28 @@ const PaymentProductsCell = ({ payment, money }: Props) => {
             pagination={false}
             rowKey="lineId"
             dataSource={invoice.lines}
-            scroll={{ x: "max-content" }}
             columns={[
               {
                 title: t`Product`,
                 key: "product",
                 render: (_, l) => (
-                  <Space size={4} wrap>
-                    <span>{l.productName || "—"}</span>
-                    {l.sku && <Text type="secondary">({l.sku})</Text>}
-                    {l.paidByThisPayment > 0 && (
-                      <Tag color="blue">
-                        <Trans>Paid here</Trans> {money(l.paidByThisPayment)}
-                      </Tag>
+                  <>
+                    <div style={{ overflowWrap: "anywhere" }}>{l.productName || "—"}</div>
+                    {(l.sku || l.paidByThisPayment > 0) && (
+                      <Space size={4} wrap style={{ marginTop: 2 }}>
+                        {l.sku && (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {l.sku}
+                          </Text>
+                        )}
+                        {l.paidByThisPayment > 0 && (
+                          <Tag color="blue">
+                            <Trans>Paid here</Trans> {money(l.paidByThisPayment)}
+                          </Tag>
+                        )}
+                      </Space>
                     )}
-                  </Space>
+                  </>
                 ),
               },
               { title: t`Qty`, key: "qty", align: "right", render: (_, l) => l.quantity },
