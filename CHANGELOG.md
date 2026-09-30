@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.59.0] - 2026-09-30
+
+### Added
+- Import a paper loan register (Settings ▸ Import loan register, org admins
+  only): download an Excel template, fill it from the register (one row per
+  loan item, open and settled loans), pick the cutover date, check the file
+  (a dry run that writes nothing and shows every problem and the totals per
+  customer to compare with the book), then import it in one go. A corrected
+  file can be uploaded again (loans already imported are skipped), and an
+  import can be undone until one of its loans is collected. Customers are
+  matched by CIN, then name and phone, then a unique name; a customer written
+  several times in the register is created once (#440, #441).
+- Loans brought forward this way are receivables, not new sales: an open loan
+  records what's still owed on the cutover date, a settled one is history
+  only; no stock, revenue, VAT or register cash moves. They're collected
+  from the Cash Book like any loan, appear in the Loan status and AR aging,
+  stay out of the sales reports and Tax Summary, carry a "Migrated" tag and
+  open read-only; their paid-to-date shows as "Opening balance" (#439, #441).
+- A French guide to the cutover day: docs/guide-reprise-registre-credits.md
+  (#442).
+
+### Fixed
+- The invoice page title now shows the invoice number (#441).
+
 ## [3.58.4] - 2026-09-30
 
 ### Fixed
