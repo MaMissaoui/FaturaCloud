@@ -342,6 +342,7 @@ const CustomerDetail = ({
         dataSource={payments}
         rowKey="id"
         size="small"
+        scroll={{ x: "max-content" }}
         pagination={{ hideOnSinglePage: true, defaultPageSize: 10 }}
         locale={{ emptyText: <Trans>No payments yet</Trans> }}
         columns={[
@@ -366,6 +367,9 @@ const CustomerDetail = ({
             title: t`Amount`,
             key: "amount",
             align: "right",
+            // Pinned like the current layout's payment history (#448): a long
+            // product list must not push the amount off a narrow card.
+            fixed: "right",
             render: (_, p) => <span style={figure}>{money(p.amount)}</span>,
           },
         ]}
