@@ -21,6 +21,7 @@ const allCounts = (): OrganizationUsageCount => ({
   cashMovements: 1,
   productSerialNumbers: 1,
   reconciliationGroups: 1,
+  loanImportBatches: 1,
   fiscalYears: 1,
   fiscalPeriods: 1,
   paymentTerms: 1,
@@ -44,13 +45,13 @@ const labels = (rows: [number, string][]) => rows.map(([, label]) => label);
 // payments, journal entries, cash movements, accounts, BOMs and more.
 describe("usageBreakdown", () => {
   it("lists every count when deleting the organization", () => {
-    expect(usageBreakdown(allCounts(), ["master", "transactional"])).toHaveLength(30);
+    expect(usageBreakdown(allCounts(), ["master", "transactional"])).toHaveLength(31);
   });
 
   it("splits counts the same way db/reset.go's table lists do", () => {
     const transactional = labels(usageBreakdown(allCounts(), ["transactional"]));
     const master = labels(usageBreakdown(allCounts(), ["master"]));
-    expect(transactional).toHaveLength(14);
+    expect(transactional).toHaveLength(15);
     expect(master).toHaveLength(16);
     expect(transactional).toEqual(
       expect.arrayContaining([
@@ -61,6 +62,7 @@ describe("usageBreakdown", () => {
         "import(s)",
         "serial number(s)",
         "reconciliation group(s)",
+        "loan register import(s)",
       ]),
     );
     expect(master).toEqual(

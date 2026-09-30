@@ -59,6 +59,10 @@ type Client struct {
 	Phone3    *string `db:"phone3"    json:"phone3"`
 	Guarantor *string `db:"guarantor" json:"guarantor"`
 	Address   *string `db:"address"   json:"address"`
+	// ImportBatchID (migration 0098) is set on a customer the paper loan
+	// register import created (db/loan_import.go), so undoing that import
+	// can remove it too if nothing else references it by then.
+	ImportBatchID *string `db:"importBatchId" json:"importBatchId"`
 }
 
 // CreateClientRequest is the payload for creating a client.

@@ -139,10 +139,12 @@ template, then upload. It adds a **dry run**, because it creates financial recor
   - Every created record carries an `importBatchId`.
   - The Loan ref is stored on the invoice (e.g. `buyerReference`). A re-upload skips loans whose
     ref already exists, so a corrected file can be uploaded again safely.
-- **Undo a batch.** The whole batch can be deleted: invoices, opening entries (reversed, never
-  edited), and the customers it created. That's the safety net for a bad first attempt. It's
-  refused once any of the batch's loans has received a payment in the app, or any customer it
-  created has been used by a new sale.
+- **Undo a batch.** The safety net for a bad first attempt. It's refused once any of the batch's
+  loans has received a payment in the app. Otherwise the loans and their paid-to-date records
+  are deleted, and their opening entries are reversed (never edited). The customers the batch
+  created are deleted only if nothing references them any more. A customer used by a new sale
+  since, or named on a reversed opening entry's AR line, is kept, and a re-import matches it.
+  (As built in phase 2: this keeps later work intact instead of refusing the undo.)
 - **Customer matching,** in order:
   1. CIN;
   2. then exact name **and** phone together (a phone alone isn't enough, since families share

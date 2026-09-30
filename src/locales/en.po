@@ -185,7 +185,7 @@ msgstr "Account save failed"
 msgid "Account updated"
 msgstr "Account updated"
 
-#: src/components/organizations/usage-breakdown.ts:65
+#: src/components/organizations/usage-breakdown.ts:67
 msgid "account(s)"
 msgstr "account(s)"
 
@@ -611,7 +611,7 @@ msgstr "Bill of materials saved"
 msgid "Bill To"
 msgstr "Bill To"
 
-#: src/components/organizations/usage-breakdown.ts:75
+#: src/components/organizations/usage-breakdown.ts:77
 msgid "bill(s) of materials"
 msgstr "bill(s) of materials"
 
@@ -632,7 +632,7 @@ msgstr "Billing {0} but only {1} ordered."
 msgid "Billing {0} but only {1} received ({2} already invoiced)."
 msgstr "Billing {0} but only {1} received ({2} already invoiced)."
 
-#: src/components/organizations/usage-breakdown.ts:76
+#: src/components/organizations/usage-breakdown.ts:78
 msgid "BOM version(s)"
 msgstr "BOM version(s)"
 
@@ -779,7 +779,7 @@ msgstr "Cash Book"
 msgid "Cash movement recorded"
 msgstr "Cash movement recorded"
 
-#: src/components/organizations/usage-breakdown.ts:60
+#: src/components/organizations/usage-breakdown.ts:61
 msgid "cash movement(s)"
 msgstr "cash movement(s)"
 
@@ -897,7 +897,7 @@ msgstr "Client update failed"
 msgid "Client updated successfully"
 msgstr "Client updated successfully"
 
-#: src/components/organizations/usage-breakdown.ts:47
+#: src/components/organizations/usage-breakdown.ts:48
 msgid "client(s)"
 msgstr "client(s)"
 
@@ -1691,7 +1691,7 @@ msgstr "Delivery status updated"
 msgid "Delivery update failed"
 msgstr "Delivery update failed"
 
-#: src/components/organizations/usage-breakdown.ts:51
+#: src/components/organizations/usage-breakdown.ts:52
 msgid "delivery(ies)"
 msgstr "delivery(ies)"
 
@@ -1777,7 +1777,7 @@ msgstr "Document layout"
 msgid "Document Numbering"
 msgstr "Document Numbering"
 
-#: src/components/organizations/usage-breakdown.ts:72
+#: src/components/organizations/usage-breakdown.ts:74
 msgid "document template(s)"
 msgstr "document template(s)"
 
@@ -2588,7 +2588,7 @@ msgstr "Fiscal period update failed"
 msgid "Fiscal period updated"
 msgstr "Fiscal period updated"
 
-#: src/components/organizations/usage-breakdown.ts:68
+#: src/components/organizations/usage-breakdown.ts:70
 msgid "fiscal period(s)"
 msgstr "fiscal period(s)"
 
@@ -2624,7 +2624,7 @@ msgstr "Fiscal year for DATEV export"
 msgid "Fiscal year for FEC export"
 msgstr "Fiscal year for FEC export"
 
-#: src/components/organizations/usage-breakdown.ts:67
+#: src/components/organizations/usage-breakdown.ts:69
 msgid "fiscal year(s)"
 msgstr "fiscal year(s)"
 
@@ -2718,7 +2718,7 @@ msgstr "Goods receipt status updated"
 msgid "Goods receipt update failed"
 msgstr "Goods receipt update failed"
 
-#: src/components/organizations/usage-breakdown.ts:55
+#: src/components/organizations/usage-breakdown.ts:56
 msgid "goods receipt(s)"
 msgstr "goods receipt(s)"
 
@@ -2856,7 +2856,7 @@ msgstr "Import update failed"
 msgid "Import updated successfully"
 msgstr "Import updated successfully"
 
-#: src/components/organizations/usage-breakdown.ts:58
+#: src/components/organizations/usage-breakdown.ts:59
 msgid "import(s)"
 msgstr "import(s)"
 
@@ -2919,7 +2919,7 @@ msgstr "Incoming invoice state updated"
 msgid "Incoming invoice update failed"
 msgstr "Incoming invoice update failed"
 
-#: src/components/organizations/usage-breakdown.ts:56
+#: src/components/organizations/usage-breakdown.ts:57
 msgid "incoming invoice(s)"
 msgstr "incoming invoice(s)"
 
@@ -3071,7 +3071,7 @@ msgstr "Invoice update failed"
 msgid "Invoice updated successfully"
 msgstr "Invoice updated successfully"
 
-#: src/components/organizations/usage-breakdown.ts:49
+#: src/components/organizations/usage-breakdown.ts:50
 msgid "invoice(s)"
 msgstr "invoice(s)"
 
@@ -3110,7 +3110,7 @@ msgstr "Journal deleted"
 msgid "Journal deletion failed"
 msgstr "Journal deletion failed"
 
-#: src/components/organizations/usage-breakdown.ts:63
+#: src/components/organizations/usage-breakdown.ts:64
 msgid "journal entr(y/ies)"
 msgstr "journal entr(y/ies)"
 
@@ -3159,7 +3159,7 @@ msgstr "Journal save failed"
 msgid "Journal updated"
 msgstr "Journal updated"
 
-#: src/components/organizations/usage-breakdown.ts:66
+#: src/components/organizations/usage-breakdown.ts:68
 msgid "journal(s)"
 msgstr "journal(s)"
 
@@ -3283,6 +3283,10 @@ msgstr "Linked order"
 #: src/routes/cash-book.tsx:128
 msgid "Loan (deposit)"
 msgstr "Loan (deposit)"
+
+#: src/components/organizations/usage-breakdown.ts:66
+msgid "loan register import(s)"
+msgstr "loan register import(s)"
 
 #: src/routes/cash-book.tsx:130
 msgid "Loan repayment"
@@ -4077,7 +4081,7 @@ msgstr "Number on the vendor's paperwork"
 msgid "Numbering"
 msgstr "Numbering"
 
-#: src/components/organizations/usage-breakdown.ts:74
+#: src/components/organizations/usage-breakdown.ts:76
 msgid "numbering setting(s)"
 msgstr "numbering setting(s)"
 
@@ -4255,7 +4259,7 @@ msgstr "Order status updated"
 msgid "Order update failed"
 msgstr "Order update failed"
 
-#: src/components/organizations/usage-breakdown.ts:50
+#: src/components/organizations/usage-breakdown.ts:51
 msgid "order(s)"
 msgstr "order(s)"
 
@@ -4492,7 +4496,7 @@ msgstr "Payment term update failed"
 msgid "Payment term updated"
 msgstr "Payment term updated"
 
-#: src/components/organizations/usage-breakdown.ts:69
+#: src/components/organizations/usage-breakdown.ts:71
 msgid "payment term(s)"
 msgstr "payment term(s)"
 
@@ -4512,7 +4516,7 @@ msgstr "Payment terms (days)"
 msgid "Payment voided"
 msgstr "Payment voided"
 
-#: src/components/organizations/usage-breakdown.ts:62
+#: src/components/organizations/usage-breakdown.ts:63
 msgid "payment(s)"
 msgstr "payment(s)"
 
@@ -4818,7 +4822,7 @@ msgstr "Product family update failed"
 msgid "Product family updated"
 msgstr "Product family updated"
 
-#: src/components/organizations/usage-breakdown.ts:71
+#: src/components/organizations/usage-breakdown.ts:73
 msgid "product family(ies)"
 msgstr "product family(ies)"
 
@@ -4838,7 +4842,7 @@ msgstr "Product update failed"
 msgid "Product updated"
 msgstr "Product updated"
 
-#: src/components/organizations/usage-breakdown.ts:52
+#: src/components/organizations/usage-breakdown.ts:53
 msgid "product(s)"
 msgstr "product(s)"
 
@@ -4869,7 +4873,7 @@ msgstr "Production order deletion failed"
 msgid "Production order status updated"
 msgstr "Production order status updated"
 
-#: src/components/organizations/usage-breakdown.ts:57
+#: src/components/organizations/usage-breakdown.ts:58
 msgid "production order(s)"
 msgstr "production order(s)"
 
@@ -4942,7 +4946,7 @@ msgstr "Purchase order unlinked"
 msgid "Purchase order update failed"
 msgstr "Purchase order update failed"
 
-#: src/components/organizations/usage-breakdown.ts:54
+#: src/components/organizations/usage-breakdown.ts:55
 msgid "purchase order(s)"
 msgstr "purchase order(s)"
 
@@ -5100,7 +5104,7 @@ msgstr "Recent movements"
 msgid "Reclaimable — input VAT exceeds output VAT for this period"
 msgstr "Reclaimable — input VAT exceeds output VAT for this period"
 
-#: src/components/organizations/usage-breakdown.ts:64
+#: src/components/organizations/usage-breakdown.ts:65
 msgid "reconciliation group(s)"
 msgstr "reconciliation group(s)"
 
@@ -5673,7 +5677,7 @@ msgstr "Sent"
 msgid "Sequential number"
 msgstr "Sequential number"
 
-#: src/components/organizations/usage-breakdown.ts:61
+#: src/components/organizations/usage-breakdown.ts:62
 msgid "serial number(s)"
 msgstr "serial number(s)"
 
@@ -5895,7 +5899,7 @@ msgstr "Stock movement deleted"
 msgid "Stock movement recorded"
 msgstr "Stock movement recorded"
 
-#: src/components/organizations/usage-breakdown.ts:59
+#: src/components/organizations/usage-breakdown.ts:60
 msgid "stock movement(s)"
 msgstr "stock movement(s)"
 
@@ -6013,7 +6017,7 @@ msgstr "Tax rate update failed"
 msgid "Tax rate updated successfully"
 msgstr "Tax rate updated successfully"
 
-#: src/components/organizations/usage-breakdown.ts:53
+#: src/components/organizations/usage-breakdown.ts:54
 msgid "tax rate(s)"
 msgstr "tax rate(s)"
 
@@ -6039,7 +6043,7 @@ msgstr "Teal"
 msgid "Tell us what you think, report a bug, or suggest an improvement..."
 msgstr "Tell us what you think, report a bug, or suggest an improvement..."
 
-#: src/components/organizations/usage-breakdown.ts:73
+#: src/components/organizations/usage-breakdown.ts:75
 msgid "template setting(s)"
 msgstr "template setting(s)"
 
@@ -6431,7 +6435,7 @@ msgstr "Unit price"
 msgid "Unit price excl. tax"
 msgstr "Unit price excl. tax"
 
-#: src/components/organizations/usage-breakdown.ts:70
+#: src/components/organizations/usage-breakdown.ts:72
 msgid "unit(s) of measure"
 msgstr "unit(s) of measure"
 
@@ -6638,7 +6642,7 @@ msgstr "Vendor update failed"
 msgid "Vendor updated successfully"
 msgstr "Vendor updated successfully"
 
-#: src/components/organizations/usage-breakdown.ts:48
+#: src/components/organizations/usage-breakdown.ts:49
 msgid "vendor(s)"
 msgstr "vendor(s)"
 

@@ -64,6 +64,12 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/organizations/{orgId}/reports/daily-cash-movements/export` (takes `accountId` + `date`) and `GET /api/organizations/{orgId}/reports/loan-status/export` (takes `clientId` + `openOnly=true`) — member-level `?format=xlsx|pdf`, registered directly on `mux` (not `withDB`) like every other LibreOffice export
 - `GET /api/organizations/{orgId}/reports/payment-history/export` (takes `clientId`) — the Payment history card's inbound payments, same `?format=xlsx|pdf` and direct `mux` registration as the two exports above; its Product column makes it sales content, so the section guard limits it to Sales and Cash Book users (`payment-products`, audit F159)
 
+**Loan register import (db/loan_import.go, api/loan_import.go) — org admin only (`orgAdminProtected`)**
+- `GET /api/organizations/{orgId}/loan-imports/template` — the empty register template (.xlsx)
+- `POST /api/organizations/{orgId}/loan-imports` — multipart `file` + `cutoverDate` (calendarDayMs) + `dryRun` (`"false"` imports; anything else only reports). Always 200 with the report: a file with errors is a report to act on (`imported: false`), not a failed request
+- `GET /api/organizations/{orgId}/loan-imports` — the batches, newest first
+- `DELETE /api/loan-imports/{id}` — undo a batch; 409 once any of its loans was collected in the app
+
 **Document Templates (issue #115) — per-org, per-document-type Excel export template overrides**
 - `GET /api/organizations/{orgId}/document-templates/{documentType}` — the org's uploaded override, or the embedded default if none
 - `POST /api/organizations/{orgId}/document-templates/{documentType}` — multipart upload, validated by actually parsing it with excelize

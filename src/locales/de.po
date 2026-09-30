@@ -185,7 +185,7 @@ msgstr "Speichern des Kontos fehlgeschlagen"
 msgid "Account updated"
 msgstr "Konto aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:65
+#: src/components/organizations/usage-breakdown.ts:67
 msgid "account(s)"
 msgstr "Konto/Konten"
 
@@ -611,7 +611,7 @@ msgstr "Stückliste gespeichert"
 msgid "Bill To"
 msgstr "Rechnung an"
 
-#: src/components/organizations/usage-breakdown.ts:75
+#: src/components/organizations/usage-breakdown.ts:77
 msgid "bill(s) of materials"
 msgstr "Stückliste(n)"
 
@@ -632,7 +632,7 @@ msgstr "{0} abgerechnet, aber nur {1} bestellt."
 msgid "Billing {0} but only {1} received ({2} already invoiced)."
 msgstr "{0} abgerechnet, aber nur {1} erhalten ({2} bereits abgerechnet)."
 
-#: src/components/organizations/usage-breakdown.ts:76
+#: src/components/organizations/usage-breakdown.ts:78
 msgid "BOM version(s)"
 msgstr "Stücklistenversion(en)"
 
@@ -779,7 +779,7 @@ msgstr "Kassenbuch"
 msgid "Cash movement recorded"
 msgstr "Kassenbewegung erfasst"
 
-#: src/components/organizations/usage-breakdown.ts:60
+#: src/components/organizations/usage-breakdown.ts:61
 msgid "cash movement(s)"
 msgstr "Kassenbewegung(en)"
 
@@ -897,7 +897,7 @@ msgstr "Kunde-Aktualisierung fehlgeschlagen"
 msgid "Client updated successfully"
 msgstr "Kunde erfolgreich aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:47
+#: src/components/organizations/usage-breakdown.ts:48
 msgid "client(s)"
 msgstr "Kunde(n)"
 
@@ -1691,7 +1691,7 @@ msgstr "Lieferstatus aktualisiert"
 msgid "Delivery update failed"
 msgstr "Lieferung-Aktualisierung fehlgeschlagen"
 
-#: src/components/organizations/usage-breakdown.ts:51
+#: src/components/organizations/usage-breakdown.ts:52
 msgid "delivery(ies)"
 msgstr "Lieferung(en)"
 
@@ -1777,7 +1777,7 @@ msgstr "Dokumentlayout"
 msgid "Document Numbering"
 msgstr "Belegnummerierung"
 
-#: src/components/organizations/usage-breakdown.ts:72
+#: src/components/organizations/usage-breakdown.ts:74
 msgid "document template(s)"
 msgstr "Dokumentvorlage(n)"
 
@@ -2588,7 +2588,7 @@ msgstr "Aktualisieren der Periode fehlgeschlagen"
 msgid "Fiscal period updated"
 msgstr "Periode aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:68
+#: src/components/organizations/usage-breakdown.ts:70
 msgid "fiscal period(s)"
 msgstr "Geschäftsperiode(n)"
 
@@ -2624,7 +2624,7 @@ msgstr "Geschäftsjahr für DATEV-Export"
 msgid "Fiscal year for FEC export"
 msgstr "Geschäftsjahr für FEC-Export"
 
-#: src/components/organizations/usage-breakdown.ts:67
+#: src/components/organizations/usage-breakdown.ts:69
 msgid "fiscal year(s)"
 msgstr "Geschäftsjahr(e)"
 
@@ -2722,7 +2722,7 @@ msgstr "Status des Wareneingangs aktualisiert"
 msgid "Goods receipt update failed"
 msgstr "Aktualisieren des Wareneingangs fehlgeschlagen"
 
-#: src/components/organizations/usage-breakdown.ts:55
+#: src/components/organizations/usage-breakdown.ts:56
 msgid "goods receipt(s)"
 msgstr "Wareneingang/-eingänge"
 
@@ -2860,7 +2860,7 @@ msgstr "Import konnte nicht aktualisiert werden"
 msgid "Import updated successfully"
 msgstr "Import erfolgreich aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:58
+#: src/components/organizations/usage-breakdown.ts:59
 msgid "import(s)"
 msgstr "Import(e)"
 
@@ -2923,7 +2923,7 @@ msgstr "Status der Eingangsrechnung aktualisiert"
 msgid "Incoming invoice update failed"
 msgstr "Aktualisieren der Eingangsrechnung fehlgeschlagen"
 
-#: src/components/organizations/usage-breakdown.ts:56
+#: src/components/organizations/usage-breakdown.ts:57
 msgid "incoming invoice(s)"
 msgstr "Eingangsrechnung(en)"
 
@@ -3075,7 +3075,7 @@ msgstr "Rechnung-Aktualisierung fehlgeschlagen"
 msgid "Invoice updated successfully"
 msgstr "Rechnung erfolgreich aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:49
+#: src/components/organizations/usage-breakdown.ts:50
 msgid "invoice(s)"
 msgstr "Rechnung(en)"
 
@@ -3114,7 +3114,7 @@ msgstr "Journal gelöscht"
 msgid "Journal deletion failed"
 msgstr "Löschen des Journals fehlgeschlagen"
 
-#: src/components/organizations/usage-breakdown.ts:63
+#: src/components/organizations/usage-breakdown.ts:64
 msgid "journal entr(y/ies)"
 msgstr "Buchung(en)"
 
@@ -3163,7 +3163,7 @@ msgstr "Speichern des Journals fehlgeschlagen"
 msgid "Journal updated"
 msgstr "Journal aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:66
+#: src/components/organizations/usage-breakdown.ts:68
 msgid "journal(s)"
 msgstr "Journal(e)"
 
@@ -3287,6 +3287,10 @@ msgstr "Verknüpfte Bestellung"
 #: src/routes/cash-book.tsx:128
 msgid "Loan (deposit)"
 msgstr "Kredit (Anzahlung)"
+
+#: src/components/organizations/usage-breakdown.ts:66
+msgid "loan register import(s)"
+msgstr "Import(e) des Kreditbuchs"
 
 #: src/routes/cash-book.tsx:130
 msgid "Loan repayment"
@@ -4081,7 +4085,7 @@ msgstr "Nummer auf dem Lieferschein des Lieferanten"
 msgid "Numbering"
 msgstr "Nummerierung"
 
-#: src/components/organizations/usage-breakdown.ts:74
+#: src/components/organizations/usage-breakdown.ts:76
 msgid "numbering setting(s)"
 msgstr "Nummerierungseinstellung(en)"
 
@@ -4259,7 +4263,7 @@ msgstr "Bestellstatus aktualisiert"
 msgid "Order update failed"
 msgstr "Bestellung-Aktualisierung fehlgeschlagen"
 
-#: src/components/organizations/usage-breakdown.ts:50
+#: src/components/organizations/usage-breakdown.ts:51
 msgid "order(s)"
 msgstr "Bestellung(en)"
 
@@ -4496,7 +4500,7 @@ msgstr "Zahlungsbedingung konnte nicht aktualisiert werden"
 msgid "Payment term updated"
 msgstr "Zahlungsbedingung aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:69
+#: src/components/organizations/usage-breakdown.ts:71
 msgid "payment term(s)"
 msgstr "Zahlungsbedingung(en)"
 
@@ -4516,7 +4520,7 @@ msgstr "Zahlungsziel (Tage)"
 msgid "Payment voided"
 msgstr "Zahlung storniert"
 
-#: src/components/organizations/usage-breakdown.ts:62
+#: src/components/organizations/usage-breakdown.ts:63
 msgid "payment(s)"
 msgstr "Zahlung(en)"
 
@@ -4822,7 +4826,7 @@ msgstr "Aktualisierung der Produktfamilie fehlgeschlagen"
 msgid "Product family updated"
 msgstr "Produktfamilie aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:71
+#: src/components/organizations/usage-breakdown.ts:73
 msgid "product family(ies)"
 msgstr "Produktfamilie(n)"
 
@@ -4842,7 +4846,7 @@ msgstr "Produkt-Aktualisierung fehlgeschlagen"
 msgid "Product updated"
 msgstr "Produkt aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:52
+#: src/components/organizations/usage-breakdown.ts:53
 msgid "product(s)"
 msgstr "Produkt(e)"
 
@@ -4873,7 +4877,7 @@ msgstr "Löschen des Fertigungsauftrags fehlgeschlagen"
 msgid "Production order status updated"
 msgstr "Status des Fertigungsauftrags aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:57
+#: src/components/organizations/usage-breakdown.ts:58
 msgid "production order(s)"
 msgstr "Produktionsauftrag/-aufträge"
 
@@ -4946,7 +4950,7 @@ msgstr "Bestellung getrennt"
 msgid "Purchase order update failed"
 msgstr "Aktualisieren der Bestellung fehlgeschlagen"
 
-#: src/components/organizations/usage-breakdown.ts:54
+#: src/components/organizations/usage-breakdown.ts:55
 msgid "purchase order(s)"
 msgstr "Bestellung(en)"
 
@@ -5104,7 +5108,7 @@ msgstr "Letzte Lagerbewegungen"
 msgid "Reclaimable — input VAT exceeds output VAT for this period"
 msgstr "Erstattungsfähig — Vorsteuer übersteigt Umsatzsteuer in diesem Zeitraum"
 
-#: src/components/organizations/usage-breakdown.ts:64
+#: src/components/organizations/usage-breakdown.ts:65
 msgid "reconciliation group(s)"
 msgstr "Abstimmungsgruppe(n)"
 
@@ -5677,7 +5681,7 @@ msgstr "Gesendet"
 msgid "Sequential number"
 msgstr "Fortlaufende Nummer"
 
-#: src/components/organizations/usage-breakdown.ts:61
+#: src/components/organizations/usage-breakdown.ts:62
 msgid "serial number(s)"
 msgstr "Seriennummer(n)"
 
@@ -5899,7 +5903,7 @@ msgstr "Lagerbewegung gelöscht"
 msgid "Stock movement recorded"
 msgstr "Lagerbewegung erfasst"
 
-#: src/components/organizations/usage-breakdown.ts:59
+#: src/components/organizations/usage-breakdown.ts:60
 msgid "stock movement(s)"
 msgstr "Lagerbewegung(en)"
 
@@ -6017,7 +6021,7 @@ msgstr "Steuersatz-Aktualisierung fehlgeschlagen"
 msgid "Tax rate updated successfully"
 msgstr "Steuersatz erfolgreich aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:53
+#: src/components/organizations/usage-breakdown.ts:54
 msgid "tax rate(s)"
 msgstr "Steuersatz/-sätze"
 
@@ -6043,7 +6047,7 @@ msgstr "Petrol"
 msgid "Tell us what you think, report a bug, or suggest an improvement..."
 msgstr "Teilen Sie uns Ihre Meinung mit, melden Sie einen Fehler oder schlagen Sie eine Verbesserung vor..."
 
-#: src/components/organizations/usage-breakdown.ts:73
+#: src/components/organizations/usage-breakdown.ts:75
 msgid "template setting(s)"
 msgstr "Vorlageneinstellung(en)"
 
@@ -6435,7 +6439,7 @@ msgstr "Einzelpreis"
 msgid "Unit price excl. tax"
 msgstr "Einzelpreis netto"
 
-#: src/components/organizations/usage-breakdown.ts:70
+#: src/components/organizations/usage-breakdown.ts:72
 msgid "unit(s) of measure"
 msgstr "Maßeinheit(en)"
 
@@ -6642,7 +6646,7 @@ msgstr "Aktualisieren des Lieferanten fehlgeschlagen"
 msgid "Vendor updated successfully"
 msgstr "Lieferant erfolgreich aktualisiert"
 
-#: src/components/organizations/usage-breakdown.ts:48
+#: src/components/organizations/usage-breakdown.ts:49
 msgid "vendor(s)"
 msgstr "Lieferant(en)"
 

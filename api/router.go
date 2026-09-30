@@ -188,6 +188,21 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// {orgId}/my-role route above (one fewer segment), so there's no route
 	// collision to worry about.
 	protected("GET", "/api/organizations/my-roles", h.getMyOrganizationRoles)
+	// Paper loan register import (db/loan_import.go, api/loan_import.go):
+	// org admin only — it creates customers and receivables in bulk, and
+	// undo deletes them.
+	loanImportOrgID := func(r *http.Request) (string, error) {
+		batch, err := h.db.GetLoanImportBatch(r.PathValue("id"))
+		if err != nil {
+			return "", err
+		}
+		return batch.OrganizationID, nil
+	}
+	orgAdminProtected("GET", "/api/organizations/{orgId}/loan-imports/template", pathOrgID("orgId"), h.getLoanImportTemplate)
+	orgAdminProtected("GET", "/api/organizations/{orgId}/loan-imports", pathOrgID("orgId"), h.listLoanImports)
+	orgAdminProtected("POST", "/api/organizations/{orgId}/loan-imports", pathOrgID("orgId"), h.importLoanRegister)
+	orgAdminProtected("DELETE", "/api/loan-imports/{id}", loanImportOrgID, h.undoLoanImport)
+
 	orgAdminProtected("GET", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.listOrganizationMembers)
 	orgAdminProtected("POST", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.addOrganizationMember)
 	orgAdminProtected("PUT", "/api/organizations/{orgId}/members/{userId}", pathOrgID("orgId"), h.updateOrganizationMemberRole)
