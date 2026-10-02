@@ -486,7 +486,7 @@ const LoanRegister = ({
           // nothing to show it was there.
           vertical={screens.sm === false}
           block={screens.sm === false}
-          style={{ maxWidth: "100%" }}
+          style={screens.sm === false ? { flex: "1 1 100%" } : { maxWidth: "100%" }}
           value={filter}
           onChange={setFilter}
           options={[
