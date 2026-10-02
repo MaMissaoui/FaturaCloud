@@ -28,12 +28,12 @@ msgid "{0, plural, =0 {No payment yet, sold today} one {No payment yet, sold # d
 msgstr "{0, plural, =0 {Noch keine Zahlung, heute verkauft} one {Noch keine Zahlung, verkauft vor # Tag} other {Noch keine Zahlung, verkauft vor # Tagen}}"
 
 #. placeholder {0}: owing.length
-#: src/components/cash-book/loan-register.tsx:439
+#: src/components/cash-book/loan-register.tsx:440
 msgid "{0, plural, one {# customer owes {owedText} in total.} other {# customers owe {owedText} in total.}}"
 msgstr "{0, plural, one {# Kunde schuldet insgesamt {owedText}.} other {# Kunden schulden insgesamt {owedText}.}}"
 
 #. placeholder {0}: stale.length
-#: src/components/cash-book/loan-register.tsx:445
+#: src/components/cash-book/loan-register.tsx:446
 msgid "{0, plural, one {# has paid nothing for more than {STALE_AFTER_DAYS} days.} other {# have paid nothing for more than {STALE_AFTER_DAYS} days.}}"
 msgstr "{0, plural, one {# hat seit mehr als {STALE_AFTER_DAYS} Tagen nichts gezahlt.} other {# haben seit mehr als {STALE_AFTER_DAYS} Tagen nichts gezahlt.}}"
 
@@ -391,8 +391,8 @@ msgstr "Bereits importiert"
 msgid "Already invoiced"
 msgstr "Bereits abgerechnet"
 
-#: src/components/cash-book/loan-register.tsx:265
-#: src/components/cash-book/loan-register.tsx:370
+#: src/components/cash-book/loan-register.tsx:266
+#: src/components/cash-book/loan-register.tsx:371
 #: src/components/cash-book/modals.tsx:187
 #: src/components/payments/payment-panel.tsx:409
 #: src/routes/accounting/reports/balance-sheet.tsx:46
@@ -580,7 +580,7 @@ msgstr "Offener Betrag"
 
 #: src/components/cash-book/counter.tsx:128
 #: src/components/cash-book/loan-register.tsx:195
-#: src/components/cash-book/loan-register.tsx:277
+#: src/components/cash-book/loan-register.tsx:278
 #: src/routes/cash-book.tsx:443
 msgid "Balance owing"
 msgstr "Restschuld"
@@ -1071,8 +1071,8 @@ msgstr "Seitenleiste einklappen"
 
 #: src/components/cash-book/counter.tsx:266
 #: src/components/cash-book/counter.tsx:268
-#: src/components/cash-book/loan-register.tsx:300
-#: src/components/cash-book/loan-register.tsx:302
+#: src/components/cash-book/loan-register.tsx:301
+#: src/components/cash-book/loan-register.tsx:303
 #: src/routes/cash-book.tsx:852
 #: src/routes/cash-book.tsx:862
 #: src/routes/cash-book.tsx:864
@@ -1450,7 +1450,7 @@ msgstr "Kundennr."
 msgid "Customer note"
 msgstr "Kundennotiz"
 
-#: src/components/cash-book/loan-register.tsx:529
+#: src/components/cash-book/loan-register.tsx:530
 #: src/routes/settings/loan-import.tsx:287
 msgid "Customers"
 msgstr "Kunden"
@@ -1497,7 +1497,7 @@ msgstr "Datenbank wiederhergestellt — neu laden, um Änderungen zu sehen"
 
 #: src/components/cash-book/counter.tsx:326
 #: src/components/cash-book/counter.tsx:456
-#: src/components/cash-book/loan-register.tsx:353
+#: src/components/cash-book/loan-register.tsx:354
 #: src/components/imports/form.tsx:289
 #: src/components/invoices/pdf.tsx:222
 #: src/components/payments/payment-panel.tsx:308
@@ -2235,8 +2235,8 @@ msgid "Errors ({0})"
 msgstr "Fehler ({0})"
 
 #: src/components/cash-book/counter.tsx:498
-#: src/components/cash-book/loan-register.tsx:340
-#: src/components/cash-book/loan-register.tsx:517
+#: src/components/cash-book/loan-register.tsx:341
+#: src/components/cash-book/loan-register.tsx:518
 #: src/routes/cash-book.tsx:510
 #: src/routes/cash-book.tsx:727
 #: src/routes/cash-book.tsx:889
@@ -2716,7 +2716,7 @@ msgstr "Nach Status filtern"
 msgid "Filter by status"
 msgstr "Nach Status filtern"
 
-#: src/components/cash-book/loan-register.tsx:482
+#: src/components/cash-book/loan-register.tsx:483
 msgid "Filter loans"
 msgstr "Kredite filtern"
 
@@ -3182,7 +3182,7 @@ msgstr "Bestandsbewertung"
 msgid "Inventory Valuation"
 msgstr "Bestandsbewertung"
 
-#: src/components/cash-book/loan-register.tsx:358
+#: src/components/cash-book/loan-register.tsx:359
 #: src/components/invoices/pdf-tunisia.tsx:167
 #: src/components/invoices/pdf.tsx:214
 #: src/components/payments/payment-products-cell.tsx:63
@@ -3655,7 +3655,7 @@ msgstr "Mitglieder"
 msgid "Message"
 msgstr "Nachricht"
 
-#: src/components/cash-book/loan-register.tsx:367
+#: src/components/cash-book/loan-register.tsx:368
 #: src/components/payments/payment-panel.tsx:316
 #: src/components/payments/payment-panel.tsx:403
 #: src/routes/cash-book.tsx:932
@@ -3755,8 +3755,8 @@ msgstr "Name"
 msgid "Name is required"
 msgstr "Name ist erforderlich"
 
-#: src/components/cash-book/loan-register.tsx:476
 #: src/components/cash-book/loan-register.tsx:477
+#: src/components/cash-book/loan-register.tsx:478
 msgid "Name, mobile or identity number"
 msgstr "Name, Mobilnummer oder Ausweisnummer"
 
@@ -4113,7 +4113,7 @@ msgstr "Noch keine Journale"
 msgid "No line items"
 msgstr "Keine Positionen"
 
-#: src/components/cash-book/loan-register.tsx:526
+#: src/components/cash-book/loan-register.tsx:527
 #: src/routes/cash-book.tsx:738
 msgid "No loan sales"
 msgstr "Keine Kreditverkäufe"
@@ -4157,7 +4157,7 @@ msgid "No outstanding invoices"
 msgstr "Keine offenen Rechnungen"
 
 #. placeholder {0}: stale.length
-#: src/components/cash-book/loan-register.tsx:495
+#: src/components/cash-book/loan-register.tsx:496
 msgid "No payment for {STALE_AFTER_DAYS}+ days ({0})"
 msgstr "Seit {STALE_AFTER_DAYS}+ Tagen keine Zahlung ({0})"
 
@@ -4170,7 +4170,7 @@ msgstr "Keine Zahlung seit dem Verkauf vor {0} Tagen."
 msgid "No payments recorded yet"
 msgstr "Noch keine Zahlungen erfasst"
 
-#: src/components/cash-book/loan-register.tsx:350
+#: src/components/cash-book/loan-register.tsx:351
 #: src/routes/cash-book.tsx:900
 msgid "No payments yet"
 msgstr "Noch keine Zahlungen"
@@ -4433,7 +4433,7 @@ msgstr "Offener Kredit"
 msgid "Open only"
 msgstr "Nur offene"
 
-#: src/components/cash-book/loan-register.tsx:459
+#: src/components/cash-book/loan-register.tsx:460
 #: src/components/cash-book/search-results.tsx:66
 msgid "Open-loan figures couldn't be loaded — any loan shown may be incomplete"
 msgstr "Kreditbeträge konnten nicht geladen werden — angezeigte Beträge sind möglicherweise unvollständig"
@@ -4716,7 +4716,7 @@ msgid "Owed — output VAT exceeds input VAT for this period"
 msgstr "Zu zahlen — Umsatzsteuer übersteigt Vorsteuer in diesem Zeitraum"
 
 #. placeholder {0}: owing.length
-#: src/components/cash-book/loan-register.tsx:492
+#: src/components/cash-book/loan-register.tsx:493
 msgid "Owing ({0})"
 msgstr "Offen ({0})"
 
@@ -4726,7 +4726,7 @@ msgid "Page orientation"
 msgstr "Seitenausrichtung"
 
 #: src/components/cash-book/loan-register.tsx:194
-#: src/components/cash-book/loan-register.tsx:271
+#: src/components/cash-book/loan-register.tsx:272
 #: src/components/cash-book/modals.tsx:193
 #: src/components/payments/payment-panel.tsx:380
 #: src/routes/cash-book.tsx:809
@@ -4741,7 +4741,7 @@ msgstr "Bezahlt"
 msgid "Paid here"
 msgstr "Hier bezahlt"
 
-#: src/components/cash-book/loan-register.tsx:306
+#: src/components/cash-book/loan-register.tsx:307
 msgid "Paid off"
 msgstr "Beglichen"
 
@@ -4771,7 +4771,7 @@ msgstr "Passwörter stimmen nicht überein"
 msgid "Payment Details"
 msgstr "Zahlungsdetails"
 
-#: src/components/cash-book/loan-register.tsx:327
+#: src/components/cash-book/loan-register.tsx:328
 #: src/routes/cash-book.tsx:878
 msgid "Payment history"
 msgstr "Zahlungsverlauf"
@@ -5083,7 +5083,7 @@ msgid "Problems"
 msgstr "Probleme"
 
 #: src/components/cash-book/loan-register.tsx:250
-#: src/components/cash-book/loan-register.tsx:363
+#: src/components/cash-book/loan-register.tsx:364
 #: src/components/line-items/table.tsx:331
 #: src/components/payments/payment-products-cell.tsx:78
 #: src/components/products/form.tsx:410
@@ -5310,7 +5310,7 @@ msgstr "Einkäufe nach Lieferant"
 msgid "Purchasing"
 msgstr "Einkauf"
 
-#: src/components/cash-book/loan-register.tsx:263
+#: src/components/cash-book/loan-register.tsx:264
 #: src/components/line-items/table.tsx:394
 #: src/components/payments/payment-products-cell.tsx:100
 #: src/routes/cash-book.tsx:793
@@ -5476,7 +5476,7 @@ msgid "Record stock movement"
 msgstr "Lagerbewegung erfassen"
 
 #: src/components/cash-book/counter.tsx:403
-#: src/components/cash-book/loan-register.tsx:368
+#: src/components/cash-book/loan-register.tsx:369
 #: src/components/cash-book/modals.tsx:226
 #: src/components/payments/payment-panel.tsx:359
 #: src/components/payments/payment-panel.tsx:416
@@ -6063,7 +6063,7 @@ msgid "Settled"
 msgstr "Beglichen"
 
 #. placeholder {0}: settled.length
-#: src/components/cash-book/loan-register.tsx:497
+#: src/components/cash-book/loan-register.tsx:498
 msgid "Settled ({0})"
 msgstr "Beglichen ({0})"
 
@@ -6345,7 +6345,7 @@ msgstr "Zum dunklen Modus wechseln"
 msgid "Switch to light mode"
 msgstr "Zum hellen Modus wechseln"
 
-#: src/components/cash-book/loan-register.tsx:298
+#: src/components/cash-book/loan-register.tsx:299
 #: src/routes/cash-book.tsx:850
 msgid "Switch to today to record a payment"
 msgstr "Zu heute wechseln, um eine Zahlung zu erfassen"
