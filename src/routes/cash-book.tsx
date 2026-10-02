@@ -624,6 +624,8 @@ const CashBookV1 = () => {
                   title={<Trans>Amount</Trans>}
                   key="amount"
                   align="right"
+                  // Pinned: on a phone the other columns scroll, the amount stays.
+                  fixed="right"
                   sorter={numberSorter((row: CashMovementDetail) => row.amount)}
                   render={(row: CashMovementDetail) => (
                     <Typography.Text
@@ -756,7 +758,7 @@ const CashBookV1 = () => {
             key="product"
             sorter={textSorter((row: LoanStatusRow) => row.productName)}
             // Capped so the table fits its card at desktop width: uncapped,
-            // the longest "name · SKU" pushed Outstanding and Record payment
+            // the longest "name · SKU" pushed Outstanding and its action
             // past the card edge. Truncated inside the cell, since a column
             // width/ellipsis is ignored under scroll.x "max-content"; the
             // full text stays in the hover tooltip.
@@ -767,7 +769,9 @@ const CashBookV1 = () => {
                   <span
                     style={{
                       display: "inline-block",
-                      maxWidth: 220,
+                      // Narrower below 1830px, so Paid still fits beside the
+                      // pinned Outstanding and Collect at 1280px.
+                      maxWidth: "clamp(140px, 12vw, 220px)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -809,6 +813,10 @@ const CashBookV1 = () => {
             title={<Trans>Outstanding</Trans>}
             key="outstanding"
             align="right"
+            // Pinned with the action: when the table is wider than its card
+            // (1366px and below), Amount and Paid scroll, but what the line
+            // still owes stays in view.
+            fixed="right"
             sorter={moneySorter((row: LoanStatusRow) => row.outstanding)}
             render={(row: LoanStatusRow) => (
               <Typography.Text
@@ -825,7 +833,9 @@ const CashBookV1 = () => {
             align="right"
             // Pinned so the row's main action stays on screen when the
             // product column makes the table wider than its card (it did at
-            // 1440px, cutting "Record payment" off at the card edge).
+            // 1440px, cutting "Record payment" off at the card edge). Labeled
+            // "Collect", as in the new layout: the longer "Record payment"
+            // pushed Outstanding under it at 1280px.
             fixed="right"
             render={(row: LoanStatusRow) =>
               row.outstanding > 0 ? (
@@ -834,7 +844,7 @@ const CashBookV1 = () => {
                     !isToday
                       ? t`Switch to today to record a payment`
                       : compactActions
-                        ? t`Record payment`
+                        ? t`Collect`
                         : undefined
                   }
                 >
@@ -844,9 +854,9 @@ const CashBookV1 = () => {
                     icon={<DollarOutlined />}
                     disabled={!isToday}
                     onClick={() => openPayment(row)}
-                    aria-label={compactActions ? t`Record payment` : undefined}
+                    aria-label={`${t`Collect`} ${row.productName}`}
                   >
-                    {!compactActions && <Trans>Record payment</Trans>}
+                    {!compactActions && <Trans>Collect</Trans>}
                   </Button>
                 </Tooltip>
               ) : null

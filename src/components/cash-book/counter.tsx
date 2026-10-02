@@ -53,9 +53,15 @@ const SaleTypeButtons = ({ cb }: { cb: CashBookState }) => {
   const { token } = theme.useToken();
   const loanColors = useSlipColors("open");
   const { saleMode, setSaleMode } = cb;
-  const base = { flex: 1, height: 52, fontSize: 16, fontWeight: 600 };
+  // Side by side while both labels fit, stacked on a phone (where "Loan
+  // sale" otherwise ran past the card edge).
+  const base = { flex: "1 1 160px", height: 52, fontSize: 16, fontWeight: 600 };
   return (
-    <div role="group" aria-label={t`Sale type`} style={{ display: "flex", gap: 10 }}>
+    <div
+      role="group"
+      aria-label={t`Sale type`}
+      style={{ display: "flex", flexWrap: "wrap", gap: 10 }}
+    >
       <Button
         aria-pressed={saleMode === "cash"}
         onClick={() => setSaleMode("cash")}
@@ -427,6 +433,8 @@ const RegisterPanel = ({ cb }: { cb: CashBookState }) => {
     downloadingDailyExcel,
     money,
   } = cb;
+  // A sign only on a real movement: "−0,00 DT" read like money had left.
+  const signed = (sign: string, cents: number) => (cents > 0 ? sign : "") + money(cents);
   const line = (label: ReactNode, value: string) => (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "3px 0" }}>
       <Typography.Text type="secondary">{label}</Typography.Text>
@@ -457,8 +465,8 @@ const RegisterPanel = ({ cb }: { cb: CashBookState }) => {
       {registerAccountId ? (
         <>
           {line(<Trans>Opening</Trans>, dailyMovement ? money(dailyMovement.opening) : "—")}
-          {line(<Trans>In</Trans>, dailyMovement ? `+${money(dailyMovement.in)}` : "—")}
-          {line(<Trans>Out</Trans>, dailyMovement ? `−${money(dailyMovement.out)}` : "—")}
+          {line(<Trans>In</Trans>, dailyMovement ? signed("+", dailyMovement.in) : "—")}
+          {line(<Trans>Out</Trans>, dailyMovement ? signed("−", dailyMovement.out) : "—")}
           <div
             style={{
               display: "flex",
