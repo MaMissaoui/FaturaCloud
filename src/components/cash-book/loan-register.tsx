@@ -5,6 +5,7 @@ import {
   Card,
   Col,
   Empty,
+  Grid,
   Input,
   Row,
   Segmented,
@@ -405,6 +406,7 @@ const LoanRegister = ({
   // Fixed for the visit, so "days since" doesn't shift under a re-render.
   const [now] = useState(() => Date.now());
   const [filter, setFilter] = useState<LoanRegisterFilter>("open");
+  const screens = Grid.useBreakpoint();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -478,8 +480,12 @@ const LoanRegister = ({
         />
         <Segmented<LoanRegisterFilter>
           aria-label={t`Filter loans`}
-          // Scrolls inside itself on a phone rather than widening the page.
-          style={{ maxWidth: "100%", overflowX: "auto" }}
+          // Stacked on a phone: side by side, the three labels need ~475px,
+          // and a sideways-scrolling bar hid "No payment for 60+ days" with
+          // nothing to show it was there.
+          vertical={screens.sm === false}
+          block={screens.sm === false}
+          style={{ maxWidth: "100%" }}
           value={filter}
           onChange={setFilter}
           options={[
