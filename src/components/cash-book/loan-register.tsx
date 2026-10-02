@@ -250,11 +250,12 @@ const CustomerDetail = ({
                   title: t`Product`,
                   key: "product",
                   render: (_, row) => (
-                    // Narrower on a smaller screen: at a fixed 190px, Paid
-                    // slid under the pinned balance at 1280 and 1366px.
+                    // Narrower below 1680px, down to 90px at 1280: at a fixed
+                    // 190px, Paid slid under the pinned balance at 1280 and
+                    // 1366px (German's longer headers needed the most room).
                     <Typography.Text
                       ellipsis={{ tooltip: row.productName }}
-                      style={{ maxWidth: "clamp(110px, 10vw, 190px)" }}
+                      style={{ maxWidth: "clamp(90px, calc(25vw - 230px), 190px)" }}
                     >
                       {row.productName || "—"}
                     </Typography.Text>
