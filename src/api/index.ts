@@ -807,16 +807,20 @@ export const ExportDailyCashMovements = (
 // Exports the Cash Book screen's loan status table — see
 // db/report_export.go. clientId mirrors the screen's own customer filter
 // (omit for every customer); openOnly has no on-screen query-param
-// equivalent (the screen filters client-side).
+// equivalent (the screen filters client-side). register is the new layout's
+// loan register tab: the server then lists the same customers as that tab,
+// with the same stalled rule (db/loan_register.go), and ignores openOnly.
 export const ExportLoanStatus = (
   organizationId: string,
   format: "xlsx" | "pdf",
   clientId?: string,
   openOnly?: boolean,
+  register?: "open" | "stale" | "settled",
 ) => {
   const params = new URLSearchParams({ format });
   if (clientId) params.set("clientId", clientId);
   if (openOnly) params.set("openOnly", "true");
+  if (register) params.set("register", register);
   return downloadDocumentExport(
     `/api/organizations/${organizationId}/reports/loan-status/export?${params.toString()}`,
     `loan-status.${format}`,

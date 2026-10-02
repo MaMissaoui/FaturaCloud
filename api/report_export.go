@@ -52,7 +52,8 @@ func (h *handler) getDailyCashMovementsExport(w http.ResponseWriter, r *http.Req
 // getLoanStatusExport streams the Cash Book screen's loan status table
 // (GetLoanStatus) as .xlsx or, if converted, .pdf, honoring the same
 // clientId filter the screen's own Select applies plus an openOnly filter
-// with no screen-side query-param equivalent.
+// with no screen-side query-param equivalent, or the new layout's register
+// tab (register=open|stale|settled).
 func (h *handler) getLoanStatusExport(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	format := r.URL.Query().Get("format")
@@ -62,9 +63,16 @@ func (h *handler) getLoanStatusExport(w http.ResponseWriter, r *http.Request) {
 	}
 	clientID := r.URL.Query().Get("clientId")
 	openOnly := r.URL.Query().Get("openOnly") == "true"
+	// The new layout's loan register tab, so its export lists the same
+	// customers as the tab on screen (db.GenerateLoanStatusExport).
+	register := r.URL.Query().Get("register")
+	if register != "" && !db.IsLoanRegisterFilter(register) {
+		writeError(w, http.StatusBadRequest, "register must be open, stale or settled")
+		return
+	}
 
 	h.dbMu.RLock()
-	xlsxBytes, filenameBase, err := h.db.GenerateLoanStatusExport(orgID, clientID, openOnly)
+	xlsxBytes, filenameBase, err := h.db.GenerateLoanStatusExport(orgID, clientID, openOnly, register)
 	h.dbMu.RUnlock()
 	if err != nil {
 		writeDBError(w, err, "organization not found")

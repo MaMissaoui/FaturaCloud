@@ -63,7 +63,7 @@ msgid "{0} deliveries exist for order {1}:"
 msgstr "{0} Lieferungen existieren für Auftrag {1}:"
 
 #. placeholder {0}: product.name
-#: src/components/cash-book/use-cash-book.ts:753
+#: src/components/cash-book/use-cash-book.ts:757
 msgid "{0} has no unit cost, so this sale will be refused — give the product a unit cost, or switch the organization's inventory valuation to Quantities only."
 msgstr "{0} hat keine Stückkosten, daher wird dieser Verkauf abgelehnt — geben Sie dem Produkt Stückkosten oder stellen Sie die Bestandsbewertung der Organisation auf „Nur Mengen“ um."
 
@@ -105,7 +105,7 @@ msgid "{0}, {1} failed."
 msgstr "{0}, {1} fehlgeschlagen."
 
 #. placeholder {0}: product.name
-#: src/components/cash-book/use-cash-book.ts:749
+#: src/components/cash-book/use-cash-book.ts:753
 msgid "{0}: {onHand} in stock — this sale will take it below zero."
 msgstr "{0}: {onHand} auf Lager — dieser Verkauf bringt den Bestand unter null."
 
@@ -186,7 +186,7 @@ msgstr "61-90 Tage"
 msgid "90+ days"
 msgstr "90+ Tage"
 
-#: src/components/cash-book/use-cash-book.ts:531
+#: src/components/cash-book/use-cash-book.ts:535
 msgid "A customer with this phone number already exists"
 msgstr "Ein Kunde mit dieser Telefonnummer existiert bereits"
 
@@ -755,7 +755,7 @@ msgstr "Allgemeine indirekte Steuer der Kanarischen Inseln"
 #: src/components/cash-book/modals.tsx:45
 #: src/components/cash-book/modals.tsx:96
 #: src/components/cash-book/modals.tsx:167
-#: src/components/cash-book/use-cash-book.ts:534
+#: src/components/cash-book/use-cash-book.ts:538
 #: src/components/clients/form.tsx:182
 #: src/components/feedback-modal.tsx:55
 #: src/components/imports/form.tsx:259
@@ -862,7 +862,7 @@ msgstr "Kassenbuch"
 msgid "Cash Book layout"
 msgstr "Ansicht des Kassenbuchs"
 
-#: src/components/cash-book/use-cash-book.ts:410
+#: src/components/cash-book/use-cash-book.ts:414
 msgid "Cash movement recorded"
 msgstr "Kassenbewegung erfasst"
 
@@ -884,7 +884,7 @@ msgstr "Kassenkonto"
 msgid "Cash sale"
 msgstr "Barverkauf"
 
-#: src/components/cash-book/use-cash-book.ts:678
+#: src/components/cash-book/use-cash-book.ts:682
 msgid "Cash sale recorded"
 msgstr "Barverkauf erfasst"
 
@@ -939,7 +939,7 @@ msgstr "Datei auswählen"
 
 #: src/components/cash-book/shared.tsx:68
 #: src/components/cash-book/shared.tsx:230
-#: src/components/cash-book/use-cash-book.ts:507
+#: src/components/cash-book/use-cash-book.ts:511
 #: src/routes/settings/loan-import.tsx:383
 msgid "CIN"
 msgstr "CIN"
@@ -1442,7 +1442,7 @@ msgid "Customer loans"
 msgstr "Kundenkredite"
 
 #: src/components/cash-book/shared.tsx:66
-#: src/components/cash-book/use-cash-book.ts:505
+#: src/components/cash-book/use-cash-book.ts:509
 msgid "Customer no."
 msgstr "Kundennr."
 
@@ -1450,7 +1450,7 @@ msgstr "Kundennr."
 msgid "Customer note"
 msgstr "Kundennotiz"
 
-#: src/components/cash-book/loan-register.tsx:530
+#: src/components/cash-book/loan-register.tsx:524
 #: src/routes/settings/loan-import.tsx:287
 msgid "Customers"
 msgstr "Kunden"
@@ -2236,7 +2236,7 @@ msgstr "Fehler ({0})"
 
 #: src/components/cash-book/counter.tsx:498
 #: src/components/cash-book/loan-register.tsx:341
-#: src/components/cash-book/loan-register.tsx:518
+#: src/components/cash-book/loan-register.tsx:512
 #: src/routes/cash-book.tsx:510
 #: src/routes/cash-book.tsx:727
 #: src/routes/cash-book.tsx:889
@@ -2290,9 +2290,9 @@ msgstr "Aufwendungen"
 msgid "Export DATEV"
 msgstr "DATEV exportieren"
 
-#: src/components/cash-book/use-cash-book.ts:329
-#: src/components/cash-book/use-cash-book.ts:348
-#: src/components/cash-book/use-cash-book.ts:370
+#: src/components/cash-book/use-cash-book.ts:332
+#: src/components/cash-book/use-cash-book.ts:352
+#: src/components/cash-book/use-cash-book.ts:374
 #: src/routes/deliveries/details.tsx:265
 #: src/routes/inbound-deliveries/details.tsx:262
 #: src/routes/incoming-invoices/details.tsx:289
@@ -2497,7 +2497,7 @@ msgstr "Backups konnten nicht geladen werden"
 msgid "Failed to load bill of materials"
 msgstr "Stückliste konnte nicht geladen werden"
 
-#: src/components/cash-book/use-cash-book.ts:226
+#: src/components/cash-book/use-cash-book.ts:229
 msgid "Failed to load cash register movements"
 msgstr "Kassenbewegungen konnten nicht geladen werden"
 
@@ -2505,7 +2505,7 @@ msgstr "Kassenbewegungen konnten nicht geladen werden"
 #~ msgid "Failed to load invoice"
 #~ msgstr "Rechnung konnte nicht geladen werden"
 
-#: src/components/cash-book/use-cash-book.ts:251
+#: src/components/cash-book/use-cash-book.ts:254
 msgid "Failed to load loan status"
 msgstr "Kreditstatus konnte nicht geladen werden"
 
@@ -2521,7 +2521,7 @@ msgstr "Organisation konnte nicht geladen werden"
 msgid "Failed to load page orientation"
 msgstr "Seitenausrichtung konnte nicht geladen werden"
 
-#: src/components/cash-book/use-cash-book.ts:271
+#: src/components/cash-book/use-cash-book.ts:274
 msgid "Failed to load payment history"
 msgstr "Zahlungsverlauf konnte nicht geladen werden"
 
@@ -2557,16 +2557,16 @@ msgstr "Version konnte nicht geladen werden"
 msgid "Failed to post journal entry"
 msgstr "Buchung konnte nicht gebucht werden"
 
-#: src/components/cash-book/use-cash-book.ts:415
+#: src/components/cash-book/use-cash-book.ts:419
 msgid "Failed to record cash movement"
 msgstr "Kassenbewegung konnte nicht erfasst werden"
 
-#: src/components/cash-book/use-cash-book.ts:725
+#: src/components/cash-book/use-cash-book.ts:729
 #: src/components/payments/payment-panel.tsx:287
 msgid "Failed to record payment"
 msgstr "Zahlung konnte nicht erfasst werden"
 
-#: src/components/cash-book/use-cash-book.ts:693
+#: src/components/cash-book/use-cash-book.ts:697
 msgid "Failed to record sale"
 msgstr "Verkauf konnte nicht erfasst werden"
 
@@ -3531,7 +3531,7 @@ msgstr "Kreditrückzahlung"
 msgid "Loan sale"
 msgstr "Verkauf auf Kredit"
 
-#: src/components/cash-book/use-cash-book.ts:678
+#: src/components/cash-book/use-cash-book.ts:682
 msgid "Loan sale recorded"
 msgstr "Kreditverkauf erfasst"
 
@@ -4003,7 +4003,7 @@ msgid "No activity in this range"
 msgstr "Keine Aktivität in diesem Zeitraum"
 
 #: src/components/cash-book/counter.tsx:340
-#: src/components/cash-book/use-cash-book.ts:648
+#: src/components/cash-book/use-cash-book.ts:652
 #: src/routes/cash-book.tsx:253
 msgid "No cash register account configured — set defaultCashRegisterAccountId in Organization settings → Accounting before recording a sale with an amount received"
 msgstr "Kein Kassenkonto konfiguriert — lege defaultCashRegisterAccountId in den Organisationseinstellungen → Buchhaltung fest, bevor ein Verkauf mit erhaltenem Betrag erfasst wird"
@@ -4113,7 +4113,7 @@ msgstr "Noch keine Journale"
 msgid "No line items"
 msgstr "Keine Positionen"
 
-#: src/components/cash-book/loan-register.tsx:527
+#: src/components/cash-book/loan-register.tsx:521
 #: src/routes/cash-book.tsx:738
 msgid "No loan sales"
 msgstr "Keine Kreditverkäufe"
@@ -4421,7 +4421,7 @@ msgstr "In der Stücklisten-Ansicht öffnen"
 #~ msgstr "Offene Rechnungen"
 
 #: src/components/cash-book/shared.tsx:193
-#: src/components/cash-book/use-cash-book.ts:508
+#: src/components/cash-book/use-cash-book.ts:512
 msgid "Open loan"
 msgstr "Offener Kredit"
 
@@ -4781,12 +4781,12 @@ msgstr "Zahlungsverlauf"
 msgid "Payment method"
 msgstr "Zahlungsmethode"
 
-#: src/components/cash-book/use-cash-book.ts:720
+#: src/components/cash-book/use-cash-book.ts:724
 #: src/components/payments/payment-panel.tsx:273
 msgid "Payment recorded"
 msgstr "Zahlung erfasst"
 
-#: src/components/cash-book/use-cash-book.ts:719
+#: src/components/cash-book/use-cash-book.ts:723
 msgid "Payment recorded — loan fully settled"
 msgstr "Zahlung erfasst — Kredit vollständig beglichen"
 
@@ -4901,7 +4901,7 @@ msgstr "Wählen Sie oben eine Fertigware aus, um deren Stückliste zu definieren
 msgid "Pick an account to see its daily movements."
 msgstr "Wählen Sie ein Konto aus, um dessen tägliche Bewegungen zu sehen."
 
-#: src/components/cash-book/use-cash-book.ts:630
+#: src/components/cash-book/use-cash-book.ts:634
 msgid "Pick or create a customer first"
 msgstr "Wählen oder erstellen Sie zuerst einen Kunden"
 
@@ -6934,7 +6934,7 @@ msgstr "Logo hochladen"
 msgid "Upload template"
 msgstr "Vorlage hochladen"
 
-#: src/components/cash-book/use-cash-book.ts:533
+#: src/components/cash-book/use-cash-book.ts:537
 msgid "Use this customer"
 msgstr "Diesen Kunden verwenden"
 

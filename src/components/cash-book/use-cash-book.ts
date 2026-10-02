@@ -53,6 +53,7 @@ import {
 } from "src/utils/currency";
 import { formatOrgCents } from "src/utils/currencies";
 import type { NewClientDraft } from "src/components/cash-book/shared";
+import type { LoanRegisterFilter } from "src/components/cash-book/loan-register-model";
 
 // search for a customer by name/mobile/IBAN/identity number, then either
 // pay off one of their open (loan sale) invoices or record a new sale.
@@ -76,6 +77,8 @@ interface UseCashBookOptions {
 export interface CashBookExportScope {
   clientId?: string;
   openOnly?: boolean;
+  // The new layout's loan register tab; the loan export then follows it.
+  register?: LoanRegisterFilter;
 }
 
 export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptions = {}) => {
@@ -343,6 +346,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
           format,
           (scope ? scope.clientId : loanStatusClientId) || undefined,
           scope?.openOnly ?? openLoansOnly,
+          scope?.register,
         );
       } catch (error) {
         message.error(error instanceof Error ? error.message : t`Export failed`);

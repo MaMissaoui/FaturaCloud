@@ -501,19 +501,13 @@ const LoanRegister = ({
         <Space wrap style={{ marginLeft: "auto" }}>
           <Button
             loading={downloadingLoanPdf}
-            onClick={handleExportLoanStatus("pdf", {
-              clientId: "",
-              openOnly: filter !== "settled",
-            })}
+            onClick={handleExportLoanStatus("pdf", { clientId: "", register: filter })}
           >
             <FilePdfOutlined /> PDF
           </Button>
           <Button
             loading={downloadingLoanExcel}
-            onClick={handleExportLoanStatus("xlsx", {
-              clientId: "",
-              openOnly: filter !== "settled",
-            })}
+            onClick={handleExportLoanStatus("xlsx", { clientId: "", register: filter })}
           >
             <FileExcelOutlined /> <Trans>Excel</Trans>
           </Button>
