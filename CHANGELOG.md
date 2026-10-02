@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.60.2] - 2026-10-02
+
+### Fixed
+- Cash Book, current layout: the loan status table shows what each line
+  still owes again at 1280 and 1366px wide. The row button is now
+  "Encaisser" (as in the new layout) and the remaining balance stays in
+  view next to it. On a phone, the day's movement amounts stay in view too
+  (#454).
+- Cash Book, new layout: in a customer's loan slips, the paid column is no
+  longer covered by the balance; the till shows "0,00 DT" rather than
+  "−0,00 DT" when nothing moved; and on a phone the cash/loan sale buttons
+  stack instead of running off the screen (#454).
+- On a phone, the panel listing what a payment paid for stays on screen
+  (#454).
+- German: the loan sale hint now says "Verkauf auf Kredit", like its
+  button (#454).
+
 ## [3.60.1] - 2026-09-30
 
 ### Fixed
