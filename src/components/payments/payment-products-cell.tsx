@@ -133,9 +133,17 @@ const PaymentProductsCell = ({ payment, money }: Props) => {
   // Product column: uncapped, a whole-invoice payment's full product list
   // widened the table (scroll.x "max-content") until Method, Reference and
   // Amount fell past the card edge. The full list stays in the hover title
-  // and the click panel.
+  // and the click panel. shiftX slides the panel back inside the screen: on a
+  // phone, anchored at the cell's left edge, it ran past the right edge and
+  // scrolled the whole page sideways.
   return (
-    <Popover trigger="click" placement="bottomLeft" content={content} onOpenChange={load}>
+    <Popover
+      trigger="click"
+      placement="bottomLeft"
+      align={{ overflow: { adjustY: true, shiftX: true } }}
+      content={content}
+      onOpenChange={load}
+    >
       <span style={{ display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
         <Link
           title={label}
