@@ -151,6 +151,50 @@ const Dashboard = () => {
   const till = show.till ? (data?.cashRegister ?? null) : null;
   const cashBookLink = pageLink("/cash-book", t`Open the Cash Book`);
 
+  // The period only drives revenue and the top lists — what clients owe, the
+  // till and stock are as of today — so the picker sits in the Revenue
+  // header, not the page header, and each top list names the period it shows.
+  const periodLabel = (p: Period) => {
+    if (p.kind === "months") {
+      const m = p.months;
+      return t`Last ${m} months`;
+    }
+    const year = p.year;
+    const current = new Date().getFullYear();
+    if (year === current) return t`Current year (${year})`;
+    if (year === current - 1) return t`Last year (${year})`;
+    return String(year);
+  };
+  const periodSelect = (
+    <Select
+      aria-label={t`Sales period`}
+      value={periodToValue(period)}
+      onChange={(v) => setPeriod(periodFromValue(v))}
+      style={{ width: 200 }}
+      options={[
+        {
+          label: t`Rolling window`,
+          options: MONTH_OPTIONS.map((months) => ({
+            value: `m${months}`,
+            label: periodLabel({ kind: "months", months }),
+          })),
+        },
+        {
+          label: t`Calendar year`,
+          options: Array.from({ length: CALENDAR_YEARS_BACK + 1 }, (_, i) => {
+            const year = new Date().getFullYear() - i;
+            return { value: `y${year}`, label: periodLabel({ kind: "year", year }) };
+          }),
+        },
+      ]}
+    />
+  );
+  const periodNote = (
+    <Typography.Text type="secondary" style={{ fontSize: 14, fontWeight: 400, marginLeft: 8 }}>
+      {periodLabel(period)}
+    </Typography.Text>
+  );
+
   const sectionHead = (id: string, title: ReactNode, link?: ReactNode) => (
     <div
       style={{
@@ -218,44 +262,7 @@ const Dashboard = () => {
 
   return (
     <div style={{ fontVariantNumeric: "tabular-nums" }}>
-      <PageHeader
-        icon={<DashboardOutlined />}
-        title={<Trans>Dashboard</Trans>}
-        actions={
-          show.sales ? (
-            <Select
-              aria-label={t`Sales period`}
-              value={periodToValue(period)}
-              onChange={(v) => setPeriod(periodFromValue(v))}
-              style={{ width: 200 }}
-              options={[
-                {
-                  label: t`Rolling window`,
-                  options: MONTH_OPTIONS.map((m) => ({
-                    value: `m${m}`,
-                    label: <Trans>Last {m} months</Trans>,
-                  })),
-                },
-                {
-                  label: t`Calendar year`,
-                  options: Array.from({ length: CALENDAR_YEARS_BACK + 1 }, (_, i) => {
-                    const year = new Date().getFullYear() - i;
-                    const label =
-                      i === 0 ? (
-                        <Trans>Current year ({year})</Trans>
-                      ) : i === 1 ? (
-                        <Trans>Last year ({year})</Trans>
-                      ) : (
-                        String(year)
-                      );
-                    return { value: `y${year}`, label };
-                  }),
-                },
-              ]}
-            />
-          ) : undefined
-        }
-      />
+      <PageHeader icon={<DashboardOutlined />} title={<Trans>Dashboard</Trans>} />
       <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
         {organization?.name ? `${organization.name} — ${today}` : today}
       </Typography.Text>
@@ -319,7 +326,17 @@ const Dashboard = () => {
                   {sectionHead(
                     "dashboard-sales",
                     <Trans>Revenue</Trans>,
-                    reportLink("/reporting/revenue-trend"),
+                    <span
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: "8px 16px",
+                      }}
+                    >
+                      {periodSelect}
+                      {reportLink("/reporting/revenue-trend")}
+                    </span>,
                   )}
                   <p style={{ margin: 0 }}>
                     <span style={{ fontSize: 24, fontWeight: 600 }}>{money(revenueTotal)}</span>{" "}
@@ -417,7 +434,10 @@ const Dashboard = () => {
               >
                 {sectionHead(
                   "dashboard-top-clients",
-                  <Trans>Top clients</Trans>,
+                  <>
+                    <Trans>Top clients</Trans>
+                    {periodNote}
+                  </>,
                   reportLink("/reporting/sales-by-client"),
                 )}
                 <div style={{ marginTop: 4 }}>
@@ -438,7 +458,10 @@ const Dashboard = () => {
               >
                 {sectionHead(
                   "dashboard-top-products",
-                  <Trans>Top products</Trans>,
+                  <>
+                    <Trans>Top products</Trans>
+                    {periodNote}
+                  </>,
                   reportLink("/reporting/sales-by-product"),
                 )}
                 <div style={{ marginTop: 4 }}>
