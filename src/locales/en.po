@@ -28,17 +28,17 @@ msgid "{0, plural, =0 {No payment yet, sold today} one {No payment yet, sold # d
 msgstr "{0, plural, =0 {No payment yet, sold today} one {No payment yet, sold # day ago} other {No payment yet, sold # days ago}}"
 
 #. placeholder {0}: c.idleDays
-#: src/components/dashboard/owed-panel.tsx:357
+#: src/components/dashboard/owed-panel.tsx:354
 msgid "{0, plural, one {(# day)} other {(# days)}}"
 msgstr "{0, plural, one {(# day)} other {(# days)}}"
 
 #. placeholder {0}: followUp.staleCount
-#: src/components/dashboard/owed-panel.tsx:302
+#: src/components/dashboard/owed-panel.tsx:299
 msgid "{0, plural, one {# client hasn't paid anything for more than {staleAfter} days} other {# clients haven't paid anything for more than {staleAfter} days}}"
 msgstr "{0, plural, one {# client hasn't paid anything for more than {staleAfter} days} other {# clients haven't paid anything for more than {staleAfter} days}}"
 
 #. placeholder {0}: followUp.approachingCount
-#: src/components/dashboard/owed-panel.tsx:315
+#: src/components/dashboard/owed-panel.tsx:312
 msgid "{0, plural, one {# client is close to {staleAfter} days without paying} other {# clients are close to {staleAfter} days without paying}}"
 msgstr "{0, plural, one {# client is close to {staleAfter} days without paying} other {# clients are close to {staleAfter} days without paying}}"
 
@@ -53,17 +53,17 @@ msgid "{0, plural, one {# has paid nothing for more than {STALE_AFTER_DAYS} days
 msgstr "{0, plural, one {# has paid nothing for more than {STALE_AFTER_DAYS} days.} other {# have paid nothing for more than {STALE_AFTER_DAYS} days.}}"
 
 #. placeholder {0}: counts[b.key] ?? 0
-#: src/components/dashboard/owed-panel.tsx:233
+#: src/components/dashboard/owed-panel.tsx:230
 msgid "{0, plural, one {# invoice} other {# invoices}}"
 msgstr "{0, plural, one {# invoice} other {# invoices}}"
 
 #. placeholder {0}: data.stockValuation.productCount
-#: src/routes/dashboard.tsx:365
+#: src/routes/dashboard.tsx:379
 msgid "{0, plural, one {# stock-tracked product, {units} units} other {# stock-tracked products, {units} units}}"
 msgstr "{0, plural, one {# stock-tracked product, {units} units} other {# stock-tracked products, {units} units}}"
 
 #. placeholder {0}: data.lowStock.count
-#: src/routes/dashboard.tsx:387
+#: src/routes/dashboard.tsx:401
 msgid "{0, plural, one {See all # products in Inventory} other {See all # products in Inventory}}"
 msgstr "{0, plural, one {See all # products in Inventory} other {See all # products in Inventory}}"
 
@@ -144,15 +144,15 @@ msgstr "{0}: {onHand} in stock — this sale will take it below zero."
 msgid "{0}% paid"
 msgstr "{0}% paid"
 
-#: src/components/dashboard/owed-panel.tsx:134
+#: src/components/dashboard/owed-panel.tsx:131
 msgid "{count, plural, one {on # unpaid invoice, past its due date} other {on # unpaid invoices, all past their due date}}"
 msgstr "{count, plural, one {on # unpaid invoice, past its due date} other {on # unpaid invoices, all past their due date}}"
 
-#: src/components/dashboard/owed-panel.tsx:140
+#: src/components/dashboard/owed-panel.tsx:137
 msgid "{count, plural, one {on # unpaid invoice} other {on # unpaid invoices}}"
 msgstr "{count, plural, one {on # unpaid invoice} other {on # unpaid invoices}}"
 
-#: src/routes/dashboard.tsx:373
+#: src/routes/dashboard.tsx:387
 msgid "{threshold} units or fewer"
 msgstr "{threshold} units or fewer"
 
@@ -792,7 +792,7 @@ msgstr "Calculated as a weighted average once goods are received at a cost."
 msgid "Calendar days from invoice date until due date. Set to 0 for due on receipt."
 msgstr "Calendar days from invoice date until due date. Set to 0 for due on receipt."
 
-#: src/routes/dashboard.tsx:230
+#: src/routes/dashboard.tsx:240
 msgid "Calendar year"
 msgstr "Calendar year"
 
@@ -921,7 +921,7 @@ msgid "cash movement(s)"
 msgstr "cash movement(s)"
 
 #: src/components/cash-book/counter.tsx:451
-#: src/components/dashboard/till-panel.tsx:56
+#: src/components/dashboard/till-panel.tsx:57
 #: src/routes/cash-book.tsx:483
 msgid "Cash register"
 msgstr "Cash register"
@@ -1003,7 +1003,7 @@ msgstr "CIN"
 msgid "City"
 msgstr "City"
 
-#: src/components/dashboard/owed-panel.tsx:265
+#: src/components/dashboard/owed-panel.tsx:262
 #: src/routes/accounting/reports/ar-aging.tsx:143
 #: src/routes/deliveries.tsx:174
 #: src/routes/deliveries/details.tsx:377
@@ -1091,7 +1091,7 @@ msgstr "Closed"
 msgid "Closing"
 msgstr "Closing"
 
-#: src/components/dashboard/till-panel.tsx:87
+#: src/components/dashboard/till-panel.tsx:88
 #: src/routes/accounting/reports/daily-cash-movements.tsx:177
 #: src/routes/accounting/reports/daily-cash-movements.tsx:228
 msgid "Closing balance"
@@ -1130,7 +1130,7 @@ msgstr "Collapse sidebar"
 msgid "Collect"
 msgstr "Collect"
 
-#: src/routes/dashboard.tsx:320
+#: src/routes/dashboard.tsx:330
 msgid "Column chart showing revenue over time"
 msgstr "Column chart showing revenue over time"
 
@@ -1261,7 +1261,7 @@ msgstr "Couldn't load the bill-of-materials summaries"
 msgid "Couldn't load the daily cash movements"
 msgstr "Couldn't load the daily cash movements"
 
-#: src/routes/dashboard.tsx:258
+#: src/routes/dashboard.tsx:268
 msgid "Couldn't load the dashboard"
 msgstr "Couldn't load the dashboard"
 
@@ -1467,7 +1467,7 @@ msgstr "Current earnings"
 msgid "Current layout"
 msgstr "Current layout"
 
-#: src/routes/dashboard.tsx:235
+#: src/routes/dashboard.tsx:245
 msgid "Current year ({year})"
 msgstr "Current year ({year})"
 
@@ -1535,7 +1535,7 @@ msgid "Danger zone"
 msgstr "Danger zone"
 
 #: src/layouts/base.tsx:533
-#: src/routes/dashboard.tsx:213
+#: src/routes/dashboard.tsx:223
 msgid "Dashboard"
 msgstr "Dashboard"
 
@@ -1632,7 +1632,7 @@ msgstr "day"
 msgid "Day of month ({0})"
 msgstr "Day of month ({0})"
 
-#: src/components/dashboard/owed-panel.tsx:267
+#: src/components/dashboard/owed-panel.tsx:264
 #: src/routes/accounting/reports/ap-aging.tsx:149
 #: src/routes/accounting/reports/ar-aging.tsx:149
 msgid "Days overdue"
@@ -3015,7 +3015,7 @@ msgstr "How far a billed quantity may exceed what was ordered and received."
 msgid "How far a vendor's unit price may differ from the purchase order."
 msgstr "How far a vendor's unit price may differ from the purchase order."
 
-#: src/components/dashboard/owed-panel.tsx:172
+#: src/components/dashboard/owed-panel.tsx:169
 msgid "How late"
 msgstr "How late"
 
@@ -3130,8 +3130,8 @@ msgid "Imports"
 msgstr "Imports"
 
 #: src/components/cash-book/counter.tsx:468
-#: src/components/dashboard/till-panel.tsx:78
-#: src/components/dashboard/till-panel.tsx:85
+#: src/components/dashboard/till-panel.tsx:79
+#: src/components/dashboard/till-panel.tsx:86
 #: src/routes/accounting/reports/daily-cash-movements.tsx:210
 #: src/routes/cash-book.tsx:535
 #: src/routes/inventory.tsx:44
@@ -3142,11 +3142,11 @@ msgstr "In"
 msgid "In stock"
 msgstr "In stock"
 
-#: src/routes/dashboard.tsx:317
+#: src/routes/dashboard.tsx:327
 msgid "in the selected period"
 msgstr "in the selected period"
 
-#: src/components/dashboard/till-panel.tsx:60
+#: src/components/dashboard/till-panel.tsx:61
 msgid "In the till now"
 msgstr "In the till now"
 
@@ -3243,7 +3243,7 @@ msgid "Inventory Valuation"
 msgstr "Inventory Valuation"
 
 #: src/components/cash-book/loan-register.tsx:359
-#: src/components/dashboard/owed-panel.tsx:264
+#: src/components/dashboard/owed-panel.tsx:261
 #: src/components/invoices/pdf-tunisia.tsx:167
 #: src/components/invoices/pdf.tsx:214
 #: src/components/payments/payment-products-cell.tsx:63
@@ -3464,7 +3464,7 @@ msgstr "Landscape"
 msgid "Language"
 msgstr "Language"
 
-#: src/routes/dashboard.tsx:226
+#: src/routes/dashboard.tsx:236
 msgid "Last {m} months"
 msgstr "Last {m} months"
 
@@ -3504,7 +3504,7 @@ msgstr "Last month"
 msgid "Last payment on {0}, {1} days ago."
 msgstr "Last payment on {0}, {1} days ago."
 
-#: src/routes/dashboard.tsx:237
+#: src/routes/dashboard.tsx:247
 msgid "Last year ({year})"
 msgstr "Last year ({year})"
 
@@ -4215,7 +4215,7 @@ msgstr "No orders yet"
 msgid "No outstanding bills"
 msgstr "No outstanding bills"
 
-#: src/components/dashboard/owed-panel.tsx:149
+#: src/components/dashboard/owed-panel.tsx:146
 #: src/routes/accounting/reports/ar-aging.tsx:120
 msgid "No outstanding invoices"
 msgstr "No outstanding invoices"
@@ -4247,7 +4247,7 @@ msgstr "No periods in this year"
 msgid "No product families yet"
 msgstr "No product families yet"
 
-#: src/routes/dashboard.tsx:382
+#: src/routes/dashboard.tsx:396
 msgid "No product is running low."
 msgstr "No product is running low."
 
@@ -4300,8 +4300,8 @@ msgstr "No purchases in this period"
 msgid "No recipe defined yet"
 msgstr "No recipe defined yet"
 
-#: src/routes/dashboard.tsx:417
-#: src/routes/dashboard.tsx:438
+#: src/routes/dashboard.tsx:431
+#: src/routes/dashboard.tsx:452
 #: src/routes/reporting/revenue-trend.tsx:127
 #: src/routes/reporting/sales-by-client.tsx:134
 #: src/routes/reporting/sales-by-product.tsx:138
@@ -4505,7 +4505,7 @@ msgstr "Open loan"
 msgid "Open only"
 msgstr "Open only"
 
-#: src/routes/dashboard.tsx:142
+#: src/routes/dashboard.tsx:152
 msgid "Open the Cash Book"
 msgstr "Open the Cash Book"
 
@@ -4519,7 +4519,7 @@ msgstr "Open-loan figures couldn't be loaded — any loan shown may be incomplet
 msgid "Opening"
 msgstr "Opening"
 
-#: src/components/dashboard/till-panel.tsx:77
+#: src/components/dashboard/till-panel.tsx:78
 #: src/routes/accounting/reports/daily-cash-movements.tsx:150
 #: src/routes/accounting/reports/daily-cash-movements.tsx:201
 #: src/types/payment.ts:41
@@ -4702,8 +4702,8 @@ msgid "Our reference"
 msgstr "Our reference"
 
 #: src/components/cash-book/counter.tsx:469
-#: src/components/dashboard/till-panel.tsx:79
-#: src/components/dashboard/till-panel.tsx:86
+#: src/components/dashboard/till-panel.tsx:80
+#: src/components/dashboard/till-panel.tsx:87
 #: src/routes/accounting/reports/daily-cash-movements.tsx:219
 #: src/routes/cash-book.tsx:552
 #: src/routes/inventory.tsx:50
@@ -5736,7 +5736,7 @@ msgstr "Retention (days)"
 #: src/routes/accounting/reports/profit-and-loss.tsx:100
 #: src/routes/accounting/trial-balance.tsx:119
 #: src/routes/bill-of-materials.tsx:103
-#: src/routes/dashboard.tsx:261
+#: src/routes/dashboard.tsx:271
 #: src/routes/deliveries/details.tsx:339
 #: src/routes/inbound-deliveries/details.tsx:362
 #: src/routes/incoming-invoices/details.tsx:350
@@ -5758,8 +5758,8 @@ msgstr "Retry"
 #: src/components/accounting/account-form.tsx:23
 #: src/routes/accounting/chart-of-accounts.tsx:39
 #: src/routes/accounting/reports/profit-and-loss.tsx:109
-#: src/routes/dashboard.tsx:311
-#: src/routes/dashboard.tsx:333
+#: src/routes/dashboard.tsx:321
+#: src/routes/dashboard.tsx:347
 #: src/routes/reporting/revenue-trend.tsx:136
 #: src/routes/reporting/revenue-trend.tsx:154
 #: src/routes/reporting/sales-by-client.tsx:121
@@ -5840,7 +5840,7 @@ msgstr "Role"
 msgid "Role for {memberLabel}"
 msgstr "Role for {memberLabel}"
 
-#: src/routes/dashboard.tsx:223
+#: src/routes/dashboard.tsx:233
 msgid "Rolling window"
 msgstr "Rolling window"
 
@@ -5876,7 +5876,7 @@ msgstr "Sales by Client"
 msgid "Sales by Product"
 msgstr "Sales by Product"
 
-#: src/routes/dashboard.tsx:217
+#: src/routes/dashboard.tsx:227
 msgid "Sales period"
 msgstr "Sales period"
 
@@ -6336,7 +6336,7 @@ msgstr "Stay here"
 msgid "Stay on this page"
 msgstr "Stay on this page"
 
-#: src/components/dashboard/owed-panel.tsx:274
+#: src/components/dashboard/owed-panel.tsx:271
 msgid "Still owed"
 msgstr "Still owed"
 
@@ -6344,7 +6344,7 @@ msgstr "Still owed"
 msgid "Still owed on earlier loans"
 msgstr "Still owed on earlier loans"
 
-#: src/routes/dashboard.tsx:356
+#: src/routes/dashboard.tsx:370
 #: src/routes/products.tsx:380
 msgid "Stock"
 msgstr "Stock"
@@ -6728,7 +6728,7 @@ msgstr "Time zone"
 msgid "To"
 msgstr "To"
 
-#: src/components/dashboard/till-panel.tsx:75
+#: src/components/dashboard/till-panel.tsx:76
 #: src/components/document-filters.tsx:60
 msgid "Today"
 msgstr "Today"
@@ -6749,11 +6749,11 @@ msgstr "Top 20 by revenue"
 msgid "Top 20 by spend"
 msgstr "Top 20 by spend"
 
-#: src/routes/dashboard.tsx:406
+#: src/routes/dashboard.tsx:420
 msgid "Top clients"
 msgstr "Top clients"
 
-#: src/routes/dashboard.tsx:427
+#: src/routes/dashboard.tsx:441
 msgid "Top products"
 msgstr "Top products"
 
@@ -7182,7 +7182,7 @@ msgstr "Vendors"
 msgid "Version restored"
 msgstr "Version restored"
 
-#: src/routes/dashboard.tsx:94
+#: src/routes/dashboard.tsx:97
 msgid "View full report"
 msgstr "View full report"
 
@@ -7237,7 +7237,7 @@ msgstr "Website"
 msgid "week"
 msgstr "week"
 
-#: src/components/dashboard/owed-panel.tsx:109
+#: src/components/dashboard/owed-panel.tsx:106
 msgid "What your clients owe you"
 msgstr "What your clients owe you"
 

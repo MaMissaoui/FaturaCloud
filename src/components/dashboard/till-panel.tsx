@@ -41,6 +41,7 @@ const TillPanel = ({ till, money, dayLabel, cashBookLink }: Props) => {
       style={{
         flex: "1 1 300px",
         minWidth: 0,
+        alignSelf: "flex-start",
         background: token.colorPrimaryBg,
         borderRadius: token.borderRadiusLG,
         padding: "clamp(16px, 3vw, 28px)",

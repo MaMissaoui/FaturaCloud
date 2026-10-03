@@ -88,9 +88,6 @@ const OwedPanel = ({
       style={{
         flex: "2 1 560px",
         minWidth: 0,
-        background: token.colorBgContainer,
-        borderRadius: token.borderRadiusLG,
-        padding: "clamp(16px, 3vw, 32px)",
         display: "flex",
         flexDirection: "column",
         gap: 20,

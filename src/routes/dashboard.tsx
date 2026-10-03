@@ -32,6 +32,9 @@ const formatQty = (qty: number, locale: string) =>
 
 const MONTH_OPTIONS = [3, 6, 12, 24];
 
+// The top lists stay short here; the full reports rank everything.
+const TOP_LIST_SIZE = 5;
+
 // A rolling window ("m12") or a calendar year ("y2026") in one Select —
 // years are generated at render time (not a fixed list) so "current
 // year"/"last year" never go stale, and a handful of further-back years
@@ -135,6 +138,13 @@ const Dashboard = () => {
       }).format(new Date(`${date}T12:00:00Z`)),
     );
 
+  // A "YYYY-MM" month as its short name and year ("juin 2026").
+  const monthLabel = (month: string) =>
+    new Intl.DateTimeFormat(i18n.locale, {
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${month}-15T12:00:00Z`));
   const revenueTotal = (data?.revenueByMonth ?? []).reduce((sum, m) => sum + m.revenue, 0);
   const units = formatQty(data?.stockValuation.units ?? 0, qtyLocale);
   const threshold = formatQty(data?.lowStock.threshold ?? 0, qtyLocale);
@@ -325,8 +335,12 @@ const Dashboard = () => {
                       theme={themeMode === "dark" ? "classicDark" : "classic"}
                       height={220}
                       style={{ fill: token.colorPrimary }}
-                      axis={{ y: { labelFormatter: (v: number) => money(v) } }}
+                      axis={{
+                        x: { labelFormatter: (v: string) => monthLabel(v) },
+                        y: { labelFormatter: (v: number) => money(v) },
+                      }}
                       tooltip={{
+                        title: (d: { month: string }) => monthLabel(d.month),
                         items: [
                           {
                             field: "revenue",
@@ -408,7 +422,7 @@ const Dashboard = () => {
                 )}
                 <div style={{ marginTop: 4 }}>
                   {rankedList(
-                    data.topClients.map((c) => ({
+                    data.topClients.slice(0, TOP_LIST_SIZE).map((c) => ({
                       key: c.clientId,
                       name: c.name,
                       value: money(c.revenue),
@@ -429,7 +443,7 @@ const Dashboard = () => {
                 )}
                 <div style={{ marginTop: 4 }}>
                   {rankedList(
-                    data.topProducts.map((p) => ({
+                    data.topProducts.slice(0, TOP_LIST_SIZE).map((p) => ({
                       key: p.productId,
                       name: p.name,
                       value: money(p.revenue),
