@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -345,6 +346,59 @@ func TestAllocateInvoiceLinesWithANegativeLine(t *testing.T) {
 		}
 		if amountSum != 1800 || paidSum != invoicePaid {
 			t.Fatalf("paid %d: amounts sum %d, paid sum %d; want 1800 and %d", invoicePaid, amountSum, paidSum, invoicePaid)
+		}
+	}
+}
+
+// TestAllocateInvoiceLinesSettlingALineLeavesTheOthersAlone pins the fix for
+// the cent that moved between lines: an invoice-level deposit used to be
+// re-spread every time a line got a direct payment, and its rounding leftover
+// could land on another line — a line the cashier hadn't touched (or had just
+// settled) then showed 0,01 outstanding, and paying a line's whole shown
+// balance could be refused by a cent. Settling any one line in full must
+// leave every other line exactly as it was.
+func TestAllocateInvoiceLinesSettlingALineLeavesTheOthersAlone(t *testing.T) {
+	nets := [][]int64{{278258, 86841, 80001}, {1000, 1000, 1000}, {700, 300}, {5, 3, 2, 1}, {118916, 89121, 11085}}
+	for _, net := range nets {
+		var sum int64
+		for _, v := range net {
+			sum += v
+		}
+		for _, deposit := range []int64{1, 2, 7, sum / 3, sum/2 + 1, sum - 1} {
+			raw := func(linePaid []int64) []loanLineRaw {
+				lines := make([]loanLineRaw, len(net))
+				var direct int64
+				for _, p := range linePaid {
+					direct += p
+				}
+				for k := range net {
+					lines[k] = loanLineRaw{LineID: fmt.Sprint(k), NetLine: net[k], InvoiceTotal: sum,
+						InvoicePaid: deposit + direct, LinePaid: linePaid[k]}
+				}
+				return lines
+			}
+			// Settle the lines one at a time, each for exactly the balance
+			// shown, in every starting order.
+			for first := range net {
+				linePaid := make([]int64, len(net))
+				for step := 0; step < len(net); step++ {
+					k := (first + step) % len(net)
+					amounts, paid := allocateInvoiceLines(raw(linePaid))
+					due := amounts[k] - paid[k]
+					linePaid[k] += due
+					afterAmounts, afterPaid := allocateInvoiceLines(raw(linePaid))
+					for j := range net {
+						wantPaid := paid[j]
+						if j == k {
+							wantPaid = amounts[k]
+						}
+						if afterAmounts[j] != amounts[j] || afterPaid[j] != wantPaid {
+							t.Fatalf("lines %v, deposit %d: settling line %d (%d due) moved line %d from %d/%d to %d/%d",
+								net, deposit, k, due, j, paid[j], amounts[j], afterPaid[j], afterAmounts[j])
+						}
+					}
+				}
+			}
 		}
 	}
 }

@@ -423,9 +423,10 @@ func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusR
 // A line's amount is the invoice total weighted by net line value, the last
 // line absorbing the rounding remainder. A line's paid is what was applied to
 // it directly (LinePaid) plus its share of the invoice-level payments: those
-// are spread in proportion to the line amounts, but never beyond what a line
-// still owes after its own direct payments — see allocateCapped. That's what
-// makes paying one line leave every other line's balance untouched.
+// are spread in proportion to the line amounts alone, and only a share a line
+// can no longer take (its direct payments already cover it) moves on to the
+// lines with room — see allocateCapped. That's what makes paying one line
+// leave every other line's balance untouched, to the cent.
 func allocateInvoiceLines(lines []loanLineRaw) (amounts, paid []int64) {
 	n := len(lines)
 	amounts = make([]int64, n)
@@ -456,22 +457,44 @@ func allocateInvoiceLines(lines []loanLineRaw) (amounts, paid []int64) {
 		allocated += amounts[k]
 	}
 
+	// The invoice-level payments (the counter's deposit, a payment recorded
+	// on the invoice page) are spread over the lines by amount alone, never
+	// by what each line has been paid directly since: a direct payment is
+	// capped at the line's balance shown with this same spread, so the spread
+	// must not move when one is made. (Spreading over each line's room after
+	// its direct payments, as this did until 2026-10, moved the rounding
+	// leftover onto another line every time a line was settled — a line
+	// nobody had touched then showed 0,01 outstanding.)
 	var direct int64
-	caps := make([]int64, n)
 	for k, l := range lines {
 		paid[k] = l.LinePaid
 		direct += l.LinePaid
-		caps[k] = amounts[k] - l.LinePaid
-		if caps[k] < 0 {
-			caps[k] = 0
-		}
 	}
 	undirected := invoicePaid - direct
 	if undirected < 0 {
 		undirected = 0
 	}
-	for k, share := range allocateCapped(undirected, amounts, caps) {
-		paid[k] += share
+	// Only a share a line can't take — its direct payments already cover
+	// it, e.g. an invoice-level payment recorded after a line was settled —
+	// moves on, to the lines with room left.
+	var overflow int64
+	for k, share := range allocateCapped(undirected, amounts, amounts) {
+		room := amounts[k] - paid[k]
+		if room < 0 {
+			room = 0
+		}
+		taken := min(share, room)
+		paid[k] += taken
+		overflow += share - taken
+	}
+	if overflow > 0 {
+		rooms := make([]int64, n)
+		for k := range lines {
+			rooms[k] = max(amounts[k]-paid[k], 0)
+		}
+		for k, share := range allocateCapped(overflow, amounts, rooms) {
+			paid[k] += share
+		}
 	}
 	return amounts, paid
 }
