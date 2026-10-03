@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.61.0] - 2026-10-03
+
+### Changed
+- The Dashboard leads with what clients owe you: the total, one bar split
+  by how late it is, and the invoices of the age group you pick. Under it
+  are the clients who haven't paid for more than 60 days, and those close
+  to it (#462).
+- Beside it, for roles that use the Cash Book, the till: what's in it now,
+  today's movements and how yesterday closed. It stays hidden for an
+  organization whose till has never been used (#462).
+- Below: revenue for the chosen period with month names, stock with the
+  products down to 2 units or fewer, and the top 5 clients and products
+  (#462).
+
 ## [3.60.4] - 2026-10-03
 
 ### Fixed
