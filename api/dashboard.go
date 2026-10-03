@@ -33,16 +33,20 @@ func (h *handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 	// roles without the Cash Book (sales, purchasing, accounting), so it is
 	// only filled in for a role that may use it. The rest of the payload is
 	// shared and filtered on screen (audit F147).
-	withTill := false
+	// The follow-up list reads the whole loan and payment history, so it is
+	// only built for a role that sees what clients owe (Sales or Accounting,
+	// dashboardWidgetsForRole's receivables).
+	var opts db.DashboardOptions
 	if claims := getClaims(r); claims != nil {
 		role, _, err := h.db.GetOrganizationRole(orgID, claims.UserID)
 		if err != nil {
 			writeInternalError(w, err)
 			return
 		}
-		withTill = roleCanUseSection(role, sectionCashbook)
+		opts.CashRegister = roleCanUseSection(role, sectionCashbook)
+		opts.LoanFollowUp = roleCanUseSection(role, sectionSales) || roleCanUseSection(role, sectionAccounting)
 	}
-	data, err := h.db.GetDashboardData(orgID, startDate, endDate, withTill)
+	data, err := h.db.GetDashboardData(orgID, startDate, endDate, opts)
 	if err != nil {
 		writeInternalError(w, err)
 		return

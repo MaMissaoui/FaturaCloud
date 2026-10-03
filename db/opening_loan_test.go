@@ -401,7 +401,7 @@ func TestOpeningLoansAreReceivables(t *testing.T) {
 
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
 	to := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC).UnixMilli()
-	dashboard, err := d.GetDashboardData(fx.orgID, from, to, true)
+	dashboard, err := d.GetDashboardData(fx.orgID, from, to, DashboardOptions{CashRegister: true, LoanFollowUp: true})
 	if err != nil {
 		t.Fatalf("GetDashboardData: %v", err)
 	}

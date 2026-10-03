@@ -83,6 +83,18 @@ type DashboardData struct {
 	LowStock     LowStock               `json:"lowStock"`
 }
 
+// DashboardOptions picks the panels that depend on the caller's role, set by
+// api/dashboard.go from the role's sections.
+type DashboardOptions struct {
+	// CashRegister: the till, Cash Book data the section guard keeps from
+	// roles without the Cash Book.
+	CashRegister bool
+	// LoanFollowUp: the clients who stopped paying, shown with what clients
+	// owe (Sales or Accounting). It reads the organization's whole loan and
+	// payment history, so it isn't built for a role that never sees it.
+	LoanFollowUp bool
+}
+
 // topN is fixed rather than caller-configurable — this is a dashboard widget
 // size, not a general-purpose reporting API.
 const topN = 10
@@ -96,9 +108,9 @@ const topN = 10
 // reports as one source of truth instead of two copies of "revenue by
 // month" that could drift.
 //
-// withCashRegister says whether the caller may see the till; the rest of the
-// payload is shared by every member and filtered on screen (audit F147).
-func (d *Database) GetDashboardData(organizationID string, startDate, endDate int64, withCashRegister bool) (DashboardData, error) {
+// opts says which role-dependent panels to build; the rest of the payload is
+// shared by every member and filtered on screen (audit F147).
+func (d *Database) GetDashboardData(organizationID string, startDate, endDate int64, opts DashboardOptions) (DashboardData, error) {
 	revenueByMonth, err := d.GetRevenueByMonth(organizationID, startDate, endDate)
 	if err != nil {
 		return DashboardData{}, err
@@ -125,14 +137,16 @@ func (d *Database) GetDashboardData(organizationID string, startDate, endDate in
 	}
 	now := time.Now()
 	var cashRegister *DashboardCashRegister
-	if withCashRegister {
+	if opts.CashRegister {
 		if cashRegister, err = d.getDashboardCashRegister(organizationID, now, loc); err != nil {
 			return DashboardData{}, err
 		}
 	}
-	loanFollowUp, err := d.getLoanFollowUp(organizationID, now, loc)
-	if err != nil {
-		return DashboardData{}, err
+	loanFollowUp := LoanFollowUp{Customers: []LoanFollowUpCustomer{}}
+	if opts.LoanFollowUp {
+		if loanFollowUp, err = d.getLoanFollowUp(organizationID, now, loc); err != nil {
+			return DashboardData{}, err
+		}
 	}
 	lowStock, err := d.getLowStock(organizationID)
 	if err != nil {

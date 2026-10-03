@@ -9,10 +9,12 @@ import (
 	"github.com/MaMissaoui/fatura-cloud/db"
 )
 
-// The Dashboard payload is shared by every member, except the till: it is
-// Cash Book data, which the section guard keeps from sales, purchasing and
-// accounting, so only a role that may use the Cash Book gets it.
-func TestDashboardTillFollowsTheCashBookSection(t *testing.T) {
+// The Dashboard payload is shared by every member, except two panels. The
+// till is Cash Book data, which the section guard keeps from sales,
+// purchasing and accounting, so only a role that may use the Cash Book gets
+// it. The clients-to-chase list reads the whole loan history, so it is only
+// built for a role that sees what clients owe (Sales or Accounting).
+func TestDashboardRolePanels(t *testing.T) {
 	t.Parallel()
 	mux, database, _, _ := newTestRouter(t)
 	org, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-dash", Name: strPtr("Dashboard Org")})
@@ -82,6 +84,11 @@ func TestDashboardTillFollowsTheCashBookSection(t *testing.T) {
 		}
 		if wantTill && data.CashRegister.Today.Closing != 5000 {
 			t.Fatalf("%s: till closing = %d, want 5000", role, data.CashRegister.Today.Closing)
+		}
+		// staleAfterDays is set only when the follow-up list was built.
+		wantFollowUp := role != "purchasing"
+		if (data.LoanFollowUp.StaleAfterDays != 0) != wantFollowUp || data.LoanFollowUp.Customers == nil {
+			t.Fatalf("%s: loanFollowUp = %+v, want built=%v with a non-nil list", role, data.LoanFollowUp, wantFollowUp)
 		}
 	}
 }
