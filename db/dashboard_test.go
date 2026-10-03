@@ -38,6 +38,18 @@ func TestBucketOutstanding(t *testing.T) {
 
 	summary := bucketOutstanding(invoices, now)
 
+	// Each invoice names the bucket it was summed into, so the Dashboard can
+	// list a bucket's invoices: per-bucket sums must equal the summary.
+	byBucket := map[string]int64{}
+	for _, inv := range summary.Invoices {
+		byBucket[inv.Bucket] += inv.Total
+	}
+	if byBucket["current"] != summary.Current || byBucket["days1To30"] != summary.Days1To30 ||
+		byBucket["days31To60"] != summary.Days31To60 || byBucket["days61To90"] != summary.Days61To90 ||
+		byBucket["days90Plus"] != summary.Days90Plus || len(byBucket) != 5 {
+		t.Fatalf("invoice buckets %v disagree with the summary %+v", byBucket, summary)
+	}
+
 	wantTotal := int64(10 + 20 + 30 + 40 + 50 + 60 + 70 + 80 + 90 + 100)
 	if summary.Total != wantTotal {
 		t.Fatalf("Total = %d, want %d", summary.Total, wantTotal)
@@ -194,7 +206,7 @@ func TestGetDashboardData(t *testing.T) {
 		t.Fatalf("CreateOrganization: %v", err)
 	}
 
-	data, err := d.GetDashboardData(org.ID, DashboardCutoff(12), 0)
+	data, err := d.GetDashboardData(org.ID, DashboardCutoff(12), 0, true)
 	if err != nil {
 		t.Fatalf("GetDashboardData: %v", err)
 	}

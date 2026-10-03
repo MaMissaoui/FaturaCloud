@@ -45,16 +45,25 @@ func (d *Database) loanRegisterPayments(organizationID string) ([]loanRegisterPa
 	return out, err
 }
 
-// loanRegisterTones is the Go twin of buildLoanRegister's tone in
-// loan-register-model.ts: per customer, "settled" when nothing is owed,
-// "stale" when the last payment on one of their loan invoices (or, with none,
-// their latest loan sale) is more than staleAfterDays calendar days before
-// now, else "open". A payment counts only when it is the customer's own and
-// was applied to one of their loan invoices, so a later cash purchase doesn't
-// make a stalled loan look active. Days are counted in the organization's
-// zone (the screen counts in the browser's, the same for a till in that zone).
-func loanRegisterTones(rows []LoanStatusRow, payments []loanRegisterPayment, now int64, loc *time.Location, staleAfterDays int) map[string]string {
+// loanRegisterCustomer is one customer on the loan register: their name,
+// what they still owe across their loan invoices, and how many calendar days
+// have passed since the last payment on one of those invoices (or, with none,
+// since their latest loan sale).
+type loanRegisterCustomer struct {
+	ClientName  string
+	Outstanding int64
+	IdleDays    int
+}
+
+// loanRegisterCustomers groups the loan rows per customer, the input both the
+// register's tones and the Dashboard's follow-up list read. A payment counts
+// only when it is the customer's own and was applied to one of their loan
+// invoices, so a later cash purchase doesn't make a stalled loan look active.
+// Days are counted in the organization's zone (the screen counts in the
+// browser's, the same for a till in that zone).
+func loanRegisterCustomers(rows []LoanStatusRow, payments []loanRegisterPayment, now int64, loc *time.Location) map[string]loanRegisterCustomer {
 	type customer struct {
+		name         string
 		outstanding  int64
 		lastSale     int64
 		lastPayment  int64
@@ -65,7 +74,7 @@ func loanRegisterTones(rows []LoanStatusRow, payments []loanRegisterPayment, now
 	for _, r := range rows {
 		c := byClient[r.ClientID]
 		if c == nil {
-			c = &customer{loanInvoices: map[string]bool{}}
+			c = &customer{name: r.ClientName, loanInvoices: map[string]bool{}}
 			byClient[r.ClientID] = c
 		}
 		c.outstanding += r.Outstanding
@@ -84,16 +93,33 @@ func loanRegisterTones(rows []LoanStatusRow, payments []loanRegisterPayment, now
 		}
 	}
 
-	tones := make(map[string]string, len(byClient))
+	out := make(map[string]loanRegisterCustomer, len(byClient))
 	for id, c := range byClient {
 		from := c.lastSale
 		if c.hasPayment {
 			from = c.lastPayment
 		}
+		out[id] = loanRegisterCustomer{
+			ClientName:  c.name,
+			Outstanding: c.outstanding,
+			IdleDays:    calendarDaysBetween(from, now, loc),
+		}
+	}
+	return out
+}
+
+// loanRegisterTones is the Go twin of buildLoanRegister's tone in
+// loan-register-model.ts: per customer, "settled" when nothing is owed,
+// "stale" when more than staleAfterDays calendar days passed since their last
+// loan payment (see loanRegisterCustomers), else "open".
+func loanRegisterTones(rows []LoanStatusRow, payments []loanRegisterPayment, now int64, loc *time.Location, staleAfterDays int) map[string]string {
+	customers := loanRegisterCustomers(rows, payments, now, loc)
+	tones := make(map[string]string, len(customers))
+	for id, c := range customers {
 		switch {
-		case c.outstanding <= 0:
+		case c.Outstanding <= 0:
 			tones[id] = LoanRegisterSettled
-		case calendarDaysBetween(from, now, loc) > staleAfterDays:
+		case c.IdleDays > staleAfterDays:
 			tones[id] = LoanRegisterStale
 		default:
 			tones[id] = LoanRegisterOpen

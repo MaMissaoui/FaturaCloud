@@ -29,7 +29,20 @@ func (h *handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		startDate, endDate = db.DashboardCutoff(months), 0
 	}
 
-	data, err := h.db.GetDashboardData(orgID, startDate, endDate)
+	// The till is Cash Book data, which the section guard keeps from the
+	// roles without the Cash Book (sales, purchasing, accounting), so it is
+	// only filled in for a role that may use it. The rest of the payload is
+	// shared and filtered on screen (audit F147).
+	withTill := false
+	if claims := getClaims(r); claims != nil {
+		role, _, err := h.db.GetOrganizationRole(orgID, claims.UserID)
+		if err != nil {
+			writeInternalError(w, err)
+			return
+		}
+		withTill = roleCanUseSection(role, sectionCashbook)
+	}
+	data, err := h.db.GetDashboardData(orgID, startDate, endDate, withTill)
 	if err != nil {
 		writeInternalError(w, err)
 		return

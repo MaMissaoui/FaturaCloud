@@ -37,6 +37,10 @@ type OutstandingInvoice struct {
 	ForeignTotal int64  `db:"foreignTotal" json:"foreignTotal"`
 	Total        int64  `db:"total"        json:"total"`
 	DaysOverdue  int    `json:"daysOverdue"`
+	// Bucket names the summary field this invoice is counted in ("current",
+	// "days1To30", …), so the Dashboard can list a bucket's invoices without
+	// re-deriving agingBucketFor.
+	Bucket string `json:"bucket"`
 }
 
 type OutstandingSummary struct {
@@ -59,6 +63,10 @@ type StockValuationItem struct {
 type StockValuation struct {
 	Total int64                `json:"total"`
 	Items []StockValuationItem `json:"items"`
+	// Every stock-tracked product, and their units in stock, before Items is
+	// cut to topN.
+	ProductCount int     `json:"productCount"`
+	Units        float64 `json:"units"`
 }
 
 type DashboardData struct {
@@ -67,6 +75,12 @@ type DashboardData struct {
 	StockValuation StockValuation     `json:"stockValuation"`
 	TopClients     []ClientRevenue    `json:"topClients"`
 	TopProducts    []ProductRevenue   `json:"topProducts"`
+	// CashRegister is nil when there is no till to show, or the caller's
+	// role may not use the Cash Book (see getDashboardCashRegister and
+	// api/dashboard.go).
+	CashRegister *DashboardCashRegister `json:"cashRegister"`
+	LoanFollowUp LoanFollowUp           `json:"loanFollowUp"`
+	LowStock     LowStock               `json:"lowStock"`
 }
 
 // topN is fixed rather than caller-configurable — this is a dashboard widget
@@ -81,7 +95,10 @@ const topN = 10
 // and topN as the ranked-list limit. This keeps the widget and the full
 // reports as one source of truth instead of two copies of "revenue by
 // month" that could drift.
-func (d *Database) GetDashboardData(organizationID string, startDate, endDate int64) (DashboardData, error) {
+//
+// withCashRegister says whether the caller may see the till; the rest of the
+// payload is shared by every member and filtered on screen (audit F147).
+func (d *Database) GetDashboardData(organizationID string, startDate, endDate int64, withCashRegister bool) (DashboardData, error) {
 	revenueByMonth, err := d.GetRevenueByMonth(organizationID, startDate, endDate)
 	if err != nil {
 		return DashboardData{}, err
@@ -102,6 +119,25 @@ func (d *Database) GetDashboardData(organizationID string, startDate, endDate in
 	if err != nil {
 		return DashboardData{}, err
 	}
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return DashboardData{}, err
+	}
+	now := time.Now()
+	var cashRegister *DashboardCashRegister
+	if withCashRegister {
+		if cashRegister, err = d.getDashboardCashRegister(organizationID, now, loc); err != nil {
+			return DashboardData{}, err
+		}
+	}
+	loanFollowUp, err := d.getLoanFollowUp(organizationID, now, loc)
+	if err != nil {
+		return DashboardData{}, err
+	}
+	lowStock, err := d.getLowStock(organizationID)
+	if err != nil {
+		return DashboardData{}, err
+	}
 
 	return DashboardData{
 		RevenueByMonth: revenueByMonth,
@@ -109,6 +145,9 @@ func (d *Database) GetDashboardData(organizationID string, startDate, endDate in
 		StockValuation: stockValuation,
 		TopClients:     topClients,
 		TopProducts:    topProducts,
+		CashRegister:   cashRegister,
+		LoanFollowUp:   loanFollowUp,
+		LowStock:       lowStock,
 	}, nil
 }
 
@@ -612,6 +651,7 @@ func bucketOutstanding(invoices []OutstandingInvoice, now time.Time) Outstanding
 
 		bucket, daysOverdue := agingBucketFor(inv.DueDate, nowMillis)
 		inv.DaysOverdue = daysOverdue
+		inv.Bucket = bucket
 		switch bucket {
 		case "current":
 			summary.Current += inv.Total
@@ -668,11 +708,14 @@ func (d *Database) getStockValuation(organizationID string) (StockValuation, err
 	}
 
 	var total int64
+	var units float64
 	for _, item := range items {
 		total += item.Value
+		units += item.Quantity
 	}
+	count := len(items)
 	if len(items) > topN {
 		items = items[:topN]
 	}
-	return StockValuation{Total: total, Items: items}, nil
+	return StockValuation{Total: total, Items: items, ProductCount: count, Units: units}, nil
 }

@@ -1020,7 +1020,16 @@ export interface OutstandingInvoiceSummary {
   foreignTotal: number;
   total: number;
   daysOverdue: number;
+  // The OutstandingSummary field this invoice is counted in.
+  bucket: OutstandingBucket;
 }
+
+export type OutstandingBucket =
+  | "current"
+  | "days1To30"
+  | "days31To60"
+  | "days61To90"
+  | "days90Plus";
 
 export interface OutstandingSummary {
   total: number;
@@ -1042,6 +1051,41 @@ export interface StockValuationItem {
 export interface StockValuation {
   total: number;
   items: StockValuationItem[]; // top 10 by value
+  // Every stock-tracked product and their units, before items is cut.
+  productCount: number;
+  units: number;
+}
+
+// The till: the organization's default cash register, today and yesterday.
+// null when there's none, it was never used, or the role has no Cash Book.
+export interface DashboardCashRegister {
+  accountId: string;
+  accountName: string;
+  today: DailyCashMovementRow;
+  yesterday: DailyCashMovementRow;
+}
+
+// A customer who still owes and hasn't paid on their loans for a while;
+// stale = past staleAfterDays, the Cash Book register's stalled rule.
+export interface LoanFollowUpCustomer {
+  clientId: string;
+  clientName: string;
+  outstanding: number;
+  idleDays: number;
+  stale: boolean;
+}
+
+export interface LoanFollowUp {
+  staleAfterDays: number;
+  staleCount: number;
+  approachingCount: number;
+  customers: LoanFollowUpCustomer[]; // stalled first, longest idle first
+}
+
+export interface LowStock {
+  threshold: number;
+  count: number;
+  items: { productId: string; name: string; quantity: number }[]; // lowest first
 }
 
 export interface ClientRevenue {
@@ -1062,6 +1106,9 @@ export interface DashboardData {
   stockValuation: StockValuation;
   topClients: ClientRevenue[];
   topProducts: ProductRevenue[];
+  cashRegister: DashboardCashRegister | null;
+  loanFollowUp: LoanFollowUp;
+  lowStock: LowStock;
 }
 
 // Exactly one of `months` (a rolling window ending today) or `year` (a full
@@ -1481,7 +1528,7 @@ export const GetAccountBalance = (organizationId: string, accountId: string, asO
 // doc comment for why day boundaries are UTC (this app stores no per-
 // organization timezone, and journal_entries.date carries real time-of-day).
 export interface DailyCashMovementRow {
-  date: string; // YYYY-MM-DD, UTC
+  date: string; // YYYY-MM-DD, in the organization's zone
   opening: number;
   in: number;
   out: number;

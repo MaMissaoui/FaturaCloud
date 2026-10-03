@@ -86,3 +86,18 @@ body {
     grid-template-columns: minmax(0, 1fr) 340px;
   }
 }
+
+// The Dashboard's "how late" buckets (src/components/dashboard/owed-panel.tsx)
+// are plain buttons styled inline; these are the states inline styles can't
+// express.
+.dashboard-bucket {
+  font: inherit;
+  transition: border-color 0.15s;
+  &:hover {
+    border-color: var(--ant-color-primary, #1677ff) !important;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ant-color-primary, #1677ff);
+    outline-offset: 2px;
+  }
+}

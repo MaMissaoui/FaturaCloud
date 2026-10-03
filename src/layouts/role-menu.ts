@@ -155,5 +155,8 @@ export const dashboardWidgetsForRole = (role: string) => {
     sales,
     receivables: sales || sees("group-accounting"),
     stock: sees("group-inventory") || sees("group-accounting") || sees("group-purchasing"),
+    // The till is Cash Book data; the server only sends it to a role that may
+    // use the Cash Book (api/dashboard.go), so this matches it.
+    till: sees("cash-book"),
   };
 };

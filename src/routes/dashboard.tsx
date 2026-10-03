@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Alert, Button, Card, Col, Row, Select, Statistic, Table, theme, Typography } from "antd";
+import { Alert, Button, Select, Skeleton, theme, Typography } from "antd";
 import { Column } from "@ant-design/plots";
 import { useAtomValue } from "jotai";
-import { Trans } from "@lingui/react/macro";
+import { Trans, Plural } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { DashboardOutlined } from "@ant-design/icons";
@@ -13,14 +13,10 @@ import { organizationIdAtom, organizationAtom, myOrgRoleAtom } from "src/atoms/o
 import { dashboardWidgetsForRole, isRouteAllowedForRole } from "src/layouts/role-menu";
 import { themeAtom } from "src/atoms/generic";
 import { GetDashboard } from "src/api";
-import type {
-  DashboardData,
-  OutstandingInvoiceSummary,
-  StockValuationItem,
-  ClientRevenue,
-  ProductRevenue,
-} from "src/api";
+import type { DashboardData, OutstandingInvoiceSummary } from "src/api";
 import PageHeader from "src/components/page-header";
+import OwedPanel from "src/components/dashboard/owed-panel";
+import TillPanel from "src/components/dashboard/till-panel";
 import { useFetch } from "src/hooks/useFetch";
 import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
 
@@ -35,18 +31,6 @@ const formatQty = (qty: number, locale: string) =>
   }).format(qty);
 
 const MONTH_OPTIONS = [3, 6, 12, 24];
-
-// The "Outstanding invoices" card packs 5 Statistics into a half-width
-// column — antd's Statistic value has no wrap/overflow handling of its own,
-// so a large organization's real total (e.g. "TND 4,515,363.83") overflowed
-// horizontally straight into the next column's value instead of wrapping.
-// Module-level (not inline) so the object is referentially stable across
-// renders, same reasoning as orders/details.tsx's getOrderStatusColor.
-const outstandingStatisticStyle: CSSProperties = {
-  whiteSpace: "normal",
-  wordBreak: "break-word",
-  fontSize: 18,
-};
 
 // A rolling window ("m12") or a calendar year ("y2026") in one Select —
 // years are generated at render time (not a fixed list) so "current
@@ -63,12 +47,23 @@ const periodFromValue = (v: string): Period =>
     ? { kind: "year", year: Number(v.slice(1)) }
     : { kind: "months", months: Number(v.slice(1)) };
 
-// Column span for n widgets sharing a row: a hidden widget frees its space
-// instead of leaving a gap.
-const spanFor = (n: number) => (n > 0 ? Math.floor(24 / n) : 24);
+// Two sections side by side that stack on a narrow screen; a section a role
+// can't see is left out, and the other takes the row.
+const rowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 24,
+  alignItems: "stretch",
+  marginTop: 24,
+};
 
+const capitalize = (s: string) => s.charAt(0).toLocaleUpperCase() + s.slice(1);
+
+// The Dashboard (2026-10 redesign): what clients owe leads, with the till
+// beside it, then sales, stock and the top lists. Each section follows the
+// role's sections (dashboardWidgetsForRole, audit F147); the till is also
+// only sent to a role that may use the Cash Book.
 const Dashboard = () => {
-  useLingui();
   const { i18n } = useLingui();
   const { token } = theme.useToken();
   const navigate = useNavigate();
@@ -78,9 +73,6 @@ const Dashboard = () => {
   const orgRole = useAtomValue(myOrgRoleAtom);
   const show = dashboardWidgetsForRole(orgRole);
   const canOpen = (path: string) => isRouteAllowedForRole(orgRole, path);
-  const statCount = [show.sales, show.receivables, show.stock].filter(Boolean).length;
-  const detailCount = [show.receivables, show.stock].filter(Boolean).length;
-  const topCount = show.sales ? 2 : 0;
   // A row-click handler set for a table row, or none when the role can't
   // open the target page (the row then isn't presented as clickable).
   const rowLink = (path: string, go: () => void) =>
@@ -97,16 +89,14 @@ const Dashboard = () => {
           tabIndex: 0,
         }
       : {};
-  const reportLink = (path: string) =>
-    canOpen(path) ? <Link to={path}>{t`View full report`}</Link> : undefined;
+  const pageLink = (path: string, label: ReactNode) =>
+    canOpen(path) ? <Link to={path}>{label}</Link> : undefined;
+  const reportLink = (path: string) => pageLink(path, t`View full report`);
 
   const [period, setPeriod] = useState<Period>({ kind: "months", months: 12 });
-  // A failed fetch used to leave `data` untouched (stale, from a previous
-  // period) or null (first load) — either way every Statistic/Table below
-  // rendered a plausible-looking "nothing owed, nothing to see" reading
-  // with no indication anything went wrong, on the one screen every user
-  // checks daily to decide what needs attention. Same fix shape as
-  // src/routes/accounting/reports/inventory-valuation.tsx.
+  // A failed fetch must never read as "nothing owed, nothing to see" on the
+  // one screen every user checks to decide what needs attention: on failure
+  // only the error and its Retry show, never zeros.
   const {
     data,
     loading,
@@ -124,50 +114,145 @@ const Dashboard = () => {
 
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
   const qtyLocale = numberFormatLocale(organization?.country_code) ?? i18n.locale;
+  const timeZone = organization?.timezone || undefined;
+  const today = capitalize(
+    new Intl.DateTimeFormat(i18n.locale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone,
+    }).format(new Date()),
+  );
+  // A YYYY-MM-DD day of the till, as a weekday and date.
+  const dayLabel = (date: string) =>
+    capitalize(
+      new Intl.DateTimeFormat(i18n.locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "UTC",
+      }).format(new Date(`${date}T12:00:00Z`)),
+    );
 
   const revenueTotal = (data?.revenueByMonth ?? []).reduce((sum, m) => sum + m.revenue, 0);
+  const units = formatQty(data?.stockValuation.units ?? 0, qtyLocale);
+  const threshold = formatQty(data?.lowStock.threshold ?? 0, qtyLocale);
+  const till = show.till ? (data?.cashRegister ?? null) : null;
+  const cashBookLink = pageLink("/cash-book", t`Open the Cash Book`);
+
+  const sectionHead = (id: string, title: ReactNode, link?: ReactNode) => (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        gap: 8,
+        borderTop: `1px solid ${token.colorBorder}`,
+        paddingTop: 14,
+      }}
+    >
+      <h2 id={id} style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+        {title}
+      </h2>
+      {link}
+    </div>
+  );
+
+  const rankedList = (
+    items: { key: string; name: string; value: string; open?: () => void }[],
+    empty: ReactNode,
+  ) =>
+    items.length === 0 ? (
+      <Typography.Text type="secondary">{empty}</Typography.Text>
+    ) : (
+      <ol style={{ margin: 0, padding: 0, listStyle: "none" }}>
+        {items.map((item) => (
+          <li
+            key={item.key}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              gap: 12,
+              padding: "8px 0",
+              borderBottom: `1px solid ${token.colorBorderSecondary}`,
+            }}
+          >
+            {item.open ? (
+              <Button
+                type="link"
+                onClick={item.open}
+                style={{ padding: 0, height: "auto", whiteSpace: "normal", textAlign: "left" }}
+              >
+                {item.name}
+              </Button>
+            ) : (
+              <span>{item.name}</span>
+            )}
+            <span style={{ fontWeight: 500, whiteSpace: "nowrap" }}>{item.value}</span>
+          </li>
+        ))}
+      </ol>
+    );
+
+  const openProduct = (productId: string) =>
+    canOpen("/products")
+      ? () => navigate("/products", { state: { productModal: true, productId } })
+      : undefined;
+  const openClient = (clientId: string) =>
+    canOpen("/clients")
+      ? () => navigate("/clients", { state: { clientModal: true, clientId } })
+      : undefined;
 
   return (
-    <>
+    <div style={{ fontVariantNumeric: "tabular-nums" }}>
       <PageHeader
         icon={<DashboardOutlined />}
         title={<Trans>Dashboard</Trans>}
         actions={
-          <Select
-            value={periodToValue(period)}
-            onChange={(v) => setPeriod(periodFromValue(v))}
-            style={{ width: 180 }}
-            options={[
-              {
-                label: t`Rolling window`,
-                options: MONTH_OPTIONS.map((m) => ({
-                  value: `m${m}`,
-                  label: <Trans>Last {m} months</Trans>,
-                })),
-              },
-              {
-                label: t`Calendar year`,
-                options: Array.from({ length: CALENDAR_YEARS_BACK + 1 }, (_, i) => {
-                  const year = new Date().getFullYear() - i;
-                  const label =
-                    i === 0 ? (
-                      <Trans>Current year ({year})</Trans>
-                    ) : i === 1 ? (
-                      <Trans>Last year ({year})</Trans>
-                    ) : (
-                      String(year)
-                    );
-                  return { value: `y${year}`, label };
-                }),
-              },
-            ]}
-          />
+          show.sales ? (
+            <Select
+              aria-label={t`Sales period`}
+              value={periodToValue(period)}
+              onChange={(v) => setPeriod(periodFromValue(v))}
+              style={{ width: 200 }}
+              options={[
+                {
+                  label: t`Rolling window`,
+                  options: MONTH_OPTIONS.map((m) => ({
+                    value: `m${m}`,
+                    label: <Trans>Last {m} months</Trans>,
+                  })),
+                },
+                {
+                  label: t`Calendar year`,
+                  options: Array.from({ length: CALENDAR_YEARS_BACK + 1 }, (_, i) => {
+                    const year = new Date().getFullYear() - i;
+                    const label =
+                      i === 0 ? (
+                        <Trans>Current year ({year})</Trans>
+                      ) : i === 1 ? (
+                        <Trans>Last year ({year})</Trans>
+                      ) : (
+                        String(year)
+                      );
+                    return { value: `y${year}`, label };
+                  }),
+                },
+              ]}
+            />
+          ) : undefined
         }
       />
+      <Typography.Text type="secondary" style={{ display: "block", marginTop: 4 }}>
+        {organization?.name ? `${organization.name} — ${today}` : today}
+      </Typography.Text>
 
       {failed && (
         <Alert
-          style={{ marginTop: 12 }}
+          style={{ marginTop: 16 }}
           type="error"
           showIcon
           message={<Trans>Couldn't load the dashboard</Trans>}
@@ -179,299 +264,186 @@ const Dashboard = () => {
         />
       )}
 
-      <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-        {show.sales && (
-          <Col xs={24} md={spanFor(statCount)}>
-            <Card size="small" loading={loading}>
-              <Statistic
-                title={<Trans>Revenue (selected period)</Trans>}
-                value={failed ? "—" : money(revenueTotal)}
-              />
-            </Card>
-          </Col>
-        )}
-        {show.receivables && (
-          <Col xs={24} md={spanFor(statCount)}>
-            <Card size="small" loading={loading}>
-              <Statistic
-                title={
-                  <>
-                    <Trans>Outstanding</Trans>{" "}
-                    <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                      (<Trans>as of today</Trans>)
-                    </Typography.Text>
-                  </>
-                }
-                value={failed ? "—" : money(data?.outstanding.total ?? 0)}
-                // Red only when the genuinely alarming (90+ days) bucket is
-                // nonzero — a routine, healthy AR balance is a normal thing
-                // for any active business to carry, so coloring the raw
-                // total red unconditionally meant this card was red for
-                // nearly every organization nearly all the time, which
-                // stops the color signaling anything at all. Matches the
-                // "90+ days" card below, the actually-alarming figure.
-                styles={{
-                  content: {
-                    color:
-                      !failed && (data?.outstanding.days90Plus ?? 0) > 0
-                        ? token.colorError
-                        : undefined,
-                  },
-                }}
-              />
-            </Card>
-          </Col>
-        )}
-        {show.stock && (
-          <Col xs={24} md={spanFor(statCount)}>
-            <Card size="small" loading={loading}>
-              <Statistic
-                title={
-                  <>
-                    <Trans>Stock valuation</Trans>{" "}
-                    <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                      (<Trans>as of today</Trans>)
-                    </Typography.Text>
-                  </>
-                }
-                value={failed ? "—" : money(data?.stockValuation.total ?? 0)}
-              />
-            </Card>
-          </Col>
-        )}
-      </Row>
+      {!failed && !data && loading && <Skeleton active style={{ marginTop: 24 }} />}
 
-      {show.sales && (
-        <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-          <Col span={24}>
-            <Card
-              size="small"
-              title={<Trans>Revenue over time</Trans>}
-              loading={loading}
-              extra={reportLink("/reporting/revenue-trend")}
-            >
-              <div role="img" aria-label={t`Column chart showing revenue over time`}>
-                <Column
-                  data={data?.revenueByMonth ?? []}
-                  xField="month"
-                  yField="revenue"
-                  theme={themeMode === "dark" ? "classicDark" : "classic"}
-                  height={220}
-                  axis={{ y: { labelFormatter: (v: number) => money(v) } }}
-                  tooltip={{
-                    items: [
-                      {
-                        field: "revenue",
-                        name: t`Revenue`,
-                        valueFormatter: (v: number) => money(v),
-                      },
-                    ],
-                  }}
+      {!failed && data && (
+        <>
+          {(show.receivables || till) && (
+            <div style={rowStyle}>
+              {show.receivables && (
+                <OwedPanel
+                  outstanding={data.outstanding}
+                  followUp={data.loanFollowUp}
+                  money={money}
+                  invoiceRow={(inv: OutstandingInvoiceSummary) =>
+                    rowLink(`/invoices/${inv.id}`, () => navigate(`/invoices/${inv.id}`))
+                  }
+                  reportLink={reportLink("/accounting/reports/ar-aging")}
+                  cashBookLink={cashBookLink}
                 />
-              </div>
-            </Card>
-          </Col>
-        </Row>
-      )}
+              )}
+              {till && (
+                <TillPanel
+                  till={till}
+                  money={money}
+                  dayLabel={dayLabel}
+                  cashBookLink={cashBookLink}
+                />
+              )}
+            </div>
+          )}
 
-      {detailCount > 0 && (
-        <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-          {show.receivables && (
-            <Col xs={24} xl={spanFor(detailCount)}>
-              <Card
-                size="small"
-                title={<Trans>Outstanding invoices</Trans>}
-                loading={loading}
-                extra={reportLink("/accounting/reports/ar-aging")}
-              >
-                <Row gutter={[8, 12]} style={{ marginBottom: 12 }}>
-                  <Col xs={12} sm={8}>
-                    <Statistic
-                      title={<Trans>Current</Trans>}
-                      value={money(data?.outstanding.current ?? 0)}
-                      styles={{ content: outstandingStatisticStyle }}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8}>
-                    <Statistic
-                      title={<Trans>1-30 days</Trans>}
-                      value={money(data?.outstanding.days1To30 ?? 0)}
-                      styles={{ content: outstandingStatisticStyle }}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8}>
-                    <Statistic
-                      title={<Trans>31-60 days</Trans>}
-                      value={money(data?.outstanding.days31To60 ?? 0)}
-                      styles={{ content: outstandingStatisticStyle }}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8}>
-                    <Statistic
-                      title={<Trans>61-90 days</Trans>}
-                      value={money(data?.outstanding.days61To90 ?? 0)}
-                      styles={{ content: outstandingStatisticStyle }}
-                    />
-                  </Col>
-                  <Col xs={12} sm={8}>
-                    <Statistic
-                      title={<Trans>90+ days</Trans>}
-                      value={money(data?.outstanding.days90Plus ?? 0)}
-                      styles={{
-                        content: {
-                          ...outstandingStatisticStyle,
-                          color:
-                            (data?.outstanding.days90Plus ?? 0) > 0 ? token.colorError : undefined,
-                        },
+          {(show.sales || show.stock) && (
+            <div style={{ ...rowStyle, gap: "32px 48px", marginTop: 32 }}>
+              {show.sales && (
+                <section
+                  aria-labelledby="dashboard-sales"
+                  style={{
+                    flex: "2 1 520px",
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}
+                >
+                  {sectionHead(
+                    "dashboard-sales",
+                    <Trans>Revenue</Trans>,
+                    reportLink("/reporting/revenue-trend"),
+                  )}
+                  <p style={{ margin: 0 }}>
+                    <span style={{ fontSize: 24, fontWeight: 600 }}>{money(revenueTotal)}</span>{" "}
+                    <Typography.Text type="secondary">
+                      <Trans>in the selected period</Trans>
+                    </Typography.Text>
+                  </p>
+                  <div role="img" aria-label={t`Column chart showing revenue over time`}>
+                    <Column
+                      data={data.revenueByMonth}
+                      xField="month"
+                      yField="revenue"
+                      theme={themeMode === "dark" ? "classicDark" : "classic"}
+                      height={220}
+                      style={{ fill: token.colorPrimary }}
+                      axis={{ y: { labelFormatter: (v: number) => money(v) } }}
+                      tooltip={{
+                        items: [
+                          {
+                            field: "revenue",
+                            name: t`Revenue`,
+                            valueFormatter: (v: number) => money(v),
+                          },
+                        ],
                       }}
                     />
-                  </Col>
-                </Row>
-                <Table
-                  dataSource={data?.outstanding.invoices ?? []}
-                  rowKey="id"
-                  size="small"
-                  pagination={{ pageSize: 5, hideOnSinglePage: true }}
-                  locale={{ emptyText: <Trans>No outstanding invoices</Trans> }}
-                  onRow={(record: OutstandingInvoiceSummary) =>
-                    rowLink(`/invoices/${record.id}`, () => navigate(`/invoices/${record.id}`))
-                  }
+                  </div>
+                </section>
+              )}
+
+              {show.stock && (
+                <section
+                  aria-labelledby="dashboard-stock"
+                  style={{
+                    flex: "1 1 300px",
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}
                 >
-                  <Table.Column title={<Trans>Invoice</Trans>} dataIndex="number" key="number" />
-                  <Table.Column
-                    title={<Trans>Client</Trans>}
-                    dataIndex="clientName"
-                    key="clientName"
-                  />
-                  <Table.Column
-                    title={<Trans>Days overdue</Trans>}
-                    dataIndex="daysOverdue"
-                    key="daysOverdue"
-                    align="right"
-                    render={(days: number) => (days > 0 ? days : "—")}
-                  />
-                  <Table.Column
-                    title={<Trans>Total</Trans>}
-                    key="total"
-                    align="right"
-                    render={(inv: OutstandingInvoiceSummary) => money(inv.total)}
-                  />
-                </Table>
-              </Card>
-            </Col>
+                  {sectionHead(
+                    "dashboard-stock",
+                    <Trans>Stock</Trans>,
+                    reportLink("/accounting/reports/inventory-valuation"),
+                  )}
+                  <p style={{ margin: 0 }}>
+                    <span style={{ fontSize: 24, fontWeight: 600, overflowWrap: "anywhere" }}>
+                      {money(data.stockValuation.total)}
+                    </span>
+                    <br />
+                    <Typography.Text type="secondary">
+                      <Plural
+                        value={data.stockValuation.productCount}
+                        one={`# stock-tracked product, ${units} units`}
+                        other={`# stock-tracked products, ${units} units`}
+                      />
+                    </Typography.Text>
+                  </p>
+                  <h3 style={{ margin: "4px 0 0", fontSize: 15, fontWeight: 600 }}>
+                    <Trans>{threshold} units or fewer</Trans>
+                  </h3>
+                  {rankedList(
+                    data.lowStock.items.slice(0, 6).map((p) => ({
+                      key: p.productId,
+                      name: p.name,
+                      value: formatQty(p.quantity, qtyLocale),
+                      open: openProduct(p.productId),
+                    })),
+                    <Trans>No product is running low.</Trans>,
+                  )}
+                  {data.lowStock.count > 6 &&
+                    pageLink(
+                      "/inventory",
+                      <Plural
+                        value={data.lowStock.count}
+                        one="See all # products in Inventory"
+                        other="See all # products in Inventory"
+                      />,
+                    )}
+                </section>
+              )}
+            </div>
           )}
 
-          {show.stock && (
-            <Col xs={24} xl={spanFor(detailCount)}>
-              <Card
-                size="small"
-                title={<Trans>Stock valuation by product</Trans>}
-                loading={loading}
-                extra={reportLink("/accounting/reports/inventory-valuation")}
+          {show.sales && (
+            <div style={{ ...rowStyle, gap: "32px 48px", marginTop: 32 }}>
+              <section
+                aria-labelledby="dashboard-top-clients"
+                style={{ flex: "1 1 320px", minWidth: 0 }}
               >
-                <Table
-                  dataSource={data?.stockValuation.items ?? []}
-                  rowKey="productId"
-                  size="small"
-                  pagination={false}
-                  locale={{ emptyText: <Trans>No stock-tracked products</Trans> }}
-                  onRow={(record: StockValuationItem) =>
-                    rowLink("/products", () =>
-                      navigate("/products", {
-                        state: { productModal: true, productId: record.productId },
-                      }),
-                    )
-                  }
-                >
-                  <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
-                  <Table.Column
-                    title={<Trans>Quantity</Trans>}
-                    dataIndex="quantity"
-                    key="quantity"
-                    align="right"
-                    render={(qty: number) => formatQty(qty, qtyLocale)}
-                  />
-                  <Table.Column
-                    title={<Trans>Value</Trans>}
-                    key="value"
-                    align="right"
-                    render={(item: StockValuationItem) => money(item.value)}
-                  />
-                </Table>
-              </Card>
-            </Col>
+                {sectionHead(
+                  "dashboard-top-clients",
+                  <Trans>Top clients</Trans>,
+                  reportLink("/reporting/sales-by-client"),
+                )}
+                <div style={{ marginTop: 4 }}>
+                  {rankedList(
+                    data.topClients.map((c) => ({
+                      key: c.clientId,
+                      name: c.name,
+                      value: money(c.revenue),
+                      open: openClient(c.clientId),
+                    })),
+                    <Trans>No revenue in this period</Trans>,
+                  )}
+                </div>
+              </section>
+              <section
+                aria-labelledby="dashboard-top-products"
+                style={{ flex: "1 1 320px", minWidth: 0 }}
+              >
+                {sectionHead(
+                  "dashboard-top-products",
+                  <Trans>Top products</Trans>,
+                  reportLink("/reporting/sales-by-product"),
+                )}
+                <div style={{ marginTop: 4 }}>
+                  {rankedList(
+                    data.topProducts.map((p) => ({
+                      key: p.productId,
+                      name: p.name,
+                      value: money(p.revenue),
+                      open: openProduct(p.productId),
+                    })),
+                    <Trans>No revenue in this period</Trans>,
+                  )}
+                </div>
+              </section>
+            </div>
           )}
-        </Row>
+        </>
       )}
-
-      {topCount > 0 && (
-        <Row gutter={[16, 16]} style={{ marginTop: 12 }}>
-          <Col xs={24} xl={spanFor(topCount)}>
-            <Card
-              size="small"
-              title={<Trans>Top clients</Trans>}
-              loading={loading}
-              extra={reportLink("/reporting/sales-by-client")}
-            >
-              <Table
-                dataSource={data?.topClients ?? []}
-                rowKey="clientId"
-                size="small"
-                pagination={false}
-                locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
-                onRow={(record: ClientRevenue) =>
-                  rowLink("/clients", () =>
-                    navigate("/clients", {
-                      state: { clientModal: true, clientId: record.clientId },
-                    }),
-                  )
-                }
-              >
-                <Table.Column title={<Trans>Client</Trans>} dataIndex="name" key="name" />
-                <Table.Column
-                  title={<Trans>Revenue</Trans>}
-                  key="revenue"
-                  align="right"
-                  render={(c: ClientRevenue) => money(c.revenue)}
-                />
-              </Table>
-            </Card>
-          </Col>
-
-          <Col xs={24} xl={spanFor(topCount)}>
-            <Card
-              size="small"
-              title={<Trans>Top products</Trans>}
-              loading={loading}
-              extra={reportLink("/reporting/sales-by-product")}
-            >
-              <Table
-                dataSource={data?.topProducts ?? []}
-                rowKey="productId"
-                size="small"
-                pagination={false}
-                locale={{ emptyText: <Trans>No revenue in this period</Trans> }}
-                onRow={(record: ProductRevenue) =>
-                  rowLink("/products", () =>
-                    navigate("/products", {
-                      state: { productModal: true, productId: record.productId },
-                    }),
-                  )
-                }
-              >
-                <Table.Column title={<Trans>Product</Trans>} dataIndex="name" key="name" />
-                <Table.Column
-                  title={<Trans>Revenue</Trans>}
-                  key="revenue"
-                  align="right"
-                  render={(p: ProductRevenue) => money(p.revenue)}
-                />
-              </Table>
-            </Card>
-          </Col>
-        </Row>
-      )}
-    </>
+    </div>
   );
 };
 
