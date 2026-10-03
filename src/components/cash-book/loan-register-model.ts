@@ -8,6 +8,8 @@ import type { Payment } from "src/types/models";
 // of the customer's loans, or from the latest sale when nothing was paid yet.
 // Loans have no repayment schedule (a migrated loan is due on its sale date),
 // so time since the last payment is the only honest signal of a stalled loan.
+// The loan export applies the same rule server-side: change
+// LoanStaleAfterDays in db/loan_register.go with it.
 export const STALE_AFTER_DAYS = 60;
 
 export type LoanTone = "open" | "stale" | "settled";

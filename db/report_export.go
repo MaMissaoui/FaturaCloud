@@ -298,11 +298,16 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 // on-screen table filters identically client-side and the row counts this
 // report deals with are small.
 //
+// register, when set, is one of the new layout's loan register tabs
+// (LoanRegisterOpen/Stale/Settled, see db/loan_register.go): the export then
+// holds exactly the customers that tab lists, with the same stalled rule,
+// instead of every customer's open lines. openOnly is ignored with it.
+//
 // The workbook is also self-describing across pages: the active filter (the
 // customer, or "All customers") is named in the first-page header block, the
 // column-label row repeats at the top of every printed page, and the three
 // money columns carry a totals row at the end.
-func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, openOnly bool) ([]byte, string, error) {
+func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, openOnly bool, register string) ([]byte, string, error) {
 	org, err := d.GetOrganization(organizationID)
 	if err != nil {
 		return nil, "", err
@@ -312,7 +317,17 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 	if err != nil {
 		return nil, "", err
 	}
-	if openOnly {
+	if register != "" {
+		// Tones need every loan row of each customer, so they're computed
+		// before any row is dropped.
+		payments, err := d.loanRegisterPayments(organizationID)
+		if err != nil {
+			return nil, "", err
+		}
+		tones := loanRegisterTones(rows, payments, time.Now().UnixMilli(), orgLocation(org.Timezone), LoanStaleAfterDays)
+		rows = filterLoanRegisterRows(rows, tones, register)
+		openOnly = false
+	} else if openOnly {
 		filtered := rows[:0]
 		for _, r := range rows {
 			if r.Outstanding != 0 {
@@ -348,6 +363,14 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 	}
 
 	subtitle := fmt.Sprintf("%s — %s — generated %s", orgName, filterLabel, formatOrgDate(time.Now().UnixMilli(), org.DateFormat, orgLocation(org.Timezone)))
+	switch register {
+	case LoanRegisterOpen:
+		subtitle += " — customers who still owe"
+	case LoanRegisterStale:
+		subtitle += fmt.Sprintf(" — no payment for more than %d days", LoanStaleAfterDays)
+	case LoanRegisterSettled:
+		subtitle += " — settled customers"
+	}
 	if openOnly {
 		subtitle += " — open loans only"
 	}
@@ -417,7 +440,9 @@ func (d *Database) GenerateLoanStatusExport(organizationID, clientID string, ope
 	buf.Write(raw.Bytes())
 
 	filename := "loan-status"
-	if openOnly {
+	if register != "" {
+		filename += "-" + register
+	} else if openOnly {
 		filename += "-open"
 	}
 	return buf.Bytes(), filename, nil

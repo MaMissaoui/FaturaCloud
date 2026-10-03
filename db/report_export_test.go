@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -29,7 +30,7 @@ func TestReportExportsFitToPageWidthWithSmallMargins(t *testing.T) {
 			return raw, err
 		}},
 		{"loan status", func() ([]byte, error) {
-			raw, _, err := d.GenerateLoanStatusExport(fx.orgID, "", false)
+			raw, _, err := d.GenerateLoanStatusExport(fx.orgID, "", false, "")
 			return raw, err
 		}},
 		{"payment history", func() ([]byte, error) {
@@ -127,7 +128,7 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 		t.Fatalf("GetOrganization: %v", err)
 	}
 
-	raw, _, err := d.GenerateLoanStatusExport(fx.orgID, "", false)
+	raw, _, err := d.GenerateLoanStatusExport(fx.orgID, "", false, "")
 	if err != nil {
 		t.Fatalf("GenerateLoanStatusExport: %v", err)
 	}
@@ -179,7 +180,7 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 	}
 
 	// A customer-scoped export names that customer in the first-page header.
-	scoped, _, err := d.GenerateLoanStatusExport(fx.orgID, fx.clientID, false)
+	scoped, _, err := d.GenerateLoanStatusExport(fx.orgID, fx.clientID, false, "")
 	if err != nil {
 		t.Fatalf("GenerateLoanStatusExport (scoped): %v", err)
 	}
@@ -190,6 +191,37 @@ func TestLoanStatusExportNamesFilterRepeatsHeaderAndTotals(t *testing.T) {
 	defer sf.Close()
 	if got, _ := sf.GetCellValue(sf.GetSheetName(0), "A2"); !strings.Contains(got, "Test Client") {
 		t.Errorf("scoped A2 = %q, want it to name the customer", got)
+	}
+
+	// The new layout's register tabs: both loans are still owed, so the owing
+	// tab exports both lines and the settled tab none; each file names its tab.
+	for _, tc := range []struct {
+		register, wantName, wantSubtitle string
+		wantRows                         int
+	}{
+		{LoanRegisterOpen, "loan-status-open", "customers who still owe", 2},
+		{LoanRegisterSettled, "loan-status-settled", "settled customers", 0},
+	} {
+		raw, name, err := d.GenerateLoanStatusExport(fx.orgID, "", false, tc.register)
+		if err != nil {
+			t.Fatalf("GenerateLoanStatusExport (%s): %v", tc.register, err)
+		}
+		if name != tc.wantName {
+			t.Errorf("%s: filename = %q, want %q", tc.register, name, tc.wantName)
+		}
+		rf, err := excelize.OpenReader(bytes.NewReader(raw))
+		if err != nil {
+			t.Fatalf("open %s workbook: %v", tc.register, err)
+		}
+		rs := rf.GetSheetName(0)
+		if got, _ := rf.GetCellValue(rs, "A2"); !strings.Contains(got, tc.wantSubtitle) {
+			t.Errorf("%s: A2 = %q, want it to name the tab", tc.register, got)
+		}
+		totalsCell := "A" + strconv.Itoa(5+tc.wantRows)
+		if got, _ := rf.GetCellValue(rs, totalsCell); got != "Total" {
+			t.Errorf("%s: %s = %q, want the totals row after %d data rows", tc.register, totalsCell, got, tc.wantRows)
+		}
+		rf.Close()
 	}
 }
 
