@@ -12,6 +12,16 @@ import { GetTaxRates, GetTaxRate, CreateTaxRate, UpdateTaxRate, DeleteTaxRate } 
 
 import { organizationIdAtom } from "./organization";
 
+// The form's Percentage as a number, or undefined when it's empty (so an
+// update leaves the stored percentage alone). 0 is a real rate: a truthiness
+// check here dropped it once the field became a number input, so editing a
+// rate down to 0% kept its old percentage.
+export const percentageFromForm = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === "") return undefined;
+  const n = parseFloat(String(value));
+  return Number.isNaN(n) ? undefined : n;
+};
+
 // Tax rates
 export const taxRatesAtom = atom<TaxRate[]>([]);
 export const setTaxRatesAtom = atom(null, async (get, set) => {
@@ -60,8 +70,7 @@ export const taxRateAtom = atom(
           ...newValues,
           id: nanoid(),
           organizationId: get(organizationIdAtom)!,
-          // Convert percentage string to number
-          percentage: parseFloat(String(newValues.percentage)),
+          percentage: percentageFromForm(newValues.percentage),
           // Convert boolean to integer for isDefault
           isDefault:
             typeof newValues.isDefault === "boolean"
@@ -82,8 +91,7 @@ export const taxRateAtom = atom(
         // Update
         const updateData = {
           ...newValues,
-          // Convert percentage string to number if present
-          percentage: newValues.percentage ? parseFloat(String(newValues.percentage)) : undefined,
+          percentage: percentageFromForm(newValues.percentage),
           // Convert boolean to integer for isDefault
           isDefault:
             typeof newValues.isDefault === "boolean"

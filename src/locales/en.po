@@ -2513,11 +2513,11 @@ msgstr "Failed to fetch purchase orders"
 msgid "Failed to fetch serial numbers"
 msgstr "Failed to fetch serial numbers"
 
-#: src/atoms/tax-rate.ts:49
+#: src/atoms/tax-rate.ts:59
 msgid "Failed to fetch tax rate"
 msgstr "Failed to fetch tax rate"
 
-#: src/atoms/tax-rate.ts:24
+#: src/atoms/tax-rate.ts:34
 msgid "Failed to fetch tax rates"
 msgstr "Failed to fetch tax rates"
 
@@ -6475,28 +6475,28 @@ msgstr "Tax number"
 msgid "Tax rate"
 msgstr "Tax rate"
 
-#: src/atoms/tax-rate.ts:76
+#: src/atoms/tax-rate.ts:85
 msgid "Tax rate created"
 msgstr "Tax rate created"
 
-#: src/atoms/tax-rate.ts:107
+#: src/atoms/tax-rate.ts:115
 msgid "Tax rate creation failed"
 msgstr "Tax rate creation failed"
 
-#: src/atoms/tax-rate.ts:122
+#: src/atoms/tax-rate.ts:130
 msgid "Tax rate deleted"
 msgstr "Tax rate deleted"
 
-#: src/atoms/tax-rate.ts:124
-#: src/atoms/tax-rate.ts:128
+#: src/atoms/tax-rate.ts:132
+#: src/atoms/tax-rate.ts:136
 msgid "Tax rate deletion failed"
 msgstr "Tax rate deletion failed"
 
-#: src/atoms/tax-rate.ts:109
+#: src/atoms/tax-rate.ts:117
 msgid "Tax rate update failed"
 msgstr "Tax rate update failed"
 
-#: src/atoms/tax-rate.ts:97
+#: src/atoms/tax-rate.ts:105
 msgid "Tax rate updated successfully"
 msgstr "Tax rate updated successfully"
 

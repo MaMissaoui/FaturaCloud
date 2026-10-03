@@ -103,11 +103,11 @@ func (d *Database) getDashboardCashRegister(organizationID string, now time.Time
 		return nil, nil
 	}
 
-	// GetDailyCashMovements takes calendarDayMs-style days: UTC noon of the
+	// dailyCashMovements takes calendarDayMs-style days: UTC noon of the
 	// date, read back as that date in the organization's zone.
 	y, m, day := now.In(loc).Date()
 	today := time.Date(y, m, day, 12, 0, 0, 0, time.UTC)
-	rows, err := d.GetDailyCashMovements(organizationID, account.ID, today.AddDate(0, 0, -1).UnixMilli(), today.UnixMilli())
+	rows, err := d.dailyCashMovements(organizationID, account.ID, today.AddDate(0, 0, -1).UnixMilli(), today.UnixMilli(), loc)
 	if err != nil {
 		return nil, err
 	}

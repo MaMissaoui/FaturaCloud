@@ -346,6 +346,12 @@ func (d *Database) GetAccountBalance(organizationID, accountID string, asOfDate 
 	if _, err := d.resolveCashReportAccount(organizationID, accountID); err != nil {
 		return 0, err
 	}
+	return d.accountBalance(organizationID, accountID, asOfDate)
+}
+
+// accountBalance is GetAccountBalance for an account the caller already
+// resolved with resolveCashReportAccount.
+func (d *Database) accountBalance(organizationID, accountID string, asOfDate int64) (int64, error) {
 	if asOfDate == 0 {
 		asOfDate = time.Now().UnixMilli()
 	}
@@ -407,16 +413,22 @@ func (d *Database) GetDailyCashMovements(organizationID, accountID string, start
 	if endDate < startDate {
 		return nil, newValidationError("endDate must not be before startDate")
 	}
-
 	loc, err := organizationLocation(d.DB, organizationID)
 	if err != nil {
 		return nil, err
 	}
+	return d.dailyCashMovements(organizationID, accountID, startDate, endDate, loc)
+}
+
+// dailyCashMovements is GetDailyCashMovements for an account the caller
+// already resolved, a valid range and the organization's zone, so the
+// Dashboard's till doesn't look the account up again.
+func (d *Database) dailyCashMovements(organizationID, accountID string, startDate, endDate int64, loc *time.Location) ([]DailyCashMovementRow, error) {
 	startDay := calendarDayStart(startDate, loc)
 	endDay := calendarDayStart(endDate, loc)
 	endOfRange := endDay.AddDate(0, 0, 1).UnixMilli() - 1
 
-	opening, err := d.GetAccountBalance(organizationID, accountID, startDay.UnixMilli()-1)
+	opening, err := d.accountBalance(organizationID, accountID, startDay.UnixMilli()-1)
 	if err != nil {
 		return nil, err
 	}
