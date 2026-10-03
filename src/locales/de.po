@@ -2513,11 +2513,11 @@ msgstr "Bestellungen konnten nicht geladen werden"
 msgid "Failed to fetch serial numbers"
 msgstr "Seriennummern konnten nicht geladen werden"
 
-#: src/atoms/tax-rate.ts:49
+#: src/atoms/tax-rate.ts:59
 msgid "Failed to fetch tax rate"
 msgstr "Fehler beim Laden des Steuersatzes"
 
-#: src/atoms/tax-rate.ts:24
+#: src/atoms/tax-rate.ts:34
 msgid "Failed to fetch tax rates"
 msgstr "Fehler beim Laden der Steuersätze"
 
@@ -6479,28 +6479,28 @@ msgstr "Steuernummer"
 msgid "Tax rate"
 msgstr "Steuersatz"
 
-#: src/atoms/tax-rate.ts:76
+#: src/atoms/tax-rate.ts:85
 msgid "Tax rate created"
 msgstr "Steuersatz erstellt"
 
-#: src/atoms/tax-rate.ts:107
+#: src/atoms/tax-rate.ts:115
 msgid "Tax rate creation failed"
 msgstr "Steuersatz-Erstellung fehlgeschlagen"
 
-#: src/atoms/tax-rate.ts:122
+#: src/atoms/tax-rate.ts:130
 msgid "Tax rate deleted"
 msgstr "Steuersatz gelöscht"
 
-#: src/atoms/tax-rate.ts:124
-#: src/atoms/tax-rate.ts:128
+#: src/atoms/tax-rate.ts:132
+#: src/atoms/tax-rate.ts:136
 msgid "Tax rate deletion failed"
 msgstr "Steuersatz-Löschung fehlgeschlagen"
 
-#: src/atoms/tax-rate.ts:109
+#: src/atoms/tax-rate.ts:117
 msgid "Tax rate update failed"
 msgstr "Steuersatz-Aktualisierung fehlgeschlagen"
 
-#: src/atoms/tax-rate.ts:97
+#: src/atoms/tax-rate.ts:105
 msgid "Tax rate updated successfully"
 msgstr "Steuersatz erfolgreich aktualisiert"
 
