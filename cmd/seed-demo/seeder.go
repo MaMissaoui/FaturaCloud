@@ -115,6 +115,7 @@ type productRef struct {
 	qtyLo, qtyHi int    // plausible line-item quantity range, from catalog.go
 	category     string // "finished" | "component" | "" — see catalog.go's productCatalogEntry
 	displacement string // "50cc".."650cc" for "finished"/"component", "" otherwise — see catalog.go's productCatalogEntry
+	kind         string // the retail appliance category, see catalog.go's productCatalogEntry
 }
 
 // Stats tallies what actually got created, printed as a summary at the end
@@ -131,6 +132,13 @@ type Stats struct {
 	// expense) — the retail scenario's proof that Cash Register withdrawals
 	// are actually exercised, not just Cash Book sales.
 	CashWithdrawals int
+	// JournalEntries counts manual journal entries (and reversals);
+	// DraftInvoices/CancelledInvoices the business invoices left in draft or
+	// cancelled; OpeningLoans the loans imported from the paper register.
+	JournalEntries, DraftInvoices, CancelledInvoices, OpeningLoans int
+	// CancelledSales counts Cash Book sales cancelled after the fact (their
+	// stock goes back on the shelf).
+	CancelledSales int
 	// BillsOfMaterialsDefined counts the real db/product_bom.go recipes
 	// setupBillsOfMaterials (production.go) defines, once, for every
 	// finished-good product — what assembleBatch below then actually reads
@@ -208,6 +216,16 @@ type Seeder struct {
 	foreignVendors []vendorRef
 
 	sched *Scheduler
+
+	// The retail scenario's bookkeeping and business side (retail_*.go):
+	// accounts by code, journals by type, the overhead vendors, the business
+	// customers and their contract product, and product families by kind.
+	accountByCode     map[string]string
+	journalByType     map[string]string
+	overheads         []overheadRef
+	businessClients   []businessClientRef
+	contractProductID string
+	familyByKind      map[string]string
 
 	// currentImport is the most recently created consolidated shipment
 	// (F114) still open for new foreign-vendor purchase orders to be
@@ -305,9 +323,13 @@ func (s *Seeder) Run() error {
 	}
 	if s.scenario.hasCashBookSales {
 		// Counter sales take stock out server-side (v3.57.0+), so the shop
-		// opens with stock on the shelf — see retail_stock.go.
-		if err := s.setupRetailOpeningStock(); err != nil {
+		// opens with stock on the shelf — see retail_stock.go — and brings
+		// its paper loan book into the app the same day (retail_extras.go).
+		if err := s.setupRetailOpeningStock(startDate); err != nil {
 			return fmt.Errorf("opening stock: %w", err)
+		}
+		if err := s.importOpeningLoans(startDate); err != nil {
+			return fmt.Errorf("opening loans: %w", err)
 		}
 	}
 
@@ -337,11 +359,26 @@ func (s *Seeder) Run() error {
 			if err := s.generateCashBookSalesForDay(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("cash book sales: %w", err))
 			}
-			if err := s.maybeWithdrawFromRegister(day); err != nil {
-				s.onTaskError(day, fmt.Errorf("cash withdrawal: %w", err))
-			}
 			if err := s.maybeRecordPettyCashExpense(day); err != nil {
 				s.onTaskError(day, fmt.Errorf("petty cash expense: %w", err))
+			}
+			if err := s.maybeBookOverheads(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("overheads: %w", err))
+			}
+			if err := s.maybeBillContracts(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("maintenance contracts: %w", err))
+			}
+			if !weekend {
+				if err := s.maybeStartBusinessOrder(day); err != nil {
+					s.onTaskError(day, fmt.Errorf("business order: %w", err))
+				}
+				if err := s.maybeStartSeasonalImport(day); err != nil {
+					s.onTaskError(day, fmt.Errorf("seasonal import: %w", err))
+				}
+			}
+			// Last: the day's takings go to the bank once the counter closes.
+			if err := s.maybeWithdrawFromRegister(day); err != nil {
+				s.onTaskError(day, fmt.Errorf("cash withdrawal: %w", err))
 			}
 		}
 		if !weekend {
@@ -379,12 +416,24 @@ func (s *Seeder) Run() error {
 			}
 		}
 
+		// Anything today's generators scheduled for today itself.
+		s.sched.RunDue(day, func(err error) { s.onTaskError(day, err) })
+
 		if s.cfg.ProgressEvery > 0 && dayNum%s.cfg.ProgressEvery == 0 {
 			s.log.Printf("seed-demo: %s (%d/%d days) — invoices=%d orders=%d deliveries=%d POs=%d receipts=%d bills=%d imports=%d assembled=%d payments=%d errors=%d",
 				day.Format("2006-01-02"), dayNum, totalDays,
 				s.stats.Invoices, s.stats.Orders, s.stats.Deliveries,
 				s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices,
 				s.stats.Imports, s.stats.AssembledUnits, s.stats.Payments, s.stats.Errors)
+		}
+	}
+
+	if s.scenario.hasCashBookSales {
+		if err := s.recordStockWriteOffs(); err != nil {
+			s.onTaskError(s.cfg.EndDate, fmt.Errorf("stock write-offs: %w", err))
+		}
+		if err := s.leaveDraftEntry(s.cfg.EndDate); err != nil {
+			s.onTaskError(s.cfg.EndDate, fmt.Errorf("draft journal entry: %w", err))
 		}
 	}
 
@@ -398,7 +447,9 @@ func (s *Seeder) Run() error {
 	s.log.Printf("seed-demo: invoices=%d orders=%d deliveries=%d", s.stats.Invoices, s.stats.Orders, s.stats.Deliveries)
 	s.log.Printf("seed-demo: purchase_orders=%d inbound_deliveries=%d incoming_invoices=%d imports=%d", s.stats.PurchaseOrders, s.stats.InboundDeliveries, s.stats.IncomingInvoices, s.stats.Imports)
 	s.log.Printf("seed-demo: production_orders=%d assembly_batches=%d assembled_units=%d", s.stats.ProductionOrders, s.stats.AssemblyBatches, s.stats.AssembledUnits)
-	s.log.Printf("seed-demo: payments=%d errors=%d", s.stats.Payments, s.stats.Errors)
+	s.log.Printf("seed-demo: payments=%d cash_movements=%d journal_entries=%d", s.stats.Payments, s.stats.CashWithdrawals, s.stats.JournalEntries)
+	s.log.Printf("seed-demo: cancelled_sales=%d cancelled_invoices=%d draft_invoices=%d opening_loans=%d", s.stats.CancelledSales, s.stats.CancelledInvoices, s.stats.DraftInvoices, s.stats.OpeningLoans)
+	s.log.Printf("seed-demo: errors=%d", s.stats.Errors)
 	if s.stats.Errors > 0 {
 		s.log.Printf("seed-demo: WARNING — %d step(s) failed; see the log above for which day/kind. The rest of the run continued.", s.stats.Errors)
 	}

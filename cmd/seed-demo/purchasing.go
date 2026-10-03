@@ -62,7 +62,6 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 	}
 
 	n := s.rng.IntRange(1, 4)
-	var reqLines []db.CreatePurchaseOrderLineItemRequest
 	var localLines []purchaseLine
 	// The retail shop restocks what's running low, a few units at a time
 	// (retail_stock.go); moto restocks random components in bulk.
@@ -79,19 +78,45 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 		qty := float64(s.rng.IntRange(20, 150)) // restocking bulk, not a single-unit sale
 		if retailPicks != nil {
 			p = retailPicks[i]
-			qty = s.retailReorderQuantity(p)
+			qty = s.retailReorderQuantity(day, p)
 			s.onOrder[p.id] += qty
 		}
-		reqLines = append(reqLines, db.CreatePurchaseOrderLineItemRequest{
-			ProductID:   strPtr(p.id),
-			Description: p.name,
-			Quantity:    qty,
-			UnitPrice:   float64(p.costCents),
-			Unit:        strPtr(p.unit),
-		})
 		localLines = append(localLines, purchaseLine{productID: p.id, productName: p.name, unit: p.unit, quantity: qty, unitCost: p.costCents})
 	}
 
+	placed, err := s.placePurchaseOrder(day, vendor, localLines, "")
+	if err != nil {
+		return err
+	}
+
+	receiveDay := businessDaysLater(day, s.rng.IntRange(3, 14))
+	if receiveDay.After(s.cfg.EndDate) {
+		return nil // would arrive in the future — PO stays confirmed, not received
+	}
+	s.sched.Schedule(receiveDay, func() error { return s.receivePurchaseOrder(receiveDay, placed.order, vendor, placed.lines) })
+	return nil
+}
+
+// placedPurchaseOrder is a confirmed purchase order with its lines, each
+// carrying the server's purchase order line id for the receipt and bill.
+type placedPurchaseOrder struct {
+	order db.PurchaseOrder
+	lines []purchaseLine
+}
+
+// placePurchaseOrder creates and confirms a purchase order for lines in the
+// organization's own currency and reads back its line ids.
+func (s *Seeder) placePurchaseOrder(day time.Time, vendor vendorRef, lines []purchaseLine, notes string) (placedPurchaseOrder, error) {
+	reqLines := make([]db.CreatePurchaseOrderLineItemRequest, len(lines))
+	for i, l := range lines {
+		reqLines[i] = db.CreatePurchaseOrderLineItemRequest{
+			ProductID:   strPtr(l.productID),
+			Description: l.productName,
+			Quantity:    l.quantity,
+			UnitPrice:   float64(l.unitCost),
+			Unit:        strPtr(l.unit),
+		}
+	}
 	req := db.CreatePurchaseOrderRequest{
 		OrganizationID: s.orgID,
 		VendorID:       &vendor.id,
@@ -99,33 +124,29 @@ func (s *Seeder) createPurchaseOrder(day time.Time) error {
 		Status:    "draft",
 		OrderDate: midnightUTC(day),
 		LineItems: reqLines,
+		Notes:     nonEmptyStrPtr(notes),
 	}
 	var po db.PurchaseOrder
 	if err := s.c.Post("/api/purchase-orders", req, &po); err != nil {
-		return fmt.Errorf("create PO for %s: %w", vendor.name, err)
+		return placedPurchaseOrder{}, fmt.Errorf("create PO for %s: %w", vendor.name, err)
 	}
 	s.stats.PurchaseOrders++
 	if err := s.c.Patch("/api/purchase-orders/"+po.ID+"/status", map[string]string{"status": "confirmed"}, nil); err != nil {
-		return fmt.Errorf("confirm PO %s: %w", po.OrderNumber, err)
+		return placedPurchaseOrder{}, fmt.Errorf("confirm PO %s: %w", po.OrderNumber, err)
 	}
 
 	var serverLines []db.PurchaseOrderLineItem
 	if err := s.c.Get("/api/purchase-orders/"+po.ID+"/line-items", &serverLines); err != nil {
-		return fmt.Errorf("read back PO %s line items: %w", po.OrderNumber, err)
+		return placedPurchaseOrder{}, fmt.Errorf("read back PO %s line items: %w", po.OrderNumber, err)
 	}
-	if len(serverLines) != len(localLines) {
-		return fmt.Errorf("PO %s: expected %d line items back, got %d", po.OrderNumber, len(localLines), len(serverLines))
+	if len(serverLines) != len(lines) {
+		return placedPurchaseOrder{}, fmt.Errorf("PO %s: expected %d line items back, got %d", po.OrderNumber, len(lines), len(serverLines))
 	}
-	for i := range localLines {
-		localLines[i].poLineID = serverLines[i].ID
+	out := append([]purchaseLine(nil), lines...)
+	for i := range out {
+		out[i].poLineID = serverLines[i].ID
 	}
-
-	receiveDay := businessDaysLater(day, s.rng.IntRange(3, 14))
-	if receiveDay.After(s.cfg.EndDate) {
-		return nil // would arrive in the future — PO stays confirmed, not received
-	}
-	s.sched.Schedule(receiveDay, func() error { return s.receivePurchaseOrder(receiveDay, po, vendor, localLines) })
-	return nil
+	return placedPurchaseOrder{order: po, lines: out}, nil
 }
 
 // receivePurchaseOrder creates the goods receipt (usually for the full
@@ -227,14 +248,25 @@ func (s *Seeder) billPurchaseOrder(day time.Time, po db.PurchaseOrder, vendor ve
 				qty--
 			}
 		}
-		reqLines = append(reqLines, db.CreateInvoiceLineItemRequest{
+		line := db.CreateInvoiceLineItemRequest{
 			Description:             strPtr(l.productName),
 			Quantity:                qty,
 			UnitPrice:               float64(unitCost),
 			PurchaseOrderLineItemID: strPtr(l.poLineID),
 			ProductID:               strPtr(l.productID),
-		})
-		items = append(items, lineItem{quantity: qty, unitPriceCents: unitCost})
+		}
+		item := lineItem{quantity: qty, unitPriceCents: unitCost}
+		// A local vendor charges VAT at the product's rate, which the
+		// organization recovers (input tax); an overseas vendor's bill
+		// carries none.
+		if l.currency == "" {
+			if p, ok := s.productByID(l.productID); ok && p.taxRateID != "" {
+				line.TaxRate = strPtr(p.taxRateID)
+				item.taxPercent = s.taxPercentFor(p.taxRateID)
+			}
+		}
+		reqLines = append(reqLines, line)
+		items = append(items, item)
 	}
 	subTotal, taxTotal, total := computeTotals(items)
 	dueDate := midnightUTC(day.AddDate(0, 0, int(s.orgProfile.dueDays)))

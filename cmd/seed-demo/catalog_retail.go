@@ -261,6 +261,7 @@ func buildApplianceCatalog() []productCatalogEntry {
 					priceCentsHi: int64(float64(v.priceCentsHi) * tier.multiplier),
 					costFactorLo: cat.costFactorLo, costFactorHi: cat.costFactorHi,
 					qtyLo: cat.qtyLo, qtyHi: cat.qtyHi,
+					kind: cat.name,
 				})
 			}
 		}

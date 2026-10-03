@@ -25,31 +25,24 @@ func (s *Seeder) registerBalanceAsOf(day time.Time) (int64, error) {
 	return resp.Balance, nil
 }
 
-// maybeWithdrawFromRegister runs weekly (Monday, the same weekly cadence
-// maybeStartPurchaseOrder/maybeRestockAssemblyComponents use elsewhere in
-// this tool) — if the till holds more than withdrawFloorCents, deposit
-// most of the excess to the organization's real Bank account
-// (s.cashAccountID). Without this, 18 months of Cash Book sales with no
-// offsetting movement would grow the register balance to an implausible
-// figure and the Daily Cash Movements report would show only "in" activity
-// — exactly the gap this generator exists to cover.
-const withdrawFloorCents = 150000 // 1,500 TND — a plausible till float to leave behind
-
+// maybeWithdrawFromRegister takes the day's takings to the bank when the
+// counter closes, Monday to Saturday, leaving a float in the till. It runs
+// after the day's sales, so the Dashboard's till shows money in and out every
+// open day, and the till's balance stays a plausible float instead of growing
+// with every week's cash sales (a weekly deposit of part of the excess left
+// ~90,000 TND in the till).
 func (s *Seeder) maybeWithdrawFromRegister(day time.Time) error {
-	if day.Weekday() != time.Monday {
+	if day.Weekday() == time.Sunday {
 		return nil
 	}
 	balance, err := s.registerBalanceAsOf(day)
 	if err != nil {
 		return fmt.Errorf("read register balance: %w", err)
 	}
-	excess := balance - withdrawFloorCents
-	if excess <= 0 {
-		return nil
-	}
-	amount := excess * int64(s.rng.IntRange(60, 85)) / 100
-	if amount <= 0 {
-		return nil
+	float := int64(s.rng.IntRange(800, 1500)) * 100
+	amount := (balance - float) / 1000 * 1000 // whole tens of dinars
+	if amount < 20000 {
+		return nil // not worth the trip to the bank
 	}
 	req := db.CreateCashMovementRequest{
 		OrganizationID:     s.orgID,
@@ -58,7 +51,7 @@ func (s *Seeder) maybeWithdrawFromRegister(day time.Time) error {
 		CounterAccountType: "bank",
 		CounterAccountID:   s.cashAccountID,
 		Amount:             amount,
-		Note:               strPtr("Dépôt hebdomadaire en banque"),
+		Note:               strPtr("Versement de la recette en banque"),
 	}
 	if err := s.c.Post("/api/cash-movements", req, nil); err != nil {
 		return fmt.Errorf("deposit to bank: %w", err)
