@@ -149,7 +149,9 @@ const PaymentProductsCell = ({ payment, money }: Props) => {
           title={label}
           style={{
             display: "inline-block",
-            maxWidth: 220,
+            // Narrower on a smaller screen, so the "whole invoice" tag and
+            // Reference aren't pushed under the pinned Amount at 1280px.
+            maxWidth: "clamp(120px, 12vw, 220px)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",

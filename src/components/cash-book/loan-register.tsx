@@ -5,6 +5,7 @@ import {
   Card,
   Col,
   Empty,
+  Grid,
   Input,
   Row,
   Segmented,
@@ -249,11 +250,12 @@ const CustomerDetail = ({
                   title: t`Product`,
                   key: "product",
                   render: (_, row) => (
-                    // Narrower on a smaller screen: at a fixed 190px, Paid
-                    // slid under the pinned balance at 1280 and 1366px.
+                    // Narrower below 1680px, down to 90px at 1280: at a fixed
+                    // 190px, Paid slid under the pinned balance at 1280 and
+                    // 1366px (German's longer headers needed the most room).
                     <Typography.Text
                       ellipsis={{ tooltip: row.productName }}
-                      style={{ maxWidth: "clamp(110px, 10vw, 190px)" }}
+                      style={{ maxWidth: "clamp(90px, calc(25vw - 230px), 190px)" }}
                     >
                       {row.productName || "—"}
                     </Typography.Text>
@@ -405,6 +407,7 @@ const LoanRegister = ({
   // Fixed for the visit, so "days since" doesn't shift under a re-render.
   const [now] = useState(() => Date.now());
   const [filter, setFilter] = useState<LoanRegisterFilter>("open");
+  const screens = Grid.useBreakpoint();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -478,8 +481,12 @@ const LoanRegister = ({
         />
         <Segmented<LoanRegisterFilter>
           aria-label={t`Filter loans`}
-          // Scrolls inside itself on a phone rather than widening the page.
-          style={{ maxWidth: "100%", overflowX: "auto" }}
+          // Stacked on a phone: side by side, the three labels need ~475px,
+          // and a sideways-scrolling bar hid "No payment for 60+ days" with
+          // nothing to show it was there.
+          vertical={screens.sm === false}
+          block={screens.sm === false}
+          style={screens.sm === false ? { flex: "1 1 100%" } : { maxWidth: "100%" }}
           value={filter}
           onChange={setFilter}
           options={[

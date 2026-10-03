@@ -130,6 +130,11 @@ const CashBookV1 = () => {
   // Below md the loan table's pinned "Record payment" goes icon-only, so it
   // doesn't take a third of a phone-width table.
   const compactActions = !Grid.useBreakpoint().md;
+  // A customer still being entered has no loans or payments yet. Without a
+  // client id to scope by, both reports fell back to every customer's rows,
+  // which read as this customer's history. Picking someone in the Loan
+  // status filter still shows theirs.
+  const draftingNewCustomer = !!newClientDraft && !loanStatusClientId;
   const {
     token: { colorSuccess, colorError, colorBorder },
   } = theme.useToken();
@@ -725,7 +730,7 @@ const CashBookV1 = () => {
         }
       >
         <Table
-          dataSource={filteredLoanStatusRows}
+          dataSource={draftingNewCustomer ? [] : filteredLoanStatusRows}
           rowKey="lineId"
           size="small"
           scroll={{ x: "max-content" }}
@@ -887,7 +892,7 @@ const CashBookV1 = () => {
         }
       >
         <Table
-          dataSource={paymentHistory}
+          dataSource={draftingNewCustomer ? [] : paymentHistory}
           rowKey="id"
           size="small"
           scroll={{ x: "max-content" }}
