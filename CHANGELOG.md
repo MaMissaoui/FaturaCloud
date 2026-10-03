@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.60.3] - 2026-10-03
+
+### Fixed
+- Cash Book, new layout: exporting the loan register now exports the tab
+  on screen. "Settled" exports only the settled customers and "No payment for
+  60+ days" only the stalled ones, with the tab named in the file name
+  and the report heading. The server applies the same 60-day rule as the
+  screen (#457).
+- Cash Book: while a new customer is being entered, the loan status and
+  payment history tables are empty instead of listing every customer's
+  records (#456).
+- Cash Book, new layout: on a phone the three loan register filters stack
+  and fill the width, so none is cut off; in German, the slip's paid
+  column is no longer covered at 1280 and 1366px (#456).
+- German: the balance column is now "Restschuld" (#456).
+
 ## [3.60.2] - 2026-10-02
 
 ### Fixed
