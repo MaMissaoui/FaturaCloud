@@ -25,20 +25,26 @@ func (sc *Scheduler) Schedule(date time.Time, fn func() error) {
 	sc.byDate[key] = append(sc.byDate[key], fn)
 }
 
-// RunDue executes and clears every task scheduled for exactly this date.
-// Because Schedule always receives a business day, a task scheduled for a
-// date the main loop actually visits is guaranteed to run — there's no
-// carry-forward logic to reconcile.
+// RunDue executes and clears every task scheduled for exactly this date,
+// including any a task schedules for the same date while it runs (a bill on
+// the day of its receipt): it keeps draining until the date has nothing left.
+// Before it did, a same-day follow-up was appended to an already-taken slice
+// and silently never ran — 18 of 125 receipts in a 27-month retail run were
+// never billed, leaving their value stuck on Goods Received Not Invoiced.
+// Run calls it again at the end of each day for tasks the day's generators
+// schedule for that same day.
 func (sc *Scheduler) RunDue(date time.Time, onErr func(error)) {
 	key := date.Format("2006-01-02")
-	tasks := sc.byDate[key]
-	if len(tasks) == 0 {
-		return
-	}
-	delete(sc.byDate, key)
-	for _, fn := range tasks {
-		if err := fn(); err != nil {
-			onErr(err)
+	for {
+		tasks := sc.byDate[key]
+		if len(tasks) == 0 {
+			return
+		}
+		delete(sc.byDate, key)
+		for _, fn := range tasks {
+			if err := fn(); err != nil {
+				onErr(err)
+			}
 		}
 	}
 }
