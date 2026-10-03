@@ -69,11 +69,13 @@ export const organizationAtom = atom(
     if (!organizationId || !currentUser) return null;
 
     try {
-      const [organization, logo] = await Promise.all([
-        GetOrganization(organizationId),
-        GetOrganizationLogoDataUri(organizationId),
-      ]);
-      organization.logo = logo;
+      // The logo is only requested when the organization has one: asking
+      // regardless answered 404 on every page load for an organization
+      // without a logo. Costs a second round trip when there is one.
+      const organization = await GetOrganization(organizationId);
+      organization.logo = organization.hasLogo
+        ? await GetOrganizationLogoDataUri(organizationId)
+        : null;
       return organization;
     } catch (error) {
       console.error("Failed to fetch organization:", error);

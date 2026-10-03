@@ -217,6 +217,10 @@ export interface Organization {
   // that endpoint so PDF templates and the settings page can keep reading
   // organization.logo as a ready-to-use image source.
   logo: string | null;
+  // Whether the organization has a logo at all (computed server-side, never
+  // written): only then is GET /organizations/{id}/logo worth requesting —
+  // without it, it answers 404.
+  hasLogo?: boolean;
   invoiceNumberFormat: string | null;
   invoiceNumberCounter: number | null;
   date_format: string | null;
