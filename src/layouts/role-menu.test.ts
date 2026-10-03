@@ -244,13 +244,13 @@ describe("filterMenuForRole", () => {
 // of its UI hides.
 describe("dashboardWidgetsForRole", () => {
   it.each([
-    ["", { sales: true, receivables: true, stock: true }],
-    ["admin", { sales: true, receivables: true, stock: true }],
-    ["power_user", { sales: true, receivables: true, stock: true }],
-    ["general", { sales: true, receivables: true, stock: true }],
-    ["sales", { sales: true, receivables: true, stock: false }],
-    ["purchasing", { sales: false, receivables: false, stock: true }],
-    ["accounting", { sales: false, receivables: true, stock: true }],
+    ["", { sales: true, receivables: true, stock: true, till: true }],
+    ["admin", { sales: true, receivables: true, stock: true, till: true }],
+    ["power_user", { sales: true, receivables: true, stock: true, till: true }],
+    ["general", { sales: true, receivables: true, stock: true, till: true }],
+    ["sales", { sales: true, receivables: true, stock: false, till: false }],
+    ["purchasing", { sales: false, receivables: false, stock: true, till: false }],
+    ["accounting", { sales: false, receivables: true, stock: true, till: false }],
   ])("%s", (role, want) => {
     expect(dashboardWidgetsForRole(role)).toEqual(want);
   });
