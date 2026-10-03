@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.61.3] - 2026-10-03
+
+### Fixed
+- The Dashboard's period picker sits in the Revenue section, next to what
+  it changes, and the top client and product lists name the period they
+  show. In the page header, beside what clients owe and the till (which
+  are as of today), switching periods looked like it did nothing (#469).
+
 ## [3.61.2] - 2026-10-03
 
 ### Fixed
