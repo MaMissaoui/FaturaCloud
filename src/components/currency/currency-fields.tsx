@@ -1,4 +1,5 @@
-import { Col, DatePicker, Form, InputNumber, Select } from "antd";
+import { Col, DatePicker, Form, Select } from "antd";
+import NumberInput from "src/components/number-input";
 import type { FormInstance } from "antd";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -103,7 +104,7 @@ const ExchangeRateFields = ({
           tooltip={t`1 ${currency} = this many ${orgCurrency}`}
           rules={[{ required: true, message: t`This field is required!` }]}
         >
-          <InputNumber
+          <NumberInput
             min={0}
             step={0.0001}
             precision={6}

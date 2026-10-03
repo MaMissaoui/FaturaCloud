@@ -1,4 +1,5 @@
-import { Col, Form, Input, InputNumber, Modal, Row, Select, Typography } from "antd";
+import { Col, Form, Input, Modal, Row, Select, Typography } from "antd";
+import NumberInput from "src/components/number-input";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import toNumber from "lodash/toNumber";
@@ -102,7 +103,7 @@ const CashBookModals = ({ cb }: { cb: CashBookState }) => {
             name="amount"
             rules={[{ required: true, message: t`This field is required!` }]}
           >
-            <InputNumber style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
+            <NumberInput style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
           </Form.Item>
           <Form.Item
             label={t`Destination`}
@@ -221,7 +222,7 @@ const CashBookModals = ({ cb }: { cb: CashBookState }) => {
               },
             ]}
           >
-            <InputNumber style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
+            <NumberInput style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
           </Form.Item>
           <Form.Item label={t`Reference`} name="reference">
             <Input />

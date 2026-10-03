@@ -8,7 +8,6 @@ import {
   Form,
   Grid,
   Input,
-  InputNumber,
   Radio,
   Row,
   Select,
@@ -19,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import {
@@ -382,7 +382,7 @@ const CashBookV1 = () => {
                     total (e.g. a round note) and needs change calculated —
                     handleSubmitSale still clamps what's actually recorded as
                     paid on the invoice to the total. */}
-                      <InputNumber
+                      <NumberInput
                         style={{ width: "100%" }}
                         min={0}
                         precision={2}

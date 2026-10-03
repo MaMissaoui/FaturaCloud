@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Card, Col, Form, Input, InputNumber, Row, Space, Typography, theme } from "antd";
+import { Button, Card, Col, Form, Input, Row, Space, Typography, theme } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtomValue } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -97,7 +98,7 @@ function DocumentNumberingCard({ documentType, label }: { documentType: string; 
             help={t`Next document will use this number + 1`}
             rules={[{ type: "number", min: 0, message: t`Counter must be 0 or greater` }]}
           >
-            <InputNumber min={0} style={{ width: "100%" }} />
+            <NumberInput min={0} style={{ width: "100%" }} />
           </Form.Item>
         </Col>
         <Col xs={24}>

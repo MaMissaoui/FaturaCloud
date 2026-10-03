@@ -9,7 +9,6 @@ import {
   Descriptions,
   Form,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Row,
@@ -20,6 +19,7 @@ import {
   Tag,
   Typography,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
@@ -286,7 +286,7 @@ const JournalEntryDetails = () => {
                     align="right"
                     render={(field) => (
                       <Form.Item name={[field.name, "debit"]} style={{ marginBottom: 0 }}>
-                        <InputNumber
+                        <NumberInput
                           min={0}
                           precision={2}
                           style={{ width: "100%" }}
@@ -305,7 +305,7 @@ const JournalEntryDetails = () => {
                     align="right"
                     render={(field) => (
                       <Form.Item name={[field.name, "credit"]} style={{ marginBottom: 0 }}>
-                        <InputNumber
+                        <NumberInput
                           min={0}
                           precision={2}
                           style={{ width: "100%" }}

@@ -7,13 +7,13 @@ import {
   Drawer,
   Form,
   Input,
-  InputNumber,
   Popconfirm,
   Row,
   Select,
   Space,
   Typography,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -228,7 +228,7 @@ const VendorForm = () => {
                   label={<Trans>Payment terms (days)</Trans>}
                   style={{ marginBottom: 0 }}
                 >
-                  <InputNumber
+                  <NumberInput
                     placeholder={t`Payment terms (days)`}
                     min={0}
                     precision={0}

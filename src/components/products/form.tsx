@@ -9,7 +9,6 @@ import {
   Drawer,
   Form,
   Input,
-  InputNumber,
   Popconfirm,
   Row,
   Select,
@@ -18,6 +17,7 @@ import {
   theme,
   Tooltip,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -524,7 +524,7 @@ const ProductForm = () => {
                   label={<Trans>Price</Trans>}
                   rules={[{ required: true, message: t`Price is required` }]}
                 >
-                  <InputNumber
+                  <NumberInput
                     min={0}
                     precision={2}
                     step={0.01}
@@ -547,7 +547,7 @@ const ProductForm = () => {
                     </Trans>
                   }
                 >
-                  <InputNumber
+                  <NumberInput
                     min={0}
                     precision={2}
                     step={0.01}

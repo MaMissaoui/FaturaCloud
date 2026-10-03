@@ -9,13 +9,13 @@ import {
   Descriptions,
   Form,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Select,
   Table,
   Tag,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
@@ -346,7 +346,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
           name="amount"
           rules={[{ required: true, message: t`This field is required!` }]}
         >
-          <InputNumber
+          <NumberInput
             style={{ width: "100%" }}
             min={0.01}
             max={centsToUnits(balanceDue)}
@@ -481,7 +481,7 @@ const ExchangeRateFieldsStack = ({
         tooltip={t`1 ${currency} = this many ${orgCurrency}`}
         rules={[{ required: true, message: t`This field is required!` }]}
       >
-        <InputNumber min={0} step={0.0001} precision={6} style={{ width: "100%" }} />
+        <NumberInput min={0} step={0.0001} precision={6} style={{ width: "100%" }} />
       </Form.Item>
     </div>
     <div style={{ flex: 1 }}>

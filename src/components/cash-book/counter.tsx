@@ -7,7 +7,6 @@ import {
   DatePicker,
   Form,
   Input,
-  InputNumber,
   Row,
   Select,
   Space,
@@ -15,6 +14,7 @@ import {
   theme,
   Typography,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import {
@@ -379,7 +379,7 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
                       : t`Optional upfront deposit — leave at 0 for a zero-deposit loan. The remaining balance is collected later.`
                   }
                 >
-                  <InputNumber
+                  <NumberInput
                     size="large"
                     style={{ width: "100%" }}
                     min={0}

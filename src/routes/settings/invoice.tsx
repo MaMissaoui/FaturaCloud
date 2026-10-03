@@ -1,16 +1,5 @@
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Form,
-  Input,
-  InputNumber,
-  Row,
-  Space,
-  Typography,
-  theme,
-} from "antd";
+import { Button, Card, Col, Divider, Form, Input, Row, Space, Typography, theme } from "antd";
+import NumberInput from "src/components/number-input";
 import { atom, useAtom, useSetAtom } from "jotai";
 import {
   CaretDownOutlined,
@@ -77,7 +66,7 @@ function SettingsInvoice() {
                     name="due_days"
                     extra={t`Calendar days from invoice date until due date. Set to 0 for due on receipt.`}
                   >
-                    <InputNumber min={0} style={{ width: "100%" }} />
+                    <NumberInput min={0} style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
@@ -87,13 +76,12 @@ function SettingsInvoice() {
                     extra={t`Applied daily on overdue invoices. Set to 0 to disable.`}
                     name="overdueCharge"
                   >
-                    <InputNumber
+                    <NumberInput
                       min={0}
                       step={0.01}
                       style={{ width: "100%" }}
-                      formatter={(value) => `${value} %`}
-                      parser={(value) => value?.replace("%", "") as any}
-                      placeholder="0%"
+                      suffix="%"
+                      placeholder="0"
                     />
                   </Form.Item>
                 </Col>
@@ -202,7 +190,7 @@ function SettingsInvoice() {
                       { type: "number", min: 0, message: t`Counter must be 0 or greater` },
                     ]}
                   >
-                    <InputNumber min={0} style={{ width: "100%" }} />
+                    <NumberInput min={0} style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>
               </Row>
@@ -227,7 +215,7 @@ function SettingsInvoice() {
                   <Trans>How far a vendor's unit price may differ from the purchase order.</Trans>
                 }
               >
-                <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+                <NumberInput min={0} max={100} precision={2} style={{ width: "100%" }} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -238,7 +226,7 @@ function SettingsInvoice() {
                   <Trans>How far a billed quantity may exceed what was ordered and received.</Trans>
                 }
               >
-                <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} />
+                <NumberInput min={0} max={100} precision={2} style={{ width: "100%" }} />
               </Form.Item>
             </Col>
           </Row>

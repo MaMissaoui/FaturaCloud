@@ -6,7 +6,6 @@ import {
   Drawer,
   Empty,
   Form,
-  InputNumber,
   Popconfirm,
   Radio,
   Select,
@@ -14,6 +13,7 @@ import {
   Table,
   theme,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -453,7 +453,7 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
         ) : (
           <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ bom: [] }}>
             <Form.Item label={<Trans>Batch size</Trans>} style={{ maxWidth: 160 }}>
-              <InputNumber
+              <NumberInput
                 min={1}
                 precision={0}
                 style={{ width: "100%" }}

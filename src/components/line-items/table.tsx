@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Button, Form, Input, InputNumber, Select, Table, Typography } from "antd";
+import { Button, Form, Input, Select, Table, Typography } from "antd";
+import NumberInput from "src/components/number-input";
 import type { FormInstance } from "antd/es/form";
 import { DeleteOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
@@ -409,7 +410,7 @@ const LineItemsTable = ({
                                 rules={[{ required: true, message: t`Required` }]}
                               >
                                 <FieldFeedback>
-                                  <InputNumber
+                                  <NumberInput
                                     style={{ width: "100%" }}
                                     styles={{ input: { textAlign: "right" } }}
                                     min={0}
@@ -450,7 +451,7 @@ const LineItemsTable = ({
                       align="right"
                       render={(field) => (
                         <Form.Item name={[field.name, col.name ?? "unitPrice"]} noStyle>
-                          <InputNumber
+                          <NumberInput
                             style={{ width: "100%" }}
                             styles={{ input: { textAlign: "right" } }}
                             min={0}

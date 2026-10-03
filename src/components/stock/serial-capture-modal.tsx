@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, InputNumber, Input, Modal, Segmented, Select, Space, Typography } from "antd";
+import { Alert, Input, Modal, Segmented, Select, Space, Typography } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -242,7 +243,7 @@ const SerialCaptureModal = ({
                         )
                       }
                     />
-                    <InputNumber
+                    <NumberInput
                       style={{ width: "60%" }}
                       placeholder={t`Range start`}
                       value={lineRange?.start ?? null}

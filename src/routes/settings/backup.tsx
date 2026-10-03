@@ -5,7 +5,6 @@ import {
   Card,
   Col,
   Divider,
-  InputNumber,
   Modal,
   Row,
   Select,
@@ -16,6 +15,7 @@ import {
   Upload,
   message,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import type { UploadFile } from "antd";
 import {
   CloudDownloadOutlined,
@@ -267,7 +267,7 @@ function SettingsBackup() {
                 <Text type="secondary">
                   <Trans>Retention (days)</Trans>:
                 </Text>
-                <InputNumber
+                <NumberInput
                   min={1}
                   max={365}
                   value={config.retentionDays}
