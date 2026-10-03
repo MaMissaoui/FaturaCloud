@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.61.2] - 2026-10-03
+
+### Fixed
+- Cash Book loans: paying one line of a loan that had a deposit no longer
+  moves a cent onto another line. An untouched line could show 0,01
+  outstanding, and paying a line's whole balance could be refused by a
+  cent (#467).
+
+### Changed
+- The retail demo seed (`cmd/seed-demo --scenario retail`) now covers the
+  app's use cases: a seasonal, growing business, business customers on
+  account, running costs, payroll and VAT returns, the loan register
+  import, product families and a yearly import. A seed scheduler bug that
+  left some goods receipts unbilled is fixed (#466).
+
 ## [3.61.1] - 2026-10-03
 
 ### Fixed
