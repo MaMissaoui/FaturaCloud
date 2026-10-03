@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.61.1] - 2026-10-03
+
+### Fixed
+- Editing a tax rate down to 0% saves again: since 3.60.4 it kept its old
+  percentage behind a success message (#464).
+
+### Changed
+- The Dashboard builds its list of clients to chase only for the roles
+  that see it, and looks up the till once instead of three times (#464).
+
 ## [3.61.0] - 2026-10-03
 
 ### Changed
