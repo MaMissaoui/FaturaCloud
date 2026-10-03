@@ -1,4 +1,5 @@
-import { Button, Col, Form, InputNumber, Row, Select } from "antd";
+import { Button, Col, Form, Row, Select } from "antd";
+import NumberInput from "src/components/number-input";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
@@ -52,7 +53,7 @@ const BOMFields = ({
                 rules={[{ required: true, message: t`Quantity is required` }]}
                 style={{ marginBottom: 0 }}
               >
-                <InputNumber min={0.001} style={{ width: "100%" }} placeholder={t`Qty per unit`} />
+                <NumberInput min={0.001} style={{ width: "100%" }} placeholder={t`Qty per unit`} />
               </Form.Item>
             </Col>
             <Col flex="32px">

@@ -8,7 +8,6 @@ import {
   Descriptions,
   Form,
   Input,
-  InputNumber,
   Popconfirm,
   Row,
   Select,
@@ -20,6 +19,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
@@ -220,7 +220,7 @@ const CreateProductionOrderForm = ({
             name="quantity"
             rules={[{ required: true, message: t`Quantity is required` }]}
           >
-            <InputNumber
+            <NumberInput
               min={0.0001}
               precision={selectedProduct?.serialized ? 0 : 2}
               style={{ width: "100%" }}

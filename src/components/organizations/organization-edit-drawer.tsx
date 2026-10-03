@@ -9,13 +9,13 @@ import {
   Drawer,
   Form,
   Input,
-  InputNumber,
   Row,
   Select,
   Space,
   Upload,
   theme,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { UploadOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -446,7 +446,7 @@ export default function OrganizationEditDrawer({
                         name="minimum_fraction_digits"
                         label={<Trans>Decimal places</Trans>}
                       >
-                        <InputNumber min={0} max={10} style={{ width: "100%" }} />
+                        <NumberInput min={0} max={10} style={{ width: "100%" }} />
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={8}>
@@ -862,7 +862,7 @@ export default function OrganizationEditDrawer({
                                 </Trans>
                               }
                             >
-                              <InputNumber min={0} precision={3} style={{ width: "100%" }} />
+                              <NumberInput min={0} precision={3} style={{ width: "100%" }} />
                             </Form.Item>
                           </Col>
                           <Col xs={24} md={12}>

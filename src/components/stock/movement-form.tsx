@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Button, Drawer, Form, Input, InputNumber, Select, Space } from "antd";
+import { Button, Drawer, Form, Input, Select, Space } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -226,7 +227,7 @@ const MovementForm = () => {
                     label={label}
                     rules={[{ required: true, message: t`Quantity is required` }]}
                   >
-                    <InputNumber
+                    <NumberInput
                       min={0}
                       precision={2}
                       step={1}
@@ -243,7 +244,7 @@ const MovementForm = () => {
             {({ getFieldValue }) =>
               getFieldValue("type") === "in" ? (
                 <Form.Item name="unitCost" label={<Trans>Purchase price per unit</Trans>}>
-                  <InputNumber
+                  <NumberInput
                     min={0}
                     precision={2}
                     step={0.01}

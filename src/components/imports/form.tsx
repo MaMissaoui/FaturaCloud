@@ -8,7 +8,6 @@ import {
   Drawer,
   Form,
   Input,
-  InputNumber,
   Popconfirm,
   Row,
   Select,
@@ -17,6 +16,7 @@ import {
   Table,
   Tag,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -324,7 +324,7 @@ const ImportForm = () => {
               </Col>
               <Col xs={12} md={8}>
                 <Form.Item name="serialNumberRangeStart" label={<Trans>Range start</Trans>}>
-                  <InputNumber min={0} style={{ width: "100%" }} placeholder="1001" />
+                  <NumberInput min={0} style={{ width: "100%" }} placeholder="1001" />
                 </Form.Item>
               </Col>
               <Col xs={12} md={8}>
@@ -333,7 +333,7 @@ const ImportForm = () => {
                   label={<Trans>Range end</Trans>}
                   style={{ marginBottom: 0 }}
                 >
-                  <InputNumber min={0} style={{ width: "100%" }} placeholder="1050" />
+                  <NumberInput min={0} style={{ width: "100%" }} placeholder="1050" />
                 </Form.Item>
               </Col>
               <Col xs={24}>
@@ -350,7 +350,7 @@ const ImportForm = () => {
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item name="freightCost" label={<Trans>Freight cost</Trans>}>
-                  <InputNumber
+                  <NumberInput
                     min={0}
                     precision={2}
                     style={{ width: "100%" }}
@@ -360,7 +360,7 @@ const ImportForm = () => {
               </Col>
               <Col xs={24} md={12}>
                 <Form.Item name="customsCost" label={<Trans>Customs cost</Trans>}>
-                  <InputNumber
+                  <NumberInput
                     min={0}
                     precision={2}
                     style={{ width: "100%" }}

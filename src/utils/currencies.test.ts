@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoneyUnits, formatOrgCents } from "src/utils/currencies";
+import { formatMoneyUnits, formatOrgCents, inputDecimalSeparator } from "src/utils/currencies";
 
 // These pin the frontend half of the F121 ("Decimal places" means a true
 // minimum, matching db/format_money.go's formatMoneyCents) and F123
@@ -36,5 +36,19 @@ describe("formatOrgCents", () => {
       "$12",
     );
     expect(formatOrgCents(1250, { currency: "USD" }, "en-US")).toBe("$12.50");
+  });
+});
+
+describe("inputDecimalSeparator", () => {
+  it("follows the organization's country first, like formatOrgCents", () => {
+    expect(inputDecimalSeparator("TN", "en")).toBe(",");
+    expect(inputDecimalSeparator("DE", "en")).toBe(",");
+    expect(inputDecimalSeparator("US", "fr")).toBeUndefined();
+  });
+
+  it("falls back to the UI language for a country outside the table", () => {
+    expect(inputDecimalSeparator(null, "fr")).toBe(",");
+    expect(inputDecimalSeparator(undefined, "de")).toBe(",");
+    expect(inputDecimalSeparator("ZZ", "en")).toBeUndefined();
   });
 });

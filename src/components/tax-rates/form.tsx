@@ -13,6 +13,7 @@ import {
   Space,
   Tooltip,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useSetAtom, useAtomValue } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
@@ -185,7 +186,9 @@ const TaxRateForm = () => {
                   label={<Trans>Percentage</Trans>}
                   rules={[{ required: true, message: t`Please input a percentage!` }]}
                 >
-                  <Input placeholder={t`Percentage`} />
+                  {/* A number field: as a plain Input, read with parseFloat, "19,5"
+                      saved as 19. */}
+                  <NumberInput placeholder={t`Percentage`} suffix="%" style={{ width: "100%" }} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>

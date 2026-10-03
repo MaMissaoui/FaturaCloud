@@ -1,4 +1,5 @@
-import { Alert, Form, Input, InputNumber, Select, Typography, Row, Col, Button, Card } from "antd";
+import { Alert, Form, Input, Select, Typography, Row, Col, Button, Card } from "antd";
+import NumberInput from "src/components/number-input";
 import { CloseOutlined, LogoutOutlined } from "@ant-design/icons";
 import { atom, useAtom, useSetAtom, useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
@@ -170,7 +171,7 @@ const NewOrganization = () => {
                 </Col>
                 <Col span={6}>
                   <Form.Item name="minimum_fraction_digits" label={t`Decimal places`}>
-                    <InputNumber min={0} max={10} style={{ width: "100%" }} />
+                    <NumberInput min={0} max={10} style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>
               </Row>

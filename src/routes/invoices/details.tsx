@@ -9,7 +9,6 @@ import {
   Divider,
   Form,
   Input,
-  InputNumber,
   Row,
   Col,
   Select,
@@ -21,6 +20,7 @@ import {
   Tooltip,
   Typography,
 } from "antd";
+import NumberInput from "src/components/number-input";
 import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
@@ -684,7 +684,7 @@ const InvoiceDetails: React.FC = () => {
                             t`1 ${currency} = this many ${orgCurrency}`)(watchedCurrency)}
                           rules={[{ required: true, message: t`This field is required!` }]}
                         >
-                          <InputNumber
+                          <NumberInput
                             min={0}
                             step={0.0001}
                             precision={6}
@@ -726,14 +726,13 @@ const InvoiceDetails: React.FC = () => {
                   <Row gutter={16}>
                     <Col xs={24} md={12}>
                       <Form.Item label={t`Overdue charge`} name="overdueCharge" help={t`Daily %`}>
-                        <InputNumber
+                        <NumberInput
                           style={{ width: "100%" }}
                           min={0}
                           max={100}
                           step={0.01}
-                          formatter={(value) => `${value} %`}
-                          parser={(value) => value?.replace("%", "") as any}
-                          placeholder="0%"
+                          suffix="%"
+                          placeholder="0"
                         />
                       </Form.Item>
                     </Col>
@@ -759,7 +758,7 @@ const InvoiceDetails: React.FC = () => {
                           </Trans>
                         }
                       >
-                        <InputNumber style={{ width: "100%" }} min={0} precision={3} />
+                        <NumberInput style={{ width: "100%" }} min={0} precision={3} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -783,7 +782,7 @@ const InvoiceDetails: React.FC = () => {
                               </Trans>
                             }
                           >
-                            <InputNumber style={{ width: "100%" }} min={0} precision={3} />
+                            <NumberInput style={{ width: "100%" }} min={0} precision={3} />
                           </Form.Item>
                         </Col>
                       ) : null}
@@ -800,7 +799,7 @@ const InvoiceDetails: React.FC = () => {
                               </Trans>
                             }
                           >
-                            <InputNumber
+                            <NumberInput
                               style={{ width: "100%" }}
                               min={0}
                               max={100}
@@ -875,7 +874,7 @@ const InvoiceDetails: React.FC = () => {
                             noStyle
                           >
                             <FieldFeedback>
-                              <InputNumber
+                              <NumberInput
                                 style={{ width: "100%" }}
                                 styles={{ input: { textAlign: "right" } }}
                                 onChange={(value) => {
@@ -923,7 +922,7 @@ const InvoiceDetails: React.FC = () => {
                             noStyle
                           >
                             <FieldFeedback>
-                              <InputNumber
+                              <NumberInput
                                 style={{ width: "100%" }}
                                 styles={{ input: { textAlign: "right" } }}
                                 onChange={(value) => {
@@ -992,7 +991,7 @@ const InvoiceDetails: React.FC = () => {
                             noStyle
                           >
                             <FieldFeedback>
-                              <InputNumber
+                              <NumberInput
                                 style={{ width: "100%" }}
                                 styles={{ input: { textAlign: "right" } }}
                                 onChange={(value) => {

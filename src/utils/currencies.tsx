@@ -133,6 +133,29 @@ export const formatOrgCents = (
     organization?.minimum_fraction_digits ?? undefined,
   );
 
+/**
+ * The decimal separator number inputs use: the same rule as formatOrgCents
+ * (the organization's country convention, else the UI language), so a
+ * French or Tunisian organization types and reads "12,50" where its amounts
+ * display "12,50 DT". Returns undefined for "." — antd's own default — so
+ * English-convention inputs behave exactly as before.
+ */
+export const inputDecimalSeparator = (
+  countryCode: string | null | undefined,
+  locale: string,
+): string | undefined => {
+  let separator = ".";
+  try {
+    separator =
+      new Intl.NumberFormat(numberFormatLocale(countryCode) ?? locale)
+        .formatToParts(1.5)
+        .find((p) => p.type === "decimal")?.value ?? ".";
+  } catch {
+    // An unknown locale keeps the default.
+  }
+  return separator === "." ? undefined : separator;
+};
+
 export const getCurrencySymbol = (locale: string, currency: string) => {
   const numberFormat = new Intl.NumberFormat(locale, { style: "currency", currency });
 
