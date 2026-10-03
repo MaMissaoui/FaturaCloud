@@ -99,7 +99,7 @@ export default function Organizations() {
   // rather than a single global isAdmin flag applying to every row.
   const [myOrgAdminIds, setMyOrgAdminIds] = useState<Set<string>>(new Set());
   const [logoKey, setLogoKey] = useState(0);
-  const [hasLogo, setHasLogo] = useState(true);
+  const [hasLogo, setHasLogo] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [resetMasterData, setResetMasterData] = useState(false);
   const [resetTransactionalData, setResetTransactionalData] = useState(false);
@@ -198,7 +198,9 @@ export default function Organizations() {
   const openEdit = async (id: string) => {
     const requestId = ++editRequestIdRef.current;
     form.resetFields();
-    setHasLogo(true);
+    // Set from the record below, so the Logo panel (rendered even while
+    // collapsed) doesn't request a logo the organization doesn't have.
+    setHasLogo(false);
     setLogoKey((k) => k + 1);
     setResetMasterData(false);
     setResetTransactionalData(false);
@@ -215,6 +217,7 @@ export default function Organizations() {
       const org = await GetOrganization(id);
       if (requestId !== editRequestIdRef.current) return;
       setEditingId(id);
+      setHasLogo(!!org.hasLogo);
       // Convert null date_format to undefined so the Select shows placeholder
       form.setFieldsValue({
         ...org,

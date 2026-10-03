@@ -2046,6 +2046,18 @@ func TestOrganizationLogoRoundTrip(t *testing.T) {
 	if logo, err := d.GetOrganizationLogo("org-1"); err != nil || len(logo) != 0 {
 		t.Fatalf("expected no logo yet, got logo=%v err=%v", logo, err)
 	}
+	assertHasLogo := func(want bool) {
+		t.Helper()
+		org, err := d.GetOrganization("org-1")
+		if err != nil || org.HasLogo != want {
+			t.Fatalf("GetOrganization: hasLogo=%v err=%v, want hasLogo=%v", org != nil && org.HasLogo, err, want)
+		}
+		list, err := d.GetOrganizations()
+		if err != nil || len(list) != 1 || list[0].HasLogo != want {
+			t.Fatalf("GetOrganizations: hasLogo wrong (want %v) err=%v list=%+v", want, err, list)
+		}
+	}
+	assertHasLogo(false)
 
 	logo := []byte("PRETEND-THIS-IS-A-BIG-PNG")
 	if ok, err := d.SetOrganizationLogo("org-1", logo); err != nil || !ok {
@@ -2063,6 +2075,7 @@ func TestOrganizationLogoRoundTrip(t *testing.T) {
 	if _, err := d.GetOrganization("org-1"); err != nil {
 		t.Fatalf("GetOrganization: %v", err)
 	}
+	assertHasLogo(true)
 
 	if ok, err := d.SetOrganizationLogo("org-1", nil); err != nil || !ok {
 		t.Fatalf("SetOrganizationLogo(nil): ok=%v err=%v", ok, err)
@@ -2070,6 +2083,12 @@ func TestOrganizationLogoRoundTrip(t *testing.T) {
 	if logo, err := d.GetOrganizationLogo("org-1"); err != nil || len(logo) != 0 {
 		t.Fatalf("expected logo cleared, got logo=%v err=%v", logo, err)
 	}
+	assertHasLogo(false)
+	// An empty BLOB is "no logo" too, matching getOrganizationLogo's 404.
+	if ok, err := d.SetOrganizationLogo("org-1", []byte{}); err != nil || !ok {
+		t.Fatalf("SetOrganizationLogo(empty): ok=%v err=%v", ok, err)
+	}
+	assertHasLogo(false)
 
 	if ok, err := d.SetOrganizationLogo("does-not-exist", []byte("x")); err != nil || ok {
 		t.Fatalf("expected SetOrganizationLogo on unknown org to report ok=false, got ok=%v err=%v", ok, err)

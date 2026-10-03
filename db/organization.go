@@ -220,6 +220,10 @@ type Organization struct {
 	// InventoryValuation is "perpetual" (NULL/"" — the default) or
 	// "quantity_only" (migration 0093) — see db/inventory_valuation.go.
 	InventoryValuation *string `db:"inventoryValuation" json:"inventoryValuation"`
+	// HasLogo is computed on read (organizationColumns), not a column: it
+	// lets the frontend skip GET /logo for an organization with none, which
+	// otherwise answered 404 on every page load. Ignored on writes.
+	HasLogo bool `db:"hasLogo" json:"hasLogo"`
 }
 
 // CreateOrganizationRequest is the payload for creating an organization.
@@ -332,6 +336,8 @@ type UpdateOrganizationRequest struct {
 // GetOrganizations and GetOrganization. The logo BLOB is never loaded as part
 // of the Organization struct — GetOrganizationLogo reads it directly, and the
 // only way to read or write it over HTTP is the dedicated /logo endpoints.
+// Only whether one is set is read here (hasLogo), with the same "empty means
+// none" rule as getOrganizationLogo's 404.
 const organizationColumns = `id, code, name, country, email, phone, website,
 	       registration_number, vatin, bank_name, iban, currency,
 	       minimum_fraction_digits, due_days, overdueCharge, customerNotes,
@@ -348,7 +354,8 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled,
-	       documentLanguage, timezone, inventoryValuation`
+	       documentLanguage, timezone, inventoryValuation,
+	       COALESCE(length(logo), 0) > 0 AS hasLogo`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
 	orgs := []Organization{}
