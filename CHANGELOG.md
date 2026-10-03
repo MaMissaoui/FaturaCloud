@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.60.4] - 2026-10-03
+
+### Fixed
+- Number fields read a comma as the decimal point when the organization
+  writes its numbers that way (Tunisia, France, Germany and others): typing
+  "12,5" stored 125 before. A typed "." still works, so the numpad is
+  fine. Organizations whose numbers use "." see no change (#460).
+- The tax rate percentage is a number field: "19,5" was saved as 19 (#460).
+- An organization without a logo no longer gets a failed logo request
+  on every page and when its settings drawer opens (#459).
+
 ## [3.60.3] - 2026-10-03
 
 ### Fixed
