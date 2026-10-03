@@ -180,8 +180,13 @@ its own. Run it with:
 go run ./cmd/seed-demo \
   --scenario retail --country Tunisia --currency TND \
   --org-name "Établissement Ben Salah Électroménager" \
-  --months 18 --seed 20260101
+  --months 27 --volume-scale 0.25 --seed 20261003
 ```
+
+This is the command the production demo organization is (re)seeded with.
+It ends today, so run it again (with `--reset`) after a release to bring the
+data back up to date: within days of a run, the till goes idle and the "not
+due yet" invoices turn late.
 
 `scenario.go`'s `resolveScenario` is the single place that says what a
 scenario does and doesn't run — see its `scenario` struct for the full
@@ -196,13 +201,44 @@ generator unconditionally.
   and `purchasing.go`'s `stockProducts` filters. A small (~6 entry)
   services list (delivery, installation, warranty, repair visit) rides
   alongside them on the same Cash Book sale.
-- **Sales — Cash Book only.** No direct B2B invoices, no order→delivery
-  channel — every sale goes through `POST /api/cash-sales`
+- **Sales — mostly Cash Book.** Counter sales go through `POST /api/cash-sales`
   (`cash_book_sales.go`'s `createCashBookSale`), the same atomic
   client+invoice+payment endpoint the Cash Book screen itself calls, at a
-  day-of-week-weighted daily volume (busier Thu-Sat, quieter Sunday — a
-  retail counter, unlike the B2B channel, is open and busiest on
-  weekends).
+  day-of-week-weighted daily volume (busier Thu-Sat, quieter Sunday).
+  About 6% of zero-deposit loan sales are cancelled within the week (their
+  stock goes back).
+- **The year has a shape** (`retail_season.go`). Traffic follows the month
+  (summer and weddings up, back-to-school and winter down, one quiet month
+  in January 2026), the business grows ~20% a year, and what sells follows
+  the season: air conditioners and fans in summer, water heaters in winter,
+  kitchen appliances in Ramadan, freezers before Eid al-Adha, televisions
+  during big football tournaments. The restocking follows the season three
+  weeks ahead. Without this every Dashboard period looked alike.
+- **Business customers** (`retail_b2b.go`) — 8 companies (a hotel, a clinic,
+  a school, restaurants…) buy on account: order → one or two deliveries →
+  an invoice per delivery with their payment terms (30-60 days, so "not due
+  yet" has content), the 1-dinar fiscal stamp, often a discount (remise),
+  and the 1% withholding (retenue à la source) for three of them. Two have a
+  monthly maintenance contract invoice. Paid around the due date, in two
+  parts, late or (rarely) never; a few orders are cancelled, one invoice is
+  cancelled and re-issued, and the last days leave two invoices in draft.
+- **Bookkeeping** (`retail_overheads.go`) — the shop's own accounts (capital,
+  stamp duty, rent, utilities, telecom, salaries, bank charges, leave
+  provision); monthly rent/telephone and bimonthly/quarterly electricity and
+  water bills without a purchase order; month-end payroll and bank-charge
+  journal entries (one payroll booked twice and the duplicate reversed); the
+  monthly VAT return on the 28th (output less input VAT, plus stamps, paid
+  from the bank); one draft journal entry on the last day.
+- **Opening day** (`retail_stock.go`, `retail_extras.go`) — the owner's
+  capital goes into the bank, the opening stock is bought with dated
+  purchase orders (so Inventory is right on every past date; an opening
+  stock count would be posted at the real current time), and the paper loan
+  book is imported through the loan register Excel import; most of those
+  customers pay off at the counter over the next months.
+- **Also covered:** product families for every appliance; a yearly
+  container of air conditioners and fans from two Chinese suppliers in USD,
+  on one import with freight and customs; and on the last day one damaged
+  appliance written off and one count difference.
 - **Customers grow organically, not via a batch pre-create.** A target
   count is picked once (`400-450`, `seeder.go`'s `targetClientCount`); each
   sale either creates a new walk-in customer inline (`CreateCashSaleRequest.NewClient`)
@@ -212,23 +248,23 @@ generator unconditionally.
 - **Loan sales ("vente à tempérament")** — big-ticket items (above 600
   TND) are commonly sold on a deposit or a zero-deposit informal
   installment plan; small items are usually paid in full
-  (`decideAmountReceived`). The remaining balance is collected later via
-  `sales.go`'s `schedulePayment` (reused unmodified, just pointed at the
-  register account instead of Bank — an installment is paid back in cash
-  at the counter) with its own tiered fate distribution
-  (`scheduleLoanRepayment`), in the same spirit as the B2B channel's own
-  paid/slow-pay/bad-debt split.
+  (`decideAmountReceived`). The remaining balance is collected later with
+  its own tiered fate distribution (`scheduleLoanRepayment`): mostly line
+  by line through the Cash Book (`POST /api/cash-sales/{id}/payments`,
+  reading the line balances from the loan register and again after each
+  payment), the rest as an ordinary payment into the register.
 - **The cash register account is wired automatically.** Nothing does this
   for a real organization either (see CLAUDE.md's cash register account
   note) — `masterdata.go`'s `setupCashRegisterAccount` resolves the
   chart's `1010` ("Cash") leaf account and sets
   `defaultCashRegisterAccountId`, exactly the one manual step a real admin
   does in Organization settings.
-- **Cash withdrawals** (`cash_movements_retail.go`) — a weekly deposit of
-  the till's excess above a 1,500 TND float to the organization's real
-  Bank account, plus an occasional (~monthly) small undocumented
-  petty-cash expense — both via `POST /api/cash-movements`, so the Daily
-  Cash Movements report has real "out" activity, not just sales.
+- **Cash withdrawals** (`cash_movements_retail.go`) — the day's takings
+  deposited to the bank when the counter closes (Monday-Saturday, leaving
+  an 800-1,500 TND float), plus an occasional (~monthly) small undocumented
+  petty-cash expense — both via `POST /api/cash-movements`, so the
+  Dashboard's till and the Daily Cash Movements report show money in and
+  out every open day.
 - **Deliberately skipped**: production/BOM/assembly (no manufacturing —
   these already no-op safely against a catalog with no `"finished"`/
   `"component"` entries, but this scenario skips calling them at all

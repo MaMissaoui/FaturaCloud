@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
@@ -69,6 +70,42 @@ func (c *Client) do(method, path string, body, out any) error {
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	return c.send(req, out)
+}
+
+// PostFile uploads data as a multipart form's "file" field, with fields
+// alongside it — the shape the mass-data import endpoints read
+// (api/mass_data.go's readMassDataUpload).
+func (c *Client) PostFile(path string, fields map[string]string, fileName string, data []byte, out any) error {
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	for k, v := range fields {
+		if err := w.WriteField(k, v); err != nil {
+			return fmt.Errorf("POST %s: form field %s: %w", path, k, err)
+		}
+	}
+	part, err := w.CreateFormFile("file", fileName)
+	if err != nil {
+		return fmt.Errorf("POST %s: form file: %w", path, err)
+	}
+	if _, err := part.Write(data); err != nil {
+		return fmt.Errorf("POST %s: form file: %w", path, err)
+	}
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("POST %s: form: %w", path, err)
+	}
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, &buf)
+	if err != nil {
+		return fmt.Errorf("POST %s: build request: %w", path, err)
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	return c.send(req, out)
+}
+
+// send runs req with the CSRF header on a state-changing request and decodes
+// the JSON answer into out.
+func (c *Client) send(req *http.Request, out any) error {
+	method, path := req.Method, strings.TrimPrefix(req.URL.String(), c.baseURL)
 	if method != http.MethodGet {
 		// Same stateless CSRF header src/api/client.ts sends on every
 		// state-changing request — see CLAUDE.md's API section.

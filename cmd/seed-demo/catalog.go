@@ -191,6 +191,10 @@ type productCatalogEntry struct {
 	// a component is only ever fit for a motorcycle of its own displacement
 	// class (a "125cc" engine block doesn't go into a "650cc" frame).
 	displacement string
+	// kind is the retail catalog's appliance category ("Climatiseur",
+	// "Chauffe-eau", ...) — what retail_season.go weights by month and
+	// setupRetailFamilies groups into product families. "" for moto.
+	kind string
 }
 
 var serviceCatalog = []productCatalogEntry{

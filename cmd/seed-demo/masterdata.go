@@ -303,6 +303,20 @@ func (s *Seeder) setupMasterData() error {
 		}
 	}
 	if s.scenario.hasCashBookSales {
+		// The retail shop's accounts, journals, overhead vendors, import
+		// suppliers and product families (retail_overheads.go,
+		// retail_extras.go) — families before the products filed under them.
+		if err := s.setupRetailBookkeeping(); err != nil {
+			return fmt.Errorf("bookkeeping: %w", err)
+		}
+		if err := s.setupRetailForeignVendors(); err != nil {
+			return fmt.Errorf("foreign vendors: %w", err)
+		}
+		if err := s.setupRetailFamilies(); err != nil {
+			return fmt.Errorf("product families: %w", err)
+		}
+	}
+	if s.scenario.hasCashBookSales {
 		// The client base grows organically via Cash Book's inline
 		// NewClient creation instead — see cash_book_sales.go and
 		// seeder.go's targetClientCount. Seeding a batch of clients up
@@ -317,6 +331,11 @@ func (s *Seeder) setupMasterData() error {
 	}
 	if err := s.setupProducts(); err != nil {
 		return fmt.Errorf("products: %w", err)
+	}
+	if s.scenario.hasCashBookSales {
+		if err := s.setupBusinessClients(); err != nil {
+			return fmt.Errorf("business clients: %w", err)
+		}
 	}
 	s.log.Printf("seed-demo: master data ready — %d vendors (+%d foreign), %d clients, %d products",
 		len(s.vendors), len(s.foreignVendors), len(s.clients), len(s.products))
@@ -548,6 +567,7 @@ func (s *Seeder) setupProducts() error {
 			Category:       categoryPtr,
 			TaxRateID:      strPtr(taxID),
 			StockEnabled:   stockEnabled,
+			FamilyID:       nonEmptyStrPtr(s.familyByKind[entry.kind]),
 		}
 		var p db.Product
 		if err := s.c.Post("/api/products", req, &p); err != nil {
@@ -557,7 +577,7 @@ func (s *Seeder) setupProducts() error {
 			id: p.ID, name: entry.name, unit: entry.unit, stockEnabled: entry.stockEnabled,
 			priceCents: price, costCents: cost, taxRateID: taxID,
 			qtyLo: entry.qtyLo, qtyHi: entry.qtyHi, category: entry.category,
-			displacement: entry.displacement,
+			displacement: entry.displacement, kind: entry.kind,
 		})
 		s.stats.Products++
 		return nil
