@@ -71,6 +71,9 @@ func (s *Seeder) setupRetailOpeningStock(day time.Time) error {
 		o := opening{vendor: s.vendors[v]}
 		for _, p := range byVendor[v] {
 			qty := math.Round(float64(s.rng.IntRange(retailOpeningStock[0], retailOpeningStock[1])) * math.Min(kindWeight(p.kind, day), 2))
+			if p.serialized {
+				qty = float64(s.rng.IntRange(2, 4))
+			}
 			if qty < 1 {
 				qty = 1
 			}
@@ -113,7 +116,7 @@ func (s *Seeder) retailSaleLines(day time.Time, n int) invoiceLines {
 	for i := 0; i < n; i++ {
 		var candidates []productRef
 		var weights []float64
-		for _, p := range s.sellableProducts() {
+		for _, p := range s.counterProducts() {
 			if !p.stockEnabled || available(p) >= 1 {
 				candidates = append(candidates, p)
 				w := 0.5 // a service rides along with an appliance now and then
@@ -125,7 +128,7 @@ func (s *Seeder) retailSaleLines(day time.Time, n int) invoiceLines {
 		}
 		var p productRef
 		if len(candidates) == 0 {
-			p = Pick(s.rng, s.sellableProducts())
+			p = Pick(s.rng, s.counterProducts())
 		} else {
 			p = candidates[s.weightedIndex(weights)]
 		}
@@ -145,6 +148,19 @@ func (s *Seeder) retailSaleLines(day time.Time, n int) invoiceLines {
 			ProductID:   strPtr(p.id),
 		})
 		out.totals = append(out.totals, lineItem{quantity: qty, unitPriceCents: p.priceCents, taxPercent: taxPercent})
+	}
+	return out
+}
+
+// counterProducts is what the Cash Book can sell: every sellable product
+// except a serialized one, which a cash sale refuses until the counter has a
+// serial picker.
+func (s *Seeder) counterProducts() []productRef {
+	var out []productRef
+	for _, p := range s.sellableProducts() {
+		if !p.serialized {
+			out = append(out, p)
+		}
 	}
 	return out
 }

@@ -44,6 +44,8 @@ type applianceCategory struct {
 	costFactorLo, costFactorHi float64
 	qtyLo, qtyHi               int
 	variants                   []applianceVariant
+	// serialized categories are tracked unit by unit (see productCatalogEntry).
+	serialized bool
 	// tiers is empty for small appliances (their variant list already
 	// distinguishes basic/mid/high-power products by name) and
 	// majorApplianceTiers for the big-ticket categories, where a size like
@@ -68,6 +70,16 @@ var applianceCategories = []applianceCategory{
 			{"2 portes 320L", 190000, 280000},
 			{"2 portes 420L", 280000, 380000},
 			{"Side-by-side 500L", 380000, 550000},
+		},
+	},
+	{
+		// Professional air conditioning, sold to business customers only and
+		// tracked by serial number (warranty and after-sales follow the unit).
+		name: "Climatisation professionnelle", unit: "pcs", costFactorLo: 0.74, costFactorHi: 0.84, qtyLo: 1, qtyHi: 1,
+		serialized: true,
+		variants: []applianceVariant{
+			{"Gainable 36000 BTU", 900000, 1150000},
+			{"Cassette 48000 BTU", 1300000, 1650000},
 		},
 	},
 	{
@@ -261,7 +273,7 @@ func buildApplianceCatalog() []productCatalogEntry {
 					priceCentsHi: int64(float64(v.priceCentsHi) * tier.multiplier),
 					costFactorLo: cat.costFactorLo, costFactorHi: cat.costFactorHi,
 					qtyLo: cat.qtyLo, qtyHi: cat.qtyHi,
-					kind: cat.name,
+					kind: cat.name, serialized: cat.serialized,
 				})
 			}
 		}

@@ -116,6 +116,8 @@ type productRef struct {
 	category     string // "finished" | "component" | "" — see catalog.go's productCatalogEntry
 	displacement string // "50cc".."650cc" for "finished"/"component", "" otherwise — see catalog.go's productCatalogEntry
 	kind         string // the retail appliance category, see catalog.go's productCatalogEntry
+	serialized   bool   // tracked unit by unit, see catalog.go's productCatalogEntry
+	sku          string // the product code, which also prefixes a serialized product's serial numbers
 }
 
 // Stats tallies what actually got created, printed as a summary at the end
@@ -207,6 +209,9 @@ type Seeder struct {
 	// not yet received (retail_stock.go), so a reorder doesn't re-order
 	// what's already on its way.
 	onOrder map[string]float64
+	// serialCounter numbers each serialized product's units as they're
+	// received (purchasing.go's receiptSerialNumbers).
+	serialCounter map[string]int
 	// foreignVendors are the handful of overseas (China) suppliers whose
 	// goods only ever arrive via a consolidated Import (F114) — kept
 	// separate from vendors (the local supplier pool ordinary restocking
@@ -277,6 +282,8 @@ func NewSeeder(c *Client, cfg Config) *Seeder {
 		scenario: scn,
 		sched:    NewScheduler(),
 		onOrder:  map[string]float64{},
+
+		serialCounter: map[string]int{},
 
 		invoiceNum:  newNumberer(orDefault(orgProfileFor(cfg.Country).invoiceNumberPrefix, "INV")),
 		incomingNum: newNumberer("BILL"),
@@ -431,6 +438,9 @@ func (s *Seeder) Run() error {
 	if s.scenario.hasCashBookSales {
 		if err := s.recordStockWriteOffs(); err != nil {
 			s.onTaskError(s.cfg.EndDate, fmt.Errorf("stock write-offs: %w", err))
+		}
+		if err := s.recordStockCount(); err != nil {
+			s.onTaskError(s.cfg.EndDate, fmt.Errorf("stock count: %w", err))
 		}
 		if err := s.leaveDraftEntry(s.cfg.EndDate); err != nil {
 			s.onTaskError(s.cfg.EndDate, fmt.Errorf("draft journal entry: %w", err))

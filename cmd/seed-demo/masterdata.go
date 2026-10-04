@@ -552,6 +552,7 @@ func (s *Seeder) setupProducts() error {
 			unitPtr = strPtr(entry.unit)
 			stockEnabled = 1
 		}
+		sku := uniqueSKU(entry.name)
 		var categoryPtr *string
 		if entry.category != "" {
 			categoryPtr = strPtr(entry.category)
@@ -559,7 +560,7 @@ func (s *Seeder) setupProducts() error {
 		req := db.CreateProductRequest{
 			OrganizationID: s.orgID,
 			Name:           entry.name,
-			SKU:            strPtr(uniqueSKU(entry.name)),
+			SKU:            strPtr(sku),
 			Price:          price,
 			UnitCost:       costPtr,
 			Unit:           unitPtr,
@@ -569,6 +570,9 @@ func (s *Seeder) setupProducts() error {
 			StockEnabled:   stockEnabled,
 			FamilyID:       nonEmptyStrPtr(s.familyByKind[entry.kind]),
 		}
+		if entry.serialized {
+			req.Serialized = 1
+		}
 		var p db.Product
 		if err := s.c.Post("/api/products", req, &p); err != nil {
 			return fmt.Errorf("product %q: %w", entry.name, err)
@@ -577,7 +581,7 @@ func (s *Seeder) setupProducts() error {
 			id: p.ID, name: entry.name, unit: entry.unit, stockEnabled: entry.stockEnabled,
 			priceCents: price, costCents: cost, taxRateID: taxID,
 			qtyLo: entry.qtyLo, qtyHi: entry.qtyHi, category: entry.category,
-			displacement: entry.displacement, kind: entry.kind,
+			displacement: entry.displacement, kind: entry.kind, serialized: entry.serialized, sku: sku,
 		})
 		s.stats.Products++
 		return nil
