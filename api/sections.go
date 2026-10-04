@@ -130,7 +130,8 @@ func routeSections(pattern string) []string {
 		return []string{sectionInventory}
 	case resourceIs(path, "production-orders"):
 		return []string{sectionProductionOrders}
-	case resourceIs(path, "products/bom-summaries"), path == "products/{id}/bom",
+	case resourceIs(path, "products/bom-summaries"), resourceIs(path, "products/bom-overview"),
+		path == "products/{id}/bom",
 		strings.HasPrefix(path, "products/{id}/bom/"):
 		return []string{sectionBillOfMaterials}
 	case resourceIs(path, "journals"), resourceIs(path, "journal-entries"),

@@ -168,14 +168,16 @@ export const dashboardWidgetsForRole = (role: string) => {
 // organization owes its vendors is purchasing content. The product summaries
 // are membership-level on the server, like every product route (who a
 // product went to or came from is filtered per role there instead), so every
-// role that has the Products screen gets them.
+// role that has the Products screen gets them. The Bill of Materials
+// summaries sit in that screen's own section, admin/power_user only.
 export const SUMMARY_SECTION_ROLES: Record<
-  "client-balances" | "vendor-balances" | "products",
+  "client-balances" | "vendor-balances" | "products" | "bill-of-materials",
   string[]
 > = {
   "client-balances": ["general", "sales", "accounting", "cashbook"],
   "vendor-balances": ["general", "purchasing", "accounting"],
   products: ["general", "sales", "purchasing", "accounting", "cashbook"],
+  "bill-of-materials": [],
 };
 
 // roleCanSeeSummaries decides whether a role may see a summary section. An

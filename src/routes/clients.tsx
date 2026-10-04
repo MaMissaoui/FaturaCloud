@@ -4,7 +4,7 @@ import { Link, Outlet, useNavigate } from "react-router";
 import { Button, Col, Empty, Space, Table, Row, Tag, theme, Tooltip, Typography } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { PhoneOutlined, TeamOutlined } from "@ant-design/icons";
 import isEmpty from "lodash/isEmpty";
@@ -25,6 +25,7 @@ import FilterChips from "src/components/master-data/filter-chips";
 import HeadlineFigure from "src/components/master-data/headline-figure";
 import ListWithPanel from "src/components/master-data/list-with-panel";
 import { useSummariesEnabled } from "src/components/master-data/use-summaries-enabled";
+import { useWideScreen } from "src/components/master-data/use-wide-screen";
 import PageHeader from "src/components/page-header";
 import { formatAddressOneLine } from "src/utils/address";
 import { formatOrgCents } from "src/utils/currencies";
@@ -60,6 +61,8 @@ const Clients = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const loading = useLoadOnPath("/clients", () => setClients());
+
+  const wide = useWideScreen();
 
   // Summaries (what each client owes, last purchase, the panel) are on when
   // the organization has them switched on and the role may see client
@@ -332,17 +335,17 @@ const Clients = () => {
             </span>
           )}
         />
-        <Table.Column
-          title={<Trans>City</Trans>}
-          key="city"
-          // Hidden below 1440px (src/styles/base.scss), where the panel beside
-          // the list leaves no room; the panel shows the city.
-          className="master-data-wide-only"
-          render={(client: Client) => {
-            const city = client.city || client.address;
-            return city ? <span style={{ whiteSpace: "nowrap" }}>{city}</span> : notSet;
-          }}
-        />
+        {/* Only from 1440px, where the panel beside the list leaves room; the panel shows the city. */}
+        {wide && (
+          <Table.Column
+            title={<Trans>City</Trans>}
+            key="city"
+            render={(client: Client) => {
+              const city = client.city || client.address;
+              return city ? <span style={{ whiteSpace: "nowrap" }}>{city}</span> : notSet;
+            }}
+          />
+        )}
         <Table.Column
           title={<Trans>Phone</Trans>}
           key="phone"
@@ -421,7 +424,7 @@ const Clients = () => {
         }
       />
       <p style={{ margin: "-12px 0 0", color: token.colorTextSecondary }}>
-        {t`${clients.length} clients, ${businessCount} of them businesses`}
+        {t`${plural(clients.length, { one: "# client", other: "# clients" })}, ${plural(businessCount, { one: "# of them a business", other: "# of them businesses" })}`}
       </p>
 
       <div
@@ -438,7 +441,11 @@ const Clients = () => {
         <HeadlineFigure
           label={<Trans>What your clients owe you</Trans>}
           value={summaries ? money(summaries.totalOwed) : "…"}
-          note={summaries ? t`across ${owingCount} clients` : undefined}
+          note={
+            summaries
+              ? plural(owingCount, { one: "across # client", other: "across # clients" })
+              : undefined
+          }
         />
         <FilterChips<ClientFilter>
           ariaLabel={t`Filter clients`}

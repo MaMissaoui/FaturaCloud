@@ -102,14 +102,6 @@ body {
   }
 }
 
-// A master-data list column that only fits beside the summary panel on a wide
-// screen (src/routes/clients.tsx): hidden below 1440px.
-@media (max-width: 1439px) {
-  .ant-table .master-data-wide-only {
-    display: none;
-  }
-}
-
 // The picked row of a master-data list with a summary panel. Set on every
 // cell, pinned ones included, which paint their own background.
 .ant-table-tbody > tr.master-data-selected-row > td,

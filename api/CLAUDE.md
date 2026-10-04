@@ -94,6 +94,7 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 
 **Product summaries (master-data summaries, migration 0100)**
 - `GET /api/organizations/{orgId}/products/summary` and `GET /api/products/{id}/summary` — the Products headline/chip counts and the product panel's latest movements and last vendor (`db/product_summary.go`). Membership-level like every product route, but `getProductSummary` strips each movement's counterparty by role — a client unless the role sees `client-balances`, a vendor and the last vendor unless it sees `vendor-balances` (the `listPayments` precedent, `TestProductSummaryCounterpartiesByRole`); 409 when `masterDataSummaries` is off. `GET .../products` takes `stock=out|low`
+- `GET /api/organizations/{orgId}/products/bom-overview` and `GET /api/products/{id}/bom/summary` — the Bill of Materials screen's list (parts cost, buildable units, chip counts) and recipe panel (`db/bom_summary.go`). In the `bill-of-materials` section (admin/power_user only) like every BOM route; 409 when `masterDataSummaries` is off. `bom-summaries` (component counts) stays as is for the screen with summaries off
 
 **Products**
 - `GET /api/organizations/{orgId}/products/bom-summaries` — batch componentCount per finished product — see db/product_bom.go

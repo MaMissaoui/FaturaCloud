@@ -528,6 +528,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products", pathOrgID("orgId"), h.listProducts)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products/bom-summaries", pathOrgID("orgId"), h.listBOMSummaries)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/products/bom-overview", pathOrgID("orgId"), h.getBOMOverview)
 	// Mass maintenance (download/upload to Excel) — any member, matching PUT/DELETE above.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products/export", pathOrgID("orgId"), h.exportProducts)
 	orgMemberProtected("POST", "/api/organizations/{orgId}/products/import", pathOrgID("orgId"), h.importProducts)
@@ -543,6 +544,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/products/{id}/serial-numbers", productOrgID, h.listProductSerialNumbers)
 	orgMemberProtected("GET", "/api/products/{id}/bom", productOrgID, h.getProductBOM)
 	orgMemberProtected("PUT", "/api/products/{id}/bom", productOrgID, h.replaceProductBOM)
+	orgMemberProtected("GET", "/api/products/{id}/bom/summary", productOrgID, h.getBOMRecipeDetail)
 	orgMemberProtected("GET", "/api/products/{id}/bom/versions", productOrgID, h.listProductBOMVersions)
 	orgMemberProtected("GET", "/api/products/{id}/bom/versions/{versionId}", productOrgID, h.getProductBOMVersion)
 	orgMemberProtected("POST", "/api/products/{id}/bom/versions/{versionId}/restore", productOrgID, h.restoreProductBOMVersion)

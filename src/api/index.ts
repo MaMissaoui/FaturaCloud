@@ -1045,8 +1045,67 @@ export const ReplaceProductBOM = (
   lines: { componentProductId: string; quantityPerUnit: number }[],
   batchSize?: number,
 ) => put<BillOfMaterialsLine[]>(`/products/${id}/bom`, { lines, batchSize });
+// Why a finished product can't be built now — the first production order rule
+// it trips (db/bom_summary.go).
+export type BOMBlockedReason =
+  | ""
+  | "no-recipe"
+  | "stock-not-tracked"
+  | "serialized-component"
+  | "uncosted-component"
+  | "short";
+
+// One finished product's recipe on the Bill of Materials list. cost is the
+// parts cost of one unit in cents, null when a component has no cost yet and
+// always under quantity-only valuation.
+export interface BOMRecipeSummary {
+  productId: string;
+  componentCount: number;
+  cost: number | null;
+  belowCost: boolean;
+  buildable: number;
+  blockedReason: BOMBlockedReason;
+  limitingComponentId: string | null;
+  limitingComponentName: string | null;
+}
+
+export interface BOMOverview {
+  finishedCount: number;
+  recipeCount: number;
+  noRecipe: number;
+  belowCost: number;
+  notBuildable: number;
+  inventoryValuation: string;
+  recipes: BOMRecipeSummary[];
+}
+
+// One component of the recipe panel, for one finished unit.
+export interface BOMRecipeLine {
+  componentProductId: string;
+  componentName: string;
+  componentSku: string | null;
+  componentUnit: string | null;
+  quantityPerUnit: number;
+  stockQuantity: number;
+  serialized: boolean;
+  unitCost: number | null;
+  lineCost: number | null;
+  buildable: number;
+}
+
+export interface BOMRecipeDetail extends BOMRecipeSummary {
+  versionNumber: number | null;
+  finishedStock: number;
+  inventoryValuation: string;
+  lines: BOMRecipeLine[];
+}
+
 export const GetBOMSummaries = (organizationId: string) =>
   get<BOMSummary[]>(`/organizations/${organizationId}/products/bom-summaries`);
+export const GetBOMOverview = (organizationId: string) =>
+  get<BOMOverview>(`/organizations/${organizationId}/products/bom-overview`);
+export const GetBOMRecipeDetail = (productId: string) =>
+  get<BOMRecipeDetail>(`/products/${productId}/bom/summary`);
 export const GetBOMVersions = (productId: string) =>
   get<BOMVersion[]>(`/products/${productId}/bom/versions`);
 export const GetBOMVersion = (productId: string, versionId: string) =>
