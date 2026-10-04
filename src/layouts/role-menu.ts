@@ -165,10 +165,17 @@ export const dashboardWidgetsForRole = (role: string) => {
 // may see each one beyond admin and power_user (always allowed). What a
 // client owes is sales content, so it follows the Dashboard's receivables
 // rule plus the Cash Book, whose users collect those debts. What the
-// organization owes its vendors is purchasing content.
-export const SUMMARY_SECTION_ROLES: Record<"client-balances" | "vendor-balances", string[]> = {
+// organization owes its vendors is purchasing content. The product summaries
+// are membership-level on the server, like every product route (who a
+// product went to or came from is filtered per role there instead), so every
+// role that has the Products screen gets them.
+export const SUMMARY_SECTION_ROLES: Record<
+  "client-balances" | "vendor-balances" | "products",
+  string[]
+> = {
   "client-balances": ["general", "sales", "accounting", "cashbook"],
   "vendor-balances": ["general", "purchasing", "accounting"],
+  products: ["general", "sales", "purchasing", "accounting", "cashbook"],
 };
 
 // roleCanSeeSummaries decides whether a role may see a summary section. An

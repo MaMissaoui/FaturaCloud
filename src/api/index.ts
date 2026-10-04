@@ -955,6 +955,10 @@ export const GetProducts = (
     type?: string;
     category?: string;
     familyId?: string;
+    // "out": stock-tracked with nothing left; "low": at or below the
+    // low-stock threshold, out of stock included. Lowest stock first unless
+    // a sort is given.
+    stock?: "out" | "low";
     limit?: number;
     offset?: number;
     sort?: string;
@@ -966,6 +970,7 @@ export const GetProducts = (
   if (params?.type) qs.set("type", params.type);
   if (params?.category) qs.set("category", params.category);
   if (params?.familyId) qs.set("familyId", params.familyId);
+  if (params?.stock) qs.set("stock", params.stock);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   if (params?.sort) qs.set("sort", params.sort);
@@ -983,6 +988,52 @@ export const GetProductStockMovements = (id: string) =>
   get<StockMovement[]>(`/products/${id}/stock-movements`);
 export const GetProductSerialNumbers = (id: string) =>
   get<SerialNumber[]>(`/products/${id}/serial-numbers`);
+
+// Product summaries (master-data summaries; 409 when the organization has
+// them switched off). The list half is the Products headline and chip counts
+// — the list itself stays paginated GetProducts. stockValue/units equal the
+// Dashboard's stock figure; under "quantity_only" nothing is valued.
+export interface ProductSummaryList {
+  itemCount: number;
+  stockTracked: number;
+  services: number;
+  outOfStock: number;
+  lowStock: number;
+  lowStockThreshold: number;
+  stockValue: number;
+  units: number;
+  inventoryValuation: InventoryValuationMode;
+}
+
+// One stock movement resolved to the document that caused it. The
+// counterparty is stripped server-side for a role that may not see it (a
+// client without client balances, a vendor without vendor balances).
+export interface ProductMovement {
+  id: string;
+  date: number;
+  type: string;
+  quantity: number;
+  documentKind: "invoice" | "delivery" | "receipt" | "production" | "";
+  documentId: string | null;
+  reference: string | null;
+  counterpartyKind: "client" | "vendor" | "";
+  counterpartyId: string | null;
+  counterpartyName: string | null;
+}
+
+export interface ProductSummary {
+  productId: string;
+  movementCount: number;
+  recentMovements: ProductMovement[];
+  // The latest approved/paid incoming invoice with a line for the product;
+  // null when there is none or the role may not see vendors.
+  lastVendor: { vendorId: string; name: string; date: number; incomingInvoiceId: string } | null;
+}
+
+export const GetProductSummaries = (organizationId: string) =>
+  get<ProductSummaryList>(`/organizations/${organizationId}/products/summary`);
+export const GetProductSummary = (productId: string) =>
+  get<ProductSummary>(`/products/${productId}/summary`);
 export const GetProductBOM = (id: string) => get<BillOfMaterialsLine[]>(`/products/${id}/bom`);
 // batchSize is optional — omit it (as the product form's embedded BOM card
 // does, since it has no batch-size UI of its own) to let the server inherit
