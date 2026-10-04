@@ -19,7 +19,7 @@ import {
 import type { TableProps } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { AppstoreOutlined } from "@ant-design/icons";
 import debounce from "lodash/debounce";
@@ -422,7 +422,10 @@ const Products = () => {
         />
         {summaries && (
           <p style={{ margin: "-12px 0 0", color: token.colorTextSecondary }}>
-            {t`${summaries.itemCount} items: ${summaries.stockTracked} tracked in stock and ${summaries.services} services`}
+            {t`${plural(summaries.itemCount, { one: "# item", other: "# items" })}: ${plural(
+              summaries.stockTracked,
+              { one: "# tracked in stock", other: "# tracked in stock" },
+            )} and ${plural(summaries.services, { one: "# service", other: "# services" })}`}
           </p>
         )}
 
@@ -447,7 +450,14 @@ const Products = () => {
             <HeadlineFigure
               label={<Trans>Units in stock</Trans>}
               value={summaries ? formatQuantity(summaries.units, qtyLocale) : "…"}
-              note={summaries ? t`across ${summaries.stockTracked} products` : undefined}
+              note={
+                summaries
+                  ? plural(summaries.stockTracked, {
+                      one: "across # product",
+                      other: "across # products",
+                    })
+                  : undefined
+              }
             />
           )}
           <FilterChips<ProductFilter>
