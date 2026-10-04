@@ -273,6 +273,12 @@ describe("roleCanSeeSummaries", () => {
       expect(roleCanSeeSummaries(role, "vendor-balances")).toBe(true);
     }
   });
+  it("shows the product summaries to every resolved role", () => {
+    for (const role of ["admin", "general", "sales", "purchasing", "accounting", "cashbook"]) {
+      expect(roleCanSeeSummaries(role, "products")).toBe(true);
+    }
+    expect(roleCanSeeSummaries("", "products")).toBe(false);
+  });
   it("hides vendor balances from sales, cashbook and an unresolved role", () => {
     for (const role of ["sales", "cashbook", ""]) {
       expect(roleCanSeeSummaries(role, "vendor-balances")).toBe(false);

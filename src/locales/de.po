@@ -147,6 +147,13 @@ msgstr "{0} Eingangsrechnungen über {1}, davon {2} bezahlt in {3} Zahlungen."
 msgid "{0} item(s)"
 msgstr "{0} Position(en)"
 
+#. placeholder {0}: summaries.itemCount
+#. placeholder {1}: summaries.stockTracked
+#. placeholder {2}: summaries.services
+#: src/routes/products.tsx:425
+msgid "{0} items: {1} tracked in stock and {2} services"
+msgstr "{0} Artikel: {1} mit Bestandsführung und {2} Dienstleistungen"
+
 #. placeholder {0}: result.loans
 #: src/routes/settings/loan-import.tsx:113
 msgid "{0} loan(s) imported."
@@ -156,6 +163,11 @@ msgstr "{0} Kredit(e) importiert."
 #: src/components/cash-book/search-results.tsx:80
 msgid "{0} matches · {debtorCount} with an open loan"
 msgstr "{0} Treffer · {debtorCount} mit offenem Kredit"
+
+#. placeholder {0}: summary.movementCount
+#: src/components/products/product-summary-panel.tsx:291
+msgid "{0} movements in total."
+msgstr "{0} Bewegungen insgesamt."
 
 #. placeholder {0}: report.customersCreated
 #: src/routes/settings/loan-import.tsx:291
@@ -180,6 +192,11 @@ msgstr "{0} Problem(e) vor dem Import beheben — es wurde nichts gespeichert."
 #: src/components/clients/client-summary-panel.tsx:293
 msgid "{0} purchases for {1}, of which {2} paid in {3} payments."
 msgstr "{0} Käufe für {1}, davon {2} bezahlt in {3} Zahlungen."
+
+#. placeholder {0}: formatQuantity(summaries.units, qtyLocale)
+#: src/routes/products.tsx:444
+msgid "{0} units"
+msgstr "{0} Einheiten"
 
 #. placeholder {0}: vendors.length
 #: src/routes/vendors.tsx:401
@@ -209,6 +226,11 @@ msgstr "{count, plural, one {aus # unbezahlten Rechnung, überfällig} other {au
 #: src/components/dashboard/owed-panel.tsx:112
 msgid "{count, plural, one {on # unpaid invoice} other {on # unpaid invoices}}"
 msgstr "{count, plural, one {aus # unbezahlten Rechnung} other {aus # unbezahlten Rechnungen}}"
+
+#: src/components/products/stock-tag.tsx:42
+#: src/routes/products.tsx:466
+msgid "{threshold} or less"
+msgstr "{threshold} oder weniger"
 
 #: src/routes/dashboard.tsx:404
 msgid "{threshold} units or fewer"
@@ -314,6 +336,10 @@ msgstr "Eine Buchung kann nur in einem offenen Geschäftsjahr erfasst werden. Er
 msgid "A reason is required to override"
 msgstr "Für die Übersteuerung ist eine Begründung erforderlich"
 
+#: src/components/products/product-summary-panel.tsx:194
+msgid "A service: no stock is kept."
+msgstr "Eine Dienstleistung: Es wird kein Bestand geführt."
+
 #: src/components/organizations/organization-edit-drawer.tsx:294
 msgid "Accent color used across the app while this organization is selected."
 msgstr "Akzentfarbe, die in der gesamten App verwendet wird, solange diese Organisation ausgewählt ist."
@@ -370,6 +396,11 @@ msgstr "Verbindlichkeiten"
 #: src/components/organizations/organization-edit-drawer.tsx:584
 msgid "Accounts receivable"
 msgstr "Forderungen"
+
+#. placeholder {0}: summaries.stockTracked
+#: src/routes/products.tsx:450
+msgid "across {0} products"
+msgstr "bei {0} Produkten"
 
 #: src/routes/clients.tsx:441
 msgid "across {owingCount} clients"
@@ -440,12 +471,14 @@ msgid "Admin"
 msgstr "Admin"
 
 #: src/routes/clients.tsx:448
+#: src/routes/products.tsx:458
 #: src/routes/settings/loan-import.tsx:320
 #: src/routes/vendors.tsx:425
 msgid "All"
 msgstr "Alle"
 
-#: src/routes/products.tsx:199
+#: src/routes/products.tsx:381
+#: src/routes/products.tsx:533
 msgid "All categories"
 msgstr "Alle Kategorien"
 
@@ -459,7 +492,8 @@ msgstr "Alle Kunden"
 msgid "All customers"
 msgstr "Alle Kunden"
 
-#: src/routes/products.tsx:214
+#: src/routes/products.tsx:367
+#: src/routes/products.tsx:548
 msgid "All families"
 msgstr "Alle Familien"
 
@@ -488,7 +522,7 @@ msgstr "Alle Status"
 msgid "All statuses"
 msgstr "Alle Status"
 
-#: src/routes/products.tsx:185
+#: src/routes/products.tsx:519
 msgid "All types"
 msgstr "Alle Typen"
 
@@ -658,6 +692,10 @@ msgstr "Verfügbarer Bestand"
 #: src/routes/settings/invoice.tsx:136
 msgid "Available variables"
 msgstr "Verfügbare Variablen"
+
+#: src/components/products/product-summary-panel.tsx:102
+msgid "Average cost"
+msgstr "Durchschnittskosten"
 
 #: src/routes/production-orders/details.tsx:524
 msgid "Back to list"
@@ -1023,8 +1061,9 @@ msgid "Cash sale selected — the full amount is collected now."
 msgstr "Barverkauf ausgewählt — der volle Betrag wird jetzt eingenommen."
 
 #: src/components/products/form.tsx:421
+#: src/components/products/product-summary-panel.tsx:121
 #: src/routes/inventory.tsx:404
-#: src/routes/products.tsx:327
+#: src/routes/products.tsx:662
 #: src/routes/reporting/tax-summary.tsx:62
 msgid "Category"
 msgstr "Kategorie"
@@ -1205,10 +1244,16 @@ msgstr "Endsaldo"
 #: src/routes/accounting/reports/profit-and-loss.tsx:65
 #: src/routes/accounting/trial-balance.tsx:161
 #: src/routes/clients.tsx:208
+#: src/routes/products.tsx:288
 #: src/routes/settings/countries.tsx:96
 #: src/routes/vendors.tsx:202
 msgid "Code"
 msgstr "Code"
+
+#. placeholder {0}: product.sku
+#: src/components/products/product-summary-panel.tsx:90
+msgid "code {0}"
+msgstr "Code {0}"
 
 #: src/layouts/base.tsx:880
 msgid "Collapse sidebar"
@@ -1238,17 +1283,19 @@ msgid "Completed"
 msgstr "Abgeschlossen"
 
 #: src/components/products/bom-editor-drawer.tsx:440
+#: src/components/products/product-summary-panel.tsx:126
 #: src/routes/inventory.tsx:354
 #: src/routes/inventory.tsx:414
 #: src/routes/inventory.tsx:477
 #: src/routes/production-orders/details.tsx:309
 #: src/routes/production-orders/details.tsx:597
-#: src/routes/products.tsx:337
+#: src/routes/products.tsx:672
 msgid "Component"
 msgstr "Komponente"
 
 #: src/components/products/form.tsx:435
-#: src/routes/products.tsx:208
+#: src/routes/products.tsx:390
+#: src/routes/products.tsx:542
 msgid "Component / intermediate"
 msgstr "Komponente / Zwischenprodukt"
 
@@ -1307,7 +1354,7 @@ msgstr "Kopieren"
 msgid "Copy product"
 msgstr "Produkt kopieren"
 
-#: src/routes/products.tsx:359
+#: src/routes/products.tsx:694
 msgid "Cost"
 msgstr "Kosten"
 
@@ -1496,7 +1543,8 @@ msgstr "Erstes Journal anlegen"
 msgid "Create your first order"
 msgstr "Ersten Auftrag anlegen"
 
-#: src/routes/products.tsx:276
+#: src/routes/products.tsx:248
+#: src/routes/products.tsx:611
 msgid "Create your first product"
 msgstr "Erstes Produkt anlegen"
 
@@ -2011,6 +2059,7 @@ msgstr "Auf die Bank einzahlen"
 #: src/components/invoices/pdf.tsx:279
 #: src/components/line-items/table.tsx:363
 #: src/components/products/form.tsx:510
+#: src/components/products/product-summary-panel.tsx:322
 #: src/components/tax-rates/form.tsx:179
 #: src/components/tax-rates/form.tsx:180
 #: src/routes/accounting/journal-entries.tsx:136
@@ -2257,6 +2306,7 @@ msgid "e.g. Washing machine, Refrigerator"
 msgstr "z. B. Waschmaschine, Kühlschrank"
 
 #: src/components/clients/client-summary-panel.tsx:126
+#: src/components/products/product-summary-panel.tsx:156
 #: src/components/vendors/vendor-summary-panel.tsx:131
 #: src/routes/invoices/index.tsx:129
 msgid "Edit"
@@ -2689,7 +2739,7 @@ msgstr "Seitenausrichtung konnte nicht geladen werden"
 msgid "Failed to load payment history"
 msgstr "Zahlungsverlauf konnte nicht geladen werden"
 
-#: src/routes/products.tsx:124
+#: src/routes/products.tsx:147
 msgid "Failed to load products"
 msgstr "Produkte konnten nicht geladen werden"
 
@@ -2828,9 +2878,13 @@ msgid "Failed to void payment"
 msgstr "Zahlung konnte nicht storniert werden"
 
 #: src/components/products/form.tsx:612
-#: src/routes/products.tsx:343
+#: src/routes/products.tsx:678
 msgid "Family"
 msgstr "Familie"
+
+#: src/components/products/product-summary-panel.tsx:89
+msgid "Family {familyName}"
+msgstr "Familie {familyName}"
 
 #: src/routes/settings/gl-export.tsx:49
 msgid "FEC export failed"
@@ -2888,6 +2942,10 @@ msgstr "Kunden filtern"
 msgid "Filter loans"
 msgstr "Kredite filtern"
 
+#: src/routes/products.tsx:454
+msgid "Filter products"
+msgstr "Produkte filtern"
+
 #: src/routes/vendors.tsx:421
 msgid "Filter vendors"
 msgstr "Lieferanten filtern"
@@ -2905,11 +2963,13 @@ msgid "Finish or leave the sale to switch layout"
 msgstr "Schließen Sie den Verkauf ab oder verlassen Sie ihn, um die Ansicht zu wechseln"
 
 #: src/components/products/form.tsx:432
+#: src/components/products/product-summary-panel.tsx:124
 #: src/routes/inventory.tsx:351
 #: src/routes/inventory.tsx:410
 #: src/routes/inventory.tsx:475
-#: src/routes/products.tsx:207
-#: src/routes/products.tsx:333
+#: src/routes/products.tsx:389
+#: src/routes/products.tsx:541
+#: src/routes/products.tsx:668
 msgid "Finished good"
 msgstr "Fertigware"
 
@@ -3272,6 +3332,7 @@ msgstr "Importe"
 msgid "In"
 msgstr "Eingang"
 
+#: src/components/products/product-summary-panel.tsx:164
 #: src/routes/inbound-deliveries/details.tsx:559
 msgid "In stock"
 msgstr "Auf Lager"
@@ -3653,9 +3714,17 @@ msgstr "Letzte Zahlung: {0} ({1}) am {2}."
 msgid "Last purchase"
 msgstr "Letzter Kauf"
 
+#: src/components/products/product-summary-panel.tsx:129
+msgid "Last vendor"
+msgstr "Letzter Lieferant"
+
 #: src/routes/dashboard.tsx:165
 msgid "Last year ({year})"
 msgstr "Letztes Jahr ({year})"
+
+#: src/components/products/product-summary-panel.tsx:238
+msgid "Latest movements"
+msgstr "Letzte Bewegungen"
 
 #: src/routes/orders/details.tsx:422
 msgid "Leave blank to use client address"
@@ -3802,6 +3871,18 @@ msgstr "Pflichtfeld für deutsche B2G-XRechnungen, z. B. eine Leitweg-ID."
 #: src/routes/settings/backup.tsx:298
 msgid "Manual backup"
 msgstr "Manuelle Sicherung"
+
+#: src/components/products/product-summary-panel.tsx:255
+msgid "Manual movement"
+msgstr "Manuelle Bewegung"
+
+#: src/routes/products.tsx:312
+msgid "Margin"
+msgstr "Marge"
+
+#: src/components/products/product-summary-panel.tsx:104
+msgid "Margin per unit"
+msgstr "Marge pro Einheit"
 
 #: src/types/production-order.ts:46
 msgid "Mark as completed"
@@ -3952,7 +4033,7 @@ msgstr "Bewegungen für {0}"
 #: src/routes/clients.tsx:194
 #: src/routes/organizations/new.tsx:136
 #: src/routes/organizations/new.tsx:139
-#: src/routes/products.tsx:296
+#: src/routes/products.tsx:631
 #: src/routes/settings/countries.tsx:103
 #: src/routes/settings/payment-terms.tsx:90
 #: src/routes/settings/product-families.tsx:86
@@ -3967,6 +4048,10 @@ msgstr "Name"
 #: src/components/products/form.tsx:384
 msgid "Name is required"
 msgstr "Name ist erforderlich"
+
+#: src/routes/products.tsx:397
+msgid "Name or code"
+msgstr "Name oder Code"
 
 #: src/components/cash-book/loan-register.tsx:477
 #: src/components/cash-book/loan-register.tsx:478
@@ -4112,7 +4197,8 @@ msgid "New period"
 msgstr "Neue Periode"
 
 #: src/components/products/form.tsx:338
-#: src/routes/products.tsx:248
+#: src/routes/products.tsx:417
+#: src/routes/products.tsx:583
 msgid "New product"
 msgstr "Neues Produkt"
 
@@ -4127,6 +4213,7 @@ msgstr "Neuer Fertigungsauftrag"
 
 #: src/components/imports/form.tsx:393
 #: src/components/imports/form.tsx:398
+#: src/components/products/product-summary-panel.tsx:151
 #: src/components/vendors/vendor-summary-panel.tsx:126
 #: src/routes/purchase-orders.tsx:105
 #: src/routes/purchase-orders/details.tsx:408
@@ -4265,7 +4352,8 @@ msgstr "Noch keine Lieferungen"
 msgid "No families match your search"
 msgstr "Keine Familien entsprechen Ihrer Suche"
 
-#: src/routes/products.tsx:223
+#: src/routes/products.tsx:376
+#: src/routes/products.tsx:557
 msgid "No family"
 msgstr "Ohne Familie"
 
@@ -4432,11 +4520,13 @@ msgid "No products are tracking stock yet"
 msgstr "Noch kein Produkt verfolgt den Lagerbestand"
 
 #: src/routes/inventory.tsx:383
-#: src/routes/products.tsx:271
+#: src/routes/products.tsx:243
+#: src/routes/products.tsx:606
 msgid "No products match your filters"
 msgstr "Keine Produkte entsprechen Ihren Filtern"
 
-#: src/routes/products.tsx:273
+#: src/routes/products.tsx:245
+#: src/routes/products.tsx:608
 msgid "No products yet"
 msgstr "Noch keine Produkte"
 
@@ -4472,6 +4562,10 @@ msgstr "Noch keine Stückliste definiert"
 msgid "No revenue in this period"
 msgstr "Kein Umsatz in diesem Zeitraum"
 
+#: src/components/products/product-summary-panel.tsx:242
+msgid "No stock movement yet."
+msgstr "Noch keine Lagerbewegung."
+
 #: src/routes/accounting/reports/inventory-valuation.tsx:121
 msgid "No stock-enabled products"
 msgstr "Keine lagerfähigen Produkte"
@@ -4479,6 +4573,10 @@ msgstr "Keine lagerfähigen Produkte"
 #: src/routes/dashboard.tsx:377
 #~ msgid "No stock-tracked products"
 #~ msgstr "Keine lagergeführten Produkte"
+
+#: src/components/products/product-summary-panel.tsx:100
+msgid "No tax rate"
+msgstr "Kein Steuersatz"
 
 #: src/routes/settings/tax-rates.tsx:80
 msgid "No tax rates match your search"
@@ -4559,6 +4657,7 @@ msgstr "Nicht mit einer Bestellposition verknüpft."
 #: src/components/clients/client-summary-panel.tsx:318
 #: src/components/vendors/vendor-summary-panel.tsx:327
 #: src/routes/clients.tsx:120
+#: src/routes/products.tsx:217
 #: src/routes/vendors.tsx:114
 msgid "Not set"
 msgstr "Nicht angegeben"
@@ -4566,6 +4665,10 @@ msgstr "Nicht angegeben"
 #: src/utils/timezones.ts:50
 msgid "Not set (UTC)"
 msgstr "Nicht festgelegt (UTC)"
+
+#: src/components/products/product-summary-panel.tsx:116
+msgid "Not tracked"
+msgstr "Nicht erfasst"
 
 #: src/components/cash-book/modals.tsx:155
 #: src/components/stock/movement-form.tsx:266
@@ -4693,6 +4796,10 @@ msgstr "Nur offene"
 #: src/routes/dashboard.tsx:152
 msgid "Open the Cash Book"
 msgstr "Kassenbuch öffnen"
+
+#: src/components/products/product-summary-panel.tsx:294
+msgid "Open the stock ledger"
+msgstr "Lagerjournal öffnen"
 
 #: src/components/cash-book/loan-register.tsx:460
 #: src/components/cash-book/search-results.tsx:66
@@ -4899,6 +5006,11 @@ msgstr "Ausgang"
 #: src/routes/accounting/trial-balance.tsx:146
 msgid "Out of balance"
 msgstr "Nicht ausgeglichen"
+
+#: src/components/products/stock-tag.tsx:35
+#: src/routes/products.tsx:461
+msgid "Out of stock"
+msgstr "Nicht vorrätig"
 
 #: src/layouts/base.tsx:558
 #: src/routes/deliveries.tsx:80
@@ -5327,7 +5439,7 @@ msgstr "Vorschau"
 #: src/components/invoices/pdf.tsx:285
 #: src/components/products/form.tsx:524
 #: src/routes/invoices/details.tsx:915
-#: src/routes/products.tsx:349
+#: src/routes/products.tsx:684
 msgid "Price"
 msgstr "Preis"
 
@@ -5335,6 +5447,15 @@ msgstr "Preis"
 #: src/routes/cash-book.tsx:297
 msgid "Price (tax incl.)"
 msgstr "Preis (inkl. MwSt.)"
+
+#: src/components/products/product-summary-panel.tsx:96
+#: src/routes/products.tsx:300
+msgid "Price excl. tax"
+msgstr "Preis netto"
+
+#: src/components/products/product-summary-panel.tsx:98
+msgid "Price incl. tax"
+msgstr "Preis brutto"
 
 #: src/components/products/form.tsx:525
 msgid "Price is required"
@@ -5384,8 +5505,9 @@ msgstr "Probleme"
 #: src/routes/inventory.tsx:386
 #: src/routes/inventory.tsx:570
 #: src/routes/invoices/details.tsx:831
-#: src/routes/products.tsx:193
-#: src/routes/products.tsx:317
+#: src/routes/products.tsx:269
+#: src/routes/products.tsx:527
+#: src/routes/products.tsx:652
 #: src/routes/reporting/sales-by-product.tsx:141
 msgid "Product"
 msgstr "Produkt"
@@ -5502,7 +5624,8 @@ msgid "Production Orders"
 msgstr "Fertigungsaufträge"
 
 #: src/layouts/base.tsx:661
-#: src/routes/products.tsx:180
+#: src/routes/products.tsx:362
+#: src/routes/products.tsx:514
 msgid "Products"
 msgstr "Produkte"
 
@@ -5942,6 +6065,7 @@ msgstr "Aufbewahrung (Tage)"
 
 #: src/components/clients/client-summary-panel.tsx:137
 #: src/components/products/bom-editor-drawer.tsx:375
+#: src/components/products/product-summary-panel.tsx:228
 #: src/components/vendors/vendor-summary-panel.tsx:142
 #: src/routes/accounting/reports/ap-aging.tsx:51
 #: src/routes/accounting/reports/ar-aging.tsx:51
@@ -6160,7 +6284,7 @@ msgstr "Zeitplan gespeichert"
 #: src/routes/orders.tsx:82
 #: src/routes/organizations/index.tsx:497
 #: src/routes/production-orders.tsx:66
-#: src/routes/products.tsx:229
+#: src/routes/products.tsx:563
 #: src/routes/purchase-orders.tsx:78
 #: src/routes/settings/countries.tsx:68
 #: src/routes/settings/payment-terms.tsx:44
@@ -6247,6 +6371,10 @@ msgstr "Journal auswählen"
 msgid "Select a product"
 msgstr "Produkt auswählen"
 
+#: src/routes/products.tsx:500
+msgid "Select a product to see its stock, margin and latest movements."
+msgstr "Wählen Sie ein Produkt, um Bestand, Marge und letzte Bewegungen zu sehen."
+
 #: src/components/products/form.tsx:574
 msgid "Select a unit of measure"
 msgstr "Maßeinheit auswählen"
@@ -6332,6 +6460,7 @@ msgstr "Fortlaufende Nummer"
 msgid "serial number(s)"
 msgstr "Seriennummer(n)"
 
+#: src/components/products/product-summary-panel.tsx:115
 #: src/components/stock/movement-form.tsx:185
 msgid "Serial numbers"
 msgstr "Seriennummern"
@@ -6349,10 +6478,15 @@ msgid "Serve at the counter"
 msgstr "An der Theke bedienen"
 
 #: src/components/products/form.tsx:407
-#: src/routes/products.tsx:194
-#: src/routes/products.tsx:321
+#: src/routes/products.tsx:346
+#: src/routes/products.tsx:528
+#: src/routes/products.tsx:656
 msgid "Service"
 msgstr "Dienstleistung"
+
+#: src/routes/products.tsx:471
+msgid "Services"
+msgstr "Dienstleistungen"
 
 #: src/layouts/base.tsx:996
 #: src/layouts/base.tsx:997
@@ -6474,7 +6608,7 @@ msgstr "Numerischer Kontocode im SKR03/SKR04-Stil für die Spalte „Konto“ de
 #: src/routes/accounting/reports/inventory-valuation.tsx:156
 #: src/routes/bill-of-materials.tsx:158
 #: src/routes/inventory.tsx:398
-#: src/routes/products.tsx:347
+#: src/routes/products.tsx:682
 msgid "SKU"
 msgstr "SKU"
 
@@ -6574,7 +6708,8 @@ msgid "Still owed on earlier loans"
 msgstr "Noch offen aus früheren Krediten"
 
 #: src/routes/dashboard.tsx:387
-#: src/routes/products.tsx:380
+#: src/routes/products.tsx:330
+#: src/routes/products.tsx:715
 msgid "Stock"
 msgstr "Lagerbestand"
 
@@ -6597,6 +6732,10 @@ msgstr "Bestandszählung (Überschuss)"
 #: src/components/stock/movement-form.tsx:155
 msgid "Stock in — receive goods"
 msgstr "Wareneingang — Waren empfangen"
+
+#: src/components/products/product-summary-panel.tsx:196
+msgid "Stock is not tracked for this product."
+msgstr "Für dieses Produkt wird kein Bestand geführt."
 
 #: src/routes/inventory.tsx:334
 msgid "Stock levels"
@@ -6625,6 +6764,10 @@ msgstr "Warenausgang — verbrauchen / verkaufen"
 #: src/routes/dashboard.tsx:368
 #~ msgid "Stock valuation by product"
 #~ msgstr "Lagerbewertung nach Produkt"
+
+#: src/routes/products.tsx:442
+msgid "Stock value at average cost"
+msgstr "Lagerwert zu Durchschnittskosten"
 
 #: src/components/clients/form.tsx:275
 #: src/components/clients/form.tsx:276
@@ -6702,7 +6845,7 @@ msgid "Tax number"
 msgstr "Steuernummer"
 
 #: src/components/tax-rates/form.tsx:170
-#: src/routes/products.tsx:369
+#: src/routes/products.tsx:704
 msgid "Tax rate"
 msgstr "Steuersatz"
 
@@ -6820,6 +6963,10 @@ msgstr "Das Rezept ist unbekannt, daher wird es beim Speichern dieses Produkts n
 #: src/routes/purchase-orders/details.tsx:482
 msgid "The shipment this order's goods travel in — drives landed cost (freight/customs) allocation once received."
 msgstr "Die Sendung, mit der die Ware dieser Bestellung transportiert wird — steuert nach dem Wareneingang die Verteilung der Einstandskosten (Fracht/Zoll)."
+
+#: src/components/products/product-summary-panel.tsx:225
+msgid "The stock movements could not be loaded."
+msgstr "Die Lagerbewegungen konnten nicht geladen werden."
 
 #: src/components/organizations/organization-edit-drawer.tsx:540
 #: src/routes/organizations/new.tsx:181
@@ -7087,6 +7234,10 @@ msgstr "Bestand verfolgen"
 msgid "Track serial numbers"
 msgstr "Seriennummern erfassen"
 
+#: src/components/products/product-summary-panel.tsx:116
+msgid "Tracked"
+msgstr "Erfasst"
+
 #: src/routes/orders.tsx:186
 msgid "Tracking"
 msgstr "Sendungsverfolgung"
@@ -7118,7 +7269,7 @@ msgstr "Tunesien"
 #: src/routes/accounting/journals.tsx:112
 #: src/routes/cash-book.tsx:609
 #: src/routes/inventory.tsx:587
-#: src/routes/products.tsx:310
+#: src/routes/products.tsx:645
 #: src/routes/settings/loan-import.tsx:342
 msgid "Type"
 msgstr "Typ"
@@ -7133,7 +7284,8 @@ msgid "Type manually"
 msgstr "Manuell eingeben"
 
 #: src/components/products/form.tsx:430
-#: src/routes/products.tsx:209
+#: src/routes/products.tsx:391
+#: src/routes/products.tsx:543
 msgid "Unclassified"
 msgstr "Nicht klassifiziert"
 
@@ -7160,6 +7312,7 @@ msgid "Undone {0}"
 msgstr "Rückgängig am {0}"
 
 #: src/components/line-items/table.tsx:432
+#: src/components/products/product-summary-panel.tsx:111
 #: src/routes/bill-of-materials.tsx:164
 #: src/routes/production-orders/details.tsx:332
 #: src/routes/production-orders/details.tsx:619
@@ -7209,9 +7362,13 @@ msgstr "Einzelpreis netto"
 msgid "unit(s) of measure"
 msgstr "Maßeinheit(en)"
 
-#: src/routes/products.tsx:390
+#: src/routes/products.tsx:725
 msgid "units"
 msgstr "Einheiten"
+
+#: src/routes/products.tsx:448
+msgid "Units in stock"
+msgstr "Einheiten auf Lager"
 
 #: src/layouts/base.tsx:312
 #: src/routes/settings/units-of-measure.tsx:41
@@ -7339,6 +7496,11 @@ msgstr "Bewertet: Wareneingänge, Lieferungen und Bestandskorrekturen buchen ihr
 #: src/routes/incoming-invoices.tsx:202
 msgid "Variance"
 msgstr "Abweichung"
+
+#. placeholder {0}: taxRate.percentage
+#: src/components/products/product-summary-panel.tsx:100
+msgid "VAT {0} %"
+msgstr "MwSt. {0} %"
 
 #: src/components/tax-rates/form.tsx:208
 msgid "VAT category"
