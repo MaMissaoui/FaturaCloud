@@ -106,6 +106,8 @@ var wantSectionRoutes = map[string]string{
 
 	// Bill of materials
 	"GET /api/organizations/{orgId}/products/bom-summaries":    sectionBillOfMaterials,
+	"GET /api/organizations/{orgId}/products/bom-overview":     sectionBillOfMaterials,
+	"GET /api/products/{id}/bom/summary":                       sectionBillOfMaterials,
 	"GET /api/products/{id}/bom":                               sectionBillOfMaterials,
 	"GET /api/products/{id}/bom/versions":                      sectionBillOfMaterials,
 	"GET /api/products/{id}/bom/versions/{versionId}":          sectionBillOfMaterials,
@@ -286,6 +288,8 @@ func TestSectionRoleAccess(t *testing.T) {
 		{"GET /api/organizations/{orgId}/imports", map[string]bool{"purchasing": true}},
 		{"POST /api/imports", map[string]bool{"purchasing": true}},
 		{"GET /api/organizations/{orgId}/products/bom-summaries", map[string]bool{}},
+		{"GET /api/organizations/{orgId}/products/bom-overview", map[string]bool{}},
+		{"GET /api/products/{id}/bom/summary", map[string]bool{}},
 		{"GET /api/products/{id}/bom", map[string]bool{}},
 		{"PUT /api/products/{id}/bom", map[string]bool{}},
 		{"GET /api/organizations/{orgId}/production-orders", map[string]bool{}},
