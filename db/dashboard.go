@@ -22,6 +22,7 @@ import (
 type OutstandingInvoice struct {
 	ID         string `db:"id"         json:"id"`
 	Number     string `db:"number"     json:"number"`
+	ClientID   string `db:"clientId"   json:"clientId"`
 	ClientName string `db:"clientName" json:"clientName"`
 	DueDate    *int64 `db:"dueDate"    json:"dueDate"`
 	// Total is the remaining balance converted to the organization's
@@ -210,6 +211,43 @@ func documentPaymentAppCountExpr(docAlias, documentType, statusClause string) st
 	)`, documentType, docAlias, statusClause)
 }
 
+// selectOutstandingInvoices is the single source of truth for the "sent
+// invoices with a remaining balance" query used by the dashboard, the
+// receivable-aging report, and the client summaries. When clientID is
+// non-empty the result is scoped to that client.
+func (d *Database) selectOutstandingInvoices(organizationID, clientID string) ([]OutstandingInvoice, error) {
+	clientFilter := ""
+	args := []any{organizationID}
+	if clientID != "" {
+		clientFilter = " AND i.clientId = ?"
+		args = append(args, clientID)
+	}
+	invoices := []OutstandingInvoice{}
+	err := d.DB.Select(&invoices, fmt.Sprintf(`
+		SELECT id, number, clientId, clientName, dueDate, currency,
+		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
+		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
+		FROM (
+			SELECT i.id, i.number, i.clientId, c.name AS clientName, i.dueDate, i.currency,
+			       i.exchangeRate, i.total,
+			       %s AS paid
+			FROM invoices i
+			JOIN clients c ON i.clientId = c.id
+			WHERE i.organizationId = ? AND i.state = 'sent'%s
+		)
+		WHERE (total - paid) > 0
+		ORDER BY dueDate ASC`,
+		documentPaidAmountExpr("i", "invoice", paymentsNonVoided),
+		clientFilter,
+	),
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("select_outstanding_invoices: %w", err)
+	}
+	return invoices, nil
+}
+
 // getOutstandingInvoices keeps the pre-Phase-3 filter of state == 'sent'
 // only — 'paid' is a manual, free-transitioning flag disconnected from real
 // payments (see CLAUDE.md), and second-guessing it here would be a product
@@ -219,27 +257,9 @@ func documentPaymentAppCountExpr(docAlias, documentType, statusClause string) st
 // showed the full total, and a fully-paid-via-real-payments invoice never
 // dropped off the list at all.
 func (d *Database) getOutstandingInvoices(organizationID string) (OutstandingSummary, error) {
-	invoices := []OutstandingInvoice{}
-	err := d.DB.Select(&invoices, fmt.Sprintf(`
-		SELECT id, number, clientName, dueDate, currency,
-		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
-		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
-		FROM (
-			SELECT i.id, i.number, c.name AS clientName, i.dueDate, i.currency,
-			       i.exchangeRate, i.total,
-			       %s AS paid
-			FROM invoices i
-			JOIN clients c ON i.clientId = c.id
-			WHERE i.organizationId = ? AND i.state = 'sent'
-		)
-		WHERE (total - paid) > 0
-		ORDER BY dueDate ASC`,
-		documentPaidAmountExpr("i", "invoice", paymentsNonVoided),
-	),
-		organizationID,
-	)
+	invoices, err := d.selectOutstandingInvoices(organizationID, "")
 	if err != nil {
-		return OutstandingSummary{}, fmt.Errorf("get_outstanding_invoices: %w", err)
+		return OutstandingSummary{}, err
 	}
 	return bucketOutstanding(invoices, time.Now()), nil
 }

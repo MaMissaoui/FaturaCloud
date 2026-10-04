@@ -86,6 +86,9 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/organizations/{orgId}/{clients|vendors|products|tax-rates|payment-terms|units-of-measure|accounts}/export` — org-member read, same level as that table's own list route; returns a real `.xlsx`
 - `POST /api/organizations/{orgId}/{...}/import` — multipart upload (`file` field), returns a JSON report (`{created, updated, failed, rows: [...]}`, never a 4xx for a bad row — see `db/mass_data.go`); role-gated identically to that table's own `PUT`/`DELETE` (`sales` for clients, `purchasing` for vendors, `accounting` for accounts; the rest are any org member) — the 3 role-gated import routes are in `domainRouteRoles`/`api/cross_org_test.go`'s tripwire alongside every other domain-role route
 
+**Client summaries (master-data summaries, migration 0100)**
+- `GET /api/organizations/{orgId}/clients/summary` and `GET /api/clients/{id}/summary` — what each client owes, last purchase, open invoices and payment history (`db/client_summary.go`). What a client owes is sales content, so both sit in the `client-balances` section (`general`/`sales`/`accounting`/`cashbook`) while the plain client routes stay membership-level; 409 when the organization's `masterDataSummaries` is off
+
 **Products**
 - `GET /api/organizations/{orgId}/products/bom-summaries` — batch componentCount per finished product — see db/product_bom.go
 - `PUT /api/products/{id}` — body also takes unitOfMeasureId — when set, overwrites the legacy free-text unit field server-side with that unit of measure's name (db/product.go's resolveProductUnit), so every existing reader of unit keeps working unchanged

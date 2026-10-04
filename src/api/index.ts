@@ -585,6 +585,48 @@ export const DeleteClient = (id: string) =>
 export const GetClientInvoiceCount = (id: string) =>
   get<{ count: number }>(`/clients/${id}/invoice-count`).then((r) => r.count);
 
+export interface ClientSummaryRow {
+  clientId: string;
+  owed: number;
+  lastPurchase: number | null;
+  invoiceCount: number;
+}
+
+export interface ClientSummaryList {
+  totalOwed: number;
+  owingCount: number;
+  clients: ClientSummaryRow[];
+}
+
+export interface ClientLastPayment {
+  date: number;
+  amount: number;
+  method: string;
+}
+
+export interface ClientSummary {
+  clientId: string;
+  owed: number;
+  current: number;
+  days1To30: number;
+  days31To60: number;
+  days61To90: number;
+  days90Plus: number;
+  openInvoices: OutstandingInvoiceSummary[];
+  invoiceCount: number;
+  firstPurchase: number | null;
+  lastPurchase: number | null;
+  billedTotal: number;
+  paidTotal: number;
+  paymentCount: number;
+  lastPayment: ClientLastPayment | null;
+}
+
+export const GetClientSummaries = (organizationId: string) =>
+  get<ClientSummaryList>(`/organizations/${organizationId}/clients/summary`);
+export const GetClientSummary = (clientId: string) =>
+  get<ClientSummary>(`/clients/${clientId}/summary`);
+
 // ---- Invoices ----
 
 export const GetInvoices = (organizationId: string) =>
