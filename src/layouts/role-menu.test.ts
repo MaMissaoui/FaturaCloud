@@ -279,6 +279,13 @@ describe("roleCanSeeSummaries", () => {
     }
     expect(roleCanSeeSummaries("", "products")).toBe(false);
   });
+  it("shows the Bill of Materials summaries to admin and power_user only", () => {
+    expect(roleCanSeeSummaries("admin", "bill-of-materials")).toBe(true);
+    expect(roleCanSeeSummaries("power_user", "bill-of-materials")).toBe(true);
+    for (const role of ["general", "sales", "purchasing", "accounting", "cashbook", ""]) {
+      expect(roleCanSeeSummaries(role, "bill-of-materials")).toBe(false);
+    }
+  });
   it("hides vendor balances from sales, cashbook and an unresolved role", () => {
     for (const role of ["sales", "cashbook", ""]) {
       expect(roleCanSeeSummaries(role, "vendor-balances")).toBe(false);

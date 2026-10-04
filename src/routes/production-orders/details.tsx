@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import {
   Alert,
   Button,
@@ -125,6 +125,7 @@ const CreateProductionOrderForm = ({
 }) => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   // A failed fetch used to be swallowed into an empty list, which the Alert
@@ -190,10 +191,14 @@ const CreateProductionOrderForm = ({
     }
   };
 
+  // The Bill of Materials panel's "Start production" opens this form with
+  // its finished product already picked.
+  const preselected = (location.state as { finishedProductId?: string } | null)?.finishedProductId;
   const initialValues = {
     orderNumber: nextNumber,
     date: dayjs(),
     quantity: 1,
+    finishedProductId: finishedProducts.some((p) => p.id === preselected) ? preselected : undefined,
   };
 
   return (
