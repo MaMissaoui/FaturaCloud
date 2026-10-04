@@ -181,6 +181,10 @@ var wantSectionRoutes = map[string]string{
 	// Client balances
 	"GET /api/organizations/{orgId}/clients/summary": sectionClientBalances,
 	"GET /api/clients/{id}/summary":                  sectionClientBalances,
+
+	// Vendor balances
+	"GET /api/organizations/{orgId}/vendors/summary": sectionVendorBalances,
+	"GET /api/vendors/{id}/summary":                  sectionVendorBalances,
 }
 
 func TestSectionRouteCoverage(t *testing.T) {
@@ -318,6 +322,10 @@ func TestSectionRoleAccess(t *testing.T) {
 		// Client balances
 		{"GET /api/organizations/{orgId}/clients/summary", map[string]bool{"general": true, "sales": true, "accounting": true, "cashbook": true}},
 		{"GET /api/clients/{id}/summary", map[string]bool{"general": true, "sales": true, "accounting": true, "cashbook": true}},
+
+		// Vendor balances
+		{"GET /api/organizations/{orgId}/vendors/summary", map[string]bool{"general": true, "purchasing": true, "accounting": true}},
+		{"GET /api/vendors/{id}/summary", map[string]bool{"general": true, "purchasing": true, "accounting": true}},
 
 		// Shared routes are open to every role at the section level.
 		{"GET /api/organizations/{orgId}/dashboard", map[string]bool{"general": true, "sales": true, "purchasing": true, "accounting": true, "cashbook": true}},

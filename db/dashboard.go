@@ -618,16 +618,22 @@ func mulDiv(a, b, c int64) int64 {
 }
 
 // OutstandingBill is getOutstandingInvoices' purchases counterpart. See
-// OutstandingInvoice above for what Currency/ForeignTotal carry.
+// OutstandingInvoice above for what Currency/ForeignTotal carry, and VendorID
+// (the single source of truth for "which vendor does this bill belong to",
+// used by the vendor summary) and Bucket (the summary field this bill is
+// counted in, set by bucketOutstandingBills so callers can list a bucket's
+// bills without re-deriving agingBucketFor).
 type OutstandingBill struct {
 	ID           string `db:"id"           json:"id"`
 	Number       string `db:"number"       json:"number"`
+	VendorID     string `db:"vendorId"     json:"vendorId"`
 	VendorName   string `db:"vendorName"   json:"vendorName"`
 	DueDate      *int64 `db:"dueDate"      json:"dueDate"`
 	Currency     string `db:"currency"     json:"currency"`
 	ForeignTotal int64  `db:"foreignTotal" json:"foreignTotal"`
 	Total        int64  `db:"total"        json:"total"`
 	DaysOverdue  int    `json:"daysOverdue"`
+	Bucket       string `json:"bucket"`
 }
 
 // OutstandingBillSummary mirrors OutstandingSummary for bills.
@@ -641,6 +647,43 @@ type OutstandingBillSummary struct {
 	Bills      []OutstandingBill `json:"bills"`
 }
 
+// selectOutstandingBills is the single source of truth for the "approved
+// bills with a remaining balance" query used by the AP aging report and the
+// vendor summaries. When vendorID is non-empty the result is scoped to that
+// vendor.
+func (d *Database) selectOutstandingBills(organizationID, vendorID string) ([]OutstandingBill, error) {
+	vendorFilter := ""
+	args := []any{organizationID}
+	if vendorID != "" {
+		vendorFilter = " AND ii.vendorId = ?"
+		args = append(args, vendorID)
+	}
+	bills := []OutstandingBill{}
+	err := d.DB.Select(&bills, fmt.Sprintf(`
+		SELECT id, number, vendorId, vendorName, dueDate, currency,
+		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
+		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
+		FROM (
+			SELECT ii.id, ii.vendorInvoiceNumber AS number, ii.vendorId, v.name AS vendorName,
+			       ii.dueDate, ii.currency, ii.exchangeRate, ii.total,
+			       %s AS paid
+			FROM incoming_invoices ii
+			JOIN vendors v ON ii.vendorId = v.id
+			WHERE ii.organizationId = ? AND ii.state = 'approved'%s
+		)
+		WHERE (total - paid) > 0
+		ORDER BY dueDate ASC`,
+		documentPaidAmountExpr("ii", "incoming_invoice", paymentsNonVoided),
+		vendorFilter,
+	),
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("select_outstanding_bills: %w", err)
+	}
+	return bills, nil
+}
+
 // GetPayableAging is the AP aging report (Phase 4) — getOutstandingInvoices'
 // purchases counterpart. Filter choices mirror it exactly: state == 'approved'
 // only (not 'paid', same manual-flag reasoning), remaining balance computed
@@ -650,27 +693,9 @@ type OutstandingBillSummary struct {
 // an actual outstanding balance is not — same intentional gap as AR aging's
 // 'sent'-only filter, not second-guessed here either.
 func (d *Database) GetPayableAging(organizationID string) (OutstandingBillSummary, error) {
-	bills := []OutstandingBill{}
-	err := d.DB.Select(&bills, fmt.Sprintf(`
-		SELECT id, number, vendorName, dueDate, currency,
-		       CAST(ROUND(total - paid) AS INTEGER) AS foreignTotal,
-		       CAST(ROUND((total - paid) * COALESCE(exchangeRate, 1)) AS INTEGER) AS total
-		FROM (
-			SELECT ii.id, ii.vendorInvoiceNumber AS number, v.name AS vendorName,
-			       ii.dueDate, ii.currency, ii.exchangeRate, ii.total,
-			       %s AS paid
-			FROM incoming_invoices ii
-			JOIN vendors v ON ii.vendorId = v.id
-			WHERE ii.organizationId = ? AND ii.state = 'approved'
-		)
-		WHERE (total - paid) > 0
-		ORDER BY dueDate ASC`,
-		documentPaidAmountExpr("ii", "incoming_invoice", paymentsNonVoided),
-	),
-		organizationID,
-	)
+	bills, err := d.selectOutstandingBills(organizationID, "")
 	if err != nil {
-		return OutstandingBillSummary{}, fmt.Errorf("get_payable_aging: %w", err)
+		return OutstandingBillSummary{}, err
 	}
 	return bucketOutstandingBills(bills, time.Now()), nil
 }
@@ -735,6 +760,7 @@ func bucketOutstandingBills(bills []OutstandingBill, now time.Time) OutstandingB
 
 		bucket, daysOverdue := agingBucketFor(bill.DueDate, nowMillis)
 		bill.DaysOverdue = daysOverdue
+		bill.Bucket = bucket
 		switch bucket {
 		case "current":
 			summary.Current += bill.Total

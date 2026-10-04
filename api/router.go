@@ -272,6 +272,13 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgRoleProtected("PUT", "/api/vendors/{id}", vendorOrgID, []string{"purchasing"}, h.updateVendor)
 	orgRoleProtected("DELETE", "/api/vendors/{id}", vendorOrgID, []string{"purchasing"}, h.deleteVendor)
 	orgMemberProtected("GET", "/api/vendors/{id}/document-count", vendorOrgID, h.getVendorDocumentCount)
+	// Vendor summaries — same shape as client summaries: the by-org batch
+	// and the by-vendor detail. The Go 1.22+ mux treats literal segments
+	// ("/summary") as more specific than the {id} parameter on
+	// /api/vendors/{id}, so registering these here doesn't collide with
+	// /api/vendors/{id} above.
+	orgMemberProtected("GET", "/api/organizations/{orgId}/vendors/summary", pathOrgID("orgId"), h.getVendorSummaries)
+	orgMemberProtected("GET", "/api/vendors/{id}/summary", vendorOrgID, h.getVendorSummary)
 	// Mass maintenance (download/upload to Excel) — same read/write split as clients above.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/vendors/export", pathOrgID("orgId"), h.exportVendors)
 	orgRoleProtected("POST", "/api/organizations/{orgId}/vendors/import", pathOrgID("orgId"), []string{"purchasing"}, h.importVendors)
