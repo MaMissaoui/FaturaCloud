@@ -10,32 +10,7 @@ import type {
   OutstandingInvoiceSummary,
   OutstandingSummary,
 } from "src/api";
-
-// The aging ramp: one hue, darker with age, so the buckets differ in
-// lightness and not only in colour. "Not due yet" sits outside the ramp in a
-// neutral blue-grey: it isn't late.
-const BUCKETS: { key: OutstandingBucket; color: string }[] = [
-  { key: "current", color: "#8FA3BF" },
-  { key: "days1To30", color: "#F3C29B" },
-  { key: "days31To60", color: "#E08A4E" },
-  { key: "days61To90", color: "#B9531A" },
-  { key: "days90Plus", color: "#6E2E0A" },
-];
-
-const bucketLabel = (key: OutstandingBucket) => {
-  switch (key) {
-    case "current":
-      return t`Not due yet`;
-    case "days1To30":
-      return t`1 to 30 days late`;
-    case "days31To60":
-      return t`31 to 60 days late`;
-    case "days61To90":
-      return t`61 to 90 days late`;
-    case "days90Plus":
-      return t`More than 90 days late`;
-  }
-};
+import { AGING_BUCKETS, agingBucketLabel } from "src/components/master-data/aging";
 
 interface Props {
   outstanding: OutstandingSummary;
@@ -72,7 +47,7 @@ const OwedPanel = ({
     (acc, inv) => ({ ...acc, [inv.bucket]: (acc[inv.bucket] ?? 0) + 1 }),
     {} as Partial<Record<OutstandingBucket, number>>,
   );
-  const shown = BUCKETS.filter((b) => amounts[b.key] > 0);
+  const shown = AGING_BUCKETS.filter((b) => amounts[b.key] > 0);
   const oldest = [...shown].reverse()[0]?.key ?? null;
   const selected = picked && amounts[picked] > 0 ? picked : oldest;
   const invoices = outstanding.invoices.filter((inv) => inv.bucket === selected);
@@ -211,7 +186,7 @@ const OwedPanel = ({
                           flex: "none",
                         }}
                       />
-                      {bucketLabel(b.key)}
+                      {agingBucketLabel(b.key)}
                     </span>
                     <span
                       style={{
@@ -247,7 +222,7 @@ const OwedPanel = ({
                 }}
               >
                 <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
-                  {bucketLabel(selected)}
+                  {agingBucketLabel(selected)}
                 </h3>
                 {reportLink}
               </div>

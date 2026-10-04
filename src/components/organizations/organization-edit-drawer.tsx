@@ -254,6 +254,25 @@ export default function OrganizationEditDrawer({
                 </Checkbox>
               </Form.Item>
             </Col>
+            <Col xs={24}>
+              <Form.Item
+                name="masterDataSummaries"
+                valuePropName="checked"
+                style={{ marginBottom: 0, marginTop: 12 }}
+                // extra, not tooltip: a Form.Item without a label never
+                // renders its tooltip.
+                extra={
+                  <Trans>
+                    Clients, vendors, products and bills of materials show balances, recent activity
+                    and a summary panel. Switch off to show the plain lists only.
+                  </Trans>
+                }
+              >
+                <Checkbox>
+                  <Trans>Show summaries on master data screens</Trans>
+                </Checkbox>
+              </Form.Item>
+            </Col>
           </Row>
         </Card>
 

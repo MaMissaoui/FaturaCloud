@@ -200,7 +200,7 @@ func (d *Database) GetClientSummary(organizationID, clientID string) (*ClientSum
 	}
 	var ps paymentStats
 	err = d.DB.Get(&ps, fmt.Sprintf(`
-		SELECT COALESCE(SUM(ROUND(p.amount * COALESCE(p.exchangeRate, 1))), 0) AS paidTotal,
+		SELECT CAST(COALESCE(SUM(ROUND(p.amount * COALESCE(p.exchangeRate, 1))), 0) AS INTEGER) AS paidTotal,
 		       COUNT(*) AS paymentCount
 		FROM payments p
 		WHERE p.organizationId = ? AND p.clientId = ? AND p.direction = 'inbound' AND %s`,

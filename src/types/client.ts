@@ -36,4 +36,7 @@ export interface Client {
   phone3?: string | null;
   guarantor?: string | null;
   address?: string | null;
+  // Set on a customer the paper loan register import created (migration
+  // 0098); the Clients summary panel tags them.
+  importBatchId?: string | null;
 }

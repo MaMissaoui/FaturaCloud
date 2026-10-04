@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { App, Button, Modal, Space, Table, Typography } from "antd";
+import { useRef, useState } from "react";
+import { App, Button, Dropdown, Modal, Space, Table, Typography } from "antd";
 import type { UploadProps } from "antd";
 import { Upload } from "antd";
-import { DownloadOutlined, UploadOutlined } from "@ant-design/icons";
+import { DownloadOutlined, DownOutlined, UploadOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 
@@ -29,11 +29,15 @@ export default function MassDataExcelActions({
   filenamePrefix,
   onImported,
   summarize = (res) => t`${res.created} created, ${res.updated} updated`,
+  compact = false,
 }: {
   organizationId: string;
   resource: MassDataResource;
   filenamePrefix: string;
   onImported: () => void;
+  // compact renders one "Excel" menu button holding both actions, for the
+  // redesigned master-data screens whose toolbar must fit on one line.
+  compact?: boolean;
   // The success toast and results-modal wording — "created/updated" fits
   // master data; the stock count upload reports adjusted/unchanged instead.
   summarize?: (result: MassDataImportResult) => string;
@@ -42,6 +46,10 @@ export default function MassDataExcelActions({
   const [downloading, setDownloading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<MassDataImportResult | null>(null);
+  // compact mode keeps its Upload outside the dropdown (a file input inside a
+  // menu that closes on click can unmount before the file arrives); the menu
+  // item clicks this trigger instead.
+  const uploadTrigger = useRef<HTMLSpanElement>(null);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -80,16 +88,50 @@ export default function MassDataExcelActions({
 
   return (
     <>
-      <Space wrap>
-        <Button icon={<DownloadOutlined />} loading={downloading} onClick={handleDownload}>
-          <Trans>Download Excel</Trans>
-        </Button>
-        <Upload {...uploadProps}>
-          <Button icon={<UploadOutlined />} loading={uploading}>
-            <Trans>Upload Excel</Trans>
+      {compact ? (
+        <Dropdown
+          trigger={["click"]}
+          menu={{
+            items: [
+              {
+                key: "download",
+                icon: <DownloadOutlined />,
+                label: <Trans>Download Excel</Trans>,
+                onClick: handleDownload,
+              },
+              {
+                key: "upload",
+                icon: <UploadOutlined />,
+                label: <Trans>Upload Excel</Trans>,
+                onClick: () => uploadTrigger.current?.click(),
+              },
+            ],
+          }}
+        >
+          <Button loading={downloading || uploading}>
+            <Space size={6}>
+              Excel
+              <DownOutlined style={{ fontSize: 10 }} />
+            </Space>
           </Button>
+        </Dropdown>
+      ) : (
+        <Space wrap>
+          <Button icon={<DownloadOutlined />} loading={downloading} onClick={handleDownload}>
+            <Trans>Download Excel</Trans>
+          </Button>
+          <Upload {...uploadProps}>
+            <Button icon={<UploadOutlined />} loading={uploading}>
+              <Trans>Upload Excel</Trans>
+            </Button>
+          </Upload>
+        </Space>
+      )}
+      {compact && (
+        <Upload {...uploadProps}>
+          <span ref={uploadTrigger} style={{ display: "none" }} />
         </Upload>
-      </Space>
+      )}
       <Modal
         open={result !== null && result.failed > 0}
         title={<Trans>Import results</Trans>}

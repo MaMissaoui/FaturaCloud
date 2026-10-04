@@ -328,3 +328,74 @@ func TestClientSummariesSwitchedOff(t *testing.T) {
 		t.Fatalf("expected *ValidationError, got %T", err)
 	}
 }
+
+// TestClientSummaryLargeTotals guards the summary's sums against SQLite
+// returning them as REAL: from a million cents on, database/sql renders a
+// float64 like 3.73409e+06 and refuses to scan it into an int64, which made
+// GET /api/clients/{id}/summary answer 500 for any client who had paid more
+// than 10 000 in total.
+func TestClientSummaryLargeTotals(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-big", Currency: ptr("TND")})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := d.CreateFiscalYear(CreateFiscalYearRequest{
+		OrganizationID: org.ID, Name: "FY",
+		StartDate: 1609459200000, EndDate: 1893456000000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	client, err := d.CreateClient(CreateClientRequest{OrganizationID: org.ID, Name: ptr("Big buyer")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+	accounts, err := d.GetAccounts(org.ID)
+	if err != nil {
+		t.Fatalf("GetAccounts: %v", err)
+	}
+	var outputTaxAcctID string
+	for _, a := range accounts {
+		if a.Code == "2200" {
+			outputTaxAcctID = a.ID
+		}
+	}
+	taxRate, err := d.CreateTaxRate(CreateTaxRateRequest{
+		OrganizationID: org.ID, Name: "Zero", Percentage: 0, OutputTaxAccountID: &outputTaxAcctID,
+	})
+	if err != nil {
+		t.Fatalf("CreateTaxRate: %v", err)
+	}
+
+	nowMs := time.Now().UnixMilli()
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: org.ID, Number: "INV-BIG", ClientID: client.ID,
+		Date: nowMs - 10*86400000, DueDate: &nowMs, Currency: "TND",
+		Total: 3734090, SubTotal: 3734090,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 3734090, TaxRate: &taxRate.ID}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if _, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: org.ID, Direction: "inbound", ClientID: &client.ID,
+		BankAccountID: *org.DefaultCashAccountID,
+		Amount:        3000000, Currency: "TND", Date: nowMs - 86400000, Method: "cash",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "invoice", DocumentID: inv.ID, Amount: 3000000}},
+	}); err != nil {
+		t.Fatalf("CreatePayment: %v", err)
+	}
+
+	s, err := d.GetClientSummary(org.ID, client.ID)
+	if err != nil {
+		t.Fatalf("GetClientSummary: %v", err)
+	}
+	if s.PaidTotal != 3000000 || s.BilledTotal != 3734090 || s.Owed != 734090 {
+		t.Fatalf("paid %d billed %d owed %d, want 3000000 3734090 734090", s.PaidTotal, s.BilledTotal, s.Owed)
+	}
+}

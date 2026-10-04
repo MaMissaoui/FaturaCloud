@@ -1053,6 +1053,7 @@ export interface MonthlyRevenue {
 export interface OutstandingInvoiceSummary {
   id: string;
   number: string;
+  clientId: string;
   clientName: string;
   dueDate: number | null;
   // currency/foreignTotal (F116, multi-currency reporting) carry the same
