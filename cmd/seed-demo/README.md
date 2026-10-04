@@ -27,6 +27,9 @@ go run ./cmd/seed-demo \
 That creates (or, with `--reset`, replaces) an organization named
 `--org-name`, seeds its master data, and then simulates one business day at
 a time from `(--end-date - --months)` through `--end-date` (default: today).
+The organization is created flagged as a test organization (`isTest`), so
+the app shows a "Test" tag beside its name; a `--reset` run recreates it
+flagged too.
 
 A full 18-month `busy` run creates on the order of 5,000-7,000 documents
 (invoices, orders, deliveries, purchase orders, receipts, bills, payments)

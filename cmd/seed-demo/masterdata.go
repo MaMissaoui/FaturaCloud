@@ -188,6 +188,10 @@ func (s *Seeder) setupOrganization() error {
 		InvoiceNumberFormat: strPtr(orDefault(p.invoiceNumberFormat, "INV-{year}-{number}")),
 		DocumentLayout:      nonEmptyStrPtr(p.documentLayout),
 		Timezone:            nonEmptyStrPtr(p.timezone),
+		// Every organization this tool creates is demo data: the "Test" tag
+		// in the header keeps it from being mistaken for a real business,
+		// and recreating it with --reset keeps the flag.
+		IsTest: boolPtr(true),
 	}
 
 	var org db.Organization

@@ -235,6 +235,25 @@ export default function OrganizationEditDrawer({
                 <Input />
               </Form.Item>
             </Col>
+            <Col xs={24}>
+              <Form.Item
+                name="isTest"
+                valuePropName="checked"
+                style={{ marginBottom: 0 }}
+                // extra, not tooltip: a Form.Item without a label never
+                // renders its tooltip.
+                extra={
+                  <Trans>
+                    Demo or sandbox data, not a real business. Shows a "Test" tag next to the
+                    organization's name; nothing else changes.
+                  </Trans>
+                }
+              >
+                <Checkbox>
+                  <Trans>Test organization</Trans>
+                </Checkbox>
+              </Form.Item>
+            </Col>
           </Row>
         </Card>
 

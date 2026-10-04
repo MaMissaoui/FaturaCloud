@@ -490,6 +490,7 @@ func (s *Seeder) maybeAbort() {
 // --- small shared helpers -------------------------------------------------
 
 func strPtr(s string) *string       { return &s }
+func boolPtr(b bool) *bool          { return &b }
 func int64Ptr(v int64) *int64       { return &v }
 func float64Ptr(v float64) *float64 { return &v }
 
