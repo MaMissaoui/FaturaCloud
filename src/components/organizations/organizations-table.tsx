@@ -4,6 +4,7 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import type { OrganizationUsageCount } from "src/api";
 import { usageBreakdown } from "./usage-breakdown";
+import TestOrgTag from "./test-org-tag";
 
 interface OrganizationsTableProps {
   dataSource: Organization[];
@@ -53,16 +54,19 @@ export default function OrganizationsTable({
         key="name"
         sorter={(a: Organization, b: Organization) => (a.name ?? "").localeCompare(b.name ?? "")}
         render={(name: string, record: Organization) => (
-          <Button
-            type="link"
-            style={{ padding: 0, height: "auto" }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRowClick(record.id);
-            }}
-          >
-            {name}
-          </Button>
+          <>
+            <Button
+              type="link"
+              style={{ padding: 0, height: "auto" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRowClick(record.id);
+              }}
+            >
+              {name}
+            </Button>
+            {record.isTest && <TestOrgTag />}
+          </>
         )}
       />
       <Table.Column

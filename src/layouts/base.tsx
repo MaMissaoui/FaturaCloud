@@ -92,6 +92,7 @@ import { logoutAtom } from "src/atoms/session";
 import { filterMenuForRole, isRouteAllowedForRole, roleHomePath } from "src/layouts/role-menu";
 import FeedbackModal from "src/components/feedback-modal";
 import Wordmark from "src/components/wordmark";
+import TestOrgTag from "src/components/organizations/test-org-tag";
 import { dynamicActivate, locales } from "src/utils/lingui";
 
 const { Content, Header, Sider } = Layout;
@@ -895,8 +896,23 @@ export default function BaseLayout() {
                         ? String(orgName).toLowerCase().includes(input.toLowerCase())
                         : false;
                     }}
-                    style={{ width: isMobile ? 140 : 200 }}
+                    // On a phone the Test tag beside it takes ~45px of the one
+                    // line the header has, so the select gives that up.
+                    style={{ width: isMobile ? (organization.isTest ? 90 : 140) : 200 }}
                     defaultValue={organization.id}
+                    // Wider than the select so a long name keeps its Test
+                    // tag visible instead of ellipsizing it away.
+                    popupMatchSelectWidth={false}
+                    styles={{ popup: { root: { maxWidth: 360 } } }}
+                    optionRender={(option) => {
+                      const org = organizations.find((o) => o.id === option.value);
+                      return (
+                        <>
+                          {org?.name}
+                          {org?.isTest && <TestOrgTag />}
+                        </>
+                      );
+                    }}
                     onSelect={(value) => {
                       setOrganizationId(value);
                       window.location.reload();
@@ -925,6 +941,9 @@ export default function BaseLayout() {
                       </>
                     )}
                   >
+                    {/* Children stay the plain name: filterOption above
+                    searches String(children). The Test tag is added by
+                    optionRender instead. */}
                     {map(organizations, (organization: any) => (
                       <Option key={organization.id} value={organization.id}>
                         {organization.name}
@@ -932,6 +951,7 @@ export default function BaseLayout() {
                     ))}
                   </Select>
                 )}
+                {organization.isTest && <TestOrgTag />}
               </Space>
             </Col>
             <Col flex="none">

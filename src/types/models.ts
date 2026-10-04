@@ -302,6 +302,10 @@ export interface Organization {
   // migration 0093, db/inventory_valuation.go. Changeable only before any
   // stock is recorded.
   inventoryValuation: string | null;
+  // isTest marks a test/demo organization (migration 0099) — a visible
+  // marker only (src/components/organizations/test-org-tag.tsx); nothing
+  // else depends on it. cmd/seed-demo sets it on what it creates.
+  isTest?: boolean;
   // The Cash Book screen's register balance/daily-movements report/cash
   // withdrawal feature — deliberately separate from defaultCashAccountId,
   // which every chart-of-accounts template wires to the Bank account, never

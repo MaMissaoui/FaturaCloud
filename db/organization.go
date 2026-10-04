@@ -220,6 +220,10 @@ type Organization struct {
 	// InventoryValuation is "perpetual" (NULL/"" — the default) or
 	// "quantity_only" (migration 0093) — see db/inventory_valuation.go.
 	InventoryValuation *string `db:"inventoryValuation" json:"inventoryValuation"`
+	// IsTest marks a test/demo organization (migration 0099) — a visible
+	// marker only (the header and Organizations list tag it); nothing else
+	// reads it. cmd/seed-demo sets it on every organization it creates.
+	IsTest bool `db:"isTest" json:"isTest"`
 	// HasLogo is computed on read (organizationColumns), not a column: it
 	// lets the frontend skip GET /logo for an organization with none, which
 	// otherwise answered 404 on every page load. Ignored on writes.
@@ -266,6 +270,7 @@ type CreateOrganizationRequest struct {
 	DocumentLanguage   *string `json:"documentLanguage"`
 	Timezone           *string `json:"timezone"`
 	InventoryValuation *string `json:"inventoryValuation"`
+	IsTest             *bool   `json:"isTest"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -330,6 +335,7 @@ type UpdateOrganizationRequest struct {
 	DocumentLanguage          *string `json:"documentLanguage"`
 	Timezone                  *string `json:"timezone"`
 	InventoryValuation        *string `json:"inventoryValuation"`
+	IsTest                    *bool   `json:"isTest"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -354,7 +360,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled,
-	       documentLanguage, timezone, inventoryValuation,
+	       documentLanguage, timezone, inventoryValuation, isTest,
 	       COALESCE(length(logo), 0) > 0 AS hasLogo`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
@@ -468,14 +474,15 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code,
-			documentLayout, documentLanguage, timezone, inventoryValuation
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			documentLayout, documentLanguage, timezone, inventoryValuation, isTest
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
 		req.CustomerNotes, req.InvoiceNumberFormat, req.DateFormat, req.BrandColor,
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
 		req.DocumentLayout, req.DocumentLanguage, req.Timezone, req.InventoryValuation,
+		req.IsTest != nil && *req.IsTest,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
 	}
@@ -628,7 +635,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     amountInWordsEnabled      = COALESCE(?, amountInWordsEnabled),
 		     documentLanguage          = COALESCE(?, documentLanguage),
 		     timezone                  = COALESCE(?, timezone),
-		     inventoryValuation        = COALESCE(?, inventoryValuation)` +
+		     inventoryValuation        = COALESCE(?, inventoryValuation),
+		     isTest                    = COALESCE(?, isTest)` +
 		accountSet.String() + `
 		 WHERE id = ?`
 
@@ -646,7 +654,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DefaultFiscalStampAmount, updates.DocumentLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
 		updates.AmountInWordsEnabled, updates.DocumentLanguage, updates.Timezone,
-		updates.InventoryValuation,
+		updates.InventoryValuation, updates.IsTest,
 	}
 	// accountSet's placeholders sit between the COALESCE block and WHERE,
 	// so its args do too.
