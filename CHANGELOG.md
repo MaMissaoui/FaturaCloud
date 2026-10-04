@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.62.0] - 2026-10-04
+
+### Added
+- An organization can be marked as a test organization (edit drawer ▸
+  Details ▸ "Test organization"). It then shows an orange "Test" tag next
+  to its name in the organization switcher, its dropdown and the
+  Organizations list, so demo data isn't mistaken for a real business.
+  Nothing else changes for it. Organizations the demo seed tool creates are
+  marked automatically (#473).
+
 ## [3.61.3] - 2026-10-03
 
 ### Fixed
