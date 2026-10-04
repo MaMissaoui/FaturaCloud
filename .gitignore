@@ -8,6 +8,8 @@ dist-ssr/
 # the repo.
 /seed-demo
 /fatura-cloud
+# `go build` run inside cmd/seed-demo drops the binary next to its sources.
+/cmd/seed-demo/seed-demo
 
 # Frontend
 node_modules/
