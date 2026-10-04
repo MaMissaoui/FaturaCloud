@@ -4,7 +4,7 @@ import { Link, Outlet, useNavigate } from "react-router";
 import { Button, Col, Empty, Space, Table, Row, Tag, theme, Tooltip, Typography } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { PhoneOutlined, SolutionOutlined } from "@ant-design/icons";
 import isEmpty from "lodash/isEmpty";
@@ -398,7 +398,7 @@ const Vendors = () => {
         }
       />
       <p style={{ margin: "-12px 0 0", color: token.colorTextSecondary }}>
-        {t`${vendors.length} vendors`}
+        {plural(vendors.length, { one: "# vendor", other: "# vendors" })}
       </p>
 
       <div
@@ -415,7 +415,11 @@ const Vendors = () => {
         <HeadlineFigure
           label={<Trans>What you owe your vendors</Trans>}
           value={summaries ? money(summaries.totalOwed) : "…"}
-          note={summaries ? t`across ${owingCount} vendors` : undefined}
+          note={
+            summaries
+              ? plural(owingCount, { one: "across # vendor", other: "across # vendors" })
+              : undefined
+          }
         />
         <FilterChips<VendorFilter>
           ariaLabel={t`Filter vendors`}

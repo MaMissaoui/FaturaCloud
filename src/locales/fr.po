@@ -42,6 +42,11 @@ msgstr "{0, plural, one {# client n'a rien payé depuis plus de {staleAfter} jou
 msgid "{0, plural, one {# client is close to {staleAfter} days without paying} other {# clients are close to {staleAfter} days without paying}}"
 msgstr "{0, plural, one {# client approche des {staleAfter} jours sans paiement} other {# clients approchent des {staleAfter} jours sans paiement}}"
 
+#. placeholder {0}: clients.length
+#: src/routes/clients.tsx:424
+msgid "{0, plural, one {# client} other {# clients}}, {businessCount, plural, one {# of them a business} other {# of them businesses}}"
+msgstr "{0, plural, one {# client} other {# clients}}, {businessCount, plural, one {dont # entreprise} other {dont # entreprises}}"
+
 #. placeholder {0}: owing.length
 #: src/components/cash-book/loan-register.tsx:440
 msgid "{0, plural, one {# customer owes {owedText} in total.} other {# customers owe {owedText} in total.}}"
@@ -68,6 +73,11 @@ msgstr "{0, plural, one {# article} other {# articles}} : {1, plural, one {# sui
 #: src/routes/dashboard.tsx:396
 msgid "{0, plural, one {# stock-tracked product, {units} units} other {# stock-tracked products, {units} units}}"
 msgstr "{0, plural, one {# produit suivi en stock, {units} unités} other {# produits suivis en stock, {units} unités}}"
+
+#. placeholder {0}: vendors.length
+#: src/routes/vendors.tsx:401
+msgid "{0, plural, one {# vendor} other {# vendors}}"
+msgstr "{0, plural, one {# fournisseur} other {# fournisseurs}}"
 
 #. placeholder {0}: summaries.stockTracked
 #: src/routes/products.tsx:455
@@ -107,8 +117,8 @@ msgstr "{0} ajusté(s), {1} inchangé(s)"
 
 #. placeholder {0}: clients.length
 #: src/routes/clients.tsx:424
-msgid "{0} clients, {businessCount} of them businesses"
-msgstr "{0} clients, dont {businessCount} entreprises"
+#~ msgid "{0} clients, {businessCount} of them businesses"
+#~ msgstr "{0} clients, dont {businessCount} entreprises"
 
 #. placeholder {0}: res.created
 #. placeholder {1}: res.updated
@@ -212,8 +222,8 @@ msgstr "{0} unités"
 
 #. placeholder {0}: vendors.length
 #: src/routes/vendors.tsx:401
-msgid "{0} vendors"
-msgstr "{0} fournisseurs"
+#~ msgid "{0} vendors"
+#~ msgstr "{0} fournisseurs"
 
 #. placeholder {0}: summarize(result)
 #. placeholder {1}: result.failed
@@ -238,6 +248,14 @@ msgstr "{count, plural, one {sur # facture non réglée, échue} other {sur # fa
 #: src/components/dashboard/owed-panel.tsx:112
 msgid "{count, plural, one {on # unpaid invoice} other {on # unpaid invoices}}"
 msgstr "{count, plural, one {sur # facture non réglée} other {sur # factures non réglées}}"
+
+#: src/routes/clients.tsx:443
+msgid "{owingCount, plural, one {across # client} other {across # clients}}"
+msgstr "{owingCount, plural, one {chez # client} other {chez # clients}}"
+
+#: src/routes/vendors.tsx:420
+msgid "{owingCount, plural, one {across # vendor} other {across # vendors}}"
+msgstr "{owingCount, plural, one {chez # fournisseur} other {chez # fournisseurs}}"
 
 #: src/components/products/stock-tag.tsx:42
 #: src/routes/products.tsx:476
@@ -415,12 +433,12 @@ msgstr "Comptes clients"
 #~ msgstr "sur {0} produits"
 
 #: src/routes/clients.tsx:441
-msgid "across {owingCount} clients"
-msgstr "chez {owingCount} clients"
+#~ msgid "across {owingCount} clients"
+#~ msgstr "chez {owingCount} clients"
 
 #: src/routes/vendors.tsx:418
-msgid "across {owingCount} vendors"
-msgstr "chez {owingCount} fournisseurs"
+#~ msgid "across {owingCount} vendors"
+#~ msgstr "chez {owingCount} fournisseurs"
 
 #: src/components/accounting/account-form.tsx:198
 #: src/routes/accounting/chart-of-accounts.tsx:182
@@ -482,10 +500,10 @@ msgstr "Ajustement — définir le compte à"
 msgid "Admin"
 msgstr "Administrateur"
 
-#: src/routes/clients.tsx:448
+#: src/routes/clients.tsx:452
 #: src/routes/products.tsx:468
 #: src/routes/settings/loan-import.tsx:320
-#: src/routes/vendors.tsx:425
+#: src/routes/vendors.tsx:429
 msgid "All"
 msgstr "Tous"
 
@@ -905,7 +923,7 @@ msgstr "Les journaux intégrés ne peuvent pas être supprimés"
 msgid "Business"
 msgstr "Entreprise"
 
-#: src/routes/clients.tsx:450
+#: src/routes/clients.tsx:454
 msgid "Businesses"
 msgstr "Entreprises"
 
@@ -2946,7 +2964,7 @@ msgstr "Filtrer par état"
 msgid "Filter by status"
 msgstr "Filtrer par statut"
 
-#: src/routes/clients.tsx:444
+#: src/routes/clients.tsx:448
 msgid "Filter clients"
 msgstr "Filtrer les clients"
 
@@ -2958,7 +2976,7 @@ msgstr "Filtrer les crédits"
 msgid "Filter products"
 msgstr "Filtrer les produits"
 
-#: src/routes/vendors.tsx:421
+#: src/routes/vendors.tsx:425
 msgid "Filter vendors"
 msgstr "Filtrer les fournisseurs"
 
@@ -5073,7 +5091,7 @@ msgstr "Suralloué"
 
 #: src/routes/invoices/index.tsx:287
 #: src/routes/invoices/index.tsx:291
-#: src/routes/vendors.tsx:427
+#: src/routes/vendors.tsx:431
 msgid "Overdue"
 msgstr "En retard"
 
@@ -5099,7 +5117,7 @@ msgstr "Remplace le compte de charges par défaut de l'organisation pour une lig
 msgid "Overrides the organization's default revenue account on a sales invoice line."
 msgstr "Remplace le compte de produits par défaut de l'organisation pour une ligne de facture de vente."
 
-#: src/routes/clients.tsx:449
+#: src/routes/clients.tsx:453
 msgid "Owe money"
 msgstr "Doivent de l’argent"
 
@@ -5493,7 +5511,7 @@ msgstr "Tarification"
 msgid "Print the invoice total spelled out in words, in the document language."
 msgstr "Imprimer le total de la facture en toutes lettres, dans la langue des documents."
 
-#: src/routes/clients.tsx:453
+#: src/routes/clients.tsx:457
 msgid "Private"
 msgstr "Particuliers"
 
@@ -6343,7 +6361,7 @@ msgstr "Recherche/référence uniquement — sert à retrouver ce client dans le
 #~ msgid "Select"
 #~ msgstr "Sélectionner"
 
-#: src/routes/clients.tsx:473
+#: src/routes/clients.tsx:477
 msgid "Select a client to see what they owe and their recent activity."
 msgstr "Sélectionnez un client pour voir ce qu’il doit et son activité récente."
 
@@ -6391,7 +6409,7 @@ msgstr "Sélectionnez un produit pour voir son stock, sa marge et ses derniers m
 msgid "Select a unit of measure"
 msgstr "Sélectionner une unité de mesure"
 
-#: src/routes/vendors.tsx:445
+#: src/routes/vendors.tsx:449
 msgid "Select a vendor to see what you owe them and your recent purchases."
 msgstr "Sélectionnez un fournisseur pour voir ce que vous lui devez et vos achats récents."
 
@@ -7779,7 +7797,7 @@ msgstr "Cette page contient des modifications non enregistrées. Si vous partez 
 msgid "You owe"
 msgstr "Vous devez"
 
-#: src/routes/vendors.tsx:426
+#: src/routes/vendors.tsx:430
 msgid "You owe them"
 msgstr "Vous leur devez"
 

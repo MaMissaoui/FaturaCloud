@@ -4,7 +4,7 @@ import { Link, Outlet, useNavigate } from "react-router";
 import { Button, Col, Empty, Space, Table, Row, Tag, theme, Tooltip, Typography } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { PhoneOutlined, TeamOutlined } from "@ant-design/icons";
 import isEmpty from "lodash/isEmpty";
@@ -421,7 +421,7 @@ const Clients = () => {
         }
       />
       <p style={{ margin: "-12px 0 0", color: token.colorTextSecondary }}>
-        {t`${clients.length} clients, ${businessCount} of them businesses`}
+        {t`${plural(clients.length, { one: "# client", other: "# clients" })}, ${plural(businessCount, { one: "# of them a business", other: "# of them businesses" })}`}
       </p>
 
       <div
@@ -438,7 +438,11 @@ const Clients = () => {
         <HeadlineFigure
           label={<Trans>What your clients owe you</Trans>}
           value={summaries ? money(summaries.totalOwed) : "…"}
-          note={summaries ? t`across ${owingCount} clients` : undefined}
+          note={
+            summaries
+              ? plural(owingCount, { one: "across # client", other: "across # clients" })
+              : undefined
+          }
         />
         <FilterChips<ClientFilter>
           ariaLabel={t`Filter clients`}
