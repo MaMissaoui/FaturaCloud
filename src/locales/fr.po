@@ -3468,7 +3468,7 @@ msgstr "Taux de coût de revient"
 msgid "Landscape"
 msgstr "Paysage"
 
-#: src/layouts/base.tsx:998
+#: src/layouts/base.tsx:1004
 msgid "Language"
 msgstr "Langue"
 
@@ -3938,7 +3938,7 @@ msgid "New order"
 msgstr "Nouvelle commande"
 
 #: src/components/organizations/organization-edit-drawer.tsx:119
-#: src/layouts/base.tsx:928
+#: src/layouts/base.tsx:934
 #: src/routes/organizations/index.tsx:504
 msgid "New organization"
 msgstr "Nouvelle organisation"
@@ -6095,8 +6095,8 @@ msgstr "Sélectionner…"
 msgid "Send"
 msgstr "Envoyer"
 
-#: src/layouts/base.tsx:966
-#: src/layouts/base.tsx:967
+#: src/layouts/base.tsx:972
+#: src/layouts/base.tsx:973
 msgid "Send feedback"
 msgstr "Envoyer un commentaire"
 
@@ -6139,8 +6139,8 @@ msgstr "Servir au comptoir"
 msgid "Service"
 msgstr "Service"
 
-#: src/layouts/base.tsx:990
-#: src/layouts/base.tsx:991
+#: src/layouts/base.tsx:996
+#: src/layouts/base.tsx:997
 msgid "Settings"
 msgstr "Paramètres"
 
@@ -6221,8 +6221,8 @@ msgstr "Connectez-vous à votre compte"
 msgid "Sign in with SSO"
 msgstr "Se connecter avec le SSO"
 
-#: src/layouts/base.tsx:1036
-#: src/layouts/base.tsx:1037
+#: src/layouts/base.tsx:1042
+#: src/layouts/base.tsx:1043
 #: src/routes/organizations/new.tsx:205
 msgid "Sign out"
 msgstr "Se déconnecter"
@@ -6426,13 +6426,13 @@ msgstr "Sous-total"
 msgid "Surplus quantity found"
 msgstr "Quantité en surplus détectée"
 
-#: src/layouts/base.tsx:973
-#: src/layouts/base.tsx:975
+#: src/layouts/base.tsx:979
+#: src/layouts/base.tsx:981
 msgid "Switch to dark mode"
 msgstr "Passer au mode sombre"
 
-#: src/layouts/base.tsx:973
-#: src/layouts/base.tsx:975
+#: src/layouts/base.tsx:979
+#: src/layouts/base.tsx:981
 msgid "Switch to light mode"
 msgstr "Passer au mode clair"
 
