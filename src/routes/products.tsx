@@ -36,6 +36,7 @@ import FilterChips from "src/components/master-data/filter-chips";
 import HeadlineFigure from "src/components/master-data/headline-figure";
 import ListWithPanel from "src/components/master-data/list-with-panel";
 import { useSummariesEnabled } from "src/components/master-data/use-summaries-enabled";
+import { useWideScreen } from "src/components/master-data/use-wide-screen";
 import PageHeader from "src/components/page-header";
 import { dashboardWidgetsForRole } from "src/layouts/role-menu";
 import { formatOrgCents, numberFormatLocale } from "src/utils/currencies";
@@ -92,6 +93,8 @@ const Products = () => {
   // The picked product itself, not its id: the list is paginated, so the
   // picked row can leave the page while its panel stays open.
   const [selected, setSelected] = useState<Product | null>(null);
+
+  const wide = useWideScreen();
 
   // Summaries (stock value, chip counts, the panel) are on when the
   // organization has them switched on. They reload whenever the location
@@ -284,18 +287,18 @@ const Products = () => {
             </Tooltip>
           )}
         />
-        <Table.Column
-          title={<Trans>Code</Trans>}
-          dataIndex="sku"
-          key="sku"
-          // Hidden below 1440px (src/styles/base.scss) so the margin keeps its
-          // room beside the panel; the panel shows the code.
-          className="master-data-wide-only"
-          sorter
-          render={(sku: string | null) =>
-            sku ? <span style={{ whiteSpace: "nowrap" }}>{sku}</span> : notSet
-          }
-        />
+        {/* Only from 1440px, where the panel beside the list leaves room; the panel shows the code. */}
+        {wide && (
+          <Table.Column
+            title={<Trans>Code</Trans>}
+            dataIndex="sku"
+            key="sku"
+            sorter
+            render={(sku: string | null) =>
+              sku ? <span style={{ whiteSpace: "nowrap" }}>{sku}</span> : notSet
+            }
+          />
+        )}
         <Table.Column
           title={<Trans>Price excl. tax</Trans>}
           dataIndex="price"
