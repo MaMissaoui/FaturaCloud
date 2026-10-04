@@ -37,13 +37,17 @@ type businessClient struct {
 	contract int64
 	// kinds are the appliance kinds the client buys.
 	kinds []string
+	// currency is "" for a Tunisian client (dinars) or the currency an
+	// export client is billed in; countryCode is the client's country.
+	// Exports are zero-rated and carry no fiscal stamp.
+	currency, countryCode string
 }
 
 var businessClients = []businessClient{
 	{name: "Hôtel Les Palmiers", city: "Hammamet", termsDays: 60, contract: 45000,
-		kinds: []string{"Climatiseur", "Téléviseur", "Réfrigérateur", "Chauffe-eau"}},
+		kinds: []string{"Climatiseur", "Téléviseur", "Réfrigérateur", "Chauffe-eau", "Climatisation professionnelle"}},
 	{name: "Clinique El Amen", city: "Nabeul", termsDays: 45, withholding: 1, contract: 32000,
-		kinds: []string{"Climatiseur", "Réfrigérateur", "Fontaine à eau", "Chauffe-eau"}},
+		kinds: []string{"Climatiseur", "Réfrigérateur", "Fontaine à eau", "Chauffe-eau", "Climatisation professionnelle"}},
 	{name: "École privée Ibn Khaldoun", city: "Nabeul", termsDays: 30, withholding: 1,
 		kinds: []string{"Climatiseur", "Fontaine à eau", "Ventilateur"}},
 	{name: "Café-Restaurant Le Golfe", city: "Hammamet", termsDays: 30,
@@ -51,11 +55,13 @@ var businessClients = []businessClient{
 	{name: "Résidence Les Jasmins", city: "Nabeul", termsDays: 30,
 		kinds: []string{"Chauffe-eau", "Climatiseur", "Cuisinière gaz/électrique"}},
 	{name: "Société Sahel Logistique", city: "Sousse", termsDays: 60, withholding: 1,
-		kinds: []string{"Climatiseur", "Fontaine à eau", "Four à micro-ondes", "Réfrigérateur"}},
+		kinds: []string{"Climatiseur", "Fontaine à eau", "Four à micro-ondes", "Réfrigérateur", "Climatisation professionnelle"}},
 	{name: "Cabinet d'architecture Ben Ammar", city: "Tunis", termsDays: 30,
 		kinds: []string{"Climatiseur", "Cafetière", "Fontaine à eau"}},
 	{name: "Restaurant Dar Zitoun", city: "Hammamet", termsDays: 45,
 		kinds: []string{"Congélateur", "Réfrigérateur", "Cuisinière gaz/électrique", "Lave-vaisselle"}},
+	{name: "Société Libyenne d'Équipement Hôtelier", city: "Tripoli", termsDays: 60, currency: "EUR", countryCode: "LY",
+		kinds: []string{"Climatiseur", "Réfrigérateur", "Téléviseur", "Climatisation professionnelle"}},
 }
 
 type businessClientRef struct {
@@ -69,15 +75,16 @@ type businessClientRef struct {
 func (s *Seeder) setupBusinessClients() error {
 	for _, bc := range businessClients {
 		req := db.CreateClientRequest{
-			OrganizationID: s.orgID,
-			Name:           strPtr(bc.name),
-			Vatin:          strPtr(s.rng.VATIN()),
-			Phone:          strPtr(s.rng.Phone()),
-			Street:         strPtr(s.rng.Street()),
-			HouseNumber:    strPtr(fmt.Sprintf("%d", s.rng.IntRange(1, 120))),
-			City:           strPtr(bc.city),
-			CountryCode:    nonEmptyStrPtr(s.orgProfile.countryCode),
-			Emails:         strPtr(fmt.Sprintf(`["%s"]`, s.rng.Email(bc.name))),
+			OrganizationID:  s.orgID,
+			Name:            strPtr(bc.name),
+			Vatin:           strPtr(s.rng.VATIN()),
+			Phone:           strPtr(s.rng.Phone()),
+			Street:          strPtr(s.rng.Street()),
+			HouseNumber:     strPtr(fmt.Sprintf("%d", s.rng.IntRange(1, 120))),
+			City:            strPtr(bc.city),
+			CountryCode:     nonEmptyStrPtr(orDefault(bc.countryCode, s.orgProfile.countryCode)),
+			DefaultCurrency: nonEmptyStrPtr(bc.currency),
+			Emails:          strPtr(fmt.Sprintf(`["%s"]`, s.rng.Email(bc.name))),
 		}
 		var cl db.Client
 		if err := s.c.Post("/api/clients", req, &cl); err != nil {
@@ -120,11 +127,24 @@ type businessLine struct {
 	product     productRef
 	quantity    float64
 	orderLineID string
+	// unitPrice is in the order's currency (cents): the catalog price, or
+	// for an export client that price converted at the order's rate.
+	unitPrice int64
+}
+
+// exportRate is the order's TND-per-unit rate for an export client (1 unit
+// of the client's currency = rate dinars), 0 for a Tunisian client.
+func (s *Seeder) exportRate(client businessClientRef) float64 {
+	if client.currency == "" {
+		return 0
+	}
+	return math.Round(s.rng.Float64Range(3.30, 3.45)*10000) / 10000
 }
 
 func (s *Seeder) createBusinessOrder(day time.Time, client businessClientRef) error {
 	// Two or three of the appliance kinds the client buys, several units each,
 	// as many as are on the shelf.
+	rate := s.exportRate(client)
 	var lines []businessLine
 	kinds := append([]string(nil), client.kinds...)
 	Shuffle(s.rng, kinds)
@@ -141,7 +161,11 @@ func (s *Seeder) createBusinessOrder(day time.Time, client businessClientRef) er
 		p := Pick(s.rng, candidates)
 		qty := math.Min(float64(s.rng.IntRange(2, 6)), s.onHand(p.id))
 		s.adjustOnHand(p.id, -qty) // reserved now; the delivery takes it out server-side
-		lines = append(lines, businessLine{product: p, quantity: qty})
+		price := p.priceCents
+		if rate > 0 {
+			price = int64(math.Round(float64(p.priceCents) / rate))
+		}
+		lines = append(lines, businessLine{product: p, quantity: qty, unitPrice: price})
 	}
 	if len(lines) == 0 {
 		return nil // nothing the client wants is in stock today
@@ -151,14 +175,19 @@ func (s *Seeder) createBusinessOrder(day time.Time, client businessClientRef) er
 	for i, l := range lines {
 		items[i] = db.CreateOrderLineItemRequest{
 			ProductID: strPtr(l.product.id), Description: l.product.name,
-			Quantity: l.quantity, UnitPrice: float64(l.product.priceCents),
+			Quantity: l.quantity, UnitPrice: float64(l.unitPrice),
 		}
 	}
-	var order db.Order
-	if err := s.c.Post("/api/orders", db.CreateOrderRequest{
+	orderReq := db.CreateOrderRequest{
 		OrganizationID: s.orgID, ClientID: &client.id, Status: "draft",
 		OrderDate: midnightUTC(day), LineItems: items,
-	}, &order); err != nil {
+	}
+	if rate > 0 {
+		orderReq.Currency = strPtr(client.currency)
+		orderReq.ExchangeRate = float64Ptr(rate)
+	}
+	var order db.Order
+	if err := s.c.Post("/api/orders", orderReq, &order); err != nil {
 		return fmt.Errorf("business order for %s: %w", client.name, err)
 	}
 	s.stats.Orders++
@@ -201,23 +230,23 @@ func (s *Seeder) createBusinessOrder(day time.Time, client businessClientRef) er
 		rest := make([]businessLine, 0, len(lines))
 		for _, l := range lines {
 			now := math.Ceil(l.quantity / 2)
-			first = append(first, businessLine{product: l.product, quantity: now, orderLineID: l.orderLineID})
+			first = append(first, businessLine{product: l.product, quantity: now, orderLineID: l.orderLineID, unitPrice: l.unitPrice})
 			if l.quantity-now > 0 {
-				rest = append(rest, businessLine{product: l.product, quantity: l.quantity - now, orderLineID: l.orderLineID})
+				rest = append(rest, businessLine{product: l.product, quantity: l.quantity - now, orderLineID: l.orderLineID, unitPrice: l.unitPrice})
 			}
 		}
 		secondDay := businessDaysLater(shipDay, s.rng.IntRange(5, 12))
 		s.sched.Schedule(shipDay, func() error {
-			return s.deliverBusinessOrder(shipDay, order, client, first, false)
+			return s.deliverBusinessOrder(shipDay, order, client, first, false, rate)
 		})
 		if !secondDay.After(s.cfg.EndDate) {
 			s.sched.Schedule(secondDay, func() error {
-				return s.deliverBusinessOrder(secondDay, order, client, rest, true)
+				return s.deliverBusinessOrder(secondDay, order, client, rest, true, rate)
 			})
 		}
 		return nil
 	}
-	s.sched.Schedule(shipDay, func() error { return s.deliverBusinessOrder(shipDay, order, client, lines, true) })
+	s.sched.Schedule(shipDay, func() error { return s.deliverBusinessOrder(shipDay, order, client, lines, true, rate) })
 	return nil
 }
 
@@ -234,7 +263,7 @@ func anyMoreThanOne(lines []businessLine) bool {
 // the next business day, and invoices what it carried. last marks the
 // order's final delivery, which moves the order itself to shipped and then
 // delivered.
-func (s *Seeder) deliverBusinessOrder(day time.Time, order db.Order, client businessClientRef, lines []businessLine, last bool) error {
+func (s *Seeder) deliverBusinessOrder(day time.Time, order db.Order, client businessClientRef, lines []businessLine, last bool, rate float64) error {
 	items := make([]db.CreateDeliveryLineItemRequest, len(lines))
 	for i, l := range lines {
 		items[i] = db.CreateDeliveryLineItemRequest{
@@ -249,7 +278,15 @@ func (s *Seeder) deliverBusinessOrder(day time.Time, order db.Order, client busi
 		return fmt.Errorf("delivery for order %s: %w", order.OrderNumber, err)
 	}
 	s.stats.Deliveries++
-	if err := s.c.Patch("/api/deliveries/"+delivery.ID+"/status", map[string]string{"status": "shipped"}, nil); err != nil {
+	serials, err := s.deliverySerialNumbers(delivery)
+	if err != nil {
+		return err
+	}
+	ship := map[string]any{"status": "shipped"}
+	if len(serials) > 0 {
+		ship["serialNumbers"] = serials
+	}
+	if err := s.c.Patch("/api/deliveries/"+delivery.ID+"/status", ship, nil); err != nil {
 		return fmt.Errorf("ship delivery %s: %w", delivery.DeliveryNumber, err)
 	}
 	if last {
@@ -275,14 +312,58 @@ func (s *Seeder) deliverBusinessOrder(day time.Time, order db.Order, client busi
 	invLines := make([]db.CreateInvoiceLineItemRequest, len(lines))
 	totals := make([]lineItem, len(lines))
 	for i, l := range lines {
-		invLines[i] = db.CreateInvoiceLineItemRequest{
-			Description: strPtr(l.product.name), Quantity: l.quantity, UnitPrice: float64(l.product.priceCents),
-			TaxRate: strPtr(l.product.taxRateID), ProductID: strPtr(l.product.id),
+		// An export is zero-rated.
+		tax := l.product.taxRateID
+		if rate > 0 {
+			tax = s.zeroTax.id
 		}
-		totals[i] = lineItem{quantity: l.quantity, unitPriceCents: l.product.priceCents, taxPercent: s.taxPercentFor(l.product.taxRateID)}
+		invLines[i] = db.CreateInvoiceLineItemRequest{
+			Description: strPtr(l.product.name), Quantity: l.quantity, UnitPrice: float64(l.unitPrice),
+			TaxRate: strPtr(tax), ProductID: strPtr(l.product.id),
+		}
+		totals[i] = lineItem{quantity: l.quantity, unitPriceCents: l.unitPrice, taxPercent: s.taxPercentFor(tax)}
 	}
 	note := fmt.Sprintf("Livraison %s — commande %s", delivery.DeliveryNumber, order.OrderNumber)
-	return s.issueBusinessInvoice(day, client, invLines, totals, note, true)
+	return s.issueBusinessInvoice(day, client, invLines, totals, note, true, rate)
+}
+
+// deliverySerialNumbers picks, for every serialized line of a delivery, that
+// many units currently in stock (oldest first), keyed by the delivery's line
+// id as PATCH .../status takes them. Nil when no line is serialized.
+func (s *Seeder) deliverySerialNumbers(delivery db.OutboundDelivery) (map[string][]string, error) {
+	var lines []db.OutboundDeliveryLineItem
+	if err := s.c.Get("/api/deliveries/"+delivery.ID+"/line-items", &lines); err != nil {
+		return nil, fmt.Errorf("read back delivery %s line items: %w", delivery.DeliveryNumber, err)
+	}
+	var out map[string][]string
+	for _, l := range lines {
+		if l.ProductID == nil {
+			continue
+		}
+		p, ok := s.productByID(*l.ProductID)
+		if !ok || !p.serialized {
+			continue
+		}
+		var units []db.SerialNumber
+		if err := s.c.Get("/api/products/"+p.id+"/serial-numbers", &units); err != nil {
+			return nil, fmt.Errorf("serial numbers of %s: %w", p.name, err)
+		}
+		if out == nil {
+			out = map[string][]string{}
+		}
+		for _, u := range units {
+			if len(out[l.ID]) == int(l.Quantity) {
+				break
+			}
+			if u.InStock == 1 {
+				out[l.ID] = append(out[l.ID], u.SerialNumber)
+			}
+		}
+		if len(out[l.ID]) < int(l.Quantity) {
+			return nil, fmt.Errorf("delivery %s: %s has %d units in stock, %v to ship", delivery.DeliveryNumber, p.name, len(out[l.ID]), l.Quantity)
+		}
+	}
+	return out, nil
 }
 
 // maybeBillContracts invoices each maintenance contract on the first business
@@ -301,7 +382,7 @@ func (s *Seeder) maybeBillContracts(day time.Time) error {
 			TaxRate: strPtr(s.standardTax.id), ProductID: strPtr(s.contractProductID),
 		}}
 		totals := []lineItem{{quantity: 1, unitPriceCents: client.contract, taxPercent: s.standardTax.percent}}
-		if err := s.issueBusinessInvoice(day, client, lines, totals, "", false); err != nil {
+		if err := s.issueBusinessInvoice(day, client, lines, totals, "", false, 0); err != nil {
 			return err
 		}
 	}
@@ -311,13 +392,21 @@ func (s *Seeder) maybeBillContracts(day time.Time) error {
 // issueBusinessInvoice creates, sends and schedules the payment of one
 // business invoice. allowDiscount lets an appliance invoice carry a remise;
 // a contract invoice is at its agreed price.
-func (s *Seeder) issueBusinessInvoice(day time.Time, client businessClientRef, lines []db.CreateInvoiceLineItemRequest, totals []lineItem, note string, allowDiscount bool) error {
+func (s *Seeder) issueBusinessInvoice(day time.Time, client businessClientRef, lines []db.CreateInvoiceLineItemRequest, totals []lineItem, note string, allowDiscount bool, rate float64) error {
 	var discount int64
 	if allowDiscount && s.rng.Chance(0.5) {
 		gross, _, _ := computeTotals(totals)
 		discount = gross * int64(s.rng.IntRange(3, 8)) / 100
 	}
-	subTotal, taxTotal, total := computeTotalsWithDiscount(totals, discount, fiscalStampCents)
+	// An export carries no fiscal stamp, and is in the client's currency at
+	// the order's rate.
+	stamp := int64(fiscalStampCents)
+	currency := s.cfg.Currency
+	var exchangeRate *float64
+	if rate > 0 {
+		stamp, currency, exchangeRate = 0, client.currency, float64Ptr(rate)
+	}
+	subTotal, taxTotal, total := computeTotalsWithDiscount(totals, discount, stamp)
 	dueDate := midnightUTC(day.AddDate(0, 0, client.termsDays))
 	req := db.CreateInvoiceRequest{
 		OrganizationID:    s.orgID,
@@ -326,21 +415,22 @@ func (s *Seeder) issueBusinessInvoice(day time.Time, client businessClientRef, l
 		ClientID:          client.id,
 		Date:              midnightUTC(day),
 		DueDate:           &dueDate,
-		Currency:          s.cfg.Currency,
+		Currency:          currency,
+		ExchangeRate:      exchangeRate,
 		Total:             total,
 		TaxTotal:          taxTotal,
 		SubTotal:          subTotal,
 		LineItems:         lines,
 		PaymentTerms:      strPtr(fmt.Sprintf("Paiement à %d jours", client.termsDays)),
 		CustomerNotes:     nonEmptyStrPtr(note),
-		FiscalStampAmount: fiscalStampCents,
+		FiscalStampAmount: stamp,
 		DiscountAmount:    discount,
 	}
 	// The withholding (retenue à la source) is informational on the invoice
 	// (db/invoice.go): the client keeps it back and hands over a tax
 	// certificate for it, and the payment recorded settles the whole total.
 	if client.withholding > 0 {
-		withheld := int64(math.Round(float64(total-fiscalStampCents) * client.withholding / 100))
+		withheld := int64(math.Round(float64(total-stamp) * client.withholding / 100))
 		req.WithholdingTaxRate = float64Ptr(client.withholding)
 		req.WithholdingTaxAmount = int64Ptr(withheld)
 	}
@@ -366,12 +456,19 @@ func (s *Seeder) issueBusinessInvoice(day time.Time, client businessClientRef, l
 			return fmt.Errorf("cancel invoice %s: %w", inv.Number, err)
 		}
 		s.stats.CancelledInvoices++
-		return s.issueBusinessInvoice(day, client, lines, totals, note, allowDiscount)
+		return s.issueBusinessInvoice(day, client, lines, totals, note, allowDiscount, rate)
 	}
 
 	terms := client.termsDays
 	pay := func(at time.Time, amount int64) {
-		s.schedulePayment(at, inv.ID, amount, client.id, "invoice", s.cfg.Currency, nil, s.cashAccountID)
+		// An export client's transfer arrives at that day's rate, a little
+		// off the invoice's, so the bank posts a realized exchange gain or
+		// loss (db/payment.go).
+		var payRate *float64
+		if rate > 0 {
+			payRate = float64Ptr(math.Round(rate*s.rng.Float64Range(0.98, 1.02)*10000) / 10000)
+		}
+		s.schedulePayment(at, inv.ID, amount, client.id, "invoice", currency, payRate, s.cashAccountID)
 	}
 	switch {
 	case s.rng.Chance(0.72): // around the due date

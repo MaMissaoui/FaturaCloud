@@ -195,6 +195,10 @@ type productCatalogEntry struct {
 	// "Chauffe-eau", ...) — what retail_season.go weights by month and
 	// setupRetailFamilies groups into product families. "" for moto.
 	kind string
+	// serialized marks a product tracked unit by unit (products.serialized):
+	// every receipt captures its serial numbers and every delivery names the
+	// units it ships. The Cash Book refuses one, so the counter never sells it.
+	serialized bool
 }
 
 var serviceCatalog = []productCatalogEntry{

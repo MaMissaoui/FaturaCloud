@@ -205,7 +205,15 @@ func (s *Seeder) receivePurchaseOrder(day time.Time, po db.PurchaseOrder, vendor
 		return fmt.Errorf("create receipt for PO %s: %w", po.OrderNumber, err)
 	}
 	s.stats.InboundDeliveries++
-	if err := s.c.Patch("/api/inbound-deliveries/"+delivery.ID+"/status", map[string]string{"status": "received"}, nil); err != nil {
+	serials, err := s.receiptSerialNumbers(delivery)
+	if err != nil {
+		return err
+	}
+	body := map[string]any{"status": "received"}
+	if len(serials) > 0 {
+		body["serialNumbers"] = serials
+	}
+	if err := s.c.Patch("/api/inbound-deliveries/"+delivery.ID+"/status", body, nil); err != nil {
 		return fmt.Errorf("mark receipt %s received: %w", delivery.DeliveryNumber, err)
 	}
 	if err := s.c.Patch("/api/purchase-orders/"+po.ID+"/status", map[string]string{"status": "received"}, nil); err != nil {
@@ -227,6 +235,35 @@ func (s *Seeder) receivePurchaseOrder(day time.Time, po db.PurchaseOrder, vendor
 	}
 	s.sched.Schedule(billDay, func() error { return s.billPurchaseOrder(billDay, po, vendor, received) })
 	return nil
+}
+
+// receiptSerialNumbers names the units of every serialized line of a receipt
+// (keyed by the receipt's line id, as PATCH .../status takes them), numbered
+// from a per-product counter so a serial is never reused. Nil when the
+// receipt has no serialized line.
+func (s *Seeder) receiptSerialNumbers(delivery db.InboundDelivery) (map[string][]string, error) {
+	var lines []db.InboundDeliveryLineItem
+	if err := s.c.Get("/api/inbound-deliveries/"+delivery.ID+"/line-items", &lines); err != nil {
+		return nil, fmt.Errorf("read back receipt %s line items: %w", delivery.DeliveryNumber, err)
+	}
+	var out map[string][]string
+	for _, l := range lines {
+		if l.ProductID == nil {
+			continue
+		}
+		p, ok := s.productByID(*l.ProductID)
+		if !ok || !p.serialized {
+			continue
+		}
+		if out == nil {
+			out = map[string][]string{}
+		}
+		for i := 0; i < int(l.Quantity); i++ {
+			s.serialCounter[p.id]++
+			out[l.ID] = append(out[l.ID], fmt.Sprintf("%s-%05d", p.sku, s.serialCounter[p.id]))
+		}
+	}
+	return out, nil
 }
 
 // billPurchaseOrder creates the vendor's incoming invoice for what was

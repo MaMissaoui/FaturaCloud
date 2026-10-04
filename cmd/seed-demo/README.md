@@ -237,8 +237,16 @@ generator unconditionally.
   customers pay off at the counter over the next months.
 - **Also covered:** product families for every appliance; a yearly
   container of air conditioners and fans from two Chinese suppliers in USD,
-  on one import with freight and customs; and on the last day one damaged
-  appliance written off and one count difference.
+  on one import with freight and customs; two **serialized** professional
+  air-conditioning units, sold to business customers only (serials are
+  captured on every receipt and picked from stock on every delivery; the
+  Cash Book refuses a serialized product, so the counter never offers
+  them); an **export customer** in Libya billed in EUR (zero-rated, no
+  fiscal stamp), paying at a rate a little off the invoice's, so the bank
+  posts realized exchange gains and losses; and on the last day one damaged
+  appliance written off and the small-appliance shelf counted through the
+  Inventory screen's Excel export and upload (two differences, the rest
+  unchanged).
 - **Customers grow organically, not via a batch pre-create.** A target
   count is picked once (`400-450`, `seeder.go`'s `targetClientCount`); each
   sale either creates a new walk-in customer inline (`CreateCashSaleRequest.NewClient`)

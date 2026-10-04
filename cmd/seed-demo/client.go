@@ -143,6 +143,23 @@ func (c *Client) send(req *http.Request, out any) error {
 }
 
 func (c *Client) Get(path string, out any) error { return c.do(http.MethodGet, path, nil, out) }
+
+// GetBytes fetches a file (an Excel export) rather than JSON.
+func (c *Client) GetBytes(path string) ([]byte, error) {
+	resp, err := c.http.Get(c.baseURL + path)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", path, err)
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: read response: %w", path, err)
+	}
+	if resp.StatusCode >= 300 {
+		return nil, &APIError{Method: http.MethodGet, Path: path, Status: resp.StatusCode, Message: strings.TrimSpace(string(data))}
+	}
+	return data, nil
+}
 func (c *Client) Post(path string, body, out any) error {
 	return c.do(http.MethodPost, path, body, out)
 }

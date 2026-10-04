@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ var retailFamilies = []struct {
 }{
 	{"Froid", []string{"Réfrigérateur", "Congélateur"}},
 	{"Lavage", []string{"Machine à laver", "Lave-vaisselle"}},
-	{"Climatisation et ventilation", []string{"Climatiseur", "Ventilateur"}},
+	{"Climatisation et ventilation", []string{"Climatiseur", "Ventilateur", "Climatisation professionnelle"}},
 	{"Image et son", []string{"Téléviseur"}},
 	{"Cuisson", []string{"Four à micro-ondes", "Cuisinière gaz/électrique"}},
 	{"Eau chaude et fontaines", []string{"Chauffe-eau", "Fontaine à eau"}},
@@ -89,7 +90,7 @@ func (s *Seeder) importOpeningLoans(cutover time.Time) error {
 		}
 		var items []productRef
 		for _, p := range s.stockProducts() {
-			if p.priceCents >= bigTicketThresholdCents {
+			if p.priceCents >= bigTicketThresholdCents && !p.serialized {
 				items = append(items, p)
 			}
 		}
@@ -299,21 +300,15 @@ func (s *Seeder) maybeStartSeasonalImport(day time.Time) error {
 
 // --- the last day ------------------------------------------------------------
 
-// recordStockWriteOffs records, on the run's last day, the two stock
-// corrections a shop makes by hand: an appliance damaged in handling, taken
-// out of stock, and a small-appliance count that came up one short. Manual
-// stock movements are dated when they're recorded, so they belong on the
-// last day (today), not back in the simulated past.
+// recordStockWriteOffs records, on the run's last day, an appliance damaged
+// in handling, taken out of stock by hand. Manual stock movements are dated
+// when they're recorded, so they belong on the last day (today), not back in
+// the simulated past.
 func (s *Seeder) recordStockWriteOffs() error {
-	var big, small []productRef
+	var big []productRef
 	for _, p := range s.stockProducts() {
-		if s.onHand(p.id) < 2 {
-			continue
-		}
-		if p.priceCents >= bigTicketThresholdCents {
+		if s.onHand(p.id) >= 2 && !p.serialized && p.priceCents >= bigTicketThresholdCents {
 			big = append(big, p)
-		} else {
-			small = append(small, p)
 		}
 	}
 	moves := []struct {
@@ -321,7 +316,6 @@ func (s *Seeder) recordStockWriteOffs() error {
 		kind, note, ref string
 	}{
 		{big, "out", "Casse — appareil endommagé lors de la manutention", "CASSE-01"},
-		{small, "count_subtraction", "Écart d'inventaire — une unité manquante au comptage", "INV-ECART"},
 	}
 	for _, m := range moves {
 		if len(m.pool) == 0 {
@@ -336,5 +330,92 @@ func (s *Seeder) recordStockWriteOffs() error {
 		}
 		s.adjustOnHand(p.id, -1)
 	}
+	return nil
+}
+
+// recordStockCount counts the small-appliance shelf on the run's last day
+// through the Inventory screen's Excel round trip: export the count sheet
+// (GET .../stock-movements/export), fill Counted Quantity for the "Petit
+// électroménager" products — every one as the sheet says except one found
+// short and one found over — and upload it (POST .../stock-movements/import),
+// which posts the two differences as count movements and reports the rest
+// unchanged. Rows outside that family are left blank, which the import skips.
+func (s *Seeder) recordStockCount() error {
+	content, err := s.c.GetBytes("/api/organizations/" + s.orgID + "/stock-movements/export")
+	if err != nil {
+		return fmt.Errorf("export stock count sheet: %w", err)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(content))
+	if err != nil {
+		return fmt.Errorf("open stock count sheet: %w", err)
+	}
+	defer f.Close() //nolint:errcheck
+	sheet := f.GetSheetName(0)
+	rows, err := f.GetRows(sheet)
+	if err != nil {
+		return fmt.Errorf("read stock count sheet: %w", err)
+	}
+	family := s.familyByKind["Mixeur"]
+	type countRow struct {
+		row     int
+		id      string
+		current float64
+	}
+	var counted []countRow
+	for i, r := range rows {
+		if i == 0 || len(r) < 4 {
+			continue
+		}
+		p, ok := s.productByID(r[0])
+		if !ok || s.familyByKind[p.kind] != family {
+			continue
+		}
+		current, err := strconv.ParseFloat(strings.ReplaceAll(r[3], ",", "."), 64)
+		if err != nil || current < 1 {
+			continue
+		}
+		counted = append(counted, countRow{row: i + 1, id: p.id, current: current})
+	}
+	if len(counted) < 2 {
+		return nil
+	}
+	short, over := s.rng.IntRange(0, len(counted)-1), -1
+	for over < 0 || over == short {
+		over = s.rng.IntRange(0, len(counted)-1)
+	}
+	for i, c := range counted {
+		count := c.current
+		note := ""
+		switch i {
+		case short:
+			count--
+			note = "Une unité manquante au comptage"
+		case over:
+			count++
+			note = "Une unité retrouvée en réserve"
+		}
+		if err := f.SetCellValue(sheet, fmt.Sprintf("E%d", c.row), count); err != nil {
+			return fmt.Errorf("fill stock count: %w", err)
+		}
+		if note != "" {
+			if err := f.SetCellValue(sheet, fmt.Sprintf("G%d", c.row), note); err != nil {
+				return fmt.Errorf("fill stock count: %w", err)
+			}
+		}
+		// The sheet's own quantity is the server's: keep the mirror on it.
+		s.adjustOnHand(c.id, count-s.onHand(c.id))
+	}
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return fmt.Errorf("write stock count sheet: %w", err)
+	}
+	var result db.MassDataImportResult
+	if err := s.c.PostFile("/api/organizations/"+s.orgID+"/stock-movements/import", nil, "comptage-petit-electromenager.xlsx", buf.Bytes(), &result); err != nil {
+		return fmt.Errorf("upload stock count: %w", err)
+	}
+	if result.Failed > 0 {
+		return fmt.Errorf("stock count upload: %d rows failed: %+v", result.Failed, result.Rows)
+	}
+	s.log.Printf("seed-demo: stock count: %d counted, %d adjusted, %d unchanged", len(counted), result.Updated+result.Created, result.Unchanged)
 	return nil
 }
