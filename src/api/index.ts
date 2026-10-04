@@ -1237,6 +1237,55 @@ export const DeleteVendor = (id: string) =>
 export const GetVendorDocumentCount = (id: string) =>
   get<{ count: number }>(`/vendors/${id}/document-count`).then((r) => r.count);
 
+// Vendor summaries — the purchases mirror of the client summaries: what the
+// organization owes each vendor (the payables-aging query) and the vendor
+// detail panel. Off (409) when organizations.masterDataSummaries is false;
+// limited to the vendor-balances section (403 for other roles).
+export interface VendorSummaryRow {
+  vendorId: string;
+  owed: number;
+  // The part of owed that is past its due date.
+  overdue: number;
+  lastPurchase: number | null;
+  billCount: number;
+}
+
+export interface VendorSummaryList {
+  totalOwed: number;
+  owingCount: number;
+  overdueCount: number;
+  vendors: VendorSummaryRow[];
+}
+
+export interface VendorLastPayment {
+  date: number;
+  amount: number;
+  method: string;
+}
+
+export interface VendorSummary {
+  vendorId: string;
+  owed: number;
+  current: number;
+  days1To30: number;
+  days31To60: number;
+  days61To90: number;
+  days90Plus: number;
+  openBills: OutstandingBillSummary[];
+  billCount: number;
+  firstPurchase: number | null;
+  lastPurchase: number | null;
+  billedTotal: number;
+  paidTotal: number;
+  paymentCount: number;
+  lastPayment: VendorLastPayment | null;
+}
+
+export const GetVendorSummaries = (organizationId: string) =>
+  get<VendorSummaryList>(`/organizations/${organizationId}/vendors/summary`);
+export const GetVendorSummary = (vendorId: string) =>
+  get<VendorSummary>(`/vendors/${vendorId}/summary`);
+
 // ---- Imports (F114 — consolidated China shipments purchase orders link to) ----
 
 export const GetImports = (organizationId: string) =>
@@ -1515,6 +1564,7 @@ export const GetReceivableAging = (organizationId: string) =>
 export interface OutstandingBillSummary {
   id: string;
   number: string;
+  vendorId: string;
   vendorName: string;
   dueDate: number | null;
   // See OutstandingInvoiceSummary above for what currency/foreignTotal carry.
@@ -1522,6 +1572,8 @@ export interface OutstandingBillSummary {
   foreignTotal: number;
   total: number;
   daysOverdue: number;
+  // The OutstandingBillSummary field this bill is counted in.
+  bucket: OutstandingBucket;
 }
 
 export interface PayableAgingSummary {

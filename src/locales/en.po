@@ -62,6 +62,16 @@ msgstr "{0, plural, one {# invoice} other {# invoices}}"
 msgid "{0, plural, one {# stock-tracked product, {units} units} other {# stock-tracked products, {units} units}}"
 msgstr "{0, plural, one {# stock-tracked product, {units} units} other {# stock-tracked products, {units} units}}"
 
+#. placeholder {0}: summary.openBills.length
+#: src/components/vendors/vendor-summary-panel.tsx:178
+msgid "{0, plural, one {on # incoming invoice, overdue} other {on # incoming invoices, all overdue}}"
+msgstr "{0, plural, one {on # incoming invoice, overdue} other {on # incoming invoices, all overdue}}"
+
+#. placeholder {0}: summary.openBills.length
+#: src/components/vendors/vendor-summary-panel.tsx:184
+msgid "{0, plural, one {on # incoming invoice} other {on # incoming invoices}}"
+msgstr "{0, plural, one {on # incoming invoice} other {on # incoming invoices}}"
+
 #. placeholder {0}: summary.openInvoices.length
 #: src/components/clients/client-summary-panel.tsx:173
 msgid "{0, plural, one {on # invoice, overdue} other {on # invoices, all overdue}}"
@@ -101,10 +111,17 @@ msgstr "{0} created, {1} updated"
 #~ msgid "{0} created, {1} updated, {2} failed."
 #~ msgstr "{0} created, {1} updated, {2} failed."
 
+#. placeholder {0}: bill.daysOverdue
 #. placeholder {0}: inv.daysOverdue
 #: src/components/clients/client-summary-panel.tsx:259
+#: src/components/vendors/vendor-summary-panel.tsx:266
 msgid "{0} d"
 msgstr "{0} d"
+
+#. placeholder {0}: vendor.paymentTermsDays
+#: src/components/vendors/vendor-summary-panel.tsx:94
+msgid "{0} days"
+msgstr "{0} days"
 
 #. placeholder {0}: siblingDeliveries.length
 #. placeholder {1}: (linkedOrder as any)?.orderNumber
@@ -116,6 +133,14 @@ msgstr "{0} deliveries exist for order {1}:"
 #: src/components/cash-book/use-cash-book.ts:757
 msgid "{0} has no unit cost, so this sale will be refused — give the product a unit cost, or switch the organization's inventory valuation to Quantities only."
 msgstr "{0} has no unit cost, so this sale will be refused — give the product a unit cost, or switch the organization's inventory valuation to Quantities only."
+
+#. placeholder {0}: summary.billCount
+#. placeholder {1}: money(summary.billedTotal)
+#. placeholder {2}: money(summary.paidTotal)
+#. placeholder {3}: summary.paymentCount
+#: src/components/vendors/vendor-summary-panel.tsx:300
+msgid "{0} incoming invoices for {1}, of which {2} paid in {3} payments."
+msgstr "{0} incoming invoices for {1}, of which {2} paid in {3} payments."
 
 #. placeholder {0}: fields.length
 #: src/components/line-items/table.tsx:303
@@ -155,6 +180,11 @@ msgstr "{0} problem(s) to fix before importing — nothing was written."
 #: src/components/clients/client-summary-panel.tsx:293
 msgid "{0} purchases for {1}, of which {2} paid in {3} payments."
 msgstr "{0} purchases for {1}, of which {2} paid in {3} payments."
+
+#. placeholder {0}: vendors.length
+#: src/routes/vendors.tsx:401
+msgid "{0} vendors"
+msgstr "{0} vendors"
 
 #. placeholder {0}: summarize(result)
 #. placeholder {1}: result.failed
@@ -345,6 +375,10 @@ msgstr "Accounts receivable"
 msgid "across {owingCount} clients"
 msgstr "across {owingCount} clients"
 
+#: src/routes/vendors.tsx:418
+msgid "across {owingCount} vendors"
+msgstr "across {owingCount} vendors"
+
 #: src/components/accounting/account-form.tsx:198
 #: src/routes/accounting/chart-of-accounts.tsx:182
 #: src/routes/accounting/chart-of-accounts.tsx:190
@@ -381,8 +415,9 @@ msgstr "Add line item"
 #: src/components/clients/form.tsx:343
 #: src/components/organizations/organization-edit-drawer.tsx:393
 #: src/components/vendors/form.tsx:242
+#: src/components/vendors/vendor-summary-panel.tsx:80
 #: src/routes/clients.tsx:215
-#: src/routes/vendors.tsx:132
+#: src/routes/vendors.tsx:209
 msgid "Address"
 msgstr "Address"
 
@@ -406,6 +441,7 @@ msgstr "Admin"
 
 #: src/routes/clients.tsx:448
 #: src/routes/settings/loan-import.tsx:320
+#: src/routes/vendors.tsx:425
 msgid "All"
 msgstr "All"
 
@@ -1044,6 +1080,7 @@ msgstr "CIN"
 #: src/components/vendors/form.tsx:264
 #: src/components/vendors/form.tsx:265
 #: src/routes/clients.tsx:336
+#: src/routes/vendors.tsx:314
 msgid "City"
 msgstr "City"
 
@@ -1161,6 +1198,7 @@ msgstr "Closing balance"
 #: src/components/organizations/organizations-table.tsx:73
 #: src/components/vendors/form.tsx:176
 #: src/components/vendors/form.tsx:177
+#: src/components/vendors/vendor-summary-panel.tsx:81
 #: src/routes/accounting/chart-of-accounts.tsx:126
 #: src/routes/accounting/journals.tsx:90
 #: src/routes/accounting/reports/balance-sheet.tsx:43
@@ -1168,7 +1206,7 @@ msgstr "Closing balance"
 #: src/routes/accounting/trial-balance.tsx:161
 #: src/routes/clients.tsx:208
 #: src/routes/settings/countries.tsx:96
-#: src/routes/vendors.tsx:125
+#: src/routes/vendors.tsx:202
 msgid "Code"
 msgstr "Code"
 
@@ -1482,7 +1520,7 @@ msgstr "Create your first tax rate"
 msgid "Create your first unit of measure"
 msgstr "Create your first unit of measure"
 
-#: src/routes/vendors.tsx:90
+#: src/routes/vendors.tsx:142
 msgid "Create your first vendor"
 msgstr "Create your first vendor"
 
@@ -1504,6 +1542,7 @@ msgstr "Credited for the freight/customs allocated to a receipt whose purchase o
 #: src/components/currency/currency-fields.tsx:48
 #: src/components/organizations/organization-edit-drawer.tsx:187
 #: src/components/organizations/organizations-table.tsx:100
+#: src/components/vendors/vendor-summary-panel.tsx:97
 #: src/routes/organizations/new.tsx:154
 msgid "Currency"
 msgstr "Currency"
@@ -1689,6 +1728,7 @@ msgid "Day of month ({0})"
 msgstr "Day of month ({0})"
 
 #: src/components/clients/client-summary-panel.tsx:225
+#: src/components/vendors/vendor-summary-panel.tsx:230
 msgid "Days late"
 msgstr "Days late"
 
@@ -2096,6 +2136,7 @@ msgid "Drop the filled template here, or click to choose it"
 msgstr "Drop the filled template here, or click to choose it"
 
 #: src/components/clients/client-summary-panel.tsx:247
+#: src/components/vendors/vendor-summary-panel.tsx:254
 msgid "due {due}"
 msgstr "due {due}"
 
@@ -2133,6 +2174,7 @@ msgstr "E-invoicing"
 
 #: src/components/clients/client-summary-panel.tsx:79
 #: src/components/organizations/organization-edit-drawer.tsx:210
+#: src/components/vendors/vendor-summary-panel.tsx:82
 msgid "E-mail"
 msgstr "E-mail"
 
@@ -2215,6 +2257,7 @@ msgid "e.g. Washing machine, Refrigerator"
 msgstr "e.g. Washing machine, Refrigerator"
 
 #: src/components/clients/client-summary-panel.tsx:126
+#: src/components/vendors/vendor-summary-panel.tsx:131
 #: src/routes/invoices/index.tsx:129
 msgid "Edit"
 msgstr "Edit"
@@ -2282,7 +2325,7 @@ msgid "Email of an existing user"
 msgstr "Email of an existing user"
 
 #: src/routes/clients.tsx:223
-#: src/routes/vendors.tsx:140
+#: src/routes/vendors.tsx:217
 msgid "Emails"
 msgstr "Emails"
 
@@ -2845,6 +2888,10 @@ msgstr "Filter clients"
 msgid "Filter loans"
 msgstr "Filter loans"
 
+#: src/routes/vendors.tsx:421
+msgid "Filter vendors"
+msgstr "Filter vendors"
+
 #: src/routes/inventory.tsx:472
 msgid "Filtered by product type, set above"
 msgstr "Filtered by product type, set above"
@@ -3331,6 +3378,7 @@ msgstr "Inventory Valuation"
 #: src/components/invoices/pdf-tunisia.tsx:167
 #: src/components/invoices/pdf.tsx:214
 #: src/components/payments/payment-products-cell.tsx:63
+#: src/components/vendors/vendor-summary-panel.tsx:227
 #: src/layouts/base.tsx:285
 #: src/routes/accounting/reports/ar-aging.tsx:137
 #: src/routes/cash-book.tsx:617
@@ -3592,10 +3640,12 @@ msgstr "Last payment on {0}, {1} days ago."
 #. placeholder {1}: paymentMethodLabel(summary.lastPayment.method)
 #. placeholder {2}: formatDate(summary.lastPayment.date)
 #: src/components/clients/client-summary-panel.tsx:297
+#: src/components/vendors/vendor-summary-panel.tsx:304
 msgid "Last payment: {0} ({1}) on {2}."
 msgstr "Last payment: {0} ({1}) on {2}."
 
 #: src/routes/clients.tsx:364
+#: src/routes/vendors.tsx:341
 msgid "Last purchase"
 msgstr "Last purchase"
 
@@ -3906,7 +3956,7 @@ msgstr "Movements for {0}"
 #: src/routes/settings/units-of-measure.tsx:101
 #: src/routes/settings/users.tsx:200
 #: src/routes/settings/users.tsx:318
-#: src/routes/vendors.tsx:111
+#: src/routes/vendors.tsx:188
 msgid "Name"
 msgstr "Name"
 
@@ -3918,6 +3968,10 @@ msgstr "Name is required"
 #: src/components/cash-book/loan-register.tsx:478
 msgid "Name, mobile or identity number"
 msgstr "Name, mobile or identity number"
+
+#: src/routes/vendors.tsx:389
+msgid "Name, phone or tax number"
+msgstr "Name, phone or tax number"
 
 #: src/routes/clients.tsx:412
 msgid "Name, phone, ID or tax number"
@@ -3994,6 +4048,7 @@ msgstr "New goods receipt"
 msgid "New import"
 msgstr "New import"
 
+#: src/components/vendors/vendor-summary-panel.tsx:119
 #: src/routes/incoming-invoices.tsx:117
 #: src/routes/incoming-invoices/details.tsx:370
 #: src/routes/purchase-orders/details.tsx:826
@@ -4068,6 +4123,7 @@ msgstr "New production order"
 
 #: src/components/imports/form.tsx:393
 #: src/components/imports/form.tsx:398
+#: src/components/vendors/vendor-summary-panel.tsx:126
 #: src/routes/purchase-orders.tsx:105
 #: src/routes/purchase-orders/details.tsx:408
 msgid "New purchase order"
@@ -4102,7 +4158,7 @@ msgid "New user"
 msgstr "New user"
 
 #: src/components/vendors/form.tsx:119
-#: src/routes/vendors.tsx:70
+#: src/routes/vendors.tsx:122
 msgid "New vendor"
 msgstr "New vendor"
 
@@ -4291,6 +4347,10 @@ msgstr "No matching customers"
 msgid "No movements on this date"
 msgstr "No movements on this date"
 
+#: src/components/vendors/vendor-summary-panel.tsx:250
+msgid "No number"
+msgstr "No number"
+
 #: src/routes/accounting/journal-entries/details.tsx:167
 msgid "No open fiscal year"
 msgstr "No open fiscal year"
@@ -4440,11 +4500,11 @@ msgstr "No unlinked draft or confirmed purchase orders"
 msgid "No vendor"
 msgstr "No vendor"
 
-#: src/routes/vendors.tsx:85
+#: src/routes/vendors.tsx:137
 msgid "No vendors match your search"
 msgstr "No vendors match your search"
 
-#: src/routes/vendors.tsx:87
+#: src/routes/vendors.tsx:139
 msgid "No vendors yet"
 msgstr "No vendors yet"
 
@@ -4476,6 +4536,7 @@ msgid "Not balanced"
 msgstr "Not balanced"
 
 #: src/components/clients/client-summary-panel.tsx:259
+#: src/components/vendors/vendor-summary-panel.tsx:266
 msgid "Not due"
 msgstr "Not due"
 
@@ -4492,7 +4553,9 @@ msgid "Not linked to a purchase order line."
 msgstr "Not linked to a purchase order line."
 
 #: src/components/clients/client-summary-panel.tsx:318
+#: src/components/vendors/vendor-summary-panel.tsx:327
 #: src/routes/clients.tsx:120
+#: src/routes/vendors.tsx:114
 msgid "Not set"
 msgstr "Not set"
 
@@ -4527,6 +4590,7 @@ msgid "Nothing matches the current selection."
 msgstr "Nothing matches the current selection."
 
 #: src/components/clients/client-summary-panel.tsx:202
+#: src/components/vendors/vendor-summary-panel.tsx:207
 msgid "Nothing owed"
 msgstr "Nothing owed"
 
@@ -4881,6 +4945,7 @@ msgstr "Over-allocated"
 
 #: src/routes/invoices/index.tsx:287
 #: src/routes/invoices/index.tsx:291
+#: src/routes/vendors.tsx:427
 msgid "Overdue"
 msgstr "Overdue"
 
@@ -5028,6 +5093,7 @@ msgid "payment term(s)"
 msgstr "payment term(s)"
 
 #: src/components/invoices/pdf-tunisia.tsx:235
+#: src/components/vendors/vendor-summary-panel.tsx:93
 #: src/layouts/base.tsx:303
 #: src/routes/invoices/details.tsx:590
 #: src/routes/settings/payment-terms.tsx:43
@@ -5080,10 +5146,12 @@ msgstr "Personal ID/CIN card number — used to look up this client in Cash Book
 #: src/components/organizations/organizations-table.tsx:86
 #: src/components/vendors/form.tsx:205
 #: src/components/vendors/form.tsx:206
+#: src/components/vendors/vendor-summary-panel.tsx:71
 #: src/routes/clients.tsx:239
 #: src/routes/clients.tsx:347
 #: src/routes/settings/loan-import.tsx:384
-#: src/routes/vendors.tsx:156
+#: src/routes/vendors.tsx:233
+#: src/routes/vendors.tsx:324
 msgid "Phone"
 msgstr "Phone"
 
@@ -5718,6 +5786,7 @@ msgid "Register file"
 msgstr "Register file"
 
 #: src/components/organizations/organization-edit-drawer.tsx:227
+#: src/components/vendors/vendor-summary-panel.tsx:76
 msgid "Registration number"
 msgstr "Registration number"
 
@@ -5869,6 +5938,7 @@ msgstr "Retention (days)"
 
 #: src/components/clients/client-summary-panel.tsx:137
 #: src/components/products/bom-editor-drawer.tsx:375
+#: src/components/vendors/vendor-summary-panel.tsx:142
 #: src/routes/accounting/reports/ap-aging.tsx:51
 #: src/routes/accounting/reports/ar-aging.tsx:51
 #: src/routes/accounting/reports/balance-sheet.tsx:89
@@ -6094,7 +6164,7 @@ msgstr "Schedule saved"
 #: src/routes/settings/tax-rates.tsx:52
 #: src/routes/settings/units-of-measure.tsx:42
 #: src/routes/settings/users.tsx:163
-#: src/routes/vendors.tsx:57
+#: src/routes/vendors.tsx:169
 msgid "Search"
 msgstr "Search"
 
@@ -6176,6 +6246,10 @@ msgstr "Select a product"
 #: src/components/products/form.tsx:574
 msgid "Select a unit of measure"
 msgstr "Select a unit of measure"
+
+#: src/routes/vendors.tsx:445
+msgid "Select a vendor to see what you owe them and your recent purchases."
+msgstr "Select a vendor to see what you owe them and your recent purchases."
 
 #: src/routes/accounting/journal-entries/details.tsx:262
 msgid "Select an account"
@@ -6487,6 +6561,7 @@ msgstr "Stay on this page"
 
 #: src/components/clients/client-summary-panel.tsx:228
 #: src/components/dashboard/owed-panel.tsx:246
+#: src/components/vendors/vendor-summary-panel.tsx:233
 msgid "Still owed"
 msgstr "Still owed"
 
@@ -6618,6 +6693,7 @@ msgstr "Tax for production, services and importation in Ceuta and Melilla"
 #: src/components/clients/form.tsx:403
 #: src/components/clients/form.tsx:404
 #: src/components/organizations/organization-edit-drawer.tsx:452
+#: src/components/vendors/vendor-summary-panel.tsx:74
 msgid "Tax number"
 msgstr "Tax number"
 
@@ -7146,6 +7222,10 @@ msgstr "Unlink purchase order"
 msgid "Unlink this purchase order from the shipment?"
 msgstr "Unlink this purchase order from the shipment?"
 
+#: src/components/vendors/vendor-summary-panel.tsx:215
+msgid "Unpaid incoming invoices"
+msgstr "Unpaid incoming invoices"
+
 #: src/components/clients/client-summary-panel.tsx:210
 msgid "Unpaid invoices"
 msgstr "Unpaid invoices"
@@ -7272,7 +7352,7 @@ msgid "VAT reverse charge"
 msgstr "VAT reverse charge"
 
 #: src/routes/clients.tsx:255
-#: src/routes/vendors.tsx:172
+#: src/routes/vendors.tsx:249
 msgid "VATIN"
 msgstr "VATIN"
 
@@ -7285,6 +7365,7 @@ msgstr "VATIN"
 #: src/routes/purchase-orders.tsx:155
 #: src/routes/purchase-orders/details.tsx:423
 #: src/routes/reporting/purchases-by-vendor.tsx:137
+#: src/routes/vendors.tsx:284
 msgid "Vendor"
 msgstr "Vendor"
 
@@ -7329,6 +7410,11 @@ msgstr "Vendor invoice number is required"
 msgid "Vendor is required"
 msgstr "Vendor is required"
 
+#. placeholder {0}: dayjs(summary.firstPurchase).format("MMMM YYYY")
+#: src/components/vendors/vendor-summary-panel.tsx:61
+msgid "vendor since {0}"
+msgstr "vendor since {0}"
+
 #: src/atoms/vendor.ts:99
 msgid "Vendor update failed"
 msgstr "Vendor update failed"
@@ -7342,7 +7428,8 @@ msgid "vendor(s)"
 msgstr "vendor(s)"
 
 #: src/layouts/base.tsx:652
-#: src/routes/vendors.tsx:56
+#: src/routes/vendors.tsx:168
+#: src/routes/vendors.tsx:387
 msgid "Vendors"
 msgstr "Vendors"
 
@@ -7398,12 +7485,21 @@ msgstr "Warnings ({0})"
 #: src/components/organizations/organization-edit-drawer.tsx:220
 #: src/components/vendors/form.tsx:210
 #: src/components/vendors/form.tsx:211
+#: src/components/vendors/vendor-summary-panel.tsx:84
 msgid "Website"
 msgstr "Website"
 
 #: src/utils/units.ts:23
 msgid "week"
 msgstr "week"
+
+#: src/components/vendors/vendor-summary-panel.tsx:139
+msgid "What you owe this vendor could not be loaded."
+msgstr "What you owe this vendor could not be loaded."
+
+#: src/routes/vendors.tsx:416
+msgid "What you owe your vendors"
+msgstr "What you owe your vendors"
 
 #: src/components/dashboard/owed-panel.tsx:81
 #: src/routes/clients.tsx:439
@@ -7499,6 +7595,15 @@ msgstr "You are not a member of any organization yet"
 #: src/hooks/useUnsavedChangesWarning.ts:72
 msgid "You have unsaved changes on this page. Leaving now will discard them."
 msgstr "You have unsaved changes on this page. Leaving now will discard them."
+
+#: src/components/vendors/vendor-summary-panel.tsx:153
+#: src/routes/vendors.tsx:352
+msgid "You owe"
+msgstr "You owe"
+
+#: src/routes/vendors.tsx:426
+msgid "You owe them"
+msgstr "You owe them"
 
 #: src/routes/settings/document-templates.tsx:169
 msgid "Your custom template will be permanently deleted."
