@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.63.0] - 2026-10-04
+
+### Added
+- Clients, Vendors, Products and Bill of Materials are redesigned around
+  what each record means for the business, with a list beside a summary
+  panel. A new organization setting, "Master data summaries" (on by
+  default), switches the summaries off and brings back the plain lists.
+  - Clients: what clients owe you (the Dashboard's figure), filters for
+    clients who owe money, businesses and private clients, a "Possible
+    duplicate" tag, and a panel with what the client owes by age, unpaid
+    invoices and buying history (#476).
+  - Vendors: what you owe your vendors (the payables aging total), filters
+    for vendors you owe and overdue bills, and a panel with unpaid incoming
+    invoices and purchase history (#477).
+  - Products: stock value at average cost, filters for out-of-stock, low
+    stock and services, a margin column, and a panel with prices with and
+    without tax, average cost, margin and the latest stock movements with
+    the document and client or vendor behind each (#478).
+  - Bill of Materials: each recipe's parts cost against its sale price and
+    how many units the stock on hand allows, the part that limits it, which
+    products sell below their parts cost or can't be built, and "Start
+    production" straight from a recipe (#479).
+
 ## [3.62.0] - 2026-10-04
 
 ### Added
