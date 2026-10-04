@@ -620,6 +620,9 @@ var crossOrgProof = []struct {
 	{name: "client summaries by org path", method: http.MethodGet, path: "/api/organizations/org-a/clients/summary"},
 	{name: "client summary by id", method: http.MethodGet, path: "/api/clients/org-a-client/summary"},
 
+	{name: "vendor summaries by org path", method: http.MethodGet, path: "/api/organizations/org-a/vendors/summary"},
+	{name: "vendor summary by id", method: http.MethodGet, path: "/api/vendors/org-a-vendor/summary"},
+
 	{name: "list vendors by org path", method: http.MethodGet, path: "/api/organizations/org-a/vendors"},
 	{name: "get vendor by id", method: http.MethodGet, path: "/api/vendors/org-a-vendor"},
 	{name: "delete vendor by id", method: http.MethodDelete, path: "/api/vendors/org-a-vendor"},

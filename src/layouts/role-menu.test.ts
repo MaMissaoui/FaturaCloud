@@ -268,6 +268,16 @@ describe("roleCanSeeSummaries", () => {
     expect(roleCanSeeSummaries("purchasing", "client-balances")).toBe(false);
     expect(roleCanSeeSummaries("", "client-balances")).toBe(false);
   });
+  it("shows vendor balances to the roles api/sections.go allows", () => {
+    for (const role of ["admin", "power_user", "general", "purchasing", "accounting"]) {
+      expect(roleCanSeeSummaries(role, "vendor-balances")).toBe(true);
+    }
+  });
+  it("hides vendor balances from sales, cashbook and an unresolved role", () => {
+    for (const role of ["sales", "cashbook", ""]) {
+      expect(roleCanSeeSummaries(role, "vendor-balances")).toBe(false);
+    }
+  });
 });
 
 describe("roleCanUseCashBook", () => {

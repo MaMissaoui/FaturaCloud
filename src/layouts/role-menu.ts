@@ -164,9 +164,11 @@ export const dashboardWidgetsForRole = (role: string) => {
 // The master-data summary sections, mirroring api/sections.go: which roles
 // may see each one beyond admin and power_user (always allowed). What a
 // client owes is sales content, so it follows the Dashboard's receivables
-// rule plus the Cash Book, whose users collect those debts.
-export const SUMMARY_SECTION_ROLES: Record<"client-balances", string[]> = {
+// rule plus the Cash Book, whose users collect those debts. What the
+// organization owes its vendors is purchasing content.
+export const SUMMARY_SECTION_ROLES: Record<"client-balances" | "vendor-balances", string[]> = {
   "client-balances": ["general", "sales", "accounting", "cashbook"],
+  "vendor-balances": ["general", "purchasing", "accounting"],
 };
 
 // roleCanSeeSummaries decides whether a role may see a summary section. An

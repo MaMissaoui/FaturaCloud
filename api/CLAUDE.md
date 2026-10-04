@@ -89,6 +89,9 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 **Client summaries (master-data summaries, migration 0100)**
 - `GET /api/organizations/{orgId}/clients/summary` and `GET /api/clients/{id}/summary` — what each client owes, last purchase, open invoices and payment history (`db/client_summary.go`). What a client owes is sales content, so both sit in the `client-balances` section (`general`/`sales`/`accounting`/`cashbook`) while the plain client routes stay membership-level; 409 when the organization's `masterDataSummaries` is off
 
+**Vendor summaries (master-data summaries, migration 0100)**
+- `GET /api/organizations/{orgId}/vendors/summary` and `GET /api/vendors/{id}/summary` — what each vendor is owed, open bills, last purchase and payment history (`db/vendor_summary.go`). What you owe your vendors is purchasing content, so both sit in the `vendor-balances` section (`general`/`purchasing`/`accounting`) while the plain vendor routes stay membership-level; 409 when `masterDataSummaries` is off
+
 **Products**
 - `GET /api/organizations/{orgId}/products/bom-summaries` — batch componentCount per finished product — see db/product_bom.go
 - `PUT /api/products/{id}` — body also takes unitOfMeasureId — when set, overwrites the legacy free-text unit field server-side with that unit of measure's name (db/product.go's resolveProductUnit), so every existing reader of unit keeps working unchanged
