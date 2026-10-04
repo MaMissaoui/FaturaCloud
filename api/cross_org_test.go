@@ -696,6 +696,8 @@ var crossOrgProof = []struct {
 	{name: "bom summaries by org path", method: http.MethodGet, path: "/api/organizations/org-a/products/bom-summaries"},
 	{name: "get product by id", method: http.MethodGet, path: "/api/products/org-a-product"},
 	{name: "product stock movements", method: http.MethodGet, path: "/api/products/org-a-product/stock-movements"},
+	{name: "product summary by id", method: http.MethodGet, path: "/api/products/org-a-product/summary"},
+	{name: "product summaries by org path", method: http.MethodGet, path: "/api/organizations/org-a/products/summary"},
 	{name: "product serial numbers", method: http.MethodGet, path: "/api/products/org-a-product/serial-numbers"},
 	{name: "get product bom", method: http.MethodGet, path: "/api/products/org-a-product/bom"},
 	{name: "replace product bom", method: http.MethodPut, path: "/api/products/org-a-product/bom", body: []byte(`{"lines":[]}`)},

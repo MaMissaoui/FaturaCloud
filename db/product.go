@@ -133,7 +133,13 @@ type ProductListOptions struct {
 	Category string
 	// FamilyID filters on products.familyId; the special value "none"
 	// matches products with no family. Empty means no filter.
-	FamilyID  string
+	FamilyID string
+	// Stock filters stock-tracked products by quantity: "out" is nothing (or
+	// less) left, "low" is LowStockThreshold (the Dashboard's low-stock rule,
+	// db/dashboard_panels.go) or less, out of stock included.
+	// Empty means no filter. With no sort field either one lists the lowest
+	// stock first.
+	Stock     string
 	Limit     int
 	Offset    int
 	SortField string
@@ -181,6 +187,13 @@ func (d *Database) GetProducts(organizationID string, opts ProductListOptions) (
 		where += " AND p.familyId = ?"
 		args = append(args, opts.FamilyID)
 	}
+	switch opts.Stock {
+	case "out":
+		where += " AND p.stockEnabled = 1 AND p.stockQuantity <= 0"
+	case "low":
+		where += " AND p.stockEnabled = 1 AND p.stockQuantity <= ?"
+		args = append(args, LowStockThreshold)
+	}
 
 	var total int
 	if err := d.DB.Get(&total, "SELECT COUNT(*) "+from+" "+where, args...); err != nil {
@@ -190,6 +203,9 @@ func (d *Database) GetProducts(organizationID string, opts ProductListOptions) (
 	sortCol, ok := productSortColumns[opts.SortField]
 	if !ok {
 		sortCol = "p.name"
+		if opts.Stock != "" {
+			sortCol = "p.stockQuantity"
+		}
 	}
 	direction := "ASC"
 	if opts.SortDesc {
