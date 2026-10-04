@@ -224,6 +224,9 @@ type Organization struct {
 	// marker only (the header and Organizations list tag it); nothing else
 	// reads it. cmd/seed-demo sets it on every organization it creates.
 	IsTest bool `db:"isTest" json:"isTest"`
+	// MasterDataSummaries enables the per-client financial summary on the
+	// Clients screen (migration 0100). When false the summary endpoints 409.
+	MasterDataSummaries bool `db:"masterDataSummaries" json:"masterDataSummaries"`
 	// HasLogo is computed on read (organizationColumns), not a column: it
 	// lets the frontend skip GET /logo for an organization with none, which
 	// otherwise answered 404 on every page load. Ignored on writes.
@@ -266,11 +269,12 @@ type CreateOrganizationRequest struct {
 
 	// DocumentLayout is accepted on create so a layout picked in the New
 	// Organization drawer isn't silently dropped; NULL means the default.
-	DocumentLayout     *string `json:"documentLayout"`
-	DocumentLanguage   *string `json:"documentLanguage"`
-	Timezone           *string `json:"timezone"`
-	InventoryValuation *string `json:"inventoryValuation"`
-	IsTest             *bool   `json:"isTest"`
+	DocumentLayout      *string `json:"documentLayout"`
+	DocumentLanguage    *string `json:"documentLanguage"`
+	Timezone            *string `json:"timezone"`
+	InventoryValuation  *string `json:"inventoryValuation"`
+	IsTest              *bool   `json:"isTest"`
+	MasterDataSummaries *bool   `json:"masterDataSummaries"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -336,6 +340,7 @@ type UpdateOrganizationRequest struct {
 	Timezone                  *string `json:"timezone"`
 	InventoryValuation        *string `json:"inventoryValuation"`
 	IsTest                    *bool   `json:"isTest"`
+	MasterDataSummaries       *bool   `json:"masterDataSummaries"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -360,7 +365,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultImportCostsPayableAccountId, defaultCashRegisterAccountId,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled,
-	       documentLanguage, timezone, inventoryValuation, isTest,
+	       documentLanguage, timezone, inventoryValuation, isTest, masterDataSummaries,
 	       COALESCE(length(logo), 0) > 0 AS hasLogo`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
@@ -474,8 +479,8 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code,
-			documentLayout, documentLanguage, timezone, inventoryValuation, isTest
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			documentLayout, documentLanguage, timezone, inventoryValuation, isTest, masterDataSummaries
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
@@ -483,6 +488,7 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		req.BIC, req.TaxNumber, req.Street, req.HouseNumber, req.PostalCode, req.City, req.CountryCode,
 		req.DocumentLayout, req.DocumentLanguage, req.Timezone, req.InventoryValuation,
 		req.IsTest != nil && *req.IsTest,
+		req.MasterDataSummaries == nil || *req.MasterDataSummaries,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
 	}
@@ -636,7 +642,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     documentLanguage          = COALESCE(?, documentLanguage),
 		     timezone                  = COALESCE(?, timezone),
 		     inventoryValuation        = COALESCE(?, inventoryValuation),
-		     isTest                    = COALESCE(?, isTest)` +
+		     isTest                    = COALESCE(?, isTest),
+		     masterDataSummaries       = COALESCE(?, masterDataSummaries)` +
 		accountSet.String() + `
 		 WHERE id = ?`
 
@@ -654,7 +661,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.DefaultFiscalStampAmount, updates.DocumentLayout,
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
 		updates.AmountInWordsEnabled, updates.DocumentLanguage, updates.Timezone,
-		updates.InventoryValuation, updates.IsTest,
+		updates.InventoryValuation, updates.IsTest, updates.MasterDataSummaries,
 	}
 	// accountSet's placeholders sit between the COALESCE block and WHERE,
 	// so its args do too.

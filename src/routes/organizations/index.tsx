@@ -179,6 +179,7 @@ export default function Organizations() {
       // Where the organization is being set up from is the best guess for
       // where it operates; it stays editable in Formatting.
       timezone: defaultTimezone(),
+      masterDataSummaries: true,
     });
     setActiveSections([]);
     setDrawerOpen(true);

@@ -617,6 +617,8 @@ var crossOrgProof = []struct {
 	{name: "update client by id", method: http.MethodPut, path: "/api/clients/org-a-client", body: []byte(`{"name":"hijacked"}`)},
 	{name: "delete client by id", method: http.MethodDelete, path: "/api/clients/org-a-client"},
 	{name: "client invoice count", method: http.MethodGet, path: "/api/clients/org-a-client/invoice-count"},
+	{name: "client summaries by org path", method: http.MethodGet, path: "/api/organizations/org-a/clients/summary"},
+	{name: "client summary by id", method: http.MethodGet, path: "/api/clients/org-a-client/summary"},
 
 	{name: "list vendors by org path", method: http.MethodGet, path: "/api/organizations/org-a/vendors"},
 	{name: "get vendor by id", method: http.MethodGet, path: "/api/vendors/org-a-vendor"},

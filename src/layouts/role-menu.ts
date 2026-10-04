@@ -160,3 +160,25 @@ export const dashboardWidgetsForRole = (role: string) => {
     till: sees("cash-book"),
   };
 };
+
+// The master-data summary sections, mirroring api/sections.go: which roles
+// may see each one beyond admin and power_user (always allowed). What a
+// client owes is sales content, so it follows the Dashboard's receivables
+// rule plus the Cash Book, whose users collect those debts.
+export const SUMMARY_SECTION_ROLES: Record<"client-balances", string[]> = {
+  "client-balances": ["general", "sales", "accounting", "cashbook"],
+};
+
+// roleCanSeeSummaries decides whether a role may see a summary section. An
+// unresolved role ("") is NOT allowed here, unlike the menu: the summaries
+// cost a request the server would refuse, so they wait for the real role.
+export const roleCanSeeSummaries = (
+  role: string,
+  section: keyof typeof SUMMARY_SECTION_ROLES,
+): boolean =>
+  role === "admin" || role === "power_user" || SUMMARY_SECTION_ROLES[section].includes(role);
+
+// roleCanUseCashBook mirrors the sidebar: the cashbook role's own menu and
+// every role whose allow-list has the Cash Book item.
+export const roleCanUseCashBook = (role: string): boolean =>
+  role !== "" && (role === "cashbook" || roleCanSeeMenuItem(role, "cash-book"));

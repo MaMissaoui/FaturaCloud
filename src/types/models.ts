@@ -306,6 +306,9 @@ export interface Organization {
   // marker only (src/components/organizations/test-org-tag.tsx); nothing
   // else depends on it. cmd/seed-demo sets it on what it creates.
   isTest?: boolean;
+  // masterDataSummaries enables the per-client financial summary on the
+  // Clients screen (migration 0100). When false the summary endpoints 409.
+  masterDataSummaries?: boolean;
   // The Cash Book screen's register balance/daily-movements report/cash
   // withdrawal feature — deliberately separate from defaultCashAccountId,
   // which every chart-of-accounts template wires to the Bank account, never

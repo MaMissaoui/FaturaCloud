@@ -49,6 +49,7 @@ const (
 	sectionReportCashbook   = "report-cashbook"
 	sectionReportLoan       = "report-loan"
 	sectionPaymentProducts  = "payment-products"
+	sectionClientBalances   = "client-balances"
 )
 
 // sectionRoles lists, per section, the org roles allowed to use it. admin and
@@ -77,6 +78,7 @@ var sectionRoles = map[string][]string{
 	// Sales content, shown only on the Cash Book: Sales and Cash Book users
 	// (audit F159, owner decision 2026-09-29).
 	sectionPaymentProducts: {"general", "sales", "cashbook"},
+	sectionClientBalances:  {"general", "sales", "accounting", "cashbook"},
 }
 
 // roleCanUseSection reports whether role may use a section. admin, power_user
@@ -166,6 +168,10 @@ func routeSections(pattern string) []string {
 		return []string{sectionPaymentProducts}
 	case path == "reports/loan-status", strings.HasPrefix(path, "reports/loan-status/"):
 		return []string{sectionReportLoan}
+	case path == "clients/summary":
+		return []string{sectionClientBalances}
+	case path == "clients/{id}/summary":
+		return []string{sectionClientBalances}
 	}
 	return nil
 }

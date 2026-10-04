@@ -5,6 +5,8 @@ import {
   filterMenuForRole,
   isRouteAllowedForRole,
   roleCanSeeMenuItem,
+  roleCanSeeSummaries,
+  roleCanUseCashBook,
   roleHomePath,
 } from "./role-menu";
 
@@ -253,5 +255,28 @@ describe("dashboardWidgetsForRole", () => {
     ["accounting", { sales: false, receivables: true, stock: true, till: false }],
   ])("%s", (role, want) => {
     expect(dashboardWidgetsForRole(role)).toEqual(want);
+  });
+});
+
+describe("roleCanSeeSummaries", () => {
+  it("shows client balances to the roles api/sections.go allows", () => {
+    for (const role of ["admin", "power_user", "general", "sales", "accounting", "cashbook"]) {
+      expect(roleCanSeeSummaries(role, "client-balances")).toBe(true);
+    }
+  });
+  it("hides them from purchasing and from an unresolved role", () => {
+    expect(roleCanSeeSummaries("purchasing", "client-balances")).toBe(false);
+    expect(roleCanSeeSummaries("", "client-balances")).toBe(false);
+  });
+});
+
+describe("roleCanUseCashBook", () => {
+  it("follows the sidebar's Cash Book item", () => {
+    expect(roleCanUseCashBook("admin")).toBe(true);
+    expect(roleCanUseCashBook("general")).toBe(true);
+    expect(roleCanUseCashBook("cashbook")).toBe(true);
+    expect(roleCanUseCashBook("sales")).toBe(false);
+    expect(roleCanUseCashBook("accounting")).toBe(false);
+    expect(roleCanUseCashBook("")).toBe(false);
   });
 });
