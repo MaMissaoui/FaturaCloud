@@ -631,6 +631,17 @@ export const GetClientSummary = (clientId: string) =>
 
 export const GetInvoices = (organizationId: string) =>
   get<Invoice[]>(`/organizations/${organizationId}/invoices`);
+// An invoice or bill that still has a balance, from the aging reports' query
+// (api/outstanding_documents.go): what is left in the organization's currency
+// and how late it is. The lists read these, not the state, which is manual.
+export interface OutstandingDocument {
+  id: string;
+  outstanding: number;
+  daysOverdue: number;
+  bucket: OutstandingBucket;
+}
+export const GetOutstandingInvoices = (organizationId: string) =>
+  get<OutstandingDocument[]>(`/organizations/${organizationId}/invoices/outstanding`);
 export const GetInvoice = (id: string) => get<Invoice>(`/invoices/${id}`);
 export const GetInvoiceLineItems = (id: string) =>
   get<InvoiceLineItem[]>(`/invoices/${id}/line-items`);
@@ -1491,6 +1502,8 @@ export const DeleteProductionOrder = (id: string) =>
 
 export const GetIncomingInvoices = (organizationId: string) =>
   get<IncomingInvoice[]>(`/organizations/${organizationId}/incoming-invoices`);
+export const GetOutstandingIncomingInvoices = (organizationId: string) =>
+  get<OutstandingDocument[]>(`/organizations/${organizationId}/incoming-invoices/outstanding`);
 export const GetIncomingInvoice = (id: string) => get<IncomingInvoice>(`/incoming-invoices/${id}`);
 export const GetIncomingInvoiceLineItems = (id: string) =>
   get<IncomingInvoiceLineItem[]>(`/incoming-invoices/${id}/line-items`);
