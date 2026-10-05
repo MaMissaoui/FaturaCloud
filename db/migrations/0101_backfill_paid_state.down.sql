@@ -1,0 +1,3 @@
+-- No-op: the up migration is lossy. Which "paid" documents it moved isn't
+-- recorded, and they are indistinguishable from ones payments or a person
+-- marked paid since, so moving "paid" back would corrupt real data.

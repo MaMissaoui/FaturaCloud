@@ -6,9 +6,10 @@ import (
 
 // outstandingDocument is one invoice or bill that still has a balance: what is
 // left to pay in the organization's currency and how late it is. The Invoices
-// and Incoming invoices lists read these instead of the document's state,
-// which is a manual flag — a sent invoice that has been paid in full stays
-// "sent" until someone changes it.
+// and Incoming invoices lists read these instead of the document's state:
+// payments keep the state in step only since 2026-10 (db/payment_state.go),
+// so a document paid in full before that, or set by hand, can still read
+// "sent"/"approved".
 type outstandingDocument struct {
 	ID          string `json:"id"`
 	Outstanding int64  `json:"outstanding"`

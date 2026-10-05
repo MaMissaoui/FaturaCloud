@@ -121,8 +121,9 @@ const Invoices = () => {
     [invoices, search, clientFilter, dateRange],
   );
   // Which invoices still have a balance and how late they are, from the
-  // receivable aging query. The state alone can't say: it is a manual flag,
-  // and an invoice paid in full often stays "sent".
+  // receivable aging query. The state alone can't say: a payment marks an
+  // invoice paid only since 2026-10, so one paid in full before that, or set
+  // by hand, can still read "sent".
   const { data: outstanding, failed: outstandingFailed } = useFetch<Map<
     string,
     OutstandingDocument
@@ -443,7 +444,7 @@ const Invoices = () => {
               ((!!invoice.currency && invoice.currency !== organization?.currency) ||
                 left.outstanding !== unitsToCents(total));
             // Sent but nothing left: listed under Paid though its state still
-            // reads Sent (the state is manual), so say why.
+            // reads Sent (set back by hand), so say why.
             const paidInFull = invoice.state === "sent" && !!outstanding && !left;
             return (
               <>

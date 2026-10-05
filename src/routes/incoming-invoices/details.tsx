@@ -41,6 +41,7 @@ import sum from "lodash/sum";
 
 import {
   ExportIncomingInvoiceDocument,
+  GetIncomingInvoice,
   GetIncomingInvoiceMatch,
   GetPurchaseOrderLineItems,
 } from "src/api";
@@ -716,6 +717,15 @@ const IncomingInvoiceDetails = () => {
             orgCurrency={orgCurrency}
             total={unitsToCents((invoice as any).total ?? 0)}
             hasPostedEntry={currentState === "approved" || currentState === "paid"}
+            // A payment can mark the bill paid (or a void reopen it)
+            // server-side; show the state it now has.
+            onChanged={() => {
+              GetIncomingInvoice(id!)
+                .then((fresh) => {
+                  if (fresh.state !== currentState) setStateOverride(fresh.state);
+                })
+                .catch(() => {});
+            }}
             minimumFractionDigits={organization?.minimum_fraction_digits ?? undefined}
             countryCode={organization?.country_code}
           />

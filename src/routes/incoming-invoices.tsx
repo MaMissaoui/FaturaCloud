@@ -104,7 +104,8 @@ const IncomingInvoices = () => {
     [invoices, search, vendorFilter, dateRange],
   );
   // Which bills still have a balance and how late they are, from the payable
-  // aging query — the state is manual, and a paid bill often stays approved.
+  // aging query — a bill paid in full before payments kept the state in step
+  // (2026-10), or set by hand, can still read approved.
   const { data: outstanding, failed: outstandingFailed } = useFetch<Map<
     string,
     OutstandingDocument
@@ -385,7 +386,7 @@ const IncomingInvoices = () => {
                   ((!!record.currency && record.currency !== organization?.currency) ||
                     left.outstanding !== total);
                 // Approved but nothing left: listed under Paid though its
-                // state still reads Approved (the state is manual), so say why.
+                // state still reads Approved (set back by hand), so say why.
                 const paidInFull = record.state === "approved" && !!outstanding && !left;
                 return (
                   <>
