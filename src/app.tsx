@@ -79,6 +79,7 @@ const SettingsUsers = lazy(() => import("src/routes/settings/users"));
 const SettingsCountries = lazy(() => import("src/routes/settings/countries"));
 const SettingsGLExport = lazy(() => import("src/routes/settings/gl-export"));
 const SettingsLoanImport = lazy(() => import("src/routes/settings/loan-import"));
+const SettingsActivity = lazy(() => import("src/routes/settings/activity"));
 const SettingsDocumentTemplates = lazy(() => import("src/routes/settings/document-templates"));
 const SettingsDocumentNumbering = lazy(() => import("src/routes/settings/document-numbering"));
 const NewOrganization = lazy(() => import("src/routes/organizations/new"));
@@ -373,6 +374,7 @@ const AppContent = () => {
                       <Route path="countries" element={<SettingsCountries />} />
                       <Route path="gl-export" element={<SettingsGLExport />} />
                       <Route path="loan-import" element={<SettingsLoanImport />} />
+                      <Route path="activity" element={<SettingsActivity />} />
                     </Route>
                   </Routes>
                 </Suspense>
