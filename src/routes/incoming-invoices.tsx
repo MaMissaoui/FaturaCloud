@@ -386,7 +386,7 @@ const IncomingInvoices = () => {
                   ((!!record.currency && record.currency !== organization?.currency) ||
                     left.outstanding !== total);
                 // Approved but nothing left: listed under Paid though its
-                // state still reads Approved (paid before payments set it), so say why.
+                // state still reads Approved (set back by hand), so say why.
                 const paidInFull = record.state === "approved" && !!outstanding && !left;
                 return (
                   <>

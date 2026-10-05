@@ -12,7 +12,8 @@ import (
 // the same GL presence (needsInvoiceGLPresence, needsIncomingInvoiceGLPresence)
 // and, for a Cash Book sale, the same stock presence — so nothing is posted
 // or reversed; CreateCashSalePayment already did the forward half for its own
-// loan payments. Past documents paid before this rule keep their state.
+// loan payments. Migration 0101 moved the documents settled before this
+// rule.
 
 // paidStateDocument names, per payment application type, the document table
 // and the open state a payment moves to "paid".

@@ -444,7 +444,7 @@ const Invoices = () => {
               ((!!invoice.currency && invoice.currency !== organization?.currency) ||
                 left.outstanding !== unitsToCents(total));
             // Sent but nothing left: listed under Paid though its state still
-            // reads Sent (paid before payments set it), so say why.
+            // reads Sent (set back by hand), so say why.
             const paidInFull = invoice.state === "sent" && !!outstanding && !left;
             return (
               <>
