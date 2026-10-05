@@ -117,8 +117,10 @@ changed what.
 
 ## Settings
 
-Both are environment variables of the container, set in the homelab compose
-file (`apps/fatura-cloud/docker-compose.yml` in homelab-deploy):
+Both are environment variables of the container. Neither is set in the
+homelab compose file yet, so prod runs with the defaults; to change them, add
+them to the `environment:` block of `apps/fatura-cloud/docker-compose.yml` in
+homelab-deploy (e.g. `LOG_LEVEL: ${LOG_LEVEL:-info}`) and redeploy:
 
 | Variable | Values | Default |
 |---|---|---|

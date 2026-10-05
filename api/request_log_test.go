@@ -182,6 +182,18 @@ func TestRequestLogLeavesOutPrivateData(t *testing.T) {
 	if line["level"] != "WARN" || line["event"] != "login_failed" || line["login_email"] != "nobody@test.local" {
 		t.Errorf("failed login line = %v, want WARN login_failed with the email", line)
 	}
+
+	// The login route is open to anyone: a huge "email" must not fill the
+	// log (and rotate the evidence out of it).
+	huge := strings.Repeat("x", 100_000) + "@test.local"
+	long := httptest.NewRequest(http.MethodPost, "/api/auth/login",
+		strings.NewReader(`{"email":"`+huge+`","password":"wrong"}`))
+	long.Header.Set(csrfHeaderName, "1")
+	long.Header.Set("Content-Type", "application/json")
+	rec = serveLogged(mux, long)
+	if got, _ := logLine(t, buf, rec.Header().Get("X-Request-ID"))["login_email"].(string); len(got) > 260 {
+		t.Errorf("logged login_email is %d bytes, want it capped", len(got))
+	}
 }
 
 func TestStaticFilesAreNotLogged(t *testing.T) {

@@ -219,7 +219,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	// Also throttle per account so IP rotation can't grind a single email.
 	// Same 429 message as the IP limit — no signal about which limit tripped.
 	if body.Email != "" && !checkRate(loginEmailBuckets, strings.ToLower(body.Email)) {
-		noteSecurityEvent(r, "login_rate_limited", slog.String("login_email", body.Email))
+		noteSecurityEvent(r, "login_rate_limited", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
 	}
@@ -232,13 +232,13 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		// Compare against a decoy hash so this path costs the same as a real
 		// mismatch (see dummyPasswordHash) instead of returning instantly.
 		bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(body.Password))
-		noteSecurityEvent(r, "login_failed", slog.String("login_email", body.Email))
+		noteSecurityEvent(r, "login_failed", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(body.Password)); err != nil {
-		noteSecurityEvent(r, "login_failed", slog.String("login_email", body.Email))
+		noteSecurityEvent(r, "login_failed", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}

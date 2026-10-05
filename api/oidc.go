@@ -158,7 +158,7 @@ func (h *handler) oidcLoginStart(w http.ResponseWriter, r *http.Request) {
 // error — details go to the server log only, never to the client.
 func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	fail := func(reason string) {
-		noteSecurityEvent(r, "sso_rejected", slog.String("reason", reason))
+		noteSecurityEvent(r, "sso_rejected", slog.String("reason", truncate(reason, 300)))
 		http.Redirect(w, r, "/login?error=sso_failed", http.StatusFound)
 	}
 

@@ -41,10 +41,12 @@ export function reportClientError(value: unknown, source: string, componentStack
     credentials: "same-origin",
     keepalive: true,
     body: JSON.stringify({
-      name: error.name,
-      message,
-      stack: error.stack ?? "",
-      componentStack: componentStack ?? "",
+      // Capped like the server caps them: a keepalive request over 64 KB
+      // is refused outright, which would drop the report.
+      name: error.name.slice(0, 100),
+      message: message.slice(0, 500),
+      stack: (error.stack ?? "").slice(0, 4000),
+      componentStack: (componentStack ?? "").slice(0, 2000),
       source,
       url: window.location.href,
       release: __APP_VERSION__,
