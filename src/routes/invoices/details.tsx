@@ -43,7 +43,7 @@ import ResponsiveFooter from "src/components/responsive-footer";
 import useResetFormOnNew from "src/hooks/useResetFormOnNew";
 import useSaveShortcut from "src/hooks/useSaveShortcut";
 import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
-import { DownloadInvoiceEInvoice, ExportInvoiceDocument } from "src/api";
+import { DownloadInvoiceEInvoice, ExportInvoiceDocument, GetInvoice } from "src/api";
 import dayjs from "dayjs";
 
 import get from "lodash/get";
@@ -1178,6 +1178,19 @@ const InvoiceDetails: React.FC = () => {
               orgCurrency={orgCurrency}
               total={unitsToCents((invoice as any).total ?? 0)}
               hasPostedEntry={currentInvoiceState === "sent" || currentInvoiceState === "paid"}
+              // A payment can mark the invoice paid (or a void reopen it)
+              // server-side; refetch only when the state actually moved, so an
+              // unrelated payment doesn't reset the form.
+              onChanged={() => {
+                GetInvoice(id!)
+                  .then((fresh) => {
+                    if (fresh.state !== currentInvoiceState) {
+                      setInvoiceId(null);
+                      setTimeout(() => setInvoiceId(id!), 0);
+                    }
+                  })
+                  .catch(() => {});
+              }}
               minimumFractionDigits={organization.minimum_fraction_digits ?? undefined}
               countryCode={organization.country_code}
             />

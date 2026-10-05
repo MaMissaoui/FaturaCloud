@@ -72,11 +72,13 @@ interface PaymentPanelProps {
   // incoming-invoice detail pages) is unaffected.
   hideHistory?: boolean;
   // Cash Book reuse: called after a payment is recorded that brings the
-  // balance to exactly zero, so the caller can follow up by moving the
-  // invoice to "paid" — see db/cash_sale.go's CreateCashSale doc comment for
-  // why that auto-progression is scoped to the Cash Book screen rather than
-  // built into this shared component's own behavior.
+  // balance to exactly zero. The server now marks the document paid itself
+  // (db/payment_state.go); the Cash Book still uses this to move on.
   onSettled?: () => void;
+  // Called after a payment is recorded or voided: either can move the
+  // document between sent/approved and paid on the server, so the detail
+  // page re-reads its state.
+  onChanged?: () => void;
   // Cash Book reuse: skips the surrounding Card/summary/table entirely and
   // renders just the payment-form Modal, opened automatically once the
   // initial payment history fetch settles. Without this, Cash Book's own
@@ -130,6 +132,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   hasPostedEntry,
   hideHistory = false,
   onSettled,
+  onChanged,
   embedded = false,
   onClose,
   defaultMethod,
@@ -240,6 +243,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       await VoidPayment(paymentId);
       message.success(t`Payment voided`);
       await refresh();
+      onChanged?.();
     } catch (error) {
       console.error("Failed to void payment:", error);
       message.error(error instanceof Error ? error.message : t`Failed to void payment`);
@@ -273,6 +277,7 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
       message.success(t`Payment recorded`);
       setModalOpen(false);
       await refresh();
+      onChanged?.();
       if (balanceDue - unitsToCents(values.amount) <= 0) {
         onSettled?.();
       } else {
