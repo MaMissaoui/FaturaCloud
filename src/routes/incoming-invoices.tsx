@@ -126,6 +126,9 @@ const IncomingInvoices = () => {
     }
     return outstandingFailed && i.dueDate ? daysLate(i.dueDate, today) : 0;
   };
+  // Until the balances arrive, the chips that depend on them show no count
+  // rather than a state-based one that then jumps.
+  const balancesPending = !outstanding && !outstandingFailed;
   const isToPay = (i: IncomingInvoice) =>
     i.state === "approved" && (outstanding ? outstanding.has(i.id) : true);
   const inChip = (i: IncomingInvoice, key: BillChip) => {
@@ -231,17 +234,17 @@ const IncomingInvoices = () => {
             {
               key: "approved",
               label: <Trans context="document filter">To pay</Trans>,
-              count: countOf("approved"),
+              count: balancesPending ? undefined : countOf("approved"),
             },
             {
               key: "overdue",
               label: <Trans context="document filter">Overdue</Trans>,
-              count: countOf("overdue"),
+              count: balancesPending ? undefined : countOf("overdue"),
             },
             {
               key: "paid",
               label: <Trans context="document filter">Paid</Trans>,
-              count: countOf("paid"),
+              count: balancesPending ? undefined : countOf("paid"),
             },
             ...(countOf("cancelled") > 0 || chip === "cancelled"
               ? [
@@ -381,6 +384,9 @@ const IncomingInvoices = () => {
                   !!left &&
                   ((!!record.currency && record.currency !== organization?.currency) ||
                     left.outstanding !== total);
+                // Approved but nothing left: listed under Paid though its
+                // state still reads Approved (the state is manual), so say why.
+                const paidInFull = record.state === "approved" && !!outstanding && !left;
                 return (
                   <>
                     <span style={{ whiteSpace: "nowrap" }}>
@@ -400,6 +406,17 @@ const IncomingInvoices = () => {
                         }}
                       >
                         {t`${formatOrgCents(left.outstanding, organization, i18n.locale)} left`}
+                      </div>
+                    )}
+                    {paidInFull && (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: token.colorTextSecondary,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <Trans context="invoice">Paid in full</Trans>
                       </div>
                     )}
                   </>
