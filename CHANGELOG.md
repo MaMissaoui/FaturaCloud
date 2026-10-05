@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.64.0] - 2026-10-05
+
+### Added
+- The document lists follow the look of the redesigned master data screens.
+  - Invoices and Incoming invoices open with what your clients owe you and
+    what you owe your vendors (the Dashboard's figures), and filter chips with
+    counts replace the state dropdown: Draft, Unpaid (To pay), Overdue, Paid
+    and Cancelled. Unpaid, Overdue and Paid follow the actual balances, not
+    the state, so an invoice paid in full shows under Paid even if it still
+    reads "Sent". A late due date shows how many days late it is, and a
+    part-paid invoice shows what is left (#481).
+  - Orders, Outbound deliveries, Purchase orders, Goods receipts and
+    Production orders show their count and status chips with counts in place
+    of the status dropdown (#482).
+
 ## [3.63.0] - 2026-10-04
 
 ### Added
