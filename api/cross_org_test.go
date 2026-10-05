@@ -628,6 +628,7 @@ var crossOrgProof = []struct {
 	{name: "delete vendor by id", method: http.MethodDelete, path: "/api/vendors/org-a-vendor"},
 
 	{name: "list invoices by org path", method: http.MethodGet, path: "/api/organizations/org-a/invoices"},
+	{name: "outstanding invoices by org path", method: http.MethodGet, path: "/api/organizations/org-a/invoices/outstanding"},
 	{name: "get invoice by id", method: http.MethodGet, path: "/api/invoices/org-a-invoice"},
 	{name: "invoice line items", method: http.MethodGet, path: "/api/invoices/org-a-invoice/line-items"},
 	{name: "delete invoice by id", method: http.MethodDelete, path: "/api/invoices/org-a-invoice"},
@@ -658,6 +659,7 @@ var crossOrgProof = []struct {
 	{name: "delete inbound delivery by id", method: http.MethodDelete, path: "/api/inbound-deliveries/org-a-inbound-delivery"},
 
 	{name: "list incoming invoices by org path", method: http.MethodGet, path: "/api/organizations/org-a/incoming-invoices"},
+	{name: "outstanding incoming invoices by org path", method: http.MethodGet, path: "/api/organizations/org-a/incoming-invoices/outstanding"},
 	{name: "get incoming invoice by id", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice"},
 	{name: "incoming invoice match", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice/match"},
 	{name: "incoming invoice payments", method: http.MethodGet, path: "/api/incoming-invoices/org-a-incoming-invoice/payments"},
