@@ -1,16 +1,15 @@
 import { useMemo, useState } from "react";
 import type { ProductionOrder } from "src/types/models";
 import { Link, useNavigate } from "react-router";
-import { Button, Col, Empty, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { DeploymentUnitOutlined } from "@ant-design/icons";
 
 import { useDateFormatter } from "src/utils/date";
 import {
-  PRODUCTION_ORDER_STATUSES,
   productionOrderStatusColor,
   productionOrderStatusLabel,
   type ProductionOrderStatus,
@@ -18,17 +17,18 @@ import {
 import { productionOrdersAtom, setProductionOrdersAtom } from "src/atoms/production-order";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import { useStatusChips } from "src/components/master-data/use-status-chips";
 import type { Dayjs } from "dayjs";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const ProductionOrders = () => {
   useLingui();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();
   const orders = useAtomValue(productionOrdersAtom);
   const setOrders = useSetAtom(setProductionOrdersAtom);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ProductionOrderStatus | "">("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
 
   const loading = useLoadOnPath("/production-orders", () => setOrders());
@@ -38,15 +38,13 @@ const ProductionOrders = () => {
   // settings pages: that combination wrote a global atom and rebuilt
   // dataSource on every keystroke, re-rendering every visible row (audit
   // 2026-09-14 F91).
-  const hasFilters = !!(search || statusFilter || dateRange);
-
-  const filtered = useMemo(
+  const matching = useMemo(
     () =>
       orders.filter((o: ProductionOrder) =>
         matchesDocumentFilters({
           search,
           searchFields: [o.orderNumber, o.finishedProductName],
-          status: statusFilter,
+          status: "",
           rowStatus: o.status,
           partyId: "",
           rowPartyId: "",
@@ -54,8 +52,24 @@ const ProductionOrders = () => {
           rowDate: o.date,
         }),
       ),
-    [orders, search, statusFilter, dateRange],
+    [orders, search, dateRange],
   );
+  // The status chips split what the search and date filters leave.
+  const { shown, picked, bar } = useStatusChips(
+    matching,
+    (row) => row.status ?? "",
+    [
+      { key: "draft", label: <Trans context="document filter">Draft</Trans> },
+      { key: "completed", label: <Trans context="production order filter">Completed</Trans> },
+      {
+        key: "cancelled",
+        label: <Trans context="production order filter">Cancelled</Trans>,
+        hideWhenEmpty: true,
+      },
+    ],
+    t`Filter production orders`,
+  );
+  const hasFilters = !!(search || picked || dateRange);
 
   return (
     <>
@@ -74,14 +88,6 @@ const ProductionOrders = () => {
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
             dateLabel={t`Date`}
-            status={statusFilter}
-            onStatusChange={(v) => setStatusFilter(v as ProductionOrderStatus | "")}
-            statusPlaceholder={t`All statuses`}
-            statusAriaLabel={t`Filter by status`}
-            statusOptions={PRODUCTION_ORDER_STATUSES.map((s) => ({
-              value: s,
-              label: productionOrderStatusLabel(s),
-            }))}
           />
         }
         actions={
@@ -91,10 +97,15 @@ const ProductionOrders = () => {
         }
       />
 
+      <p style={{ margin: "4px 0 0", color: token.colorTextSecondary }}>
+        {plural(orders.length, { one: "# production order", other: "# production orders" })}
+      </p>
+      {bar}
+
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
-            dataSource={filtered}
+            dataSource={shown}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}

@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react";
 import type { PurchaseOrder } from "src/types/models";
 import { Link, useNavigate } from "react-router";
-import { Button, Col, Empty, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
 
 import { useDateFormatter } from "src/utils/date";
 import {
-  PURCHASE_ORDER_STATUSES,
   purchaseOrderStatusColor,
   purchaseOrderStatusLabel,
   type PurchaseOrderStatus,
@@ -20,18 +19,19 @@ import { purchaseOrdersAtom, setPurchaseOrdersAtom } from "src/atoms/purchase-or
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import { useStatusChips } from "src/components/master-data/use-status-chips";
 import type { Dayjs } from "dayjs";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const PurchaseOrders = () => {
   useLingui();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();
   const orders = useAtomValue(purchaseOrdersAtom);
   const setOrders = useSetAtom(setPurchaseOrdersAtom);
   const setVendors = useSetAtom(setVendorsAtom);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [vendorFilter, setVendorFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const vendors = useAtomValue(vendorsAtom);
@@ -50,15 +50,14 @@ const PurchaseOrders = () => {
     [vendors],
   );
 
-  const hasFilters = !!(search || statusFilter || vendorFilter || dateRange);
-
-  const filtered = useMemo(
+  // What the search, party and date filters leave; the status chips split it.
+  const matching = useMemo(
     () =>
       filter(orders, (o: PurchaseOrder) =>
         matchesDocumentFilters({
           search,
           searchFields: [o.orderNumber, o.vendorName],
-          status: statusFilter,
+          status: "",
           rowStatus: o.status,
           partyId: vendorFilter,
           rowPartyId: o.vendorId,
@@ -66,8 +65,24 @@ const PurchaseOrders = () => {
           rowDate: o.orderDate,
         }),
       ),
-    [orders, search, statusFilter, vendorFilter, dateRange],
+    [orders, search, vendorFilter, dateRange],
   );
+  const { shown, picked, bar } = useStatusChips(
+    matching,
+    (row) => row.status ?? "",
+    [
+      { key: "draft", label: <Trans context="document filter">Draft</Trans> },
+      { key: "confirmed", label: <Trans context="document filter">Confirmed</Trans> },
+      { key: "received", label: <Trans context="document filter">Received</Trans> },
+      {
+        key: "cancelled",
+        label: <Trans context="document filter">Cancelled</Trans>,
+        hideWhenEmpty: true,
+      },
+    ],
+    t`Filter purchase orders`,
+  );
+  const hasFilters = !!(search || picked || vendorFilter || dateRange);
 
   return (
     <>
@@ -86,14 +101,6 @@ const PurchaseOrders = () => {
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
             dateLabel={t`Order date`}
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            statusPlaceholder={t`All statuses`}
-            statusAriaLabel={t`Filter by status`}
-            statusOptions={PURCHASE_ORDER_STATUSES.map((s) => ({
-              value: s,
-              label: purchaseOrderStatusLabel(s),
-            }))}
             partyOptions={vendorOptions}
             partyValue={vendorFilter}
             onPartyChange={setVendorFilter}
@@ -107,10 +114,15 @@ const PurchaseOrders = () => {
         }
       />
 
+      <p style={{ margin: "4px 0 0", color: token.colorTextSecondary }}>
+        {plural(orders.length, { one: "# purchase order", other: "# purchase orders" })}
+      </p>
+      {bar}
+
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
-            dataSource={filtered}
+            dataSource={shown}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}

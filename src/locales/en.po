@@ -52,11 +52,21 @@ msgstr "{0, plural, one {# client} other {# clients}}, {businessCount, plural, o
 msgid "{0, plural, one {# customer owes {owedText} in total.} other {# customers owe {owedText} in total.}}"
 msgstr "{0, plural, one {# customer owes {owedText} in total.} other {# customers owe {owedText} in total.}}"
 
+#. placeholder {0}: deliveries.length
+#: src/routes/deliveries.tsx:117
+msgid "{0, plural, one {# delivery} other {# deliveries}}"
+msgstr "{0, plural, one {# delivery} other {# deliveries}}"
+
 #. placeholder {0}: overview.finishedCount
 #. placeholder {1}: overview.recipeCount
 #: src/routes/bill-of-materials.tsx:476
 msgid "{0, plural, one {# finished product} other {# finished products}}, {1, plural, one {# with a recipe} other {# with a recipe}}"
 msgstr "{0, plural, one {# finished product} other {# finished products}}, {1, plural, one {# with a recipe} other {# with a recipe}}"
+
+#. placeholder {0}: deliveries.length
+#: src/routes/inbound-deliveries.tsx:117
+msgid "{0, plural, one {# goods receipt} other {# goods receipts}}"
+msgstr "{0, plural, one {# goods receipt} other {# goods receipts}}"
 
 #. placeholder {0}: stale.length
 #: src/components/cash-book/loan-register.tsx:446
@@ -81,6 +91,21 @@ msgstr "{0, plural, one {# invoice} other {# invoices}}"
 #: src/routes/products.tsx:428
 msgid "{0, plural, one {# item} other {# items}}: {1, plural, one {# tracked in stock} other {# tracked in stock}} and {2, plural, one {# service} other {# services}}"
 msgstr "{0, plural, one {# item} other {# items}}: {1, plural, one {# tracked in stock} other {# tracked in stock}} and {2, plural, one {# service} other {# services}}"
+
+#. placeholder {0}: orders.length
+#: src/routes/orders.tsx:119
+msgid "{0, plural, one {# order} other {# orders}}"
+msgstr "{0, plural, one {# order} other {# orders}}"
+
+#. placeholder {0}: orders.length
+#: src/routes/production-orders.tsx:101
+msgid "{0, plural, one {# production order} other {# production orders}}"
+msgstr "{0, plural, one {# production order} other {# production orders}}"
+
+#. placeholder {0}: orders.length
+#: src/routes/purchase-orders.tsx:118
+msgid "{0, plural, one {# purchase order} other {# purchase orders}}"
+msgstr "{0, plural, one {# purchase order} other {# purchase orders}}"
 
 #. placeholder {0}: data.stockValuation.productCount
 #: src/routes/dashboard.tsx:396
@@ -576,6 +601,7 @@ msgstr "Admin"
 msgid "All"
 msgstr "All"
 
+#: src/components/master-data/use-status-chips.tsx:46
 #: src/routes/incoming-invoices.tsx:226
 #: src/routes/invoices/index.tsx:297
 msgctxt "document filter"
@@ -587,9 +613,9 @@ msgstr "All"
 msgid "All categories"
 msgstr "All categories"
 
-#: src/routes/deliveries.tsx:104
+#: src/routes/deliveries.tsx:107
 #: src/routes/invoices/index.tsx:252
-#: src/routes/orders.tsx:101
+#: src/routes/orders.tsx:108
 msgid "All clients"
 msgstr "All clients"
 
@@ -619,11 +645,6 @@ msgid "All states"
 msgstr "All states"
 
 #: src/routes/accounting/journal-entries.tsx:66
-#: src/routes/deliveries.tsx:95
-#: src/routes/inbound-deliveries.tsx:91
-#: src/routes/orders.tsx:95
-#: src/routes/production-orders.tsx:79
-#: src/routes/purchase-orders.tsx:91
 msgid "All statuses"
 msgstr "All statuses"
 
@@ -632,9 +653,9 @@ msgid "All types"
 msgstr "All types"
 
 #: src/routes/imports.tsx:138
-#: src/routes/inbound-deliveries.tsx:100
+#: src/routes/inbound-deliveries.tsx:106
 #: src/routes/incoming-invoices.tsx:183
-#: src/routes/purchase-orders.tsx:100
+#: src/routes/purchase-orders.tsx:107
 msgid "All vendors"
 msgstr "All vendors"
 
@@ -1112,9 +1133,18 @@ msgstr "Cancel this purchase order?"
 msgid "Cancelled"
 msgstr "Cancelled"
 
+#: src/routes/deliveries.tsx:79
+#: src/routes/inbound-deliveries.tsx:78
 #: src/routes/incoming-invoices.tsx:253
 #: src/routes/invoices/index.tsx:324
+#: src/routes/orders.tsx:80
+#: src/routes/purchase-orders.tsx:79
 msgctxt "document filter"
+msgid "Cancelled"
+msgstr "Cancelled"
+
+#: src/routes/production-orders.tsx:66
+msgctxt "production order filter"
 msgid "Cancelled"
 msgstr "Cancelled"
 
@@ -1250,11 +1280,11 @@ msgstr "City"
 #: src/components/dashboard/owed-panel.tsx:237
 #: src/routes/accounting/reports/ar-aging.tsx:143
 #: src/routes/clients.tsx:300
-#: src/routes/deliveries.tsx:174
+#: src/routes/deliveries.tsx:182
 #: src/routes/deliveries/details.tsx:377
 #: src/routes/deliveries/details.tsx:383
 #: src/routes/invoices/index.tsx:390
-#: src/routes/orders.tsx:156
+#: src/routes/orders.tsx:168
 #: src/routes/orders/details.tsx:318
 #: src/routes/reporting/sales-by-client.tsx:137
 msgid "Client"
@@ -1411,6 +1441,11 @@ msgstr "Committed value"
 msgid "Completed"
 msgstr "Completed"
 
+#: src/routes/production-orders.tsx:63
+msgctxt "production order filter"
+msgid "Completed"
+msgstr "Completed"
+
 #: src/components/products/bom-editor-drawer.tsx:440
 #: src/components/products/product-summary-panel.tsx:126
 #: src/routes/inventory.tsx:354
@@ -1455,6 +1490,12 @@ msgstr "Confirm password"
 
 #: src/types/order.ts:31
 #: src/types/purchase-order.ts:29
+msgid "Confirmed"
+msgstr "Confirmed"
+
+#: src/routes/orders.tsx:75
+#: src/routes/purchase-orders.tsx:75
+msgctxt "document filter"
 msgid "Confirmed"
 msgstr "Confirmed"
 
@@ -1649,11 +1690,11 @@ msgstr "Create your first account"
 msgid "Create your first client"
 msgstr "Create your first client"
 
-#: src/routes/deliveries.tsx:127
+#: src/routes/deliveries.tsx:135
 msgid "Create your first delivery"
 msgstr "Create your first delivery"
 
-#: src/routes/inbound-deliveries.tsx:124
+#: src/routes/inbound-deliveries.tsx:135
 msgid "Create your first goods receipt"
 msgstr "Create your first goods receipt"
 
@@ -1673,7 +1714,7 @@ msgstr "Create your first invoice"
 msgid "Create your first journal"
 msgstr "Create your first journal"
 
-#: src/routes/orders.tsx:125
+#: src/routes/orders.tsx:137
 msgid "Create your first order"
 msgstr "Create your first order"
 
@@ -1686,11 +1727,11 @@ msgstr "Create your first product"
 msgid "Create your first product family"
 msgstr "Create your first product family"
 
-#: src/routes/production-orders.tsx:108
+#: src/routes/production-orders.tsx:119
 msgid "Create your first production order"
 msgstr "Create your first production order"
 
-#: src/routes/purchase-orders.tsx:124
+#: src/routes/purchase-orders.tsx:136
 msgid "Create your first purchase order"
 msgstr "Create your first purchase order"
 
@@ -1845,8 +1886,8 @@ msgstr "Database restored — reload to see changes"
 #: src/routes/invoices/index.tsx:248
 #: src/routes/invoices/index.tsx:408
 #: src/routes/orders/details.tsx:549
-#: src/routes/production-orders.tsx:76
-#: src/routes/production-orders.tsx:177
+#: src/routes/production-orders.tsx:90
+#: src/routes/production-orders.tsx:188
 #: src/routes/production-orders/details.tsx:246
 #: src/routes/production-orders/details.tsx:584
 #: src/routes/purchase-orders/details.tsx:696
@@ -2109,6 +2150,12 @@ msgstr "Deleted {total} record(s)"
 msgid "Delivered"
 msgstr "Delivered"
 
+#: src/routes/deliveries.tsx:76
+#: src/routes/orders.tsx:77
+msgctxt "document filter"
+msgid "Delivered"
+msgstr "Delivered"
+
 #: src/routes/orders/details.tsx:536
 msgid "Deliveries"
 msgstr "Deliveries"
@@ -2129,11 +2176,11 @@ msgstr "Delivery created"
 msgid "Delivery creation failed"
 msgstr "Delivery creation failed"
 
-#: src/routes/deliveries.tsx:92
-#: src/routes/deliveries.tsx:183
+#: src/routes/deliveries.tsx:103
+#: src/routes/deliveries.tsx:191
 #: src/routes/deliveries/details.tsx:410
-#: src/routes/inbound-deliveries.tsx:88
-#: src/routes/orders.tsx:179
+#: src/routes/inbound-deliveries.tsx:102
+#: src/routes/orders.tsx:191
 #: src/routes/orders/details.tsx:392
 msgid "Delivery date"
 msgstr "Delivery date"
@@ -2314,8 +2361,13 @@ msgstr "Download the template, edit the placeholders in a spreadsheet app, then 
 msgid "Draft"
 msgstr "Draft"
 
+#: src/routes/deliveries.tsx:74
+#: src/routes/inbound-deliveries.tsx:74
 #: src/routes/incoming-invoices.tsx:231
 #: src/routes/invoices/index.tsx:302
+#: src/routes/orders.tsx:74
+#: src/routes/production-orders.tsx:62
+#: src/routes/purchase-orders.tsx:74
 msgctxt "document filter"
 msgid "Draft"
 msgstr "Draft"
@@ -2625,7 +2677,7 @@ msgstr "Exemption reason"
 msgid "Expand sidebar"
 msgstr "Expand sidebar"
 
-#: src/routes/purchase-orders.tsx:208
+#: src/routes/purchase-orders.tsx:220
 #: src/routes/purchase-orders/details.tsx:535
 msgid "Expected date"
 msgstr "Expected date"
@@ -3075,12 +3127,20 @@ msgstr "Filter by state"
 #: src/routes/orders.tsx:96
 #: src/routes/production-orders.tsx:80
 #: src/routes/purchase-orders.tsx:92
-msgid "Filter by status"
-msgstr "Filter by status"
+#~ msgid "Filter by status"
+#~ msgstr "Filter by status"
 
 #: src/routes/clients.tsx:451
 msgid "Filter clients"
 msgstr "Filter clients"
+
+#: src/routes/deliveries.tsx:83
+msgid "Filter deliveries"
+msgstr "Filter deliveries"
+
+#: src/routes/inbound-deliveries.tsx:82
+msgid "Filter goods receipts"
+msgstr "Filter goods receipts"
 
 #: src/routes/incoming-invoices.tsx:220
 msgid "Filter incoming invoices"
@@ -3094,9 +3154,21 @@ msgstr "Filter invoices"
 msgid "Filter loans"
 msgstr "Filter loans"
 
+#: src/routes/orders.tsx:84
+msgid "Filter orders"
+msgstr "Filter orders"
+
+#: src/routes/production-orders.tsx:70
+msgid "Filter production orders"
+msgstr "Filter production orders"
+
 #: src/routes/products.tsx:467
 msgid "Filter products"
 msgstr "Filter products"
+
+#: src/routes/purchase-orders.tsx:83
+msgid "Filter purchase orders"
+msgstr "Filter purchase orders"
 
 #: src/routes/bill-of-materials.tsx:513
 msgid "Filter recipes"
@@ -3131,7 +3203,7 @@ msgstr "Finished good"
 
 #: src/components/products/bom-editor-drawer.tsx:383
 #: src/routes/bill-of-materials.tsx:369
-#: src/routes/production-orders.tsx:139
+#: src/routes/production-orders.tsx:150
 #: src/routes/production-orders/details.tsx:209
 #: src/routes/production-orders/details.tsx:578
 msgid "Finished product"
@@ -3302,7 +3374,7 @@ msgid "Goods receipts"
 msgstr "Goods receipts"
 
 #: src/layouts/base.tsx:601
-#: src/routes/inbound-deliveries.tsx:76
+#: src/routes/inbound-deliveries.tsx:90
 msgid "Goods Receipts"
 msgstr "Goods Receipts"
 
@@ -3380,10 +3452,10 @@ msgstr "ID number"
 msgid "Identity number"
 msgstr "Identity number"
 
-#: src/routes/production-orders.tsx:155
+#: src/routes/production-orders.tsx:166
 #: src/routes/production-orders/details.tsx:255
 #: src/routes/production-orders/details.tsx:587
-#: src/routes/purchase-orders.tsx:164
+#: src/routes/purchase-orders.tsx:176
 #: src/routes/purchase-orders/details.tsx:480
 #: src/routes/settings/loan-import.tsx:226
 #: src/routes/settings/loan-import.tsx:231
@@ -4282,7 +4354,7 @@ msgstr "New customer"
 msgid "New customers"
 msgstr "New customers"
 
-#: src/routes/deliveries.tsx:109
+#: src/routes/deliveries.tsx:112
 #: src/routes/deliveries/details.tsx:352
 #: src/routes/orders/details.tsx:641
 msgid "New delivery"
@@ -4297,7 +4369,7 @@ msgstr "New fiscal period"
 msgid "New fiscal year"
 msgstr "New fiscal year"
 
-#: src/routes/inbound-deliveries.tsx:105
+#: src/routes/inbound-deliveries.tsx:111
 #: src/routes/inbound-deliveries/details.tsx:375
 #: src/routes/purchase-orders/details.tsx:821
 msgid "New goods receipt"
@@ -4339,7 +4411,7 @@ msgstr "New layout"
 msgid "New member role"
 msgstr "New member role"
 
-#: src/routes/orders.tsx:106
+#: src/routes/orders.tsx:113
 #: src/routes/orders/details.tsx:304
 msgid "New order"
 msgstr "New order"
@@ -4378,7 +4450,7 @@ msgstr "New product"
 msgid "New product family"
 msgstr "New product family"
 
-#: src/routes/production-orders.tsx:89
+#: src/routes/production-orders.tsx:95
 msgid "New production order"
 msgstr "New production order"
 
@@ -4386,7 +4458,7 @@ msgstr "New production order"
 #: src/components/imports/form.tsx:398
 #: src/components/products/product-summary-panel.tsx:151
 #: src/components/vendors/vendor-summary-panel.tsx:126
-#: src/routes/purchase-orders.tsx:105
+#: src/routes/purchase-orders.tsx:112
 #: src/routes/purchase-orders/details.tsx:408
 msgid "New purchase order"
 msgstr "New purchase order"
@@ -4507,7 +4579,7 @@ msgstr "No clients match your search"
 msgid "No clients yet"
 msgstr "No clients yet"
 
-#: src/routes/deliveries.tsx:122
+#: src/routes/deliveries.tsx:130
 msgid "No deliveries match your filters"
 msgstr "No deliveries match your filters"
 
@@ -4515,7 +4587,7 @@ msgstr "No deliveries match your filters"
 #~ msgid "No deliveries match your search"
 #~ msgstr "No deliveries match your search"
 
-#: src/routes/deliveries.tsx:124
+#: src/routes/deliveries.tsx:132
 msgid "No deliveries yet"
 msgstr "No deliveries yet"
 
@@ -4552,7 +4624,7 @@ msgstr "No finished-good products yet — set a product's category to \"Finished
 msgid "No fiscal year yet"
 msgstr "No fiscal year yet"
 
-#: src/routes/inbound-deliveries.tsx:119
+#: src/routes/inbound-deliveries.tsx:130
 msgid "No goods receipts match your filters"
 msgstr "No goods receipts match your filters"
 
@@ -4560,7 +4632,7 @@ msgstr "No goods receipts match your filters"
 #~ msgid "No goods receipts match your search"
 #~ msgstr "No goods receipts match your search"
 
-#: src/routes/inbound-deliveries.tsx:121
+#: src/routes/inbound-deliveries.tsx:132
 msgid "No goods receipts yet"
 msgstr "No goods receipts yet"
 
@@ -4634,7 +4706,7 @@ msgstr "No open fiscal year"
 #~ msgid "No open invoices for this customer"
 #~ msgstr "No open invoices for this customer"
 
-#: src/routes/orders.tsx:120
+#: src/routes/orders.tsx:132
 msgid "No orders match your filters"
 msgstr "No orders match your filters"
 
@@ -4642,7 +4714,7 @@ msgstr "No orders match your filters"
 #~ msgid "No orders match your search"
 #~ msgstr "No orders match your search"
 
-#: src/routes/orders.tsx:122
+#: src/routes/orders.tsx:134
 msgid "No orders yet"
 msgstr "No orders yet"
 
@@ -4686,7 +4758,7 @@ msgstr "No product families yet"
 msgid "No product is running low."
 msgstr "No product is running low."
 
-#: src/routes/production-orders.tsx:103
+#: src/routes/production-orders.tsx:114
 msgid "No production orders match your filters"
 msgstr "No production orders match your filters"
 
@@ -4694,7 +4766,7 @@ msgstr "No production orders match your filters"
 #~ msgid "No production orders match your search"
 #~ msgstr "No production orders match your search"
 
-#: src/routes/production-orders.tsx:105
+#: src/routes/production-orders.tsx:116
 msgid "No production orders yet"
 msgstr "No production orders yet"
 
@@ -4717,7 +4789,7 @@ msgstr "No products yet"
 msgid "No purchase orders linked to this shipment yet."
 msgstr "No purchase orders linked to this shipment yet."
 
-#: src/routes/purchase-orders.tsx:119
+#: src/routes/purchase-orders.tsx:131
 msgid "No purchase orders match your filters"
 msgstr "No purchase orders match your filters"
 
@@ -4725,7 +4797,7 @@ msgstr "No purchase orders match your filters"
 #~ msgid "No purchase orders match your search"
 #~ msgstr "No purchase orders match your search"
 
-#: src/routes/purchase-orders.tsx:121
+#: src/routes/purchase-orders.tsx:133
 msgid "No purchase orders yet"
 msgstr "No purchase orders yet"
 
@@ -4908,7 +4980,7 @@ msgstr "Nothing paid for {0} days"
 msgid "Nothing to delete — this organization was empty"
 msgstr "Nothing to delete — this organization was empty"
 
-#: src/routes/deliveries.tsx:146
+#: src/routes/deliveries.tsx:154
 #: src/routes/imports.tsx:185
 #: src/routes/orders/details.tsx:539
 #: src/routes/purchase-orders/details.tsx:686
@@ -5056,7 +5128,7 @@ msgstr "Optional upfront deposit — leave at 0 for a zero-deposit loan. The rem
 msgid "or"
 msgstr "or"
 
-#: src/routes/deliveries.tsx:158
+#: src/routes/deliveries.tsx:166
 #: src/routes/orders/details.tsx:279
 #: src/routes/settings/document-numbering.tsx:44
 #: src/routes/settings/document-templates.tsx:263
@@ -5068,10 +5140,10 @@ msgid "Order {orderNumber}"
 msgstr "Order {orderNumber}"
 
 #: src/components/imports/form.tsx:439
-#: src/routes/orders.tsx:144
-#: src/routes/production-orders.tsx:127
+#: src/routes/orders.tsx:156
+#: src/routes/production-orders.tsx:138
 #: src/routes/production-orders/details.tsx:561
-#: src/routes/purchase-orders.tsx:143
+#: src/routes/purchase-orders.tsx:155
 msgid "Order #"
 msgstr "Order #"
 
@@ -5083,11 +5155,11 @@ msgstr "Order created"
 msgid "Order creation failed"
 msgstr "Order creation failed"
 
-#: src/routes/orders.tsx:92
-#: src/routes/orders.tsx:172
+#: src/routes/orders.tsx:104
+#: src/routes/orders.tsx:184
 #: src/routes/orders/details.tsx:384
-#: src/routes/purchase-orders.tsx:88
-#: src/routes/purchase-orders.tsx:199
+#: src/routes/purchase-orders.tsx:103
+#: src/routes/purchase-orders.tsx:211
 #: src/routes/purchase-orders/details.tsx:527
 msgid "Order date"
 msgstr "Order date"
@@ -5139,7 +5211,7 @@ msgid "Ordered"
 msgstr "Ordered"
 
 #: src/layouts/base.tsx:567
-#: src/routes/orders.tsx:80
+#: src/routes/orders.tsx:92
 msgid "Orders"
 msgstr "Orders"
 
@@ -5211,7 +5283,7 @@ msgid "Out of stock"
 msgstr "Out of stock"
 
 #: src/layouts/base.tsx:558
-#: src/routes/deliveries.tsx:80
+#: src/routes/deliveries.tsx:91
 msgid "Outbound Deliveries"
 msgstr "Outbound Deliveries"
 
@@ -5846,7 +5918,7 @@ msgid "production order(s)"
 msgstr "production order(s)"
 
 #: src/layouts/base.tsx:635
-#: src/routes/production-orders.tsx:64
+#: src/routes/production-orders.tsx:78
 msgid "Production Orders"
 msgstr "Production Orders"
 
@@ -5861,7 +5933,7 @@ msgstr "Products"
 msgid "Profit & Loss"
 msgstr "Profit & Loss"
 
-#: src/routes/inbound-deliveries.tsx:164
+#: src/routes/inbound-deliveries.tsx:175
 #: src/routes/inbound-deliveries/details.tsx:444
 #: src/routes/incoming-invoices.tsx:320
 #: src/routes/incoming-invoices/details.tsx:427
@@ -5925,7 +5997,7 @@ msgid "Purchase orders"
 msgstr "Purchase orders"
 
 #: src/layouts/base.tsx:592
-#: src/routes/purchase-orders.tsx:76
+#: src/routes/purchase-orders.tsx:91
 msgid "Purchase Orders"
 msgstr "Purchase Orders"
 
@@ -5991,7 +6063,7 @@ msgstr "Quantities only (no unit cost needed)"
 
 #: src/routes/accounting/reports/inventory-valuation.tsx:164
 #: src/routes/inventory.tsx:593
-#: src/routes/production-orders.tsx:148
+#: src/routes/production-orders.tsx:159
 #: src/routes/production-orders/details.tsx:224
 #: src/routes/production-orders/details.tsx:581
 msgid "Quantity"
@@ -6046,11 +6118,11 @@ msgstr "Reason"
 msgid "Receipt {deliveryNumber}"
 msgstr "Receipt {deliveryNumber}"
 
-#: src/routes/inbound-deliveries.tsx:143
+#: src/routes/inbound-deliveries.tsx:154
 msgid "Receipt #"
 msgstr "Receipt #"
 
-#: src/routes/inbound-deliveries.tsx:186
+#: src/routes/inbound-deliveries.tsx:197
 #: src/routes/inbound-deliveries/details.tsx:465
 msgid "Receipt date"
 msgstr "Receipt date"
@@ -6071,6 +6143,12 @@ msgstr "Receipt number is required"
 #: src/routes/purchase-orders/details.tsx:622
 #: src/types/inbound-delivery.ts:25
 #: src/types/purchase-order.ts:31
+msgid "Received"
+msgstr "Received"
+
+#: src/routes/inbound-deliveries.tsx:75
+#: src/routes/purchase-orders.tsx:76
+msgctxt "document filter"
 msgid "Received"
 msgstr "Received"
 
@@ -6523,15 +6601,15 @@ msgid "Schedule saved"
 msgstr "Schedule saved"
 
 #: src/routes/clients.tsx:178
-#: src/routes/deliveries.tsx:82
+#: src/routes/deliveries.tsx:93
 #: src/routes/imports.tsx:124
-#: src/routes/inbound-deliveries.tsx:78
+#: src/routes/inbound-deliveries.tsx:92
 #: src/routes/incoming-invoices.tsx:169
-#: src/routes/orders.tsx:82
+#: src/routes/orders.tsx:94
 #: src/routes/organizations/index.tsx:497
-#: src/routes/production-orders.tsx:66
+#: src/routes/production-orders.tsx:80
 #: src/routes/products.tsx:576
-#: src/routes/purchase-orders.tsx:78
+#: src/routes/purchase-orders.tsx:93
 #: src/routes/settings/countries.tsx:68
 #: src/routes/settings/payment-terms.tsx:44
 #: src/routes/settings/product-families.tsx:37
@@ -6766,6 +6844,12 @@ msgstr "Shipment"
 msgid "Shipped"
 msgstr "Shipped"
 
+#: src/routes/deliveries.tsx:75
+#: src/routes/orders.tsx:76
+msgctxt "document filter"
+msgid "Shipped"
+msgstr "Shipped"
+
 #: src/routes/deliveries/details.tsx:443
 #: src/routes/orders/details.tsx:421
 msgid "Shipping address"
@@ -6925,18 +7009,18 @@ msgstr "State"
 #: src/routes/accounting/fiscal-periods.tsx:206
 #: src/routes/accounting/fiscal-periods.tsx:275
 #: src/routes/accounting/journal-entries.tsx:160
-#: src/routes/deliveries.tsx:190
+#: src/routes/deliveries.tsx:198
 #: src/routes/deliveries/details.tsx:423
-#: src/routes/inbound-deliveries.tsx:173
+#: src/routes/inbound-deliveries.tsx:184
 #: src/routes/inbound-deliveries/details.tsx:473
 #: src/routes/incoming-invoices/details.tsx:627
 #: src/routes/invoices/details.tsx:634
-#: src/routes/orders.tsx:165
+#: src/routes/orders.tsx:177
 #: src/routes/orders/details.tsx:402
 #: src/routes/orders/details.tsx:555
-#: src/routes/production-orders.tsx:164
+#: src/routes/production-orders.tsx:175
 #: src/routes/production-orders/details.tsx:564
-#: src/routes/purchase-orders.tsx:184
+#: src/routes/purchase-orders.tsx:196
 #: src/routes/purchase-orders/details.tsx:540
 #: src/routes/purchase-orders/details.tsx:702
 msgid "Status"
@@ -7509,7 +7593,7 @@ msgstr "Track serial numbers"
 msgid "Tracked"
 msgstr "Tracked"
 
-#: src/routes/orders.tsx:186
+#: src/routes/orders.tsx:198
 msgid "Tracking"
 msgstr "Tracking"
 
@@ -7800,11 +7884,11 @@ msgstr "VATIN"
 
 #: src/components/imports/form.tsx:447
 #: src/routes/accounting/reports/ap-aging.tsx:143
-#: src/routes/inbound-deliveries.tsx:155
+#: src/routes/inbound-deliveries.tsx:166
 #: src/routes/inbound-deliveries/details.tsx:389
 #: src/routes/incoming-invoices.tsx:308
 #: src/routes/incoming-invoices/details.tsx:385
-#: src/routes/purchase-orders.tsx:155
+#: src/routes/purchase-orders.tsx:167
 #: src/routes/purchase-orders/details.tsx:423
 #: src/routes/reporting/purchases-by-vendor.tsx:137
 #: src/routes/vendors.tsx:287

@@ -1,24 +1,20 @@
 import { useMemo, useState } from "react";
 import type { Order } from "src/types/models";
 import { Link, useNavigate } from "react-router";
-import { Button, Col, Empty, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ShoppingOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
 
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
-import {
-  ORDER_STATUSES,
-  orderStatusColor,
-  orderStatusLabel,
-  type OrderStatus,
-} from "src/types/order";
+import { orderStatusColor, orderStatusLabel, type OrderStatus } from "src/types/order";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import { useStatusChips } from "src/components/master-data/use-status-chips";
 import { useDateFormatter } from "src/utils/date";
 import type { Dayjs } from "dayjs";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
@@ -29,13 +25,13 @@ const statusTag = (status: string) => (
 
 const Orders = () => {
   useLingui();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const orders = useAtomValue(ordersAtom);
   const setOrders = useSetAtom(setOrdersAtom);
   const setClients = useSetAtom(setClientsAtom);
   const clients = useAtomValue(clientsAtom);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const formatDate = useDateFormatter();
@@ -54,15 +50,14 @@ const Orders = () => {
     [clients],
   );
 
-  const hasFilters = !!(search || statusFilter || clientFilter || dateRange);
-
-  const filtered = useMemo(
+  // What the search, party and date filters leave; the status chips split it.
+  const matching = useMemo(
     () =>
       filter(orders, (o: Order) =>
         matchesDocumentFilters({
           search,
           searchFields: [o.orderNumber, o.clientName, o.trackingNumber],
-          status: statusFilter,
+          status: "",
           rowStatus: o.status,
           partyId: clientFilter,
           rowPartyId: o.clientId,
@@ -70,8 +65,25 @@ const Orders = () => {
           rowDate: o.orderDate,
         }),
       ),
-    [orders, search, statusFilter, clientFilter, dateRange],
+    [orders, search, clientFilter, dateRange],
   );
+  const { shown, picked, bar } = useStatusChips(
+    matching,
+    (row) => row.status ?? "",
+    [
+      { key: "draft", label: <Trans context="document filter">Draft</Trans> },
+      { key: "confirmed", label: <Trans context="document filter">Confirmed</Trans> },
+      { key: "shipped", label: <Trans context="document filter">Shipped</Trans> },
+      { key: "delivered", label: <Trans context="document filter">Delivered</Trans> },
+      {
+        key: "cancelled",
+        label: <Trans context="document filter">Cancelled</Trans>,
+        hideWhenEmpty: true,
+      },
+    ],
+    t`Filter orders`,
+  );
+  const hasFilters = !!(search || picked || clientFilter || dateRange);
 
   return (
     <>
@@ -90,11 +102,6 @@ const Orders = () => {
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
             dateLabel={t`Order date`}
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            statusPlaceholder={t`All statuses`}
-            statusAriaLabel={t`Filter by status`}
-            statusOptions={ORDER_STATUSES.map((s) => ({ value: s, label: orderStatusLabel(s) }))}
             partyOptions={clientOptions}
             partyValue={clientFilter}
             onPartyChange={setClientFilter}
@@ -108,10 +115,15 @@ const Orders = () => {
         }
       />
 
+      <p style={{ margin: "4px 0 0", color: token.colorTextSecondary }}>
+        {plural(orders.length, { one: "# order", other: "# orders" })}
+      </p>
+      {bar}
+
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
-            dataSource={filtered}
+            dataSource={shown}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}

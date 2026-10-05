@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react";
 import type { InboundDelivery } from "src/types/models";
 import { Link, useNavigate } from "react-router";
-import { Button, Col, Empty, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { ImportOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
 
 import { useDateFormatter } from "src/utils/date";
 import {
-  INBOUND_DELIVERY_STATUSES,
   inboundDeliveryStatusColor,
   inboundDeliveryStatusLabel,
   type InboundDeliveryStatus,
@@ -20,18 +19,19 @@ import { inboundDeliveriesAtom, setInboundDeliveriesAtom } from "src/atoms/inbou
 import { vendorsAtom, setVendorsAtom } from "src/atoms/vendor";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import { useStatusChips } from "src/components/master-data/use-status-chips";
 import type { Dayjs } from "dayjs";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const InboundDeliveries = () => {
   useLingui();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const formatDate = useDateFormatter();
   const deliveries = useAtomValue(inboundDeliveriesAtom);
   const setDeliveries = useSetAtom(setInboundDeliveriesAtom);
   const setVendors = useSetAtom(setVendorsAtom);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [vendorFilter, setVendorFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const vendors = useAtomValue(vendorsAtom);
@@ -50,15 +50,14 @@ const InboundDeliveries = () => {
     [vendors],
   );
 
-  const hasFilters = !!(search || statusFilter || vendorFilter || dateRange);
-
-  const filtered = useMemo(
+  // What the search, party and date filters leave; the status chips split it.
+  const matching = useMemo(
     () =>
       filter(deliveries, (d: InboundDelivery) =>
         matchesDocumentFilters({
           search,
           searchFields: [d.deliveryNumber, d.vendorName, d.orderNumber],
-          status: statusFilter,
+          status: "",
           rowStatus: d.status,
           partyId: vendorFilter,
           rowPartyId: d.vendorId,
@@ -66,8 +65,23 @@ const InboundDeliveries = () => {
           rowDate: d.deliveryDate,
         }),
       ),
-    [deliveries, search, statusFilter, vendorFilter, dateRange],
+    [deliveries, search, vendorFilter, dateRange],
   );
+  const { shown, picked, bar } = useStatusChips(
+    matching,
+    (row) => row.status ?? "",
+    [
+      { key: "draft", label: <Trans context="document filter">Draft</Trans> },
+      { key: "received", label: <Trans context="document filter">Received</Trans> },
+      {
+        key: "cancelled",
+        label: <Trans context="document filter">Cancelled</Trans>,
+        hideWhenEmpty: true,
+      },
+    ],
+    t`Filter goods receipts`,
+  );
+  const hasFilters = !!(search || picked || vendorFilter || dateRange);
 
   return (
     <>
@@ -86,14 +100,6 @@ const InboundDeliveries = () => {
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
             dateLabel={t`Delivery date`}
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            statusPlaceholder={t`All statuses`}
-            statusAriaLabel={t`Filter by status`}
-            statusOptions={INBOUND_DELIVERY_STATUSES.map((s) => ({
-              value: s,
-              label: inboundDeliveryStatusLabel(s),
-            }))}
             partyOptions={vendorOptions}
             partyValue={vendorFilter}
             onPartyChange={setVendorFilter}
@@ -107,10 +113,15 @@ const InboundDeliveries = () => {
         }
       />
 
+      <p style={{ margin: "4px 0 0", color: token.colorTextSecondary }}>
+        {plural(deliveries.length, { one: "# goods receipt", other: "# goods receipts" })}
+      </p>
+      {bar}
+
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
-            dataSource={filtered}
+            dataSource={shown}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
