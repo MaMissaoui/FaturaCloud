@@ -55,6 +55,9 @@ export default defineConfig(async () => ({
   },
   define: {
     global: "globalThis",
+    // The build's version (the Docker VERSION build-arg), sent with browser
+    // error reports (src/utils/client-errors.ts) so a stale tab is visible.
+    __APP_VERSION__: JSON.stringify(process.env.VERSION || "development"),
   },
   clearScreen: false,
   server: {
