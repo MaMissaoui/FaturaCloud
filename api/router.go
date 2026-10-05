@@ -56,9 +56,12 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		trustedProxies: trustedProxies,
 	}
 	go h.runScheduler()
+	go h.runAuditPruning()
 	go sweepLoginBuckets()
 
-	mux := http.NewServeMux()
+	// Every change route registered below is recorded in the activity
+	// history (api/audit.go).
+	mux := &auditMux{ServeMux: http.NewServeMux(), h: h}
 
 	// Public
 	mux.Handle("GET /api/version", limitBody(defaultMaxBody, h.getVersion))
@@ -207,6 +210,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgAdminProtected("POST", "/api/organizations/{orgId}/loan-imports", pathOrgID("orgId"), h.importLoanRegister)
 	orgAdminProtected("DELETE", "/api/loan-imports/{id}", loanImportOrgID, h.undoLoanImport)
 
+	// Activity history (api/audit.go): an organization's for its admins,
+	// the platform's (users, backups, restores) for platform admins.
+	orgAdminProtected("GET", "/api/organizations/{orgId}/audit-events", pathOrgID("orgId"), h.listOrganizationAuditEvents)
+	platformAdminProtected("GET", "/api/audit-events", h.listPlatformAuditEvents)
 	orgAdminProtected("GET", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.listOrganizationMembers)
 	orgAdminProtected("POST", "/api/organizations/{orgId}/members", pathOrgID("orgId"), h.addOrganizationMember)
 	orgAdminProtected("PUT", "/api/organizations/{orgId}/members/{userId}", pathOrgID("orgId"), h.updateOrganizationMemberRole)
@@ -782,5 +789,5 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgRoleAdminProtected("GET", "/api/organizations/{orgId}/gl-export/fec", pathOrgID("orgId"), []string{"accounting"}, h.getFECExport)
 	orgRoleAdminProtected("GET", "/api/organizations/{orgId}/gl-export/datev", pathOrgID("orgId"), []string{"accounting"}, h.getDATEVExport)
 
-	return mux
+	return mux.ServeMux
 }
