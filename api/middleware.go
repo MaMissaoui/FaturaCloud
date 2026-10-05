@@ -93,14 +93,16 @@ func (h *handler) authMiddleware(next http.Handler) http.Handler {
 		// read lock (api/router.go).
 		h.dbMu.RLock()
 		var isActive, isPlatformAdmin, tokenVersion int
-		err = h.db.DB.QueryRow(`SELECT isActive, isPlatformAdmin, tokenVersion FROM users WHERE id = ?`, claims.UserID).
-			Scan(&isActive, &isPlatformAdmin, &tokenVersion)
+		var email string
+		err = h.db.DB.QueryRow(`SELECT isActive, isPlatformAdmin, tokenVersion, email FROM users WHERE id = ?`, claims.UserID).
+			Scan(&isActive, &isPlatformAdmin, &tokenVersion, &email)
 		h.dbMu.RUnlock()
 		if err != nil || isActive == 0 || claims.TokenVersion != tokenVersion {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 		claims.IsPlatformAdmin = isPlatformAdmin != 0
+		setRequestUser(r, claims.UserID, email)
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -185,6 +187,9 @@ func (h *handler) orgAuthorized(resolve orgIDResolver, mode orgAuthMode, allowed
 			if err != nil {
 				writeInternalError(w, err)
 				return
+			}
+			if isMember {
+				setRequestOrg(r, orgID, role)
 			}
 
 			switch mode {
@@ -303,6 +308,7 @@ func (h *handler) requireOrgMember(w http.ResponseWriter, r *http.Request, orgID
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
 	}
+	setRequestOrg(r, orgID, role)
 	if !routeAllowedForRole(role, r.Pattern) {
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
@@ -330,6 +336,7 @@ func (h *handler) requireOrgRole(w http.ResponseWriter, r *http.Request, orgID s
 		writeError(w, http.StatusForbidden, "forbidden")
 		return false
 	}
+	setRequestOrg(r, orgID, role)
 	allowed := role == "admin" || role == "power_user" || role == "general"
 	for _, want := range roles {
 		if role == want {

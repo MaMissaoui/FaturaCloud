@@ -132,6 +132,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	// Auth
 	protected("GET", "/api/auth/me", h.me)
 
+	// Browser error reports (api/client_errors.go) — any signed-in user;
+	// logged, never stored.
+	protected("POST", "/api/client-errors", h.reportClientError)
+
 	// Backup — the whole surface is platform-admin-only (a global,
 	// non-org-scoped concern); the sidebar already hides it from non-admins,
 	// so the API matches that boundary instead of only gating the

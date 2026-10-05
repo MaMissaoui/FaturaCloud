@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -469,7 +469,7 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 			blocked = activeAdmins <= 1
 		}
 		if blocked {
-			log.Printf("provisionOrSyncUser: refusing to demote last active platform admin %s via SSO role sync", email)
+			slog.Warn("SSO role sync: refusing to demote the last active platform admin", "email", email)
 		} else {
 			if _, err := h.db.DB.Exec(`UPDATE users SET role = ?, isPlatformAdmin = ? WHERE id = ?`, role, wantPlatformAdmin, u.ID); err != nil {
 				return userRow{}, err
@@ -488,7 +488,7 @@ func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow
 func EnsureFirstAdmin(database *db.Database, email, password string) {
 	var count int
 	if err := database.DB.Get(&count, `SELECT COUNT(*) FROM users`); err != nil {
-		log.Printf("EnsureFirstAdmin: failed to count existing users: %v", err)
+		slog.Error("EnsureFirstAdmin: failed to count existing users", "err", err)
 		return
 	}
 	if count > 0 {
@@ -496,7 +496,7 @@ func EnsureFirstAdmin(database *db.Database, email, password string) {
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("EnsureFirstAdmin: failed to hash password: %v", err)
+		slog.Error("EnsureFirstAdmin: failed to hash password", "err", err)
 		return
 	}
 	id, _ := nanoid.New()
@@ -512,6 +512,6 @@ func EnsureFirstAdmin(database *db.Database, email, password string) {
 		`INSERT INTO users (id, email, passwordHash, displayName, role, isPlatformAdmin, createdAt) VALUES (?, ?, ?, 'Administrator', 'admin', 1, ?)`,
 		id, email, string(hash), time.Now().Format("2006-01-02 15:04:05"),
 	); err != nil {
-		log.Printf("EnsureFirstAdmin: failed to create initial admin user: %v", err)
+		slog.Error("EnsureFirstAdmin: failed to create initial admin user", "err", err)
 	}
 }

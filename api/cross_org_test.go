@@ -224,6 +224,7 @@ var exemptRoutes = map[routeKey]string{
 	{"GET", "/api/auth/oidc/login"}:               "public, pre-auth",
 	{"GET", "/api/auth/oidc/callback"}:            "public, pre-auth",
 	{"GET", "/api/auth/me"}:                       "caller's own identity, no org context",
+	{"POST", "/api/client-errors"}:                "the caller's own browser error report, logged and never stored — no org data",
 	{"POST", "/api/organizations"}:                "no existing org to check; creator is auto-granted membership",
 	{"GET", "/api/organizations/{orgId}/my-role"}: "intentionally self-limiting — any authenticated user may ask their own role",
 	{"GET", "/api/organizations/my-roles"}:        "batch counterpart to my-role (issue #147) — same self-limiting scope, across every organization the caller belongs to at once",

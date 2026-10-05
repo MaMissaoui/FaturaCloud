@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
@@ -233,7 +233,7 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if len(unresolved) > 0 {
-		log.Printf("export invoice %s: template has unresolved placeholders: %v", id, unresolved)
+		noteRequest(r, &levelWarn, slog.String("warning", "template has unresolved placeholders"), slog.Any("placeholders", unresolved))
 	}
 
 	filenameBase := "invoice-" + invoice.Number
@@ -286,7 +286,7 @@ func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if len(unresolved) > 0 {
-		log.Printf("export purchase order %s: template has unresolved placeholders: %v", id, unresolved)
+		noteRequest(r, &levelWarn, slog.String("warning", "template has unresolved placeholders"), slog.Any("placeholders", unresolved))
 	}
 
 	filenameBase := "purchase-order-" + order.OrderNumber
@@ -340,7 +340,7 @@ func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.R
 		return
 	}
 	if len(unresolved) > 0 {
-		log.Printf("export incoming invoice %s: template has unresolved placeholders: %v", id, unresolved)
+		noteRequest(r, &levelWarn, slog.String("warning", "template has unresolved placeholders"), slog.Any("placeholders", unresolved))
 	}
 
 	filenameBase := "incoming-invoice-" + invoice.VendorInvoiceNumber
@@ -393,7 +393,7 @@ func (h *handler) exportDeliveryDocument(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if len(unresolved) > 0 {
-		log.Printf("export delivery %s: template has unresolved placeholders: %v", id, unresolved)
+		noteRequest(r, &levelWarn, slog.String("warning", "template has unresolved placeholders"), slog.Any("placeholders", unresolved))
 	}
 
 	filenameBase := "delivery-" + delivery.DeliveryNumber
@@ -446,7 +446,7 @@ func (h *handler) exportInboundDeliveryDocument(w http.ResponseWriter, r *http.R
 		return
 	}
 	if len(unresolved) > 0 {
-		log.Printf("export inbound delivery %s: template has unresolved placeholders: %v", id, unresolved)
+		noteRequest(r, &levelWarn, slog.String("warning", "template has unresolved placeholders"), slog.Any("placeholders", unresolved))
 	}
 
 	filenameBase := "goods-receipt-" + delivery.DeliveryNumber
@@ -498,7 +498,7 @@ func (h *handler) exportOrderDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(unresolved) > 0 {
-		log.Printf("export order %s: template has unresolved placeholders: %v", id, unresolved)
+		noteRequest(r, &levelWarn, slog.String("warning", "template has unresolved placeholders"), slog.Any("placeholders", unresolved))
 	}
 
 	filenameBase := "order-" + order.OrderNumber
