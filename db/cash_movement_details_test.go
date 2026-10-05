@@ -56,12 +56,10 @@ func TestGetCashMovementDetailsClassifiesSaleLoanAndRepayment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePayment (repayment): %v", err)
 	}
-	// invoices.state is a manual flag, never derived from payments (see
-	// db/CLAUDE.md) — CreatePayment alone doesn't flip it. The Cash Book
-	// screen's own "Pay" flow does this as an explicit follow-up call once
-	// a balance clears (cash-book.tsx's handleSettled); mirror that here so
-	// this test actually exercises the retroactive-mislabeling risk a
-	// state-based Kind would have.
+	// The clearing payment already marked the invoice paid
+	// (db/payment_state.go); the explicit call below is the Cash Book's old
+	// follow-up, now a no-op, kept so this test still exercises the
+	// retroactive-mislabeling risk a state-based Kind would have.
 	if _, err := d.UpdateInvoiceState(loanSale.Invoice.ID, "paid"); err != nil {
 		t.Fatalf("UpdateInvoiceState: %v", err)
 	}

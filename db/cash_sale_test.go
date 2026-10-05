@@ -563,13 +563,12 @@ func TestCreateCashSaleLoanSaleFullRoundTripSettlesToPaid(t *testing.T) {
 	if paid != 2400 {
 		t.Fatalf("GetInvoiceAmountPaid = %d, want 2400", paid)
 	}
-	// Invoice state itself is a manual flag everywhere except this screen's
-	// own explicit follow-up call (see CreateCashSale's doc comment) — it's
-	// still "sent" until that call runs, even though the balance is zero.
+	// The payment that clears the balance marks the invoice paid itself
+	// (db/payment_state.go); the screen's follow-up call is then a no-op.
 	if inv, err := d.GetInvoice(result.Invoice.ID); err != nil {
 		t.Fatalf("GetInvoice: %v", err)
-	} else if inv.State != "sent" {
-		t.Fatalf("invoice state before the follow-up call = %q, want sent", inv.State)
+	} else if inv.State != "paid" {
+		t.Fatalf("invoice state after the clearing payment = %q, want paid", inv.State)
 	}
 
 	if _, err := d.UpdateInvoiceState(result.Invoice.ID, "paid"); err != nil {

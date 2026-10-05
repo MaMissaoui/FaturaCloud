@@ -617,6 +617,12 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 			return nil, fmt.Errorf("create_payment application %d insert: %w", i+1, err)
 		}
 	}
+	// A document this payment settles in full becomes "paid" (db/payment_state.go).
+	for _, app := range req.Applications {
+		if err := markPaidIfSettledTx(tx, app.DocumentType, app.DocumentID); err != nil {
+			return nil, err
+		}
+	}
 
 	description := fmt.Sprintf("Payment %s", req.ID)
 	entryID, err := postAutoEntryTx(tx, req.OrganizationID, journal.ID, "payment", req.ID, req.Date, derefString(req.Reference), description, lines)
@@ -676,8 +682,32 @@ func (d *Database) VoidPayment(paymentID string, reversalDate int64) (*Payment, 
 		return nil, err
 	}
 
+	// What each settled document's payments covered before the void, so one
+	// left with a balance can go back from "paid" (db/payment_state.go).
+	type settled struct {
+		DocumentType string `db:"documentType"`
+		DocumentID   string `db:"documentId"`
+		paidBefore   int64
+	}
+	var docs []settled
+	if err := tx.Select(&docs, `SELECT DISTINCT documentType, documentId FROM payment_applications WHERE paymentId = ?`, paymentID); err != nil {
+		return nil, fmt.Errorf("void_payment applications: %w", err)
+	}
+	for i := range docs {
+		paid, err := getDocumentAmountPaidTx(tx, docs[i].DocumentType, docs[i].DocumentID)
+		if err != nil {
+			return nil, err
+		}
+		docs[i].paidBefore = paid
+	}
+
 	if _, err := tx.Exec(`UPDATE payments SET status = 'voided', voidingEntryId = ? WHERE id = ?`, reversalID, paymentID); err != nil {
 		return nil, fmt.Errorf("void_payment update: %w", err)
+	}
+	for _, doc := range docs {
+		if err := reopenIfUnsettledTx(tx, doc.DocumentType, doc.DocumentID, doc.paidBefore); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

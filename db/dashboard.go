@@ -249,9 +249,9 @@ func (d *Database) selectOutstandingInvoices(organizationID, clientID string) ([
 }
 
 // getOutstandingInvoices keeps the pre-Phase-3 filter of state == 'sent'
-// only — 'paid' is a manual, free-transitioning flag disconnected from real
-// payments (see CLAUDE.md), and second-guessing it here would be a product
-// decision this function shouldn't make silently. What Phase 3 payments do
+// only — 'paid' can still be set by hand, and since 2026-10 a payment that
+// clears the balance sets it too (db/payment_state.go), so a 'paid' invoice
+// is never listed here. What Phase 3 payments do
 // fix: a 'sent' invoice that already has a real partial (or full) payment
 // applied now shows its actual remaining balance — previously this always
 // showed the full total, and a fully-paid-via-real-payments invoice never
