@@ -387,6 +387,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/incoming-invoices", pathOrgID("orgId"), h.listIncomingInvoices)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/incoming-invoices/match-summaries", pathOrgID("orgId"), h.getIncomingInvoiceMatchSummaries)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/incoming-invoices/outstanding", pathOrgID("orgId"), h.listOutstandingIncomingInvoices)
 	protected("POST", "/api/incoming-invoices", h.createIncomingInvoice)
 	orgMemberProtected("GET", "/api/incoming-invoices/{id}", incomingInvoiceOrgID, h.getIncomingInvoice)
 	orgMemberProtected("GET", "/api/incoming-invoices/{id}/line-items", incomingInvoiceOrgID, h.getIncomingInvoiceLineItems)
@@ -413,6 +414,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		return invoice.OrganizationID, nil
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/invoices", pathOrgID("orgId"), h.listInvoices)
+	orgMemberProtected("GET", "/api/organizations/{orgId}/invoices/outstanding", pathOrgID("orgId"), h.listOutstandingInvoices)
 	protected("POST", "/api/invoices", h.createInvoice)
 	orgMemberProtected("GET", "/api/invoices/{id}", invoiceOrgID, h.getInvoice)
 	orgMemberProtected("GET", "/api/invoices/{id}/line-items", invoiceOrgID, h.getInvoiceLineItems)
