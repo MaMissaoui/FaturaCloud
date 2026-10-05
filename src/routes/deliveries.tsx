@@ -1,23 +1,19 @@
 import { useMemo, useState } from "react";
 import type { Delivery } from "src/types/models";
 import { Link, useNavigate } from "react-router";
-import { Button, Col, Empty, Row, Table, Tag } from "antd";
+import { Button, Col, Empty, Row, Table, Tag, theme } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { SendOutlined } from "@ant-design/icons";
 import filter from "lodash/filter";
 
 import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
-import {
-  DELIVERY_STATUSES,
-  deliveryStatusColor,
-  deliveryStatusLabel,
-  type DeliveryStatus,
-} from "src/types/delivery";
+import { deliveryStatusColor, deliveryStatusLabel, type DeliveryStatus } from "src/types/delivery";
 import PageHeader from "src/components/page-header";
 import DocumentFilters, { matchesDocumentFilters } from "src/components/document-filters";
+import { useStatusChips } from "src/components/master-data/use-status-chips";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { useDateFormatter } from "src/utils/date";
 import type { Dayjs } from "dayjs";
@@ -29,12 +25,12 @@ const statusTag = (status: string) => (
 
 const Deliveries = () => {
   useLingui();
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
   const setClients = useSetAtom(setClientsAtom);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
   const clients = useAtomValue(clientsAtom);
@@ -54,15 +50,14 @@ const Deliveries = () => {
     [clients],
   );
 
-  const hasFilters = !!(search || statusFilter || clientFilter || dateRange);
-
-  const filtered = useMemo(
+  // What the search, party and date filters leave; the status chips split it.
+  const matching = useMemo(
     () =>
       filter(deliveries, (d: Delivery) =>
         matchesDocumentFilters({
           search,
           searchFields: [d.deliveryNumber, d.clientName, d.orderNumber],
-          status: statusFilter,
+          status: "",
           rowStatus: d.status,
           partyId: clientFilter,
           rowPartyId: d.clientId,
@@ -70,8 +65,24 @@ const Deliveries = () => {
           rowDate: d.deliveryDate,
         }),
       ),
-    [deliveries, search, statusFilter, clientFilter, dateRange],
+    [deliveries, search, clientFilter, dateRange],
   );
+  const { shown, picked, bar } = useStatusChips(
+    matching,
+    (row) => row.status ?? "",
+    [
+      { key: "draft", label: <Trans context="document filter">Draft</Trans> },
+      { key: "shipped", label: <Trans context="document filter">Shipped</Trans> },
+      { key: "delivered", label: <Trans context="document filter">Delivered</Trans> },
+      {
+        key: "cancelled",
+        label: <Trans context="document filter">Cancelled</Trans>,
+        hideWhenEmpty: true,
+      },
+    ],
+    t`Filter deliveries`,
+  );
+  const hasFilters = !!(search || picked || clientFilter || dateRange);
 
   return (
     <>
@@ -90,14 +101,6 @@ const Deliveries = () => {
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
             dateLabel={t`Delivery date`}
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            statusPlaceholder={t`All statuses`}
-            statusAriaLabel={t`Filter by status`}
-            statusOptions={DELIVERY_STATUSES.map((s) => ({
-              value: s,
-              label: deliveryStatusLabel(s),
-            }))}
             partyOptions={clientOptions}
             partyValue={clientFilter}
             onPartyChange={setClientFilter}
@@ -110,10 +113,15 @@ const Deliveries = () => {
           </Button>
         }
       />
+      <p style={{ margin: "4px 0 0", color: token.colorTextSecondary }}>
+        {plural(deliveries.length, { one: "# delivery", other: "# deliveries" })}
+      </p>
+      {bar}
+
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
           <Table
-            dataSource={filtered}
+            dataSource={shown}
             pagination={{ defaultPageSize: 25, showSizeChanger: true, hideOnSinglePage: true }}
             rowKey="id"
             loading={loading}
