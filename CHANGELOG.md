@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.64.1] - 2026-10-05
+
+### Changed
+- Recording a payment that covers an invoice's or a bill's whole total now
+  marks it Paid, and voiding that payment puts it back to Sent (Approved for
+  a bill). An invoice someone marked Paid by hand on a part payment stays
+  Paid. The invoice and bill pages show the new state straight away (#484).
+- Invoices and bills already paid in full before this change are marked Paid
+  once, for every organization, when the update is installed (#484).
+
 ## [3.64.0] - 2026-10-05
 
 ### Added
