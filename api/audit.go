@@ -188,19 +188,27 @@ func (h *handler) writeAuditEvents(w http.ResponseWriter, r *http.Request, f db.
 }
 
 // runAuditPruning drops the history older than db.AuditRetention, a minute
-// after startup and then daily.
+// after startup and then daily. It stops once its database is closed for
+// good (a test's router after the test, a server shutting down); a restore
+// swaps h.db under the write lock, so it never sees the replaced one.
 func (h *handler) runAuditPruning() {
 	for {
 		time.Sleep(time.Minute)
 		h.dbMu.RLock()
+		var n int64
+		var err error
 		if h.db != nil {
-			if n, err := h.db.PruneAuditEvents(time.Now()); err != nil {
-				slog.Warn("activity history: pruning failed", "err", err)
-			} else if n > 0 {
-				slog.Info("activity history: pruned old entries", "count", n)
-			}
+			n, err = h.db.PruneAuditEvents(time.Now())
 		}
 		h.dbMu.RUnlock()
+		switch {
+		case db.IsClosed(err):
+			return
+		case err != nil:
+			slog.Warn("activity history: pruning failed", "err", err)
+		case n > 0:
+			slog.Info("activity history: pruned old entries", "count", n)
+		}
 		time.Sleep(24*time.Hour - time.Minute)
 	}
 }
