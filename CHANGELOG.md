@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.65.0] - 2026-10-06
+
+### Added
+- Activity history: Settings ▸ Activity lists every change made in the
+  organization over the last two years (who, when, what, which document, and
+  a state change's before and after), for organization admins. Platform
+  admins also see users, backups and database restores. Kept two years (#487).
+- The server writes one log line per request (route, status, user,
+  organization, request id), logs failed sign-ins as warnings, and logs
+  crashes in a user's browser as errors. A server error now shows a reference
+  (`internal error (ref …)`) that finds its log line. `LOG_LEVEL` and
+  `LOG_FORMAT` set the level and format; `docs/logging.md` explains how to
+  read the logs (#486).
+
 ## [3.64.1] - 2026-10-05
 
 ### Changed
