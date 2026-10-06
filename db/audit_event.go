@@ -121,6 +121,12 @@ func (d *Database) ListAuditEvents(f AuditEventFilter) ([]AuditEvent, error) {
 	return events, nil
 }
 
+// IsClosed reports whether err comes from using a closed database.
+// database/sql keeps that error unexported, so its message is the test.
+func IsClosed(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "sql: database is closed")
+}
+
 // PruneAuditEvents deletes the history older than AuditRetention.
 func (d *Database) PruneAuditEvents(now time.Time) (int64, error) {
 	res, err := d.DB.Exec(`DELETE FROM audit_events WHERE createdAt < ?`, now.Add(-AuditRetention).UnixMilli())

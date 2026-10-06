@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,20 +18,45 @@ import (
 // These tests swap slog's default logger, so none of them is parallel: the
 // package's parallel tests only start once every sequential test is done.
 
+// logBuffer is a bytes.Buffer safe to share: background goroutines of other
+// tests' routers may log through the default logger while a test reads it.
+type logBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *logBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *logBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func (b *logBuffer) Len() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Len()
+}
+
 // captureLog points slog's default logger at a buffer (JSON, debug level)
 // for the rest of the test.
-func captureLog(t *testing.T) *bytes.Buffer {
+func captureLog(t *testing.T) *logBuffer {
 	t.Helper()
-	var buf bytes.Buffer
+	buf := &logBuffer{}
 	prev := slog.Default()
-	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	t.Cleanup(func() { slog.SetDefault(prev) })
-	return &buf
+	return buf
 }
 
 // logLine returns the "request" line logged for request id, failing if there
 // isn't exactly one.
-func logLine(t *testing.T, buf *bytes.Buffer, id string) map[string]any {
+func logLine(t *testing.T, buf *logBuffer, id string) map[string]any {
 	t.Helper()
 	var found []map[string]any
 	for _, raw := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
