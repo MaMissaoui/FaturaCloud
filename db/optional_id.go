@@ -98,6 +98,7 @@ var nullableFKClassification = map[string]fkDisposition{
 	"taxRates.outputTaxAccountId":                         fkNormalized,
 
 	// --- server-set: "" was never reachable ---
+	"audit_events.userId":                                fkServerSet,
 	"bill_of_materials_version_lines.componentProductId": fkServerSet,
 	"cash_movements.journalEntryId":                      fkServerSet,
 	"journal_entries.createdBy":                          fkServerSet,

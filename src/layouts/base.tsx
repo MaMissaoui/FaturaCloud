@@ -23,6 +23,7 @@ import {
   TeamOutlined,
   SolutionOutlined,
   ShoppingCartOutlined,
+  HistoryOutlined,
   ImportOutlined,
   AuditOutlined,
   SettingOutlined,
@@ -413,6 +414,21 @@ export default function BaseLayout() {
               </Link>
             ),
             key: "settings.loan-import",
+          },
+        ]
+      : []),
+    // The activity history (src/routes/settings/activity.tsx): the
+    // organization's for its admins, the platform's for platform admins.
+    ...(isOrgAdmin || isPlatformAdmin
+      ? [
+          {
+            icon: <HistoryOutlined />,
+            label: (
+              <Link to="/settings/activity">
+                <Trans>Activity</Trans>
+              </Link>
+            ),
+            key: "settings.activity",
           },
         ]
       : []),

@@ -54,6 +54,8 @@ func (h *handler) createOrganization(w http.ResponseWriter, r *http.Request) {
 	// turn a successful org creation into a 500 the caller has no way to
 	// recover from (the org already exists); log and continue rather than
 	// discard the creation.
+	// The creation belongs in the new organization's own activity history.
+	setRequestOrg(r, org.ID, "admin")
 	if claims := getClaims(r); claims != nil {
 		if _, err := h.db.AddOrganizationUser(org.ID, claims.UserID, "admin"); err != nil {
 			noteRequest(r, &levelError, slog.String("warning", "could not make the creator a member"), slog.String("org", org.ID), slog.String("membership_err", err.Error()))

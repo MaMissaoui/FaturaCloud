@@ -2359,6 +2359,9 @@ func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 	}
 	deliberatelyUnresetTables := map[string]bool{
 		"organization_users": true,
+		// The activity history records the reset itself; a reset that erased
+		// the history would also erase who ran it.
+		"audit_events": true,
 	}
 
 	tables := []string{}

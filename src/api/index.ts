@@ -1949,3 +1949,49 @@ export const GetTaxSummary = (organizationId: string, startDate: number, endDate
   get<TaxSummary>(
     `/organizations/${organizationId}/reporting/tax-summary?startDate=${startDate}&endDate=${endDate}`,
   );
+
+// Activity history (api/audit.go): one entry per successful change, newest
+// first. `next` is the cursor for the following page ("" on the last one).
+export interface AuditEvent {
+  id: string;
+  createdAt: number;
+  organizationId: string | null;
+  userId: string | null;
+  userEmail: string;
+  method: string;
+  route: string;
+  resource: string;
+  entityId: string;
+  entityLabel: string;
+  fromState: string;
+  toState: string;
+  requestId: string;
+}
+
+export interface AuditEventPage {
+  events: AuditEvent[];
+  next: string;
+}
+
+export interface AuditEventQuery {
+  userId?: string;
+  from?: number;
+  to?: number;
+  before?: string;
+}
+
+const auditQuery = (q: AuditEventQuery) => {
+  const params = new URLSearchParams();
+  if (q.userId) params.set("userId", q.userId);
+  if (q.from) params.set("from", String(q.from));
+  if (q.to) params.set("to", String(q.to));
+  if (q.before) params.set("before", q.before);
+  const s = params.toString();
+  return s ? `?${s}` : "";
+};
+
+export const GetOrganizationAuditEvents = (organizationId: string, q: AuditEventQuery) =>
+  get<AuditEventPage>(`/organizations/${organizationId}/audit-events${auditQuery(q)}`);
+
+export const GetPlatformAuditEvents = (q: AuditEventQuery) =>
+  get<AuditEventPage>(`/audit-events${auditQuery(q)}`);

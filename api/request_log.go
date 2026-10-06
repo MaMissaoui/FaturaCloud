@@ -42,7 +42,17 @@ type requestInfo struct {
 	// though its status is an ordinary 401 or redirect.
 	level *slog.Level
 	attrs []slog.Attr
+	// status is the response status once written; the activity history
+	// (api/audit.go) reads it. head keeps the start of the response body
+	// when captureHead is set — how the history learns a created
+	// document's id.
+	status      int
+	captureHead bool
+	head        []byte
 }
+
+// auditHeadLimit bounds how much of a response the history keeps.
+const auditHeadLimit = 2048
 
 func infoFrom(ctx context.Context) *requestInfo {
 	info, _ := ctx.Value(requestInfoKey{}).(*requestInfo)
@@ -107,6 +117,7 @@ type loggingResponseWriter struct {
 func (lw *loggingResponseWriter) WriteHeader(status int) {
 	if !lw.wroteHeader {
 		lw.status, lw.wroteHeader = status, true
+		lw.info.status = status
 	}
 	lw.ResponseWriter.WriteHeader(status)
 }
@@ -114,6 +125,10 @@ func (lw *loggingResponseWriter) WriteHeader(status int) {
 func (lw *loggingResponseWriter) Write(b []byte) (int, error) {
 	if !lw.wroteHeader {
 		lw.status, lw.wroteHeader = http.StatusOK, true
+		lw.info.status = http.StatusOK
+	}
+	if lw.info.captureHead && len(lw.info.head) < auditHeadLimit {
+		lw.info.head = append(lw.info.head, b[:min(len(b), auditHeadLimit-len(lw.info.head))]...)
 	}
 	n, err := lw.ResponseWriter.Write(b)
 	lw.bytes += int64(n)

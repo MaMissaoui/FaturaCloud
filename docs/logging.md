@@ -113,7 +113,25 @@ crash.
 Docker keeps three files of 10 MB each per container (set in the homelab
 compose file), so roughly the last 100,000–150,000 lines at the default level.
 Older lines are gone: a log line is a diagnostic, not a record of who
-changed what.
+changed what. That record is the activity history below.
+
+## Activity history
+
+Every change made through the app (creating, editing, deleting, changing a
+state, recording a payment, importing a sheet…) is also stored in the
+database, kept for two years. Open it from the Settings gear ▸ **Activity**:
+
+- **Organization admins** see their organization's history: when, who, what
+  was done to which document, and for a state change the state before and
+  after. Filter by member and by dates; a document with its own page opens
+  from its row.
+- **Platform admins** also get a **Platform** view: users, backups and
+  database restores, which belong to no organization.
+
+The history records the change someone made, not its side effects: a payment
+that marks an invoice Paid appears as the payment. Each row carries the
+request id, so the matching log line can be found with
+`grep request_id=<id>` while the log still has it.
 
 ## Settings
 
