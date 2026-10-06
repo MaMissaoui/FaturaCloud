@@ -2,7 +2,7 @@ package api
 
 import (
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -56,7 +56,7 @@ func (h *handler) createOrganization(w http.ResponseWriter, r *http.Request) {
 	// discard the creation.
 	if claims := getClaims(r); claims != nil {
 		if _, err := h.db.AddOrganizationUser(org.ID, claims.UserID, "admin"); err != nil {
-			log.Printf("create_organization: failed to grant creator %s membership on %s: %v", claims.UserID, org.ID, err)
+			noteRequest(r, &levelError, slog.String("warning", "could not make the creator a member"), slog.String("org", org.ID), slog.String("membership_err", err.Error()))
 		}
 	}
 	writeJSON(w, http.StatusCreated, org)

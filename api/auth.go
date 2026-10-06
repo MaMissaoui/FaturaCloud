@@ -1,7 +1,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
@@ -153,11 +153,17 @@ func IsHTTPS(r *http.Request, trustedProxies []netip.Prefix) bool {
 // permits. Falls back to the direct peer when the header is absent, empty, or
 // contains nothing but trusted proxies.
 func (h *handler) clientIP(r *http.Request) string {
+	return clientIPFor(r, h.trustedProxies)
+}
+
+// clientIPFor is clientIP for a caller with no handler at hand (the request
+// logger, which wraps the whole server).
+func clientIPFor(r *http.Request, trustedProxies []netip.Prefix) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	if !IsTrustedProxyPeer(r, h.trustedProxies) {
+	if !IsTrustedProxyPeer(r, trustedProxies) {
 		return host
 	}
 	xff := r.Header.Get("X-Forwarded-For")
@@ -172,7 +178,7 @@ func (h *handler) clientIP(r *http.Request) string {
 		}
 		// An unparseable entry can't be a trusted proxy, so it's returned as
 		// the client — the same "first non-trusted value wins" rule.
-		if addr, parseErr := netip.ParseAddr(candidate); parseErr == nil && isTrustedProxyAddr(addr, h.trustedProxies) {
+		if addr, parseErr := netip.ParseAddr(candidate); parseErr == nil && isTrustedProxyAddr(addr, trustedProxies) {
 			continue
 		}
 		return candidate
@@ -197,6 +203,7 @@ func mustBcryptHash(password string) string {
 func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	ip := h.clientIP(r)
 	if !checkRate(loginBuckets, ip) {
+		noteSecurityEvent(r, "login_rate_limited")
 		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
 	}
@@ -212,6 +219,7 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	// Also throttle per account so IP rotation can't grind a single email.
 	// Same 429 message as the IP limit — no signal about which limit tripped.
 	if body.Email != "" && !checkRate(loginEmailBuckets, strings.ToLower(body.Email)) {
+		noteSecurityEvent(r, "login_rate_limited", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
 	}
@@ -224,11 +232,13 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		// Compare against a decoy hash so this path costs the same as a real
 		// mismatch (see dummyPasswordHash) instead of returning instantly.
 		bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(body.Password))
+		noteSecurityEvent(r, "login_failed", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(body.Password)); err != nil {
+		noteSecurityEvent(r, "login_failed", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
@@ -239,12 +249,15 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setRequestUser(r, user.ID, user.Email)
+	noteRequest(r, nil, slog.String("event", "login"))
+
 	h.dbMu.RLock()
 	_, lastLoginErr := h.db.DB.Exec(`UPDATE users SET lastLoginAt = ? WHERE id = ?`, time.Now().UnixMilli(), user.ID)
 	h.dbMu.RUnlock()
 	if lastLoginErr != nil {
 		// Non-fatal: the login itself succeeded, only the bookkeeping failed.
-		log.Printf("login: failed to update lastLoginAt for user %s: %v", user.ID, lastLoginErr)
+		noteRequest(r, nil, slog.String("last_login_err", lastLoginErr.Error()))
 	}
 
 	// The token rides in an httpOnly cookie, never the response body — page

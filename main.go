@@ -4,7 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"os"
@@ -27,19 +27,22 @@ var version = "dev"
 var assets embed.FS
 
 func main() {
+	setupLogging(os.Getenv("LOG_LEVEL"), os.Getenv("LOG_FORMAT"))
+	slog.Info("FaturaCloud starting", "version", version)
+
 	dbPath := dbFilePath()
-	log.Printf("Initializing database at: %s", dbPath)
+	slog.Info("Initializing database", "path", dbPath)
 
 	database, err := db.NewDatabase(dbPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		fatal("Failed to initialize database", "err", err)
 	}
 	defer database.Close()
-	log.Println("Database initialized successfully")
+	slog.Info("Database initialized")
 
 	backupDir := backupDirPath(dbPath)
 	if err := os.MkdirAll(backupDir, 0700); err != nil {
-		log.Fatalf("Failed to create backup directory: %v", err)
+		fatal("Failed to create backup directory", "err", err)
 	}
 
 	// Treat the presence of the /data volume as "this is a real deployment" (Docker).
@@ -53,12 +56,12 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" || jwtSecret == defaultJWTSecret {
 		if isProduction {
-			log.Fatal("JWT_SECRET must be set to a strong secret in production — refusing to start with the default")
+			fatal("JWT_SECRET must be set to a strong secret in production — refusing to start with the default")
 		}
-		log.Println("WARNING: JWT_SECRET is unset — using the insecure default. Set JWT_SECRET before deploying.")
+		slog.Warn("JWT_SECRET is unset — using the insecure default. Set JWT_SECRET before deploying.")
 		jwtSecret = defaultJWTSecret
 	} else if isProduction && len(jwtSecret) < 32 {
-		log.Fatal("JWT_SECRET must be at least 32 characters in production — refusing to start with a weak secret")
+		fatal("JWT_SECRET must be at least 32 characters in production — refusing to start with a weak secret")
 	}
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 	if adminEmail == "" {
@@ -67,9 +70,9 @@ func main() {
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
 	if adminPassword == "" {
 		if isProduction {
-			log.Fatal("ADMIN_PASSWORD must be set in production — refusing to start with the default password")
+			fatal("ADMIN_PASSWORD must be set in production — refusing to start with the default password")
 		}
-		log.Println("WARNING: ADMIN_PASSWORD is unset — using the insecure default. Set ADMIN_PASSWORD before deploying.")
+		slog.Warn("ADMIN_PASSWORD is unset — using the insecure default. Set ADMIN_PASSWORD before deploying.")
 		adminPassword = defaultAdminPassword
 	}
 
@@ -85,7 +88,7 @@ func main() {
 		AdminGroup:   envOrDefault("OIDC_ADMIN_GROUP", "admins"),
 	}
 	if oidcCfg.IssuerURL != "" {
-		log.Printf("OIDC SSO enabled — issuer %s, admin group %q", oidcCfg.IssuerURL, oidcCfg.AdminGroup)
+		slog.Info("OIDC SSO enabled", "issuer", oidcCfg.IssuerURL, "admin_group", oidcCfg.AdminGroup)
 	}
 
 	trustedProxies := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
@@ -93,25 +96,25 @@ func main() {
 	mux := api.NewRouter(database, dbPath, backupDir, jwtSecret, version, oidcCfg, trustedProxies)
 	api.EnsureFirstAdmin(database, adminEmail, adminPassword)
 	if err := database.SeedAccountingDefaultsForAllOrganizations(); err != nil {
-		log.Printf("SeedAccountingDefaultsForAllOrganizations: %v", err)
+		slog.Error("SeedAccountingDefaultsForAllOrganizations", "err", err)
 	}
 	if err := database.SeedInventoryAccountingDefaultsForAllOrganizations(); err != nil {
-		log.Printf("SeedInventoryAccountingDefaultsForAllOrganizations: %v", err)
+		slog.Error("SeedInventoryAccountingDefaultsForAllOrganizations", "err", err)
 	}
 	if err := database.SeedImportCostAccountForAllOrganizations(); err != nil {
-		log.Printf("SeedImportCostAccountForAllOrganizations: %v", err)
+		slog.Error("SeedImportCostAccountForAllOrganizations", "err", err)
 	}
 	if err := database.SeedDefaultPaymentTermsForAllOrganizations(); err != nil {
-		log.Printf("SeedDefaultPaymentTermsForAllOrganizations: %v", err)
+		slog.Error("SeedDefaultPaymentTermsForAllOrganizations", "err", err)
 	}
 	if err := database.SeedDefaultUnitsOfMeasureForAllOrganizations(); err != nil {
-		log.Printf("SeedDefaultUnitsOfMeasureForAllOrganizations: %v", err)
+		slog.Error("SeedDefaultUnitsOfMeasureForAllOrganizations", "err", err)
 	}
 
 	// Serve embedded frontend from dist/ with SPA fallback to index.html.
 	distFS, err := fs.Sub(assets, "dist")
 	if err != nil {
-		log.Fatalf("Failed to sub dist: %v", err)
+		fatal("Failed to sub dist", "err", err)
 	}
 	mux.Handle("/", spaHandler(distFS))
 
@@ -120,19 +123,19 @@ func main() {
 		port = "8080"
 	}
 	addr := fmt.Sprintf(":%s", port)
-	log.Printf("FaturaCloud listening on %s", addr)
+	slog.Info("FaturaCloud listening", "addr", addr)
 	// Explicit timeouts guard against slow-client (slowloris) resource exhaustion.
 	// WriteTimeout is generous because backup/restore stream large database files.
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           securityHeaders(mux, trustedProxies),
+		Handler:           api.RequestLogger(securityHeaders(mux, trustedProxies), trustedProxies),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      300 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Server error: %v", err)
+		fatal("Server error", "err", err)
 	}
 }
 
@@ -245,7 +248,7 @@ func parseTrustedProxies(raw string) []netip.Prefix {
 		if !strings.Contains(entry, "/") {
 			addr, err := netip.ParseAddr(entry)
 			if err != nil {
-				log.Printf("ignoring invalid TRUSTED_PROXIES entry %q: %v", field, err)
+				slog.Warn("ignoring invalid TRUSTED_PROXIES entry", "entry", field, "err", err)
 				continue
 			}
 			bits := 32
@@ -256,7 +259,7 @@ func parseTrustedProxies(raw string) []netip.Prefix {
 		}
 		prefix, err := netip.ParsePrefix(entry)
 		if err != nil {
-			log.Printf("ignoring invalid TRUSTED_PROXIES entry %q: %v", field, err)
+			slog.Warn("ignoring invalid TRUSTED_PROXIES entry", "entry", field, "err", err)
 			continue
 		}
 		prefixes = append(prefixes, prefix)
@@ -282,4 +285,30 @@ func dbFilePath() string {
 
 func backupDirPath(dbPath string) string {
 	return filepath.Join(filepath.Dir(dbPath), "backups")
+}
+
+// setupLogging makes slog's default logger the server's single log output:
+// LOG_LEVEL is debug, info (default), warn or error; LOG_FORMAT is text
+// (default) or json. Anything still written through the standard log package
+// goes through the same handler at info level.
+func setupLogging(level, format string) {
+	var lvl slog.Level
+	if err := lvl.UnmarshalText([]byte(strings.TrimSpace(level))); err != nil || level == "" {
+		lvl = slog.LevelInfo
+	}
+	opts := &slog.HandlerOptions{Level: lvl}
+	var h slog.Handler = slog.NewTextHandler(os.Stderr, opts)
+	if strings.EqualFold(strings.TrimSpace(format), "json") {
+		h = slog.NewJSONHandler(os.Stderr, opts)
+	}
+	slog.SetDefault(slog.New(h))
+	if level != "" && !strings.EqualFold(strings.TrimSpace(level), lvl.String()) {
+		slog.Warn("ignoring invalid LOG_LEVEL, using info", "value", level)
+	}
+}
+
+// fatal logs an error and exits, the slog counterpart of log.Fatal.
+func fatal(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
 }

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -225,7 +225,7 @@ func validateRestoreCandidate(srcPath string) error {
 
 func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 	if err := validateRestoreCandidate(srcPath); err != nil {
-		log.Printf("restore: invalid database upload: %v", err)
+		slog.Error("restore: invalid database upload", "err", err)
 		writeError(w, http.StatusBadRequest, "not a valid FaturaCloud database")
 		return
 	}
@@ -253,9 +253,10 @@ func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 
 	if err := copyFile(srcPath, h.dbPath); err != nil {
 		if !h.recoverFromSafety(safetyPath) {
-			log.Fatalf("restore failed (%v) and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", err)
+			slog.Error("restore failed and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", "err", err)
+			os.Exit(1)
 		}
-		log.Printf("restore: copy failed, rolled back to the pre-restore database: %v", err)
+		slog.Error("restore: copy failed, rolled back to the pre-restore database", "err", err)
 		writeError(w, http.StatusInternalServerError, "restore copy failed, rolled back to the pre-restore database")
 		return
 	}
@@ -263,9 +264,10 @@ func (h *handler) swapDatabase(w http.ResponseWriter, srcPath string) {
 	database, err := db.NewDatabase(h.dbPath)
 	if err != nil {
 		if !h.recoverFromSafety(safetyPath) {
-			log.Fatalf("restored database failed to open (%v) and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", err)
+			slog.Error("restored database failed to open and rollback to the pre-restore backup also failed — refusing to keep running with no usable database", "err", err)
+			os.Exit(1)
 		}
-		log.Printf("restore: restored database failed to open, rolled back to the pre-restore database: %v", err)
+		slog.Error("restore: restored database failed to open, rolled back to the pre-restore database", "err", err)
 		writeError(w, http.StatusInternalServerError, "restored database failed to open, rolled back to the pre-restore database")
 		return
 	}

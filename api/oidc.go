@@ -8,7 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -158,7 +158,7 @@ func (h *handler) oidcLoginStart(w http.ResponseWriter, r *http.Request) {
 // error — details go to the server log only, never to the client.
 func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	fail := func(reason string) {
-		log.Printf("oidc callback rejected: %s", reason)
+		noteSecurityEvent(r, "sso_rejected", slog.String("reason", truncate(reason, 300)))
 		http.Redirect(w, r, "/login?error=sso_failed", http.StatusFound)
 	}
 
@@ -270,6 +270,8 @@ func (h *handler) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	// (no fragment, no query), so it can't leak via history, and page JS never
 	// sees it. Set-Cookie on this cross-site redirect response works fine; it's
 	// the browser sending an existing cookie cross-site that SameSite governs.
+	setRequestUser(r, user.ID, user.Email)
+	noteRequest(r, nil, slog.String("event", "sso_login"))
 	h.setAuthCookie(w, r, jwtToken)
 	http.Redirect(w, r, "/", http.StatusFound)
 }

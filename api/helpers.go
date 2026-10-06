@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -76,11 +76,19 @@ func writeDBError(w http.ResponseWriter, err error, notFoundMsg string) {
 	writeInternalError(w, err)
 }
 
-// writeInternalError logs the real error server-side and returns a generic
-// 500 to the client, instead of leaking driver/schema details from err.Error().
+// writeInternalError returns a generic 500 to the client, instead of leaking
+// driver/schema details from err.Error(), and hands the real error to the
+// request's log line (api/request_log.go) — logged with its route, user and
+// request id. The body carries that id as a reference a user can quote.
 func writeInternalError(w http.ResponseWriter, err error) {
-	log.Printf("internal error: %v", err)
-	writeError(w, http.StatusInternalServerError, "internal error")
+	info := requestInfoOf(w)
+	if info == nil {
+		slog.Error("internal error", "err", err)
+		writeError(w, http.StatusInternalServerError, internalErrorMessage(""))
+		return
+	}
+	info.err = err
+	writeError(w, http.StatusInternalServerError, internalErrorMessage(info.id))
 }
 
 // parseIntParam reads an integer query param, returning 0 if it's absent or

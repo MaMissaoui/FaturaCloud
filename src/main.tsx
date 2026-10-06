@@ -26,6 +26,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import App from "src/app";
+import { installClientErrorReporting, reportClientError } from "src/utils/client-errors";
 
 // A deploy changes every build's hashed chunk filenames. A tab whose JS was
 // already loaded before that deploy still has old chunk URLs baked into its
@@ -40,7 +41,16 @@ window.addEventListener("vite:preloadError", (event) => {
   window.location.reload();
 });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+installClientErrorReporting();
+
+ReactDOM.createRoot(document.getElementById("root")!, {
+  // A render error no error boundary caught: report it with the component
+  // stack, then log it as React would by default.
+  onUncaughtError: (error, errorInfo) => {
+    reportClientError(error, "react", errorInfo.componentStack);
+    console.error(error);
+  },
+}).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,

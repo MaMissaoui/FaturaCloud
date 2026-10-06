@@ -12,3 +12,8 @@ export default defineConfig({
     }),
   ],
 });
+
+declare global {
+  // Defined by vite.config.ts from the VERSION build-arg.
+  const __APP_VERSION__: string;
+}
