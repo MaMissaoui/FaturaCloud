@@ -135,19 +135,27 @@ request id, so the matching log line can be found with
 
 ## Settings
 
-Both are environment variables of the container. Neither is set in the
-homelab compose file yet, so prod runs with the defaults; to change them, add
-them to the `environment:` block of `apps/fatura-cloud/docker-compose.yml` in
-homelab-deploy (e.g. `LOG_LEVEL: ${LOG_LEVEL:-info}`) and redeploy:
+Both are environment variables of the container. The homelab compose file
+(`apps/fatura-cloud/docker-compose.yml` in homelab-deploy) passes them
+through, and its `.env` template sets `LOG_LEVEL` (info unless overridden);
+`LOG_FORMAT` defaults to text.
 
 | Variable | Values | Default |
 |---|---|---|
 | `LOG_LEVEL` | `debug`, `info`, `warn`, `error` | `info` |
 | `LOG_FORMAT` | `text`, `json` | `text` |
 
-To see every request for a while (e.g. while chasing a bug), set
-`LOG_LEVEL=debug`, redeploy, and set it back afterwards. Debug fills the 30 MB
-much faster. `LOG_FORMAT=json` writes one JSON object per line, for `jq`:
+To see every request for a while (e.g. while chasing a bug), deploy once
+with debug, from homelab-deploy's `ansible/` folder:
+
+```sh
+ansible-playbook playbooks/deploy.yml -e target_app=fatura-cloud -e fatura_cloud_log_level=debug
+```
+
+The next deploy without the flag puts it back to info. Debug fills the 30 MB
+much faster, so don't leave it on.
+
+`LOG_FORMAT=json` writes one JSON object per line, for `jq`:
 
 ```sh
 docker logs --since 24h fatura-cloud 2>&1 | jq -c 'select(.event == "client_error") | {time, user, page, error}'
