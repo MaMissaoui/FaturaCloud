@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.66.0] - 2026-10-10
+
 ### Added
 - Activity history: an edit now shows what it changed.
   - The Change column lists the changed fields. Expand a row to see each field's value before and after.
@@ -14,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bank accounts (IBAN) are masked to their first two characters and last four digits. Passwords, hashes and tokens are never recorded.
   - Creates, deletions and rows recorded before this release show no fields. Line items aren't compared; a document's totals are.
 - The Activity page shows each change's request id (Ref.), as STBvirement does, to find its log line.
+
+### Security
+- Built with Go 1.26.9 and golang.org/x/net v0.60.0, which fix the
+  net/http and x/net advisories GO-2026-6610 to GO-2026-6617 (#493).
 
 ## [3.65.0] - 2026-10-06
 
