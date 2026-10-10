@@ -122,4 +122,24 @@ func TestLoanRegisterImportThroughTheRouter(t *testing.T) {
 	if rec := doJSON(t, mux, owner, http.MethodDelete, "/api/loan-imports/"+report.BatchID, nil); rec.Code != http.StatusOK {
 		t.Fatalf("undo: %d %s", rec.Code, rec.Body.String())
 	}
+
+	// The history has the import and its undo, named by the file; the dry
+	// run changed nothing and isn't there.
+	events, err := database.ListAuditEvents(db.AuditEventFilter{OrganizationID: org.ID})
+	if err != nil {
+		t.Fatalf("ListAuditEvents: %v", err)
+	}
+	methods := map[string]int{}
+	for _, e := range events {
+		if e.Resource != "loan-imports" {
+			continue
+		}
+		methods[e.Method]++
+		if e.EntityLabel != "registre.xlsx" {
+			t.Errorf("%s %s named %q, want registre.xlsx", e.Method, e.Route, e.EntityLabel)
+		}
+	}
+	if methods["POST"] != 1 || methods["DELETE"] != 1 {
+		t.Errorf("loan import rows = %v, want one import (not the dry run) and one undo", methods)
+	}
 }

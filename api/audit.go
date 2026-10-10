@@ -138,7 +138,7 @@ func (h *handler) audited(pattern string, next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 
-		if info.status < 200 || info.status >= 300 {
+		if info.status < 200 || info.status >= 300 || info.notAChange {
 			return
 		}
 		if entityID == "" {

@@ -52,6 +52,9 @@ type requestInfo struct {
 	// auditLabel names the document for the activity history when no table
 	// holds its name: the file a database restore was uploaded from.
 	auditLabel string
+	// notAChange keeps a successful request on a change route out of the
+	// activity history: a dry run that only reports what it would do.
+	notAChange bool
 }
 
 // auditHeadLimit bounds how much of a response the history keeps.
@@ -106,6 +109,15 @@ func setRequestUser(r *http.Request, userID, email string) {
 func setAuditLabel(r *http.Request, label string) {
 	if info := infoFrom(r.Context()); info != nil {
 		info.auditLabel = label
+	}
+}
+
+// markNotAChange keeps r out of the activity history although its route
+// changes data: it only reported what it would do (see
+// requestInfo.notAChange).
+func markNotAChange(r *http.Request) {
+	if info := infoFrom(r.Context()); info != nil {
+		info.notAChange = true
 	}
 }
 

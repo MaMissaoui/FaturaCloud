@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A loan import's dry run (checking the file before importing) no longer appears in the activity history; only the import itself and its undo do (#498).
+
 ## [3.67.0] - 2026-10-10
 
 ### Changed
