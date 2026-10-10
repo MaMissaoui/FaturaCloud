@@ -131,10 +131,14 @@ func TestActivityHistoryNeverRecordsSecrets(t *testing.T) {
 }
 
 // A logo upload and removal change their organization: recorded as hasLogo
-// on the logo's own events. The logo's bytes never are.
+// on the logo's own events, named as the organization. The logo's bytes
+// never are.
 func TestActivityHistoryRecordsLogoAsHasLogo(t *testing.T) {
 	t.Parallel()
 	f := newAuditFixture(t)
+	if _, err := f.d.DB.Exec(`UPDATE organizations SET name = 'Audit SARL' WHERE id = 'org-audit'`); err != nil {
+		t.Fatalf("name organization: %v", err)
+	}
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
 	part, _ := w.CreateFormFile("file", "logo.png")
@@ -152,6 +156,12 @@ func TestActivityHistoryRecordsLogoAsHasLogo(t *testing.T) {
 		t.Fatalf("delete logo: %d %s", rec.Code, rec.Body)
 	}
 	events := f.events(t)
+	// Both rows are named as the organization the logo belongs to.
+	for _, method := range []string{"POST", "DELETE"} {
+		if e, _ := changesOf(t, events, method, "/api/organizations/{id}/logo"); e.EntityID != "org-audit" || e.EntityLabel != "Audit SARL" {
+			t.Errorf("%s logo row names %q / %q, want org-audit / Audit SARL", method, e.EntityID, e.EntityLabel)
+		}
+	}
 	if _, c := changesOf(t, events, "POST", "/api/organizations/{id}/logo"); c["hasLogo"].From != float64(0) || c["hasLogo"].To != float64(1) {
 		t.Errorf("upload: hasLogo change = %+v", c["hasLogo"])
 	}

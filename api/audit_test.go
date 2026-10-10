@@ -16,7 +16,8 @@ func TestAuditTarget(t *testing.T) {
 		{"/api/invoices/{id}/state", "invoices", "id"},
 		{"/api/clients", "clients", ""},
 		{"/api/organizations/{id}", "organizations", "id"},
-		{"/api/organizations/{id}/reset", "reset", ""},
+		{"/api/organizations/{id}/reset", "reset", "id"},
+		{"/api/organizations/{id}/logo", "logo", "id"},
 		{"/api/organizations/{orgId}/members/{userId}", "members", "userId"},
 		{"/api/organizations/{orgId}/clients/import", "clients", ""},
 		{"/api/backups/{name}/restore", "backups", "name"},
@@ -108,8 +109,13 @@ func TestChangesAreRecordedInTheActivityHistory(t *testing.T) {
 	if len(events) != 3 {
 		t.Fatalf("got %d events, want 3 (create, state change, delete): %+v", len(events), events)
 	}
-	// Newest first.
-	del, state, create := events[0], events[1], events[2]
+	// Picked by method: changes made in the same millisecond have no order
+	// between them (the history sorts by time, then by random id).
+	byMethod := map[string]db.AuditEvent{}
+	for _, e := range events {
+		byMethod[e.Method] = e
+	}
+	del, state, create := byMethod["DELETE"], byMethod["PATCH"], byMethod["POST"]
 	for _, e := range events {
 		if e.UserID == nil || *e.UserID != "audit-admin" || e.UserEmail != "audit-admin@test.local" ||
 			e.OrganizationID == nil || *e.OrganizationID != "org-audit" || e.RequestID == "" {
@@ -167,8 +173,17 @@ func TestActivityHistoryRoutes(t *testing.T) {
 		t.Fatalf("first page: %d %+v", code, first)
 	}
 	_, second := read(f.admin, "/api/organizations/org-audit/audit-events?limit=2&before="+first.Next)
-	if len(second.Events) != 1 || second.Events[0].EntityLabel != "Client A" || second.Next != "" {
-		t.Errorf("second page = %+v, want only the oldest create", second)
+	if len(second.Events) != 1 || second.Next != "" {
+		t.Errorf("second page = %+v, want the one remaining create", second)
+	}
+	// Together the pages hold each create once. Which one comes last isn't
+	// asserted: creates in the same millisecond have no order between them.
+	seen := map[string]int{}
+	for _, e := range append(first.Events, second.Events...) {
+		seen[e.EntityLabel]++
+	}
+	if seen["Client A"] != 1 || seen["Client B"] != 1 || seen["Client C"] != 1 {
+		t.Errorf("pages hold %v, want each client once", seen)
 	}
 	if code, _ := read(mintTestJWT(t, "audit-sales", "user"), "/api/organizations/org-audit/audit-events"); code != http.StatusForbidden {
 		t.Errorf("a sales member read the history: %d", code)
@@ -182,5 +197,50 @@ func TestActivityHistoryRoutes(t *testing.T) {
 	}
 	if code, _ := read(f.admin, "/api/audit-events"); code != http.StatusForbidden {
 		t.Errorf("an organization admin read the platform history: %d", code)
+	}
+}
+
+// A backup taken on demand is named by its file, and a restore by the file it
+// was uploaded from: neither has a table the history could read a name from.
+func TestBackupsAndRestoresAreNamedInTheHistory(t *testing.T) {
+	t.Parallel()
+	f := newAuditFixture(t)
+	seedUser(t, f.d, "platform-admin", "admin", 1)
+	platform := mintTestJWT(t, "platform-admin", "admin")
+
+	platformEvents := func() []db.AuditEvent {
+		rec := f.do(t, platform, http.MethodGet, "/api/audit-events", "")
+		var p struct {
+			Events []db.AuditEvent `json:"events"`
+		}
+		_ = json.Unmarshal(rec.Body.Bytes(), &p)
+		return p.Events
+	}
+
+	backup := f.do(t, platform, http.MethodPost, "/api/backups", "")
+	if backup.Code != http.StatusOK {
+		t.Fatalf("backup: %d %s", backup.Code, backup.Body)
+	}
+	name := downloadName(backup.Header())
+	if !strings.HasPrefix(name, "fatura-backup-") {
+		t.Fatalf("backup offered no file name: %q", backup.Header().Get("Content-Disposition"))
+	}
+	if events := platformEvents(); len(events) != 1 || events[0].Resource != "backups" || events[0].EntityLabel != name {
+		t.Errorf("backup history = %+v, want one row named %s", events, name)
+	}
+
+	body, contentType := multipartDatabaseUpload(t, "monday.db", backup.Body.Bytes())
+	req := httptest.NewRequest(http.MethodPost, "/api/restore", body)
+	req.Header.Set("Content-Type", contentType)
+	authRequest(req, platform)
+	rec := httptest.NewRecorder()
+	f.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("restore: %d %s", rec.Code, rec.Body)
+	}
+	// The restored database is the backup, taken before its own row was
+	// written, plus the restore's row.
+	if events := platformEvents(); len(events) != 1 || events[0].Resource != "restore" || events[0].EntityLabel != "monday.db" {
+		t.Errorf("restore history = %+v, want one row named monday.db", events)
 	}
 }

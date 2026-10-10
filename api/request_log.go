@@ -49,6 +49,9 @@ type requestInfo struct {
 	status      int
 	captureHead bool
 	head        []byte
+	// auditLabel names the document for the activity history when no table
+	// holds its name: the file a database restore was uploaded from.
+	auditLabel string
 }
 
 // auditHeadLimit bounds how much of a response the history keeps.
@@ -95,6 +98,14 @@ func noteSecurityEvent(r *http.Request, event string, attrs ...slog.Attr) {
 func setRequestUser(r *http.Request, userID, email string) {
 	if info := infoFrom(r.Context()); info != nil {
 		info.userID, info.email = userID, email
+	}
+}
+
+// setAuditLabel names, in r's activity history row, a document the history
+// has no table to read the name from (see requestInfo.auditLabel).
+func setAuditLabel(r *http.Request, label string) {
+	if info := infoFrom(r.Context()); info != nil {
+		info.auditLabel = label
 	}
 }
 

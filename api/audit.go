@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"log/slog"
+	"mime"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -59,6 +60,11 @@ func auditTarget(path string) (resource, idParam string) {
 	if resource == "organizations" && len(segs) == 2 && isWildcard(segs[1]) {
 		return resource, strings.Trim(segs[1], "{}.")
 	}
+	// An organization's logo and its reset act on the organization itself:
+	// the id in the path is the document's.
+	if (resource == "logo" || resource == "reset") && len(segs) == 3 && isWildcard(segs[1]) {
+		return resource, strings.Trim(segs[1], "{}.")
+	}
 	return resource, ""
 }
 
@@ -74,6 +80,16 @@ func auditSnapshotTarget(r *http.Request, resource, entityID string) (snapResour
 		return "organizations", r.PathValue("id"), org
 	}
 	return resource, entityID, org
+}
+
+// downloadName is the file name a response offers for download, "" when it
+// offers none.
+func downloadName(h http.Header) string {
+	_, params, err := mime.ParseMediaType(h.Get("Content-Disposition"))
+	if err != nil {
+		return ""
+	}
+	return params["filename"]
 }
 
 var createdIDPattern = regexp.MustCompile(`"id"\s*:\s*"([^"]+)"`)
@@ -156,6 +172,14 @@ func (h *handler) audited(pattern string, next http.Handler) http.Handler {
 		event.EntityLabel = afterLabel
 		if event.EntityLabel == "" {
 			event.EntityLabel = beforeLabel
+		}
+		// A document with no table to read its name from: the name its
+		// handler gave it, or a download's file name (an on-demand backup).
+		if event.EntityLabel == "" {
+			event.EntityLabel = info.auditLabel
+		}
+		if event.EntityLabel == "" {
+			event.EntityLabel = downloadName(w.Header())
 		}
 		if beforeFields != nil {
 			event.Changes = db.AuditChanges(h.db.AuditChangesJSON(beforeFields, h.db.AuditSnapshot(snapResource, snapID, snapOrg)))

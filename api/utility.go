@@ -166,12 +166,13 @@ func (h *handler) restoreDatabase(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid multipart form")
 		return
 	}
-	file, _, err := r.FormFile("database")
+	file, header, err := r.FormFile("database")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "missing database file")
 		return
 	}
 	defer file.Close()
+	setAuditLabel(r, filepath.Base(header.Filename))
 
 	tmp, err := os.CreateTemp("", "fatura-restore-*.db")
 	if err != nil {
