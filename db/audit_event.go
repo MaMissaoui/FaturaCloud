@@ -164,7 +164,7 @@ var auditDocuments = map[string]auditDocument{
 	"deliveries":         {"outbound_deliveries", "deliveryNumber", "status"},
 	"inbound-deliveries": {"inbound_deliveries", "deliveryNumber", "status"},
 	"production-orders":  {"production_orders", "orderNumber", "status"},
-	"journal-entries":    {"journal_entries", "CAST(entryNumber AS TEXT)", "status"},
+	"journal-entries":    {"journal_entries", "'#' || entryNumber", "status"},
 	"fiscal-periods":     {"fiscal_periods", "name", "status"},
 	"fiscal-years":       {"fiscal_years", "name", "status"},
 	"payments":           {"payments", "reference", "status"},
@@ -173,6 +173,8 @@ var auditDocuments = map[string]auditDocument{
 	"products":           {"products", "name", ""},
 	"imports":            {"imports", "importNumber", ""},
 	"organizations":      {"organizations", "name", ""},
+	"logo":               {"organizations", "name", ""},
+	"reset":              {"organizations", "name", ""},
 	"users":              {"users", "email", ""},
 	"members":            {"users", "email", ""},
 	"accounts":           {"accounts", "code || ' ' || name", ""},
@@ -181,6 +183,11 @@ var auditDocuments = map[string]auditDocument{
 	"units-of-measure":   {"units_of_measure", "name", ""},
 	"product-families":   {"product_families", "name", ""},
 	"journals":           {"journals", "code", ""},
+	// No number of their own: a cash movement goes by the journal entry it
+	// posted (#12, as the journal shows it), a stock movement by its product.
+	"cash-movements":  {"cash_movements", "(SELECT '#' || entryNumber FROM journal_entries WHERE id = cash_movements.journalEntryId)", ""},
+	"stock-movements": {"stockMovements", "(SELECT name FROM products WHERE id = stockMovements.productId)", ""},
+	"loan-imports":    {"loan_import_batches", "fileName", ""},
 }
 
 // AuditDocumentInfo reads the label and the state of the document a route's

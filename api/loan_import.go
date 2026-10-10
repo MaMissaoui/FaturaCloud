@@ -54,6 +54,9 @@ func (h *handler) importLoanRegister(w http.ResponseWriter, r *http.Request) {
 	if files := r.MultipartForm.File["file"]; len(files) > 0 {
 		fileName = files[0].Filename
 	}
+	// The response names the batch as batchId, which the history doesn't
+	// read; it goes by the file instead, as its undo does.
+	setAuditLabel(r, fileName)
 	report, err := h.db.ImportLoanRegister(orgID, getClaims(r).UserID, fileName, cutoverDay, data)
 	if err != nil {
 		writeMutationError(w, err)

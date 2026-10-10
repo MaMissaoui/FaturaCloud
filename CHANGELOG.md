@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The activity history names every document instead of showing a raw id (#495):
+  - a cash movement by its journal entry number (#12), as the journal shows it; journal entries use the same #12 form;
+  - a stock movement by its product;
+  - a loan import by its file;
+  - a logo change or an organization reset by the organization;
+  - a backup taken on demand, or a restore from an uploaded file, by the file.
+
 ## [3.66.0] - 2026-10-10
 
 ### Added
