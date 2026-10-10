@@ -64,6 +64,18 @@ func auditTarget(path string) (resource, idParam string) {
 
 func isWildcard(seg string) bool { return strings.HasPrefix(seg, "{") }
 
+// auditSnapshotTarget is the document whose fields a change is compared on:
+// the route's own document, except a logo upload or removal, which changes
+// its organization. org is the organization in the path, if any — the org
+// wrappers resolve info.orgID only once the handler runs.
+func auditSnapshotTarget(r *http.Request, resource, entityID string) (snapResource, snapID, org string) {
+	org = r.PathValue("orgId")
+	if resource == "logo" {
+		return "organizations", r.PathValue("id"), org
+	}
+	return resource, entityID, org
+}
+
 var createdIDPattern = regexp.MustCompile(`"id"\s*:\s*"([^"]+)"`)
 
 func (h *handler) audited(pattern string, next http.Handler) http.Handler {
@@ -89,11 +101,22 @@ func (h *handler) audited(pattern string, next http.Handler) http.Handler {
 			info.captureHead = true
 		}
 		// What the document was before: its state, and for a deletion its
-		// label, which won't be readable afterwards.
+		// label, which won't be readable afterwards. For a change to an
+		// existing document, also its fields, to record what it changed
+		// (db/audit_changes.go). A logo belongs to its organization.
 		var beforeLabel, beforeState string
-		if entityID != "" {
+		snapResource, snapID, snapOrg := auditSnapshotTarget(r, resource, entityID)
+		var beforeFields []db.AuditField
+		if entityID != "" || snapID != "" {
 			h.dbMu.RLock()
-			beforeLabel, beforeState = h.db.AuditDocumentInfo(resource, entityID)
+			if entityID != "" {
+				beforeLabel, beforeState = h.db.AuditDocumentInfo(resource, entityID)
+			}
+			// A deletion has no after to compare — unless it removes a part
+			// of another document (a logo).
+			if snapID != "" && (method != http.MethodDelete || snapResource != resource) {
+				beforeFields = h.db.AuditSnapshot(snapResource, snapID, snapOrg)
+			}
 			h.dbMu.RUnlock()
 		}
 
@@ -133,6 +156,9 @@ func (h *handler) audited(pattern string, next http.Handler) http.Handler {
 		event.EntityLabel = afterLabel
 		if event.EntityLabel == "" {
 			event.EntityLabel = beforeLabel
+		}
+		if beforeFields != nil {
+			event.Changes = db.AuditChanges(h.db.AuditChangesJSON(beforeFields, h.db.AuditSnapshot(snapResource, snapID, snapOrg)))
 		}
 		if beforeState != afterState && afterState != "" {
 			event.FromState, event.ToState = beforeState, afterState

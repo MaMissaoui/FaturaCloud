@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Activity history: an edit now shows what it changed.
+  - The Change column lists the changed fields. Expand a row to see each field's value before and after.
+  - Amounts, dates, states and roles are shown formatted, and references by name (client, account, tax rate).
+  - Bank accounts (IBAN) are masked to their first two characters and last four digits. Passwords, hashes and tokens are never recorded.
+  - Creates, deletions and rows recorded before this release show no fields. Line items aren't compared; a document's totals are.
+- The Activity page shows each change's request id (Ref.), as STBvirement does, to find its log line.
+
 ## [3.65.0] - 2026-10-06
 
 ### Added
