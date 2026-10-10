@@ -332,6 +332,8 @@ export const fieldLabel = (field: string): string => {
       return t`Display name`;
     case "role":
       return t`Role`;
+    case "organizationRole":
+      return t`Role in the organization`;
     case "lastLoginAt":
       return t`Last login`;
     case "isPlatformAdmin":
@@ -461,7 +463,7 @@ export const formatChangeValue = (
     case "state":
     case "status":
       return stateLabel(value);
-    case "role":
+    case "organizationRole":
       return roleOptions().find((r) => r.value === value)?.label ?? value;
   }
   return value;

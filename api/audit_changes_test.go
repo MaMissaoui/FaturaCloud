@@ -92,9 +92,16 @@ func TestActivityHistoryRecordsMemberRole(t *testing.T) {
 	if rec := f.do(t, f.admin, http.MethodPut, "/api/organizations/org-audit/members/audit-member", `{"role":"sales"}`); rec.Code >= 300 {
 		t.Fatalf("change role: %d %s", rec.Code, rec.Body)
 	}
-	_, changes := changesOf(t, f.events(t), "PUT", "/api/organizations/{orgId}/members/{userId}")
-	if c := changes["role"]; c.From != "general" || c.To != "sales" {
-		t.Errorf("role change = %+v", c)
+	e, changes := changesOf(t, f.events(t), "PUT", "/api/organizations/{orgId}/members/{userId}")
+	if c := changes["organizationRole"]; c.From != "general" || c.To != "sales" {
+		t.Errorf("organizationRole change = %+v", c)
+	}
+	// Exactly that one change: the users row's own (legacy) role column
+	// must not be compared against the organization role.
+	var list []recordedChange
+	_ = json.Unmarshal([]byte(e.Changes), &list)
+	if len(list) != 1 {
+		t.Errorf("recorded %d changes, want 1: %s", len(list), e.Changes)
 	}
 }
 

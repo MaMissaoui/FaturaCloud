@@ -134,3 +134,23 @@ func TestAuditReferencesAreNamed(t *testing.T) {
 		}
 	}
 }
+
+// An extra field named like a column of its document's table would be
+// compared against that column: the diff keys fields by name.
+func TestAuditExtrasDontShadowColumns(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	for resource, query := range auditExtras {
+		rows, err := d.DB.NamedQuery(query, map[string]any{"id": "", "org": ""})
+		if err != nil {
+			t.Fatalf("%s extra: %v", resource, err)
+		}
+		extra, _ := rows.Columns()
+		rows.Close()
+		for _, c := range extra {
+			if _, clash := auditColumnReview[auditDocuments[resource].table][c]; clash {
+				t.Errorf("%s: extra field %s is also a column of %s", resource, c, auditDocuments[resource].table)
+			}
+		}
+	}
+}

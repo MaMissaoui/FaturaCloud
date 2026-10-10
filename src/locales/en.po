@@ -322,7 +322,7 @@ msgstr "{count, plural, one {on # unpaid invoice} other {on # unpaid invoices}}"
 msgid "{daysLate, plural, one {# day late} other {# days late}}"
 msgstr "{daysLate, plural, one {# day late} other {# days late}}"
 
-#: src/routes/settings/activity-changes.ts:488
+#: src/routes/settings/activity-changes.ts:490
 msgid "{fields} and {count} more"
 msgstr "{fields} and {count} more"
 
@@ -752,7 +752,7 @@ msgstr "Approval is blocked until the variance is resolved, or recorded as an ov
 msgid "Approve despite the variance"
 msgstr "Approve despite the variance"
 
-#: src/routes/settings/activity-changes.ts:360
+#: src/routes/settings/activity-changes.ts:362
 #: src/types/incoming-invoice.ts:29
 msgid "Approved"
 msgstr "Approved"
@@ -1163,7 +1163,7 @@ msgstr "Cancel this production order?"
 msgid "Cancel this purchase order?"
 msgstr "Cancel this purchase order?"
 
-#: src/routes/settings/activity-changes.ts:358
+#: src/routes/settings/activity-changes.ts:360
 #: src/types/delivery.ts:29
 #: src/types/inbound-delivery.ts:27
 #: src/types/incoming-invoice.ts:33
@@ -1439,7 +1439,7 @@ msgstr "Close year"
 
 #: src/routes/accounting/fiscal-periods.tsx:212
 #: src/routes/accounting/fiscal-periods.tsx:284
-#: src/routes/settings/activity-changes.ts:380
+#: src/routes/settings/activity-changes.ts:382
 #: src/routes/settings/activity.tsx:140
 msgid "Closed"
 msgstr "Closed"
@@ -1515,7 +1515,7 @@ msgstr "Column chart showing revenue over time"
 msgid "Committed value"
 msgstr "Committed value"
 
-#: src/routes/settings/activity-changes.ts:370
+#: src/routes/settings/activity-changes.ts:372
 #: src/types/production-order.ts:25
 msgid "Completed"
 msgstr "Completed"
@@ -1567,7 +1567,7 @@ msgstr "Confirm order"
 msgid "Confirm password"
 msgstr "Confirm password"
 
-#: src/routes/settings/activity-changes.ts:362
+#: src/routes/settings/activity-changes.ts:364
 #: src/types/order.ts:31
 #: src/types/purchase-order.ts:29
 msgid "Confirmed"
@@ -2276,7 +2276,7 @@ msgid "Deleted {total} record(s)"
 msgstr "Deleted {total} record(s)"
 
 #: src/routes/orders/details.tsx:476
-#: src/routes/settings/activity-changes.ts:366
+#: src/routes/settings/activity-changes.ts:368
 #: src/types/delivery.ts:27
 #: src/types/order.ts:35
 msgid "Delivered"
@@ -2513,7 +2513,7 @@ msgstr "Download template"
 msgid "Download the template, edit the placeholders in a spreadsheet app, then upload it back. There's no preview — export a document to see the result."
 msgstr "Download the template, edit the placeholders in a spreadsheet app, then upload it back. There's no preview — export a document to see the result."
 
-#: src/routes/settings/activity-changes.ts:352
+#: src/routes/settings/activity-changes.ts:354
 #: src/types/delivery.ts:23
 #: src/types/inbound-delivery.ts:23
 #: src/types/incoming-invoice.ts:27
@@ -4191,7 +4191,7 @@ msgstr "Last 30 days"
 msgid "Last 7 days"
 msgstr "Last 7 days"
 
-#: src/routes/settings/activity-changes.ts:336
+#: src/routes/settings/activity-changes.ts:338
 #: src/routes/settings/users.tsx:246
 msgid "Last login"
 msgstr "Last login"
@@ -4363,7 +4363,7 @@ msgid "Login failed"
 msgstr "Login failed"
 
 #: src/components/organizations/organization-edit-drawer.tsx:307
-#: src/routes/settings/activity-changes.ts:342
+#: src/routes/settings/activity-changes.ts:344
 #: src/routes/settings/activity.tsx:105
 msgid "Logo"
 msgstr "Logo"
@@ -4859,7 +4859,7 @@ msgstr "Next run: {nextRunLabel}"
 #: src/routes/production-orders/details.tsx:689
 #: src/routes/purchase-orders/details.tsx:758
 #: src/routes/purchase-orders/details.tsx:785
-#: src/routes/settings/activity-changes.ts:455
+#: src/routes/settings/activity-changes.ts:457
 #: src/routes/settings/users.tsx:293
 msgid "No"
 msgstr "No"
@@ -5361,7 +5361,7 @@ msgstr "Only an organization admin can see the activity history."
 
 #: src/routes/accounting/fiscal-periods.tsx:212
 #: src/routes/accounting/fiscal-periods.tsx:284
-#: src/routes/settings/activity-changes.ts:378
+#: src/routes/settings/activity-changes.ts:380
 msgid "Open"
 msgstr "Open"
 
@@ -5734,7 +5734,7 @@ msgstr "Page orientation"
 #: src/components/cash-book/modals.tsx:194
 #: src/components/payments/payment-panel.tsx:385
 #: src/routes/cash-book.tsx:809
-#: src/routes/settings/activity-changes.ts:356
+#: src/routes/settings/activity-changes.ts:358
 #: src/routes/settings/loan-import.tsx:298
 #: src/routes/settings/loan-import.tsx:387
 #: src/types/incoming-invoice.ts:31
@@ -5879,7 +5879,7 @@ msgstr "Payment terms"
 #: src/components/vendors/form.tsx:228
 #: src/components/vendors/form.tsx:232
 #: src/routes/settings/activity-changes.ts:194
-#: src/routes/settings/activity-changes.ts:340
+#: src/routes/settings/activity-changes.ts:342
 msgid "Payment terms (days)"
 msgstr "Payment terms (days)"
 
@@ -5969,7 +5969,7 @@ msgstr "piece"
 msgid "Platform"
 msgstr "Platform"
 
-#: src/routes/settings/activity-changes.ts:338
+#: src/routes/settings/activity-changes.ts:340
 msgid "Platform admin"
 msgstr "Platform admin"
 
@@ -6084,7 +6084,7 @@ msgstr "Post this entry? It cannot be edited afterward."
 msgid "Postal code"
 msgstr "Postal code"
 
-#: src/routes/settings/activity-changes.ts:372
+#: src/routes/settings/activity-changes.ts:374
 #: src/routes/settings/activity.tsx:134
 #: src/types/journal-entry.ts:23
 #: src/types/payment.ts:57
@@ -6549,7 +6549,7 @@ msgstr "Receivables account"
 
 #: src/routes/incoming-invoices/details.tsx:601
 #: src/routes/purchase-orders/details.tsx:622
-#: src/routes/settings/activity-changes.ts:368
+#: src/routes/settings/activity-changes.ts:370
 #: src/types/inbound-delivery.ts:25
 #: src/types/purchase-order.ts:31
 msgid "Received"
@@ -6902,7 +6902,7 @@ msgstr "Reverse"
 msgid "Reverse journal entry"
 msgstr "Reverse journal entry"
 
-#: src/routes/settings/activity-changes.ts:374
+#: src/routes/settings/activity-changes.ts:376
 #: src/routes/settings/activity.tsx:136
 #: src/types/journal-entry.ts:25
 msgid "Reversed"
@@ -6930,6 +6930,10 @@ msgstr "Role"
 #: src/components/organizations/organization-members-panel.tsx:91
 msgid "Role for {memberLabel}"
 msgstr "Role for {memberLabel}"
+
+#: src/routes/settings/activity-changes.ts:336
+msgid "Role in the organization"
+msgstr "Role in the organization"
 
 #: src/routes/dashboard.tsx:176
 msgid "Rolling window"
@@ -7211,7 +7215,7 @@ msgstr "Send feedback"
 msgid "Send Feedback"
 msgstr "Send Feedback"
 
-#: src/routes/settings/activity-changes.ts:354
+#: src/routes/settings/activity-changes.ts:356
 #: src/types/invoice.ts:96
 msgid "Sent"
 msgstr "Sent"
@@ -7289,7 +7293,7 @@ msgstr "Settled on {0}"
 msgid "Shipment"
 msgstr "Shipment"
 
-#: src/routes/settings/activity-changes.ts:364
+#: src/routes/settings/activity-changes.ts:366
 #: src/types/delivery.ts:25
 #: src/types/order.ts:33
 msgid "Shipped"
@@ -8522,7 +8526,7 @@ msgstr "Void"
 msgid "Void this payment?"
 msgstr "Void this payment?"
 
-#: src/routes/settings/activity-changes.ts:376
+#: src/routes/settings/activity-changes.ts:378
 #: src/routes/settings/activity.tsx:138
 #: src/types/payment.ts:59
 msgid "Voided"
@@ -8670,7 +8674,7 @@ msgstr "Withholding tax rate"
 #: src/routes/production-orders/details.tsx:688
 #: src/routes/purchase-orders/details.tsx:757
 #: src/routes/purchase-orders/details.tsx:784
-#: src/routes/settings/activity-changes.ts:455
+#: src/routes/settings/activity-changes.ts:457
 #: src/routes/settings/users.tsx:292
 msgid "Yes"
 msgstr "Yes"

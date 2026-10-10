@@ -20,12 +20,14 @@ import (
 
 // auditExtras add fields kept outside the document's own row: a query
 // returning one row, with :id (the document id) and :org (the request's
-// organization) as parameters.
+// organization) as parameters. An extra field's name must not be a column
+// of the document's table (TestAuditExtrasDontShadowColumns).
 var auditExtras = map[string]string{
 	// The logo is a blob, never recorded; whether there is one is.
 	"organizations": `SELECT logo IS NOT NULL AS hasLogo FROM organizations WHERE id = :id`,
-	// A member's role in this organization lives in organization_users.
-	"members": `SELECT COALESCE((SELECT role FROM organization_users WHERE userId = :id AND organizationId = :org), '') AS role`,
+	// A member's role in this organization lives in organization_users. Not
+	// named role: the users row has a (legacy) role column of its own.
+	"members": `SELECT COALESCE((SELECT role FROM organization_users WHERE userId = :id AND organizationId = :org), '') AS organizationRole`,
 }
 
 // auditSkippedColumns are bookkeeping, not content.
