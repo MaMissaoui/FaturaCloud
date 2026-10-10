@@ -28,7 +28,9 @@ describe("formatChangeValue", () => {
   it("translates states and roles, lists e-mails and keeps masked accounts", () => {
     expect(show({ field: "state", from: "draft", to: "sent" })).toBe("Sent");
     expect(show({ field: "status", from: "draft", to: "posted" })).toBe("Posted");
-    expect(show({ field: "organizationRole", from: "general", to: "power_user" })).toBe("Power User");
+    expect(show({ field: "organizationRole", from: "general", to: "power_user" })).toBe(
+      "Power User",
+    );
     expect(fieldLabel("organizationRole")).toBe("Role in the organization");
     expect(show({ field: "emails", from: null, to: '["a@b.tn","c@d.tn"]' })).toBe("a@b.tn, c@d.tn");
     expect(show({ field: "emails", from: null, to: "a@b.tn" })).toBe("a@b.tn");
