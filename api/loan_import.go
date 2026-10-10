@@ -42,6 +42,8 @@ func (h *handler) importLoanRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	orgID := r.PathValue("orgId")
 	if r.FormValue("dryRun") != "false" {
+		// Changes nothing: not a row in the activity history.
+		markNotAChange(r)
 		report, err := h.db.DryRunLoanImport(orgID, cutoverDay, data)
 		if err != nil {
 			writeMutationError(w, err)
