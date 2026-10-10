@@ -22,7 +22,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version: "1.26"
+          # The patch release go.mod names, so a security fix in the
+          # standard library lands by bumping go.mod (as STBvirement does).
+          go-version-file: go.mod
           cache: true
 
       # main.go embeds dist/ via //go:embed all:dist, so vet/test can't
