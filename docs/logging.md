@@ -125,12 +125,22 @@ database, kept for two years. Open it from the Settings gear ▸ **Activity**:
   was done to which document, and for a state change the state before and
   after. Filter by member and by dates; a document with its own page opens
   from its row.
+- **What changed.** For an edit or an action on an existing document, the
+  **Change** column lists the fields it changed. Expand the row (**+**) to see
+  each field's value before and after.
+  - Bank accounts (IBAN) are masked to their first two characters and last
+    four digits. Passwords, hashes and tokens are never recorded.
+  - References show the name they had at the time: a client, an account, a
+    tax rate.
+  - Creates and deletions list no fields, and neither do rows recorded before
+    this was added. Invoice, order and delivery lines aren't compared, but
+    the document's totals are.
 - **Platform admins** also get a **Platform** view: users, backups and
   database restores, which belong to no organization.
 
 The history records the change someone made, not its side effects: a payment
 that marks an invoice Paid appears as the payment. Each row carries the
-request id, so the matching log line can be found with
+request id (the **Ref.** column), so the matching log line can be found with
 `grep request_id=<id>` while the log still has it.
 
 ## Settings

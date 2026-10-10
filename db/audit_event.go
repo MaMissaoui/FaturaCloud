@@ -32,6 +32,20 @@ type AuditEvent struct {
 	FromState      string  `db:"fromState" json:"fromState"`
 	ToState        string  `db:"toState" json:"toState"`
 	RequestID      string  `db:"requestId" json:"requestId"`
+	// Changes is what the change changed (migration 0103, audit_changes.go).
+	Changes AuditChanges `db:"changes" json:"changes"`
+}
+
+// AuditChanges is what a change changed, as stored: a JSON array of
+// {"field","from","to"[,"masked"]}, or "" when nothing was recorded. It is
+// served as that array, or null.
+type AuditChanges string
+
+func (c AuditChanges) MarshalJSON() ([]byte, error) {
+	if c == "" {
+		return []byte("null"), nil
+	}
+	return []byte(c), nil
 }
 
 func (d *Database) InsertAuditEvent(e AuditEvent) error {
@@ -43,9 +57,9 @@ func (d *Database) InsertAuditEvent(e AuditEvent) error {
 	}
 	_, err := d.DB.NamedExec(`
 		INSERT INTO audit_events (id, createdAt, organizationId, userId, userEmail, method, route,
-			resource, entityId, entityLabel, fromState, toState, requestId)
+			resource, entityId, entityLabel, fromState, toState, requestId, changes)
 		VALUES (:id, :createdAt, :organizationId, :userId, :userEmail, :method, :route,
-			:resource, :entityId, :entityLabel, :fromState, :toState, :requestId)`, e)
+			:resource, :entityId, :entityLabel, :fromState, :toState, :requestId, :changes)`, e)
 	if err != nil {
 		return fmt.Errorf("insert_audit_event: %w", err)
 	}

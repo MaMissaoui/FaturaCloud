@@ -1,6 +1,18 @@
 import { useState } from "react";
-import { Alert, Button, DatePicker, Segmented, Select, Space, Table, Tag, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  DatePicker,
+  Segmented,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import { useAtomValue } from "jotai";
+import { useLingui } from "@lingui/react";
 import { Link } from "react-router";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -13,13 +25,15 @@ import {
   GetPlatformAuditEvents,
   type AuditEvent,
   type AuditEventPage,
+  type AuditFieldChange,
   type OrganizationMember,
 } from "src/api";
 import { isPlatformAdminAtom } from "src/atoms/auth";
 import { isOrgAdminAtom, organizationIdAtom } from "src/atoms/organization";
 import { useFetch } from "src/hooks/useFetch";
-import { useDatePickerFormat, useDateTimeFormatter } from "src/utils/date";
+import { useDateFormatter, useDatePickerFormat, useDateTimeFormatter } from "src/utils/date";
 import { message } from "src/utils/message";
+import { fieldLabel, formatChangeValue, stateLabel, summarizeChanges } from "./activity-changes";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -145,44 +159,6 @@ const actionLabel = (event: AuditEvent): string => {
   }
 };
 
-// Document states as the lists name them.
-const stateLabel = (state: string): string => {
-  switch (state) {
-    case "draft":
-      return t`Draft`;
-    case "sent":
-      return t`Sent`;
-    case "paid":
-      return t`Paid`;
-    case "cancelled":
-      return t`Cancelled`;
-    case "approved":
-      return t`Approved`;
-    case "confirmed":
-      return t`Confirmed`;
-    case "shipped":
-      return t`Shipped`;
-    case "delivered":
-      return t`Delivered`;
-    case "received":
-      return t`Received`;
-    case "completed":
-      return t`Completed`;
-    case "posted":
-      return t`Posted`;
-    case "reversed":
-      return t`Reversed`;
-    case "voided":
-      return t`Voided`;
-    case "open":
-      return t`Open`;
-    case "closed":
-      return t`Closed`;
-    default:
-      return state;
-  }
-};
-
 // Where a document opens, for the ones with a page of their own.
 const documentPath = (event: AuditEvent): string | null => {
   if (!event.entityId || event.method === "DELETE") return null;
@@ -204,6 +180,22 @@ const documentPath = (event: AuditEvent): string | null => {
   }
 };
 
+// One side of a field change; a masked bank account says how it is masked.
+const changeValue = (
+  change: AuditFieldChange,
+  value: AuditFieldChange["from"],
+  formatters: Parameters<typeof formatChangeValue>[2],
+) => {
+  const text = formatChangeValue(change, value, formatters);
+  return change.masked ? (
+    <Tooltip title={t`Masked: first two characters and last 4 digits`}>
+      <Text code>{text}</Text>
+    </Tooltip>
+  ) : (
+    <span style={{ whiteSpace: "pre-wrap" }}>{text}</span>
+  );
+};
+
 type Scope = "organization" | "platform";
 
 // The activity history (api/audit.go): every change made over the last two
@@ -214,6 +206,13 @@ const SettingsActivity = () => {
   const isOrgAdmin = useAtomValue(isOrgAdminAtom);
   const isPlatformAdmin = useAtomValue(isPlatformAdminAtom);
   const formatDateTime = useDateTimeFormatter();
+  const formatDate = useDateFormatter();
+  const { i18n } = useLingui();
+  const formatters = {
+    date: (ms: number) => formatDate(ms),
+    dateTime: (ms: number) => formatDateTime(ms),
+    locale: i18n.locale,
+  };
   const dateFormat = useDatePickerFormat();
 
   const [pickedScope, setScope] = useState<Scope>("organization");
@@ -385,16 +384,72 @@ const SettingsActivity = () => {
             {
               title: t`Change`,
               key: "change",
-              render: (_, event) =>
-                event.toState ? (
+              render: (_, event) => {
+                // The fields it changed, apart from the state the tags show.
+                const others = (event.changes ?? []).filter(
+                  (c) => !(event.toState && (c.field === "state" || c.field === "status")),
+                );
+                const fields = others.length ? (
+                  <Text type="secondary">{summarizeChanges(others)}</Text>
+                ) : null;
+                if (!event.toState) return fields;
+                return (
                   <span style={{ whiteSpace: "nowrap" }}>
                     {event.fromState && <Tag>{stateLabel(event.fromState)}</Tag>}
                     {event.fromState && "→ "}
                     <Tag color="blue">{stateLabel(event.toState)}</Tag>
+                    {fields}
                   </span>
-                ) : null,
+                );
+              },
+            },
+            {
+              // The request id: the request_id= of the server's log lines
+              // for this change.
+              title: t`Ref.`,
+              dataIndex: "requestId",
+              render: (id: string) =>
+                id ? (
+                  <Text type="secondary" copyable>
+                    {id}
+                  </Text>
+                ) : (
+                  <Text type="secondary">—</Text>
+                ),
             },
           ]}
+          expandable={{
+            rowExpandable: (event) => (event.changes?.length ?? 0) > 0,
+            expandedRowRender: (event) => (
+              <Table<AuditFieldChange>
+                rowKey="field"
+                size="small"
+                pagination={false}
+                dataSource={event.changes ?? []}
+                style={{ maxWidth: 760 }}
+                columns={[
+                  {
+                    title: t`Field`,
+                    key: "field",
+                    width: 240,
+                    render: (_, c) => fieldLabel(c.field),
+                  },
+                  {
+                    title: t`Before`,
+                    key: "from",
+                    render: (_, c) => (
+                      <Text type="secondary">{changeValue(c, c.from, formatters)}</Text>
+                    ),
+                  },
+                  {
+                    title: t`After`,
+                    key: "to",
+                    render: (_, c) => changeValue(c, c.to, formatters),
+                  },
+                ]}
+              />
+            ),
+          }}
           footer={
             next
               ? () => (

@@ -1966,6 +1966,16 @@ export interface AuditEvent {
   fromState: string;
   toState: string;
   requestId: string;
+  // What the change changed (db/audit_changes.go); null for creates,
+  // deletions and rows recorded before it. Bank accounts arrive masked.
+  changes: AuditFieldChange[] | null;
+}
+
+export interface AuditFieldChange {
+  field: string;
+  from: string | number | null;
+  to: string | number | null;
+  masked?: boolean;
 }
 
 export interface AuditEventPage {
