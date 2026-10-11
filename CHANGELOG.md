@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.67.2] - 2026-10-11
+
 ### Fixed
 - After signing in, a platform admin now sees Backup, Users and Countries in Settings, and the Activity page's Platform view, straight away; they used to appear only after a reload or an organization switch. The sign-in answer now describes the user exactly as `/api/auth/me` does (#501).
 
