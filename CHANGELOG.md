@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.67.3] - 2026-10-11
+
+### Fixed
+- Activity history: a Cash Book sale is now recorded against its invoice, with its number, and a member added against the user, with their email; both used to name the wrong record with no label. Rows recorded before are repaired where they can be traced (#508).
+- A document due today is no longer counted as overdue. The aging reports, the client and vendor summaries, the Vendors list and the Dashboard now agree with the invoice and bill lists: it becomes late the day after its due date, in the organization's time zone (#509).
+- Cash Book loans: a free item no longer shows a few cents owed, and the real lines are no longer a cent short. Loans that include a free item move by a cent (#509).
+
+### Changed
+- Internal: CI runs about four times faster, a merge no longer cancels the previous commit's CI run, changes to documentation alone skip CI, and release image builds keep their dependency cache across version bumps (#504–#506). The background tasks (history pruning, the login rate-limit sweep, scheduled backups) now have tests (#510).
+
 ## [3.67.2] - 2026-10-11
 
 ### Fixed
