@@ -318,36 +318,36 @@ func (h *handler) runScheduler() {
 	lastSuccessDate := ""
 	for {
 		time.Sleep(1 * time.Minute)
-
-		cfg := h.readBackupConfig()
-		if !cfg.Enabled {
-			continue
-		}
-
-		now := time.Now().UTC()
-		if now.Hour() != cfg.ScheduleHour {
-			continue
-		}
-
-		today := now.Format("2006-01-02")
-		if lastSuccessDate == today {
-			continue
-		}
-
-		h.dbMu.RLock()
-		if h.db == nil {
-			h.dbMu.RUnlock()
-			continue
-		}
-		err := h.db.Backup(filepath.Join(h.backupDir, fmt.Sprintf("fatura-auto-%s.db", today)))
-		h.dbMu.RUnlock()
-		if err != nil {
-			continue
-		}
-		lastSuccessDate = today
-
-		h.applyRetention(cfg.RetentionDays)
+		lastSuccessDate = h.scheduledBackup(time.Now().UTC(), lastSuccessDate)
 	}
+}
+
+// scheduledBackup is one runScheduler tick at now (UTC): it backs up once
+// per day in the configured hour and returns the date of the last
+// successful scheduled backup, lastSuccessDate unless this tick made one.
+func (h *handler) scheduledBackup(now time.Time, lastSuccessDate string) string {
+	cfg := h.readBackupConfig()
+	if !cfg.Enabled || now.Hour() != cfg.ScheduleHour {
+		return lastSuccessDate
+	}
+	today := now.Format("2006-01-02")
+	if lastSuccessDate == today {
+		return lastSuccessDate
+	}
+
+	h.dbMu.RLock()
+	if h.db == nil {
+		h.dbMu.RUnlock()
+		return lastSuccessDate
+	}
+	err := h.db.Backup(filepath.Join(h.backupDir, fmt.Sprintf("fatura-auto-%s.db", today)))
+	h.dbMu.RUnlock()
+	if err != nil {
+		return lastSuccessDate
+	}
+
+	h.applyRetention(cfg.RetentionDays)
+	return today
 }
 
 // backupFilePrefix is the naming convention every backup this app creates —

@@ -247,21 +247,30 @@ func (h *handler) writeAuditEvents(w http.ResponseWriter, r *http.Request, f db.
 func (h *handler) runAuditPruning() {
 	for {
 		time.Sleep(time.Minute)
-		h.dbMu.RLock()
-		var n int64
-		var err error
-		if h.db != nil {
-			n, err = h.db.PruneAuditEvents(time.Now())
-		}
-		h.dbMu.RUnlock()
-		switch {
-		case db.IsClosed(err):
+		if h.pruneAuditEvents(time.Now()) {
 			return
-		case err != nil:
-			slog.Warn("activity history: pruning failed", "err", err)
-		case n > 0:
-			slog.Info("activity history: pruned old entries", "count", n)
 		}
 		time.Sleep(24*time.Hour - time.Minute)
 	}
+}
+
+// pruneAuditEvents is one runAuditPruning pass. It reports whether the
+// database is closed for good, which ends the loop.
+func (h *handler) pruneAuditEvents(now time.Time) (closed bool) {
+	h.dbMu.RLock()
+	var n int64
+	var err error
+	if h.db != nil {
+		n, err = h.db.PruneAuditEvents(now)
+	}
+	h.dbMu.RUnlock()
+	switch {
+	case db.IsClosed(err):
+		return true
+	case err != nil:
+		slog.Warn("activity history: pruning failed", "err", err)
+	case n > 0:
+		slog.Info("activity history: pruned old entries", "count", n)
+	}
+	return false
 }
