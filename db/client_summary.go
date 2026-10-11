@@ -170,7 +170,11 @@ func (d *Database) GetClientSummary(organizationID, clientID string) (*ClientSum
 
 	// Fill days overdue / bucket using the shared bucketOutstanding
 	now := time.Now()
-	summary := bucketOutstanding(invoices, now)
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("get_client_summary: %w", err)
+	}
+	summary := bucketOutstanding(invoices, now, loc)
 
 	// Invoice stats (state IN ('sent','paid'))
 	type invoiceStats struct {

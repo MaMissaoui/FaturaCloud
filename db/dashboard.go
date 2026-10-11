@@ -261,7 +261,11 @@ func (d *Database) getOutstandingInvoices(organizationID string) (OutstandingSum
 	if err != nil {
 		return OutstandingSummary{}, err
 	}
-	return bucketOutstanding(invoices, time.Now()), nil
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return OutstandingSummary{}, err
+	}
+	return bucketOutstanding(invoices, time.Now(), loc), nil
 }
 
 // GetReceivableAging is the AR aging report (Phase 4) — a thin public name
@@ -708,18 +712,28 @@ func (d *Database) GetPayableAging(organizationID string) (OutstandingBillSummar
 	if err != nil {
 		return OutstandingBillSummary{}, err
 	}
-	return bucketOutstandingBills(bills, time.Now()), nil
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return OutstandingBillSummary{}, err
+	}
+	return bucketOutstandingBills(bills, time.Now(), loc), nil
 }
 
 // agingBucketFor classifies a single outstanding amount by days overdue
 // against its due date — the one piece of bucketing logic bucketOutstanding
-// and bucketOutstandingBills actually share.
-func agingBucketFor(dueDate *int64, nowMillis int64) (bucket string, daysOverdue int) {
-	if dueDate == nil || *dueDate >= nowMillis {
+// and bucketOutstandingBills actually share. Days are whole calendar days in
+// the organization's zone: a document is due through the whole of its due
+// date, so on that date it is still current and the day after it is one day
+// late. (Until audit F162 it was late from the first minute of its due date,
+// counted in elapsed 24-hour periods, while the lists said otherwise.)
+func agingBucketFor(dueDate *int64, now time.Time, loc *time.Location) (bucket string, daysOverdue int) {
+	if dueDate == nil {
 		return "current", 0
 	}
-	daysOverdue = int((nowMillis - *dueDate) / 86400000)
+	daysOverdue = calendarDaysBetween(*dueDate, now.UnixMilli(), loc)
 	switch {
+	case daysOverdue == 0:
+		return "current", 0
 	case daysOverdue <= 30:
 		return "days1To30", daysOverdue
 	case daysOverdue <= 60:
@@ -735,14 +749,13 @@ func agingBucketFor(dueDate *int64, nowMillis int64) (bucket string, daysOverdue
 // rolls the results into aging buckets. Pure function — no DB, no clock
 // dependency baked into the query — so it's unit-testable at exact bucket
 // boundaries without a database.
-func bucketOutstanding(invoices []OutstandingInvoice, now time.Time) OutstandingSummary {
+func bucketOutstanding(invoices []OutstandingInvoice, now time.Time, loc *time.Location) OutstandingSummary {
 	summary := OutstandingSummary{Invoices: invoices}
-	nowMillis := now.UnixMilli()
 	for i := range invoices {
 		inv := &invoices[i]
 		summary.Total += inv.Total
 
-		bucket, daysOverdue := agingBucketFor(inv.DueDate, nowMillis)
+		bucket, daysOverdue := agingBucketFor(inv.DueDate, now, loc)
 		inv.DaysOverdue = daysOverdue
 		inv.Bucket = bucket
 		switch bucket {
@@ -762,14 +775,13 @@ func bucketOutstanding(invoices []OutstandingInvoice, now time.Time) Outstanding
 }
 
 // bucketOutstandingBills is bucketOutstanding's purchases counterpart.
-func bucketOutstandingBills(bills []OutstandingBill, now time.Time) OutstandingBillSummary {
+func bucketOutstandingBills(bills []OutstandingBill, now time.Time, loc *time.Location) OutstandingBillSummary {
 	summary := OutstandingBillSummary{Bills: bills}
-	nowMillis := now.UnixMilli()
 	for i := range bills {
 		bill := &bills[i]
 		summary.Total += bill.Total
 
-		bucket, daysOverdue := agingBucketFor(bill.DueDate, nowMillis)
+		bucket, daysOverdue := agingBucketFor(bill.DueDate, now, loc)
 		bill.DaysOverdue = daysOverdue
 		bill.Bucket = bucket
 		switch bucket {
