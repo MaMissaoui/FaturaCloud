@@ -8,6 +8,21 @@
 # `Digest:` line (make sure it's the index digest, not a per-arch one, so
 # amd64 + arm64 builds both keep working).
 
+# ---- Stage 0: package.json without its version ----
+# Every release PR bumps package.json's "version", and nothing in the build
+# reads it (the app's version is the VERSION build-arg below, Sentry's
+# release name included). Copied as-is, that bump changed the COPY's checksum
+# and re-ran `pnpm install` on every release, and the fresh node_modules layer
+# then had to be compressed into the registry build cache again, ~10s of
+# install plus most of a ~30s cache export per platform. This stage drops only
+# "version" (packageManager, which corepack reads, stays), so the copy below
+# is byte-identical across releases and the install stays cached until a
+# dependency actually changes.
+FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS manifest
+WORKDIR /app
+COPY package.json ./
+RUN node -e 'const fs = require("fs"); const p = JSON.parse(fs.readFileSync("package.json", "utf8")); delete p.version; fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n")'
+
 # ---- Stage 1: Build the React frontend ----
 # Pinned to the build host's own platform, not the target one: this stage's
 # output (static JS/CSS/HTML) is architecture-independent, so building it
@@ -24,7 +39,8 @@ WORKDIR /app
 # this host" on some npm/arch combinations); corepack's shim has no such gap.
 RUN corepack enable
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY --from=manifest /app/package.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY index.html lingui.config.ts vite.config.ts tsconfig.json tsconfig.node.json ./
