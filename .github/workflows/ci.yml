@@ -100,8 +100,8 @@ jobs:
         #    directly, and with ~100 migrations that had grown to ~2.4s per
         #    test alone and ~14s per test under parallel contention, making
         #    api 335s of a 343s Test step. They now copy a golden database
-        #    from db/dbtest (the importable twin of db_test.go's helper,
-        #    which db's own tests can't import without a cycle) — api went
+        #    from db/dbtest (both helpers wrap db.MigratedSnapshot; db's own
+        #    tests can't import dbtest without a cycle) — api went
         #    from 191s to 23s locally. Any new package whose tests need a
         #    database should use dbtest.NewDatabase, never db.NewDatabase.
         # The 28m budget is left unchanged again: it was never the actual
