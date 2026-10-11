@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.67.4] - 2026-10-11
+
+### Fixed
+- Backups are now group-readable instead of owner-only (files `0640`, the backups folder `0750`), so a backup tool on the host, such as Syncthing running as another user with an ACL grant, can copy them off. Owner-only backups cancelled that grant, and nothing was being copied. Other users still can't read them (#512).
+
 ## [3.67.3] - 2026-10-11
 
 ### Fixed
