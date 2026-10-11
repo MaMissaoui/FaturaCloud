@@ -46,9 +46,20 @@ What the delta contains:
 | `pnpm audit --prod`            | No known vulnerabilities                                                                                                     |
 | `govulncheck ./...`            | No called vulnerabilities (one module-level advisory in a package that isn't imported, as in the 2026-09-29 baseline)        |
 
-**Production data check: not run.** The 2026-09-29 audit read the pimi-01
-volume read-only; this one hasn't, pending the owner's go-ahead. The counts
-that would size F163 and F164 are listed under each finding.
+**Production data check** (2026-10-11, run by the owner from a throwaway
+read-only copy of the pimi-01 database, deleted afterwards): history rows a
+create on an affected route wrote since the activity history shipped
+(v3.65.0, 2026-10-06):
+
+| Organization                           | Cash Book sales (`POST /api/cash-sales`) | Member adds |
+| -------------------------------------- | ---------------------------------------- | ----------- |
+| Société ELECTRO MISSAOUI               | 0                                        | 0           |
+| Établissement Ben Salah Électroménager | 0                                        | 0           |
+
+Atlas Moto has no history rows at all. F164 has therefore not reached any
+production row yet, and migration `0104`'s repair is a no-op there; the fix
+still matters because the first real counter sale would be recorded wrong.
+The F163 count (open loans with a free line) was not taken.
 
 **How this document was produced.** One sequential pass by the authoring
 model, with no parallel sweeps. **#504–#506 were written and reviewed by the
@@ -86,7 +97,7 @@ producing this document.
   shift on existing loans that have a free line.
 - **F164:** fix the history going forward **and repair the existing rows**
   (member adds exactly, cash sales by client and creation time).
-- **Production data check:** approved; not yet run (see the baseline note).
+- **Production data check:** approved; run by the owner (see the baseline note).
 
 ---
 
