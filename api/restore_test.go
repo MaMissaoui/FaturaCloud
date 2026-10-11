@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
+	"github.com/MaMissaoui/fatura-cloud/db/dbtest"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -30,10 +31,7 @@ func newTestRouter(t *testing.T) (mux http.Handler, database *db.Database, dbPat
 	if err := os.MkdirAll(backupDir, 0700); err != nil {
 		t.Fatalf("mkdir backups: %v", err)
 	}
-	database, err := db.NewDatabase(dbPath)
-	if err != nil {
-		t.Fatalf("new database: %v", err)
-	}
+	database = dbtest.NewDatabase(t, dbPath)
 	t.Cleanup(func() { _ = database.Close() })
 
 	mux = NewRouter(database, dbPath, backupDir, testRestoreJWTSecret, "test", OIDCConfig{}, nil)

@@ -248,7 +248,7 @@ func TestCreateUser_ValidatesInput(t *testing.T) {
 // leaving the seeded account with role='admin' but isPlatformAdmin=0 — locked
 // out of every platformAdminProtected route (user management, backups,
 // restore, countries), including the ones needed to create the first real
-// users. newTestRouter constructs a real db.NewDatabase(temp file), which is
+// users. newTestRouter opens a freshly migrated database with no users, which is
 // exactly the pre-EnsureFirstAdmin state main.go starts from.
 func TestEnsureFirstAdmin_SeedsPlatformAdmin(t *testing.T) {
 	_, database, _, _ := newTestRouter(t)
