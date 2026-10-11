@@ -83,14 +83,15 @@ func (d *Database) GetVendorSummaries(organizationID string) (VendorSummaryList,
 	}
 	vendorMap := map[string]*vendorOwed{}
 	now := time.Now()
+	loc := orgLocation(org.Timezone)
 	for _, bill := range bills {
 		if _, ok := vendorMap[bill.VendorID]; !ok {
 			vendorMap[bill.VendorID] = &vendorOwed{}
 		}
 		vendorMap[bill.VendorID].owed += bill.Total
-		// The bucket, not daysOverdue: a bill past due by less than a day
-		// is already late (days1To30) with daysOverdue still 0.
-		if bucket, _ := agingBucketFor(bill.DueDate, now.UnixMilli()); bucket != "current" {
+		// Late from the day after its due date, in the organization's zone
+		// — the same day the bill lists start calling it late (audit F162).
+		if bucket, _ := agingBucketFor(bill.DueDate, now, loc); bucket != "current" {
 			vendorMap[bill.VendorID].overdue += bill.Total
 		}
 	}
@@ -192,7 +193,11 @@ func (d *Database) GetVendorSummary(organizationID, vendorID string) (*VendorSum
 	}
 
 	now := time.Now()
-	summary := bucketOutstandingBills(bills, now)
+	loc, err := organizationLocation(d.DB, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("get_vendor_summary: %w", err)
+	}
+	summary := bucketOutstandingBills(bills, now, loc)
 
 	// Bill stats (state IN ('approved','paid')).
 	type billStats struct {

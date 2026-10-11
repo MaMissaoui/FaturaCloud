@@ -36,7 +36,7 @@ func TestBucketOutstanding(t *testing.T) {
 		{ID: "91-days-overdue", Total: 100, DueDate: daysAgo(91)},
 	}
 
-	summary := bucketOutstanding(invoices, now)
+	summary := bucketOutstanding(invoices, now, time.UTC)
 
 	// Each invoice names the bucket it was summed into, so the Dashboard can
 	// list a bucket's invoices: per-bucket sums must equal the summary.
@@ -213,5 +213,44 @@ func TestGetDashboardData(t *testing.T) {
 	if len(data.RevenueByMonth) != 0 || data.Outstanding.Total != 0 ||
 		data.StockValuation.Total != 0 || len(data.TopClients) != 0 || len(data.TopProducts) != 0 {
 		t.Fatalf("expected all-empty result for a fresh org, got %+v", data)
+	}
+}
+
+// TestAgingDueTodayIsCurrent pins audit F162: a document is due through the
+// whole of its due date, counted in calendar days in the organization's
+// zone. A due date picked in Tunis is stored as local midnight (23:00 UTC
+// the day before); it stays current until local midnight ends that day, and
+// a daylight-saving day still counts as one day.
+func TestAgingDueTodayIsCurrent(t *testing.T) {
+	t.Parallel()
+	tunis, err := time.LoadLocation("Africa/Tunis")
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	paris, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	for _, c := range []struct {
+		name       string
+		loc        *time.Location
+		due, now   time.Time
+		wantBucket string
+		wantDays   int
+	}{
+		{"due today, early", tunis, time.Date(2026, 10, 9, 0, 0, 0, 0, tunis), time.Date(2026, 10, 9, 0, 1, 0, 0, tunis), "current", 0},
+		{"due today, late evening", tunis, time.Date(2026, 10, 9, 0, 0, 0, 0, tunis), time.Date(2026, 10, 9, 23, 59, 0, 0, tunis), "current", 0},
+		{"the day after", tunis, time.Date(2026, 10, 9, 0, 0, 0, 0, tunis), time.Date(2026, 10, 10, 0, 1, 0, 0, tunis), "days1To30", 1},
+		{"thirty days after", tunis, time.Date(2026, 10, 9, 0, 0, 0, 0, tunis), time.Date(2026, 11, 8, 9, 0, 0, 0, tunis), "days1To30", 30},
+		{"thirty-one days after", tunis, time.Date(2026, 10, 9, 0, 0, 0, 0, tunis), time.Date(2026, 11, 9, 9, 0, 0, 0, tunis), "days31To60", 31},
+		// 25 October 2026 has 25 hours in Paris; an hour after its end is
+		// still one calendar day after a 25 October due date.
+		{"across daylight saving", paris, time.Date(2026, 10, 25, 0, 0, 0, 0, paris), time.Date(2026, 10, 26, 0, 30, 0, 0, paris), "days1To30", 1},
+	} {
+		due := c.due.UnixMilli()
+		bucket, days := agingBucketFor(&due, c.now, c.loc)
+		if bucket != c.wantBucket || days != c.wantDays {
+			t.Errorf("%s: got %s/%d, want %s/%d", c.name, bucket, days, c.wantBucket, c.wantDays)
+		}
 	}
 }

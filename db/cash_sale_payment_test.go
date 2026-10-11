@@ -402,3 +402,43 @@ func TestAllocateInvoiceLinesSettlingALineLeavesTheOthersAlone(t *testing.T) {
 		}
 	}
 }
+
+// TestAllocateInvoiceLinesFreeLineOwesNothing pins audit F163: a free line
+// (net 0) sorts last in loanLineOrder, and when it weighed 1 it took the
+// rounding remainder, so a gift owed cents and the real lines were short.
+func TestAllocateInvoiceLinesFreeLineOwesNothing(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name        string
+		total, paid int64
+		net         []int64
+		want        []int64
+	}{
+		{"two equal lines and a gift", 20000, 0, []int64{10000, 10000, 0}, []int64{10000, 10000, 0}},
+		// The counter's 2 × 10.00 + 5.00 at 20% VAT plus a free gift.
+		{"VAT and a gift", 3000, 0, []int64{2000, 500, 0}, []int64{2400, 600, 0}},
+		{"an odd cent goes to the last line with value", 24001, 0, []int64{10000, 10000, 0}, []int64{12000, 12001, 0}},
+		{"a deposit doesn't land on the gift", 3000, 1000, []int64{2000, 500, 0}, []int64{2400, 600, 0}},
+		{"only free lines split evenly", 100, 0, []int64{0, 0}, []int64{50, 50}},
+	} {
+		lines := make([]loanLineRaw, len(c.net))
+		for k, net := range c.net {
+			lines[k] = loanLineRaw{NetLine: net, InvoiceTotal: c.total, InvoicePaid: c.paid}
+		}
+		amounts, paid := allocateInvoiceLines(lines)
+		var paidSum int64
+		for k := range lines {
+			if amounts[k] != c.want[k] {
+				t.Errorf("%s: amounts %v, want %v", c.name, amounts, c.want)
+				break
+			}
+			if c.net[k] == 0 && len(c.net) > 1 && c.want[k] == 0 && paid[k] != 0 {
+				t.Errorf("%s: the free line was paid %d", c.name, paid[k])
+			}
+			paidSum += paid[k]
+		}
+		if paidSum != c.paid {
+			t.Errorf("%s: paid sums to %d, want %d", c.name, paidSum, c.paid)
+		}
+	}
+}
