@@ -5,11 +5,18 @@ on:
     branches: [main]
   pull_request:
 
-# When a new commit lands on a branch/PR, cancel the in-flight run for the
-# same ref instead of letting it run to completion on a wasted runner — most
-# of the cost (a full race-enabled test compile) is duplicated on every push.
+# When a new commit lands on a PR, cancel the in-flight run for the same ref
+# instead of letting it run to completion on a wasted runner — most of the
+# cost (a full race-enabled test compile) is duplicated on every push.
+# Pushes to main get a group per commit, so they never cancel each other:
+# PRs are often merged before their own checks finish, which makes main's run
+# the real gate for each merged commit, and a shared main group cancelled it
+# on the next merge (run 38123231085 was cancelled by the v3.67.2 release
+# merge, so e857795 never got a complete Go run). A per-ref group with
+# cancel-in-progress off wouldn't be enough: GitHub keeps only one pending
+# run per group, so a third quick merge would still cancel the second's.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -81,12 +88,17 @@ jobs:
         #    fsync/disk I/O (a synchronous=OFF experiment on the test DSN
         #    made no measurable difference); it was -race instrumenting 70
         #    migrations' worth of statements on every single test.
+        # 3. The api package got the same treatment on 2026-10-11:
+        #    newTestRouter/newTestHandler still called db.NewDatabase
+        #    directly, and with ~100 migrations that had grown to ~2.4s per
+        #    test alone and ~14s per test under parallel contention, making
+        #    api 335s of a 343s Test step. They now copy a golden database
+        #    from db/dbtest (the importable twin of db_test.go's helper,
+        #    which db's own tests can't import without a cycle) — api went
+        #    from 191s to 23s locally. Any new package whose tests need a
+        #    database should use dbtest.NewDatabase, never db.NewDatabase.
         # The 28m budget is left unchanged again: it was never the actual
-        # constraint (even before this, no observed run got close to it),
-        # and there's no cost to carrying slack now that the api package
-        # (no equivalent optimization — api/restore_test.go's newTestRouter
-        # calls db.NewDatabase directly, a decent follow-up) is the slower
-        # of the two Go packages.
+        # constraint (even before this, no observed run got close to it).
         # -coverprofile writes per-line coverage alongside -race/-timeout
         # rather than as a separate run, since a second full `go test`
         # invocation would double the job's runtime for no reason.
