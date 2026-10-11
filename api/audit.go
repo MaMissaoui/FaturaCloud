@@ -142,6 +142,9 @@ func (h *handler) audited(pattern string, next http.Handler) http.Handler {
 			return
 		}
 		if entityID == "" {
+			entityID = info.auditEntityID
+		}
+		if entityID == "" {
 			if m := createdIDPattern.FindSubmatch(info.head); m != nil {
 				entityID = string(m[1])
 			}

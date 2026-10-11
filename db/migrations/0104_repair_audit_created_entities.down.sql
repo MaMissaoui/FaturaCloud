@@ -1,0 +1,2 @@
+-- No-op: the up migration only corrects which document a history row names.
+-- The wrong values it replaced aren't worth restoring.

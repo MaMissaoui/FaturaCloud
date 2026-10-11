@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -242,5 +243,198 @@ func TestBackupsAndRestoresAreNamedInTheHistory(t *testing.T) {
 	// written, plus the restore's row.
 	if events := platformEvents(); len(events) != 1 || events[0].Resource != "restore" || events[0].EntityLabel != "monday.db" {
 		t.Errorf("restore history = %+v, want one row named monday.db", events)
+	}
+}
+
+// Every audited create route must say how its history row learns the
+// document it made: a response that leads with the document's own id (the
+// pattern api/audit.go falls back to), a response whose first field leads
+// with it, an explicit setAuditEntity, or no single document at all. Audit
+// F164: a cash sale answered client first and a member add with the
+// membership row, so their rows named the wrong document. A new create
+// route, or a response struct reordered so another id comes first, fails
+// here.
+func TestAuditCreateRoutesNameTheirDocument(t *testing.T) {
+	t.Parallel()
+	leadsWithID := map[string]any{
+		"/api/organizations":      db.Organization{},
+		"/api/clients":            db.Client{},
+		"/api/vendors":            db.Vendor{},
+		"/api/imports":            db.Import{},
+		"/api/purchase-orders":    db.PurchaseOrder{},
+		"/api/inbound-deliveries": db.InboundDelivery{},
+		"/api/production-orders":  db.ProductionOrder{},
+		"/api/incoming-invoices":  db.IncomingInvoice{},
+		"/api/invoices":           db.Invoice{},
+		"/api/tax-rates":          db.TaxRate{},
+		"/api/payment-terms":      db.PaymentTerm{},
+		"/api/units-of-measure":   db.UnitOfMeasure{},
+		"/api/product-families":   db.ProductFamily{},
+		"/api/products":           db.Product{},
+		"/api/orders":             db.Order{},
+		"/api/deliveries":         db.OutboundDelivery{},
+		"/api/accounts":           db.Account{},
+		"/api/journals":           db.Journal{},
+		"/api/fiscal-years":       db.FiscalYear{},
+		"/api/fiscal-periods":     db.FiscalPeriod{},
+		"/api/journal-entries":    db.JournalEntry{},
+		"/api/payments":           db.Payment{},
+	}
+	// The first field holds the document (or the first of several).
+	leadsViaFirstField := map[string]any{
+		"/api/stock-movements": db.CreateStockMovementResult{},
+		"/api/cash-movements":  db.CashMovementResult{},
+	}
+	explicit := map[string]bool{
+		"/api/cash-sales":                    true,
+		"/api/organizations/{orgId}/members": true,
+	}
+	noSingleDocument := map[string]string{
+		"/api/backups": "named by the download's file name",
+		"/api/restore": "a database restore; the handler names the uploaded file",
+		"/api/users":   "userToJSON is a flat map whose only id is the user's",
+		"/api/organizations/{orgId}/loan-imports":            "a batch report; the handler sets the label",
+		"/api/organizations/{orgId}/clients/import":          "a mass-data report",
+		"/api/organizations/{orgId}/vendors/import":          "a mass-data report",
+		"/api/organizations/{orgId}/tax-rates/import":        "a mass-data report",
+		"/api/organizations/{orgId}/payment-terms/import":    "a mass-data report",
+		"/api/organizations/{orgId}/units-of-measure/import": "a mass-data report",
+		"/api/organizations/{orgId}/products/import":         "a mass-data report",
+		"/api/organizations/{orgId}/stock-movements/import":  "a mass-data report",
+		"/api/organizations/{orgId}/accounts/import":         "a mass-data report",
+	}
+
+	seen := map[string]bool{}
+	for rk := range discoverRoutes(t) {
+		if rk.method != http.MethodPost || auditSkipped(rk.pattern) {
+			continue
+		}
+		if _, idParam := auditTarget(rk.pattern); idParam != "" {
+			continue
+		}
+		seen[rk.pattern] = true
+		lead, okLead := leadsWithID[rk.pattern]
+		via, okVia := leadsViaFirstField[rk.pattern]
+		_, okNone := noSingleDocument[rk.pattern]
+		classes := 0
+		for _, ok := range []bool{okLead, okVia, explicit[rk.pattern], okNone} {
+			if ok {
+				classes++
+			}
+		}
+		if classes != 1 {
+			t.Errorf("create route %s is in %d classes; put it in exactly one", rk, classes)
+			continue
+		}
+		if okLead {
+			if f := firstJSONField(reflect.TypeOf(lead)); f.name != "id" {
+				t.Errorf("%s answers with %T, whose first JSON field is %q, not \"id\"", rk, lead, f.name)
+			}
+		}
+		if okVia {
+			f := firstJSONField(reflect.TypeOf(via))
+			if inner := firstJSONField(f.typ); inner.name != "id" {
+				t.Errorf("%s answers with %T: its first field %q leads with %q, not \"id\"", rk, via, f.name, inner.name)
+			}
+		}
+	}
+	for _, list := range []map[string]bool{keys(leadsWithID), keys(leadsViaFirstField), explicit, keys(noSingleDocument)} {
+		for pattern := range list {
+			if !seen[pattern] {
+				t.Errorf("%s is listed but is not an audited create route in router.go", pattern)
+			}
+		}
+	}
+}
+
+type jsonField struct {
+	name string
+	typ  reflect.Type
+}
+
+// firstJSONField is the first field t encodes to JSON, its pointer, slice
+// or array element type unwrapped.
+func firstJSONField(t reflect.Type) jsonField {
+	for t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return jsonField{}
+	}
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		tag := f.Tag.Get("json")
+		if !f.IsExported() || tag == "-" {
+			continue
+		}
+		name, _, _ := strings.Cut(tag, ",")
+		if name == "" {
+			name = f.Name
+		}
+		return jsonField{name: name, typ: f.Type}
+	}
+	return jsonField{}
+}
+
+func keys[V any](m map[string]V) map[string]bool {
+	out := make(map[string]bool, len(m))
+	for k := range m {
+		out[k] = true
+	}
+	return out
+}
+
+// A cash sale's row names its invoice and a member add's the added user,
+// although both responses lead with another id (audit F164).
+func TestWrappedCreatesNameTheirDocument(t *testing.T) {
+	t.Parallel()
+	f := newAuditFixture(t)
+	seedUser(t, f.d, "new-member", "user", 1)
+	if rec := f.do(t, f.admin, http.MethodPost, "/api/organizations/org-audit/members",
+		`{"email":"new-member@test.local","role":"general"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("add member: %d %s", rec.Code, rec.Body)
+	}
+
+	if _, err := f.d.CreateFiscalYear(db.CreateFiscalYearRequest{
+		OrganizationID: "org-audit", Name: "2025", StartDate: 1735689600000, EndDate: 1767225599000,
+	}); err != nil {
+		t.Fatalf("CreateFiscalYear: %v", err)
+	}
+	register := ""
+	accounts, err := f.d.GetAccounts("org-audit")
+	if err != nil {
+		t.Fatalf("GetAccounts: %v", err)
+	}
+	for _, a := range accounts {
+		if a.Code == "1010" {
+			register = a.ID
+		}
+	}
+	if _, err := f.d.UpdateOrganization("org-audit", db.UpdateOrganizationRequest{DefaultCashRegisterAccountID: &register}); err != nil {
+		t.Fatalf("set register account: %v", err)
+	}
+	rec := f.do(t, f.admin, http.MethodPost, "/api/cash-sales", `{"organizationId":"org-audit",
+		"newClient":{"name":"Walk-in"},"date":1738368000000,"currency":"EUR",
+		"lineItems":[{"quantity":1,"unitPrice":1000,"description":"Kettle"}],
+		"subTotal":1000,"taxTotal":0,"total":1000,"amountReceived":1000}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("cash sale: %d %s", rec.Code, rec.Body)
+	}
+	var sale db.CashSaleResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &sale); err != nil {
+		t.Fatalf("decode cash sale: %v", err)
+	}
+
+	byResource := map[string]db.AuditEvent{}
+	for _, e := range f.events(t) {
+		if e.Method == http.MethodPost {
+			byResource[e.Resource] = e
+		}
+	}
+	if e := byResource["members"]; e.EntityID != "new-member" || e.EntityLabel != "new-member@test.local" {
+		t.Errorf("member add row = %q %q, want the user and their email", e.EntityID, e.EntityLabel)
+	}
+	if e := byResource["cash-sales"]; e.EntityID != sale.Invoice.ID || e.EntityLabel != sale.Invoice.Number {
+		t.Errorf("cash sale row = %q %q, want invoice %q %q", e.EntityID, e.EntityLabel, sale.Invoice.ID, sale.Invoice.Number)
 	}
 }
