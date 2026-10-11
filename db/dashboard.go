@@ -441,7 +441,10 @@ func (d *Database) GetLoanStatus(organizationID, clientID string) ([]LoanStatusR
 // line's amount and paid, both summing exactly to the invoice's figures.
 //
 // A line's amount is the invoice total weighted by net line value, the last
-// line absorbing the rounding remainder. A line's paid is what was applied to
+// line with any value absorbing the rounding remainder. A free line weighs
+// nothing and so owes nothing (audit F163: weighted 1 and sorted last by
+// loanLineOrder, it took the remainder — a gift showed 0,02 owed and the
+// real lines a cent short each). A line's paid is what was applied to
 // it directly (LinePaid) plus its share of the invoice-level payments: those
 // are spread in proportion to the line amounts alone, and only a share a line
 // can no longer take (its direct payments already cover it) moves on to the
@@ -459,23 +462,31 @@ func allocateInvoiceLines(lines []loanLineRaw) (amounts, paid []int64) {
 	weights := make([]int64, n)
 	var weightSum int64
 	for k, l := range lines {
-		weights[k] = l.NetLine
-		if weights[k] <= 0 {
-			// A free (or negative) line still gets a share rather than
-			// dividing by zero or pulling another line's share negative.
+		// A negative line weighs nothing too, rather than pulling another
+		// line's share negative.
+		weights[k] = max(l.NetLine, 0)
+		weightSum += weights[k]
+	}
+	if weightSum == 0 {
+		// Only free lines (an invoice that is all stamp duty, say): split
+		// evenly rather than divide by zero.
+		for k := range weights {
 			weights[k] = 1
 		}
-		weightSum += weights[k]
+		weightSum = int64(n)
+	}
+	last := n - 1
+	for last > 0 && weights[last] == 0 {
+		last--
 	}
 	var allocated int64
 	for k := range lines {
-		if k == n-1 {
-			amounts[k] = total - allocated
-		} else {
+		if k != last {
 			amounts[k] = mulDiv(total, weights[k], weightSum)
+			allocated += amounts[k]
 		}
-		allocated += amounts[k]
 	}
+	amounts[last] = total - allocated
 
 	// The invoice-level payments (the counter's deposit, a payment recorded
 	// on the invoice page) are spread over the lines by amount alone, never
