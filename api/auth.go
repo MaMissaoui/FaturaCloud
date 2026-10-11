@@ -263,16 +263,12 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 	// The token rides in an httpOnly cookie, never the response body — page
 	// JavaScript never sees it, so XSS can't steal the session.
 	h.setAuthCookie(w, r, token)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"user": map[string]any{
-			"id":           user.ID,
-			"email":        user.Email,
-			"displayName":  user.DisplayName,
-			"role":         user.Role,
-			"isActive":     user.IsActive,
-			"authProvider": "local",
-		},
-	})
+	// The same description of the user as GET /api/auth/me: the app keeps
+	// this one as the signed-in user until the next reload, and a field only
+	// /me had (isPlatformAdmin) hid a platform admin's menus after sign-in.
+	resp := userToJSON(user)
+	resp["authProvider"] = "local"
+	writeJSON(w, http.StatusOK, map[string]any{"user": resp})
 }
 
 func (h *handler) logout(w http.ResponseWriter, r *http.Request) {
