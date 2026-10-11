@@ -110,14 +110,14 @@ func TestBackupDirPermissions(t *testing.T) {
 	tmp := t.TempDir()
 	dbPath := filepath.Join(tmp, "sqlite.db")
 	backupDir := backupDirPath(dbPath)
-	if err := os.MkdirAll(backupDir, 0700); err != nil {
+	if err := os.MkdirAll(backupDir, backupDirMode); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	info, err := os.Stat(backupDir)
 	if err != nil {
 		t.Fatalf("stat backup dir: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0700 {
-		t.Fatalf("backup dir mode = %o, want 0700", perm)
+	if perm := info.Mode().Perm(); perm != 0750 {
+		t.Fatalf("backup dir mode = %o, want 0750", perm)
 	}
 }

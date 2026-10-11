@@ -1673,8 +1673,10 @@ func TestUpdateDeliveryRejectsLineItemEditAfterShip(t *testing.T) {
 }
 
 // TestBackupFilePermissions covers F15: VACUUM INTO creates files with
-// SQLite's default (world-readable) mode — Backup must tighten that down to
-// owner-only since it's a full copy of the financial database.
+// SQLite's default (world-readable) mode — Backup must take away "other"
+// since it's a full copy of the financial database. Group-readable on
+// purpose (see BackupFileMode), so the expected mode is a literal here: a
+// change to the constant should have to change this test too.
 func TestBackupFilePermissions(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
@@ -1686,8 +1688,8 @@ func TestBackupFilePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat backup file: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0600 {
-		t.Fatalf("backup file mode = %o, want 0600", perm)
+	if perm := info.Mode().Perm(); perm != 0640 {
+		t.Fatalf("backup file mode = %o, want 0640", perm)
 	}
 }
 
