@@ -61,6 +61,15 @@ func NewDatabase(dbPath string) (*Database, error) {
 	return d, nil
 }
 
+// BackupFileMode is the mode of every file the app writes into the backups
+// directory (snapshots and the schedule's config.json). Never world-readable
+// (F15: a snapshot is the full financial database), but group-readable rather
+// than owner-only: on a host that grants a backup user read access through a
+// POSIX ACL, the group bits are the ACL mask, so 0600 silently cancels that
+// grant. That is how the production Pi's Syncthing (running as a different
+// user than the container) stopped seeing every backup.
+const BackupFileMode os.FileMode = 0640
+
 // Backup creates a consistent single-file snapshot via VACUUM INTO,
 // safe to call while the database is open in WAL mode.
 func (d *Database) Backup(destPath string) error {
@@ -69,8 +78,8 @@ func (d *Database) Backup(destPath string) error {
 		return fmt.Errorf("backup: %w", err)
 	}
 	// VACUUM INTO creates the file with SQLite's default (world-readable) mode —
-	// this is a full financial database, tighten it to owner-only.
-	if err := os.Chmod(destPath, 0600); err != nil {
+	// this is a full financial database, take away "other" (see BackupFileMode).
+	if err := os.Chmod(destPath, BackupFileMode); err != nil {
 		return fmt.Errorf("backup: chmod: %w", err)
 	}
 	return nil

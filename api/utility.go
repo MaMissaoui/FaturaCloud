@@ -76,7 +76,9 @@ func (h *handler) writeBackupConfig(cfg BackupConfig) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(h.backupDir, "config.json"), data, 0600)
+	// Same mode as the snapshots beside it, so a backup tool syncing this
+	// directory can read it too.
+	return os.WriteFile(filepath.Join(h.backupDir, "config.json"), data, db.BackupFileMode)
 }
 
 // ── Backup list ───────────────────────────────────────────────────────────────

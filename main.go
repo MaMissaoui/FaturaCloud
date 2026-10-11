@@ -41,7 +41,7 @@ func main() {
 	slog.Info("Database initialized")
 
 	backupDir := backupDirPath(dbPath)
-	if err := os.MkdirAll(backupDir, 0700); err != nil {
+	if err := os.MkdirAll(backupDir, backupDirMode); err != nil {
 		fatal("Failed to create backup directory", "err", err)
 	}
 
@@ -282,6 +282,12 @@ func dbFilePath() string {
 	_ = os.MkdirAll(appDir, 0755)
 	return filepath.Join(appDir, "sqlite.db")
 }
+
+// backupDirMode keeps the backups directory closed to "other" (F15) but
+// traversable by the group, for the same ACL-mask reason as
+// db.BackupFileMode — a 0700 directory would lock a backup user out of
+// every snapshot inside it.
+const backupDirMode os.FileMode = 0750
 
 func backupDirPath(dbPath string) string {
 	return filepath.Join(filepath.Dir(dbPath), "backups")
