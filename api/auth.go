@@ -67,15 +67,20 @@ func sweepLoginBuckets() {
 	for {
 		time.Sleep(loginWindow)
 		loginMu.Lock()
-		now := time.Now()
-		for _, buckets := range []map[string]*loginBucket{loginBuckets, loginEmailBuckets} {
-			for key, b := range buckets {
-				if now.After(b.windowEnd) {
-					delete(buckets, key)
-				}
+		evictExpiredLoginBuckets(time.Now(), loginBuckets, loginEmailBuckets)
+		loginMu.Unlock()
+	}
+}
+
+// evictExpiredLoginBuckets drops every bucket whose window ended before now.
+// The caller holds loginMu.
+func evictExpiredLoginBuckets(now time.Time, maps ...map[string]*loginBucket) {
+	for _, buckets := range maps {
+		for key, b := range buckets {
+			if now.After(b.windowEnd) {
+				delete(buckets, key)
 			}
 		}
-		loginMu.Unlock()
 	}
 }
 
