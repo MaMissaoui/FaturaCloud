@@ -119,6 +119,65 @@ func TestLogin(t *testing.T) {
 	})
 }
 
+// The user a sign-in answers with is the one /api/auth/me describes: the
+// app keeps it as the signed-in user until the next reload, so a field only
+// /me had (isPlatformAdmin) hid a platform admin's Backup, Users and
+// Countries menus after every sign-in.
+func TestLoginDescribesTheUserAsMeDoes(t *testing.T) {
+	mux, database, _, _ := newTestRouter(t)
+	hash, err := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	if _, err := database.DB.Exec(
+		`INSERT INTO users (id, email, passwordHash, displayName, role, isActive, isPlatformAdmin) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		"platform-1", "platform@test.local", string(hash), "Platform Admin", "admin", 1, 1,
+	); err != nil {
+		t.Fatalf("seed platform admin: %v", err)
+	}
+
+	login := doJSON(t, mux, "", http.MethodPost, "/api/auth/login", map[string]any{
+		"email": "platform@test.local", "password": "correct-password",
+	})
+	if login.Code != http.StatusOK {
+		t.Fatalf("login: %d %s", login.Code, login.Body)
+	}
+	var signedIn struct {
+		User map[string]any `json:"user"`
+	}
+	if err := json.Unmarshal(login.Body.Bytes(), &signedIn); err != nil {
+		t.Fatalf("decode login: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	for _, c := range login.Result().Cookies() {
+		req.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	var me map[string]any
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &me) != nil {
+		t.Fatalf("me: %d %s", rec.Code, rec.Body)
+	}
+
+	if signedIn.User["isPlatformAdmin"] != float64(1) {
+		t.Errorf("login says isPlatformAdmin = %v, want 1", signedIn.User["isPlatformAdmin"])
+	}
+	for key := range me {
+		if _, ok := signedIn.User[key]; !ok {
+			t.Errorf("login leaves out %q, which /api/auth/me has", key)
+		}
+	}
+	for _, key := range []string{"id", "email", "displayName", "role", "isActive", "isPlatformAdmin", "authProvider"} {
+		if signedIn.User[key] != me[key] {
+			t.Errorf("%s: login %v, me %v", key, signedIn.User[key], me[key])
+		}
+	}
+	if _, leaked := signedIn.User["passwordHash"]; leaked {
+		t.Error("login answers with the password hash")
+	}
+}
+
 // TestLoginPerAccountRateLimit covers F24: attempts against one account are
 // throttled even when each comes from a distinct source IP, so IP rotation
 // can't grind a single email past the limit.
