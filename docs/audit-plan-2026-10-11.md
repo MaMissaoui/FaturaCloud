@@ -55,9 +55,9 @@ model, with no parallel sweeps. **#504–#506 were written and reviewed by the
 same model in the same session**, so this is not an independent review of
 them. Labels:
 
-- **Confirmed** means reproduced: F163 with a throwaway sweep over the
-  allocation function, F164 with a throwaway router test reading the
-  history row back.
+- **Confirmed** means reproduced: F163 with a throwaway counter sale through
+  the router plus a sweep over the allocation function, F164 with throwaway
+  router tests reading the history rows back.
 - **Code read** means established by reading the code (F162, F165, F166).
 
 Every probe was throwaway and has been deleted. No code was changed while
@@ -84,9 +84,9 @@ producing this document.
 
 | #    | Finding                                                                                                                                                            | Area                     | Severity | Phase |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ | -------- | ----- |
-| F164 | Every Cash Book sale's activity history row names the **client** as the document, with no label, so the sale's creation can't be found from its invoice            | Activity history         | Medium   | 1     |
+| F164 | The activity history records the wrong document, with no label, for every Cash Book sale (the client) and every member added (the membership row)                  | Activity history         | Medium   | 1     |
 | F162 | On a document's due date, the server and the master-data screens call it overdue while the invoice and bill lists don't, so two screens disagree about the same bill | Aging / consistency      | Low      | 2     |
-| F163 | A free line on a Cash Book loan always sorts last and absorbs the rounding cents, so a free item shows a few cents owed and the invoice can't clear without them    | Cash Book / allocation   | Low      | 2     |
+| F163 | A free line on a Cash Book loan always sorts last and absorbs the rounding cents, so a free item shows cents owed and the real lines show cents short               | Cash Book / allocation   | Low      | 2     |
 | F165 | The background loops (`runAuditPruning`, `sweepLoginBuckets`, `runScheduler`) have no test of their own; #489's "stop once closed" fix is untested                  | Tests                    | Low      | 3     |
 | F166 | `db/dbtest` repeats `db/db_test.go`'s golden-database builder and its schema guard; the two copies can drift                                                        | Tests                    | Low      | 3     |
 
@@ -99,7 +99,7 @@ follows a fix.
 
 ## Phase 1
 
-### 1.1 — F164: the history files every Cash Book sale under its client (Medium, Confirmed)
+### 1.1 — F164: the history records the wrong document for Cash Book sales and member adds (Medium, Confirmed)
 
 **What happens.** `api/audit.go` takes a created document's id from the
 first `"id"` in the response (`createdIDPattern` over the first 2 KB,
@@ -122,24 +122,38 @@ is recorded against the wrong document with no invoice number. Filtering the
 history by the invoice (`entityId`) finds its later state changes and
 payments but not the sale that created it.
 
-Other create routes were spot-checked: `cash-movements` (`cashMovement`
-first) and `stock-movements` (`movements` first) pick the right object. No
-test covers the `cash-sales` row; `api/audit_test.go` covers only
-`/api/cash-sales/{id}/payments`, whose id comes from the path.
+**A second route has the same cause.** `POST
+/api/organizations/{orgId}/members` answers with the `organization_users`
+row, whose first `"id"` is the **membership's** id, while `resource =
+"members"` maps to the `users` table (label: email). Reproduced the same way:
+the row's `entityId` was the membership id and its label empty, so the
+history can't say who was added.
+
+Every other audited create route was checked. Each returns a document whose
+first JSON field is its own `id` (payments, journal entries, every sales and
+purchasing document, production orders, imports, the master data); a user
+create returns a flat object; `cash-movements` (`cashMovement` first) and
+`stock-movements` (`movements` first) pick the right object; the loan import
+and the mass-data imports have no `"id"` key in their reports, and the loan
+import sets its label explicitly. No test covers either affected row:
+`api/audit_test.go` covers only `/api/cash-sales/{id}/payments`, whose id
+comes from the path.
 
 **Fix.** Let a handler name its created entity explicitly instead of relying
-on response field order: for example a `setAuditEntity(r, id)` the
-cash-sale handler calls with `result.Invoice.ID`, which `api/audit.go` uses
-before falling back to the pattern. Add a router test asserting the
-`cash-sales` row's `entityId` and `entityLabel`.
+on response field order: a `setAuditEntity(r, id)` next to `setAuditLabel`,
+which `api/audit.go` uses before falling back to the pattern. The cash-sale
+handler passes `result.Invoice.ID`, the member add the added user's id. Add
+a router test that creates through **every** audited `POST` create route and
+asserts each row's `entityId` names the created document, so a future
+wrapped response can't regress silently.
 
 **Existing rows (owner decision).** Either leave them, or backfill with a
-migration: for each `cash-sales` row whose `entityId` is a client, the
-invoice is the one created for that client in the same request. `requestId`
-isn't stored on the invoice, so the match would be by client and creation
-time, which is reliable only when a client has one sale per second. The
-production count (`SELECT COUNT(*) FROM audit_events WHERE resource =
-'cash-sales' AND route NOT LIKE '%/payments'`) sizes this.
+migration. A member-add row can be repaired exactly: its `entityId` is an
+`organization_users.id`, which names the user. A cash-sale row can only be
+matched by client and creation time (`requestId` isn't stored on the
+invoice), which is reliable only when a client has one sale per second. The
+production counts (`resource = 'cash-sales' AND route NOT LIKE
+'%/payments'`, and `resource = 'members' AND method = 'POST'`) size this.
 
 ---
 
@@ -188,6 +202,11 @@ weight 1) is **always** last. It then takes up to n−1 cents. Lines 100.00,
 invoice still has 0.02 outstanding and doesn't turn paid until someone
 "pays" the free item.
 
+Reproduced end to end as well: a counter sale through `POST
+/api/cash-sales` with lines 2 × 10.00 and 1 × 5.00 at 20% VAT plus a free
+"Gift" line is accepted (201), and `GetLoanStatus` then lists the lines at
+**23.99, 5.99 and 0.02** instead of 24.00, 6.00 and 0.00.
+
 The rest of #467 held up under a throwaway sweep of 20,000 random invoices
 (1–6 lines, free lines, tax, stamp-like extras, deposits, payments in random
 order): **0 violations** of the invariants. Line balances always summed to
@@ -198,13 +217,20 @@ The free-line case predates the delta (`d4ce460`, 2026-09-24) but lives in
 the code #467 reworked. The production count of open loan invoices whose
 last line in `loanLineOrder` has `netLine = 0` sizes it.
 
-**Fix (owner decision on existing loans).** Give the remainder to the
-first line in `loanLineOrder` (the largest), or to the last line with a
-positive net value. Because the allocation is computed on read, this also
-moves a cent on existing loans: a real line already settled by direct
-payments at 99.99 would then show 0.01 owed, and the free line 0. Invoice
-totals and outstanding don't change. Pin the case with a test (free line
-last, and a free line in a multi-line invoice with tax and a deposit).
+**Fix (owner decision on existing loans).** Give non-positive lines a
+weight of **0** (falling back to equal weights only when every line is
+free), and hand the remainder to the last line with a positive weight. The
+cause is the free line's weight of 1 inflating the weight sum; merely moving
+the remainder elsewhere would leave two identical lines 2 cents apart
+(100.01 / 99.99). With zero weights the example comes out 100.00 / 100.00 /
+0.00, and the same throwaway sweep over 20,000 random invoices found 0
+invariant violations and no free line owing anything.
+
+Because the allocation is computed on read, the fix moves a cent on existing
+loans that have a free line: a real line already settled by direct payments
+at 23.99 would then show 0.01 owed, and the free line 0. Invoice totals and
+outstanding don't change. Pin the case with tests (the example above, and a
+free line in an invoice with a deposit).
 
 ---
 
