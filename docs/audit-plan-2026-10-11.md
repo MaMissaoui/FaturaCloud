@@ -78,6 +78,16 @@ producing this document.
 - The 2026-09-19, 2026-09-24, v3.54 and 2026-09-29 "Explicitly excluded"
   lists still bind, and so does this document's own list at the end.
 
+**Status:** 5 findings (F162–F166). The owner's decisions (2026-10-11):
+
+- **F162:** option (a) — a document due today is not overdue, on every
+  screen; the server buckets by calendar day in the organization's zone.
+- **F163:** fix with zero weights for free lines, accepting the one-cent
+  shift on existing loans that have a free line.
+- **F164:** fix the history going forward **and repair the existing rows**
+  (member adds exactly, cash sales by client and creation time).
+- **Production data check:** approved; not yet run (see the baseline note).
+
 ---
 
 ## Severity overview
