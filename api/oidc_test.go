@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MaMissaoui/fatura-cloud/db"
+	"github.com/MaMissaoui/fatura-cloud/db/dbtest"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
@@ -129,10 +129,7 @@ func (f *fakeIdP) baseClaims(nonce string) map[string]any {
 func newTestHandler(t *testing.T, oidcCfg OIDCConfig) *handler {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.NewDatabase(dbPath)
-	if err != nil {
-		t.Fatalf("new database: %v", err)
-	}
+	database := dbtest.NewDatabase(t, dbPath)
 	t.Cleanup(func() { database.Close() })
 	return &handler{
 		db:        database,
