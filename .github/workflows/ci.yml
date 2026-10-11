@@ -1,9 +1,16 @@
 name: CI
 
+# A change that touches only Markdown or docs/ runs nothing here: no job
+# reads those files (oxfmt and oxlint check src/ only, lingui extracts from
+# src/), and main has no required status checks, so a skipped run can't
+# leave a PR waiting. A change that also touches anything else runs in full —
+# paths-ignore skips only when every changed file matches.
 on:
   push:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**.md", "docs/**"]
 
 # When a new commit lands on a PR, cancel the in-flight run for the same ref
 # instead of letting it run to completion on a wasted runner — most of the
