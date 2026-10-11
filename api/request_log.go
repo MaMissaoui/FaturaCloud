@@ -52,6 +52,11 @@ type requestInfo struct {
 	// auditLabel names the document for the activity history when no table
 	// holds its name: the file a database restore was uploaded from.
 	auditLabel string
+	// auditEntityID names the document a create made, for a handler whose
+	// response doesn't lead with it (a cash sale answers client first, a
+	// member add with the membership row). Without it the history takes the
+	// first "id" in the response.
+	auditEntityID string
 	// notAChange keeps a successful request on a change route out of the
 	// activity history: a dry run that only reports what it would do.
 	notAChange bool
@@ -109,6 +114,14 @@ func setRequestUser(r *http.Request, userID, email string) {
 func setAuditLabel(r *http.Request, label string) {
 	if info := infoFrom(r.Context()); info != nil {
 		info.auditLabel = label
+	}
+}
+
+// setAuditEntity names, in r's activity history row, the document a create
+// made (see requestInfo.auditEntityID).
+func setAuditEntity(r *http.Request, id string) {
+	if info := infoFrom(r.Context()); info != nil {
+		info.auditEntityID = id
 	}
 }
 

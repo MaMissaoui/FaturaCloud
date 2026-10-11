@@ -103,6 +103,9 @@ func (h *handler) addOrganizationMember(w http.ResponseWriter, r *http.Request) 
 		writeMutationError(w, err)
 		return
 	}
+	// The history names a member by user, like the {userId} routes; the
+	// response leads with the membership row's own id.
+	setAuditEntity(r, ou.UserID)
 	writeJSON(w, http.StatusCreated, ou)
 }
 

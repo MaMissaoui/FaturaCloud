@@ -19,6 +19,8 @@ func (h *handler) createCashSale(w http.ResponseWriter, r *http.Request) {
 		writeMutationError(w, err)
 		return
 	}
+	// The sale is the invoice; the response leads with the client.
+	setAuditEntity(r, result.Invoice.ID)
 	writeJSON(w, http.StatusCreated, result)
 }
 
