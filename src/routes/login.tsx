@@ -108,8 +108,11 @@ export default function LoginPage() {
             requiredMark={false}
             style={{ textAlign: "left" }}
           >
+            {/* A phone keyboard adds spaces and capitals; the server ignores
+                both (audit F174), so the check here mustn't refuse them. */}
             <Form.Item
               name="email"
+              normalize={(value?: string) => value?.trim()}
               rules={[{ required: true, type: "email", message: t`Please enter a valid email` }]}
             >
               <Input

@@ -338,6 +338,7 @@ export default function SettingsUsers() {
               <Form.Item
                 name="email"
                 label={<Trans>Email</Trans>}
+                normalize={(value?: string) => value?.trim()}
                 rules={isEdit ? [] : [{ required: true, type: "email" as const }]}
               >
                 <Input disabled={isEdit} />
