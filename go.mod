@@ -3,17 +3,17 @@ module github.com/MaMissaoui/fatura-cloud
 go 1.26.9
 
 require (
-	github.com/coreos/go-oidc/v3 v3.20.0
-	github.com/go-jose/go-jose/v4 v4.1.4
+	github.com/coreos/go-oidc/v3 v3.21.0
+	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/golang-migrate/migrate/v4 v4.19.1
+	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/xuri/excelize/v2 v2.11.0
-	golang.org/x/crypto v0.57.0
-	golang.org/x/oauth2 v0.36.0
-	golang.org/x/text v0.42.0
-	modernc.org/sqlite v1.56.0
+	golang.org/x/crypto v0.58.0
+	golang.org/x/oauth2 v0.37.0
+	golang.org/x/text v0.43.0
+	modernc.org/sqlite v1.60.1
 )
 
 require (
@@ -28,8 +28,8 @@ require (
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	golang.org/x/net v0.60.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	modernc.org/libc v1.74.4 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/memory v1.11.0 // indirect
+	modernc.org/memory v1.12.1 // indirect
 )
