@@ -129,9 +129,9 @@ func exportMassDataXLSX(spec massDataSpec, d *Database, organizationID string) (
 // continuing past a failed row rather than aborting the whole file: a typo
 // on row 40 of 500 shouldn't cost the other 499 a valid import.
 func importMassDataXLSX(spec massDataSpec, d *Database, organizationID string, content []byte) (*MassDataImportResult, error) {
-	f, err := excelize.OpenReader(bytes.NewReader(content))
+	f, err := openXLSX(content)
 	if err != nil {
-		return nil, newValidationError("file is not a valid Excel (.xlsx) workbook")
+		return nil, err
 	}
 	defer f.Close() //nolint:errcheck
 
@@ -139,6 +139,9 @@ func importMassDataXLSX(spec massDataSpec, d *Database, organizationID string, c
 	allRows, err := f.GetRows(sheet)
 	if err != nil {
 		return nil, fmt.Errorf("mass_data import: read rows: %w", err)
+	}
+	if err := checkImportRowCount(allRows); err != nil {
+		return nil, err
 	}
 
 	ctx, err := spec.NewImportContext(d, organizationID)

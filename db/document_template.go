@@ -1,13 +1,11 @@
 package db
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/xuri/excelize/v2"
 )
 
 // DocumentTemplate is an organization's uploaded override for one document
@@ -74,9 +72,13 @@ func (d *Database) GetDocumentTemplate(organizationID, documentType string) (*Do
 // 500 instead of the clean 404 every other lookup-by-org-id path in this
 // codebase returns.
 func (d *Database) UploadDocumentTemplate(organizationID, documentType, filename string, content []byte) error {
-	if _, err := excelize.OpenReader(bytes.NewReader(content)); err != nil {
-		return newValidationError("file is not a valid Excel (.xlsx) workbook")
+	// Opened only to validate it; closing it removes any temporary file the
+	// open spilled to (each upload used to leave one behind, audit F173).
+	f, err := openXLSX(content)
+	if err != nil {
+		return err
 	}
+	f.Close() //nolint:errcheck
 
 	var exists int
 	if err := d.DB.Get(&exists, `SELECT 1 FROM organizations WHERE id = ?`, organizationID); err != nil {
@@ -87,7 +89,7 @@ func (d *Database) UploadDocumentTemplate(organizationID, documentType, filename
 	}
 
 	id, _ := gonanoid.New()
-	_, err := d.DB.Exec(`
+	_, err = d.DB.Exec(`
 		INSERT INTO document_templates (id, organizationId, documentType, filename, content, updatedAt)
 		VALUES (?, ?, ?, ?, ?, strftime('%s', 'now') * 1000)
 		ON CONFLICT(organizationId, documentType) DO UPDATE SET
