@@ -174,13 +174,15 @@ const InvoiceDetails: React.FC = () => {
   // F169) — the field stays empty and shows the expected number as a
   // placeholder. The client code feeds a format with {clientCode}.
   const [previewClientCode, setPreviewClientCode] = useState("");
+  // Taken once: the number preview's date tokens use the day the page opened.
+  const [now] = useState(() => new Date());
   // Only a hint: the server skips a number that is already taken, and names
   // the month in English for {m}.
   const numberPreview = organization?.invoiceNumberFormat
     ? generateInvoiceNumber(
         organization.invoiceNumberFormat,
         (organization.invoiceNumberCounter || 0) + 1,
-        new Date(),
+        now,
         previewClientCode,
       )
     : nextInvoiceNumber;

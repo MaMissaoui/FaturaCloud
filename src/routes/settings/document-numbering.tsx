@@ -62,11 +62,13 @@ function DocumentNumberingCard({ documentType, label }: { documentType: string; 
   const form = Form.useFormInstance<FormValues>();
   const { token } = theme.useToken();
   const [showVariables, setShowVariables] = useState(false);
+  // Taken once: the previews and examples show today's date parts.
+  const [now] = useState(() => new Date());
   const format = Form.useWatch([documentType, "format"], form);
   const counter = Form.useWatch([documentType, "counter"], form);
   const preview =
     format && validateDocumentNumberFormat(format).isValid
-      ? generateDocumentNumber(format, (counter || 0) + 1, new Date(), "AB")
+      ? generateDocumentNumber(format, (counter || 0) + 1, now, "AB")
       : "";
 
   return (
@@ -141,22 +143,22 @@ function DocumentNumberingCard({ documentType, label }: { documentType: string; 
                   Zero-padded sequential number (e.g. {zeroPaddedExample} → 0007)
                 </Trans>,
               ],
-              ["{year}", <Trans key="y">{`4-digit year (${new Date().getFullYear()})`}</Trans>],
+              ["{year}", <Trans key="y">{`4-digit year (${now.getFullYear()})`}</Trans>],
               [
                 "{y}",
-                <Trans key="y2">{`2-digit year (${String(new Date().getFullYear() % 100).padStart(2, "0")})`}</Trans>,
+                <Trans key="y2">{`2-digit year (${String(now.getFullYear() % 100).padStart(2, "0")})`}</Trans>,
               ],
               [
                 "{month}",
-                <Trans key="mo">{`2-digit month (${String(new Date().getMonth() + 1).padStart(2, "0")})`}</Trans>,
+                <Trans key="mo">{`2-digit month (${String(now.getMonth() + 1).padStart(2, "0")})`}</Trans>,
               ],
               [
                 "{m}",
-                <Trans key="m">{`Month name (${new Date().toLocaleString("en", { month: "short" })})`}</Trans>,
+                <Trans key="m">{`Month name (${now.toLocaleString("en", { month: "short" })})`}</Trans>,
               ],
               [
                 "{day}",
-                <Trans key="d">{`Day of month (${String(new Date().getDate()).padStart(2, "0")})`}</Trans>,
+                <Trans key="d">{`Day of month (${String(now.getDate()).padStart(2, "0")})`}</Trans>,
               ],
               ["{clientCode}", <Trans key="cc">Client code (e.g. AP, MS)</Trans>],
             ].map(([code, desc]) => (

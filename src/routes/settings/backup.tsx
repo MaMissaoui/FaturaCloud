@@ -117,7 +117,7 @@ function SettingsBackup() {
   // Recomputing on every render is cheap enough this doesn't matter.
   // oxlint-disable-next-line react/purity
   const now = Date.now();
-  const nextRun = new Date();
+  const nextRun = new Date(now);
   nextRun.setUTCHours(config.scheduleHour, 0, 0, 0);
   if (nextRun.getTime() <= now) nextRun.setUTCDate(nextRun.getUTCDate() + 1);
   const nextRunLabel = formatDateTime(nextRun);
