@@ -21,6 +21,9 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 **Backup**
 - `POST /api/restore` — multipart upload to replace DB
 
+**Health**
+- `GET /api/healthz` — public, `SELECT 1` with a 2 s timeout: 200 `{status: "ok"}` or 503. The Docker `HEALTHCHECK` (`fatura-cloud healthcheck`) asks it
+
 **Organizations**
 - `POST /api/organizations` — creator is auto-granted an 'admin' organization_users row
 - `DELETE /api/organizations/{id}` — org admin only — cascade-deletes clients/invoices/orders/deliveries

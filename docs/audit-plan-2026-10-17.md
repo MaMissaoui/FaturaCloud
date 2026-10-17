@@ -673,6 +673,20 @@ whether production's was fixed by hand.
 **Fix.** `os.Chmod(backupDir, backupDirMode)` after `MkdirAll` (ignoring
 "operation not permitted" on a host-owned directory), plus a test.
 
+**Phase 5 status (2026-10-17).** F179 and F181 are done in the Phase 5 PR, except the move off bookworm, which stays a plan (see below).
+- The dev-dependency audit runs report-only. Three advisories are open, each pinned by its parent: jotai-devtools > jsondiffpatch, @lingui/cli > micromatch > braces, oxfmt > tinypool. In-range updates fixed the rest.
+- govulncheck is pinned to v1.8.0.
+
+**Bookworm** is not moved in this PR. Debian 12's regular security support ended in June 2026, and it is now on Debian LTS (through June 2028, as far as known here). Whether LTS covers `libreoffice-calc` was not checked; that package is what the image is for.
+
+The move to `debian:trixie-slim` is a deliberate change of its own:
+1. switch the digest-pinned base;
+2. rebuild;
+3. check that `libreoffice-calc`, `fonts-liberation` and `fonts-dejavu-core` still install;
+4. export a real invoice PDF from the running container and look at it, per this repo's rule.
+
+`runtime-image.yml` then checks it every week. Dependabot proposes digest updates within bookworm, but not the suite change.
+
 ### 5.2 — F181: ops and CI cluster (Low, Code read)
 
 - **No health check.** There's no `HEALTHCHECK`, no `/healthz`, and the
