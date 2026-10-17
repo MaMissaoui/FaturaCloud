@@ -18,7 +18,7 @@
 # "version" (packageManager, which corepack reads, stays), so the copy below
 # is byte-identical across releases and the install stays cached until a
 # dependency actually changes.
-FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS manifest
+FROM --platform=$BUILDPLATFORM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS manifest
 WORKDIR /app
 COPY package.json ./
 RUN node -e 'const fs = require("fs"); const p = JSON.parse(fs.readFileSync("package.json", "utf8")); delete p.version; fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n")'
@@ -28,7 +28,7 @@ RUN node -e 'const fs = require("fs"); const p = JSON.parse(fs.readFileSync("pac
 # output (static JS/CSS/HTML) is architecture-independent, so building it
 # under arm64 QEMU emulation on a multi-arch buildx run would just be a much
 # slower way to produce the exact same files.
-FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS frontend
+FROM --platform=$BUILDPLATFORM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS frontend
 WORKDIR /app
 
 # corepack (bundled with Node 22) reads package.json's own "packageManager"
@@ -71,7 +71,7 @@ RUN --mount=type=secret,id=sentry_auth_token \
 # mattn/go-sqlite3, and this app uses modernc.org/sqlite (pure Go, no cgo)
 # instead — see db/db.go. With CGO_ENABLED=0, `go build` cross-compiles for
 # TARGETARCH natively, no QEMU emulation needed here either.
-FROM --platform=$BUILDPLATFORM golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS backend
+FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS backend
 WORKDIR /app
 
 COPY go.mod go.sum ./
@@ -103,7 +103,7 @@ RUN CGO_ENABLED=0 GOARCH=$TARGETARCH GOOS=linux go build -ldflags="-X main.versi
 # ~80MB on Alpine, almost entirely libreoffice-calc and its own
 # dependencies — accepted deliberately so PDF export actually works in the
 # shipped image instead of always 503ing.
-FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
+FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 WORKDIR /app
 
 # --no-install-recommends keeps this to libreoffice-calc's own dependency
