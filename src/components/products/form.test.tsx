@@ -265,10 +265,21 @@ describe("ProductForm delete (F167)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Delete/ })).toBeEnabled());
   });
 
-  it("disables Delete for a product with history", async () => {
+  it("offers Archive instead of Delete for a product with history", async () => {
     vi.mocked(GetProductUsageCount).mockResolvedValue(44);
     await renderProductForm();
     await waitFor(() => expect(GetProductUsageCount).toHaveBeenCalledWith("p1"));
-    await waitFor(() => expect(screen.getByRole("button", { name: /Delete/ })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Archive/ })).toBeEnabled());
+    expect(screen.queryByRole("button", { name: /Delete/ })).not.toBeInTheDocument();
+  });
+
+  it("offers Restore for an archived product and says it is archived", async () => {
+    vi.mocked(GetProductUsageCount).mockResolvedValue(44);
+    const archived = { ...finishedProduct, isArchived: true };
+    vi.mocked(GetProducts).mockResolvedValue({ data: [archived] } as never);
+    await renderProductForm(undefined, [archived]);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Restore/ })).toBeEnabled());
+    expect(screen.getByText(/This product is archived/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Archive/ })).not.toBeInTheDocument();
   });
 });

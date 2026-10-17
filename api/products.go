@@ -16,6 +16,7 @@ func (h *handler) listProducts(w http.ResponseWriter, r *http.Request) {
 		Category:  r.URL.Query().Get("category"),
 		FamilyID:  r.URL.Query().Get("familyId"),
 		Stock:     r.URL.Query().Get("stock"),
+		Archived:  r.URL.Query().Get("archived"),
 		Limit:     parseIntParam(r, "limit"),
 		Offset:    parseIntParam(r, "offset"),
 		SortField: r.URL.Query().Get("sort"),

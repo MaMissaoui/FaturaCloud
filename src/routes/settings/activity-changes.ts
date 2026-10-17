@@ -312,6 +312,8 @@ export const fieldLabel = (field: string): string => {
       return t`Unit of measure`;
     case "familyId":
       return t`Product family`;
+    case "isArchived":
+      return t`Archived`;
     case "expectedDate":
       return t`Expected date`;
     case "deliveryAddress":
@@ -426,6 +428,7 @@ const YES_NO_FIELDS = new Set([
   "isDefault",
   "stockEnabled",
   "serialized",
+  "isArchived",
   "isPlatformAdmin",
   "hasLogo",
 ]);

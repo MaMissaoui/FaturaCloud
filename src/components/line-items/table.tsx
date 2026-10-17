@@ -109,7 +109,10 @@ export const ProductSelectCell = ({
   const currentId = Form.useWatch(["lineItems", fieldName, "productId"], form);
   const pool = all ?? offered;
   const current = currentId ? find(pool, { id: currentId }) : undefined;
-  const options = current && !find(offered, { id: current.id }) ? [...offered, current] : offered;
+  // An archived product is never offered for a new line (audit F167), but
+  // a saved line keeps showing it, the same way as a filtered-out product.
+  const active = offered.filter((p) => !p.isArchived);
+  const options = current && !find(active, { id: current.id }) ? [...active, current] : active;
   const selectedText = current
     ? optionLabel
       ? optionLabel(current)

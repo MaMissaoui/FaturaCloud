@@ -116,3 +116,79 @@ func forceDeleteProduct(t *testing.T, d *Database, productID string) {
 		t.Fatalf("delete product %s: %v", productID, err)
 	}
 }
+
+func TestArchiveProductKeepsItUnlessAskedAndFiltersLists(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-1"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	active, err := d.CreateProduct(CreateProductRequest{OrganizationID: org.ID, Name: "Active", Type: "product", StockEnabled: 1})
+	if err != nil {
+		t.Fatalf("CreateProduct active: %v", err)
+	}
+	retired, err := d.CreateProduct(CreateProductRequest{OrganizationID: org.ID, Name: "Retired", Type: "product", StockEnabled: 1})
+	if err != nil {
+		t.Fatalf("CreateProduct retired: %v", err)
+	}
+	if active.IsArchived || retired.IsArchived {
+		t.Fatal("a new product must not be archived")
+	}
+
+	yes, no := true, false
+	got, err := d.UpdateProduct(retired.ID, UpdateProductRequest{Name: "Retired", Type: "product", StockEnabled: 1, IsArchived: &yes})
+	if err != nil || !got.IsArchived {
+		t.Fatalf("archive: %+v, %v", got, err)
+	}
+	// A full-replace save that leaves the field out (the drawer before it
+	// knew the field, the Excel import) keeps the product archived.
+	got, err = d.UpdateProduct(retired.ID, UpdateProductRequest{Name: "Retired renamed", Type: "product", StockEnabled: 1})
+	if err != nil || !got.IsArchived || got.Name != "Retired renamed" {
+		t.Fatalf("save without isArchived: %+v, %v; want still archived", got, err)
+	}
+
+	names := func(archived string) []string {
+		t.Helper()
+		products, total, err := d.GetProducts(org.ID, ProductListOptions{Archived: archived})
+		if err != nil {
+			t.Fatalf("GetProducts(%q): %v", archived, err)
+		}
+		out := []string{}
+		for _, p := range products {
+			out = append(out, p.Name)
+		}
+		if total != len(out) {
+			t.Fatalf("GetProducts(%q) total = %d, rows = %d", archived, total, len(out))
+		}
+		return out
+	}
+	if all := names(""); len(all) != 2 {
+		t.Fatalf("no filter = %v; want both (saved documents name archived products)", all)
+	}
+	if ex := names("exclude"); len(ex) != 1 || ex[0] != "Active" {
+		t.Fatalf("exclude = %v; want [Active]", ex)
+	}
+	if only := names("only"); len(only) != 1 || only[0] != "Retired renamed" {
+		t.Fatalf("only = %v; want [Retired renamed]", only)
+	}
+
+	// The chip counts leave the archived product out and count it apart;
+	// both products are out of stock, but only the active one needs restocking.
+	summaries, err := d.GetProductSummaries(org.ID)
+	if err != nil {
+		t.Fatalf("GetProductSummaries: %v", err)
+	}
+	if summaries.ItemCount != 1 || summaries.OutOfStock != 1 || summaries.LowStock != 1 || summaries.Archived != 1 {
+		t.Fatalf("summaries = %+v; want 1 item, 1 out, 1 low, 1 archived", summaries)
+	}
+	low, err := d.getLowStock(org.ID)
+	if err != nil || low.Count != 1 || len(low.Items) != 1 || low.Items[0].ProductID != active.ID {
+		t.Fatalf("getLowStock = %+v, %v; want only the active product", low, err)
+	}
+
+	got, err = d.UpdateProduct(retired.ID, UpdateProductRequest{Name: "Retired renamed", Type: "product", StockEnabled: 1, IsArchived: &no})
+	if err != nil || got.IsArchived {
+		t.Fatalf("restore: %+v, %v", got, err)
+	}
+}

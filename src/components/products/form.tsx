@@ -21,7 +21,7 @@ import NumberInput from "src/components/number-input";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, InboxOutlined, UndoOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 import find from "lodash/find";
 
@@ -31,6 +31,7 @@ import {
   productsAtom,
   setProductsAtom,
   deleteProductAtom,
+  archiveProductAtom,
 } from "src/atoms/product";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
@@ -43,6 +44,7 @@ import { message } from "src/utils/message";
 import { roleCanSeeMenuItem } from "src/layouts/role-menu";
 import ScrollShadow from "src/components/scroll-shadow";
 import BOMFields from "src/components/products/bom-fields";
+import { productOption } from "src/components/products/product-option";
 import { proposeProductCode } from "src/utils/product-code";
 
 const ProductForm = () => {
@@ -60,6 +62,7 @@ const ProductForm = () => {
   const setProduct = useSetAtom(productAtom);
   const [submitting, setSubmitting] = useState(false);
   const deleteProduct = useSetAtom(deleteProductAtom);
+  const archiveProduct = useSetAtom(archiveProductAtom);
   const [codeTouched, setCodeTouched] = useState(false);
   const nameValue = Form.useWatch("name", form);
 
@@ -108,10 +111,7 @@ const ProductForm = () => {
   );
 
   const componentOptions = useMemo(
-    () =>
-      products
-        .filter((p: any) => p.category === "component")
-        .map((p: any) => ({ value: p.id, label: p.sku ? `${p.name} (${p.sku})` : p.name })),
+    () => products.filter((p) => p.category === "component").map(productOption),
     [products],
   );
 
@@ -343,6 +343,14 @@ const ProductForm = () => {
     }
   };
 
+  const handleArchive = async (archived: boolean) => {
+    if (!productId) return;
+    setSubmitting(true);
+    const ok = await archiveProduct({ productId, archived });
+    setSubmitting(false);
+    if (ok) handleClose();
+  };
+
   return (
     <Drawer
       title={productId ? <Trans>Edit product</Trans> : <Trans>New product</Trans>}
@@ -353,21 +361,45 @@ const ProductForm = () => {
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <div>
-            {productId && usageCount !== 0 && (
-              <Tooltip
-                title={
-                  usageCount === null ? undefined : (
+            {/* A product with history can't be deleted, only archived
+                (audit F167); Delete waits for the usage count. */}
+            {productId && usageCount === null && (
+              <Button danger disabled icon={<DeleteOutlined />}>
+                <Trans>Delete</Trans>
+              </Button>
+            )}
+            {productId && product && !product.isArchived && !!usageCount && (
+              <Popconfirm
+                title={<Trans>Archive this product?</Trans>}
+                description={
+                  <div style={{ maxWidth: 320 }}>
                     <Trans>
-                      Cannot delete: this product has history ({usageCount} records — stock
-                      movements, document lines or recipes).
+                      It has history ({usageCount} records — stock movements, document lines or
+                      recipes), so it can't be deleted. Archived, it leaves the product pickers and
+                      the product list but stays on its documents and in stock reports. You can
+                      restore it later.
                     </Trans>
-                  )
+                  </div>
                 }
+                onConfirm={() => handleArchive(true)}
+                okText={<Trans>Archive</Trans>}
+                cancelText={<Trans>Cancel</Trans>}
+                placement="topRight"
               >
-                <Button danger disabled icon={<DeleteOutlined />}>
-                  <Trans>Delete</Trans>
+                <Button icon={<InboxOutlined />} loading={submitting}>
+                  <Trans>Archive</Trans>
                 </Button>
-              </Tooltip>
+              </Popconfirm>
+            )}
+            {productId && product?.isArchived && (
+              <Button
+                icon={<UndoOutlined />}
+                loading={submitting}
+                onClick={() => handleArchive(false)}
+                style={{ marginRight: 8 }}
+              >
+                <Trans>Restore</Trans>
+              </Button>
             )}
             {productId && usageCount === 0 && (
               <Popconfirm
@@ -395,6 +427,19 @@ const ProductForm = () => {
       }
     >
       <ScrollShadow>
+        {product?.isArchived && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={
+              <Trans>
+                This product is archived: it is hidden from the product pickers and the product
+                list, and stays on its documents. Restore it to sell or buy it again.
+              </Trans>
+            }
+          />
+        )}
         <Form
           form={form}
           layout="vertical"

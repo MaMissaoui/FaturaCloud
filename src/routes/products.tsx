@@ -46,7 +46,14 @@ import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 const DEFAULT_PAGE_SIZE = 25;
 
-type ProductFilter = "all" | "out" | "low" | "services";
+type ProductFilter = "all" | "out" | "low" | "services" | "archived";
+
+// Marks an archived product in the list (audit F167).
+const ArchivedTag = () => (
+  <Tag style={{ marginLeft: 8 }}>
+    <Trans>Archived</Trans>
+  </Tag>
+);
 
 const Products = () => {
   const { i18n } = useLingui();
@@ -90,6 +97,9 @@ const Products = () => {
   const [sortField, setSortField] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | undefined>(undefined);
   const [chip, setChip] = useState<ProductFilter>("all");
+  // Archived products (audit F167) are left out unless asked for: the
+  // Archived chip with summaries on, this switch with them off.
+  const [showArchived, setShowArchived] = useState(false);
   // The picked product itself, not its id: the list is paginated, so the
   // picked row can leave the page while its panel stays open.
   const [selected, setSelected] = useState<Product | null>(null);
@@ -110,6 +120,7 @@ const Products = () => {
   // With summaries on, the chips replace the type filter.
   const listType = showSummaries ? (chip === "services" ? "service" : undefined) : typeFilter;
   const listStock = showSummaries && (chip === "out" || chip === "low") ? chip : undefined;
+  const listArchived = (showSummaries ? chip === "archived" : showArchived) ? "only" : "exclude";
 
   // requestIdRef guards against an in-flight earlier request (e.g. a slow
   // response to a stale search term) overwriting the result of a newer one.
@@ -134,6 +145,7 @@ const Products = () => {
       category: categoryFilter,
       familyId: familyFilter,
       stock: listStock,
+      archived: listArchived,
       limit: pageSize,
       offset: (page - 1) * pageSize,
       sort: sortField,
@@ -158,6 +170,7 @@ const Products = () => {
     categoryFilter,
     familyFilter,
     listStock,
+    listArchived,
     sortField,
     sortOrder,
     message,
@@ -183,6 +196,7 @@ const Products = () => {
       categoryFilter,
       familyFilter,
       listStock,
+      listArchived,
       sortField,
       sortOrder,
     ],
@@ -284,6 +298,7 @@ const Products = () => {
               >
                 {p.name}
               </Typography.Link>
+              {p.isArchived && <ArchivedTag />}
             </Tooltip>
           )}
         />
@@ -484,6 +499,16 @@ const Products = () => {
                 label: <Trans>Services</Trans>,
                 count: summaries?.services ?? 0,
               },
+              // Only once there is an archived product to show.
+              ...(summaries?.archived || chip === "archived"
+                ? [
+                    {
+                      key: "archived" as const,
+                      label: <Trans>Archived</Trans>,
+                      count: summaries?.archived ?? 0,
+                    },
+                  ]
+                : []),
             ]}
           />
         </div>
@@ -527,6 +552,19 @@ const Products = () => {
         title={<Trans>Products</Trans>}
         extra={
           <>
+            <Select
+              aria-label={t`Active or archived products`}
+              style={{ width: 130 }}
+              value={showArchived ? "archived" : "active"}
+              onChange={(value) => {
+                setShowArchived(value === "archived");
+                setPage(1);
+              }}
+              options={[
+                { value: "active", label: t`Active` },
+                { value: "archived", label: t`Archived` },
+              ]}
+            />
             <Select
               allowClear
               placeholder={t`All types`}
@@ -615,7 +653,7 @@ const Products = () => {
             loading={loading}
             locale={{
               emptyText:
-                search || typeFilter || categoryFilter || familyFilter ? (
+                search || typeFilter || categoryFilter || familyFilter || showArchived ? (
                   <Empty description={<Trans>No products match your filters</Trans>} />
                 ) : (
                   <Empty description={<Trans>No products yet</Trans>}>
@@ -645,13 +683,16 @@ const Products = () => {
               key="name"
               sorter
               render={(p) => (
-                <Link
-                  to="/products"
-                  state={{ productModal: true, productId: p.id }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {p.name}
-                </Link>
+                <>
+                  <Link
+                    to="/products"
+                    state={{ productModal: true, productId: p.id }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {p.name}
+                  </Link>
+                  {p.isArchived && <ArchivedTag />}
+                </>
               )}
             />
             <Table.Column

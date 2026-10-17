@@ -99,7 +99,7 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 
 **Products**
 - `GET /api/organizations/{orgId}/products/bom-summaries` — batch componentCount per finished product — see db/product_bom.go
-- `DELETE /api/products/{id}` — refused with 409 while anything refers to the product (stock movements, serials, document lines, production orders, recipes), naming what does (audit F167); `GET /api/products/{id}/usage-count` answers `{count, usage: [{label, count}]}` so the drawer offers Delete only for an unused product
+- `DELETE /api/products/{id}` — refused with 409 while anything refers to the product (stock movements, serials, document lines, production orders, recipes), naming what does (audit F167); `GET /api/products/{id}/usage-count` answers `{count, usage: [{label, count}]}` so the drawer offers Delete only for an unused product, Archive otherwise (`PUT` with `isArchived`; omitted keeps it); `GET .../products` takes `archived=exclude|only` (unset lists every product)
 - `PUT /api/products/{id}` — body also takes unitOfMeasureId — when set, overwrites the legacy free-text unit field server-side with that unit of measure's name (db/product.go's resolveProductUnit), so every existing reader of unit keeps working unchanged
 - `PUT /api/products/{id}/bom` — body also takes batchSize (int) — omitted/0 inherits the latest version's, not a reset to 1, so a caller with no batch UI (the product form's card) can't stomp it — see db/product_bom.go
 - `GET /api/products/{id}/bom/versions` — header list (componentCount, batchSize), newest first

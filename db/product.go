@@ -67,6 +67,12 @@ type Product struct {
 	// taxRates.isDefault. Nil means "use the organization's default".
 	RevenueAccountID *string `db:"revenueAccountId" json:"revenueAccountId"`
 	ExpenseAccountID *string `db:"expenseAccountId" json:"expenseAccountId"`
+
+	// IsArchived retires a product that has history and so can't be deleted
+	// (migration 0105, audit F167): the pickers and, by default, the
+	// Products list leave it out, while its documents and stock reports keep
+	// it. A new product is never archived.
+	IsArchived bool `db:"isArchived" json:"isArchived"`
 }
 
 type CreateProductRequest struct {
@@ -105,6 +111,10 @@ type UpdateProductRequest struct {
 	RevenueAccountID *string `json:"revenueAccountId"`
 	ExpenseAccountID *string `json:"expenseAccountId"`
 	FamilyID         *string `json:"familyId"`
+	// IsArchived is nil to keep the stored value: the drawer's full-replace
+	// save and the Excel import (which has no such column) must never
+	// unarchive a product by leaving it out.
+	IsArchived *bool `json:"isArchived"`
 }
 
 // productCategories are the only values Product.Category may take besides
@@ -139,7 +149,11 @@ type ProductListOptions struct {
 	// db/dashboard_panels.go) or less, out of stock included.
 	// Empty means no filter. With no sort field either one lists the lowest
 	// stock first.
-	Stock     string
+	Stock string
+	// Archived: "exclude" leaves archived products out, "only" lists just
+	// them; empty lists every product — what the pickers rely on to name an
+	// archived product still on a saved document.
+	Archived  string
 	Limit     int
 	Offset    int
 	SortField string
@@ -186,6 +200,12 @@ func (d *Database) GetProducts(organizationID string, opts ProductListOptions) (
 	} else if opts.FamilyID != "" {
 		where += " AND p.familyId = ?"
 		args = append(args, opts.FamilyID)
+	}
+	switch opts.Archived {
+	case "exclude":
+		where += " AND p.isArchived = 0"
+	case "only":
+		where += " AND p.isArchived = 1"
 	}
 	switch opts.Stock {
 	case "out":
@@ -451,15 +471,19 @@ func (d *Database) UpdateProduct(productID string, updates UpdateProductRequest)
 		return nil, err
 	}
 	updates.Unit = unit
+	isArchived := current.IsArchived
+	if updates.IsArchived != nil {
+		isArchived = *updates.IsArchived
+	}
 
 	_, err = d.DB.Exec(
 		`UPDATE products
 		 SET name = ?, description = ?, sku = ?, price = ?, unitCost = ?, unit = ?, unitOfMeasureId = ?, type = ?, category = ?, taxRateId = ?,
-		     stockEnabled = ?, serialized = ?, revenueAccountId = ?, expenseAccountId = ?, familyId = ?
+		     stockEnabled = ?, serialized = ?, revenueAccountId = ?, expenseAccountId = ?, familyId = ?, isArchived = ?
 		 WHERE id = ?`,
 		updates.Name, updates.Description, updates.SKU, updates.Price,
 		updates.UnitCost, updates.Unit, updates.UnitOfMeasureID, updates.Type, updates.Category, updates.TaxRateID, updates.StockEnabled, updates.Serialized,
-		updates.RevenueAccountID, updates.ExpenseAccountID, familyID,
+		updates.RevenueAccountID, updates.ExpenseAccountID, familyID, isArchived,
 		productID,
 	)
 	if err != nil {
