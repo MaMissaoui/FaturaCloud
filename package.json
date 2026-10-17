@@ -28,7 +28,7 @@
     "antd": "6.6.6",
     "dayjs": "^1.11.23",
     "decimal.js": "^10.6.0",
-    "jotai": "2.20.3",
+    "jotai": "3.0.1",
     "lodash": "^4.18.1",
     "nanoid": "6.0.2",
     "path-to-regexp": "8.4.2",
