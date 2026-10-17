@@ -15,10 +15,13 @@ import { organizationIdAtom } from "src/atoms/organization";
 import PaymentTermForm from "src/components/payment-terms/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 function SettingsPaymentTerms() {
   useLingui();
+  // A role that may only read this list gets no New or Upload (audit F170).
+  const canWrite = useCanWriteConfig("paymentTerms");
   const navigate = useNavigate();
 
   const paymentTerms = useAtomValue(paymentTermsAtom);
@@ -50,13 +53,16 @@ function SettingsPaymentTerms() {
                 resource="payment-terms"
                 filenamePrefix="payment-terms"
                 onImported={() => setPaymentTerms()}
+                canUpload={canWrite}
               />
             )}
-            <Link to="/settings/payment-terms" state={{ paymentTermModal: true }}>
-              <Button type="primary">
-                <Trans>New payment term</Trans>
-              </Button>
-            </Link>
+            {canWrite && (
+              <Link to="/settings/payment-terms" state={{ paymentTermModal: true }}>
+                <Button type="primary">
+                  <Trans>New payment term</Trans>
+                </Button>
+              </Link>
+            )}
           </Space>
         }
       />

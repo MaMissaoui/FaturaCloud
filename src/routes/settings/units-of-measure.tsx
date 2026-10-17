@@ -13,10 +13,13 @@ import { organizationIdAtom } from "src/atoms/organization";
 import UnitOfMeasureForm from "src/components/units-of-measure/form";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 function SettingsUnitsOfMeasure() {
   useLingui();
+  // A role that may only read this list gets no New or Upload (audit F170).
+  const canWrite = useCanWriteConfig("orgSettings");
   const navigate = useNavigate();
 
   const unitsOfMeasure = useAtomValue(unitsOfMeasureAtom);
@@ -48,13 +51,16 @@ function SettingsUnitsOfMeasure() {
                 resource="units-of-measure"
                 filenamePrefix="units-of-measure"
                 onImported={() => setUnitsOfMeasure()}
+                canUpload={canWrite}
               />
             )}
-            <Link to="/settings/units-of-measure" state={{ unitOfMeasureModal: true }}>
-              <Button type="primary">
-                <Trans>New unit of measure</Trans>
-              </Button>
-            </Link>
+            {canWrite && (
+              <Link to="/settings/units-of-measure" state={{ unitOfMeasureModal: true }}>
+                <Button type="primary">
+                  <Trans>New unit of measure</Trans>
+                </Button>
+              </Link>
+            )}
           </Space>
         }
       />
@@ -71,11 +77,13 @@ function SettingsUnitsOfMeasure() {
                 <Empty description={<Trans>No units match your search</Trans>} />
               ) : (
                 <Empty description={<Trans>No units of measure yet</Trans>}>
-                  <Link to="/settings/units-of-measure" state={{ unitOfMeasureModal: true }}>
-                    <Button type="primary">
-                      <Trans>Create your first unit of measure</Trans>
-                    </Button>
-                  </Link>
+                  {canWrite && (
+                    <Link to="/settings/units-of-measure" state={{ unitOfMeasureModal: true }}>
+                      <Button type="primary">
+                        <Trans>Create your first unit of measure</Trans>
+                      </Button>
+                    </Link>
+                  )}
                 </Empty>
               ),
             }}

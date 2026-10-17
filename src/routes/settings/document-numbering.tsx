@@ -15,6 +15,7 @@ import isEmpty from "lodash/isEmpty";
 import { organizationAtom } from "src/atoms/organization";
 import { GetDocumentNumberSetting, UpdateDocumentNumberSetting } from "src/api";
 import ResponsiveFooter from "src/components/responsive-footer";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 import { message } from "src/utils/message";
 import { generateDocumentNumber, validateDocumentNumberFormat } from "src/utils/document-number";
 
@@ -181,6 +182,9 @@ function SettingsDocumentNumbering() {
   // document would rewind the counter on a format-only edit (see
   // db/document_number.go for the server-side half of this fix).
   const loadedCounters = useRef<Record<string, number>>({});
+  // Numbering is org-wide configuration: other roles see it read-only
+  // (audit F170).
+  const canWrite = useCanWriteConfig("orgSettings");
 
   useEffect(() => {
     if (!organization?.id) return;
@@ -252,7 +256,7 @@ function SettingsDocumentNumbering() {
       </Text>
 
       {!loading && (
-        <Form form={form} layout="vertical" onFinish={onSubmit}>
+        <Form form={form} layout="vertical" onFinish={onSubmit} disabled={!canWrite}>
           <Row gutter={[16, 0]}>
             {documentNumberTypes.map((documentType) => (
               <Col xs={24} xl={12} key={documentType}>
@@ -266,20 +270,22 @@ function SettingsDocumentNumbering() {
         </Form>
       )}
 
-      <ResponsiveFooter>
-        <Row align="middle" justify="end" style={{ height: 64 }}>
-          <Col>
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              loading={submitting}
-              onClick={() => form.submit()}
-            >
-              <Trans>Save</Trans>
-            </Button>
-          </Col>
-        </Row>
-      </ResponsiveFooter>
+      {canWrite && (
+        <ResponsiveFooter>
+          <Row align="middle" justify="end" style={{ height: 64 }}>
+            <Col>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={submitting}
+                onClick={() => form.submit()}
+              >
+                <Trans>Save</Trans>
+              </Button>
+            </Col>
+          </Row>
+        </ResponsiveFooter>
+      )}
     </div>
   );
 }

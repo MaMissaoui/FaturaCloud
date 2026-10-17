@@ -22,6 +22,7 @@ import { DeleteOutlined } from "@ant-design/icons";
 import isEmpty from "lodash/isEmpty";
 import { GetTaxRateUsageCount } from "src/api";
 import { useFetch } from "src/hooks/useFetch";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 
 import { taxRateIdAtom, taxRateAtom, deleteTaxRateAtom } from "src/atoms/tax-rate";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
@@ -45,6 +46,8 @@ const TaxRateForm = () => {
   const taxRate = useAtomValue(loadableTaxRateAtom);
   const setTaxRate = useSetAtom(taxRateAtom);
   const deleteTaxRate = useSetAtom(deleteTaxRateAtom);
+  // A role that may only read this list gets the drawer view-only (audit F170).
+  const canWrite = useCanWriteConfig("taxRates");
   const [submitting, setSubmitting] = useState(false);
   // null while creating a tax rate (or before its count arrives).
   const { data: usage } = useFetch<{ count: number; documentLines: number } | null>(
@@ -129,6 +132,7 @@ const TaxRateForm = () => {
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <div>
             {id &&
+              canWrite &&
               (usageCount ? (
                 <Tooltip title={<Trans>Cannot delete: used by {usageCount} invoice(s)</Trans>}>
                   <Button danger disabled icon={<DeleteOutlined />}>
@@ -151,11 +155,13 @@ const TaxRateForm = () => {
           </div>
           <Space>
             <Button onClick={handleClose}>
-              <Trans>Cancel</Trans>
+              {canWrite ? <Trans>Cancel</Trans> : <Trans>Close</Trans>}
             </Button>
-            <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-              <Trans>Save</Trans>
-            </Button>
+            {canWrite && (
+              <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+                <Trans>Save</Trans>
+              </Button>
+            )}
           </Space>
         </div>
       }
@@ -166,6 +172,7 @@ const TaxRateForm = () => {
             form={form}
             layout="vertical"
             onFinish={handleSubmit}
+            disabled={!canWrite}
             initialValues={
               taxRate.state === "hasData" && taxRate.data ? taxRate.data : { category_code: "S" }
             }
@@ -204,7 +211,7 @@ const TaxRateForm = () => {
                     placeholder={t`Percentage`}
                     suffix="%"
                     style={{ width: "100%" }}
-                    disabled={documentLines > 0}
+                    disabled={!canWrite || documentLines > 0}
                   />
                 </Form.Item>
               </Col>

@@ -32,6 +32,7 @@ import ProductForm from "src/components/products/form";
 import ProductSummaryPanel from "src/components/products/product-summary-panel";
 import { formatQuantity, StockTag } from "src/components/products/stock-tag";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 import FilterChips from "src/components/master-data/filter-chips";
 import HeadlineFigure from "src/components/master-data/headline-figure";
 import ListWithPanel from "src/components/master-data/list-with-panel";
@@ -57,6 +58,9 @@ const ArchivedTag = () => (
 
 const Products = () => {
   const { i18n } = useLingui();
+  // Accounting and Cash Book read the product list but don't change it
+  // (audit F170): no New, no Upload.
+  const canWrite = useCanWriteConfig("products");
   const { message } = App.useApp();
   const { token } = theme.useToken();
   const navigate = useNavigate();
@@ -260,11 +264,13 @@ const Products = () => {
             <Empty description={<Trans>No products match your filters</Trans>} />
           ) : (
             <Empty description={<Trans>No products yet</Trans>}>
-              <Link to="/products" state={{ productModal: true }}>
-                <Button type="primary">
-                  <Trans>Create your first product</Trans>
-                </Button>
-              </Link>
+              {canWrite && (
+                <Link to="/products" state={{ productModal: true }}>
+                  <Button type="primary">
+                    <Trans>Create your first product</Trans>
+                  </Button>
+                </Link>
+              )}
             </Empty>
           ),
         }}
@@ -427,14 +433,17 @@ const Products = () => {
                   resource="products"
                   filenamePrefix="products"
                   onImported={fetchProducts}
+                  canUpload={canWrite}
                   compact
                 />
               )}
-              <Link to="/products" state={{ productModal: true }}>
-                <Button type="primary">
-                  <Trans>New product</Trans>
-                </Button>
-              </Link>
+              {canWrite && (
+                <Link to="/products" state={{ productModal: true }}>
+                  <Button type="primary">
+                    <Trans>New product</Trans>
+                  </Button>
+                </Link>
+              )}
             </Space>
           }
         />
@@ -626,14 +635,17 @@ const Products = () => {
                 resource="products"
                 filenamePrefix="products"
                 onImported={fetchProducts}
+                canUpload={canWrite}
                 compact
               />
             )}
-            <Link to="/products" state={{ productModal: true }}>
-              <Button type="primary">
-                <Trans>New product</Trans>
-              </Button>
-            </Link>
+            {canWrite && (
+              <Link to="/products" state={{ productModal: true }}>
+                <Button type="primary">
+                  <Trans>New product</Trans>
+                </Button>
+              </Link>
+            )}
           </Space>
         }
       />
@@ -657,11 +669,13 @@ const Products = () => {
                   <Empty description={<Trans>No products match your filters</Trans>} />
                 ) : (
                   <Empty description={<Trans>No products yet</Trans>}>
-                    <Link to="/products" state={{ productModal: true }}>
-                      <Button type="primary">
-                        <Trans>Create your first product</Trans>
-                      </Button>
-                    </Link>
+                    {canWrite && (
+                      <Link to="/products" state={{ productModal: true }}>
+                        <Button type="primary">
+                          <Trans>Create your first product</Trans>
+                        </Button>
+                      </Link>
+                    )}
                   </Empty>
                 ),
             }}

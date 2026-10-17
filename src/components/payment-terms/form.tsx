@@ -6,6 +6,7 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 
 import {
   paymentTermIdAtom,
@@ -23,6 +24,8 @@ const PaymentTermForm = () => {
   const paymentTerms = useAtomValue(paymentTermsAtom);
   const setPaymentTerm = useSetAtom(paymentTermAtom);
   const deletePaymentTerm = useSetAtom(deletePaymentTermAtom);
+  // A role that may only read this list gets the drawer view-only (audit F170).
+  const canWrite = useCanWriteConfig("paymentTerms");
   const [submitting, setSubmitting] = useState(false);
 
   const isVisible = get(location.state, "paymentTermModal", false);
@@ -88,7 +91,7 @@ const PaymentTermForm = () => {
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <div>
-            {paymentTermId && (
+            {paymentTermId && canWrite && (
               <Popconfirm
                 title={<Trans>Are you sure you want to delete this payment term?</Trans>}
                 onConfirm={handleDelete}
@@ -104,16 +107,18 @@ const PaymentTermForm = () => {
           </div>
           <Space>
             <Button onClick={handleClose}>
-              <Trans>Cancel</Trans>
+              {canWrite ? <Trans>Cancel</Trans> : <Trans>Close</Trans>}
             </Button>
-            <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-              <Trans>Save</Trans>
-            </Button>
+            {canWrite && (
+              <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+                <Trans>Save</Trans>
+              </Button>
+            )}
           </Space>
         </div>
       }
     >
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} disabled={!canWrite}>
         <Form.Item
           name="name"
           label={<Trans>Name</Trans>}

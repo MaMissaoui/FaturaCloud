@@ -11,10 +11,13 @@ import { ClusterOutlined } from "@ant-design/icons";
 import { productFamiliesAtom, setProductFamiliesAtom } from "src/atoms/product-family";
 import ProductFamilyForm from "src/components/product-families/form";
 import PageHeader from "src/components/page-header";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
 
 function SettingsProductFamilies() {
   useLingui();
+  // A role that may only read this list gets no New or Upload (audit F170).
+  const canWrite = useCanWriteConfig("orgSettings");
   const navigate = useNavigate();
 
   const productFamilies = useAtomValue(productFamiliesAtom);
@@ -36,11 +39,13 @@ function SettingsProductFamilies() {
         title={<Trans>Product families</Trans>}
         search={{ placeholder: t`Search`, onChange: setSearch }}
         actions={
-          <Link to="/settings/product-families" state={{ productFamilyModal: true }}>
-            <Button type="primary">
-              <Trans>New product family</Trans>
-            </Button>
-          </Link>
+          canWrite && (
+            <Link to="/settings/product-families" state={{ productFamilyModal: true }}>
+              <Button type="primary">
+                <Trans>New product family</Trans>
+              </Button>
+            </Link>
+          )
         }
       />
 
@@ -56,11 +61,13 @@ function SettingsProductFamilies() {
                 <Empty description={<Trans>No families match your search</Trans>} />
               ) : (
                 <Empty description={<Trans>No product families yet</Trans>}>
-                  <Link to="/settings/product-families" state={{ productFamilyModal: true }}>
-                    <Button type="primary">
-                      <Trans>Create your first product family</Trans>
-                    </Button>
-                  </Link>
+                  {canWrite && (
+                    <Link to="/settings/product-families" state={{ productFamilyModal: true }}>
+                      <Button type="primary">
+                        <Trans>Create your first product family</Trans>
+                      </Button>
+                    </Link>
+                  )}
                 </Empty>
               ),
             }}

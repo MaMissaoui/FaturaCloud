@@ -40,6 +40,7 @@ import { productFamiliesAtom, setProductFamiliesAtom } from "src/atoms/product-f
 import { myOrgRoleAtom } from "src/atoms/organization";
 import { GetProductBOM, GetProductUsageCount, ReplaceProductBOM } from "src/api";
 import { useFetch } from "src/hooks/useFetch";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 import { message } from "src/utils/message";
 import { roleCanSeeMenuItem } from "src/layouts/role-menu";
 import ScrollShadow from "src/components/scroll-shadow";
@@ -95,6 +96,9 @@ const ProductForm = () => {
   // the whole product. Mirrors ROLE_MENU's group-masterdata child list.
   const orgRole = useAtomValue(myOrgRoleAtom);
   const bomAllowed = roleCanSeeMenuItem(orgRole, "group-masterdata", "bill-of-materials");
+  // Products are changed by the org-wide roles plus Sales and Purchasing;
+  // Accounting and Cash Book see the drawer read-only (audit F170).
+  const canWrite = useCanWriteConfig("products");
 
   const product = useMemo(() => {
     if (!productId) return null;
@@ -363,12 +367,12 @@ const ProductForm = () => {
           <div>
             {/* A product with history can't be deleted, only archived
                 (audit F167); Delete waits for the usage count. */}
-            {productId && usageCount === null && (
+            {canWrite && productId && usageCount === null && (
               <Button danger disabled icon={<DeleteOutlined />}>
                 <Trans>Delete</Trans>
               </Button>
             )}
-            {productId && product && !product.isArchived && !!usageCount && (
+            {canWrite && productId && product && !product.isArchived && !!usageCount && (
               <Popconfirm
                 title={<Trans>Archive this product?</Trans>}
                 description={
@@ -391,7 +395,7 @@ const ProductForm = () => {
                 </Button>
               </Popconfirm>
             )}
-            {productId && product?.isArchived && (
+            {canWrite && productId && product?.isArchived && (
               <Button
                 icon={<UndoOutlined />}
                 loading={submitting}
@@ -401,7 +405,7 @@ const ProductForm = () => {
                 <Trans>Restore</Trans>
               </Button>
             )}
-            {productId && usageCount === 0 && (
+            {canWrite && productId && usageCount === 0 && (
               <Popconfirm
                 title={<Trans>Are you sure you want to delete this product?</Trans>}
                 onConfirm={handleDelete}
@@ -417,11 +421,13 @@ const ProductForm = () => {
           </div>
           <Space>
             <Button onClick={handleClose}>
-              <Trans>Cancel</Trans>
+              {canWrite ? <Trans>Cancel</Trans> : <Trans>Close</Trans>}
             </Button>
-            <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-              <Trans>Save</Trans>
-            </Button>
+            {canWrite && (
+              <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+                <Trans>Save</Trans>
+              </Button>
+            )}
           </Space>
         </div>
       }
@@ -445,6 +451,7 @@ const ProductForm = () => {
           layout="vertical"
           onFinish={handleSubmit}
           initialValues={{ type: "service", stockEnabled: false, serialized: false, bom: [] }}
+          disabled={!canWrite}
         >
           <Card size="small" title={<Trans>Details</Trans>} style={{ marginBottom: 12 }}>
             <Row gutter={[16, 0]}>
@@ -567,7 +574,9 @@ const ProductForm = () => {
                             ) : undefined
                           }
                         >
-                          <Switch disabled={!!product && product.stockQuantity !== 0} />
+                          <Switch
+                            disabled={!canWrite || (!!product && product.stockQuantity !== 0)}
+                          />
                         </Form.Item>
                       </Tooltip>
                     </Col>

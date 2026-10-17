@@ -6,6 +6,7 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 
 import {
   unitOfMeasureIdAtom,
@@ -23,6 +24,8 @@ const UnitOfMeasureForm = () => {
   const unitsOfMeasure = useAtomValue(unitsOfMeasureAtom);
   const setUnitOfMeasure = useSetAtom(unitOfMeasureAtom);
   const deleteUnitOfMeasure = useSetAtom(deleteUnitOfMeasureAtom);
+  // A role that may only read this list gets the drawer view-only (audit F170).
+  const canWrite = useCanWriteConfig("orgSettings");
   const [submitting, setSubmitting] = useState(false);
 
   const isVisible = get(location.state, "unitOfMeasureModal", false);
@@ -94,7 +97,7 @@ const UnitOfMeasureForm = () => {
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <div>
-            {unitOfMeasureId && (
+            {unitOfMeasureId && canWrite && (
               <Popconfirm
                 title={<Trans>Are you sure you want to delete this unit of measure?</Trans>}
                 onConfirm={handleDelete}
@@ -110,16 +113,18 @@ const UnitOfMeasureForm = () => {
           </div>
           <Space>
             <Button onClick={handleClose}>
-              <Trans>Cancel</Trans>
+              {canWrite ? <Trans>Cancel</Trans> : <Trans>Close</Trans>}
             </Button>
-            <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-              <Trans>Save</Trans>
-            </Button>
+            {canWrite && (
+              <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+                <Trans>Save</Trans>
+              </Button>
+            )}
           </Space>
         </div>
       }
     >
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} disabled={!canWrite}>
         <Form.Item
           name="name"
           label={<Trans>Name</Trans>}

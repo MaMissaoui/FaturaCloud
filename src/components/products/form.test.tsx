@@ -7,6 +7,8 @@ import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import { Provider as JotaiProvider, createStore } from "jotai";
 import { productsAtom } from "src/atoms/product";
+import { organizationIdAtom } from "src/atoms/organization";
+import { currentUserAtom } from "src/atoms/auth";
 import type { Product } from "src/types/models";
 import ProductForm from "./form";
 
@@ -55,6 +57,7 @@ import {
   GetProductBOM,
   GetProducts,
   GetProductUsageCount,
+  GetMyOrganizationRole,
   GetTaxRates,
   GetProductFamilies,
   GetUnitsOfMeasure,
@@ -89,9 +92,25 @@ const finishedProduct: Product = {
 async function renderProductForm(
   state: Record<string, unknown> = { productModal: true, productId: "p1" },
   initialProducts: Product[] = [finishedProduct],
+  role?: string,
 ) {
   const store = createStore();
   store.set(productsAtom, initialProducts);
+  if (role) {
+    // myOrgRoleAtom asks the server only for a signed-in user in an
+    // organization; without these it stays "" (unrestricted).
+    vi.mocked(GetMyOrganizationRole).mockResolvedValue({ role, isMember: true } as never);
+    store.set(organizationIdAtom, "org_1");
+    store.set(currentUserAtom, {
+      id: "user_1",
+      email: "user@example.test",
+      displayName: "Test User",
+      role: "user",
+      isPlatformAdmin: 0,
+      isActive: 1,
+      authProvider: "local",
+    });
+  }
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider store={store}>
@@ -281,5 +300,34 @@ describe("ProductForm delete (F167)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /Restore/ })).toBeEnabled());
     expect(screen.getByText(/This product is archived/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Archive/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("ProductForm by role (F170)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(GetProducts).mockResolvedValue({ data: [finishedProduct] } as never);
+    vi.mocked(GetTaxRates).mockResolvedValue([]);
+    vi.mocked(GetAccounts).mockResolvedValue([]);
+    vi.mocked(GetUnitsOfMeasure).mockResolvedValue([]);
+    vi.mocked(GetProductFamilies).mockResolvedValue([]);
+    vi.mocked(GetProductBOM).mockResolvedValue([]);
+    vi.mocked(GetProductUsageCount).mockResolvedValue(0);
+  });
+
+  it("is read-only for a role that can't change products", async () => {
+    await renderProductForm(undefined, undefined, "accounting");
+    // The drawer's own X is also named Close; the footer button is the
+    // second one, standing where Cancel was.
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /Close/ })).toHaveLength(2));
+    expect(screen.queryByRole("button", { name: /Save/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Delete/ })).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Widget")).toBeDisabled();
+  });
+
+  it("stays editable for Sales", async () => {
+    await renderProductForm(undefined, undefined, "sales");
+    await waitFor(() => expect(screen.getByRole("button", { name: /Save/ })).toBeInTheDocument());
+    expect(screen.getByDisplayValue("Widget")).toBeEnabled();
   });
 });

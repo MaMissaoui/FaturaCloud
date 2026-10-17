@@ -30,6 +30,7 @@ export default function MassDataExcelActions({
   onImported,
   summarize = (res) => t`${res.created} created, ${res.updated} updated`,
   compact = false,
+  canUpload = true,
 }: {
   organizationId: string;
   resource: MassDataResource;
@@ -38,6 +39,9 @@ export default function MassDataExcelActions({
   // compact renders one "Excel" menu button holding both actions, for the
   // redesigned master-data screens whose toolbar must fit on one line.
   compact?: boolean;
+  // canUpload false leaves only the download, for a role that may read the
+  // list but not change it (audit F170).
+  canUpload?: boolean;
   // The success toast and results-modal wording — "created/updated" fits
   // master data; the stock count upload reports adjusted/unchanged instead.
   summarize?: (result: MassDataImportResult) => string;
@@ -99,12 +103,16 @@ export default function MassDataExcelActions({
                 label: <Trans>Download Excel</Trans>,
                 onClick: handleDownload,
               },
-              {
-                key: "upload",
-                icon: <UploadOutlined />,
-                label: <Trans>Upload Excel</Trans>,
-                onClick: () => uploadTrigger.current?.click(),
-              },
+              ...(canUpload
+                ? [
+                    {
+                      key: "upload",
+                      icon: <UploadOutlined />,
+                      label: <Trans>Upload Excel</Trans>,
+                      onClick: () => uploadTrigger.current?.click(),
+                    },
+                  ]
+                : []),
             ],
           }}
         >
@@ -120,14 +128,16 @@ export default function MassDataExcelActions({
           <Button icon={<DownloadOutlined />} loading={downloading} onClick={handleDownload}>
             <Trans>Download Excel</Trans>
           </Button>
-          <Upload {...uploadProps}>
-            <Button icon={<UploadOutlined />} loading={uploading}>
-              <Trans>Upload Excel</Trans>
-            </Button>
-          </Upload>
+          {canUpload && (
+            <Upload {...uploadProps}>
+              <Button icon={<UploadOutlined />} loading={uploading}>
+                <Trans>Upload Excel</Trans>
+              </Button>
+            </Upload>
+          )}
         </Space>
       )}
-      {compact && (
+      {compact && canUpload && (
         <Upload {...uploadProps}>
           <span ref={uploadTrigger} style={{ display: "none" }} />
         </Upload>
