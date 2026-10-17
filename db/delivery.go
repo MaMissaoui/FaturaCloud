@@ -243,12 +243,9 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 	// org+type by one, regardless of whether DeliveryNumber ends up storing
 	// the generated value or one the client edited (see
 	// db/document_number.go's doc comment).
-	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "delivery", time.UnixMilli(req.DeliveryDate), "")
+	req.DeliveryNumber, err = AssignDocumentNumberTx(tx, req.OrganizationID, "delivery", time.UnixMilli(req.DeliveryDate), "", req.DeliveryNumber)
 	if err != nil {
 		return nil, err
-	}
-	if req.DeliveryNumber == "" {
-		req.DeliveryNumber = generatedNumber
 	}
 
 	_, err = tx.Exec(`
@@ -259,6 +256,9 @@ func (d *Database) CreateDelivery(req CreateDeliveryRequest) (*OutboundDelivery,
 		req.DeliveryDate, req.ShippingAddress, req.TrackingNumber, req.Notes,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "delivery") {
+			return nil, refuseTakenDocumentNumber("delivery", req.DeliveryNumber)
+		}
 		return nil, fmt.Errorf("create_delivery: %w", err)
 	}
 	if err := replaceDeliveryLineItemsTx(tx, req.OrganizationID, req.ID, req.LineItems); err != nil {
@@ -293,6 +293,10 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 		return nil, fmt.Errorf("update_delivery begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	if err := checkDocumentNumberChangeTx(tx, "delivery", current.OrganizationID, id, current.DeliveryNumber, req.DeliveryNumber); err != nil {
+		return nil, err
+	}
 
 	// Line items are frozen once a delivery is shipped — but only a request
 	// that would genuinely change them is refused, not one that merely
@@ -339,6 +343,9 @@ func (d *Database) UpdateDelivery(id string, req UpdateDeliveryRequest) (*Outbou
 		id,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "delivery") {
+			return nil, refuseTakenDocumentNumber("delivery", *req.DeliveryNumber)
+		}
 		return nil, fmt.Errorf("update_delivery: %w", err)
 	}
 	if req.LineItems != nil {

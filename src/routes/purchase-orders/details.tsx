@@ -161,7 +161,7 @@ const PurchaseOrderDetails = () => {
   // placeholder, and antd applies initialValues only on first mount — freezing
   // the field at that placeholder and proposing an already-used number, which
   // is exactly what NextPurchaseOrderNumber's MAX-based query exists to avoid.
-  const nextNumber = useAtomValue(nextPurchaseOrderNumberAtom);
+  const numberPreview = useAtomValue(nextPurchaseOrderNumberAtom);
 
   const setOrderId = useSetAtom(purchaseOrderIdAtom);
   const orderLoadable = useAtomValue(loadableOrderAtom);
@@ -320,7 +320,6 @@ const PurchaseOrderDetails = () => {
 
   const initialValues = isNew
     ? {
-        orderNumber: nextNumber,
         orderDate: dayjs(),
         status: "draft",
         currency: organization?.currency ?? "EUR",
@@ -492,9 +491,19 @@ const PurchaseOrderDetails = () => {
             <Form.Item
               label={<Trans>Order number</Trans>}
               name="orderNumber"
-              rules={[{ required: true, message: t`Order number is required` }]}
+              // A new document gets the next free number when it is saved;
+              // typing one is an override, refused if taken.
+              rules={isNew ? [] : [{ required: true, message: t`Order number is required` }]}
             >
-              <Input />
+              <Input
+                placeholder={
+                  isNew
+                    ? numberPreview
+                      ? t`${numberPreview} (assigned on save)`
+                      : t`Assigned on save`
+                    : undefined
+                }
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={12} xl={3}>
