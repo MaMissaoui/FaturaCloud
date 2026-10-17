@@ -498,6 +498,16 @@ already come from the server's client and vendor summaries.) Fix after F171/F172
 filters with counts for journal entries and payments first (the largest,
 and nothing on screen needs all of them at once), then invoices.
 
+**Phase 3 status (2026-10-17).** F171, F172 and F176 (journal entries) are
+done in the Phase 3 PR. Measured on a scratch retail organization:
+- the main script is 404 KB → 126 KB gzipped;
+- the payments list is 447 KB → 56 KB;
+- a journal entries page is 12.5 KB against 1 MB for the whole list;
+- a second visit transfers no JavaScript;
+- a counter sale frees its button when the POST answers, then makes five small parallel requests (about 9 KB) instead of 7.3 MB in series.
+
+Payments are not paged: their only screen, the Cash Book, now asks for inbound payments of one customer (stacked layout), and the loan register layout needs every customer's to group stalled balances. Invoices wait for server-side chip counts, as above. F177 and F183 wait for a measurement on the Pi.
+
 ### 3.4 — F177: one connection serializes every request (Low-Medium, Confirmed on the Mac)
 
 `db.SetMaxOpenConns(1)` (`db/db.go:50`) puts every read and write through
