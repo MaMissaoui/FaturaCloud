@@ -39,11 +39,14 @@ func productSummaryFixture(t *testing.T, d *Database) (orgID, productID string) 
 	// BL-1 comes from an order: its client is the order's, its own is NULL.
 	exec(`INSERT INTO outbound_deliveries (id, organizationId, orderId, deliveryNumber, deliveryDate) VALUES ('ps-bl1', ?, 'ps-ord', 'BL-1', ?)`, org.ID, day(5))
 	exec(`INSERT INTO inbound_deliveries (id, organizationId, vendorId, deliveryNumber, deliveryDate) VALUES ('ps-br1', ?, 'ps-v1', 'BR-1', ?)`, org.ID, day(2))
-	// DUP-1 is both a delivery and a receipt number; DUP-2 two deliveries'.
+	// DUP-1 and DUP-2 are each both a delivery and a receipt number. Two
+	// deliveries can't share one (migration 0108), but the two tables can.
 	exec(`INSERT INTO outbound_deliveries (id, organizationId, deliveryNumber, deliveryDate, clientId) VALUES
-		('ps-dup1-out', ?, 'DUP-1', ?, 'ps-c1'), ('ps-dup2-a', ?, 'DUP-2', ?, 'ps-c1'), ('ps-dup2-b', ?, 'DUP-2', ?, 'ps-c1')`,
-		org.ID, day(3), org.ID, day(3), org.ID, day(3))
-	exec(`INSERT INTO inbound_deliveries (id, organizationId, vendorId, deliveryNumber, deliveryDate) VALUES ('ps-dup1-in', ?, 'ps-v1', 'DUP-1', ?)`, org.ID, day(3))
+		('ps-dup1-out', ?, 'DUP-1', ?, 'ps-c1'), ('ps-dup2-a', ?, 'DUP-2', ?, 'ps-c1')`,
+		org.ID, day(3), org.ID, day(3))
+	exec(`INSERT INTO inbound_deliveries (id, organizationId, vendorId, deliveryNumber, deliveryDate) VALUES
+		('ps-dup1-in', ?, 'ps-v1', 'DUP-1', ?), ('ps-dup2-b', ?, 'ps-v1', 'DUP-2', ?)`,
+		org.ID, day(3), org.ID, day(3))
 
 	exec(`INSERT INTO stockMovements (id, organizationId, productId, type, quantity, reference, sourceDocumentId, createdAt) VALUES
 		('m-inv', ?, 'ps-p', 'out', -1, 'FAC-1', 'ps-inv', '2026-10-01 09:00:00'),
