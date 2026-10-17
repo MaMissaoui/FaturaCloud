@@ -115,17 +115,28 @@ func TestUpdateInvoiceChecksOnlyAChangedNumber(t *testing.T) {
 	if got, err := d.UpdateInvoice(b.ID, UpdateInvoiceRequest{Number: &free}); err != nil || got.Number != "FAC-9" {
 		t.Fatalf("renumber to a free number = %+v, %v", got, err)
 	}
+	_ = a
+}
 
-	// Two invoices that already share a number (from before the check)
-	// stay editable: a save resends the stored number unchanged.
-	if _, err := d.DB.Exec(`UPDATE invoices SET number = 'FAC-1' WHERE id = ?`, b.ID); err != nil {
-		t.Fatalf("make a duplicate: %v", err)
+// The database itself refuses a second invoice with the same number in one
+// organization (migration 0106), outside opening loans and blank numbers.
+func TestInvoiceNumberUniqueIndex(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-1")
+	inv, err := newNumberingInvoice(t, d, fx, "FAC-1")
+	if err != nil {
+		t.Fatalf("create: %v", err)
 	}
-	same, notes := "FAC-1", "still editable"
-	if got, err := d.UpdateInvoice(b.ID, UpdateInvoiceRequest{Number: &same, CustomerNotes: &notes}); err != nil || got.Number != "FAC-1" {
-		t.Fatalf("save with the unchanged shared number = %+v, %v", got, err)
+	other, err := newNumberingInvoice(t, d, fx, "FAC-2")
+	if err != nil {
+		t.Fatalf("create other: %v", err)
 	}
-	if _, err := d.UpdateInvoice(a.ID, UpdateInvoiceRequest{Number: &same}); err != nil {
-		t.Fatalf("save of the other one: %v", err)
+	if _, err := d.DB.Exec(`UPDATE invoices SET number = 'FAC-1' WHERE id = ?`, other.ID); err == nil || !strings.Contains(err.Error(), "UNIQUE") {
+		t.Fatalf("raw duplicate err = %v; want a UNIQUE violation", err)
 	}
+	if _, err := d.DB.Exec(`UPDATE invoices SET number = 'FAC-1', origin = 'opening' WHERE id = ?`, other.ID); err != nil {
+		t.Fatalf("an opening loan may share a number: %v", err)
+	}
+	_ = inv
 }
