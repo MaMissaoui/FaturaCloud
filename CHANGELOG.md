@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.69.0] - 2026-10-17
+
+Migration `0108` runs at startup. It fails if an organization already has two orders, purchase orders, deliveries, goods receipts or production orders with the same number. Production had none at the 2026-10-17 check, so re-run that check before deploying.
+
+### Fixed
+- Orders, purchase orders, deliveries, goods receipts and production orders can no longer share a number within an organization. A new document's number is assigned on save, so two people creating at once get consecutive numbers instead of the same one. A typed number already in use, or renaming to one, is refused with the reason, and the database now enforces it (#530).
+
+### Changed
+- The number field of a new order, purchase order, delivery, goods receipt or production order is empty and shows the next number as a placeholder, as the invoice form does (#530).
+- Dependencies:
+  - Jotai 3 (#527) and Sentry 11 (#528);
+  - minor and patch npm updates (#526) and Go module updates (#523);
+  - the GitHub Actions used by CI (#524).
+
+  The upgraded linter's new check for reading the clock during render is fixed on six pages (#526).
+- The image builds with Go 1.27 and Node 24 LTS on an updated Debian base. Dependabot no longer proposes Node major versions, since Node 25 dropped the corepack the build needs (#522).
+- Internal: the CLAUDE.md files are rewritten as current rules, a quarter of their former size (#529).
+
 ## [3.68.0] - 2026-10-17
 
 The fixes from the full re-audit of v3.67.4 (`docs/audit-plan-2026-10-17.md`). Three migrations (`0105`–`0107`) run at startup.
