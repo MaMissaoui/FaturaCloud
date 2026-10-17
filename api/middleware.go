@@ -70,6 +70,20 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// hasSignedSessionToken reports whether r carries a session cookie signed
+// by this server and not expired — the cheap half of authMiddleware's
+// check, with no database read (tokenVersion and isActive aren't checked).
+func (h *handler) hasSignedSessionToken(r *http.Request) bool {
+	cookie, err := r.Cookie(authCookieName)
+	if err != nil || cookie.Value == "" {
+		return false
+	}
+	_, err = jwt.ParseWithClaims(cookie.Value, &Claims{}, func(t *jwt.Token) (any, error) {
+		return []byte(h.jwtSecret), nil
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience))
+	return err == nil
+}
+
 func (h *handler) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(authCookieName)
