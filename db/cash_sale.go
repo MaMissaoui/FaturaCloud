@@ -354,35 +354,16 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		}
 	}
 
-	// Invoice number derived here, inside the transaction — see
-	// generateDocumentNumber's doc comment.
-	var counters struct {
-		Format  *string `db:"invoice_number_format"`
-		Counter *int64  `db:"invoice_number_counter"`
-	}
-	if err := tx.Get(&counters, `SELECT invoice_number_format, invoice_number_counter FROM organizations WHERE id = ?`, req.OrganizationID); err != nil {
-		return nil, fmt.Errorf("create_cash_sale read_counter: %w", err)
-	}
-	// An organization stored without a format (created through the API
-	// before CreateOrganization defaulted it) still gets numbered sales.
-	format := DefaultInvoiceNumberFormat
-	if counters.Format != nil && strings.TrimSpace(*counters.Format) != "" {
-		format = *counters.Format
-	}
-	var counter int64
-	if counters.Counter != nil {
-		counter = *counters.Counter
-	}
-	counter++
+	// Invoice number derived here, inside the transaction, skipping any
+	// number an invoice already has (db/invoice_number.go).
 	clientCode := ""
 	if client.Code != nil {
 		clientCode = *client.Code
 	}
-	loc, err := organizationLocation(tx, req.OrganizationID)
+	number, counter, err := nextInvoiceNumberTx(tx, req.OrganizationID, req.Date, clientCode)
 	if err != nil {
 		return nil, err
 	}
-	number := generateDocumentNumber(format, counter, time.UnixMilli(req.Date).In(loc), clientCode)
 
 	// dueDate defaults to the sale's own date, not organizations.due_days —
 	// a counter sale (cash or a loan settled later via CreatePayment, not a

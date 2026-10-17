@@ -22,7 +22,7 @@ import {
 } from "src/api";
 
 import { centsToUnits, unitsToCents, multiplyDecimal } from "src/utils/currency";
-import { organizationIdAtom, nextInvoiceNumberAtom } from "./organization";
+import { organizationIdAtom } from "./organization";
 
 function invoiceToDisplay(invoice: Invoice): InvoiceDisplay {
   return {
@@ -295,20 +295,14 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
       return null;
     }
 
-    // Generate new invoice number
-    const nextNumber = await get(nextInvoiceNumberAtom);
-    if (!nextNumber) {
-      message.error(t`Failed to generate invoice number`);
-      return null;
-    }
-
     // Create new invoice data with duplicated information
     const newInvoiceId = nanoid();
     const currentDate = dayjs();
     const duplicatedInvoice = {
       id: newInvoiceId,
       organizationId: get(organizationIdAtom)!,
-      number: nextNumber,
+      // Left blank so the server assigns the next free number (audit F169).
+      number: "",
       state: "draft", // Always start as draft
       clientId: originalInvoice.clientId,
       date: currentDate.valueOf(),

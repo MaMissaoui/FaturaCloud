@@ -173,6 +173,20 @@ const InvoiceDetails: React.FC = () => {
   const deleteInvoice = useSetAtom(deleteInvoiceAtom);
   const duplicateInvoice = useSetAtom(duplicateInvoiceAtom);
   const nextInvoiceNumber = useAtomValue(nextInvoiceNumberAtom);
+  // A new invoice's number is assigned by the server when it is saved (audit
+  // F169) — the field stays empty and shows the expected number as a
+  // placeholder. The client code feeds a format with {clientCode}.
+  const [previewClientCode, setPreviewClientCode] = useState("");
+  // Only a hint: the server skips a number that is already taken, and names
+  // the month in English for {m}.
+  const numberPreview = organization?.invoiceNumberFormat
+    ? generateInvoiceNumber(
+        organization.invoiceNumberFormat,
+        (organization.invoiceNumberCounter || 0) + 1,
+        new Date(),
+        previewClientCode,
+      )
+    : nextInvoiceNumber;
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
@@ -217,7 +231,6 @@ const InvoiceDetails: React.FC = () => {
       customerNotes: organization?.customerNotes,
       paymentTerms: get(find(paymentTerms, { isDefault: 1 }), "name"),
       overdueCharge: organization?.overdueCharge || 0,
-      number: isNew ? nextInvoiceNumber || "" : undefined,
       fiscalStampAmount: organization?.defaultFiscalStampAmount
         ? centsToUnits(organization.defaultFiscalStampAmount)
         : 0,
@@ -521,21 +534,8 @@ const InvoiceDetails: React.FC = () => {
                         if (isNew) {
                           const selectedClient = clients.find((c: any) => c.id === clientId);
 
-                          if (organization?.invoiceNumberFormat?.includes("{clientCode}")) {
-                            const clientCode = selectedClient?.code || "";
-
-                            // Regenerate invoice number with client code
-                            const counter = addDecimal(organization.invoiceNumberCounter || 0, 1);
-                            const newNumber = organization.invoiceNumberFormat
-                              ? generateInvoiceNumber(
-                                  organization.invoiceNumberFormat,
-                                  counter,
-                                  new Date(),
-                                  clientCode,
-                                )
-                              : "";
-                            form.setFieldsValue({ number: newNumber });
-                          }
+                          // The number preview follows the client's code.
+                          setPreviewClientCode(selectedClient?.code || "");
 
                           // Prefill the buyer reference (e.g. a Leitweg-ID) from the
                           // client's default, but don't clobber a manual edit.
@@ -653,9 +653,21 @@ const InvoiceDetails: React.FC = () => {
                       <Form.Item
                         label={t`Invoice number`}
                         name="number"
-                        rules={[{ required: true, message: t`This field is required!` }]}
+                        // A new invoice gets the next free number when it is
+                        // saved; typing one is an override, refused if taken.
+                        rules={
+                          isNew ? [] : [{ required: true, message: t`This field is required!` }]
+                        }
                       >
-                        <Input />
+                        <Input
+                          placeholder={
+                            isNew
+                              ? numberPreview
+                                ? t`${numberPreview} (assigned on save)`
+                                : t`Assigned on save`
+                              : undefined
+                          }
+                        />
                       </Form.Item>
                     </Col>
                     <CurrencySelect

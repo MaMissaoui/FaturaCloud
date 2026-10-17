@@ -51,6 +51,7 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/incoming-invoices/{id}/export` — fills the org's Excel template (upload or embedded default) and returns .xlsx; ?format=pdf converts it with headless LibreOffice — same mechanism and same "not wrapped in withDB" reasoning as the invoice export above. Unlike purchase orders/orders, reads the invoice's own server-validated stored totals rather than recomputing them
 
 **Invoices**
+- `POST /api/invoices` — a blank `number` gets the next free one, assigned server-side in the create's transaction; an explicit number that another invoice of the organization already has is refused (409), and so is renumbering to one on `PUT` (audit F169, `db/invoice_number.go`)
 - `GET /api/invoices/{id}/e-invoice` — EN 16931 UBL XML export (country profile resolved from the buyer)
 - `GET /api/invoices/{id}/export` — issue #115 — fills the org's Excel template (upload or embedded default) and returns .xlsx; ?format=pdf converts it with headless LibreOffice (see db/pdf_convert.go and the Dockerfile's runtime-stage comment) and returns .pdf — 503s only in an environment without soffice on PATH (e.g. local `go run` dev), not in the shipped image. Not wrapped in withDB
 
