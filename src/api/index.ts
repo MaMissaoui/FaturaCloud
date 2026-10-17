@@ -995,6 +995,12 @@ export const UpdateProduct = (id: string, req: Partial<Product>) =>
   put<Product>(`/products/${id}`, req);
 export const DeleteProduct = (id: string) =>
   del<{ deleted: boolean }>(`/products/${id}`).then((r) => r.deleted);
+// What refers to a product (stock movements, document lines, recipes…): a
+// product with any history can't be deleted, only archived (audit F167).
+export const GetProductUsageCount = (id: string) =>
+  get<{ count: number; usage: { label: string; count: number }[] }>(
+    `/products/${id}/usage-count`,
+  ).then((r) => r.count);
 export const GetProductStockMovements = (id: string) =>
   get<StockMovement[]>(`/products/${id}/stock-movements`);
 export const GetProductSerialNumbers = (id: string) =>

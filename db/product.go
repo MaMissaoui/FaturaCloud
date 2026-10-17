@@ -477,10 +477,99 @@ func isDuplicateSKU(err error) bool {
 	return strings.Contains(err.Error(), "UNIQUE constraint failed") && strings.Contains(err.Error(), "sku")
 }
 
+// productReference is one table+column pair that points at products(id).
+type productReference struct {
+	Table  string
+	Column string
+	// Label names the rows in a refusal ("stock movements", …).
+	Label string
+}
+
+// productReferencingTables lists every column that references a product.
+// Deleting a product cascades its stock movements, serial numbers and
+// recipes and nulls it out of every document line, while the GL entries
+// those movements fed stay posted — the Inventory account would then carry
+// value with nothing behind it (audit F167). So a product anything refers
+// to can't be deleted, only archived. TestProductUsageCountCoversEveryReference
+// reads the live schema's foreign keys and fails if one is missing here.
+var productReferencingTables = []productReference{
+	{"stockMovements", "productId", "stock movements"},
+	{"product_serial_numbers", "productId", "serial numbers"},
+	{"invoiceLineItems", "productId", "invoice lines"},
+	{"incoming_invoice_line_items", "productId", "incoming invoice lines"},
+	{"orderLineItems", "productId", "order lines"},
+	{"purchase_order_line_items", "productId", "purchase order lines"},
+	{"outbound_delivery_line_items", "productId", "delivery lines"},
+	{"inbound_delivery_line_items", "productId", "goods receipt lines"},
+	{"production_orders", "finishedProductId", "production orders"},
+	{"production_order_component_lines", "componentProductId", "production order components"},
+	{"bill_of_materials", "finishedProductId", "recipe lines"},
+	{"bill_of_materials", "componentProductId", "recipes using it"},
+	{"bill_of_materials_versions", "finishedProductId", "recipe versions"},
+	{"bill_of_materials_version_lines", "componentProductId", "recipe versions using it"},
+}
+
+// ProductUsage is how many rows of one kind refer to a product.
+type ProductUsage struct {
+	Label string `json:"label"`
+	Count int64  `json:"count"`
+}
+
+// productUsageWith runs on d.DB or an open transaction (DeleteProduct's).
+func productUsageWith(q sqlGetExecer, productID string) ([]ProductUsage, int64, error) {
+	usage := []ProductUsage{}
+	var total int64
+	for _, ref := range productReferencingTables {
+		var n int64
+		// Table/column names come from the package-level slice above, never from input.
+		if err := q.Get(&n, fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s = ?", ref.Table, ref.Column), productID); err != nil {
+			return nil, 0, fmt.Errorf("product_usage %s: %w", ref.Table, err)
+		}
+		if n > 0 {
+			usage = append(usage, ProductUsage{Label: ref.Label, Count: n})
+			total += n
+		}
+	}
+	return usage, total, nil
+}
+
+// GetProductUsage returns what refers to a product (only the kinds with any
+// rows) and the total, so the product drawer can offer Delete only for an
+// unused product and Archive otherwise.
+func (d *Database) GetProductUsage(productID string) ([]ProductUsage, int64, error) {
+	return productUsageWith(d.DB, productID)
+}
+
+// DeleteProduct deletes a product nothing refers to and refuses (409) one
+// with history, naming what refers to it; such a product is archived
+// instead. The check and the delete share one transaction.
 func (d *Database) DeleteProduct(productID string) (bool, error) {
-	res, err := d.DB.Exec(`DELETE FROM products WHERE id = ?`, productID)
+	tx, err := d.DB.Beginx()
+	if err != nil {
+		return false, fmt.Errorf("delete_product begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	usage, total, err := productUsageWith(tx, productID)
+	if err != nil {
+		return false, err
+	}
+	if total > 0 {
+		parts := make([]string, len(usage))
+		for i, u := range usage {
+			parts[i] = fmt.Sprintf("%d %s", u.Count, u.Label)
+		}
+		return false, newValidationError(
+			"this product can't be deleted because it has history (%s) — archive it instead",
+			strings.Join(parts, ", "),
+		)
+	}
+	res, err := tx.Exec(`DELETE FROM products WHERE id = ?`, productID)
 	if err != nil {
 		return false, fmt.Errorf("delete_product: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("delete_product commit: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	return n > 0, nil

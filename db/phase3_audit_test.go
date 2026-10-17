@@ -60,9 +60,7 @@ func TestProductionOrderComponentLinesKeepSkuAndUnitAfterComponentDeleted(t *tes
 		t.Fatalf("component unit not snapshotted at creation: %v", before[0].ComponentUnit)
 	}
 
-	if _, err := d.DeleteProduct(component.ID); err != nil {
-		t.Fatalf("DeleteProduct: %v", err)
-	}
+	forceDeleteProduct(t, d, component.ID)
 
 	after, err := d.GetProductionOrderComponentLines(order.ID)
 	if err != nil || len(after) != 1 {

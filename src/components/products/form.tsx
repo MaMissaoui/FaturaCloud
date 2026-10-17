@@ -37,7 +37,8 @@ import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { unitsOfMeasureAtom, setUnitsOfMeasureAtom } from "src/atoms/unit-of-measure";
 import { productFamiliesAtom, setProductFamiliesAtom } from "src/atoms/product-family";
 import { myOrgRoleAtom } from "src/atoms/organization";
-import { GetProductBOM, ReplaceProductBOM } from "src/api";
+import { GetProductBOM, GetProductUsageCount, ReplaceProductBOM } from "src/api";
+import { useFetch } from "src/hooks/useFetch";
 import { message } from "src/utils/message";
 import { roleCanSeeMenuItem } from "src/layouts/role-menu";
 import ScrollShadow from "src/components/scroll-shadow";
@@ -96,6 +97,15 @@ const ProductForm = () => {
     if (!productId) return null;
     return products.find((p: any) => p.id === productId) ?? null;
   }, [products, productId]);
+
+  // How many records refer to the product being edited: one with any
+  // history can't be deleted (the server refuses, audit F167). null while
+  // creating a product, before the count arrives, or if it fails to load.
+  const { data: usageCount } = useFetch<number | null>(
+    isVisible && productId ? [productId] : null,
+    () => GetProductUsageCount(productId!),
+    null,
+  );
 
   const componentOptions = useMemo(
     () =>
@@ -343,7 +353,23 @@ const ProductForm = () => {
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <div>
-            {productId && (
+            {productId && usageCount !== 0 && (
+              <Tooltip
+                title={
+                  usageCount === null ? undefined : (
+                    <Trans>
+                      Cannot delete: this product has history ({usageCount} records — stock
+                      movements, document lines or recipes).
+                    </Trans>
+                  )
+                }
+              >
+                <Button danger disabled icon={<DeleteOutlined />}>
+                  <Trans>Delete</Trans>
+                </Button>
+              </Tooltip>
+            )}
+            {productId && usageCount === 0 && (
               <Popconfirm
                 title={<Trans>Are you sure you want to delete this product?</Trans>}
                 onConfirm={handleDelete}
