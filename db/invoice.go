@@ -296,6 +296,9 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 		req.FiscalStampAmount, req.WithholdingTaxRate, req.WithholdingTaxAmount, req.DiscountAmount,
 	)
 	if err != nil {
+		if isDuplicateInvoiceNumber(err) {
+			return nil, refuseTakenInvoiceNumber(req.Number)
+		}
 		return nil, fmt.Errorf("create_invoice insert: %w", err)
 	}
 
@@ -541,6 +544,9 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		invoiceID,
 	)
 	if err != nil {
+		if isDuplicateInvoiceNumber(err) && updates.Number != nil {
+			return nil, refuseTakenInvoiceNumber(*updates.Number)
+		}
 		return nil, fmt.Errorf("update_invoice exec: %w", err)
 	}
 

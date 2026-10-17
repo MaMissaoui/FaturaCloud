@@ -43,6 +43,15 @@ func refuseTakenInvoiceNumber(number string) error {
 	)
 }
 
+// isDuplicateInvoiceNumber recognizes the unique index on
+// (organizationId, number) (migration 0106) refusing a write. The checks
+// above run first inside the same transaction, so this is only a backstop:
+// it turns the raw constraint error into the same 409.
+func isDuplicateInvoiceNumber(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed") &&
+		strings.Contains(err.Error(), "invoices.number")
+}
+
 // nextInvoiceNumberTx derives the next free invoice number from the
 // organization's invoice_number_format and invoice_number_counter, inside the
 // caller's transaction, skipping any number an invoice already has (one typed

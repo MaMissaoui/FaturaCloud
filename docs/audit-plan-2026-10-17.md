@@ -122,6 +122,14 @@ and the Phase 0 production counts.
 Run against a read-only copy of the pimi-01 database, as on 2026-10-11.
 Each answer changes how a later fix is written.
 
+**Results (2026-10-17, schema 104, a temporary copy deleted afterwards).**
+Every check came back clean: no duplicate or blank invoice numbers, no
+opening-loan reference colliding with an invoice number, no duplicates in the
+five counter-numbered documents, no emails differing only by case, no product
+deletion and no tax-rate percentage change in `audit_events`, and the backups
+directory is `0775`. F169's unique index (migration `0106`) therefore applies
+with no cleanup; the other five number columns can get theirs the same way.
+
 ```sql
 -- F169: duplicate invoice numbers (opening loans use register references)
 SELECT o.name, i.number, COUNT(*) AS n
