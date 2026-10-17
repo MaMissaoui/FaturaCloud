@@ -11,6 +11,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/MaMissaoui/fatura-cloud/db"
 )
 
 type loginBucket struct {
@@ -223,7 +225,10 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 
 	// Also throttle per account so IP rotation can't grind a single email.
 	// Same 429 message as the IP limit — no signal about which limit tripped.
-	if body.Email != "" && !checkRate(loginEmailBuckets, strings.ToLower(body.Email)) {
+	// Emails are stored normalized; a capital letter or a stray space typed
+	// on a phone keyboard must still sign in (audit F174).
+	body.Email = db.NormalizeEmail(body.Email)
+	if body.Email != "" && !checkRate(loginEmailBuckets, body.Email) {
 		noteSecurityEvent(r, "login_rate_limited", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
