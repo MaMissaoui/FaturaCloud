@@ -100,7 +100,7 @@ const DeliveryDetails = () => {
     [products],
   );
   const setProducts = useSetAtom(setProductsAtom);
-  const nextNumber = useAtomValue(nextDeliveryNumberAtom);
+  const numberPreview = useAtomValue(nextDeliveryNumberAtom);
 
   const setDeliveryId = useSetAtom(deliveryIdAtom);
   const deliveryLoadable = useAtomValue(loadableDeliveryAtom);
@@ -240,7 +240,6 @@ const DeliveryDetails = () => {
 
   const initialValues = isNew
     ? {
-        deliveryNumber: nextNumber,
         deliveryDate: dayjs(),
         status: "draft",
         orderId: prefillOrderId,
@@ -370,9 +369,19 @@ const DeliveryDetails = () => {
             <Form.Item
               label={<Trans>Delivery number</Trans>}
               name="deliveryNumber"
-              rules={[{ required: true, message: t`Required` }]}
+              // A new document gets the next free number when it is saved;
+              // typing one is an override, refused if taken.
+              rules={isNew ? [] : [{ required: true, message: t`Required` }]}
             >
-              <Input />
+              <Input
+                placeholder={
+                  isNew
+                    ? numberPreview
+                      ? t`${numberPreview} (assigned on save)`
+                      : t`Assigned on save`
+                    : undefined
+                }
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={12} xl={4}>

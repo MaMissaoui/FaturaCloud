@@ -113,7 +113,7 @@ const OrderDetails = () => {
     [products],
   );
   const setProducts = useSetAtom(setProductsAtom);
-  const nextNumber = useAtomValue(nextOrderNumberAtom);
+  const numberPreview = useAtomValue(nextOrderNumberAtom);
   // Client-side filter of the already-fetched org-wide deliveries list —
   // same "no extra request" pattern as imports.tsx's linked-purchase-orders
   // column — rather than a dedicated by-order endpoint.
@@ -212,7 +212,6 @@ const OrderDetails = () => {
 
   const initialValues = isNew
     ? {
-        orderNumber: nextNumber,
         orderDate: dayjs(),
         status: "draft",
         currency: organization?.currency ?? "EUR",
@@ -348,9 +347,19 @@ const OrderDetails = () => {
             <Form.Item
               label={<Trans>Order number</Trans>}
               name="orderNumber"
-              rules={[{ required: true, message: t`Order number is required` }]}
+              // A new document gets the next free number when it is saved;
+              // typing one is an override, refused if taken.
+              rules={isNew ? [] : [{ required: true, message: t`Order number is required` }]}
             >
-              <Input />
+              <Input
+                placeholder={
+                  isNew
+                    ? numberPreview
+                      ? t`${numberPreview} (assigned on save)`
+                      : t`Assigned on save`
+                    : undefined
+                }
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={12} xl={3}>

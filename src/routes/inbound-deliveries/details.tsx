@@ -106,7 +106,7 @@ const InboundDeliveryDetails = () => {
   const setProducts = useSetAtom(setProductsAtom);
   const purchaseOrders = useAtomValue(purchaseOrdersAtom);
   const setPurchaseOrders = useSetAtom(setPurchaseOrdersAtom);
-  const nextNumber = useAtomValue(nextInboundDeliveryNumberAtom);
+  const numberPreview = useAtomValue(nextInboundDeliveryNumberAtom);
 
   const setDeliveryId = useSetAtom(inboundDeliveryIdAtom);
   const deliveryLoadable = useAtomValue(loadableDeliveryAtom);
@@ -294,7 +294,6 @@ const InboundDeliveryDetails = () => {
 
   const initialValues = isNew
     ? {
-        deliveryNumber: nextNumber,
         deliveryDate: dayjs(),
         status: "draft",
         currency: orgCurrency,
@@ -425,9 +424,19 @@ const InboundDeliveryDetails = () => {
             <Form.Item
               label={<Trans>Receipt number</Trans>}
               name="deliveryNumber"
-              rules={[{ required: true, message: t`Receipt number is required` }]}
+              // A new document gets the next free number when it is saved;
+              // typing one is an override, refused if taken.
+              rules={isNew ? [] : [{ required: true, message: t`Receipt number is required` }]}
             >
-              <Input />
+              <Input
+                placeholder={
+                  isNew
+                    ? numberPreview
+                      ? t`${numberPreview} (assigned on save)`
+                      : t`Assigned on save`
+                    : undefined
+                }
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={12} xl={3}>

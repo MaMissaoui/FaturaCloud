@@ -110,7 +110,7 @@ const CreateProductionOrderForm = ({
   finishedProducts,
   products,
   imports,
-  nextNumber,
+  numberPreview,
   createOrder,
   dateFormat,
   qtyLocale,
@@ -118,7 +118,7 @@ const CreateProductionOrderForm = ({
   finishedProducts: Product[];
   products: Product[];
   imports: Import[];
-  nextNumber: string;
+  numberPreview: string;
   createOrder: (values: Partial<ProductionOrder>) => Promise<ProductionOrder>;
   dateFormat: string;
   qtyLocale: string;
@@ -164,7 +164,7 @@ const CreateProductionOrderForm = ({
   // two optional fields arrive as "" from an untouched Select rather than
   // null, which is why they're normalized below.
   type CreateFormValues = {
-    orderNumber: string;
+    orderNumber?: string;
     finishedProductId: string;
     quantity: number;
     date: Dayjs;
@@ -195,7 +195,6 @@ const CreateProductionOrderForm = ({
   // its finished product already picked.
   const preselected = (location.state as { finishedProductId?: string } | null)?.finishedProductId;
   const initialValues = {
-    orderNumber: nextNumber,
     date: dayjs(),
     quantity: 1,
     finishedProductId: finishedProducts.some((p) => p.id === preselected) ? preselected : undefined,
@@ -236,9 +235,14 @@ const CreateProductionOrderForm = ({
           <Form.Item
             label={<Trans>Order number</Trans>}
             name="orderNumber"
-            rules={[{ required: true, message: t`Order number is required` }]}
+            // A new order gets the next free number when it is saved; typing
+            // one is an override, refused if taken.
           >
-            <Input />
+            <Input
+              placeholder={
+                numberPreview ? t`${numberPreview} (assigned on save)` : t`Assigned on save`
+              }
+            />
           </Form.Item>
         </Col>
         <Col xs={24} md={12} xl={4}>
@@ -421,7 +425,7 @@ const ProductionOrderDetails = () => {
   );
   const imports = useAtomValue(importsAtom);
   const setImports = useSetAtom(setImportsAtom);
-  const nextNumber = useAtomValue(nextProductionOrderNumberAtom);
+  const numberPreview = useAtomValue(nextProductionOrderNumberAtom);
 
   const setOrderId = useSetAtom(productionOrderIdAtom);
   const orderLoadable = useAtomValue(loadableOrderAtom);
@@ -549,7 +553,7 @@ const ProductionOrderDetails = () => {
           finishedProducts={finishedProducts}
           products={products}
           imports={imports}
-          nextNumber={nextNumber}
+          numberPreview={numberPreview}
           createOrder={createOrder}
           dateFormat={dateFormat}
           qtyLocale={qtyLocale}
