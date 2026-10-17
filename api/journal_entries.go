@@ -8,11 +8,24 @@ import (
 
 func (h *handler) listJournalEntries(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	journalID := r.URL.Query().Get("journalId")
-	status := r.URL.Query().Get("status")
-	entries, err := h.db.GetJournalEntries(orgID, journalID, status)
+	q := r.URL.Query()
+	opts := db.JournalEntryListOptions{
+		JournalID: q.Get("journalId"),
+		Status:    q.Get("status"),
+		Limit:     parseIntParam(r, "limit"),
+		Offset:    parseIntParam(r, "offset"),
+		SortField: q.Get("sort"),
+		SortDesc:  q.Get("order") == "desc",
+	}
+	entries, total, err := h.db.GetJournalEntries(orgID, opts)
 	if err != nil {
 		writeInternalError(w, err)
+		return
+	}
+	// Paging is opt-in (audit F176): with a limit the answer is one page and
+	// the total, without one every entry as before.
+	if opts.Limit > 0 {
+		writeJSON(w, http.StatusOK, map[string]any{"data": entries, "total": total})
 		return
 	}
 	writeJSON(w, http.StatusOK, entries)

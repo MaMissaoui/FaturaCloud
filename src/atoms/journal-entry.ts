@@ -6,9 +6,6 @@ import { nanoid } from "nanoid";
 import { t } from "@lingui/core/macro";
 import dayjs from "dayjs";
 import isEqual from "lodash/isEqual";
-import orderBy from "lodash/orderBy";
-import keyBy from "lodash/keyBy";
-import map from "lodash/map";
 import reject from "lodash/reject";
 
 import {
@@ -30,15 +27,37 @@ journalEntriesAtom.debugLabel = "journalEntriesAtom";
 export const journalEntryFiltersAtom = atom<{ journalId?: string; status?: string }>({});
 journalEntryFiltersAtom.debugLabel = "journalEntryFiltersAtom";
 
+// The list is read one page at a time (audit F176), so the page, its size
+// and the sort live here with the filters, and the total beside the rows.
+export type JournalEntryPaging = {
+  page: number;
+  pageSize: number;
+  sort?: string;
+  order?: "asc" | "desc";
+};
+export const journalEntryPagingAtom = atom<JournalEntryPaging>({ page: 1, pageSize: 25 });
+journalEntryPagingAtom.debugLabel = "journalEntryPagingAtom";
+export const journalEntriesTotalAtom = atom(0);
+journalEntriesTotalAtom.debugLabel = "journalEntriesTotalAtom";
+
 export const setJournalEntriesAtom = atom(null, async (get, set) => {
   const organizationId = get(organizationIdAtom);
+  const { page, pageSize, sort, order } = get(journalEntryPagingAtom);
   try {
-    const response = await GetJournalEntries(organizationId!, get(journalEntryFiltersAtom));
-    set(journalEntriesAtom, response);
+    const response = await GetJournalEntries(organizationId!, {
+      ...get(journalEntryFiltersAtom),
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+      sort,
+      order,
+    });
+    set(journalEntriesAtom, response.data);
+    set(journalEntriesTotalAtom, response.total);
   } catch (error) {
     console.error("Failed to fetch journal entries:", error);
     message.error(t`Failed to fetch journal entries`);
     set(journalEntriesAtom, []);
+    set(journalEntriesTotalAtom, 0);
   }
 });
 
@@ -102,8 +121,7 @@ export const journalEntryAtom = atom(
       const created = await CreateJournalEntry(data);
       set(journalEntryIdAtom, created.id);
       message.success(t`Journal entry created`);
-      const entries = get(journalEntriesAtom);
-      set(journalEntriesAtom, orderBy([created, ...entries], "date", "desc"));
+      // The list holds one page; it reloads when the user returns to it.
       return created;
     } catch (error) {
       console.error("Journal entry creation failed:", error);
@@ -117,9 +135,11 @@ export const postJournalEntryAtom = atom(null, async (get, set, entryId: string)
   try {
     const updated = await PostJournalEntry(entryId);
     message.success(t`Journal entry posted`);
-    const entries = get(journalEntriesAtom);
-    const merged = keyBy([...entries, updated], "id");
-    set(journalEntriesAtom, orderBy(map(merged), "date", "desc"));
+    // The list holds one page: update the entry where it is.
+    set(
+      journalEntriesAtom,
+      get(journalEntriesAtom).map((e) => (e.id === updated.id ? updated : e)),
+    );
     return updated;
   } catch (error) {
     console.error("Failed to post journal entry:", error);

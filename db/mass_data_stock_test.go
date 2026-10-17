@@ -156,7 +156,7 @@ func TestStockCountSetsCountedQuantityAndIsIdempotent(t *testing.T) {
 	}
 
 	// Perpetual valuation: the costed addition posted Dr Inventory 3400.00.
-	entries, err := d.GetJournalEntries(f.orgID, "", "")
+	entries, _, err := d.GetJournalEntries(f.orgID, JournalEntryListOptions{})
 	if err != nil {
 		t.Fatalf("GetJournalEntries: %v", err)
 	}

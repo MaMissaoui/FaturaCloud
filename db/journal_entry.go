@@ -80,27 +80,76 @@ type CreateJournalEntryRequest struct {
 	Lines              []CreateJournalLineRequest `json:"lines"`
 }
 
-func (d *Database) GetJournalEntries(organizationID, journalID, status string) ([]JournalEntry, error) {
-	where := "WHERE organizationId = ?"
+// JournalEntryListOptions narrows and pages GetJournalEntries. Limit 0
+// lists every matching entry, the list's original shape; with a Limit the
+// Journal Entries page reads one page at a time (audit F176: 20,748 entries,
+// 10.4 MB, on the retail demo), so sorting happens here too.
+type JournalEntryListOptions struct {
+	JournalID string
+	Status    string
+	Limit     int
+	Offset    int
+	SortField string // a journalEntrySortColumns key; "" sorts by date
+	SortDesc  bool
+}
+
+// maxJournalEntryPage caps one page of the list.
+const maxJournalEntryPage = 500
+
+// journalEntrySortColumns whitelists the columns the list can be sorted by;
+// each sorts ties by createdAt, so paging is stable.
+var journalEntrySortColumns = map[string]string{
+	"entryNumber": "je.entryNumber",
+	"date":        "je.date",
+	"journal":     "COALESCE(j.code, '') || ' · ' || COALESCE(j.name, '')",
+	"description": "COALESCE(je.description, '')",
+	"reference":   "COALESCE(je.reference, '')",
+	"status":      "je.status",
+}
+
+// GetJournalEntries lists an organization's journal entries narrowed by
+// opts, newest first unless sorted otherwise, and how many match in all.
+func (d *Database) GetJournalEntries(organizationID string, opts JournalEntryListOptions) ([]JournalEntry, int, error) {
+	where := "WHERE je.organizationId = ?"
 	args := []any{organizationID}
-	if journalID != "" {
-		where += " AND journalId = ?"
-		args = append(args, journalID)
+	if opts.JournalID != "" {
+		where += " AND je.journalId = ?"
+		args = append(args, opts.JournalID)
 	}
-	if status != "" {
-		where += " AND status = ?"
-		args = append(args, status)
+	if opts.Status != "" {
+		where += " AND je.status = ?"
+		args = append(args, opts.Status)
+	}
+	from := "FROM journal_entries je LEFT JOIN journals j ON j.id = je.journalId"
+
+	var total int
+	if err := d.DB.Get(&total, "SELECT COUNT(*) FROM journal_entries je "+where, args...); err != nil {
+		return nil, 0, fmt.Errorf("get_journal_entries count: %w", err)
+	}
+
+	sortCol, ok := journalEntrySortColumns[opts.SortField]
+	if !ok {
+		sortCol = "je.date"
+		if opts.SortField == "" {
+			opts.SortDesc = true
+		}
+	}
+	direction := "ASC"
+	if opts.SortDesc {
+		direction = "DESC"
+	}
+	query := "SELECT je.* " + from + " " + where +
+		" ORDER BY " + sortCol + " " + direction + ", je.createdAt " + direction + ", je.id " + direction
+	if opts.Limit > 0 {
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, min(opts.Limit, maxJournalEntryPage), max(opts.Offset, 0))
 	}
 
 	entries := []JournalEntry{}
-	err := d.DB.Select(&entries,
-		"SELECT * FROM journal_entries "+where+" ORDER BY date DESC, createdAt DESC",
-		args...,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get_journal_entries: %w", err)
+	if err := d.DB.Select(&entries, query, args...); err != nil {
+		return nil, 0, fmt.Errorf("get_journal_entries: %w", err)
 	}
-	return entries, nil
+	return entries, total, nil
 }
 
 func (d *Database) GetJournalEntry(entryID string) (*JournalEntry, error) {
