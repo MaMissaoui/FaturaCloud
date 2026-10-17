@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ func newTestDistFS() fstest.MapFS {
 }
 
 func TestSpaHandler_ServesRealFile(t *testing.T) {
-	h := spaHandler(newTestDistFS())
+	h := mustSPAHandler(t, newTestDistFS())
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/assets/app.js", nil)
 	h.ServeHTTP(rr, req)
@@ -35,7 +36,7 @@ func TestSpaHandler_ServesRealFile(t *testing.T) {
 }
 
 func TestSpaHandler_UnknownPathFallsBackToIndex(t *testing.T) {
-	h := spaHandler(newTestDistFS())
+	h := mustSPAHandler(t, newTestDistFS())
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/clients/abc123", nil)
 	h.ServeHTTP(rr, req)
@@ -51,7 +52,7 @@ func TestSpaHandler_UnknownPathFallsBackToIndex(t *testing.T) {
 // /api/* paths must not silently 200 with the SPA shell — that breaks any
 // client (including our own fetch wrapper) expecting JSON on failure.
 func TestSpaHandler_UnmatchedAPIPathReturnsJSON404(t *testing.T) {
-	h := spaHandler(newTestDistFS())
+	h := mustSPAHandler(t, newTestDistFS())
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/nope", nil)
 	h.ServeHTTP(rr, req)
@@ -71,27 +72,41 @@ func TestSpaHandler_UnmatchedAPIPathReturnsJSON404(t *testing.T) {
 }
 
 // TestSpaHandler_DirectoryPathFallsBackToIndex covers F16: a directory with
-// no index.html of its own (e.g. /assets/) must not render a listing.
+// no index.html of its own (e.g. /assets/) must not render a listing. Under
+// assets/ the answer is a 404 (audit F171: nothing there may stand in for
+// an asset), elsewhere the SPA shell.
 func TestSpaHandler_DirectoryPathFallsBackToIndex(t *testing.T) {
-	h := spaHandler(newTestDistFS())
+	h := mustSPAHandler(t, newTestDistFS())
 
-	for _, path := range []string{"/assets", "/assets/", "/assets/sub", "/assets/sub/"} {
+	for path, wantShell := range map[string]bool{"/assets": true, "/assets/": true, "/assets/sub": false, "/assets/sub/": false} {
 		t.Run(path, func(t *testing.T) {
 			rr := httptest.NewRecorder()
 			req := httptest.NewRequest("GET", path, nil)
 			h.ServeHTTP(rr, req)
-			if rr.Code != 200 {
-				t.Fatalf("got status %d, want 200", rr.Code)
+			if strings.Contains(rr.Body.String(), "x.txt") {
+				t.Fatalf("listed the directory: %q", rr.Body.String())
 			}
-			if !strings.Contains(rr.Body.String(), "spa shell") {
-				t.Fatalf("expected index.html fallback (no directory listing), got %q", rr.Body.String())
+			if wantShell && (rr.Code != 200 || !strings.Contains(rr.Body.String(), "spa shell")) {
+				t.Fatalf("got %d %q, want the index.html fallback", rr.Code, rr.Body.String())
+			}
+			if !wantShell && rr.Code != 404 {
+				t.Fatalf("got status %d, want 404", rr.Code)
 			}
 		})
 	}
 }
 
+func mustSPAHandler(t *testing.T, fsys fstest.MapFS) http.Handler {
+	t.Helper()
+	h, err := spaHandler(fsys)
+	if err != nil {
+		t.Fatalf("spaHandler: %v", err)
+	}
+	return h
+}
+
 func TestSecurityHeaders_IncludesCSP(t *testing.T) {
-	h := securityHeaders(spaHandler(newTestDistFS()), nil)
+	h := securityHeaders(mustSPAHandler(t, newTestDistFS()), nil)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	h.ServeHTTP(rr, req)

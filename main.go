@@ -116,7 +116,11 @@ func main() {
 	if err != nil {
 		fatal("Failed to sub dist", "err", err)
 	}
-	mux.Handle("/", spaHandler(distFS))
+	spa, err := spaHandler(distFS)
+	if err != nil {
+		fatal("Failed to load the frontend", "err", err)
+	}
+	mux.Handle("/", spa)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -128,7 +132,7 @@ func main() {
 	// WriteTimeout is generous because backup/restore stream large database files.
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           api.RequestLogger(securityHeaders(mux, trustedProxies), trustedProxies),
+		Handler:           serverHandler(mux, trustedProxies),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      300 * time.Second,
@@ -137,6 +141,14 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil {
 		fatal("Server error", "err", err)
 	}
+}
+
+// serverHandler is the whole chain every request goes through: compression
+// outermost (it must stay outside api.RequestLogger — see
+// compressAPIResponses), then the request log, then the security headers and
+// the router.
+func serverHandler(mux http.Handler, trustedProxies []netip.Prefix) http.Handler {
+	return compressAPIResponses(api.RequestLogger(securityHeaders(mux, trustedProxies), trustedProxies))
 }
 
 // contentSecurityPolicy is same-origin by design (no CDNs). Ant Design and
@@ -175,36 +187,6 @@ func securityHeaders(next http.Handler, trustedProxies []netip.Prefix) http.Hand
 			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 		}
 		next.ServeHTTP(w, r)
-	})
-}
-
-// spaHandler serves static files from the embedded FS and falls back to
-// index.html for any path that doesn't resolve to a real file — letting
-// React Router handle client-side navigation. Unmatched /api/* paths (no
-// registered handler matched them) get a JSON 404 instead of index.html, and
-// directory paths fall through to index.html instead of a listing.
-func spaHandler(fsys fs.FS) http.Handler {
-	fileServer := http.FileServerFS(fsys)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			writeJSONNotFound(w)
-			return
-		}
-		// Try to open the requested path in the embedded FS.
-		f, err := fsys.Open(r.URL.Path[1:]) // strip leading "/"
-		if err == nil {
-			info, statErr := f.Stat()
-			f.Close()
-			if statErr == nil && !info.IsDir() {
-				fileServer.ServeHTTP(w, r)
-				return
-			}
-		}
-		// Not found, or a directory with no index.html of its own — serve the
-		// SPA shell so React Router takes over instead of listing contents.
-		r2 := r.Clone(r.Context())
-		r2.URL.Path = "/"
-		fileServer.ServeHTTP(w, r2)
 	})
 }
 
