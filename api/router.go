@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/netip"
 	"sync"
@@ -42,10 +43,18 @@ func limitBody(limit int64, next http.HandlerFunc) http.Handler {
 	return http.MaxBytesHandler(next, limit)
 }
 
-// NewRouter wires all API routes and returns the mux.
+// NewRouter wires all API routes and returns the mux, with background loops
+// that run for the life of the process (tests).
 // The caller is responsible for mounting a static file handler at "/" for the
 // embedded frontend.
 func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version string, oidcCfg OIDCConfig, trustedProxies []netip.Prefix) *http.ServeMux {
+	mux, _ := NewRouterContext(context.Background(), database, dbPath, backupDir, jwtSecret, version, oidcCfg, trustedProxies)
+	return mux
+}
+
+// NewRouterContext is NewRouter whose background loops stop when ctx ends;
+// the returned Background waits for them (graceful shutdown, main.go).
+func NewRouterContext(ctx context.Context, database *db.Database, dbPath, backupDir, jwtSecret, version string, oidcCfg OIDCConfig, trustedProxies []netip.Prefix) (*http.ServeMux, *Background) {
 	h := &handler{
 		db:             database,
 		dbPath:         dbPath,
@@ -55,9 +64,10 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 		oidcCfg:        oidcCfg,
 		trustedProxies: trustedProxies,
 	}
-	go h.runScheduler()
-	go h.runAuditPruning()
-	go sweepLoginBuckets()
+	background := &Background{}
+	background.start(ctx, h.runScheduler)
+	background.start(ctx, h.runAuditPruning)
+	background.start(ctx, sweepLoginBuckets)
 
 	// Every change route registered below is recorded in the activity
 	// history (api/audit.go).
@@ -65,6 +75,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 
 	// Public
 	mux.Handle("GET /api/version", limitBody(defaultMaxBody, h.getVersion))
+	mux.Handle("GET /api/healthz", limitBody(defaultMaxBody, h.healthz))
 	// login/logout are POST and set/clear the auth cookie, so they carry the
 	// same CSRF requirement as any other mutation.
 	mux.Handle("POST /api/auth/login", h.csrfRequired(limitBody(defaultMaxBody, h.login)))
@@ -792,5 +803,5 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgRoleAdminProtected("GET", "/api/organizations/{orgId}/gl-export/fec", pathOrgID("orgId"), []string{"accounting"}, h.getFECExport)
 	orgRoleAdminProtected("GET", "/api/organizations/{orgId}/gl-export/datev", pathOrgID("orgId"), []string{"accounting"}, h.getDATEVExport)
 
-	return mux.ServeMux
+	return mux.ServeMux, background
 }

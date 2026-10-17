@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/netip"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/MaMissaoui/fatura-cloud/api"
@@ -27,6 +31,12 @@ var version = "dev"
 var assets embed.FS
 
 func main() {
+	// "fatura-cloud healthcheck" is the Docker HEALTHCHECK: the runtime image
+	// has no curl or wget, so the binary asks itself (audit F181).
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(healthcheck(os.Getenv("PORT")))
+	}
+
 	setupLogging(os.Getenv("LOG_LEVEL"), os.Getenv("LOG_FORMAT"))
 	slog.Info("FaturaCloud starting", "version", version)
 
@@ -41,7 +51,7 @@ func main() {
 	slog.Info("Database initialized")
 
 	backupDir := backupDirPath(dbPath)
-	if err := os.MkdirAll(backupDir, backupDirMode); err != nil {
+	if err := ensureBackupDir(backupDir); err != nil {
 		fatal("Failed to create backup directory", "err", err)
 	}
 
@@ -93,7 +103,13 @@ func main() {
 
 	trustedProxies := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
 
-	mux := api.NewRouter(database, dbPath, backupDir, jwtSecret, version, oidcCfg, trustedProxies)
+	// SIGTERM (docker stop) or Ctrl-C starts a graceful shutdown: the
+	// server stops accepting, in-flight requests finish, the background
+	// loops stop and the database closes (audit F181).
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	mux, background := api.NewRouterContext(ctx, database, dbPath, backupDir, jwtSecret, version, oidcCfg, trustedProxies)
 	api.EnsureFirstAdmin(database, adminEmail, adminPassword)
 	if err := database.SeedAccountingDefaultsForAllOrganizations(); err != nil {
 		slog.Error("SeedAccountingDefaultsForAllOrganizations", "err", err)
@@ -138,9 +154,48 @@ func main() {
 		WriteTimeout:      300 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
-	if err := srv.ListenAndServe(); err != nil {
+	shutdownDone := make(chan struct{})
+	go func() {
+		defer close(shutdownDone)
+		<-ctx.Done()
+		slog.Info("Shutting down")
+		// Within docker stop's grace period (stop_grace_period in compose);
+		// an export or backup still running after it is cut off.
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("Shutdown", "err", err)
+		}
+	}()
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fatal("Server error", "err", err)
 	}
+	<-shutdownDone
+	background.Wait()
+	slog.Info("Stopped")
+}
+
+// shutdownTimeout bounds how long in-flight requests get to finish.
+const shutdownTimeout = 25 * time.Second
+
+// healthcheck asks the running server's /api/healthz and returns the exit
+// code Docker's HEALTHCHECK expects: 0 healthy, 1 not.
+func healthcheck(port string) int {
+	if port == "" {
+		port = "8080"
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/api/healthz")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "healthcheck:", err)
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintln(os.Stderr, "healthcheck: status", resp.StatusCode)
+		return 1
+	}
+	return 0
 }
 
 // serverHandler is the whole chain every request goes through: compression
@@ -269,6 +324,21 @@ func dbFilePath() string {
 // db.BackupFileMode — a 0700 directory would lock a backup user out of
 // every snapshot inside it.
 const backupDirMode os.FileMode = 0750
+
+// ensureBackupDir creates the backups directory, and also gives an existing
+// one backupDirMode: os.MkdirAll leaves an existing directory's mode alone,
+// so an install upgraded from before #512 kept a 0700 directory the group
+// couldn't enter (audit F179). A directory owned by someone else (a host
+// mount) can't be changed and is left as it is.
+func ensureBackupDir(dir string) error {
+	if err := os.MkdirAll(dir, backupDirMode); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, backupDirMode); err != nil && !errors.Is(err, fs.ErrPermission) {
+		return err
+	}
+	return nil
+}
 
 func backupDirPath(dbPath string) string {
 	return filepath.Join(filepath.Dir(dbPath), "backups")

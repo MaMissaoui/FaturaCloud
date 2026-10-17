@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -35,6 +36,22 @@ type BackupConfig struct {
 
 func (h *handler) getVersion(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"version": h.version})
+}
+
+// healthz answers the container health check (audit F181): 200 while the
+// database answers a query within two seconds, 503 otherwise, so a wedged
+// process is restarted. Public and cheap — no session, one SELECT.
+func (h *handler) healthz(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	h.dbMu.RLock()
+	defer h.dbMu.RUnlock()
+	var one int
+	if h.db == nil || h.db.DB.GetContext(ctx, &one, "SELECT 1") != nil {
+		writeError(w, http.StatusServiceUnavailable, "database unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // ── Backup config ─────────────────────────────────────────────────────────────
@@ -316,10 +333,12 @@ func (h *handler) recoverFromSafety(safetyPath string) bool {
 // An in-memory marker, set only after Backup actually returns success,
 // can't be fooled by a partial file and naturally resets at the next date
 // change (the loop simply stops matching lastSuccessDate against `today`).
-func (h *handler) runScheduler() {
+func (h *handler) runScheduler(ctx context.Context) {
 	lastSuccessDate := ""
 	for {
-		time.Sleep(1 * time.Minute)
+		if !sleepCtx(ctx, time.Minute) {
+			return
+		}
 		lastSuccessDate = h.scheduledBackup(time.Now().UTC(), lastSuccessDate)
 	}
 }
