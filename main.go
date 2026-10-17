@@ -325,17 +325,25 @@ func dbFilePath() string {
 // every snapshot inside it.
 const backupDirMode os.FileMode = 0750
 
-// ensureBackupDir creates the backups directory, and also gives an existing
-// one backupDirMode: os.MkdirAll leaves an existing directory's mode alone,
-// so an install upgraded from before #512 kept a 0700 directory the group
-// couldn't enter (audit F179). A directory owned by someone else (a host
-// mount) can't be changed and is left as it is.
+// ensureBackupDir creates the backups directory, and adds backupDirMode's
+// bits to an existing one: os.MkdirAll leaves an existing directory's mode
+// alone, so an install upgraded from before #512 kept a 0700 directory the
+// group couldn't enter (audit F179). Bits are only added, never removed — a
+// directory an operator opened further (production's is 0775) keeps that. A
+// directory owned by someone else (a host mount) can't be changed and is
+// left as it is.
 func ensureBackupDir(dir string) error {
 	if err := os.MkdirAll(dir, backupDirMode); err != nil {
 		return err
 	}
-	if err := os.Chmod(dir, backupDirMode); err != nil && !errors.Is(err, fs.ErrPermission) {
+	info, err := os.Stat(dir)
+	if err != nil {
 		return err
+	}
+	if want := info.Mode().Perm() | backupDirMode; want != info.Mode().Perm() {
+		if err := os.Chmod(dir, want); err != nil && !errors.Is(err, fs.ErrPermission) {
+			return err
+		}
 	}
 	return nil
 }

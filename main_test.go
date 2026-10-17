@@ -161,6 +161,21 @@ func TestBackupDirPermissionsFixAnExistingDirectory(t *testing.T) {
 	if perm := info.Mode().Perm(); perm != 0750 {
 		t.Fatalf("existing backup dir mode = %o, want 0750", perm)
 	}
+
+	// A directory opened further by the operator keeps its extra bits.
+	wider := filepath.Join(t.TempDir(), "backups")
+	if err := os.Mkdir(wider, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(wider, 0775); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureBackupDir(wider); err != nil {
+		t.Fatalf("ensureBackupDir: %v", err)
+	}
+	if info, _ := os.Stat(wider); info.Mode().Perm() != 0775 {
+		t.Fatalf("0775 backup dir became %o; ensureBackupDir must only add bits", info.Mode().Perm())
+	}
 }
 
 // TestHealthcheckCommand: the Docker HEALTHCHECK command exits 0 only when
