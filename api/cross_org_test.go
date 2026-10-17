@@ -218,6 +218,7 @@ func sameRoleSet(a, b []string) bool {
 // exemptRoutes are never org-scoped, on purpose.
 var exemptRoutes = map[routeKey]string{
 	{"GET", "/api/version"}:                       "public, pre-auth",
+	{"GET", "/api/healthz"}:                       "public container health check, one SELECT 1, no data",
 	{"POST", "/api/auth/login"}:                   "public, pre-auth",
 	{"POST", "/api/auth/logout"}:                  "public, pre-auth",
 	{"GET", "/api/auth/oidc/enabled"}:             "public, pre-auth",

@@ -248,13 +248,17 @@ func (h *handler) writeAuditEvents(w http.ResponseWriter, r *http.Request, f db.
 // after startup and then daily. It stops once its database is closed for
 // good (a test's router after the test, a server shutting down); a restore
 // swaps h.db under the write lock, so it never sees the replaced one.
-func (h *handler) runAuditPruning() {
+func (h *handler) runAuditPruning(ctx context.Context) {
 	for {
-		time.Sleep(time.Minute)
+		if !sleepCtx(ctx, time.Minute) {
+			return
+		}
 		if h.pruneAuditEvents(time.Now()) {
 			return
 		}
-		time.Sleep(24*time.Hour - time.Minute)
+		if !sleepCtx(ctx, 24*time.Hour-time.Minute) {
+			return
+		}
 	}
 }
 

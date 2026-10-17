@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net"
 	"net/http"
@@ -65,9 +66,11 @@ func checkRate(buckets map[string]*loginBucket, key string) bool {
 
 // sweepLoginBuckets periodically evicts expired rate-limit entries so neither
 // bucket map grows unbounded as distinct IPs/emails attempt to log in.
-func sweepLoginBuckets() {
+func sweepLoginBuckets(ctx context.Context) {
 	for {
-		time.Sleep(loginWindow)
+		if !sleepCtx(ctx, loginWindow) {
+			return
+		}
 		loginMu.Lock()
 		evictExpiredLoginBuckets(time.Now(), loginBuckets, loginEmailBuckets)
 		loginMu.Unlock()

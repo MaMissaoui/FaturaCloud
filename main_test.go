@@ -131,8 +131,8 @@ func TestBackupDirPermissions(t *testing.T) {
 	tmp := t.TempDir()
 	dbPath := filepath.Join(tmp, "sqlite.db")
 	backupDir := backupDirPath(dbPath)
-	if err := os.MkdirAll(backupDir, backupDirMode); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
+	if err := ensureBackupDir(backupDir); err != nil {
+		t.Fatalf("ensureBackupDir: %v", err)
 	}
 	info, err := os.Stat(backupDir)
 	if err != nil {
@@ -140,5 +140,67 @@ func TestBackupDirPermissions(t *testing.T) {
 	}
 	if perm := info.Mode().Perm(); perm != 0750 {
 		t.Fatalf("backup dir mode = %o, want 0750", perm)
+	}
+}
+
+// TestBackupDirPermissionsFixAnExistingDirectory pins audit F179: a 0700
+// directory left by an install from before #512 is opened up to the group
+// too, not only a newly created one.
+func TestBackupDirPermissionsFixAnExistingDirectory(t *testing.T) {
+	backupDir := filepath.Join(t.TempDir(), "backups")
+	if err := os.Mkdir(backupDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureBackupDir(backupDir); err != nil {
+		t.Fatalf("ensureBackupDir: %v", err)
+	}
+	info, err := os.Stat(backupDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0750 {
+		t.Fatalf("existing backup dir mode = %o, want 0750", perm)
+	}
+
+	// A directory opened further by the operator keeps its extra bits.
+	wider := filepath.Join(t.TempDir(), "backups")
+	if err := os.Mkdir(wider, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(wider, 0775); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureBackupDir(wider); err != nil {
+		t.Fatalf("ensureBackupDir: %v", err)
+	}
+	if info, _ := os.Stat(wider); info.Mode().Perm() != 0775 {
+		t.Fatalf("0775 backup dir became %o; ensureBackupDir must only add bits", info.Mode().Perm())
+	}
+}
+
+// TestHealthcheckCommand: the Docker HEALTHCHECK command exits 0 only when
+// the server answers /api/healthz with 200 (audit F181).
+func TestHealthcheckCommand(t *testing.T) {
+	status := http.StatusOK
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/healthz" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(status)
+	}))
+	defer srv.Close()
+	port := srv.URL[strings.LastIndex(srv.URL, ":")+1:]
+
+	if code := healthcheck(port); code != 0 {
+		t.Fatalf("healthy server: exit %d, want 0", code)
+	}
+	status = http.StatusServiceUnavailable
+	if code := healthcheck(port); code != 1 {
+		t.Fatalf("unhealthy server: exit %d, want 1", code)
+	}
+	srv.Close()
+	if code := healthcheck(port); code != 1 {
+		t.Fatalf("no server: exit %d, want 1", code)
 	}
 }
