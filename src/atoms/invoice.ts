@@ -223,11 +223,15 @@ export const invoiceAtom = atom(
       }
     } catch (error) {
       console.error("Invoice operation failed:", error);
-      if (!invoiceId) {
-        message.error(t`Invoice creation failed`);
-      } else {
-        message.error(t`Invoice update failed`);
-      }
+      // The server's own reason (a taken number, totals that don't add up,
+      // a posted entry) — the bare "failed" hid what to fix.
+      message.error(
+        error instanceof Error
+          ? error.message
+          : !invoiceId
+            ? t`Invoice creation failed`
+            : t`Invoice update failed`,
+      );
       // Rethrow (F56/F67 convention — see CLAUDE.md's src/atoms/product.ts
       // entry, and every other document-type atom) so the details page's
       // handleSubmit can tell a failed save apart from a successful one and
@@ -349,7 +353,7 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
     return createdInvoice.id;
   } catch (error) {
     console.error("Failed to duplicate invoice:", error);
-    message.error(t`Invoice duplication failed`);
+    message.error(error instanceof Error ? error.message : t`Invoice duplication failed`);
     return null;
   }
 });

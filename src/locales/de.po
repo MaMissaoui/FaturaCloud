@@ -3280,7 +3280,7 @@ msgstr "Status des Wareneingangs konnte nicht aktualisiert werden"
 msgid "Failed to update incoming invoice state"
 msgstr "Status der Eingangsrechnung konnte nicht aktualisiert werden"
 
-#: src/atoms/invoice.ts:279
+#: src/atoms/invoice.ts:283
 msgid "Failed to update invoice state"
 msgstr "Rechnungsstatus konnte nicht aktualisiert werden"
 
@@ -4017,7 +4017,7 @@ msgstr "Rechnung {vendorInvoiceNumber}"
 msgid "Invoice created"
 msgstr "Rechnung erstellt"
 
-#: src/atoms/invoice.ts:227
+#: src/atoms/invoice.ts:232
 msgid "Invoice creation failed"
 msgstr "Rechnung-Erstellung fehlgeschlagen"
 
@@ -4029,12 +4029,12 @@ msgstr "Rechnungsdatum"
 msgid "Invoice date is required"
 msgstr "Rechnungsdatum ist erforderlich"
 
-#: src/atoms/invoice.ts:250
+#: src/atoms/invoice.ts:254
 msgid "Invoice deleted"
 msgstr "Rechnung gelöscht"
 
-#: src/atoms/invoice.ts:252
-#: src/atoms/invoice.ts:257
+#: src/atoms/invoice.ts:256
+#: src/atoms/invoice.ts:261
 msgid "Invoice deletion failed"
 msgstr "Rechnung-Löschung fehlgeschlagen"
 
@@ -4042,15 +4042,15 @@ msgstr "Rechnung-Löschung fehlgeschlagen"
 msgid "Invoice details"
 msgstr "Rechnungsdetails"
 
-#: src/atoms/invoice.ts:336
+#: src/atoms/invoice.ts:340
 msgid "Invoice duplicated successfully"
 msgstr "Rechnung erfolgreich dupliziert"
 
-#: src/atoms/invoice.ts:352
+#: src/atoms/invoice.ts:356
 msgid "Invoice duplication failed"
 msgstr "Rechnung-Duplizierung fehlgeschlagen"
 
-#: src/atoms/invoice.ts:294
+#: src/atoms/invoice.ts:298
 msgid "Invoice not found"
 msgstr "Rechnung nicht gefunden"
 
@@ -4076,7 +4076,7 @@ msgstr "Rechnungsnummernformat"
 msgid "Invoice settings"
 msgstr "Rechnungseinstellungen"
 
-#: src/atoms/invoice.ts:269
+#: src/atoms/invoice.ts:273
 msgid "Invoice state updated"
 msgstr "Rechnungsstatus aktualisiert"
 
@@ -4084,7 +4084,7 @@ msgstr "Rechnungsstatus aktualisiert"
 msgid "Invoice total"
 msgstr "Rechnungsbetrag"
 
-#: src/atoms/invoice.ts:229
+#: src/atoms/invoice.ts:233
 msgid "Invoice update failed"
 msgstr "Rechnung-Aktualisierung fehlgeschlagen"
 

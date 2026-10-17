@@ -3280,7 +3280,7 @@ msgstr "Failed to update goods receipt status"
 msgid "Failed to update incoming invoice state"
 msgstr "Failed to update incoming invoice state"
 
-#: src/atoms/invoice.ts:279
+#: src/atoms/invoice.ts:283
 msgid "Failed to update invoice state"
 msgstr "Failed to update invoice state"
 
@@ -4013,7 +4013,7 @@ msgstr "Invoice {vendorInvoiceNumber}"
 msgid "Invoice created"
 msgstr "Invoice created"
 
-#: src/atoms/invoice.ts:227
+#: src/atoms/invoice.ts:232
 msgid "Invoice creation failed"
 msgstr "Invoice creation failed"
 
@@ -4025,12 +4025,12 @@ msgstr "Invoice date"
 msgid "Invoice date is required"
 msgstr "Invoice date is required"
 
-#: src/atoms/invoice.ts:250
+#: src/atoms/invoice.ts:254
 msgid "Invoice deleted"
 msgstr "Invoice deleted"
 
-#: src/atoms/invoice.ts:252
-#: src/atoms/invoice.ts:257
+#: src/atoms/invoice.ts:256
+#: src/atoms/invoice.ts:261
 msgid "Invoice deletion failed"
 msgstr "Invoice deletion failed"
 
@@ -4038,15 +4038,15 @@ msgstr "Invoice deletion failed"
 msgid "Invoice details"
 msgstr "Invoice details"
 
-#: src/atoms/invoice.ts:336
+#: src/atoms/invoice.ts:340
 msgid "Invoice duplicated successfully"
 msgstr "Invoice duplicated successfully"
 
-#: src/atoms/invoice.ts:352
+#: src/atoms/invoice.ts:356
 msgid "Invoice duplication failed"
 msgstr "Invoice duplication failed"
 
-#: src/atoms/invoice.ts:294
+#: src/atoms/invoice.ts:298
 msgid "Invoice not found"
 msgstr "Invoice not found"
 
@@ -4072,7 +4072,7 @@ msgstr "Invoice number format"
 msgid "Invoice settings"
 msgstr "Invoice settings"
 
-#: src/atoms/invoice.ts:269
+#: src/atoms/invoice.ts:273
 msgid "Invoice state updated"
 msgstr "Invoice state updated"
 
@@ -4080,7 +4080,7 @@ msgstr "Invoice state updated"
 msgid "Invoice total"
 msgstr "Invoice total"
 
-#: src/atoms/invoice.ts:229
+#: src/atoms/invoice.ts:233
 msgid "Invoice update failed"
 msgstr "Invoice update failed"
 

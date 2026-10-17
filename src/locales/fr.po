@@ -3280,7 +3280,7 @@ msgstr "Échec de la mise à jour du statut de la réception"
 msgid "Failed to update incoming invoice state"
 msgstr "Échec de la mise à jour du statut de la facture fournisseur"
 
-#: src/atoms/invoice.ts:279
+#: src/atoms/invoice.ts:283
 msgid "Failed to update invoice state"
 msgstr "Échec de la mise à jour de l'état de la facture"
 
@@ -4017,7 +4017,7 @@ msgstr "Facture {vendorInvoiceNumber}"
 msgid "Invoice created"
 msgstr "Facture créée"
 
-#: src/atoms/invoice.ts:227
+#: src/atoms/invoice.ts:232
 msgid "Invoice creation failed"
 msgstr "Échec de la création de la facture"
 
@@ -4029,12 +4029,12 @@ msgstr "Date de facture"
 msgid "Invoice date is required"
 msgstr "La date de facture est obligatoire"
 
-#: src/atoms/invoice.ts:250
+#: src/atoms/invoice.ts:254
 msgid "Invoice deleted"
 msgstr "Facture supprimée"
 
-#: src/atoms/invoice.ts:252
-#: src/atoms/invoice.ts:257
+#: src/atoms/invoice.ts:256
+#: src/atoms/invoice.ts:261
 msgid "Invoice deletion failed"
 msgstr "Échec de la suppression de la facture"
 
@@ -4042,15 +4042,15 @@ msgstr "Échec de la suppression de la facture"
 msgid "Invoice details"
 msgstr "Détails de la facture"
 
-#: src/atoms/invoice.ts:336
+#: src/atoms/invoice.ts:340
 msgid "Invoice duplicated successfully"
 msgstr "Facture dupliquée avec succès"
 
-#: src/atoms/invoice.ts:352
+#: src/atoms/invoice.ts:356
 msgid "Invoice duplication failed"
 msgstr "Échec de la duplication de la facture"
 
-#: src/atoms/invoice.ts:294
+#: src/atoms/invoice.ts:298
 msgid "Invoice not found"
 msgstr "Facture introuvable"
 
@@ -4076,7 +4076,7 @@ msgstr "Format du numéro de facture"
 msgid "Invoice settings"
 msgstr "Paramètres des factures"
 
-#: src/atoms/invoice.ts:269
+#: src/atoms/invoice.ts:273
 msgid "Invoice state updated"
 msgstr "État de la facture mis à jour"
 
@@ -4084,7 +4084,7 @@ msgstr "État de la facture mis à jour"
 msgid "Invoice total"
 msgstr "Total de la facture"
 
-#: src/atoms/invoice.ts:229
+#: src/atoms/invoice.ts:233
 msgid "Invoice update failed"
 msgstr "Échec de la mise à jour de la facture"
 
