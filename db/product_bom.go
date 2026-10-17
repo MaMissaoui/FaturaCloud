@@ -324,11 +324,8 @@ func (d *Database) replaceBillOfMaterials(finishedProductID string, lines []Crea
 		}
 	}
 
-	nextVersionNumber := 1
 	changed := true
 	if hasLatestVersion {
-		nextVersionNumber = latestVersion.VersionNumber + 1
-
 		// Compare against the latest VERSION's own lines, not the live
 		// bill_of_materials table — the two can legitimately diverge (e.g.
 		// deleting a component product cascades the live row via
@@ -409,7 +406,7 @@ func (d *Database) replaceBillOfMaterials(finishedProductID string, lines []Crea
 		); err != nil {
 			return nil, fmt.Errorf("replace_bill_of_materials next_version: %w", err)
 		}
-		nextVersionNumber = maxVersion + 1
+		nextVersionNumber := maxVersion + 1
 
 		versionID, _ := gonanoid.New()
 		if _, err := tx.Exec(`
