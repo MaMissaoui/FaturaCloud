@@ -78,7 +78,7 @@ Routes are registered in `api/router.go` (the authoritative list); route-level b
 All handlers return JSON. Errors use `{"error": "message"}`.
 
 ## File Structure
-- `main.go` — entry point; opens DB, seeds first admin, mounts API router, serves embedded `dist/`
+- `main.go` — entry point; opens DB, seeds first admin, mounts API router, serves embedded `dist/`. `serverHandler` is the whole chain: `compressAPIResponses` (`compress.go`, gzips `/api` JSON/text over 1 KB) **outside** `api.RequestLogger` — never inside it, or the activity history loses a created document's id (`TestServerHandlerKeepsActivityHistory`). `static.go` serves the frontend from memory: hashed `/assets/*` cached a year as immutable (a missing one is a 404, never the SPA shell), everything else `no-cache` with an ETag, text files gzipped once at startup (audit F171)
 - `Dockerfile` — multi-stage build: node (frontend) → golang (backend + embed) → debian (runtime, carries `libreoffice-calc` for PDF export — see the Docker section)
 - `docker-compose.yml` — single service, `/data` volume for SQLite
 - `docker-compose.oidc.yml` — overlay enabling OIDC SSO against homelab-auth's Authelia via Nginx Proxy Manager (no Traefik — see `docs/oidc-sso.md`); merge with `-f docker-compose.yml -f docker-compose.oidc.yml`

@@ -124,12 +124,14 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/deliveries/{id}/export` — fills the org's Excel template (upload or embedded default) and returns .xlsx; ?format=pdf converts it with headless LibreOffice — same mechanism and same "not wrapped in withDB" reasoning as the invoice export above. No price columns at all — a delivery note never shows prices, so there is no totals block
 
 **Payments (F104)**
+- `GET /api/organizations/{orgId}/payments` — optional `direction=inbound|outbound` and `clientId` filters (audit F172); without them every payment, as before. The Cash Book is its only frontend caller and asks for inbound payments — of the customer being served in the stacked layout, of everyone in the loan register layout (its stalled grouping needs them)
 - `POST /api/payments` and `POST /api/payments/{id}/void` — require the `accounting` organization role (admin/power_user/general/accounting pass, via the standard role helpers). Deliberate boundary decision: a payment settles AR/AP and a void reverses a posted GL entry, so both are accounting actions, the same tier as journal-entry post/reverse.
 
 **Accounting — Fiscal Years / Periods**
 - `POST /api/fiscal-years/{id}/close` — org admin **or accounting** (`orgRoleAdminProtected`), irreversible — see Database section
 
 **Accounting — Journal Entries**
+- `GET /api/organizations/{orgId}/journal-entries` — `journalId`/`status` filters; paging is opt-in (audit F176): with `limit` (≤ 500) and `offset`, plus `sort` (`entryNumber`/`date`/`journal`/`description`/`reference`/`status`) and `order=asc|desc`, the answer is `{data, total}`; without `limit`, every entry as a plain array. The Journal Entries page always pages
 - `DELETE /api/journal-entries/{id}` — draft only — reverse a posted entry instead
 
 **Accounting — GL Export**

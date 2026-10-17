@@ -48,7 +48,7 @@ func TestPaymentInvoiceLinesAndProducts(t *testing.T) {
 		t.Fatalf("CreateCashSalePayment: %v", err)
 	}
 
-	payments, err := d.GetPayments(fx.orgID)
+	payments, err := d.GetPayments(fx.orgID, PaymentListOptions{})
 	if err != nil {
 		t.Fatalf("GetPayments: %v", err)
 	}

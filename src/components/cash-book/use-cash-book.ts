@@ -15,6 +15,8 @@ import find from "lodash/find";
 import map from "lodash/map";
 import sum from "lodash/sum";
 import toNumber from "lodash/toNumber";
+import orderBy from "lodash/orderBy";
+import uniq from "lodash/uniq";
 import { organizationAtom, organizationIdAtom } from "src/atoms/organization";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
@@ -31,6 +33,7 @@ import {
   GetDailyCashMovements,
   GetLoanStatus,
   GetPayments,
+  GetProduct,
 } from "src/api";
 import type {
   CashMovementDetail,
@@ -39,7 +42,7 @@ import type {
   LoanStatusRow,
 } from "src/api";
 import { normalizeInventoryValuation } from "src/types/inventory-valuation";
-import type { Account, Client, Payment } from "src/types/models";
+import type { Account, Client, Payment, Product } from "src/types/models";
 import { calendarDayMs, useDatePickerFormat } from "src/utils/date";
 import { searchClients } from "src/utils/client-search";
 import {
@@ -90,7 +93,9 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   const organization = useAtomValue(organizationAtom);
   const clients = useAtomValue(clientsAtom);
   const setClients = useSetAtom(setClientsAtom);
+  const setClientList = useSetAtom(clientsAtom);
   const products = useAtomValue(productsAtom);
+  const setProductList = useSetAtom(productsAtom);
   const setProducts = useSetAtom(setProductsAtom);
   // A component/intermediate isn't sellable — same filter invoices/orders use.
   // Nor, at the counter, is a serialized stock product: the server refuses it
@@ -187,6 +192,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // products.tsx/inventory.tsx's debounced-search guards.
   const dailyMovementRequestIdRef = useRef(0);
   const loanStatusRequestIdRef = useRef(0);
+  const paymentsRequestIdRef = useRef(0);
 
   // Local-calendar comparison — "today" is what the cashier at the counter
   // means by it, and it's what gates whether new sales/payments/withdrawals
@@ -264,24 +270,40 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, loanStatusClientId]);
 
+  // Only inbound payments are ever shown, and the stacked layout shows the
+  // customer being served (or the loan-report filter), so that is all it
+  // asks for (audit F172: the whole history was 5.3 MB on the retail demo).
+  // The loan register layout groups every customer's payments to tell a
+  // stalled balance, so it keeps the organization-wide inbound list.
+  const paymentScopeId = scopeLoanStatusToClient
+    ? selectedClient?.id || loanStatusClientId || ""
+    : "";
+
   const refreshPayments = async () => {
     if (!organizationId) return;
+    const requestId = ++paymentsRequestIdRef.current;
     setLoadingPayments(true);
     try {
-      setPayments(await GetPayments(organizationId));
+      const rows = await GetPayments(organizationId, {
+        direction: "inbound",
+        clientId: paymentScopeId || undefined,
+      });
+      if (requestId !== paymentsRequestIdRef.current) return;
+      setPayments(rows);
     } catch (error) {
+      if (requestId !== paymentsRequestIdRef.current) return;
       console.error("Failed to fetch payments:", error);
       message.error(t`Failed to load payment history`);
       setPayments([]);
     } finally {
-      setLoadingPayments(false);
+      if (requestId === paymentsRequestIdRef.current) setLoadingPayments(false);
     }
   };
 
   useEffect(() => {
     refreshPayments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId]);
+  }, [organizationId, paymentScopeId]);
 
   const filteredLoanStatusRows = useMemo(
     () => (openLoansOnly ? loanStatusRows.filter((row) => row.outstanding !== 0) : loanStatusRows),
@@ -654,7 +676,11 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
       return;
     }
 
+    const soldProductIds = uniq(
+      (values.lineItems || []).map((item: any) => item.productId).filter(Boolean),
+    ) as string[];
     setSubmitting(true);
+    let result: Awaited<ReturnType<typeof CreateCashSale>>;
     try {
       const req: CreateCashSaleRequest = {
         organizationId,
@@ -677,26 +703,55 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
         ...(selectedClient ? { clientId: selectedClient.id } : { newClient: newClientDraft! }),
       };
 
-      const result = await CreateCashSale(req);
-      message.success(
-        amountReceivedCents >= totalCents ? t`Cash sale recorded` : t`Loan sale recorded`,
-      );
-      setSelectedClient(result.client);
-      setNewClientDraft(null);
-      if (scopeLoanStatusToClient) setLoanStatusClientId(result.client.id);
-      await setClients();
-      // The sale took its stock-tracked lines out of stock server-side
-      // (db/invoice_stock.go) — refresh so the next pick sees current stock.
-      await setProducts();
-      await refreshDailyMovement();
-      await refreshLoanStatus();
-      await refreshPayments();
-      resetSaleForm();
+      result = await CreateCashSale(req);
     } catch (error) {
       console.error("Failed to record sale:", error);
       message.error(error instanceof Error ? error.message : t`Failed to record sale`);
+      return;
     } finally {
       setSubmitting(false);
+    }
+    message.success(
+      amountReceivedCents >= totalCents ? t`Cash sale recorded` : t`Loan sale recorded`,
+    );
+    // The sale is recorded: the counter is free for the next one right away,
+    // and the panels refresh in the background, in parallel (audit F172 —
+    // they used to be awaited one by one, the whole loan register and payment
+    // history included, before the button let go).
+    const client = result.client;
+    const loanScopeChanges = scopeLoanStatusToClient && loanStatusClientId !== client.id;
+    const paymentScopeChanges = scopeLoanStatusToClient && paymentScopeId !== client.id;
+    setSelectedClient(client);
+    setNewClientDraft(null);
+    if (scopeLoanStatusToClient) setLoanStatusClientId(client.id);
+    resetSaleForm();
+    // The server returned the client (created or not): merge it rather than
+    // download every client again.
+    setClientList((list) =>
+      orderBy([...(list as Client[]).filter((c) => c.id !== client.id), client], "name", "asc"),
+    );
+    // A scope that changes refetches through its effect; otherwise refresh.
+    void Promise.all([
+      refreshSoldProducts(soldProductIds),
+      refreshDailyMovement(),
+      loanScopeChanges ? undefined : refreshLoanStatus(),
+      paymentScopeChanges ? undefined : refreshPayments(),
+    ]);
+  };
+
+  // The sale took its stock-tracked lines out of stock server-side
+  // (db/invoice_stock.go): re-read just those products, so the next pick
+  // sees current stock, instead of the whole catalog.
+  const refreshSoldProducts = async (productIds: string[]) => {
+    try {
+      const fresh = await Promise.all(productIds.map((id) => GetProduct(id)));
+      setProductList((list) => {
+        const byId = new Map(fresh.map((p) => [p.id, p]));
+        return (list as Product[]).map((p) => byId.get(p.id) ?? p);
+      });
+    } catch (error) {
+      console.error("Failed to refresh sold products:", error);
+      setProducts();
     }
   };
 
@@ -734,10 +789,9 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     // A payment posts to the cash register as well as against the loan, so
     // refresh the register's movements too — a payment recorded while a sale
     // is in progress (the register card is hidden then, see the !inSale gate)
-    // would otherwise stay missing from the movements list afterwards.
-    await refreshLoanStatus();
-    await refreshDailyMovement();
-    await refreshPayments();
+    // would otherwise stay missing from the movements list afterwards. In
+    // parallel and in the background, like after a sale (audit F172).
+    void Promise.all([refreshLoanStatus(), refreshDailyMovement(), refreshPayments()]);
   };
 
   // A product picked on a sale line: warn about stock and cost basis, then

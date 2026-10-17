@@ -9,7 +9,15 @@ import (
 
 func (h *handler) listPayments(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	payments, err := h.db.GetPayments(orgID)
+	// direction and clientId are optional filters (audit F172); without them
+	// the list is every payment, as it always was.
+	q := r.URL.Query()
+	opts := db.PaymentListOptions{Direction: q.Get("direction"), ClientID: q.Get("clientId")}
+	if opts.Direction != "" && opts.Direction != "inbound" && opts.Direction != "outbound" {
+		writeError(w, http.StatusBadRequest, `direction must be "inbound" or "outbound"`)
+		return
+	}
+	payments, err := h.db.GetPayments(orgID, opts)
 	if err != nil {
 		writeInternalError(w, err)
 		return

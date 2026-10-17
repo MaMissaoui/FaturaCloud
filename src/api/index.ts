@@ -1578,16 +1578,29 @@ export const CloseFiscalYear = (id: string) => post<FiscalYear>(`/fiscal-years/$
 
 // ---- Accounting: Journal entries ----
 
+// One page of an organization's journal entries and how many match in all —
+// the list is paged on the server (audit F176); sort is a column key of
+// db.journalEntrySortColumns.
 export const GetJournalEntries = (
   organizationId: string,
-  filters?: { journalId?: string; status?: string },
+  options: {
+    journalId?: string;
+    status?: string;
+    limit: number;
+    offset: number;
+    sort?: string;
+    order?: "asc" | "desc";
+  },
 ) => {
   const params = new URLSearchParams();
-  if (filters?.journalId) params.set("journalId", filters.journalId);
-  if (filters?.status) params.set("status", filters.status);
-  const qs = params.toString();
-  return get<JournalEntry[]>(
-    `/organizations/${organizationId}/journal-entries${qs ? `?${qs}` : ""}`,
+  if (options.journalId) params.set("journalId", options.journalId);
+  if (options.status) params.set("status", options.status);
+  params.set("limit", String(options.limit));
+  params.set("offset", String(options.offset));
+  if (options.sort) params.set("sort", options.sort);
+  if (options.order) params.set("order", options.order);
+  return get<{ data: JournalEntry[]; total: number }>(
+    `/organizations/${organizationId}/journal-entries?${params.toString()}`,
   );
 };
 export const GetJournalEntry = (id: string) => get<JournalEntry>(`/journal-entries/${id}`);
@@ -1607,8 +1620,18 @@ export const DeleteJournalEntry = (id: string) =>
 
 // ---- Accounting: Payments ----
 
-export const GetPayments = (organizationId: string) =>
-  get<Payment[]>(`/organizations/${organizationId}/payments`);
+// Without filters, every payment of the organization; direction and clientId
+// narrow it on the server (audit F172).
+export const GetPayments = (
+  organizationId: string,
+  filters: { direction?: "inbound" | "outbound"; clientId?: string } = {},
+) => {
+  const params = new URLSearchParams();
+  if (filters.direction) params.set("direction", filters.direction);
+  if (filters.clientId) params.set("clientId", filters.clientId);
+  const query = params.toString();
+  return get<Payment[]>(`/organizations/${organizationId}/payments${query ? `?${query}` : ""}`);
+};
 export const GetPayment = (id: string) => get<Payment>(`/payments/${id}`);
 export const GetPaymentApplications = (id: string) =>
   get<PaymentApplication[]>(`/payments/${id}/applications`);

@@ -33,7 +33,7 @@ func newQuantityOnlyOrg(t *testing.T, d *Database, orgID string, serialized bool
 
 func requireNoJournalEntries(t *testing.T, d *Database, orgID string) {
 	t.Helper()
-	entries, err := d.GetJournalEntries(orgID, "", "")
+	entries, _, err := d.GetJournalEntries(orgID, JournalEntryListOptions{})
 	if err != nil {
 		t.Fatalf("GetJournalEntries: %v", err)
 	}

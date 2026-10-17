@@ -114,7 +114,7 @@ func TestCashSalePaymentSettlesOnlyItsLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetProduct: %v", err)
 	}
-	payments, err := d.GetPayments(fx.orgID)
+	payments, err := d.GetPayments(fx.orgID, PaymentListOptions{})
 	if err != nil {
 		t.Fatalf("GetPayments: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestCashSalePaymentSettlesOnlyItsLine(t *testing.T) {
 	if rows[bigLine].InvoiceNumber != result.Invoice.Number || result.Invoice.Number == "" {
 		t.Fatalf("loan row invoice number = %q, want %q", rows[bigLine].InvoiceNumber, result.Invoice.Number)
 	}
-	payments, err = d.GetPayments(fx.orgID)
+	payments, err = d.GetPayments(fx.orgID, PaymentListOptions{})
 	if err != nil {
 		t.Fatalf("GetPayments: %v", err)
 	}

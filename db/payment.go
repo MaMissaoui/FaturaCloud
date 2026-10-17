@@ -149,12 +149,36 @@ func (d *Database) GetPayment(id string) (*Payment, error) {
 	return &payment, nil
 }
 
-// GetPayments lists every payment for an organization, newest first.
-func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
+// PaymentListOptions narrows GetPayments. The zero value lists every
+// payment of the organization, as before the options existed (audit F172:
+// the Cash Book downloaded the whole history, 5.3 MB on the retail demo, to
+// show one customer's inbound payments).
+type PaymentListOptions struct {
+	Direction string // "inbound" or "outbound"; empty lists both
+	ClientID  string // empty lists every partner
+}
+
+// GetPayments lists an organization's payments, newest first, narrowed by
+// opts.
+func (d *Database) GetPayments(organizationID string, opts PaymentListOptions) ([]Payment, error) {
+	// where filters the payments (alias p); every query below repeats it, so
+	// the invoice numbers and product names are read only for the payments
+	// listed.
+	where := "p.organizationId = ?"
+	args := []any{organizationID}
+	if opts.Direction != "" {
+		where += " AND p.direction = ?"
+		args = append(args, opts.Direction)
+	}
+	if opts.ClientID != "" {
+		where += " AND p.clientId = ?"
+		args = append(args, opts.ClientID)
+	}
+
 	payments := []Payment{}
 	err := d.DB.Select(&payments,
-		`SELECT * FROM payments WHERE organizationId = ? ORDER BY date DESC, createdAt DESC`,
-		organizationID,
+		`SELECT p.* FROM payments p WHERE `+where+` ORDER BY p.date DESC, p.createdAt DESC`,
+		args...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_payments: %w", err)
@@ -171,9 +195,9 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 		FROM payment_applications pa
 		JOIN payments p ON p.id = pa.paymentId
 		JOIN invoices i ON i.id = pa.documentId
-		WHERE pa.documentType = 'invoice' AND p.organizationId = ?
+		WHERE pa.documentType = 'invoice' AND `+where+`
 		ORDER BY pa.createdAt ASC, pa.rowid ASC`,
-		organizationID,
+		args...,
 	); err != nil {
 		return nil, fmt.Errorf("get_payments invoice_numbers: %w", err)
 	}
@@ -192,10 +216,10 @@ func (d *Database) GetPayments(organizationID string) ([]Payment, error) {
 		WHERE li.invoiceId IN (
 			SELECT pa.documentId FROM payment_applications pa
 			JOIN payments p ON p.id = pa.paymentId
-			WHERE pa.documentType = 'invoice' AND p.organizationId = ?
+			WHERE pa.documentType = 'invoice' AND `+where+`
 		)
 		ORDER BY li.invoiceId, li.position, li.rowid`,
-		organizationID,
+		args...,
 	); err != nil {
 		return nil, fmt.Errorf("get_payments products: %w", err)
 	}

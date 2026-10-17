@@ -467,7 +467,7 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 		return nil, "", err
 	}
 
-	payments, err := d.GetPayments(organizationID)
+	payments, err := d.GetPayments(organizationID, PaymentListOptions{Direction: "inbound", ClientID: clientID})
 	if err != nil {
 		return nil, "", err
 	}
@@ -482,20 +482,8 @@ func (d *Database) GeneratePaymentHistoryExport(organizationID, clientID string)
 		}
 	}
 
-	// Filtered in Go rather than in a dedicated query, the same choice
-	// GenerateLoanStatusExport makes for its openOnly filter: GetPayments is
-	// already the screen's own query, and the per-customer row counts here
-	// are small.
-	rows := payments[:0]
-	for _, p := range payments {
-		if p.Direction != "inbound" {
-			continue
-		}
-		if clientID != "" && (p.ClientID == nil || *p.ClientID != clientID) {
-			continue
-		}
-		rows = append(rows, p)
-	}
+	// GetPayments is the screen's own query, narrowed the same way.
+	rows := payments
 
 	orgName := ""
 	if org.Name != nil {
