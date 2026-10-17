@@ -144,7 +144,9 @@ jobs:
         # exit, so they need no allowlist entry here.
         run: |
           set +e
-          go run golang.org/x/vuln/cmd/govulncheck@latest ./... > govulncheck-output.txt 2>&1
+          # Pinned (audit F181): @latest made a new govulncheck release able to
+          # change this job's result with no change here. Bump it deliberately.
+          go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./... > govulncheck-output.txt 2>&1
           exit_code=$?
           set -e
           cat govulncheck-output.txt
@@ -204,6 +206,15 @@ jobs:
         # release; high threshold to fail only on genuinely serious findings.
         run: pnpm audit --prod --audit-level high
 
+      - name: Audit dev dependencies (report only)
+        # The build and test tooling is audited too, so its advisories are
+        # seen (audit F181), but it doesn't fail the job: none of it ships,
+        # and the ones open on 2026-10-17 are pinned by their parents
+        # (jotai-devtools > jsondiffpatch, @lingui/cli > micromatch > braces,
+        # oxfmt > tinypool) until those release fixes.
+        continue-on-error: true
+        run: pnpm audit --audit-level high
+
       - name: Lint
         run: pnpm lint
 
@@ -242,7 +253,9 @@ jobs:
   # every PR unusably slow. The backend target still exercises everything in
   # the Dockerfile a code change can break — the frontend pnpm build, the Go
   # compile (including the `dist/` embed) — so Dockerfile rot is caught
-  # without paying for the runtime stage.
+  # without paying for the runtime stage. The runtime stage itself is built,
+  # run and health-checked by runtime-image.yml, on every PR that changes the
+  # image and weekly (audit F181).
   docker:
     runs-on: ubuntu-24.04
     steps:

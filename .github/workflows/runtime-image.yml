@@ -1,0 +1,68 @@
+name: Runtime image
+
+# ci.yml's docker job builds only the `backend` target, to keep every PR
+# fast: the runtime stage installs libreoffice-calc (~630 MB). That left a
+# broken runtime stage to be found only on a release tag (audit F181). This
+# workflow builds the whole image and runs it — when a PR changes how the
+# image is built, weekly (an apt package can change without any change
+# here), and on demand.
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose*.yml"
+      - ".github/workflows/runtime-image.yml"
+  schedule:
+    - cron: "17 4 * * 1" # Mondays 04:17 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: runtime-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build the full image
+        run: docker build -t fatura-cloud-ci:runtime --build-arg VERSION=ci .
+
+      # /data present means production mode: the server refuses to start
+      # without a strong JWT_SECRET and an ADMIN_PASSWORD.
+      - name: Start it and wait for the health check
+        run: |
+          mkdir -p data && sudo chown 1000:1000 data
+          docker run -d --name fc -p 8080:8080 -v "$PWD/data:/data" \
+            -e JWT_SECRET="$(openssl rand -hex 32)" -e ADMIN_PASSWORD=ci-admin-password \
+            fatura-cloud-ci:runtime
+          for _ in $(seq 1 90); do
+            health=$(docker inspect -f '{{.State.Health.Status}}' fc)
+            [ "$health" = healthy ] && break
+            sleep 2
+          done
+          echo "health: $health"
+          if [ "$health" != healthy ]; then docker logs fc; exit 1; fi
+          curl -fsS http://localhost:8080/api/version
+
+      # The PDF export shells out to soffice as the non-root app user; convert
+      # an embedded template the same way db/pdf_convert.go does.
+      - name: Convert a template to PDF inside the container
+        run: |
+          docker cp db/templates/invoice_tunisia.xlsx fc:/tmp/check.xlsx
+          docker exec fc soffice --headless -env:UserInstallation=file:///tmp/lo-profile \
+            --convert-to pdf --outdir /tmp /tmp/check.xlsx
+          docker exec fc head -c 5 /tmp/check.pdf | grep -q '%PDF-'
+
+      - name: Stop gracefully
+        run: |
+          docker stop fc
+          docker logs fc 2>&1 | tail -5
+          docker logs fc 2>&1 | grep -q 'msg=Stopped'

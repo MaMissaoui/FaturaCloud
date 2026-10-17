@@ -144,4 +144,11 @@ EXPOSE 8080
 
 ENV PORT=8080
 
+# The binary checks itself (`fatura-cloud healthcheck` asks /api/healthz):
+# the slim runtime image has no curl or wget. A wedged process turns the
+# container unhealthy, which an orchestrator or autoheal can restart
+# (audit F181). The start period covers migrations on a large database.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ["./fatura-cloud", "healthcheck"]
+
 CMD ["./fatura-cloud"]

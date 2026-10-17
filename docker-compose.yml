@@ -12,6 +12,9 @@ services:
         # locally-built image. Left unset, this build has no DSN, same as the
         # published GHCR image — see CLAUDE.md's Environment Variables section.
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        # Reported by GET /api/version; a local build says "dev" unless set
+        # (audit F181).
+        VERSION: ${VERSION:-dev}
     ports:
       - "8080:8080"
     volumes:
@@ -27,3 +30,7 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@fatura.cloud}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     restart: unless-stopped
+    # docker stop sends SIGTERM and the server shuts down gracefully
+    # (in-flight requests finish within 25 s, then the database closes);
+    # this leaves it the time before Docker kills it.
+    stop_grace_period: 30s

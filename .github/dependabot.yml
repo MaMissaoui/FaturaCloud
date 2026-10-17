@@ -1,0 +1,39 @@
+# Base images are digest-pinned and actions SHA-pinned, which is what keeps
+# a build reproducible — and also what keeps them from ever moving on their
+# own (audit F181). Dependabot proposes the updates as PRs, grouped weekly so
+# they stay few; each still goes through CI and review like any other PR.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      base-images:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-minor-and-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
