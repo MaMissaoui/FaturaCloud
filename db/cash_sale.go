@@ -382,6 +382,9 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		nil, nil, 0, nil, nil,
 	)
 	if err != nil {
+		if isDuplicateInvoiceNumber(err) {
+			return nil, refuseTakenInvoiceNumber(number)
+		}
 		return nil, fmt.Errorf("create_cash_sale insert_invoice: %w", err)
 	}
 

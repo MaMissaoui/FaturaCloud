@@ -132,11 +132,17 @@ func TestInvoiceNumberUniqueIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create other: %v", err)
 	}
-	if _, err := d.DB.Exec(`UPDATE invoices SET number = 'FAC-1' WHERE id = ?`, other.ID); err == nil || !strings.Contains(err.Error(), "UNIQUE") {
-		t.Fatalf("raw duplicate err = %v; want a UNIQUE violation", err)
+	_, err = d.DB.Exec(`UPDATE invoices SET number = 'FAC-1' WHERE id = ?`, other.ID)
+	if !isDuplicateInvoiceNumber(err) {
+		t.Fatalf("raw duplicate err = %v; want the invoice number UNIQUE violation", err)
+	}
+	if _, err := d.DB.Exec(`UPDATE invoices SET number = '' WHERE id IN (?, ?)`, inv.ID, other.ID); err != nil {
+		t.Fatalf("blank numbers aren't unique: %v", err)
+	}
+	if _, err := d.DB.Exec(`UPDATE invoices SET number = 'FAC-1' WHERE id = ?`, inv.ID); err != nil {
+		t.Fatalf("restore: %v", err)
 	}
 	if _, err := d.DB.Exec(`UPDATE invoices SET number = 'FAC-1', origin = 'opening' WHERE id = ?`, other.ID); err != nil {
 		t.Fatalf("an opening loan may share a number: %v", err)
 	}
-	_ = inv
 }
