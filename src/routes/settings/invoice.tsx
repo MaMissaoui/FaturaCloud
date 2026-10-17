@@ -29,13 +29,15 @@ function SettingsInvoice() {
   const [organization, setOrganization] = useAtom(organizationAtom);
   const [submitting, setSubmitting] = useAtom(submittingAtom);
   const [showVariables, setShowVariables] = useState(false);
+  // Taken once: the previews and examples show today's date parts.
+  const [now] = useState(() => new Date());
 
   const invoiceFormat = Form.useWatch("invoiceNumberFormat", form);
   const getPreview = (format: string | undefined) => {
     const template = format || organization?.invoiceNumberFormat;
     if (!template) return "";
     const counter = (organization?.invoiceNumberCounter || 0) + 1;
-    return generateInvoiceNumber(template, counter, new Date(), "AB");
+    return generateInvoiceNumber(template, counter, now, "AB");
   };
   const invoiceNumberPreview = getPreview(invoiceFormat);
 
@@ -147,25 +149,22 @@ function SettingsInvoice() {
                   <Space direction="vertical" size={4} style={{ width: "100%" }}>
                     {[
                       ["{number}", <Trans key="n">Sequential number</Trans>],
-                      [
-                        "{year}",
-                        <Trans key="y">{`4-digit year (${new Date().getFullYear()})`}</Trans>,
-                      ],
+                      ["{year}", <Trans key="y">{`4-digit year (${now.getFullYear()})`}</Trans>],
                       [
                         "{y}",
-                        <Trans key="y2">{`2-digit year (${String(new Date().getFullYear() % 100).padStart(2, "0")})`}</Trans>,
+                        <Trans key="y2">{`2-digit year (${String(now.getFullYear() % 100).padStart(2, "0")})`}</Trans>,
                       ],
                       [
                         "{month}",
-                        <Trans key="mo">{`2-digit month (${String(new Date().getMonth() + 1).padStart(2, "0")})`}</Trans>,
+                        <Trans key="mo">{`2-digit month (${String(now.getMonth() + 1).padStart(2, "0")})`}</Trans>,
                       ],
                       [
                         "{m}",
-                        <Trans key="m">{`Month name (${new Date().toLocaleString("en", { month: "short" })})`}</Trans>,
+                        <Trans key="m">{`Month name (${now.toLocaleString("en", { month: "short" })})`}</Trans>,
                       ],
                       [
                         "{day}",
-                        <Trans key="d">{`Day of month (${String(new Date().getDate()).padStart(2, "0")})`}</Trans>,
+                        <Trans key="d">{`Day of month (${String(now.getDate()).padStart(2, "0")})`}</Trans>,
                       ],
                       ["{clientCode}", <Trans key="cc">Client code (e.g. AP, MS)</Trans>],
                     ].map(([code, desc]) => (

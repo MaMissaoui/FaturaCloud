@@ -97,6 +97,8 @@ const Dashboard = () => {
   const reportLink = (path: string) => pageLink(path, t`View full report`);
 
   const [period, setPeriod] = useState<Period>({ kind: "months", months: 12 });
+  // Taken once: today's date and the calendar years offered.
+  const [now] = useState(() => new Date());
   // A failed fetch must never read as "nothing owed, nothing to see" on the
   // one screen every user checks to decide what needs attention: on failure
   // only the error and its Retry show, never zeros.
@@ -125,7 +127,7 @@ const Dashboard = () => {
       month: "long",
       year: "numeric",
       timeZone,
-    }).format(new Date()),
+    }).format(now),
   );
   // A YYYY-MM-DD day of the till, as a weekday and date.
   const dayLabel = (date: string) =>
@@ -167,7 +169,7 @@ const Dashboard = () => {
       return t`Last ${m} months`;
     }
     const year = p.year;
-    const current = new Date().getFullYear();
+    const current = now.getFullYear();
     if (year === current) return t`Current year (${year})`;
     if (year === current - 1) return t`Last year (${year})`;
     return String(year);
@@ -189,7 +191,7 @@ const Dashboard = () => {
         {
           label: t`Calendar year`,
           options: Array.from({ length: CALENDAR_YEARS_BACK + 1 }, (_, i) => {
-            const year = new Date().getFullYear() - i;
+            const year = now.getFullYear() - i;
             return { value: `y${year}`, label: periodLabel({ kind: "year", year }) };
           }),
         },
