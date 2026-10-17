@@ -151,6 +151,7 @@ func (h *handler) createUser(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &body); err != nil {
 		return
 	}
+	body.Email = db.NormalizeEmail(body.Email)
 	if _, err := mail.ParseAddress(body.Email); err != nil {
 		writeError(w, http.StatusBadRequest, "a valid email is required")
 		return
@@ -389,7 +390,9 @@ func hashRandomPassword() ([]byte, error) {
 // displayName) on every subsequent login so group changes at the identity
 // provider take effect without waiting for an admin to edit the account here.
 func (h *handler) provisionOrSyncUser(email, name string, isAdmin bool) (userRow, error) {
-	email = strings.TrimSpace(email)
+	// An SSO provider may return "Ali@Shop.tn" for the local "ali@shop.tn":
+	// normalized, it links instead of creating a second account (audit F174).
+	email = db.NormalizeEmail(email)
 	if name == "" {
 		name = email
 	}
@@ -494,6 +497,7 @@ func EnsureFirstAdmin(database *db.Database, email, password string) {
 	if count > 0 {
 		return
 	}
+	email = db.NormalizeEmail(email)
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		slog.Error("EnsureFirstAdmin: failed to hash password", "err", err)

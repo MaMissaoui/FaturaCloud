@@ -43,6 +43,11 @@ type Claims struct {
 	// a later request — a json:"-" tag here would silently make every token
 	// look like "local" after the first parse.
 	Provider string `json:"authProvider"`
+	// SessionStart is when the user signed in (Unix seconds). A renewed
+	// token carries it over, so renewal can't extend a session past
+	// maxSessionAge (audit F175). Zero on a token from before it existed,
+	// which then counts from its own IssuedAt.
+	SessionStart int64 `json:"sessionStart,omitempty"`
 	// IsPlatformAdmin is never part of the signed JWT payload (no json tag
 	// needed; jwt.ParseWithClaims never touches unexported... it IS
 	// exported, but simply isn't set by token parsing) — it's looked up
@@ -63,6 +68,20 @@ type Claims struct {
 	// all of that user's sessions at once.
 	TokenVersion int `json:"tokenVersion"`
 	jwt.RegisteredClaims
+}
+
+// hasSignedSessionToken reports whether r carries a session cookie signed
+// by this server and not expired — the cheap half of authMiddleware's
+// check, with no database read (tokenVersion and isActive aren't checked).
+func (h *handler) hasSignedSessionToken(r *http.Request) bool {
+	cookie, err := r.Cookie(authCookieName)
+	if err != nil || cookie.Value == "" {
+		return false
+	}
+	_, err = jwt.ParseWithClaims(cookie.Value, &Claims{}, func(t *jwt.Token) (any, error) {
+		return []byte(h.jwtSecret), nil
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer(jwtIssuer), jwt.WithAudience(jwtAudience))
+	return err == nil
 }
 
 func (h *handler) authMiddleware(next http.Handler) http.Handler {
@@ -103,6 +122,7 @@ func (h *handler) authMiddleware(next http.Handler) http.Handler {
 		}
 		claims.IsPlatformAdmin = isPlatformAdmin != 0
 		setRequestUser(r, claims.UserID, email)
+		h.renewSessionIfDue(w, r, claims, email, tokenVersion)
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))

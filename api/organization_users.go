@@ -78,6 +78,7 @@ func (h *handler) addOrganizationMember(w http.ResponseWriter, r *http.Request) 
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	req.Email = db.NormalizeEmail(req.Email)
 	if req.Email == "" {
 		writeError(w, http.StatusBadRequest, "email is required")
 		return

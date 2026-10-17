@@ -114,9 +114,15 @@ func TestSecurityHeaders_IncludesCSP(t *testing.T) {
 	if csp == "" {
 		t.Fatal("expected a Content-Security-Policy header")
 	}
-	for _, want := range []string{"default-src 'self'", "worker-src 'self' blob:", "frame-ancestors 'none'"} {
+	for _, want := range []string{"default-src 'self'", "script-src 'self';", "worker-src 'self';", "frame-ancestors 'none'"} {
 		if !strings.Contains(csp, want) {
 			t.Fatalf("CSP %q missing expected directive %q", csp, want)
+		}
+	}
+	// What the removed in-browser PDF stack needed (audit F180).
+	for _, gone := range []string{"wasm-unsafe-eval", "connect-src 'self' data:", "blob: *.sentry", "worker-src 'self' blob:"} {
+		if strings.Contains(csp, gone) {
+			t.Fatalf("CSP %q still allows %q", csp, gone)
 		}
 	}
 }

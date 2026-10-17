@@ -41,9 +41,8 @@ import Loading from "src/components/loading";
 import { DecimalSeparatorContext } from "src/components/number-input";
 import { inputDecimalSeparator } from "src/utils/currencies";
 
-// Route pages are code-split so the first paint (login) doesn't download the
-// PDF stack (react-pdf/pdfjs — pulled in by invoice details), dnd-kit, or the
-// settings pages. BaseLayout, Index, Login and Loading stay eager
+// Route pages are code-split so the first paint (login) doesn't download
+// dnd-kit, the charts or the settings pages. BaseLayout, Index, Login and Loading stay eager
 // as the shell/first-paint set. Each lazy chunk loads on first navigation to
 // its route, behind the <Suspense> fallback below.
 const Dashboard = lazy(() => import("src/routes/dashboard"));
@@ -285,7 +284,6 @@ const AppContent = () => {
                     <Route path="/invoices" element={<BaseLayout />}>
                       <Route index element={<Invoices />} />
                       <Route path=":id" element={<InvoiceDetails />} />
-                      <Route path=":id/pdf" element={<InvoiceDetails />} />
                     </Route>
                     <Route path="/clients" element={<BaseLayout />}>
                       <Route index element={<Clients />} />

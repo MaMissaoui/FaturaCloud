@@ -351,9 +351,9 @@ func generateClientCodeGo(name string) string {
 // readLoanSheet groups the sheet's rows into loans by reference, in order of
 // first appearance, recording row-level problems.
 func readLoanSheet(content []byte, loc *time.Location, cutover int64, report *LoanImportReport) ([]*loanSheetLoan, error) {
-	f, err := excelize.OpenReader(bytes.NewReader(content))
+	f, err := openXLSX(content)
 	if err != nil {
-		return nil, newValidationError("file is not a valid Excel (.xlsx) workbook")
+		return nil, err
 	}
 	defer f.Close() //nolint:errcheck
 	sheet := f.GetSheetName(0)
@@ -365,6 +365,9 @@ func readLoanSheet(content []byte, loc *time.Location, cutover int64, report *Lo
 	rows, err := f.GetRows(sheet, excelize.Options{RawCellValue: true})
 	if err != nil {
 		return nil, fmt.Errorf("loan_import read rows: %w", err)
+	}
+	if err := checkImportRowCount(rows); err != nil {
+		return nil, err
 	}
 
 	byRef := map[string]*loanSheetLoan{}

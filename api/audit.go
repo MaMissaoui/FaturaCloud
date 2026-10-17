@@ -123,7 +123,11 @@ func (h *handler) audited(pattern string, next http.Handler) http.Handler {
 		var beforeLabel, beforeState string
 		snapResource, snapID, snapOrg := auditSnapshotTarget(r, resource, entityID)
 		var beforeFields []db.AuditField
-		if entityID != "" || snapID != "" {
+		// Read only for a request that can pass authentication: before,
+		// an anonymous PUT or DELETE cost these reads on its way to the 401
+		// (audit F182). A signature check is enough here — no DB read; a
+		// revoked token is refused by authMiddleware just after.
+		if (entityID != "" || snapID != "") && h.hasSignedSessionToken(r) {
 			h.dbMu.RLock()
 			if entityID != "" {
 				beforeLabel, beforeState = h.db.AuditDocumentInfo(resource, entityID)

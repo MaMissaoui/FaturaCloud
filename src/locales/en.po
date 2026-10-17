@@ -618,7 +618,7 @@ msgstr "Adjustment — set count to"
 
 #: src/components/organizations/organization-members-panel.tsx:10
 #: src/routes/settings/users.tsx:219
-#: src/routes/settings/users.tsx:354
+#: src/routes/settings/users.tsx:355
 msgid "Admin"
 msgstr "Admin"
 
@@ -1606,7 +1606,7 @@ msgstr "Confirm"
 msgid "Confirm order"
 msgstr "Confirm order"
 
-#: src/routes/settings/users.tsx:382
+#: src/routes/settings/users.tsx:383
 msgid "Confirm password"
 msgstr "Confirm password"
 
@@ -2769,8 +2769,8 @@ msgstr "Edit vendor"
 
 #: src/components/feedback-modal.tsx:65
 #: src/components/organizations/organizations-table.tsx:80
-#: src/routes/login.tsx:117
-#: src/routes/login.tsx:118
+#: src/routes/login.tsx:120
+#: src/routes/login.tsx:121
 #: src/routes/settings/users.tsx:206
 #: src/routes/settings/users.tsx:340
 msgid "Email"
@@ -4560,8 +4560,8 @@ msgstr "Method"
 msgid "Migrated"
 msgstr "Migrated"
 
-#: src/routes/settings/users.tsx:373
 #: src/routes/settings/users.tsx:374
+#: src/routes/settings/users.tsx:375
 msgid "Minimum 6 characters"
 msgstr "Minimum 6 characters"
 
@@ -4793,7 +4793,7 @@ msgstr "New organization"
 msgid "New Organization"
 msgstr "New Organization"
 
-#: src/routes/settings/users.tsx:366
+#: src/routes/settings/users.tsx:367
 msgid "New password (leave blank to keep current)"
 msgstr "New password (leave blank to keep current)"
 
@@ -5832,13 +5832,13 @@ msgstr "Parts cost"
 msgid "Parts for one unit"
 msgstr "Parts for one unit"
 
-#: src/routes/login.tsx:129
-#: src/routes/login.tsx:130
-#: src/routes/settings/users.tsx:368
+#: src/routes/login.tsx:132
+#: src/routes/login.tsx:133
+#: src/routes/settings/users.tsx:369
 msgid "Password"
 msgstr "Password"
 
-#: src/routes/settings/users.tsx:391
+#: src/routes/settings/users.tsx:392
 msgid "Passwords do not match"
 msgstr "Passwords do not match"
 
@@ -6021,11 +6021,11 @@ msgstr "Platform"
 msgid "Platform admin"
 msgstr "Platform admin"
 
-#: src/routes/settings/users.tsx:385
+#: src/routes/settings/users.tsx:386
 msgid "Please confirm the password"
 msgstr "Please confirm the password"
 
-#: src/routes/login.tsx:113
+#: src/routes/login.tsx:116
 msgid "Please enter a valid email"
 msgstr "Please enter a valid email"
 
@@ -6037,7 +6037,7 @@ msgstr "Please enter a valid email address"
 msgid "Please enter your feedback"
 msgstr "Please enter your feedback"
 
-#: src/routes/login.tsx:125
+#: src/routes/login.tsx:128
 msgid "Please enter your password"
 msgstr "Please enter your password"
 
@@ -6988,7 +6988,7 @@ msgstr "Reverted to the default template"
 #: src/components/organizations/organization-members-panel.tsx:77
 #: src/routes/settings/activity-changes.ts:336
 #: src/routes/settings/users.tsx:212
-#: src/routes/settings/users.tsx:349
+#: src/routes/settings/users.tsx:350
 msgid "Role"
 msgstr "Role"
 
@@ -7417,7 +7417,7 @@ msgstr "Shows a fiscal stamp (flat, non-taxable duty) field on this organization
 msgid "Shows a withholding tax rate field on this organization's invoices, independent of the PDF layout."
 msgstr "Shows a withholding tax rate field on this organization's invoices, independent of the PDF layout."
 
-#: src/routes/login.tsx:137
+#: src/routes/login.tsx:140
 msgid "Sign in"
 msgstr "Sign in"
 
@@ -8435,7 +8435,7 @@ msgstr "Used when this rate applies to a vendor bill — a reclaimable asset acc
 #: src/components/organizations/organization-members-panel.tsx:60
 #: src/routes/settings/activity.tsx:111
 #: src/routes/settings/users.tsx:223
-#: src/routes/settings/users.tsx:355
+#: src/routes/settings/users.tsx:356
 msgid "User"
 msgstr "User"
 

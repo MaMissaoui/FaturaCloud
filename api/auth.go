@@ -11,6 +11,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/MaMissaoui/fatura-cloud/db"
 )
 
 type loginBucket struct {
@@ -223,7 +225,10 @@ func (h *handler) login(w http.ResponseWriter, r *http.Request) {
 
 	// Also throttle per account so IP rotation can't grind a single email.
 	// Same 429 message as the IP limit — no signal about which limit tripped.
-	if body.Email != "" && !checkRate(loginEmailBuckets, strings.ToLower(body.Email)) {
+	// Emails are stored normalized; a capital letter or a stray space typed
+	// on a phone keyboard must still sign in (audit F174).
+	body.Email = db.NormalizeEmail(body.Email)
+	if body.Email != "" && !checkRate(loginEmailBuckets, body.Email) {
 		noteSecurityEvent(r, "login_rate_limited", slog.String("login_email", truncate(body.Email, 254)))
 		writeError(w, http.StatusTooManyRequests, "too many login attempts — try again in a minute")
 		return
@@ -301,7 +306,41 @@ func (h *handler) logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 }
 
-const authCookieMaxAge = int(24 * 60 * 60) // seconds; matches the JWT's 24h exp
+// A token lives tokenLifetime. An active session doesn't end mid-shift: a
+// request carrying a token older than tokenRenewAfter gets a fresh one, up
+// to maxSessionAge after sign-in (audit F175 — the session used to end
+// exactly 24 hours after sign-in, throwing away whatever was being typed).
+// Package variables so a test can shorten them.
+var (
+	tokenLifetime   = 24 * time.Hour
+	tokenRenewAfter = 12 * time.Hour
+	maxSessionAge   = 7 * 24 * time.Hour
+)
+
+// renewSessionIfDue re-issues the session cookie when claims is older than
+// tokenRenewAfter and the session is younger than maxSessionAge. The new
+// token keeps the user's current tokenVersion, so logout and a password
+// change still revoke it, and the cookie goes through setAuthCookie, so its
+// Secure flag follows the same rule as at sign-in. A renewal that fails is
+// logged and the request carries on with the old token.
+func (h *handler) renewSessionIfDue(w http.ResponseWriter, r *http.Request, claims *Claims, email string, tokenVersion int) {
+	if claims.IssuedAt == nil || time.Since(claims.IssuedAt.Time) < tokenRenewAfter {
+		return
+	}
+	start := claims.IssuedAt.Time
+	if claims.SessionStart > 0 {
+		start = time.Unix(claims.SessionStart, 0)
+	}
+	if time.Since(start) >= maxSessionAge {
+		return
+	}
+	token, err := h.signToken(claims.UserID, email, claims.Provider, tokenVersion, start)
+	if err != nil {
+		slog.Error("renew session token", "err", err)
+		return
+	}
+	h.setAuthCookie(w, r, token)
+}
 
 // setAuthCookie writes the session JWT as an httpOnly, SameSite=Lax cookie.
 // Secure is set only when the original request arrived over HTTPS (IsHTTPS),
@@ -317,7 +356,7 @@ func (h *handler) setAuthCookie(w http.ResponseWriter, r *http.Request, token st
 		HttpOnly: true,
 		Secure:   IsHTTPS(r, h.trustedProxies),
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   authCookieMaxAge,
+		MaxAge:   int(tokenLifetime / time.Second), // matches the JWT's exp
 	})
 }
 
@@ -362,16 +401,24 @@ func (h *handler) issueToken(user userRow) (string, error) {
 }
 
 func (h *handler) issueTokenWithProvider(user userRow, provider string) (string, error) {
+	return h.signToken(user.ID, user.Email, provider, user.TokenVersion, time.Now())
+}
+
+// signToken signs a session token valid for tokenLifetime from now, for a
+// session that began at sessionStart.
+func (h *handler) signToken(userID, email, provider string, tokenVersion int, sessionStart time.Time) (string, error) {
+	now := time.Now()
 	claims := Claims{
-		UserID:       user.ID,
-		Email:        user.Email,
+		UserID:       userID,
+		Email:        email,
 		Provider:     provider,
-		TokenVersion: user.TokenVersion,
+		TokenVersion: tokenVersion,
+		SessionStart: sessionStart.Unix(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
 			Audience:  jwt.ClaimStrings{jwtAudience},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(tokenLifetime)),
+			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(h.jwtSecret))

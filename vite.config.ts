@@ -40,9 +40,6 @@ export default defineConfig(async () => ({
       },
     }),
   ],
-  optimizeDeps: {
-    include: ["pdfjs-dist"],
-  },
   css: {
     preprocessorOptions: {
       scss: {

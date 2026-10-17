@@ -141,7 +141,7 @@ func mergeExportMetaPlaceholders(scalars map[string]string, dateFormat *string, 
 // db.SetDocumentTemplateOrientation for why that's the deliberate
 // direction, not just a default.
 func fillTemplate(templateBytes []byte, scalars map[string]string, blocks []repeatBlock, logo []byte, orientation string) ([]byte, []string, error) {
-	f, err := excelize.OpenReader(bytes.NewReader(templateBytes))
+	f, err := openXLSX(templateBytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("fill_template: open: %w", err)
 	}
