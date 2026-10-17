@@ -299,7 +299,7 @@ const CashBookV1 = () => {
                 />
 
                 {/* Tax is still computed and posted correctly behind the
-              scenes (see netCentsFor above) — this screen just never shows
+              scenes (see netCentsFor in sale-assembly.ts) — this screen just never shows
               the subtotal/tax split, since every price is entered
               tax-inclusive and that's the only number a counter sale
               needs to communicate. */}
