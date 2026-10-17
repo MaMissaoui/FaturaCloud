@@ -151,17 +151,16 @@ func serverHandler(mux http.Handler, trustedProxies []netip.Prefix) http.Handler
 	return compressAPIResponses(api.RequestLogger(securityHeaders(mux, trustedProxies), trustedProxies))
 }
 
-// contentSecurityPolicy is same-origin by design (no CDNs). Ant Design and
-// @react-pdf need inline styles; @react-pdf renders PDFs via a blob: worker,
-// compiles a WebAssembly font-shaping engine loaded from a data: URI (hence
-// 'wasm-unsafe-eval' and connect-src data:), and its in-app PDFViewer fetches
-// its own rendered output back via an XHR to a blob: URL (hence connect-src
-// blob:) — all three confirmed against an actual invoice PDF preview/download,
-// not just copied from a generic starting policy.
-const contentSecurityPolicy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; " +
+// contentSecurityPolicy is same-origin by design (no CDNs). Ant Design needs
+// inline styles; images may be data: (the organization logo) or blob: URIs,
+// and browser errors go to Sentry. The in-browser PDF stack that once needed
+// 'wasm-unsafe-eval', data:/blob: fetches and blob: workers was removed on
+// 2026-09-08 (every PDF is rendered server-side now), so the policy no
+// longer allows them (audit F180).
+const contentSecurityPolicy = "default-src 'self'; script-src 'self'; " +
 	"style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
-	"font-src 'self' data:; connect-src 'self' data: blob: *.sentry.io; " +
-	"worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; " +
+	"font-src 'self' data:; connect-src 'self' *.sentry.io; " +
+	"worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; " +
 	"form-action 'self'; object-src 'none'"
 
 // securityHeaders sets baseline defensive headers on every response, API and
