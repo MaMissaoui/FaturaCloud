@@ -21,6 +21,7 @@ import {
   GetDocumentTemplateOrientation,
   UpdateDocumentTemplateOrientation,
 } from "src/api";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 
 const { Title, Text } = Typography;
 
@@ -42,6 +43,9 @@ function DocumentTemplateCard({
   onChange: (documentType: string, hasOverride: boolean) => void;
 }) {
   const { message } = App.useApp();
+  // Templates are org-wide configuration: other roles may download them but
+  // not change them (audit F170).
+  const canWrite = useCanWriteConfig("orgSettings");
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // "" (no override set yet) renders identically to "portrait" — every
@@ -158,12 +162,14 @@ function DocumentTemplateCard({
           <Button icon={<DownloadOutlined />} onClick={() => handleDownload("default")}>
             <Trans>Download default</Trans>
           </Button>
-          <Upload {...uploadProps}>
-            <Button icon={<UploadOutlined />} loading={uploading}>
-              <Trans>Upload template</Trans>
-            </Button>
-          </Upload>
-          {hasOverride && (
+          {canWrite && (
+            <Upload {...uploadProps}>
+              <Button icon={<UploadOutlined />} loading={uploading}>
+                <Trans>Upload template</Trans>
+              </Button>
+            </Upload>
+          )}
+          {hasOverride && canWrite && (
             <Popconfirm
               title={t`Reset this template to the default?`}
               description={t`Your custom template will be permanently deleted.`}
@@ -188,7 +194,7 @@ function DocumentTemplateCard({
             value={orientation}
             onChange={handleOrientationChange}
             loading={orientationSaving}
-            disabled={orientationSaving}
+            disabled={orientationSaving || !canWrite}
             aria-label={t`Page orientation`}
             style={{ width: 140 }}
             options={[

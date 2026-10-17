@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MaMissaoui/fatura-cloud/db"
 )
@@ -137,6 +138,41 @@ func orgProfileFor(country string) orgProfile {
 	return genericOrgProfile
 }
 
+// resetTarget picks the organization --reset deletes (audit F178): the one
+// named --org-name, or nil when there is none and a fresh one is simply
+// created. The tool runs against production next to real organizations, so a
+// mistyped name must never delete one: it refuses a name more than one
+// organization carries, an organization not flagged as a test organization,
+// and any delete whose id wasn't passed in --confirm-reset — the first run
+// prints it.
+func resetTarget(orgs []db.Organization, name, confirmID string) (*db.Organization, error) {
+	var matches []db.Organization
+	for _, o := range orgs {
+		if o.Name != nil && *o.Name == name {
+			matches = append(matches, o)
+		}
+	}
+	switch {
+	case len(matches) == 0:
+		return nil, nil
+	case len(matches) > 1:
+		ids := make([]string, len(matches))
+		for i, o := range matches {
+			ids[i] = o.ID
+		}
+		return nil, fmt.Errorf("--reset: %d organizations are named %q (%s); delete the extra ones in the app first",
+			len(matches), name, strings.Join(ids, ", "))
+	}
+	o := matches[0]
+	if !o.IsTest {
+		return nil, fmt.Errorf("--reset: organization %q (%s) is not flagged as a test organization; --reset only deletes test organizations", name, o.ID)
+	}
+	if confirmID != o.ID {
+		return nil, fmt.Errorf("--reset would delete organization %q (%s) and everything in it; run again with --confirm-reset %s", name, o.ID, o.ID)
+	}
+	return &o, nil
+}
+
 // setupOrganization creates (or, with --reset, recreates) the demo
 // organization and records the ids every later step needs (org id, cash
 // account for payments). Importing db's own request/response types instead
@@ -150,13 +186,14 @@ func (s *Seeder) setupOrganization() error {
 		if err := s.c.Get("/api/organizations", &orgs); err != nil {
 			return fmt.Errorf("list organizations: %w", err)
 		}
-		for _, o := range orgs {
-			if o.Name != nil && *o.Name == s.cfg.OrgName {
-				s.log.Printf("seed-demo: --reset: deleting existing organization %q (%s)", s.cfg.OrgName, o.ID)
-				if err := s.c.Delete("/api/organizations/" + o.ID); err != nil {
-					return fmt.Errorf("delete existing organization %s: %w", o.ID, err)
-				}
-				break
+		target, err := resetTarget(orgs, s.cfg.OrgName, s.cfg.ConfirmReset)
+		if err != nil {
+			return err
+		}
+		if target != nil {
+			s.log.Printf("seed-demo: --reset: deleting existing organization %q (%s)", s.cfg.OrgName, target.ID)
+			if err := s.c.Delete("/api/organizations/" + target.ID); err != nil {
+				return fmt.Errorf("delete existing organization %s: %w", target.ID, err)
 			}
 		}
 	}

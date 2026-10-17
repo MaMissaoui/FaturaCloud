@@ -45,7 +45,7 @@ func (h *handler) createProduct(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
-	if !h.requireOrgMember(w, r, req.OrganizationID) {
+	if !h.requireOrgRole(w, r, req.OrganizationID, "sales", "purchasing") {
 		return
 	}
 	if req.SKU == nil || *req.SKU == "" {

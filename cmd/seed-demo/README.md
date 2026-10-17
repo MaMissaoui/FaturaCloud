@@ -31,6 +31,13 @@ The organization is created flagged as a test organization (`isTest`), so
 the app shows a "Test" tag beside its name; a `--reset` run recreates it
 flagged too.
 
+`--reset` is a two-step delete (audit F178), because the tool runs against
+production next to real organizations. The first run stops and prints the
+matching organization's id; run again with `--confirm-reset <id>`. It
+refuses an organization that isn't flagged as a test organization, and a
+name more than one organization carries, so a mistyped `--org-name` can't
+delete a real business.
+
 A full 18-month `busy` run creates on the order of 5,000-7,000 documents
 (invoices, orders, deliveries, purchase orders, receipts, bills, payments)
 and takes several minutes — it's making thousands of real HTTP requests
@@ -66,7 +73,8 @@ dry run immediately followed by the real `--org-name`.
 | `--volume` | `busy` | `small` or `busy` — see `volumeProfiles` in `seeder.go`. Ignored by `--scenario retail`, which sizes itself (see "The retail scenario" below) |
 | `--volume-scale` | `1.0` | Multiplies the chosen `--volume` profile's client/vendor counts and per-day/week document rates (and `--scenario retail`'s organic client-growth target) by this factor — e.g. `0.5` halves both master-data and transactional volume without a new named profile. Never scales a positive bound down to 0 |
 | `--scenario` | `moto` | `moto` (a motorcycle assembler/manufacturer — the original scenario) or `retail` (a home-appliance retailer selling entirely through Cash Book counter sales) — see `scenario.go` and "The retail scenario" below |
-| `--reset` | off | Delete an existing organization named `--org-name` first, then recreate from scratch |
+| `--reset` | off | Delete an existing **test** organization named `--org-name` first, then recreate from scratch (needs `--confirm-reset`) |
+| `--confirm-reset` | — | The id of the organization `--reset` may delete; a `--reset` without it stops and prints the id |
 | `--dry-run` | off | Skip document generation and log the plan — org/master-data/fiscal-year setup still happens for real (see note above) |
 | `--progress-every` | `20` | Log a progress line every N simulated days (`0` disables) |
 
@@ -187,7 +195,7 @@ go run ./cmd/seed-demo \
 ```
 
 This is the command the production demo organization is (re)seeded with.
-It ends today, so run it again (with `--reset`) after a release to bring the
+It ends today, so run it again (with `--reset --confirm-reset <id>`) after a release to bring the
 data back up to date: within days of a run, the till goes idle and the "not
 due yet" invoices turn late.
 

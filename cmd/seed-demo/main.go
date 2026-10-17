@@ -62,6 +62,7 @@ type Config struct {
 	VolumeScale   float64
 	Scenario      string
 	Reset         bool
+	ConfirmReset  string
 	DryRun        bool
 	ProgressEvery int
 }
@@ -82,7 +83,8 @@ func parseFlags() Config {
 	flag.StringVar(&volumeStr, "volume", "busy", `data volume profile: "small" or "busy" — ignored by --scenario retail, which sizes itself (see scenario.go's retailConfig)`)
 	flag.Float64Var(&cfg.VolumeScale, "volume-scale", 1.0, "multiply the chosen --volume profile's client/vendor counts and per-day/week document rates by this factor (also scales --scenario retail's organic client-growth target) — e.g. 0.5 halves both master-data and transactional volume without hand-editing volumeProfiles")
 	flag.StringVar(&cfg.Scenario, "scenario", "moto", `business scenario: "moto" (a motorcycle assembler/manufacturer — the original scenario) or "retail" (a home-appliance retailer selling entirely through Cash Book counter sales — see scenario.go)`)
-	flag.BoolVar(&cfg.Reset, "reset", false, "if an organization named --org-name already exists, delete it first and recreate from scratch")
+	flag.BoolVar(&cfg.Reset, "reset", false, "if a test organization named --org-name already exists, delete it first and recreate from scratch (needs --confirm-reset)")
+	flag.StringVar(&cfg.ConfirmReset, "confirm-reset", "", "id of the organization --reset may delete; a --reset without it stops and prints the id")
 	flag.BoolVar(&cfg.DryRun, "dry-run", false, "skip day-by-day document generation and just log the plan — still creates/reuses the real organization, master data, and fiscal years via the API (see README's dry-run note)")
 	flag.IntVar(&cfg.ProgressEvery, "progress-every", 20, "log a progress line every N simulated days (0 disables)")
 	flag.Parse()

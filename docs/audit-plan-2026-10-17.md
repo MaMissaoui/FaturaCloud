@@ -81,9 +81,9 @@ response headers.
   excluded" lists still bind, and so does this document's own list at the
   end.
 
-**Status:** 23 findings (F167–F189), none fixed. Owner decisions pending:
-F170 (what restricted roles may write), F186 (which Cash Book layout stays),
-and the Phase 0 production counts.
+**Status (2026-10-17):** Phase 1 (F167–F169) merged in #515, F169's unique
+index in #516, Phase 2 (F170 with option (a), F178) in its own PR. Owner
+decision pending: F186 (which Cash Book layout stays).
 
 ---
 
@@ -374,6 +374,12 @@ make them far more consequential.
 
 (a) matches how clients, vendors and accounts are already handled.
 
+**Decision (owner, 2026-10-17): (a).** Implemented with the screens a role
+can't save made view-only (no New, Upload, Save, Delete or Archive). Stock
+movements needed no change: the Inventory section guard already limits them
+to the org-wide roles. The bill of materials stays as it was, limited to
+admin/power_user by its own section.
+
 ### 2.2 — F178: `seed-demo --reset` deletes by name only (Low, Code read)
 
 `setupOrganization` (`cmd/seed-demo/masterdata.go:148-160`) lists the
@@ -385,6 +391,9 @@ real one, and the account that runs it may well be an admin of it.
 **Fix.** Refuse `--reset` unless the matched organization has `isTest`, and
 print the id and ask for `--confirm-reset <id>`. Two lines of code for an
 irreversible operation on production.
+
+**Fixed (2026-10-17)** as written, plus a refusal when more than one
+organization carries the name.
 
 ---
 

@@ -169,6 +169,21 @@ myOrgRoleSyncAtom.debugLabel = "myOrgRoleSyncAtom";
 // loading) is included so the controls don't flicker away on first render.
 export const PAYMENT_WRITE_ROLES = ["", "admin", "power_user", "general", "accounting"];
 
+// CONFIG_WRITE_ROLES are the roles that may change organization-wide
+// configuration (audit F170, owner decision 2026-10-17) — the twin of the
+// orgRoleProtected/requireOrgRole gates in api/router.go and the create
+// handlers. Every member still reads it; a role outside the list gets the
+// screen view-only. "" (still loading) is included, as above.
+const ORG_WIDE_WRITE_ROLES = ["", "admin", "power_user", "general"];
+export const CONFIG_WRITE_ROLES = {
+  products: [...ORG_WIDE_WRITE_ROLES, "sales", "purchasing"],
+  taxRates: [...ORG_WIDE_WRITE_ROLES, "accounting"],
+  paymentTerms: [...ORG_WIDE_WRITE_ROLES, "accounting"],
+  // units of measure, product families, document templates and numbering
+  orgSettings: ORG_WIDE_WRITE_ROLES,
+};
+export type ConfigArea = keyof typeof CONFIG_WRITE_ROLES;
+
 // isOrgAdminAtom reports whether the current user is an admin member of the
 // currently selected organization — the per-org counterpart to
 // isPlatformAdminAtom, gating org-scoped admin actions (delete/reset

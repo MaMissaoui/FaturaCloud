@@ -17,9 +17,12 @@ import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
 import { organizationIdAtom } from "src/atoms/organization";
 import MassDataExcelActions from "src/components/mass-data/mass-data-excel-actions";
 import PageHeader from "src/components/page-header";
+import { useCanWriteConfig } from "src/hooks/useCanWriteConfig";
 
 function SettingsTaxRates() {
   useLingui();
+  // A role that may only read this list gets no New or Upload (audit F170).
+  const canWrite = useCanWriteConfig("taxRates");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -58,13 +61,16 @@ function SettingsTaxRates() {
                 resource="tax-rates"
                 filenamePrefix="tax-rates"
                 onImported={() => setTaxRates()}
+                canUpload={canWrite}
               />
             )}
-            <Link to="/settings/tax-rates/new">
-              <Button type="primary">
-                <Trans>New tax rate</Trans>
-              </Button>
-            </Link>
+            {canWrite && (
+              <Link to="/settings/tax-rates/new">
+                <Button type="primary">
+                  <Trans>New tax rate</Trans>
+                </Button>
+              </Link>
+            )}
           </Space>
         }
       />
@@ -80,11 +86,13 @@ function SettingsTaxRates() {
                 <Empty description={<Trans>No tax rates match your search</Trans>} />
               ) : (
                 <Empty description={<Trans>No tax rates yet</Trans>}>
-                  <Link to="/settings/tax-rates/new">
-                    <Button type="primary">
-                      <Trans>Create your first tax rate</Trans>
-                    </Button>
-                  </Link>
+                  {canWrite && (
+                    <Link to="/settings/tax-rates/new">
+                      <Button type="primary">
+                        <Trans>Create your first tax rate</Trans>
+                      </Button>
+                    </Link>
+                  )}
                 </Empty>
               ),
             }}

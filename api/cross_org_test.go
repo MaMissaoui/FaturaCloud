@@ -426,6 +426,33 @@ var domainRouteRoles = map[routeKey][]string{
 
 	{"GET", "/api/organizations/{orgId}/gl-export/fec"}:   {"accounting"},
 	{"GET", "/api/organizations/{orgId}/gl-export/datev"}: {"accounting"},
+
+	// Audit F170 — organization-wide configuration. An empty list means the
+	// org-wide roles only (admin/power_user/general).
+	{"PUT", "/api/products/{id}"}:                          {"sales", "purchasing"},
+	{"DELETE", "/api/products/{id}"}:                       {"sales", "purchasing"},
+	{"POST", "/api/organizations/{orgId}/products/import"}: {"sales", "purchasing"},
+
+	{"PUT", "/api/tax-rates/{id}"}:                          {"accounting"},
+	{"DELETE", "/api/tax-rates/{id}"}:                       {"accounting"},
+	{"POST", "/api/organizations/{orgId}/tax-rates/import"}: {"accounting"},
+
+	{"PUT", "/api/payment-terms/{id}"}:                          {"accounting"},
+	{"DELETE", "/api/payment-terms/{id}"}:                       {"accounting"},
+	{"POST", "/api/organizations/{orgId}/payment-terms/import"}: {"accounting"},
+
+	{"PUT", "/api/units-of-measure/{id}"}:                          {},
+	{"DELETE", "/api/units-of-measure/{id}"}:                       {},
+	{"POST", "/api/organizations/{orgId}/units-of-measure/import"}: {},
+
+	{"PUT", "/api/product-families/{id}"}:    {},
+	{"DELETE", "/api/product-families/{id}"}: {},
+
+	{"POST", "/api/organizations/{orgId}/document-templates/{documentType}"}:               {},
+	{"DELETE", "/api/organizations/{orgId}/document-templates/{documentType}"}:             {},
+	{"PUT", "/api/organizations/{orgId}/document-templates/{documentType}/orientation"}:    {},
+	{"DELETE", "/api/organizations/{orgId}/document-templates/{documentType}/orientation"}: {},
+	{"PUT", "/api/organizations/{orgId}/document-number-settings/{documentType}"}:          {},
 }
 
 // createRouteDomainRoles is domainRouteRoles' counterpart for the
@@ -456,6 +483,15 @@ var createRouteDomainRoles = map[routeKey][]string{
 
 	{"POST", "/api/cash-sales"}:     {"cashbook"},
 	{"POST", "/api/cash-movements"}: {"cashbook"},
+
+	// Audit F170 — organization-wide configuration: products to their two
+	// domain roles, tax rates and payment terms to accounting, units of
+	// measure and product families to the org-wide roles only.
+	{"POST", "/api/products"}:         {"sales", "purchasing"},
+	{"POST", "/api/tax-rates"}:        {"accounting"},
+	{"POST", "/api/payment-terms"}:    {"accounting"},
+	{"POST", "/api/units-of-measure"}: {},
+	{"POST", "/api/product-families"}: {},
 }
 
 // TestDomainRoleRouteCoverage is TestPhaseCRouteCoverage's counterpart for

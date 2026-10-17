@@ -220,26 +220,28 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgAdminProtected("DELETE", "/api/organizations/{orgId}/members/{userId}", pathOrgID("orgId"), h.removeOrganizationMember)
 
 	// Document templates (issue #115) — per-org, per-document-type Excel
-	// export template overrides. Same protection tier as the logo endpoints
-	// (not admin-only): org configuration any user with org access manages.
+	// export template overrides. Any member reads them (every export fills
+	// one); changing one is org-wide configuration, limited to the org-wide
+	// roles (admin/power_user/general — audit F170).
 	orgMemberProtected("GET", "/api/organizations/{orgId}/document-templates", pathOrgID("orgId"), h.listDocumentTemplates)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.getDocumentTemplate)
-	orgMemberProtected("POST", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.uploadDocumentTemplate)
-	orgMemberProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), h.deleteDocumentTemplate)
+	orgRoleProtected("POST", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), []string{}, h.uploadDocumentTemplate)
+	orgRoleProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}", pathOrgID("orgId"), []string{}, h.deleteDocumentTemplate)
 	// Per-document-type page orientation (landscape/portrait) — a setting,
 	// not a file, so it's a separate sub-resource rather than folded into
-	// the upload/download routes above. Same org-member protection tier.
+	// the upload/download routes above. Same protection as the templates.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.getDocumentTemplateOrientation)
-	orgMemberProtected("PUT", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.updateDocumentTemplateOrientation)
-	orgMemberProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), h.deleteDocumentTemplateOrientation)
+	orgRoleProtected("PUT", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), []string{}, h.updateDocumentTemplateOrientation)
+	orgRoleProtected("DELETE", "/api/organizations/{orgId}/document-templates/{documentType}/orientation", pathOrgID("orgId"), []string{}, h.deleteDocumentTemplateOrientation)
 
 	// Document numbering (format + persisted counter) for the five document
 	// types that didn't already have their own org-level equivalent
 	// (invoices keep theirs on the organizations columns — see
-	// db/document_number.go). Same org-member protection tier as the
-	// settings above, matching every other per-(org, documentType) setting.
+	// db/document_number.go). Same protection as the templates above: any
+	// member reads, the org-wide roles change (a counter set back reissues
+	// numbers — audit F170).
 	orgMemberProtected("GET", "/api/organizations/{orgId}/document-number-settings/{documentType}", pathOrgID("orgId"), h.getDocumentNumberSetting)
-	orgMemberProtected("PUT", "/api/organizations/{orgId}/document-number-settings/{documentType}", pathOrgID("orgId"), h.updateDocumentNumberSetting)
+	orgRoleProtected("PUT", "/api/organizations/{orgId}/document-number-settings/{documentType}", pathOrgID("orgId"), []string{}, h.updateDocumentNumberSetting)
 
 	// Clients
 	// clientOrgID resolves a client route's {id} to its owning organization
@@ -462,12 +464,12 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/tax-rates", pathOrgID("orgId"), h.listTaxRates)
 	protected("POST", "/api/tax-rates", h.createTaxRate)
 	orgMemberProtected("GET", "/api/tax-rates/{id}", taxRateOrgID, h.getTaxRate)
-	orgMemberProtected("PUT", "/api/tax-rates/{id}", taxRateOrgID, h.updateTaxRate)
-	orgMemberProtected("DELETE", "/api/tax-rates/{id}", taxRateOrgID, h.deleteTaxRate)
+	orgRoleProtected("PUT", "/api/tax-rates/{id}", taxRateOrgID, []string{"accounting"}, h.updateTaxRate)
+	orgRoleProtected("DELETE", "/api/tax-rates/{id}", taxRateOrgID, []string{"accounting"}, h.deleteTaxRate)
 	orgMemberProtected("GET", "/api/tax-rates/{id}/usage-count", taxRateOrgID, h.getTaxRateUsageCount)
-	// Mass maintenance (download/upload to Excel) — any member, matching PUT/DELETE above.
+	// Mass maintenance (download/upload to Excel): any member downloads, the upload is gated like PUT/DELETE above.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/tax-rates/export", pathOrgID("orgId"), h.exportTaxRates)
-	orgMemberProtected("POST", "/api/organizations/{orgId}/tax-rates/import", pathOrgID("orgId"), h.importTaxRates)
+	orgRoleProtected("POST", "/api/organizations/{orgId}/tax-rates/import", pathOrgID("orgId"), []string{"accounting"}, h.importTaxRates)
 
 	// paymentTermOrgID resolves a payment-term route's {id} to its owning
 	// organization by reusing GetPaymentTerm — same shape as clientOrgID
@@ -483,11 +485,11 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/payment-terms", pathOrgID("orgId"), h.listPaymentTerms)
 	protected("POST", "/api/payment-terms", h.createPaymentTerm)
-	orgMemberProtected("PUT", "/api/payment-terms/{id}", paymentTermOrgID, h.updatePaymentTerm)
-	orgMemberProtected("DELETE", "/api/payment-terms/{id}", paymentTermOrgID, h.deletePaymentTerm)
-	// Mass maintenance (download/upload to Excel) — any member, matching PUT/DELETE above.
+	orgRoleProtected("PUT", "/api/payment-terms/{id}", paymentTermOrgID, []string{"accounting"}, h.updatePaymentTerm)
+	orgRoleProtected("DELETE", "/api/payment-terms/{id}", paymentTermOrgID, []string{"accounting"}, h.deletePaymentTerm)
+	// Mass maintenance (download/upload to Excel): any member downloads, the upload is gated like PUT/DELETE above.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/payment-terms/export", pathOrgID("orgId"), h.exportPaymentTerms)
-	orgMemberProtected("POST", "/api/organizations/{orgId}/payment-terms/import", pathOrgID("orgId"), h.importPaymentTerms)
+	orgRoleProtected("POST", "/api/organizations/{orgId}/payment-terms/import", pathOrgID("orgId"), []string{"accounting"}, h.importPaymentTerms)
 
 	// unitOfMeasureOrgID resolves a unit-of-measure route's {id} to its
 	// owning organization — same shape as paymentTermOrgID above, including
@@ -502,14 +504,14 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/units-of-measure", pathOrgID("orgId"), h.listUnitsOfMeasure)
 	protected("POST", "/api/units-of-measure", h.createUnitOfMeasure)
-	orgMemberProtected("PUT", "/api/units-of-measure/{id}", unitOfMeasureOrgID, h.updateUnitOfMeasure)
-	orgMemberProtected("DELETE", "/api/units-of-measure/{id}", unitOfMeasureOrgID, h.deleteUnitOfMeasure)
-	// Mass maintenance (download/upload to Excel) — any member, matching PUT/DELETE above.
+	orgRoleProtected("PUT", "/api/units-of-measure/{id}", unitOfMeasureOrgID, []string{}, h.updateUnitOfMeasure)
+	orgRoleProtected("DELETE", "/api/units-of-measure/{id}", unitOfMeasureOrgID, []string{}, h.deleteUnitOfMeasure)
+	// Mass maintenance (download/upload to Excel): any member downloads, the upload is gated like PUT/DELETE above.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/units-of-measure/export", pathOrgID("orgId"), h.exportUnitsOfMeasure)
-	orgMemberProtected("POST", "/api/organizations/{orgId}/units-of-measure/import", pathOrgID("orgId"), h.importUnitsOfMeasure)
+	orgRoleProtected("POST", "/api/organizations/{orgId}/units-of-measure/import", pathOrgID("orgId"), []string{}, h.importUnitsOfMeasure)
 
-	// Product families (migration 0095) — the same membership-level
-	// master-data shape as units of measure above.
+	// Product families (migration 0095) — the same shape as units of
+	// measure above: any member reads, the org-wide roles change.
 	productFamilyOrgID := func(r *http.Request) (string, error) {
 		family, err := h.db.GetProductFamily(r.PathValue("id"))
 		if err != nil {
@@ -519,8 +521,8 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	}
 	orgMemberProtected("GET", "/api/organizations/{orgId}/product-families", pathOrgID("orgId"), h.listProductFamilies)
 	protected("POST", "/api/product-families", h.createProductFamily)
-	orgMemberProtected("PUT", "/api/product-families/{id}", productFamilyOrgID, h.updateProductFamily)
-	orgMemberProtected("DELETE", "/api/product-families/{id}", productFamilyOrgID, h.deleteProductFamily)
+	orgRoleProtected("PUT", "/api/product-families/{id}", productFamilyOrgID, []string{}, h.updateProductFamily)
+	orgRoleProtected("DELETE", "/api/product-families/{id}", productFamilyOrgID, []string{}, h.deleteProductFamily)
 
 	// Countries — global picklist activation, not per-organization (the
 	// new-organization form has no organization yet). Read is available to
@@ -542,13 +544,13 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products", pathOrgID("orgId"), h.listProducts)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products/bom-summaries", pathOrgID("orgId"), h.listBOMSummaries)
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products/bom-overview", pathOrgID("orgId"), h.getBOMOverview)
-	// Mass maintenance (download/upload to Excel) — any member, matching PUT/DELETE above.
+	// Mass maintenance (download/upload to Excel): any member downloads, the upload is gated like PUT/DELETE above.
 	orgMemberProtected("GET", "/api/organizations/{orgId}/products/export", pathOrgID("orgId"), h.exportProducts)
-	orgMemberProtected("POST", "/api/organizations/{orgId}/products/import", pathOrgID("orgId"), h.importProducts)
+	orgRoleProtected("POST", "/api/organizations/{orgId}/products/import", pathOrgID("orgId"), []string{"sales", "purchasing"}, h.importProducts)
 	protected("POST", "/api/products", h.createProduct)
 	orgMemberProtected("GET", "/api/products/{id}", productOrgID, h.getProduct)
-	orgMemberProtected("PUT", "/api/products/{id}", productOrgID, h.updateProduct)
-	orgMemberProtected("DELETE", "/api/products/{id}", productOrgID, h.deleteProduct)
+	orgRoleProtected("PUT", "/api/products/{id}", productOrgID, []string{"sales", "purchasing"}, h.updateProduct)
+	orgRoleProtected("DELETE", "/api/products/{id}", productOrgID, []string{"sales", "purchasing"}, h.deleteProduct)
 	orgMemberProtected("GET", "/api/products/{id}/usage-count", productOrgID, h.getProductUsageCount)
 	orgMemberProtected("GET", "/api/products/{id}/stock-movements", productOrgID, h.listProductStockMovements)
 	// Product summaries (master-data summaries): the Products headline and
