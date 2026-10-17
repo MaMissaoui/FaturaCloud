@@ -1,3 +1,5 @@
+import { rememberResume } from "src/utils/session-resume";
+
 const BASE = "/api";
 
 // The session token lives in an httpOnly cookie the browser sends automatically
@@ -29,11 +31,16 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       // logoutAtom (src/atoms/session.ts) does, so they don't start by
       // fetching one they may not belong to. The full-page navigation below
       // reloads every atom, so localStorage is the only state left to clear.
+      // The page and organization are kept for this tab instead, and the
+      // index route returns there after sign-in if the user may (audit F175).
+      let organizationId: string | null = null;
       try {
+        organizationId = JSON.parse(localStorage.getItem(ORGANIZATION_ID_STORAGE_KEY) ?? "null");
         localStorage.removeItem(ORGANIZATION_ID_STORAGE_KEY);
       } catch {
         // storage unavailable (private mode, blocked site data) — nothing to clear
       }
+      rememberResume(window.location.pathname + window.location.search, organizationId);
       window.location.href = "/login";
     }
     throw new Error("Session expired");

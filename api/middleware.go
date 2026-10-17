@@ -43,6 +43,11 @@ type Claims struct {
 	// a later request — a json:"-" tag here would silently make every token
 	// look like "local" after the first parse.
 	Provider string `json:"authProvider"`
+	// SessionStart is when the user signed in (Unix seconds). A renewed
+	// token carries it over, so renewal can't extend a session past
+	// maxSessionAge (audit F175). Zero on a token from before it existed,
+	// which then counts from its own IssuedAt.
+	SessionStart int64 `json:"sessionStart,omitempty"`
 	// IsPlatformAdmin is never part of the signed JWT payload (no json tag
 	// needed; jwt.ParseWithClaims never touches unexported... it IS
 	// exported, but simply isn't set by token parsing) — it's looked up
@@ -103,6 +108,7 @@ func (h *handler) authMiddleware(next http.Handler) http.Handler {
 		}
 		claims.IsPlatformAdmin = isPlatformAdmin != 0
 		setRequestUser(r, claims.UserID, email)
+		h.renewSessionIfDue(w, r, claims, email, tokenVersion)
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))

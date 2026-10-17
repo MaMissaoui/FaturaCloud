@@ -12,6 +12,7 @@ import {
   myOrgRoleAtom,
 } from "src/atoms/organization";
 import { roleHomePath } from "src/layouts/role-menu";
+import { takeResume } from "src/utils/session-resume";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -26,6 +27,18 @@ const Index = () => {
   // Handle organization-based redirects
   useEffect(() => {
     if (!organizationsLoaded) {
+      return;
+    }
+
+    // Back to where an expired session left off (audit F175) — only into an
+    // organization the signed-in user belongs to.
+    const resume = takeResume();
+    if (
+      resume &&
+      (!resume.organizationId || organizations.some((org) => org.id === resume.organizationId))
+    ) {
+      if (resume.organizationId) setOrganizationId(resume.organizationId);
+      navigate(resume.path, { replace: true });
       return;
     }
 
