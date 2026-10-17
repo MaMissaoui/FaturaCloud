@@ -97,7 +97,7 @@ docker build -t fatura-cloud .
 docker run -p 8080:8080 -v ./data:/data fatura-cloud
 ```
 - Stages:
-  1. **frontend** (node:22-alpine): `corepack enable` (pnpm from `packageManager`; `npm install -g pnpm` fails on arm64), then `pnpm install --frozen-lockfile` and `pnpm build`.
+  1. **frontend** (node:24-alpine, the LTS line: Node 25 dropped corepack): `corepack enable` (pnpm from `packageManager`; `npm install -g pnpm` fails on arm64), then `pnpm install --frozen-lockfile` and `pnpm build`.
   2. **backend** (golang:1.26-alpine): embeds `dist/` (`//go:embed all:dist`).
   3. **runtime** (debian:bookworm-slim): the binary plus `libreoffice-calc fonts-liberation fonts-dejavu-core`, running as `1000:1000`.
 - `--build-arg VERSION=<tag>` sets `GET /api/version` and the Sentry release; compose passes `VERSION` (default `dev`).

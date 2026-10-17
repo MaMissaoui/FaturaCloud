@@ -11,6 +11,11 @@ updates:
     groups:
       base-images:
         patterns: ["*"]
+    # Node majors move by hand, LTS to LTS: Node 25 (non-LTS) dropped the
+    # bundled corepack the frontend stage needs, so its PR could never build.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

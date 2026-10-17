@@ -18,7 +18,7 @@
 # "version" (packageManager, which corepack reads, stays), so the copy below
 # is byte-identical across releases and the install stays cached until a
 # dependency actually changes.
-FROM --platform=$BUILDPLATFORM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS manifest
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS manifest
 WORKDIR /app
 COPY package.json ./
 RUN node -e 'const fs = require("fs"); const p = JSON.parse(fs.readFileSync("package.json", "utf8")); delete p.version; fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n")'
@@ -28,10 +28,11 @@ RUN node -e 'const fs = require("fs"); const p = JSON.parse(fs.readFileSync("pac
 # output (static JS/CSS/HTML) is architecture-independent, so building it
 # under arm64 QEMU emulation on a multi-arch buildx run would just be a much
 # slower way to produce the exact same files.
-FROM --platform=$BUILDPLATFORM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS frontend
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS frontend
 WORKDIR /app
 
-# corepack (bundled with Node 22) reads package.json's own "packageManager"
+# corepack (bundled with Node up to 24 — Node 25 dropped it, which is why
+# this stays on the LTS line and Dependabot skips Node majors) reads package.json's own "packageManager"
 # pin and fetches that exact pnpm release — `npm install -g pnpm` instead
 # grabs pnpm's single-executable-application build, whose per-platform
 # @pnpm/exe.* native binary is an optionalDependency npm doesn't reliably
