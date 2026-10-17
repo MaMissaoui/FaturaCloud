@@ -74,6 +74,37 @@ export const productAtom = atom(
   },
 );
 
+// archiveProductAtom archives (or restores) a product: the way to retire one
+// that has history and so can't be deleted (audit F167). It resends the
+// stored product with the flag flipped, since the update is a full replace,
+// rather than whatever the drawer's form holds, so unsaved edits aren't
+// saved along the way. Returns whether it worked.
+export const archiveProductAtom = atom(
+  null,
+  async (get, set, { productId, archived }: { productId: string; archived: boolean }) => {
+    const stored = get(productsAtom).find((p) => p.id === productId);
+    if (!stored) return false;
+    try {
+      const updated = await UpdateProduct(productId, { ...stored, isArchived: archived });
+      const merged = keyBy([...get(productsAtom), updated], "id");
+      set(productsAtom, orderBy(map(merged), "name", "asc"));
+      message.success(archived ? t`Product archived` : t`Product restored`);
+      return true;
+    } catch (error) {
+      console.error("Failed to archive product:", error);
+      message.error(
+        error instanceof Error
+          ? error.message
+          : archived
+            ? t`Product could not be archived`
+            : t`Product could not be restored`,
+      );
+      return false;
+    }
+  },
+);
+archiveProductAtom.debugLabel = "archiveProductAtom";
+
 export const deleteProductAtom = atom(null, async (get, set, productId: string) => {
   try {
     const success = await DeleteProduct(productId);

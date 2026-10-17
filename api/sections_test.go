@@ -239,6 +239,7 @@ func TestSharedRoutesAreUnrestricted(t *testing.T) {
 		"GET /api/products/{id}",
 		"PUT /api/products/{id}",
 		"DELETE /api/products/{id}",
+		"GET /api/products/{id}/usage-count",
 		"GET /api/products/{id}/stock-movements",
 		"GET /api/products/{id}/serial-numbers",
 		"GET /api/organizations/{orgId}/tax-rates",

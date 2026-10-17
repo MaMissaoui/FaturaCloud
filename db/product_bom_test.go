@@ -321,9 +321,7 @@ func TestReplaceBillOfMaterialsRecordsChangeAfterComponentDeletion(t *testing.T)
 		t.Fatalf("v1 ReplaceBillOfMaterials: %v", err)
 	}
 
-	if ok, err := d.DeleteProduct(componentB.ID); err != nil || !ok {
-		t.Fatalf("DeleteProduct componentB: ok=%v err=%v", ok, err)
-	}
+	forceDeleteProduct(t, d, componentB.ID)
 
 	// Live bill_of_materials now only has componentA (componentB's row was
 	// cascade-deleted) — saving exactly that must still create v2, not be
@@ -446,9 +444,7 @@ func TestRestoreBillOfMaterialsVersionRejectsDeletedComponent(t *testing.T) {
 	}
 	v1ID := versions[0].ID
 
-	if ok, err := d.DeleteProduct(doomed.ID); err != nil || !ok {
-		t.Fatalf("DeleteProduct doomed: ok=%v err=%v", ok, err)
-	}
+	forceDeleteProduct(t, d, doomed.ID)
 
 	if _, err := d.RestoreBillOfMaterialsVersion(finished.ID, v1ID); err == nil {
 		t.Fatal("expected error restoring a version whose component was deleted, got nil")

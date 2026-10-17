@@ -21,6 +21,7 @@ import get from "lodash/get";
 
 import type { BOMVersion, BOMVersionDetail, BOMVersionLine } from "src/types/models";
 import { productsAtom, setProductsAtom } from "src/atoms/product";
+import { productOption } from "src/components/products/product-option";
 import {
   GetProductBOM,
   ReplaceProductBOM,
@@ -103,18 +104,12 @@ const BOMEditorDrawer = ({ onSaved }: { onSaved: () => void }) => {
   );
 
   const componentOptions = useMemo(
-    () =>
-      products
-        .filter((p) => p.category === "component")
-        .map((p) => ({ value: p.id, label: p.sku ? `${p.name} (${p.sku})` : p.name })),
+    () => products.filter((p) => p.category === "component").map(productOption),
     [products],
   );
 
   const finishedProductOptions = useMemo(
-    () =>
-      products
-        .filter((p) => p.category === "finished")
-        .map((p) => ({ value: p.id, label: p.sku ? `${p.name} (${p.sku})` : p.name })),
+    () => products.filter((p) => p.category === "finished").map(productOption),
     [products],
   );
 

@@ -16,6 +16,7 @@ func (h *handler) listProducts(w http.ResponseWriter, r *http.Request) {
 		Category:  r.URL.Query().Get("category"),
 		FamilyID:  r.URL.Query().Get("familyId"),
 		Stock:     r.URL.Query().Get("stock"),
+		Archived:  r.URL.Query().Get("archived"),
 		Limit:     parseIntParam(r, "limit"),
 		Offset:    parseIntParam(r, "offset"),
 		SortField: r.URL.Query().Get("sort"),
@@ -95,10 +96,23 @@ func (h *handler) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ok, err := h.db.DeleteProduct(id)
 	if err != nil {
-		writeInternalError(w, err)
+		// A product with history is refused (409, naming what refers to
+		// it) — archive it instead (audit F167).
+		writeMutationError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"deleted": ok})
+}
+
+// getProductUsageCount answers what refers to a product, so the drawer
+// offers Delete only for an unused one and Archive otherwise.
+func (h *handler) getProductUsageCount(w http.ResponseWriter, r *http.Request) {
+	usage, total, err := h.db.GetProductUsage(r.PathValue("id"))
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"count": total, "usage": usage})
 }
 
 func (h *handler) listBOMSummaries(w http.ResponseWriter, r *http.Request) {

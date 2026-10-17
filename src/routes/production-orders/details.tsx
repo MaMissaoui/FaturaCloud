@@ -416,7 +416,7 @@ const ProductionOrderDetails = () => {
   // Only a "finished" good has a BOM to consume — component/unclassified
   // products aren't produced by a production order.
   const finishedProducts = useMemo(
-    () => products.filter((p) => p.category === "finished"),
+    () => products.filter((p) => p.category === "finished" && !p.isArchived),
     [products],
   );
   const imports = useAtomValue(importsAtom);

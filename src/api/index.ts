@@ -907,8 +907,10 @@ export const UpdateTaxRate = (id: string, req: Partial<TaxRate>) =>
   put<TaxRate>(`/tax-rates/${id}`, req);
 export const DeleteTaxRate = (id: string) =>
   del<{ deleted: boolean }>(`/tax-rates/${id}`).then((r) => r.deleted);
+// count: every reference (blocks Delete); documentLines: the document lines
+// using it (locks the percentage, audit F168).
 export const GetTaxRateUsageCount = (id: string) =>
-  get<{ count: number }>(`/tax-rates/${id}/usage-count`).then((r) => r.count);
+  get<{ count: number; documentLines: number }>(`/tax-rates/${id}/usage-count`);
 
 // ---- Payment Terms ----
 
@@ -970,6 +972,9 @@ export const GetProducts = (
     // low-stock threshold, out of stock included. Lowest stock first unless
     // a sort is given.
     stock?: "out" | "low";
+    // "exclude" leaves archived products out, "only" lists just them; unset
+    // lists every product (the pickers name archived ones on saved lines).
+    archived?: "exclude" | "only";
     limit?: number;
     offset?: number;
     sort?: string;
@@ -982,6 +987,7 @@ export const GetProducts = (
   if (params?.category) qs.set("category", params.category);
   if (params?.familyId) qs.set("familyId", params.familyId);
   if (params?.stock) qs.set("stock", params.stock);
+  if (params?.archived) qs.set("archived", params.archived);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   if (params?.sort) qs.set("sort", params.sort);
@@ -995,6 +1001,12 @@ export const UpdateProduct = (id: string, req: Partial<Product>) =>
   put<Product>(`/products/${id}`, req);
 export const DeleteProduct = (id: string) =>
   del<{ deleted: boolean }>(`/products/${id}`).then((r) => r.deleted);
+// What refers to a product (stock movements, document lines, recipes…): a
+// product with any history can't be deleted, only archived (audit F167).
+export const GetProductUsageCount = (id: string) =>
+  get<{ count: number; usage: { label: string; count: number }[] }>(
+    `/products/${id}/usage-count`,
+  ).then((r) => r.count);
 export const GetProductStockMovements = (id: string) =>
   get<StockMovement[]>(`/products/${id}/stock-movements`);
 export const GetProductSerialNumbers = (id: string) =>
@@ -1005,7 +1017,9 @@ export const GetProductSerialNumbers = (id: string) =>
 // — the list itself stays paginated GetProducts. stockValue/units equal the
 // Dashboard's stock figure; under "quantity_only" nothing is valued.
 export interface ProductSummaryList {
+  // The counts leave archived products out; archived counts those.
   itemCount: number;
+  archived: number;
   stockTracked: number;
   services: number;
   outOfStock: number;

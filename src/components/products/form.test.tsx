@@ -22,6 +22,7 @@ vi.mock("src/api", () => ({
   CreateProduct: vi.fn(),
   UpdateProduct: vi.fn(),
   DeleteProduct: vi.fn(),
+  GetProductUsageCount: vi.fn(),
   GetTaxRates: vi.fn(),
   GetTaxRate: vi.fn(),
   CreateTaxRate: vi.fn(),
@@ -53,6 +54,7 @@ import {
   GetAccounts,
   GetProductBOM,
   GetProducts,
+  GetProductUsageCount,
   GetTaxRates,
   GetProductFamilies,
   GetUnitsOfMeasure,
@@ -125,6 +127,7 @@ describe("ProductForm bill of materials safety (F111 / F117)", () => {
     vi.mocked(GetProductFamilies).mockResolvedValue([]);
     vi.mocked(UpdateProduct).mockResolvedValue(finishedProduct);
     vi.mocked(ReplaceProductBOM).mockResolvedValue(undefined as never);
+    vi.mocked(GetProductUsageCount).mockResolvedValue(0);
   });
 
   it("skips the BOM write when the recipe failed to load, while still saving the product", async () => {
@@ -241,5 +244,42 @@ describe("ProductForm product code proposal", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     await waitFor(() => expect(code.value).toBe("MAL-004"));
+  });
+});
+
+describe("ProductForm delete (F167)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(GetProducts).mockResolvedValue({ data: [finishedProduct] } as never);
+    vi.mocked(GetTaxRates).mockResolvedValue([]);
+    vi.mocked(GetAccounts).mockResolvedValue([]);
+    vi.mocked(GetUnitsOfMeasure).mockResolvedValue([]);
+    vi.mocked(GetProductFamilies).mockResolvedValue([]);
+    vi.mocked(GetProductBOM).mockResolvedValue([]);
+  });
+
+  it("offers Delete for a product nothing refers to", async () => {
+    vi.mocked(GetProductUsageCount).mockResolvedValue(0);
+    await renderProductForm();
+    await waitFor(() => expect(GetProductUsageCount).toHaveBeenCalledWith("p1"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Delete/ })).toBeEnabled());
+  });
+
+  it("offers Archive instead of Delete for a product with history", async () => {
+    vi.mocked(GetProductUsageCount).mockResolvedValue(44);
+    await renderProductForm();
+    await waitFor(() => expect(GetProductUsageCount).toHaveBeenCalledWith("p1"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Archive/ })).toBeEnabled());
+    expect(screen.queryByRole("button", { name: /Delete/ })).not.toBeInTheDocument();
+  });
+
+  it("offers Restore for an archived product and says it is archived", async () => {
+    vi.mocked(GetProductUsageCount).mockResolvedValue(44);
+    const archived = { ...finishedProduct, isArchived: true };
+    vi.mocked(GetProducts).mockResolvedValue({ data: [archived] } as never);
+    await renderProductForm(undefined, [archived]);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Restore/ })).toBeEnabled());
+    expect(screen.getByText(/This product is archived/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Archive/ })).not.toBeInTheDocument();
   });
 });

@@ -168,7 +168,7 @@ const testUser: CurrentUser = {
 };
 
 describe("InvoiceDetails", () => {
-  it("renders the new-invoice form without throwing, prefilled with the generated invoice number", async () => {
+  it("renders the new-invoice form without throwing, previewing the number the server will assign", async () => {
     mockCommonFetches();
 
     const store = createStore();
@@ -193,11 +193,13 @@ describe("InvoiceDetails", () => {
     // something they actually produced rather than just "didn't throw".
     expect(GetClients).toHaveBeenCalledWith("org_1");
     expect(GetProducts).toHaveBeenCalledWith("org_1");
-    // nextInvoiceNumberAtom (INV-{number} format, counter 0+1) is what
-    // seeds the new invoice's "number" field — proves organizationAtom AND
-    // nextInvoiceNumberAtom both actually resolved through the harness's
-    // Suspense fix, not just that the page didn't crash.
-    expect(await screen.findByDisplayValue("INV-1")).toBeInTheDocument();
+    // The number is assigned by the server on save (audit F169): the field
+    // stays empty and previews it (INV-{number} format, counter 0+1) as a
+    // placeholder — which proves organizationAtom AND nextInvoiceNumberAtom
+    // both resolved through the harness's Suspense fix, not just that the
+    // page didn't crash.
+    const number = await screen.findByPlaceholderText("INV-1 (assigned on save)");
+    expect(number).toHaveValue("");
   });
 
   it("renders an existing invoice's saved data given a mocked invoice fetch", async () => {

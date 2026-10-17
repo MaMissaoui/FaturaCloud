@@ -22,7 +22,7 @@ import {
 } from "src/api";
 
 import { centsToUnits, unitsToCents, multiplyDecimal } from "src/utils/currency";
-import { organizationIdAtom, nextInvoiceNumberAtom } from "./organization";
+import { organizationIdAtom } from "./organization";
 
 function invoiceToDisplay(invoice: Invoice): InvoiceDisplay {
   return {
@@ -223,11 +223,15 @@ export const invoiceAtom = atom(
       }
     } catch (error) {
       console.error("Invoice operation failed:", error);
-      if (!invoiceId) {
-        message.error(t`Invoice creation failed`);
-      } else {
-        message.error(t`Invoice update failed`);
-      }
+      // The server's own reason (a taken number, totals that don't add up,
+      // a posted entry) — the bare "failed" hid what to fix.
+      message.error(
+        error instanceof Error
+          ? error.message
+          : !invoiceId
+            ? t`Invoice creation failed`
+            : t`Invoice update failed`,
+      );
       // Rethrow (F56/F67 convention — see CLAUDE.md's src/atoms/product.ts
       // entry, and every other document-type atom) so the details page's
       // handleSubmit can tell a failed save apart from a successful one and
@@ -295,20 +299,14 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
       return null;
     }
 
-    // Generate new invoice number
-    const nextNumber = await get(nextInvoiceNumberAtom);
-    if (!nextNumber) {
-      message.error(t`Failed to generate invoice number`);
-      return null;
-    }
-
     // Create new invoice data with duplicated information
     const newInvoiceId = nanoid();
     const currentDate = dayjs();
     const duplicatedInvoice = {
       id: newInvoiceId,
       organizationId: get(organizationIdAtom)!,
-      number: nextNumber,
+      // Left blank so the server assigns the next free number (audit F169).
+      number: "",
       state: "draft", // Always start as draft
       clientId: originalInvoice.clientId,
       date: currentDate.valueOf(),
@@ -355,7 +353,7 @@ export const duplicateInvoiceAtom = atom(null, async (get, set, invoiceId: strin
     return createdInvoice.id;
   } catch (error) {
     console.error("Failed to duplicate invoice:", error);
-    message.error(t`Invoice duplication failed`);
+    message.error(error instanceof Error ? error.message : t`Invoice duplication failed`);
     return null;
   }
 });

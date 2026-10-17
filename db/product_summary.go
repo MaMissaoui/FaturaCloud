@@ -12,7 +12,11 @@ import (
 // headline (stock value at average cost, units in stock) and the filter chip
 // counts. The list itself stays the paginated GET .../products.
 type ProductSummaryList struct {
+	// The counts leave archived products out, like the Products list they
+	// label (audit F167); Archived counts those, for its own chip. The stock
+	// value and units below include them: their stock is still there.
 	ItemCount    int `json:"itemCount"`
+	Archived     int `json:"archived"`
 	StockTracked int `json:"stockTracked"`
 	Services     int `json:"services"`
 	// OutOfStock and LowStock count stock-tracked products at or below 0 and
@@ -90,13 +94,15 @@ func (d *Database) GetProductSummaries(organizationID string) (ProductSummaryLis
 		Services     int `db:"services"`
 		OutOfStock   int `db:"outOfStock"`
 		LowStock     int `db:"lowStock"`
+		Archived     int `db:"archived"`
 	}
 	if err := d.DB.Get(&counts, `
-		SELECT COUNT(*) AS itemCount,
-		       COALESCE(SUM(stockEnabled = 1), 0) AS stockTracked,
-		       COALESCE(SUM(type = 'service'), 0) AS services,
-		       COALESCE(SUM(stockEnabled = 1 AND stockQuantity <= 0), 0) AS outOfStock,
-		       COALESCE(SUM(stockEnabled = 1 AND stockQuantity <= ?), 0) AS lowStock
+		SELECT COALESCE(SUM(isArchived = 0), 0) AS itemCount,
+		       COALESCE(SUM(isArchived = 0 AND stockEnabled = 1), 0) AS stockTracked,
+		       COALESCE(SUM(isArchived = 0 AND type = 'service'), 0) AS services,
+		       COALESCE(SUM(isArchived = 0 AND stockEnabled = 1 AND stockQuantity <= 0), 0) AS outOfStock,
+		       COALESCE(SUM(isArchived = 0 AND stockEnabled = 1 AND stockQuantity <= ?), 0) AS lowStock,
+		       COALESCE(SUM(isArchived = 1), 0) AS archived
 		FROM products
 		WHERE organizationId = ?`,
 		LowStockThreshold, organizationID,
@@ -108,6 +114,7 @@ func (d *Database) GetProductSummaries(organizationID string) (ProductSummaryLis
 	out.Services = counts.Services
 	out.OutOfStock = counts.OutOfStock
 	out.LowStock = counts.LowStock
+	out.Archived = counts.Archived
 
 	valuation, err := d.getStockValuation(organizationID)
 	if err != nil {

@@ -42,6 +42,10 @@ export interface Product {
   // toggling this while stockQuantity is non-zero, in either direction.
   serialized: number;
   createdAt: string | null;
+  // Retired: a product with history can't be deleted, only archived (audit
+  // F167). Pickers leave it out (ProductSelectCell) or offer it disabled;
+  // saved documents and stock reports keep it.
+  isArchived?: boolean;
 }
 
 export interface BillOfMaterialsLine {

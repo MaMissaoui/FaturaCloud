@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -259,6 +260,30 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// No number: assign the next free one here, in the transaction (audit
+	// F169). A number sent explicitly (an override, seed-demo, an older
+	// page) is kept unless another invoice already has it.
+	req.Number = strings.TrimSpace(req.Number)
+	counterSQL := `UPDATE organizations SET invoice_number_counter = invoice_number_counter + 1 WHERE id = ?`
+	counterArgs := []any{req.OrganizationID}
+	if req.Number == "" {
+		clientCode := ""
+		if client.Code != nil {
+			clientCode = *client.Code
+		}
+		number, counter, err := nextInvoiceNumberTx(tx, req.OrganizationID, req.Date, clientCode)
+		if err != nil {
+			return nil, err
+		}
+		req.Number = number
+		counterSQL = `UPDATE organizations SET invoice_number_counter = ? WHERE id = ?`
+		counterArgs = []any{counter, req.OrganizationID}
+	} else if taken, err := invoiceNumberTaken(tx, req.OrganizationID, req.Number, ""); err != nil {
+		return nil, err
+	} else if taken {
+		return nil, refuseTakenInvoiceNumber(req.Number)
+	}
+
 	_, err = tx.Exec(`
 		INSERT INTO invoices (
 			id, organizationId, number, state, clientId, date, dueDate,
@@ -286,11 +311,7 @@ func (d *Database) CreateInvoice(req CreateInvoiceRequest) (*Invoice, error) {
 		}
 	}
 
-	_, err = tx.Exec(
-		`UPDATE organizations SET invoice_number_counter = invoice_number_counter + 1 WHERE id = ?`,
-		req.OrganizationID,
-	)
-	if err != nil {
+	if _, err = tx.Exec(counterSQL, counterArgs...); err != nil {
 		return nil, fmt.Errorf("create_invoice counter: %w", err)
 	}
 
@@ -453,6 +474,35 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		return nil, fmt.Errorf("update_invoice begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// A changed number must be free (audit F169). Only a change is checked:
+	// the form resends the stored number with every save, and an invoice
+	// that already shares one (from before this check) must stay editable.
+	// A blank number keeps the stored one.
+	if updates.Number != nil {
+		number := strings.TrimSpace(*updates.Number)
+		if number == "" {
+			updates.Number = nil
+		} else {
+			updates.Number = &number
+			var stored struct {
+				OrganizationID string `db:"organizationId"`
+				Number         string `db:"number"`
+			}
+			if err := tx.Get(&stored, `SELECT organizationId, number FROM invoices WHERE id = ?`, invoiceID); err != nil {
+				return nil, fmt.Errorf("update_invoice fetch_number: %w", err)
+			}
+			if number != stored.Number {
+				taken, err := invoiceNumberTaken(tx, stored.OrganizationID, number, invoiceID)
+				if err != nil {
+					return nil, err
+				}
+				if taken {
+					return nil, refuseTakenInvoiceNumber(number)
+				}
+			}
+		}
+	}
 
 	// Required fields use COALESCE (kept when nil); nullable fields are set
 	// directly so users can clear them by passing null. exchangeRate/

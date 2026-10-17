@@ -549,6 +549,7 @@ func NewRouter(database *db.Database, dbPath, backupDir, jwtSecret, version stri
 	orgMemberProtected("GET", "/api/products/{id}", productOrgID, h.getProduct)
 	orgMemberProtected("PUT", "/api/products/{id}", productOrgID, h.updateProduct)
 	orgMemberProtected("DELETE", "/api/products/{id}", productOrgID, h.deleteProduct)
+	orgMemberProtected("GET", "/api/products/{id}/usage-count", productOrgID, h.getProductUsageCount)
 	orgMemberProtected("GET", "/api/products/{id}/stock-movements", productOrgID, h.listProductStockMovements)
 	// Product summaries (master-data summaries): the Products headline and
 	// chip counts, and the product panel's recent movements and last vendor.

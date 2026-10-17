@@ -51,6 +51,7 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/incoming-invoices/{id}/export` — fills the org's Excel template (upload or embedded default) and returns .xlsx; ?format=pdf converts it with headless LibreOffice — same mechanism and same "not wrapped in withDB" reasoning as the invoice export above. Unlike purchase orders/orders, reads the invoice's own server-validated stored totals rather than recomputing them
 
 **Invoices**
+- `POST /api/invoices` — a blank `number` gets the next free one, assigned server-side in the create's transaction; an explicit number that another invoice of the organization already has is refused (409), and so is renumbering to one on `PUT` (audit F169, `db/invoice_number.go`)
 - `GET /api/invoices/{id}/e-invoice` — EN 16931 UBL XML export (country profile resolved from the buyer)
 - `GET /api/invoices/{id}/export` — issue #115 — fills the org's Excel template (upload or embedded default) and returns .xlsx; ?format=pdf converts it with headless LibreOffice (see db/pdf_convert.go and the Dockerfile's runtime-stage comment) and returns .pdf — 503s only in an environment without soffice on PATH (e.g. local `go run` dev), not in the shipped image. Not wrapped in withDB
 
@@ -97,8 +98,12 @@ Routes with a behavior worth knowing before calling or changing them (every othe
 - `GET /api/organizations/{orgId}/invoices/outstanding` and `GET /api/organizations/{orgId}/incoming-invoices/outstanding` (`api/outstanding_documents.go`) — the sent invoices / approved bills that still have a balance, as `{id, outstanding, daysOverdue, bucket}`, straight from `GetReceivableAging`/`GetPayableAging` (the aging reports' and the Dashboard's query). The Invoices and Incoming invoices lists filter Unpaid/To pay/Overdue/Paid on these, because the state can lag the balance: payments keep it in step only since 2026-10 (`db/payment_state.go`), so a document paid in full before that, or set by hand, can still read sent/approved. In the Sales and Purchasing sections by their path, so only roles that have those lists get them; not behind `masterDataSummaries`
 - `GET /api/organizations/{orgId}/products/bom-overview` and `GET /api/products/{id}/bom/summary` — the Bill of Materials screen's list (parts cost, buildable units, chip counts) and recipe panel (`db/bom_summary.go`). In the `bill-of-materials` section (admin/power_user only) like every BOM route; 409 when `masterDataSummaries` is off. `bom-summaries` (component counts) stays as is for the screen with summaries off
 
+**Tax rates**
+- `PUT /api/tax-rates/{id}` — refuses (409) changing the percentage of a rate that document lines use (audit F168); `GET /api/tax-rates/{id}/usage-count` answers `{count, documentLines}` — `count` blocks Delete, `documentLines` locks the form's percentage
+
 **Products**
 - `GET /api/organizations/{orgId}/products/bom-summaries` — batch componentCount per finished product — see db/product_bom.go
+- `DELETE /api/products/{id}` — refused with 409 while anything refers to the product (stock movements, serials, document lines, production orders, recipes), naming what does (audit F167); `GET /api/products/{id}/usage-count` answers `{count, usage: [{label, count}]}` so the drawer offers Delete only for an unused product, Archive otherwise (`PUT` with `isArchived`; omitted keeps it); `GET .../products` takes `archived=exclude|only` (unset lists every product)
 - `PUT /api/products/{id}` — body also takes unitOfMeasureId — when set, overwrites the legacy free-text unit field server-side with that unit of measure's name (db/product.go's resolveProductUnit), so every existing reader of unit keeps working unchanged
 - `PUT /api/products/{id}/bom` — body also takes batchSize (int) — omitted/0 inherits the latest version's, not a reset to 1, so a caller with no batch UI (the product form's card) can't stomp it — see db/product_bom.go
 - `GET /api/products/{id}/bom/versions` — header list (componentCount, batchSize), newest first

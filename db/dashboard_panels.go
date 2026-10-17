@@ -172,18 +172,19 @@ func loanFollowUp(customers map[string]loanRegisterCustomer) LoanFollowUp {
 }
 
 // getLowStock lists the stock-tracked products at or below LowStockThreshold,
-// lowest first.
+// lowest first. An archived product is retired, so its empty shelf isn't
+// something to restock (audit F167).
 func (d *Database) getLowStock(organizationID string) (LowStock, error) {
 	out := LowStock{Threshold: LowStockThreshold, Items: []LowStockItem{}}
 	if err := d.DB.Get(&out.Count, `
 		SELECT COUNT(*) FROM products
-		WHERE organizationId = ? AND stockEnabled = 1 AND stockQuantity <= ?`,
+		WHERE organizationId = ? AND stockEnabled = 1 AND isArchived = 0 AND stockQuantity <= ?`,
 		organizationID, LowStockThreshold); err != nil {
 		return LowStock{}, fmt.Errorf("get_low_stock: %w", err)
 	}
 	if err := d.DB.Select(&out.Items, `
 		SELECT id, name, stockQuantity FROM products
-		WHERE organizationId = ? AND stockEnabled = 1 AND stockQuantity <= ?
+		WHERE organizationId = ? AND stockEnabled = 1 AND isArchived = 0 AND stockQuantity <= ?
 		ORDER BY stockQuantity ASC, name ASC
 		LIMIT ?`,
 		organizationID, LowStockThreshold, topN); err != nil {
