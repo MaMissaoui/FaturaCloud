@@ -12,8 +12,6 @@ import { useLingui } from "@lingui/react";
 import dayjs, { type Dayjs } from "dayjs";
 import get from "lodash/get";
 import find from "lodash/find";
-import map from "lodash/map";
-import sum from "lodash/sum";
 import toNumber from "lodash/toNumber";
 import orderBy from "lodash/orderBy";
 import uniq from "lodash/uniq";
@@ -45,18 +43,16 @@ import { normalizeInventoryValuation } from "src/types/inventory-valuation";
 import type { Account, Client, Payment, Product } from "src/types/models";
 import { calendarDayMs, useDatePickerFormat } from "src/utils/date";
 import { searchClients } from "src/utils/client-search";
-import {
-  addDecimal,
-  calculateTax,
-  centsToUnits,
-  grossFromNet,
-  multiplyDecimal,
-  netFromGross,
-  unitsToCents,
-} from "src/utils/currency";
+import { centsToUnits, grossFromNet, unitsToCents } from "src/utils/currency";
 import { formatOrgCents } from "src/utils/currencies";
 import type { NewClientDraft } from "src/components/cash-book/shared";
 import type { LoanRegisterFilter } from "src/components/cash-book/loan-register-model";
+import {
+  assembleSale,
+  defaultTaxRateIdOf,
+  type SaleLineInput,
+  type SaleTaxRate,
+} from "src/components/cash-book/sale-assembly";
 
 // search for a customer by name/mobile/IBAN/identity number, then either
 // pay off one of their open (loan sale) invoices or record a new sale.
@@ -582,55 +578,17 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   };
 
   // ---- New sale totals ----
-  // Counter prices are entered GROSS (tax-inclusive) — the opposite of
-  // every other document's unitPrice, which is net with tax added on top.
-  // netCentsFor is the single source of truth for the net price behind a
-  // gross-priced line: it rounds to cents once, and every downstream
-  // number (the totals below, and handleSubmitSale's payload) is derived
-  // from that same integer rather than re-deriving from the unrounded
-  // gross/(1+rate) value in more than one place — the two can disagree by
-  // a cent once quantity amplifies the sub-cent gap, and
-  // db/invoice_totals.go's validateInvoiceTotals requires an exact match.
+  // Counter prices are entered GROSS (tax-inclusive); sale-assembly.ts turns
+  // the lines into net prices and totals that agree with the server to the
+  // cent (assembleSale, netCentsFor), and handleSubmitSale sends exactly
+  // those lines.
   const lineItems = Form.useWatch("lineItems", form);
-  // The tax rate a line should use: its own (from a picked product or an
-  // explicit choice) or, when it has none, the organization's default. This
-  // is what makes "the price is gross, the tax is determined in the
-  // background" hold even for a line added before tax rates loaded (or a
-  // hand-typed line that never went through a product's onSelect) — the net
-  // and tax are derived from it here and in handleSubmitSale, so a sale is
-  // never silently recorded tax-free just because the line carried no rate.
-  const defaultTaxRateId = get(find(taxRates, { isDefault: 1 }), "id");
-  const effectiveTaxRateId = (item: any) => item?.taxRate || defaultTaxRateId;
-  const netCentsFor = (item: any) => {
-    const rate = find(taxRates, { id: effectiveTaxRateId(item) });
-    return unitsToCents(netFromGross(toNumber(item?.unitPrice) || 0, rate?.percentage ?? 0));
-  };
-  const taxGroups = useMemo(() => {
-    const groups: Record<string, { taxRate: any; subtotal: number; tax: number }> = {};
-    ((lineItems || []) as any[]).forEach((item) => {
-      const key = effectiveTaxRateId(item) || "";
-      const lineNetTotal = multiplyDecimal(
-        toNumber(item?.quantity) || 0,
-        centsToUnits(netCentsFor(item)),
-      );
-      if (!groups[key]) {
-        groups[key] = {
-          taxRate: find(taxRates, { id: effectiveTaxRateId(item) }),
-          subtotal: 0,
-          tax: 0,
-        };
-      }
-      groups[key].subtotal = addDecimal(groups[key].subtotal, lineNetTotal);
-    });
-    Object.values(groups).forEach((g) => {
-      g.tax = g.taxRate?.percentage ? calculateTax(g.subtotal, g.taxRate.percentage) : 0;
-    });
-    return Object.values(groups);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineItems, taxRates]);
-  const subTotal = sum(map(taxGroups, "subtotal"));
-  const taxTotal = sum(map(taxGroups, "tax"));
-  const total = addDecimal(subTotal, taxTotal);
+  const defaultTaxRateId = defaultTaxRateIdOf(taxRates as SaleTaxRate[]);
+  const sale = useMemo(
+    () => assembleSale(lineItems as SaleLineInput[] | undefined, taxRates as SaleTaxRate[]),
+    [lineItems, taxRates],
+  );
+  const { subTotal, taxTotal, total } = sale;
   const amountReceivedWatched = toNumber(Form.useWatch("amountReceived", form));
 
   // Defaults the amount field to what each mode naturally means — the full
@@ -686,13 +644,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
         organizationId,
         date: values.date.valueOf(),
         currency,
-        lineItems: (values.lineItems || []).map((item: any) => ({
-          description: item.description || null,
-          quantity: item.quantity,
-          unitPrice: netCentsFor(item),
-          taxRate: effectiveTaxRateId(item) || null,
-          productId: item.productId || null,
-        })),
+        lineItems: assembleSale(values.lineItems, taxRates as SaleTaxRate[]).lines,
         subTotal: unitsToCents(subTotal),
         taxTotal: unitsToCents(taxTotal),
         total: totalCents,

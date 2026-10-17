@@ -47,6 +47,9 @@ Settings is **not** a sidebar group (issue #183, 2026-09-10) — it moved to a g
 
 ## Files
 
+- **Document detail pages share their shell** (audit F185): `src/hooks/useDocumentForm.ts` (the unsaved-changes flag, Ctrl/Cmd+S, the leave-page warning — wire `markDirty` to the Form's `onValuesChange`, call `markSaved` after a save) and `src/components/document-export-buttons.tsx` (the PDF/Excel pair, disabled while the form is dirty, with its own download state and error toast). A new document page uses both rather than copying them
+- `src/components/cash-book/sale-assembly.ts` — the Cash Book's gross-to-net conversion and totals as pure functions (`assembleSale`, `netCentsFor`), used by `useCashBook` for the screen and the payload alike; `sale-assembly.test.ts` checks them against an oracle of `validateInvoiceTotals`' rounding (audit F189)
+
 - `src/api/client.ts` — base fetch wrapper; sends the httpOnly auth cookie (`credentials: same-origin`) + the `X-CSRF-Protection` header
 - `src/api/index.ts` — typed API functions, one per REST endpoint
 - `src/atoms/` — Jotai state atoms; import from `src/api`

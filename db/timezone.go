@@ -87,10 +87,3 @@ func calendarDayStart(ms int64, loc *time.Location) time.Time {
 	t := time.UnixMilli(ms).UTC()
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
 }
-
-// floorToDay truncates a Unix-ms timestamp to local midnight of its
-// calendar day in loc.
-func floorToDay(ms int64, loc *time.Location) time.Time {
-	t := time.UnixMilli(ms).In(loc)
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
-}

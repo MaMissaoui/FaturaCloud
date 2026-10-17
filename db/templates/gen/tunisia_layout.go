@@ -32,9 +32,6 @@ type tunisiaLayoutSpec struct {
 	hasVatRecap bool
 	// amountInWords is the placeholder for the sentence line, or "" to omit.
 	amountInWords string
-	// secondPartyLabel is the heading above the buyer block's name ("Client",
-	// "Fournisseur", ...) — omitted when empty.
-	secondPartyLabel string
 	// footerLeft/footerRight are the banking footer placeholders.
 	footerLeft  string
 	footerRight string

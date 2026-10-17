@@ -160,7 +160,8 @@ const CashBookV1 = () => {
         search={
           isToday && !inSale
             ? {
-                placeholder: t`Search by name, mobile number, IBAN, or identity number`,
+                placeholder: t`Name, mobile, IBAN or ID`,
+                ariaLabel: t`Search by name, mobile number, IBAN, or identity number`,
                 value: search,
                 onChange: setSearch,
                 allowClear: true,
@@ -187,8 +188,9 @@ const CashBookV1 = () => {
                   "aria-autocomplete": "list",
                   "aria-activedescendant": activeResultId,
                   onKeyDown: onSearchKeyDown,
-                  // Wide enough for the placeholder (name, mobile, IBAN or
-                  // identity number) on desktop, capped to the screen on a
+                  // Wide enough for the short placeholder in every language
+                  // (the full sentence is the field's accessible name — it
+                  // was cut off, audit F184), capped to the screen on a
                   // phone.
                   style: { width: "min(380px, calc(100vw - 48px))" },
                 },
@@ -299,7 +301,7 @@ const CashBookV1 = () => {
                 />
 
                 {/* Tax is still computed and posted correctly behind the
-              scenes (see netCentsFor above) — this screen just never shows
+              scenes (see netCentsFor in sale-assembly.ts) — this screen just never shows
               the subtotal/tax split, since every price is entered
               tax-inclusive and that's the only number a counter sale
               needs to communicate. */}

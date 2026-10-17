@@ -17,7 +17,6 @@ import {
   Descriptions,
   Popconfirm,
   theme,
-  Tooltip,
   Typography,
 } from "antd";
 import NumberInput from "src/components/number-input";
@@ -29,8 +28,6 @@ import { useLingui } from "@lingui/react";
 import {
   CopyOutlined,
   DeleteOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
   FileTextOutlined,
   ScheduleOutlined,
   SaveOutlined,
@@ -41,8 +38,8 @@ import { FieldFeedback } from "src/components/form-field-feedback";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useResetFormOnNew from "src/hooks/useResetFormOnNew";
-import useSaveShortcut from "src/hooks/useSaveShortcut";
-import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
+import { useDocumentForm } from "src/hooks/useDocumentForm";
+import DocumentExportButtons from "src/components/document-export-buttons";
 import { DownloadInvoiceEInvoice, ExportInvoiceDocument, GetInvoice } from "src/api";
 import dayjs from "dayjs";
 
@@ -188,19 +185,7 @@ const InvoiceDetails: React.FC = () => {
       )
     : nextInvoiceNumber;
   const [downloadingEInvoice, setDownloadingEInvoice] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [downloadingExcel, setDownloadingExcel] = useState(false);
-  // The server-side export (Excel always, PDF only for a custom template)
-  // reads persisted rows by invoice id, unlike the default/tunisia PDF
-  // button which reads live unsaved form.getFieldsValue() — so a stale
-  // export must be prevented instead of silently exporting the last-saved
-  // version. Reset per mount (this whole route remounts on invoice id
-  // change, see loadableInvoiceAtom's comment), set on any edit, cleared on
-  // a successful save.
-  const [isDirty, setIsDirty] = useState(false);
   const dateFormat = useDatePickerFormat();
-
-  useUnsavedChangesWarning(isDirty);
 
   const isNew = id === "new";
 
@@ -252,7 +237,7 @@ const InvoiceDetails: React.FC = () => {
   const initialValues = getInitialValues();
   const [form] = Form.useForm();
 
-  useSaveShortcut(form);
+  const { isDirty, markDirty, markSaved } = useDocumentForm(form);
   useResetFormOnNew(form, id);
 
   // Reset form when invoice data changes (e.g., after duplication)
@@ -280,7 +265,7 @@ const InvoiceDetails: React.FC = () => {
       withholdingTaxAmount: withholdingTaxRate ? withholdingTaxAmount : null,
       overdueCharge: values.overdueCharge,
     });
-    setIsDirty(false);
+    markSaved();
     if (isNew && created) navigate(`/invoices/${created.id}`);
   };
 
@@ -339,25 +324,6 @@ const InvoiceDetails: React.FC = () => {
   const selectedClientAddress = selectedClient ? formatAddressOneLine(selectedClient) : "";
   const orgCurrency = organization?.currency ?? "EUR";
 
-  // The server fill-and-convert path (db/xlsx_export.go / db/pdf_convert.go)
-  // — the one and only export mechanism for both formats now, so a PDF and
-  // an Excel export of the same invoice are always the same document (the
-  // PDF is literally a LibreOffice conversion of the filled xlsx — see
-  // db/pdf_convert.go). Reads persisted rows by invoice id, so both are
-  // gated on isDirty below.
-  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
-    if (!id) return;
-    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
-    setDownloading(true);
-    try {
-      await ExportInvoiceDocument(id, format);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
   const currentInvoiceState =
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
       ? ((invoice as any).state ?? "draft")
@@ -382,23 +348,11 @@ const InvoiceDetails: React.FC = () => {
   const exportActions =
     !isNew && !isOpeningLoan
       ? [
-          <Tooltip key="pdf" title={isDirty ? t`Save your changes before exporting` : undefined}>
-            <Button disabled={isDirty} loading={downloadingPdf} onClick={handleServerExport("pdf")}>
-              <FilePdfOutlined /> PDF
-            </Button>
-          </Tooltip>,
-          // Always the server fill-and-convert path (db/xlsx_export.go) — every
-          // invoice has an embedded fallback template (resolveTemplateBytes) to
-          // fill even with no org override, so both buttons always work.
-          <Tooltip key="excel" title={isDirty ? t`Save your changes before exporting` : undefined}>
-            <Button
-              disabled={isDirty}
-              loading={downloadingExcel}
-              onClick={handleServerExport("xlsx")}
-            >
-              <FileExcelOutlined /> <Trans>Excel</Trans>
-            </Button>
-          </Tooltip>,
+          <DocumentExportButtons
+            key="export"
+            isDirty={isDirty}
+            exportDocument={(format) => ExportInvoiceDocument(id!, format)}
+          />,
           // Deliberately NOT isDirty-gated like PDF/Excel above: db/einvoice.go
           // 409s with a list of every missing mandatory field at once, and
           // that's the retry workflow this button exists for — a user fixing
@@ -504,7 +458,7 @@ const InvoiceDetails: React.FC = () => {
             disabled={isOpeningLoan}
             onFinish={handleSubmit}
             scrollToFirstError
-            onValuesChange={() => setIsDirty(true)}
+            onValuesChange={markDirty}
             layout="vertical"
             initialValues={initialValues}
           >
@@ -770,7 +724,7 @@ const InvoiceDetails: React.FC = () => {
                           </Trans>
                         }
                       >
-                        <NumberInput style={{ width: "100%" }} min={0} precision={3} />
+                        <NumberInput style={{ width: "100%" }} min={0} precision={2} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -794,7 +748,7 @@ const InvoiceDetails: React.FC = () => {
                               </Trans>
                             }
                           >
-                            <NumberInput style={{ width: "100%" }} min={0} precision={3} />
+                            <NumberInput style={{ width: "100%" }} min={0} precision={2} />
                           </Form.Item>
                         </Col>
                       ) : null}

@@ -45,17 +45,6 @@ type Account struct {
 	CreatedAt          int64   `db:"createdAt"           json:"createdAt"`
 }
 
-// AccountNormalBalance returns "debit" or "credit" for an account type —
-// asset/expense accounts increase on the debit side, liability/equity/
-// revenue accounts increase on the credit side. Computed, never stored, so
-// it can never drift from Type.
-func AccountNormalBalance(accountType string) string {
-	if accountType == "asset" || accountType == "expense" {
-		return "debit"
-	}
-	return "credit"
-}
-
 // CreateAccountRequest is the payload for creating a chart-of-accounts entry.
 type CreateAccountRequest struct {
 	ID                 string  `json:"id"`

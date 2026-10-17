@@ -10,7 +10,6 @@ import {
   Divider,
   Form,
   Input,
-  message,
   Popconfirm,
   Row,
   Select,
@@ -18,7 +17,6 @@ import {
   Space,
   Table,
   Tag,
-  Tooltip,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
@@ -27,8 +25,6 @@ import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import {
   DeleteOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
   PlusOutlined,
   SaveOutlined,
   ShoppingCartOutlined,
@@ -48,8 +44,8 @@ import { useFetch } from "src/hooks/useFetch";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useResetFormOnNew from "src/hooks/useResetFormOnNew";
-import useSaveShortcut from "src/hooks/useSaveShortcut";
-import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
+import { useDocumentForm } from "src/hooks/useDocumentForm";
+import DocumentExportButtons from "src/components/document-export-buttons";
 import { useDatePickerFormat, useDateFormatter } from "src/utils/date";
 import { centsToUnits } from "src/utils/currency";
 import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
@@ -176,13 +172,9 @@ const PurchaseOrderDetails = () => {
 
   const [form] = Form.useForm();
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
-  useSaveShortcut(form);
+  const { isDirty, markDirty, markSaved } = useDocumentForm(form);
   useResetFormOnNew(form, id);
-  useUnsavedChangesWarning(isDirty);
 
   // A different document starts without the previous one's optimistic
   // statusOverride — reset during render when the route id changes, not in the
@@ -301,7 +293,7 @@ const PurchaseOrderDetails = () => {
   // only reaches this on success.
   const handleSubmit = async () => {
     const created = await setOrder(form.getFieldsValue(true));
-    setIsDirty(false);
+    markSaved();
     if (isNew && created) navigate(`/purchase-orders/${created.id}`);
   };
 
@@ -324,23 +316,6 @@ const PurchaseOrderDetails = () => {
     if (!id || isNew) return;
     const ok = await updateStatus({ orderId: id, status: next });
     if (ok) setStatusOverride(next);
-  };
-
-  // Server fill-and-convert path (db/xlsx_export_purchase_order.go /
-  // db/pdf_convert.go) — the same mechanism invoices use, so a PDF and an
-  // Excel export of the same purchase order are always the same document.
-  // Reads persisted line items by order id, so both are gated on isDirty.
-  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
-    if (!id) return;
-    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
-    setDownloading(true);
-    try {
-      await ExportPurchaseOrderDocument(id, format);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
   };
 
   const initialValues = isNew
@@ -415,7 +390,7 @@ const PurchaseOrderDetails = () => {
         scrollToFirstError
         layout="vertical"
         initialValues={initialValues}
-        onValuesChange={() => setIsDirty(true)}
+        onValuesChange={markDirty}
       >
         <Row gutter={24}>
           <Col xs={24} md={12} xl={7}>
@@ -790,31 +765,10 @@ const PurchaseOrderDetails = () => {
                     </Popconfirm>
                   )}
                 {!isNew && (
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingPdf}
-                      onClick={handleServerExport("pdf")}
-                    >
-                      <FilePdfOutlined /> PDF
-                    </Button>
-                  </Tooltip>
-                )}
-                {!isNew && (
-                  // Always the server fill-and-convert path
-                  // (db/xlsx_export_purchase_order.go) — every purchase
-                  // order has an embedded fallback template
-                  // (resolveTemplateBytes) to fill even with no org
-                  // override, so both buttons always work.
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingExcel}
-                      onClick={handleServerExport("xlsx")}
-                    >
-                      <FileExcelOutlined /> <Trans>Excel</Trans>
-                    </Button>
-                  </Tooltip>
+                  <DocumentExportButtons
+                    isDirty={isDirty}
+                    exportDocument={(format) => ExportPurchaseOrderDocument(id!, format)}
+                  />
                 )}
                 {!isNew && !["draft", "cancelled"].includes(currentStatus) && (
                   <Button onClick={() => navigate(`/inbound-deliveries/new?purchaseOrderId=${id}`)}>

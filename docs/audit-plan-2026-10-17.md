@@ -716,6 +716,12 @@ The move to `debian:trixie-slim` is a deliberate change of its own:
 
 ## Phase 6 — clean code, UI polish, docs, tests
 
+**Phase 6 status (2026-10-17).** F184, F185 (the shared shell), F188 and F189 are done in the Phase 6 PR. F187's rewrite gets its own PR, so the docs can be reviewed apart from the code. Still open:
+- **F185's typing:** each page's form values typed, then `typescript/no-explicit-any` turned on directory by directory.
+- **F184's antd icon names:** antd names its icon buttons in English ("search", "close-circle"). That is library behavior, with no app-level hook short of replacing each icon.
+- **F186:** both layouts are kept, by the owner's decision of 2026-10-17.
+- **F188's legacy tables:** the drop of `timeEntries`/`projects`/`tags` waits for production's row counts.
+
 ### 6.1 — F184: UI polish cluster (Low, Observed in the browser)
 
 The route sweep was clean (no overflow, no errors, at 1440 and 390 px), and

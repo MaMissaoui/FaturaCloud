@@ -70,15 +70,6 @@ func infoFrom(ctx context.Context) *requestInfo {
 	return info
 }
 
-// requestID is the id of the request r belongs to, "" outside RequestLogger
-// (a unit test calling a handler directly).
-func requestID(r *http.Request) string {
-	if info := infoFrom(r.Context()); info != nil {
-		return info.id
-	}
-	return ""
-}
-
 // noteRequest adds attributes to r's log line, and with level set raises it
 // to at least that level.
 func noteRequest(r *http.Request, level *slog.Level, attrs ...slog.Attr) {

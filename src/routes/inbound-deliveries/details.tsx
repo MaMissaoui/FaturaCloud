@@ -14,21 +14,12 @@ import {
   Skeleton,
   Space,
   Tag,
-  Tooltip,
-  message,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import {
-  DeleteOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  ImportOutlined,
-  SaveOutlined,
-  UserAddOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, ImportOutlined, SaveOutlined, UserAddOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import get from "lodash/get";
@@ -39,8 +30,8 @@ import map from "lodash/map";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useResetFormOnNew from "src/hooks/useResetFormOnNew";
-import useSaveShortcut from "src/hooks/useSaveShortcut";
-import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
+import { useDocumentForm } from "src/hooks/useDocumentForm";
+import DocumentExportButtons from "src/components/document-export-buttons";
 
 import {
   ExportInboundDeliveryDocument,
@@ -133,18 +124,14 @@ const InboundDeliveryDetails = () => {
     open: false,
     pendingStatus: null,
   });
-  const [isDirty, setIsDirty] = useState(false);
   // Without this the modal's OK stayed enabled through the await below, so a
   // second click fired a second PATCH — which 409s (draft -> received has
   // already added the goods to stock) and toasts an error on top of the
   // success (F112, mirroring production-orders/details.tsx's F86 fix).
   const [confirmingSerials, setConfirmingSerials] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
-  useSaveShortcut(form);
+  const { isDirty, markDirty, markSaved } = useDocumentForm(form);
   useResetFormOnNew(form, id);
-  useUnsavedChangesWarning(isDirty);
 
   // A different document starts without the previous one's optimistic
   // statusOverride — reset during render when the route id changes, not in the
@@ -238,7 +225,7 @@ const InboundDeliveryDetails = () => {
   // with no registered fields, and onFinish then reports nothing.
   const handleSubmit = async () => {
     const created = await setDelivery(form.getFieldsValue(true));
-    setIsDirty(false);
+    markSaved();
     if (isNew && created) navigate(`/inbound-deliveries/${created.id}`);
   };
 
@@ -246,23 +233,6 @@ const InboundDeliveryDetails = () => {
     if (!id || isNew) return;
     const success = await deleteDelivery(id);
     if (success) navigate("/inbound-deliveries");
-  };
-
-  // Server fill-and-convert path (db/xlsx_export_inbound_delivery.go /
-  // db/pdf_convert.go) — the same mechanism invoices/purchase orders/
-  // orders/incoming invoices/outbound deliveries use. Reads persisted line
-  // items by receipt id, so both formats are gated on isDirty.
-  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
-    if (!id || isNew) return;
-    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
-    setDownloading(true);
-    try {
-      await ExportInboundDeliveryDocument(id, format);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
   };
 
   // Serialized lines this receipt would receive, resolved from the
@@ -381,7 +351,7 @@ const InboundDeliveryDetails = () => {
         scrollToFirstError
         layout="vertical"
         initialValues={initialValues}
-        onValuesChange={() => setIsDirty(true)}
+        onValuesChange={markDirty}
       >
         <Row gutter={24}>
           <Col xs={24} md={12} xl={5}>
@@ -620,31 +590,10 @@ const InboundDeliveryDetails = () => {
                   </Popconfirm>
                 )}
                 {!isNew && (
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingPdf}
-                      onClick={handleServerExport("pdf")}
-                    >
-                      <FilePdfOutlined /> PDF
-                    </Button>
-                  </Tooltip>
-                )}
-                {!isNew && (
-                  // Always the server fill-and-convert path
-                  // (db/xlsx_export_inbound_delivery.go) — every receipt
-                  // has an embedded fallback template
-                  // (resolveTemplateBytes) to fill even with no org
-                  // override, so both buttons always work.
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingExcel}
-                      onClick={handleServerExport("xlsx")}
-                    >
-                      <FileExcelOutlined /> <Trans>Excel</Trans>
-                    </Button>
-                  </Tooltip>
+                  <DocumentExportButtons
+                    isDirty={isDirty}
+                    exportDocument={(format) => ExportInboundDeliveryDocument(id!, format)}
+                  />
                 )}
                 <Button type="primary" onClick={() => form.submit()}>
                   <SaveOutlined /> <Trans>Save</Trans>

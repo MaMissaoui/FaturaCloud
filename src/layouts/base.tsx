@@ -902,6 +902,7 @@ export default function BaseLayout() {
                 />
                 {!isEmpty(organizations) && (
                   <Select
+                    aria-label={t`Organization`}
                     showSearch={organizations.length > 5 ? true : false}
                     filterOption={(input, option) => {
                       if (!option) return false;

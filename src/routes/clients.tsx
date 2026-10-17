@@ -413,6 +413,7 @@ const Clients = () => {
         title={<Trans>Clients</Trans>}
         search={{
           placeholder: t`Name, phone, ID or tax number`,
+          width: 300,
           value: search,
           onChange: setSearch,
         }}
