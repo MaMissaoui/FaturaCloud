@@ -2200,12 +2200,8 @@ func TestClientDocumentCountCoversEveryReference(t *testing.T) {
 		"invoices": true, // ON DELETE CASCADE — deliberately unguarded, see db/client.go
 		// ON DELETE SET NULL — an unguarded delete just detaches the
 		// reference rather than failing on a foreign key, same tolerance
-		// products.taxRateId already has elsewhere. orders/projects/
-		// timeEntries all predate the GL work; projects/timeEntries are also
-		// legacyUnusedTables in TestResetOrganizationDataCoversEveryOrganizationScopedTable.
-		"orders":      true,
-		"projects":    true,
-		"timeEntries": true,
+		// products.taxRateId already has elsewhere.
+		"orders": true,
 		// ON DELETE SET NULL, same precedent as orders above (migration
 		// 0064) — an unguarded delete just detaches a standalone delivery
 		// from the client, it doesn't fail or cascade.
@@ -2255,12 +2251,7 @@ func TestClientDocumentCountCoversEveryReference(t *testing.T) {
 // would just leave that table's rows behind, silently, every time someone
 // resets an organization's data.
 //
-// legacyUnusedTables are schema leftovers from before the current app's
-// feature set (see CLAUDE.md's Project Origin note) with no Go or frontend
-// code referencing them at all — nothing ever populates them, so there's
-// nothing for a reset to cover.
-//
-// deliberatelyUnresetTables are, unlike legacyUnusedTables, actively used —
+// deliberatelyUnresetTables are actively used —
 // they're just not what "reset an organization's data" means. organization_users
 // is access control (who can act on the organization), not the organization's
 // own master/transactional data; wiping it on a data reset would silently
@@ -2269,11 +2260,6 @@ func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)
 
-	legacyUnusedTables := map[string]bool{
-		"tags":        true,
-		"timeEntries": true,
-		"projects":    true,
-	}
 	deliberatelyUnresetTables := map[string]bool{
 		"organization_users": true,
 		// The activity history records the reset itself; a reset that erased
@@ -2313,12 +2299,12 @@ func TestResetOrganizationDataCoversEveryOrganizationScopedTable(t *testing.T) {
 		if !hasOrgColumn {
 			continue
 		}
-		if !covered[table] && !legacyUnusedTables[table] && !deliberatelyUnresetTables[table] {
+		if !covered[table] && !deliberatelyUnresetTables[table] {
 			t.Errorf(
 				"table %q has an organizationId column but is not in transactionalDataTables or "+
 					"masterDataTables — ResetOrganizationData would leave its rows behind; add it to "+
-					"one of those lists in db/reset.go (or to legacyUnusedTables/deliberatelyUnresetTables "+
-					"in this test, if it's genuinely dead or intentionally out of scope for a reset)",
+					"one of those lists in db/reset.go (or to deliberatelyUnresetTables in this test, "+
+					"if it's intentionally out of scope for a reset)",
 				table,
 			)
 		}
