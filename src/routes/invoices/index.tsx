@@ -128,7 +128,9 @@ const Invoices = () => {
     string,
     OutstandingDocument
   > | null>(
-    organizationId ? [organizationId, invoices.length] : null,
+    // Once the list has loaded: keyed on its length, a request made while it
+    // was still empty was repeated as soon as it arrived (audit F184).
+    organizationId && !loading ? [organizationId, invoices.length] : null,
     () =>
       GetOutstandingInvoices(organizationId!).then((rows) => new Map(rows.map((r) => [r.id, r]))),
     null,
@@ -174,7 +176,7 @@ const Invoices = () => {
   // its total, and a foreign-currency total isn't in the organization's.
   const summariesEnabled = useSummariesEnabled("client-balances");
   const { data: summaries } = useFetch<ClientSummaryList | null>(
-    summariesEnabled && organizationId ? [organizationId, invoices.length] : null,
+    summariesEnabled && organizationId && !loading ? [organizationId, invoices.length] : null,
     () => GetClientSummaries(organizationId!),
     null,
   );

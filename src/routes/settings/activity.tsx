@@ -321,12 +321,15 @@ const SettingsActivity = () => {
             aria-label={t`Filter by user`}
           />
         )}
-        <DatePicker.RangePicker
-          value={range}
-          onChange={setRange}
-          format={dateFormat}
-          allowEmpty={[true, true]}
-        />
+        {/* One accessible name for the two date inputs (audit F184). */}
+        <span role="group" aria-label={t`Date range`}>
+          <DatePicker.RangePicker
+            value={range}
+            onChange={setRange}
+            format={dateFormat}
+            allowEmpty={[true, true]}
+          />
+        </span>
         <Button icon={<ReloadOutlined />} onClick={first.reload} aria-label={t`Refresh`} />
       </Space>
 

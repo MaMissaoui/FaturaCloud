@@ -126,13 +126,16 @@ const DailyCashMovements = () => {
             </Option>
           ))}
         </Select>
-        <RangePicker
-          value={range}
-          onChange={(dates) => dates?.[0] && dates?.[1] && setRange([dates[0], dates[1]])}
-          format={dateFormat}
-          allowClear={false}
-          aria-label={t`Date range`}
-        />
+        {/* One accessible name for the two date inputs (audit F184). */}
+        <span role="group" aria-label={t`Date range`}>
+          <RangePicker
+            value={range}
+            onChange={(dates) => dates?.[0] && dates?.[1] && setRange([dates[0], dates[1]])}
+            format={dateFormat}
+            allowClear={false}
+            aria-label={t`Date range`}
+          />
+        </span>
       </Space>
 
       {!accountId ? (

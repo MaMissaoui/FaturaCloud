@@ -16,12 +16,15 @@ export const initSentry = async () => {
     (import.meta.env.VITE_SENTRY_ENABLED === "true" ||
       (import.meta.env.VITE_SENTRY_ENABLED === undefined && import.meta.env.PROD));
 
-  // Get the app version
+  // The app version names the release — only when Sentry is on: the header
+  // asks for it anyway, and a disabled Sentry needs none (audit F184).
   let appVersion = "unknown";
-  try {
-    appVersion = await GetVersion();
-  } catch (error) {
-    console.warn("Failed to get app version:", error);
+  if (isEnabled) {
+    try {
+      appVersion = await GetVersion();
+    } catch (error) {
+      console.warn("Failed to get app version:", error);
+    }
   }
 
   Sentry.init({

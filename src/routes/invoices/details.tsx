@@ -770,7 +770,7 @@ const InvoiceDetails: React.FC = () => {
                           </Trans>
                         }
                       >
-                        <NumberInput style={{ width: "100%" }} min={0} precision={3} />
+                        <NumberInput style={{ width: "100%" }} min={0} precision={2} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -794,7 +794,7 @@ const InvoiceDetails: React.FC = () => {
                               </Trans>
                             }
                           >
-                            <NumberInput style={{ width: "100%" }} min={0} precision={3} />
+                            <NumberInput style={{ width: "100%" }} min={0} precision={2} />
                           </Form.Item>
                         </Col>
                       ) : null}

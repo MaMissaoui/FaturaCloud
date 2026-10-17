@@ -8,6 +8,11 @@ export interface PageHeaderSearchProps {
   onChange: (value: string) => void;
   onSearch?: (value: string) => void;
   placeholder: string;
+  // The field's accessible name when the placeholder is a short form of it.
+  ariaLabel?: string;
+  // Wide enough for the placeholder in every language (default 260px), so it
+  // isn't cut off (audit F184); never wider than the screen.
+  width?: number;
   allowClear?: boolean;
   onClear?: () => void;
   autoFocus?: boolean;
@@ -52,7 +57,8 @@ const PageHeader = ({ icon, title, search, extra, filters, actions, style }: Pag
           {search && (
             <Input.Search
               placeholder={search.placeholder}
-              aria-label={search.placeholder}
+              aria-label={search.ariaLabel ?? search.placeholder}
+              style={{ width: search.width ?? 260, maxWidth: "100%" }}
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
               onSearch={search.onSearch}

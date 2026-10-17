@@ -78,6 +78,10 @@ export const organizationAtom = atom(
         : null;
       return organization;
     } catch (error) {
+      // A remembered organization that was deleted, or that this user no
+      // longer belongs to, answers 404: nothing to report — the index route
+      // clears the stale id and picks one the user has (audit F184).
+      if (error instanceof Error && error.message === "not found") return null;
       console.error("Failed to fetch organization:", error);
       message.error(t`Failed to fetch organization`);
       return null;

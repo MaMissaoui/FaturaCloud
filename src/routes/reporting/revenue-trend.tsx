@@ -66,27 +66,29 @@ const RevenueTrend = () => {
         icon={<LineChartOutlined />}
         title={<Trans>Revenue Trend</Trans>}
         extra={
-          <RangePicker
-            value={range}
-            format={dateFormat}
-            allowClear={false}
-            presets={[
-              { label: t`Last 7 days`, value: [dayjs().subtract(7, "day"), dayjs()] },
-              { label: t`Last 30 days`, value: [dayjs().subtract(30, "day"), dayjs()] },
-              { label: t`This month`, value: [dayjs().startOf("month"), dayjs().endOf("month")] },
-              {
-                label: t`Last month`,
-                value: [
-                  dayjs().subtract(1, "month").startOf("month"),
-                  dayjs().subtract(1, "month").endOf("month"),
-                ],
-              },
-              { label: t`This year`, value: [dayjs().startOf("year"), dayjs().endOf("year")] },
-            ]}
-            onChange={(values) => {
-              if (values?.[0] && values?.[1]) setRange([values[0], values[1]]);
-            }}
-          />
+          <span role="group" aria-label={t`Date range`}>
+            <RangePicker
+              value={range}
+              format={dateFormat}
+              allowClear={false}
+              presets={[
+                { label: t`Last 7 days`, value: [dayjs().subtract(7, "day"), dayjs()] },
+                { label: t`Last 30 days`, value: [dayjs().subtract(30, "day"), dayjs()] },
+                { label: t`This month`, value: [dayjs().startOf("month"), dayjs().endOf("month")] },
+                {
+                  label: t`Last month`,
+                  value: [
+                    dayjs().subtract(1, "month").startOf("month"),
+                    dayjs().subtract(1, "month").endOf("month"),
+                  ],
+                },
+                { label: t`This year`, value: [dayjs().startOf("year"), dayjs().endOf("year")] },
+              ]}
+              onChange={(values) => {
+                if (values?.[0] && values?.[1]) setRange([values[0], values[1]]);
+              }}
+            />
+          </span>
         }
       />
 

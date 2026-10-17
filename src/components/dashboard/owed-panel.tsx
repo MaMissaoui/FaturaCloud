@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Table, theme, Typography } from "antd";
 import { Trans, Plural } from "@lingui/react/macro";
@@ -20,6 +20,18 @@ interface Props {
   invoiceRow: (invoice: OutstandingInvoiceSummary) => object;
   reportLink?: ReactNode;
   cashBookLink?: ReactNode;
+}
+
+// bucketColumns lays out n aging cards at least minWidth wide in a row of
+// width px: all on one row when they fit, else spread evenly over the rows
+// they need — five cards that fit four to a row become 3 + 2, never 4 + 1
+// with the last alone (audit F184).
+export function bucketColumns(n: number, width: number, minWidth = 150, gap = 8): number {
+  if (n <= 0) return 1;
+  const fit = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
+  if (n <= fit) return n;
+  const rows = Math.ceil(n / fit);
+  return Math.ceil(n / rows);
 }
 
 // "What your clients owe you": the total, one bar split by how late it is,
@@ -48,6 +60,16 @@ const OwedPanel = ({
     {} as Partial<Record<OutstandingBucket, number>>,
   );
   const shown = AGING_BUCKETS.filter((b) => amounts[b.key] > 0);
+  // The cards' row width, for bucketColumns; followed as the panel resizes.
+  // A callback ref: the grid only renders while something is owed.
+  const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
+  const [gridWidth, setGridWidth] = useState(1000);
+  useEffect(() => {
+    if (!gridEl || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => setGridWidth(entry.contentRect.width));
+    observer.observe(gridEl);
+    return () => observer.disconnect();
+  }, [gridEl]);
   const oldest = [...shown].reverse()[0]?.key ?? null;
   const selected = picked && amounts[picked] > 0 ? picked : oldest;
   const invoices = outstanding.invoices.filter((inv) => inv.bucket === selected);
@@ -140,11 +162,12 @@ const OwedPanel = ({
               ))}
             </div>
             <div
+              ref={setGridEl}
               role="group"
               aria-label={t`How late`}
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gridTemplateColumns: `repeat(${bucketColumns(shown.length, gridWidth)}, minmax(0, 1fr))`,
                 gap: 8,
               }}
             >

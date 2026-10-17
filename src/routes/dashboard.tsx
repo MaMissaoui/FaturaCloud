@@ -145,6 +145,13 @@ const Dashboard = () => {
       year: "numeric",
       timeZone: "UTC",
     }).format(new Date(`${month}-15T12:00:00Z`));
+  // The revenue axis in short form ("2 M", "450 k"): a full amount with
+  // decimals and the currency ("2 000 000,00 DT") on every tick crowded the
+  // chart (audit F184). The tooltip still shows the exact amount.
+  const compactAmount = (cents: number) =>
+    new Intl.NumberFormat(qtyLocale, { notation: "compact", maximumFractionDigits: 1 }).format(
+      cents / 100,
+    );
   const revenueTotal = (data?.revenueByMonth ?? []).reduce((sum, m) => sum + m.revenue, 0);
   const units = formatQty(data?.stockValuation.units ?? 0, qtyLocale);
   const threshold = formatQty(data?.lowStock.threshold ?? 0, qtyLocale);
@@ -353,8 +360,14 @@ const Dashboard = () => {
                       height={220}
                       style={{ fill: token.colorPrimary }}
                       axis={{
-                        x: { labelFormatter: (v: string) => monthLabel(v) },
-                        y: { labelFormatter: (v: number) => money(v) },
+                        // Months that don't fit are skipped rather than
+                        // turned on their side.
+                        x: {
+                          labelFormatter: (v: string) => monthLabel(v),
+                          labelAutoRotate: false,
+                          labelAutoHide: true,
+                        },
+                        y: { labelFormatter: (v: number) => compactAmount(v) },
                       }}
                       tooltip={{
                         title: (d: { month: string }) => monthLabel(d.month),

@@ -900,7 +900,9 @@ export default function OrganizationEditDrawer({
                                 </Trans>
                               }
                             >
-                              <NumberInput min={0} precision={3} style={{ width: "100%" }} />
+                              {/* Stored in cents like every amount, so two decimals: a third
+                                  (a TND millime) would be rounded away on save (audit F184). */}
+                              <NumberInput min={0} precision={2} style={{ width: "100%" }} />
                             </Form.Item>
                           </Col>
                           <Col xs={24} md={12}>
