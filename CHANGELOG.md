@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.68.0] - 2026-10-17
+
+The fixes from the full re-audit of v3.67.4 (`docs/audit-plan-2026-10-17.md`). Three migrations (`0105`–`0107`) run at startup.
+
+### Added
+- Products can be archived. A product with history can't be deleted any more (that broke the documents and stock movements that refer to it), so the drawer offers **Archive** for it, **Delete** for an unused one and **Restore** for an archived one. Archived products drop out of the line-item pickers and the low-stock list but stay on saved documents and in the stock value; the Products list has an Archived chip (#515).
+- `GET /api/healthz` and a Docker `HEALTHCHECK`. On a stop the server finishes in-flight requests (up to 25 s) and its background tasks before closing the database (#520).
+
+### Fixed
+- The percentage of a tax rate used on documents can no longer be changed, which silently changed the totals of those documents. Create a new rate and make it the default instead (#515).
+- Invoice numbers are assigned on the server and can't be duplicated: a new invoice gets the next free number, a number already in use is refused, and the database now enforces it. Production had no duplicates (#515, #516).
+- Organization-wide configuration is changed only by admins, power users and general users, plus the role that owns it: products by Sales and Purchasing, tax rates and payment terms by Accounting. Other roles see these screens read-only; before, any member could change them through the API (#517).
+- Sign-in emails are case-insensitive and trimmed; stored emails are normalized (#519).
+- A session no longer ends mid-shift: it renews while in use, for up to 7 days after sign-in. When it does end, signing in again returns to the same page and organization (#519).
+- An Excel upload that unpacks to a huge size is refused, and so is an import over 20,000 rows; each template upload no longer leaves a temporary file behind (#519).
+- An install from before 3.67.4 now gets its backups folder made group-readable too (#520).
+- The invoice discount and the fiscal stamp take two decimals; a third was silently lost (#521).
+- Saving an invoice that the server refuses now shows the server's reason (#515).
+- `seed-demo --reset` deletes only an organization flagged as a test one, and only after its id is confirmed with `--confirm-reset <id>`. The production reseed command needs that flag from now on (#517).
+
+### Changed
+- Faster: scripts and styles are cached by the browser across visits and served compressed, as are larger API answers. The Cash Book frees its button as soon as a sale is saved and refreshes only what changed. The journal entries page loads one page at a time (#518).
+- The Dashboard's aging cards are spread evenly and its revenue axis is shorter; the Cash Book search placeholder fits; the date ranges and the organization switcher are labelled for screen readers (#521).
+- Security: a stricter Content-Security-Policy, and the unused in-browser PDF and QR-code libraries removed (#519).
+- Internal: the full Docker image (including PDF conversion) is tested in CI, govulncheck is pinned, development dependencies are audited, and Dependabot proposes updates weekly (#520). The document detail pages share their edit and export logic, dead code is gone, and the Cash Book's sale totals have tests (#521).
+
 ## [3.67.4] - 2026-10-11
 
 ### Fixed
