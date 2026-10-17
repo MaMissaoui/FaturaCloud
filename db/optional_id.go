@@ -114,9 +114,6 @@ var nullableFKClassification = map[string]fkDisposition{
 	"payments.voidingEntryId":                             fkServerSet,
 	"production_order_component_lines.componentProductId": fkServerSet,
 	"stockMovements.serialNumberId":                       fkServerSet,
-	// Legacy tables with no live Create/Update path in this codebase.
-	"projects.clientId":    fkServerSet,
-	"timeEntries.clientId": fkServerSet,
 
 	// --- deliberately not normalized: "" is the clear signal (F95) ---
 	"organizations.datevClearingAccountId":              fkExplicitClear,

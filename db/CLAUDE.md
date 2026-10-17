@@ -29,7 +29,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
 - **Last-admin guard:** add/update/remove refuse (`ErrLastOrgAdmin`, 409) to leave an organization without an active admin; the check and write share one transaction (`isLastOrgAdminTx`). `GetOrganizationsWhereSoleAdmin` is checked before deleting or deactivating a user, since the membership cascade would silently lock the organization out with no recovery.
 
 ## Reset and usage tripwires
-`ResetOrganizationData` (`db/reset.go`) clears `masterDataTables` and `transactionalDataTables` in FK-safe order (no-cascade references such as `payments` before `journal_entries`, `imports` after `purchase_orders`). `organization_users` and `audit_events` are in `deliberatelyUnresetTables`, `timeEntries`/`projects`/`tags` in `legacyUnusedTables`. Schema-reading tests fail when a table or column is missing from these lists, so a new table or reference must be added to:
+`ResetOrganizationData` (`db/reset.go`) clears `masterDataTables` and `transactionalDataTables` in FK-safe order (no-cascade references such as `payments` before `journal_entries`, `imports` after `purchase_orders`). `organization_users` and `audit_events` are in `deliberatelyUnresetTables`. Schema-reading tests fail when a table or column is missing from these lists, so a new table or reference must be added to:
 - `productReferencingTables` (`TestProductUsageCountCoversEveryReference`);
 - `vendorReferencingTables` (`TestVendorDocumentCountCoversEveryReference`);
 - `taxRateReferencingTables` (`TestTaxRateUsageCountCoversEveryReference`, matches `taxRate` and `taxRateId`);
