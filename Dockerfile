@@ -77,7 +77,11 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY main.go ./
+# Every Go file of the main package, not main.go by name: the server's
+# frontend and compression handlers live beside it (static.go, compress.go),
+# and naming files here broke the build when they were added. _test.go files
+# are copied too and ignored by go build.
+COPY *.go ./
 COPY api ./api
 COPY db ./db
 COPY --from=frontend /app/dist ./dist
