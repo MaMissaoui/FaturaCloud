@@ -72,7 +72,11 @@ func (d *Database) CreatePaymentTerm(req CreatePaymentTermRequest) (*PaymentTerm
 	defer tx.Rollback() //nolint:errcheck
 
 	isOne := req.IsDefault != nil && *req.IsDefault == 1
+	// An omitted isDefault means "not the default": the column is NOT NULL,
+	// so passing the nil pointer through failed the insert with a 500.
+	isDefault := int64(0)
 	if isOne {
+		isDefault = 1
 		if _, err = tx.Exec(
 			`UPDATE payment_terms SET isDefault = 0 WHERE organizationId = ? AND isDefault = 1`,
 			req.OrganizationID,
@@ -83,7 +87,7 @@ func (d *Database) CreatePaymentTerm(req CreatePaymentTermRequest) (*PaymentTerm
 
 	if _, err = tx.Exec(
 		`INSERT INTO payment_terms (id, organizationId, name, isDefault) VALUES (?, ?, ?, ?)`,
-		req.ID, req.OrganizationID, req.Name, req.IsDefault,
+		req.ID, req.OrganizationID, req.Name, isDefault,
 	); err != nil {
 		if isDuplicatePaymentTermName(err) {
 			return nil, newValidationError("a payment term named %q already exists", req.Name)
