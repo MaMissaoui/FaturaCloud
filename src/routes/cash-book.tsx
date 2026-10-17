@@ -218,205 +218,203 @@ const CashBookV1 = () => {
       sale is in progress (a standing back-office panel a cashier doesn't
       need mid-transaction); the loan-status report below stays visible,
       prefiltered to this customer's open loans. */}
-      {isToday &&
-        inSale && (
-          // Capped so the sale form doesn't stretch across a wide counter
-          // screen, but left-aligned rather than centered, so its edge lines
-          // up with the full-width Loan status / Payment history cards below.
-          <div style={{ maxWidth: 960 }}>
-            <Space align="center" size={12} style={{ marginBottom: 16 }}>
-              <Button type="primary" icon={<ArrowLeftOutlined />} onClick={backToSearch}>
-                <Trans>Back to search</Trans>
-              </Button>
-              <Typography.Title level={4} style={{ margin: 0 }}>
-                {clientName}
-              </Typography.Title>
-              {newClientDraft && (
-                <Tag color="blue" style={{ marginInlineStart: 0 }}>
-                  <Trans>New customer</Trans>
-                </Tag>
-              )}
-            </Space>
+      {isToday && inSale && (
+        // Capped so the sale form doesn't stretch across a wide counter
+        // screen, but left-aligned rather than centered, so its edge lines
+        // up with the full-width Loan status / Payment history cards below.
+        <div style={{ maxWidth: 960 }}>
+          <Space align="center" size={12} style={{ marginBottom: 16 }}>
+            <Button type="primary" icon={<ArrowLeftOutlined />} onClick={backToSearch}>
+              <Trans>Back to search</Trans>
+            </Button>
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              {clientName}
+            </Typography.Title>
+            {newClientDraft && (
+              <Tag color="blue" style={{ marginInlineStart: 0 }}>
+                <Trans>New customer</Trans>
+              </Tag>
+            )}
+          </Space>
 
-            <Card
-              size="small"
-              title={<Trans>New sale</Trans>}
-              style={sectionCardStyle}
-              styles={sectionCardStyles}
-            >
-              {!registerAccountId && (
-                // F101: every sale that receives an amount posts it to the
-                // register/till account; with none configured the server now
-                // 409s rather than silently crediting Bank. Surface that here
-                // (not just on submit) so the cashier sees the fix before
-                // ringing anything up. A zero-deposit loan sale needs no
-                // register account and stays recordable.
-                <Typography.Text type="warning" style={{ display: "block", marginBottom: 12 }}>
-                  <Trans>
-                    No cash register account configured — set defaultCashRegisterAccountId in
-                    Organization settings → Accounting before recording a sale with an amount
-                    received
-                  </Trans>
-                </Typography.Text>
-              )}
-              <Form form={form} layout="vertical" onFinish={handleSubmitSale} scrollToFirstError>
-                <Row gutter={16}>
-                  <Col xs={24} md={8}>
-                    <Form.Item
-                      label={<Trans>Date</Trans>}
-                      name="date"
-                      rules={[{ required: true, message: t`This field is required!` }]}
-                    >
-                      {/* A forward-dated sale would post into a future day's
+          <Card
+            size="small"
+            title={<Trans>New sale</Trans>}
+            style={sectionCardStyle}
+            styles={sectionCardStyles}
+          >
+            {!registerAccountId && (
+              // F101: every sale that receives an amount posts it to the
+              // register/till account; with none configured the server now
+              // 409s rather than silently crediting Bank. Surface that here
+              // (not just on submit) so the cashier sees the fix before
+              // ringing anything up. A zero-deposit loan sale needs no
+              // register account and stays recordable.
+              <Typography.Text type="warning" style={{ display: "block", marginBottom: 12 }}>
+                <Trans>
+                  No cash register account configured — set defaultCashRegisterAccountId in
+                  Organization settings → Accounting before recording a sale with an amount received
+                </Trans>
+              </Typography.Text>
+            )}
+            <Form form={form} layout="vertical" onFinish={handleSubmitSale} scrollToFirstError>
+              <Row gutter={16}>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    label={<Trans>Date</Trans>}
+                    name="date"
+                    rules={[{ required: true, message: t`This field is required!` }]}
+                  >
+                    {/* A forward-dated sale would post into a future day's
                     bucket, which the panel above never shows as "today"
                     even after today catches up to it. */}
-                      <DatePicker
-                        style={{ width: "100%" }}
-                        format={dateFormat}
-                        disabledDate={(d) => d.isAfter(dayjs(), "day")}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
+                    <DatePicker
+                      style={{ width: "100%" }}
+                      format={dateFormat}
+                      disabledDate={(d) => d.isAfter(dayjs(), "day")}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-                <LineItemsTable
-                  defaultNewRow={{
-                    quantity: 1,
-                    taxRate: get(find(taxRates, { isDefault: 1 }), "id"),
-                  }}
-                  columns={[
-                    { kind: "index" },
-                    {
-                      kind: "product",
-                      products: sellableProducts,
-                      allProducts: products,
-                      // The dropdown shows the product name (the shared default
-                      // also appends its SKU); the closed cell shows the SKU.
-                      onSelect: onProductSelect,
-                    },
-                    { kind: "description", required: true },
-                    { kind: "quantity" },
-                    { kind: "unitPrice", label: t`Price (tax incl.)` },
-                  ]}
-                />
+              <LineItemsTable
+                defaultNewRow={{
+                  quantity: 1,
+                  taxRate: get(find(taxRates, { isDefault: 1 }), "id"),
+                }}
+                columns={[
+                  { kind: "index" },
+                  {
+                    kind: "product",
+                    products: sellableProducts,
+                    allProducts: products,
+                    // The dropdown shows the product name (the shared default
+                    // also appends its SKU); the closed cell shows the SKU.
+                    onSelect: onProductSelect,
+                  },
+                  { kind: "description", required: true },
+                  { kind: "quantity" },
+                  { kind: "unitPrice", label: t`Price (tax incl.)` },
+                ]}
+              />
 
-                {/* Tax is still computed and posted correctly behind the
+              {/* Tax is still computed and posted correctly behind the
               scenes (see netCentsFor in sale-assembly.ts) — this screen just never shows
               the subtotal/tax split, since every price is entered
               tax-inclusive and that's the only number a counter sale
               needs to communicate. */}
-                <Row justify="end" style={{ marginTop: 8, marginBottom: 16 }}>
-                  <Col>
-                    <Typography.Title level={4} style={{ margin: 0 }}>
-                      <Trans>Total</Trans>: {money(unitsToCents(total))}
-                    </Typography.Title>
-                  </Col>
-                </Row>
+              <Row justify="end" style={{ marginTop: 8, marginBottom: 16 }}>
+                <Col>
+                  <Typography.Title level={4} style={{ margin: 0 }}>
+                    <Trans>Total</Trans>: {money(unitsToCents(total))}
+                  </Typography.Title>
+                </Col>
+              </Row>
 
-                <Divider />
+              <Divider />
 
-                {/* An explicit choice, not inferred from the amount field —
+              {/* An explicit choice, not inferred from the amount field —
               see saleMode's own comment above for why the old
               infer-from-a-number design was a trap. Switching modes never
               clears whatever's already in the amount field (see the
               defaulting effect above); it only changes which default this
               field would have started at. */}
-                <Form.Item label={<Trans>Sale type</Trans>}>
-                  {/* Solid radio buttons, not a Segmented — the selected
+              <Form.Item label={<Trans>Sale type</Trans>}>
+                {/* Solid radio buttons, not a Segmented — the selected
                 button is filled with the primary color, which is far more
                 legible at a glance than a Segmented's subtle raised thumb,
                 and the line below states the active mode in words. */}
-                  <Radio.Group
-                    value={saleMode}
-                    onChange={(e) => setSaleMode(e.target.value as "cash" | "loan")}
-                    optionType="button"
-                    buttonStyle="solid"
-                    style={{ width: "100%", display: "flex" }}
-                  >
-                    <Radio.Button value="cash" style={{ flex: 1, textAlign: "center" }}>
-                      <DollarOutlined /> <Trans>Cash sale</Trans>
-                    </Radio.Button>
-                    <Radio.Button value="loan" style={{ flex: 1, textAlign: "center" }}>
-                      <FieldTimeOutlined /> <Trans>Loan sale</Trans>
-                    </Radio.Button>
-                  </Radio.Group>
-                  <Typography.Text type="secondary" style={{ display: "block", marginTop: 8 }}>
-                    {saleMode === "cash" ? (
-                      <Trans>Cash sale selected — the full amount is collected now.</Trans>
-                    ) : (
-                      <Trans>Loan sale selected — collect a deposit now, the balance later.</Trans>
-                    )}
-                  </Typography.Text>
-                </Form.Item>
+                <Radio.Group
+                  value={saleMode}
+                  onChange={(e) => setSaleMode(e.target.value as "cash" | "loan")}
+                  optionType="button"
+                  buttonStyle="solid"
+                  style={{ width: "100%", display: "flex" }}
+                >
+                  <Radio.Button value="cash" style={{ flex: 1, textAlign: "center" }}>
+                    <DollarOutlined /> <Trans>Cash sale</Trans>
+                  </Radio.Button>
+                  <Radio.Button value="loan" style={{ flex: 1, textAlign: "center" }}>
+                    <FieldTimeOutlined /> <Trans>Loan sale</Trans>
+                  </Radio.Button>
+                </Radio.Group>
+                <Typography.Text type="secondary" style={{ display: "block", marginTop: 8 }}>
+                  {saleMode === "cash" ? (
+                    <Trans>Cash sale selected — the full amount is collected now.</Trans>
+                  ) : (
+                    <Trans>Loan sale selected — collect a deposit now, the balance later.</Trans>
+                  )}
+                </Typography.Text>
+              </Form.Item>
 
-                <Row gutter={16}>
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      label={
-                        saleMode === "cash"
-                          ? t`Amount received (${currency})`
-                          : t`Deposit received (${currency})`
-                      }
-                      name="amountReceived"
-                      tooltip={
-                        saleMode === "cash"
-                          ? t`Defaults to the full total. Entering more just records the change given back — the sale itself is still only ever recorded up to the total.`
-                          : t`Optional upfront deposit — leave at 0 for a zero-deposit loan. The remaining balance is collected later.`
-                      }
-                      extra={
-                        amountReceivedWatched > total ? (
-                          <Typography.Text type="success">
-                            <Trans>
-                              Change due: {money(unitsToCents(amountReceivedWatched - total))}
-                            </Trans>
-                          </Typography.Text>
-                        ) : amountReceivedWatched < total ? (
-                          <Typography.Text type="warning">
-                            <Trans>
-                              Balance to collect later:{" "}
-                              {money(unitsToCents(total - amountReceivedWatched))}
-                            </Trans>
-                          </Typography.Text>
-                        ) : undefined
-                      }
-                    >
-                      {/* No `max`: a cashier routinely receives more than the
+              <Row gutter={16}>
+                <Col xs={24} md={12}>
+                  <Form.Item
+                    label={
+                      saleMode === "cash"
+                        ? t`Amount received (${currency})`
+                        : t`Deposit received (${currency})`
+                    }
+                    name="amountReceived"
+                    tooltip={
+                      saleMode === "cash"
+                        ? t`Defaults to the full total. Entering more just records the change given back — the sale itself is still only ever recorded up to the total.`
+                        : t`Optional upfront deposit — leave at 0 for a zero-deposit loan. The remaining balance is collected later.`
+                    }
+                    extra={
+                      amountReceivedWatched > total ? (
+                        <Typography.Text type="success">
+                          <Trans>
+                            Change due: {money(unitsToCents(amountReceivedWatched - total))}
+                          </Trans>
+                        </Typography.Text>
+                      ) : amountReceivedWatched < total ? (
+                        <Typography.Text type="warning">
+                          <Trans>
+                            Balance to collect later:{" "}
+                            {money(unitsToCents(total - amountReceivedWatched))}
+                          </Trans>
+                        </Typography.Text>
+                      ) : undefined
+                    }
+                  >
+                    {/* No `max`: a cashier routinely receives more than the
                     total (e.g. a round note) and needs change calculated —
                     handleSubmitSale still clamps what's actually recorded as
                     paid on the invoice to the total. */}
-                      <NumberInput
-                        style={{ width: "100%" }}
-                        min={0}
-                        precision={2}
-                        onChange={() => setAmountReceivedTouched(true)}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item label={t`Payment method`} name="paymentMethod">
-                      <Select>
-                        {PAYMENT_METHODS.map((m) => (
-                          <Option key={m} value={m}>
-                            {paymentMethodLabel(m)}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-                {/* One free-text field for the payment: Reference is what the
+                    <NumberInput
+                      style={{ width: "100%" }}
+                      min={0}
+                      precision={2}
+                      onChange={() => setAmountReceivedTouched(true)}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item label={t`Payment method`} name="paymentMethod">
+                    <Select>
+                      {PAYMENT_METHODS.map((m) => (
+                        <Option key={m} value={m}>
+                          {paymentMethodLabel(m)}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+              {/* One free-text field for the payment: Reference is what the
               Payment history table and export show, and it becomes the
               journal entry's reference too. A separate Notes field was
               stored but never shown anywhere on this screen. */}
-                <Row gutter={16}>
-                  <Col xs={24} md={12}>
-                    <Form.Item label={t`Reference`} name="reference">
-                      <Input />
-                    </Form.Item>
-                  </Col>
-                </Row>
+              <Row gutter={16}>
+                <Col xs={24} md={12}>
+                  <Form.Item label={t`Reference`} name="reference">
+                    <Input />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-                {/* Deliberately still driven by the actual amount, not
+              {/* Deliberately still driven by the actual amount, not
               saleMode — the toggle above sets *intent* (which default the
               amount field starts at), this reads back the *outcome* that's
               about to be recorded, and the two can legitimately diverge
@@ -433,49 +431,49 @@ const CashBookV1 = () => {
               it both respects the organization's own brand color and keeps
               AntD's guaranteed-accessible text contrast instead of the
               solid-green/gold palette's weak contrast at this weight. */}
-                {/* Hidden until the sale has a total: with no items, 0 received
+              {/* Hidden until the sale has a total: with no items, 0 received
               "covers" a 0 total and the tag read "Fully settled" next to
               an empty sale. */}
-                {total > 0 && (
-                  <Space>
-                    <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
-                      {amountReceivedWatched >= total ? (
-                        <Trans>Fully settled</Trans>
-                      ) : (
-                        <Trans>Balance owing</Trans>
-                      )}
-                    </Tag>
-                  </Space>
-                )}
-              </Form>
+              {total > 0 && (
+                <Space>
+                  <Tag color={amountReceivedWatched >= total ? "green" : "gold"}>
+                    {amountReceivedWatched >= total ? (
+                      <Trans>Fully settled</Trans>
+                    ) : (
+                      <Trans>Balance owing</Trans>
+                    )}
+                  </Tag>
+                </Space>
+              )}
+            </Form>
 
-              {/* The submit button sits at the foot of this card rather than in
+            {/* The submit button sits at the foot of this card rather than in
             a sticky footer portaled to #footer, so it reads as part of the
             sale it records instead of floating below the loan-status report
             that follows. */}
-              <Row align="middle" justify="end" style={{ marginTop: 16 }}>
-                <Col>
-                  <Button
-                    type="primary"
-                    onClick={() => form.submit()}
-                    loading={submitting}
-                    size="large"
-                    // F101: an amount > 0 means a payment will post to the
-                    // register; with none configured it can't be recorded.
-                    // A zero-deposit loan sale (amount 0) is still allowed.
-                    disabled={amountReceivedWatched > 0 && !registerAccountId}
-                  >
-                    {saleMode === "cash" ? (
-                      <Trans>Record cash sale</Trans>
-                    ) : (
-                      <Trans>Record loan sale</Trans>
-                    )}
-                  </Button>
-                </Col>
-              </Row>
-            </Card>
-          </div>
-        )}
+            <Row align="middle" justify="end" style={{ marginTop: 16 }}>
+              <Col>
+                <Button
+                  type="primary"
+                  onClick={() => form.submit()}
+                  loading={submitting}
+                  size="large"
+                  // F101: an amount > 0 means a payment will post to the
+                  // register; with none configured it can't be recorded.
+                  // A zero-deposit loan sale (amount 0) is still allowed.
+                  disabled={amountReceivedWatched > 0 && !registerAccountId}
+                >
+                  {saleMode === "cash" ? (
+                    <Trans>Record cash sale</Trans>
+                  ) : (
+                    <Trans>Record loan sale</Trans>
+                  )}
+                </Button>
+              </Col>
+            </Row>
+          </Card>
+        </div>
+      )}
 
       {!inSale && (
         <Card size="small" style={sectionCardStyle} loading={loadingDailyMovement}>
