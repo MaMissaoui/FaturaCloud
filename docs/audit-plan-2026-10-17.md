@@ -576,6 +576,13 @@ embedded document templates, read their unzipped totals with `unzip -l`,
 and use a generous multiple of the largest (a few tens of MB is the likely
 outcome).
 
+**Phase 4 status (2026-10-17).** F173, F174, F175, F180 and F182 are done in
+the Phase 4 PR.
+- F173's limits were set from measured sizes: the largest real workbook (the products export of the quarter-scale retail demo) unzips to 114 KB, so the limit is 64 MB total and 16 MB per sheet in memory.
+- F174 folds ASCII only, so Go and SQLite's `lower()` agree.
+- F175 renews a token after 12 h, up to 7 days after sign-in.
+- F182 keeps the concurrency window, as the plan allowed.
+
 ### 4.2 — F174: emails are case-sensitive (Medium, Confirmed)
 
 `users.email` is `TEXT NOT NULL UNIQUE` with the default (case-sensitive)

@@ -11,6 +11,8 @@ Loaded only when working under `api/`. The authoritative route list is `api/rout
 Routes with a behavior worth knowing before calling or changing them (every other route is plain CRUD — read `api/router.go`).
 
 **Auth**
+- **Sessions renew while used** (audit F175): a request whose token is older than `tokenRenewAfter` (12 h) gets a fresh cookie from `renewSessionIfDue` (`api/auth.go`) — same `tokenVersion`, set through `setAuthCookie` — until `maxSessionAge` (7 days) after sign-in, which the token carries as `sessionStart`. On a 401 the frontend remembers the page and organization for the tab (`src/utils/session-resume.ts`) and the index route returns there after sign-in, into the organization only if the user belongs to it
+- **Emails are case-insensitive** (audit F174): every write and lookup goes through `db.NormalizeEmail` (trim, ASCII lower case — the same folding as SQLite's `lower()` in migration `0107`, which normalized the stored ones) — sign-in, user creation, SSO provisioning, member add, the first-admin seed. A new email lookup must use it too
 - `POST /api/auth/logout` — clears the cookie AND revokes every session for that user by bumping `users.tokenVersion`, so all previously-issued JWTs (including one held elsewhere) fail `authMiddleware`'s `claims.TokenVersion != stored` check on their next use instead of staying valid until expiry. Password change (`PUT /api/users/{id}` with `password`) bumps it too.
 
 **Users (platform admin only)**

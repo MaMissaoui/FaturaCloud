@@ -618,7 +618,7 @@ msgstr "Ajustement — définir le compte à"
 
 #: src/components/organizations/organization-members-panel.tsx:10
 #: src/routes/settings/users.tsx:219
-#: src/routes/settings/users.tsx:354
+#: src/routes/settings/users.tsx:355
 msgid "Admin"
 msgstr "Administrateur"
 
@@ -1606,7 +1606,7 @@ msgstr "Confirmer"
 msgid "Confirm order"
 msgstr "Confirmer la commande"
 
-#: src/routes/settings/users.tsx:382
+#: src/routes/settings/users.tsx:383
 msgid "Confirm password"
 msgstr "Confirmer le mot de passe"
 
@@ -2769,8 +2769,8 @@ msgstr "Modifier le fournisseur"
 
 #: src/components/feedback-modal.tsx:65
 #: src/components/organizations/organizations-table.tsx:80
-#: src/routes/login.tsx:117
-#: src/routes/login.tsx:118
+#: src/routes/login.tsx:120
+#: src/routes/login.tsx:121
 #: src/routes/settings/users.tsx:206
 #: src/routes/settings/users.tsx:340
 msgid "Email"
@@ -4564,8 +4564,8 @@ msgstr "Méthode"
 msgid "Migrated"
 msgstr "Repris"
 
-#: src/routes/settings/users.tsx:373
 #: src/routes/settings/users.tsx:374
+#: src/routes/settings/users.tsx:375
 msgid "Minimum 6 characters"
 msgstr "Minimum 6 caractères"
 
@@ -4797,7 +4797,7 @@ msgstr "Nouvelle organisation"
 msgid "New Organization"
 msgstr "Nouvelle organisation"
 
-#: src/routes/settings/users.tsx:366
+#: src/routes/settings/users.tsx:367
 msgid "New password (leave blank to keep current)"
 msgstr "Nouveau mot de passe (laisser vide pour conserver l'actuel)"
 
@@ -5836,13 +5836,13 @@ msgstr "Coût des pièces"
 msgid "Parts for one unit"
 msgstr "Pièces pour une unité"
 
-#: src/routes/login.tsx:129
-#: src/routes/login.tsx:130
-#: src/routes/settings/users.tsx:368
+#: src/routes/login.tsx:132
+#: src/routes/login.tsx:133
+#: src/routes/settings/users.tsx:369
 msgid "Password"
 msgstr "Mot de passe"
 
-#: src/routes/settings/users.tsx:391
+#: src/routes/settings/users.tsx:392
 msgid "Passwords do not match"
 msgstr "Les mots de passe ne correspondent pas"
 
@@ -6025,11 +6025,11 @@ msgstr "Plateforme"
 msgid "Platform admin"
 msgstr "Administrateur de la plateforme"
 
-#: src/routes/settings/users.tsx:385
+#: src/routes/settings/users.tsx:386
 msgid "Please confirm the password"
 msgstr "Veuillez confirmer le mot de passe"
 
-#: src/routes/login.tsx:113
+#: src/routes/login.tsx:116
 msgid "Please enter a valid email"
 msgstr "Veuillez saisir un e-mail valide"
 
@@ -6041,7 +6041,7 @@ msgstr "Veuillez entrer une adresse email valide"
 msgid "Please enter your feedback"
 msgstr "Veuillez entrer vos commentaires"
 
-#: src/routes/login.tsx:125
+#: src/routes/login.tsx:128
 msgid "Please enter your password"
 msgstr "Veuillez saisir votre mot de passe"
 
@@ -6992,7 +6992,7 @@ msgstr "Rétabli au modèle par défaut"
 #: src/components/organizations/organization-members-panel.tsx:77
 #: src/routes/settings/activity-changes.ts:336
 #: src/routes/settings/users.tsx:212
-#: src/routes/settings/users.tsx:349
+#: src/routes/settings/users.tsx:350
 msgid "Role"
 msgstr "Rôle"
 
@@ -7421,7 +7421,7 @@ msgstr "Affiche un champ de timbre fiscal (droit fixe non soumis à taxe) sur le
 msgid "Shows a withholding tax rate field on this organization's invoices, independent of the PDF layout."
 msgstr "Affiche un champ de taux de retenue à la source sur les factures de cette organisation, indépendamment de la mise en page PDF."
 
-#: src/routes/login.tsx:137
+#: src/routes/login.tsx:140
 msgid "Sign in"
 msgstr "Se connecter"
 
@@ -8439,7 +8439,7 @@ msgstr "Utilisé lorsque ce taux s'applique à une facture fournisseur — un co
 #: src/components/organizations/organization-members-panel.tsx:60
 #: src/routes/settings/activity.tsx:111
 #: src/routes/settings/users.tsx:223
-#: src/routes/settings/users.tsx:355
+#: src/routes/settings/users.tsx:356
 msgid "User"
 msgstr "Utilisateur"
 
