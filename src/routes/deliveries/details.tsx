@@ -16,20 +16,12 @@ import {
   Tag,
   Tooltip,
   Typography,
-  message,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
-import {
-  DeleteOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  SaveOutlined,
-  SendOutlined,
-  WarningOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, SaveOutlined, SendOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import { ExportDeliveryDocument, GetOrderLineItems, GetOrderDeliveredQuantities } from "src/api";
@@ -38,8 +30,8 @@ import LineItemsTable from "src/components/line-items/table";
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useResetFormOnNew from "src/hooks/useResetFormOnNew";
-import useSaveShortcut from "src/hooks/useSaveShortcut";
-import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
+import { useDocumentForm } from "src/hooks/useDocumentForm";
+import DocumentExportButtons from "src/components/document-export-buttons";
 import { organizationAtom } from "src/atoms/organization";
 import { ordersAtom, setOrdersAtom } from "src/atoms/order";
 import { clientsAtom, setClientsAtom } from "src/atoms/client";
@@ -125,13 +117,9 @@ const DeliveryDetails = () => {
     open: false,
     pendingStatus: null,
   });
-  const [isDirty, setIsDirty] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
-  useSaveShortcut(form);
+  const { isDirty, markDirty, markSaved } = useDocumentForm(form);
   useResetFormOnNew(form, id);
-  useUnsavedChangesWarning(isDirty);
 
   useEffect(() => {
     setClients();
@@ -201,7 +189,7 @@ const DeliveryDetails = () => {
 
   const handleSubmit = async (values: any) => {
     const created = await setDelivery(values);
-    setIsDirty(false);
+    markSaved();
     if (isNew && created) navigate(`/deliveries/${created.id}`);
   };
 
@@ -248,24 +236,6 @@ const DeliveryDetails = () => {
     if (!serialCapture.pendingStatus) return;
     await applyStatusChange(serialCapture.pendingStatus, serialNumbers);
     setSerialCapture({ open: false, pendingStatus: null });
-  };
-
-  // Server fill-and-convert path (db/xlsx_export_delivery.go /
-  // db/pdf_convert.go) — the same mechanism invoices/purchase orders/orders/
-  // incoming invoices use. Reads persisted line items by delivery id, so
-  // both formats are gated on isDirty. Replaces the old client-side-only
-  // DeliveryNotePDF/@react-pdf/renderer button.
-  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
-    if (!id || isNew) return;
-    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
-    setDownloading(true);
-    try {
-      await ExportDeliveryDocument(id, format);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
-    }
   };
 
   const initialValues = isNew
@@ -358,7 +328,7 @@ const DeliveryDetails = () => {
         scrollToFirstError
         layout="vertical"
         initialValues={initialValues}
-        onValuesChange={() => setIsDirty(true)}
+        onValuesChange={markDirty}
       >
         <Row gutter={24}>
           <Col xs={24} md={12} xl={6}>
@@ -610,31 +580,10 @@ const DeliveryDetails = () => {
                   </Popconfirm>
                 )}
                 {!isNew && (
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingPdf}
-                      onClick={handleServerExport("pdf")}
-                    >
-                      <FilePdfOutlined /> PDF
-                    </Button>
-                  </Tooltip>
-                )}
-                {!isNew && (
-                  // Always the server fill-and-convert path
-                  // (db/xlsx_export_delivery.go) — every delivery has an
-                  // embedded fallback template (resolveTemplateBytes) to
-                  // fill even with no org override, so both buttons
-                  // always work.
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingExcel}
-                      onClick={handleServerExport("xlsx")}
-                    >
-                      <FileExcelOutlined /> <Trans>Excel</Trans>
-                    </Button>
-                  </Tooltip>
+                  <DocumentExportButtons
+                    isDirty={isDirty}
+                    exportDocument={(format) => ExportDeliveryDocument(id!, format)}
+                  />
                 )}
                 <Button type="primary" onClick={() => form.submit()}>
                   <SaveOutlined /> <Trans>Save</Trans>

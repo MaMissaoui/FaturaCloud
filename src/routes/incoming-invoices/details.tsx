@@ -18,22 +18,13 @@ import {
   Space,
   Table,
   Tag,
-  Tooltip,
-  message,
 } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { loadable } from "src/utils/loadable";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import {
-  AuditOutlined,
-  DeleteOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  MoreOutlined,
-  SaveOutlined,
-} from "@ant-design/icons";
+import { AuditOutlined, DeleteOutlined, MoreOutlined, SaveOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import find from "lodash/find";
 import map from "lodash/map";
@@ -48,8 +39,8 @@ import {
 import PageHeader from "src/components/page-header";
 import ResponsiveFooter from "src/components/responsive-footer";
 import useResetFormOnNew from "src/hooks/useResetFormOnNew";
-import useSaveShortcut from "src/hooks/useSaveShortcut";
-import useUnsavedChangesWarning from "src/hooks/useUnsavedChangesWarning";
+import { useDocumentForm } from "src/hooks/useDocumentForm";
+import DocumentExportButtons from "src/components/document-export-buttons";
 import { useDatePickerFormat } from "src/utils/date";
 import { getFormattedNumber } from "src/utils/currencies";
 import {
@@ -132,13 +123,9 @@ const IncomingInvoiceDetails = () => {
 
   const [form] = Form.useForm();
   const [stateOverride, setStateOverride] = useState<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
-  useSaveShortcut(form);
+  const { isDirty, markDirty, markSaved } = useDocumentForm(form);
   useResetFormOnNew(form, id);
-  useUnsavedChangesWarning(isDirty);
 
   // A different document starts without the previous one's optimistic
   // stateOverride — reset during render when the route id changes, not in the
@@ -269,27 +256,10 @@ const IncomingInvoiceDetails = () => {
       ...totals,
     });
     if (saved) {
-      setIsDirty(false);
+      markSaved();
       // A create resolves to the new record, an update to true.
       if (isNew && typeof saved === "object") navigate(`/incoming-invoices/${saved.id}`);
       else refreshMatch();
-    }
-  };
-
-  // Server fill-and-convert path (db/xlsx_export_incoming_invoice.go /
-  // db/pdf_convert.go) — the same mechanism invoices/purchase orders/orders
-  // use. Reads persisted line items and stored totals by id, so both formats
-  // are gated on isDirty.
-  const handleServerExport = (format: "pdf" | "xlsx") => async () => {
-    if (!id || isNew) return;
-    const setDownloading = format === "xlsx" ? setDownloadingExcel : setDownloadingPdf;
-    setDownloading(true);
-    try {
-      await ExportIncomingInvoiceDocument(id, format);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : t`Export failed`);
-    } finally {
-      setDownloading(false);
     }
   };
 
@@ -378,7 +348,7 @@ const IncomingInvoiceDetails = () => {
         scrollToFirstError
         layout="vertical"
         initialValues={initialValues}
-        onValuesChange={() => setIsDirty(true)}
+        onValuesChange={markDirty}
       >
         <Row gutter={24}>
           <Col xs={24} md={12} xl={6}>
@@ -750,31 +720,10 @@ const IncomingInvoiceDetails = () => {
             <Col>
               <Space>
                 {!isNew && (
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingPdf}
-                      onClick={handleServerExport("pdf")}
-                    >
-                      <FilePdfOutlined /> PDF
-                    </Button>
-                  </Tooltip>
-                )}
-                {!isNew && (
-                  // Always the server fill-and-convert path
-                  // (db/xlsx_export_incoming_invoice.go) — every incoming
-                  // invoice has an embedded fallback template
-                  // (resolveTemplateBytes) to fill even with no org
-                  // override, so both buttons always work.
-                  <Tooltip title={isDirty ? t`Save your changes before exporting` : undefined}>
-                    <Button
-                      disabled={isDirty}
-                      loading={downloadingExcel}
-                      onClick={handleServerExport("xlsx")}
-                    >
-                      <FileExcelOutlined /> <Trans>Excel</Trans>
-                    </Button>
-                  </Tooltip>
+                  <DocumentExportButtons
+                    isDirty={isDirty}
+                    exportDocument={(format) => ExportIncomingInvoiceDocument(id!, format)}
+                  />
                 )}
                 <Button type="primary" onClick={() => form.submit()}>
                   <SaveOutlined /> <Trans>Save</Trans>
