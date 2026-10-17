@@ -283,12 +283,9 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 	// generated value or one the client edited — the same unconditional
 	// advance CreateInvoice already does for invoice_number_counter (see
 	// db/document_number.go's doc comment).
-	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "purchase_order", time.UnixMilli(req.OrderDate), "")
+	req.OrderNumber, err = AssignDocumentNumberTx(tx, req.OrganizationID, "purchase_order", time.UnixMilli(req.OrderDate), "", req.OrderNumber)
 	if err != nil {
 		return nil, err
-	}
-	if req.OrderNumber == "" {
-		req.OrderNumber = generatedNumber
 	}
 
 	_, err = tx.Exec(`
@@ -300,6 +297,9 @@ func (d *Database) CreatePurchaseOrder(req CreatePurchaseOrderRequest) (*Purchas
 		req.DeliveryAddress, req.Notes, req.ImportID,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "purchase_order") {
+			return nil, refuseTakenDocumentNumber("purchase_order", req.OrderNumber)
+		}
 		return nil, fmt.Errorf("create_purchase_order insert: %w", err)
 	}
 
@@ -356,6 +356,10 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	if err := checkDocumentNumberChangeTx(tx, "purchase_order", current.OrganizationID, orderID, current.OrderNumber, updates.OrderNumber); err != nil {
+		return nil, err
+	}
+
 	// Line items are frozen once goods have actually been received against
 	// this order — see db/purchase_order_freeze.go. Checked inside the
 	// transaction, and only against a request that would genuinely change
@@ -394,6 +398,9 @@ func (d *Database) UpdatePurchaseOrder(orderID string, updates UpdatePurchaseOrd
 		orderID,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "purchase_order") {
+			return nil, refuseTakenDocumentNumber("purchase_order", *updates.OrderNumber)
+		}
 		return nil, fmt.Errorf("update_purchase_order exec: %w", err)
 	}
 

@@ -267,12 +267,9 @@ func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*Inb
 	// org+type by one, regardless of whether DeliveryNumber ends up storing
 	// the generated value or one the client edited (see
 	// db/document_number.go's doc comment).
-	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "inbound_delivery", time.UnixMilli(req.DeliveryDate), "")
+	req.DeliveryNumber, err = AssignDocumentNumberTx(tx, req.OrganizationID, "inbound_delivery", time.UnixMilli(req.DeliveryDate), "", req.DeliveryNumber)
 	if err != nil {
 		return nil, err
-	}
-	if req.DeliveryNumber == "" {
-		req.DeliveryNumber = generatedNumber
 	}
 
 	_, err = tx.Exec(`
@@ -286,6 +283,9 @@ func (d *Database) CreateInboundDelivery(req CreateInboundDeliveryRequest) (*Inb
 		req.VendorDeliveryNote, req.TrackingNumber, req.Notes,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "inbound_delivery") {
+			return nil, refuseTakenDocumentNumber("inbound_delivery", req.DeliveryNumber)
+		}
 		return nil, fmt.Errorf("create_inbound_delivery: %w", err)
 	}
 	if err := replaceInboundDeliveryLineItemsTx(tx, req.OrganizationID, req.ID, req.LineItems); err != nil {
@@ -358,6 +358,10 @@ func (d *Database) UpdateInboundDelivery(id string, req UpdateInboundDeliveryReq
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	if err := checkDocumentNumberChangeTx(tx, "inbound_delivery", current.OrganizationID, id, current.DeliveryNumber, req.DeliveryNumber); err != nil {
+		return nil, err
+	}
+
 	// Every field is COALESCE'd: a header-only edit (tracking number, notes)
 	// must not blank the rest, and this endpoint is explicitly used for such
 	// edits once a receipt is no longer a draft. exchangeRate/exchangeRateDate
@@ -383,6 +387,9 @@ func (d *Database) UpdateInboundDelivery(id string, req UpdateInboundDeliveryReq
 		id,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "inbound_delivery") {
+			return nil, refuseTakenDocumentNumber("inbound_delivery", *req.DeliveryNumber)
+		}
 		return nil, fmt.Errorf("update_inbound_delivery: %w", err)
 	}
 	if req.LineItems != nil {

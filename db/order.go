@@ -358,12 +358,9 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 	// db/document_number.go's doc comment). Replaces the old client-side-only
 	// nextOrderNumberAtom, which scanned whatever orders happened to already
 	// be loaded in the browser — fragile under pagination/filtering.
-	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "order", time.UnixMilli(req.OrderDate), "")
+	req.OrderNumber, err = AssignDocumentNumberTx(tx, req.OrganizationID, "order", time.UnixMilli(req.OrderDate), "", req.OrderNumber)
 	if err != nil {
 		return nil, err
-	}
-	if req.OrderNumber == "" {
-		req.OrderNumber = generatedNumber
 	}
 
 	_, err = tx.Exec(`
@@ -375,6 +372,9 @@ func (d *Database) CreateOrder(req CreateOrderRequest) (*Order, error) {
 		req.ShippingAddress, req.TrackingNumber, req.Notes,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "order") {
+			return nil, refuseTakenDocumentNumber("order", req.OrderNumber)
+		}
 		return nil, fmt.Errorf("create_order insert: %w", err)
 	}
 
@@ -430,6 +430,10 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	if err := checkDocumentNumberChangeTx(tx, "order", current.OrganizationID, orderID, current.OrderNumber, updates.OrderNumber); err != nil {
+		return nil, err
+	}
+
 	_, err = tx.Exec(`
 		UPDATE orders
 		SET clientId         = ?,
@@ -450,6 +454,9 @@ func (d *Database) UpdateOrder(orderID string, updates UpdateOrderRequest) (*Ord
 		orderID,
 	)
 	if err != nil {
+		if isDuplicateDocumentNumber(err, "order") {
+			return nil, refuseTakenDocumentNumber("order", *updates.OrderNumber)
+		}
 		return nil, fmt.Errorf("update_order exec: %w", err)
 	}
 

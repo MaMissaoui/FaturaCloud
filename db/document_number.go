@@ -232,7 +232,30 @@ func (d *Database) PreviewNextDocumentNumber(organizationID, documentType string
 	if err != nil {
 		return "", err
 	}
-	return generateFormattedDocumentNumber(setting.Format, setting.Counter+1, time.Now().In(loc), ""), nil
+	number, _, err := firstFreeDocumentNumber(d.DB, documentType, organizationID, setting.Format, setting.Counter+1, time.Now().In(loc), "")
+	return number, err
+}
+
+// firstFreeDocumentNumber formats numbers from counter upward and returns the
+// first one no document of the type already carries (one typed by hand, or
+// reissued after the counter was set back in Settings), with the counter it
+// used.
+func firstFreeDocumentNumber(q sqlGetExecer, documentType, organizationID, format string, counter int64, date time.Time, clientCode string) (string, int64, error) {
+	for range maxDocumentNumberSkips {
+		number := generateFormattedDocumentNumber(format, counter, date, clientCode)
+		taken, err := documentNumberTaken(q, documentType, organizationID, number, "")
+		if err != nil {
+			return "", 0, err
+		}
+		if !taken {
+			return number, counter, nil
+		}
+		counter++
+	}
+	return "", 0, newValidationError(
+		"no free %s number after %d tries — check that its format in Settings contains {number}",
+		documentNumberColumns[documentType].label, maxDocumentNumberSkips,
+	)
 }
 
 // GenerateNextDocumentNumberTx atomically advances documentType's counter by
@@ -244,9 +267,11 @@ func (d *Database) PreviewNextDocumentNumber(organizationID, documentType string
 // second connection attempting this while tx is open would deadlock, not
 // error (see CreateCashSale's doc comment for the same constraint).
 //
-// The counter always advances exactly once per document created, regardless
+// A number another document of the type already carries is skipped, and the
+// counter stored is the one actually used (firstFreeDocumentNumber). The
+// counter advances once per document created, regardless
 // of whether the caller ends up storing the generated number or a
-// user-edited one — mirroring invoices' own existing behavior, where the
+// user-edited one (AssignDocumentNumberTx) — mirroring invoices' own existing behavior, where the
 // counter increments unconditionally on every create. This keeps the
 // "next" preview monotonically increasing even across edits/deletes, a
 // deliberate change from the old MAX(...)+1 scan these five types used
@@ -285,6 +310,10 @@ func GenerateNextDocumentNumberTx(tx *sqlx.Tx, organizationID, documentType stri
 		// error propagating is what rolls the whole thing back.
 		return "", fmt.Errorf("generate_next_document_number: %w", err)
 	}
+	number, nextCounter, err := firstFreeDocumentNumber(tx, documentType, organizationID, format, nextCounter, date, clientCode)
+	if err != nil {
+		return "", err
+	}
 	_, err = tx.Exec(`
 		INSERT INTO document_number_settings (organizationId, documentType, format, counter, updatedAt)
 		VALUES (?, ?, ?, ?, strftime('%s', 'now') * 1000)
@@ -296,5 +325,5 @@ func GenerateNextDocumentNumberTx(tx *sqlx.Tx, organizationID, documentType stri
 	if err != nil {
 		return "", fmt.Errorf("generate_next_document_number: %w", err)
 	}
-	return generateFormattedDocumentNumber(format, nextCounter, date, clientCode), nil
+	return number, nil
 }

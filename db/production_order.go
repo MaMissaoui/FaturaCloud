@@ -255,12 +255,9 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 	// org+type by one, regardless of whether OrderNumber ends up storing the
 	// generated value or one the client edited (see
 	// db/document_number.go's doc comment).
-	generatedNumber, err := GenerateNextDocumentNumberTx(tx, req.OrganizationID, "production_order", time.UnixMilli(req.Date), "")
+	req.OrderNumber, err = AssignDocumentNumberTx(tx, req.OrganizationID, "production_order", time.UnixMilli(req.Date), "", req.OrderNumber)
 	if err != nil {
 		return nil, err
-	}
-	if req.OrderNumber == "" {
-		req.OrderNumber = generatedNumber
 	}
 
 	if _, err := tx.Exec(`
@@ -270,6 +267,9 @@ func (d *Database) CreateProductionOrder(req CreateProductionOrderRequest) (*Pro
 		req.ID, req.OrganizationID, req.OrderNumber, req.FinishedProductID, finished.Name,
 		req.Quantity, req.Date, req.ImportID, req.Notes,
 	); err != nil {
+		if isDuplicateDocumentNumber(err, "production_order") {
+			return nil, refuseTakenDocumentNumber("production_order", req.OrderNumber)
+		}
 		return nil, fmt.Errorf("create_production_order: %w", err)
 	}
 	for _, line := range lines {
