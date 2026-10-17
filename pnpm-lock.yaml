@@ -45,8 +45,8 @@ importers:
         specifier: ^10.6.0
         version: 10.6.0
       jotai:
-        specifier: 2.20.3
-        version: 2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1)
+        specifier: 3.0.1
+        version: 3.0.1(@types/react@19.3.0)(react@19.3.1)
       lodash:
         specifier: ^4.18.1
         version: 4.18.1
@@ -110,10 +110,10 @@ importers:
         version: 3.1.0
       jotai-babel:
         specifier: ^0.3.0
-        version: 0.3.0(@babel/core@8.0.7)(@babel/template@8.0.0)(jotai@2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1))
+        version: 0.3.0(@babel/core@8.0.7)(@babel/template@8.0.0)(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))
       jotai-devtools:
         specifier: 0.15.1
-        version: 0.15.1(@types/react@19.3.0)(jotai@2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(redux@5.0.1)
+        version: 0.15.1(@types/react@19.3.0)(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(redux@5.0.1)
       jsdom:
         specifier: 30.1.2
         version: 30.1.2(@noble/hashes@1.8.0)
@@ -2625,19 +2625,13 @@ packages:
       jotai: '>=3.0.0'
       react: '>=18.0.0'
 
-  jotai@2.20.3:
-    resolution: {integrity: sha512-N8L9FUbeGDP+0qNJw1FebOxt+5hk+jTOwUA2LlRE4C081jUcY6F1T/FSETp4DT2/INMtiSRZyNm2D+yZdzrSgA==}
-    engines: {node: '>=12.20.0'}
+  jotai@3.0.1:
+    resolution: {integrity: sha512-6tS7wY9otdiNp26Wqb/1ds3OuVJVoV+tJlN4hpLrYmfFf/t9bauVt+zKBNSpS5qSl5h6GieVQ+OknVraZX+udQ==}
+    engines: {node: '>=22.12.0'}
     peerDependencies:
-      '@babel/core': '>=7.0.0'
-      '@babel/template': '>=7.0.0'
-      '@types/react': '>=17.0.0'
-      react: '>=17.0.0'
+      '@types/react': '>=18.0.0'
+      react: '>=18.0.0'
     peerDependenciesMeta:
-      '@babel/core':
-        optional: true
-      '@babel/template':
-        optional: true
       '@types/react':
         optional: true
       react:
@@ -5922,13 +5916,13 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jotai-babel@0.3.0(@babel/core@8.0.7)(@babel/template@8.0.0)(jotai@2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1)):
+  jotai-babel@0.3.0(@babel/core@8.0.7)(@babel/template@8.0.0)(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1)):
     dependencies:
       '@babel/core': 8.0.7
       '@babel/template': 8.0.0
-      jotai: 2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1)
+      jotai: 3.0.1(@types/react@19.3.0)(react@19.3.1)
 
-  jotai-devtools@0.15.1(@types/react@19.3.0)(jotai@2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(redux@5.0.1):
+  jotai-devtools@0.15.1(@types/react@19.3.0)(jotai@3.0.1(@types/react@19.3.0)(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(redux@5.0.1):
     dependencies:
       '@mantine/code-highlight': 7.17.4(@mantine/core@7.17.4(@mantine/hooks@7.17.4(react@19.3.1))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@mantine/hooks@7.17.4(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@mantine/core': 7.17.4(@mantine/hooks@7.17.4(react@19.3.1))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -5936,7 +5930,7 @@ snapshots:
       '@redux-devtools/extension': 4.0.0(redux@5.0.1)
       clsx: 2.1.1
       javascript-stringify: 2.1.0
-      jotai: 2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1)
+      jotai: 3.0.1(@types/react@19.3.0)(react@19.3.1)
       jsondiffpatch: 0.7.6
       react: 19.3.1
       react-base16-styling: 0.10.0
@@ -5948,10 +5942,8 @@ snapshots:
       - react-dom
       - redux
 
-  jotai@2.20.3(@babel/core@8.0.7)(@babel/template@8.0.0)(@types/react@19.3.0)(react@19.3.1):
+  jotai@3.0.1(@types/react@19.3.0)(react@19.3.1):
     optionalDependencies:
-      '@babel/core': 8.0.7
-      '@babel/template': 8.0.0
       '@types/react': 19.3.0
       react: 19.3.1
 
