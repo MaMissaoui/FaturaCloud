@@ -47,11 +47,15 @@ const TaxRateForm = () => {
   const deleteTaxRate = useSetAtom(deleteTaxRateAtom);
   const [submitting, setSubmitting] = useState(false);
   // null while creating a tax rate (or before its count arrives).
-  const { data: usageCount } = useFetch<number | null>(
+  const { data: usage } = useFetch<{ count: number; documentLines: number } | null>(
     id ? [id] : null,
-    () => GetTaxRateUsageCount(id!).catch(() => 0),
+    () => GetTaxRateUsageCount(id!).catch(() => ({ count: 0, documentLines: 0 })),
     null,
   );
+  const usageCount = usage?.count ?? null;
+  // Documents keep the rate, not its percentage, so a rate on documents
+  // can't change its percentage — the server refuses it (audit F168).
+  const documentLines = usage?.documentLines ?? 0;
   const categoryLabels = useTaxRateCategoryLabels();
   const categoryCode = Form.useWatch("category_code", form);
   const exemptionReasonRequired = CATEGORIES_REQUIRING_EXEMPTION_REASON.has(categoryCode);
@@ -185,10 +189,23 @@ const TaxRateForm = () => {
                   name="percentage"
                   label={<Trans>Percentage</Trans>}
                   rules={[{ required: true, message: t`Please input a percentage!` }]}
+                  extra={
+                    documentLines > 0 ? (
+                      <Trans>
+                        Used on {documentLines} document lines, so the percentage can't change. To
+                        charge a new rate, create a new tax rate and make it the default.
+                      </Trans>
+                    ) : undefined
+                  }
                 >
                   {/* A number field: as a plain Input, read with parseFloat, "19,5"
                       saved as 19. */}
-                  <NumberInput placeholder={t`Percentage`} suffix="%" style={{ width: "100%" }} />
+                  <NumberInput
+                    placeholder={t`Percentage`}
+                    suffix="%"
+                    style={{ width: "100%" }}
+                    disabled={documentLines > 0}
+                  />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>

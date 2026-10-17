@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -211,6 +212,30 @@ func (d *Database) UpdateTaxRate(taxRateID string, updates UpdateTaxRateRequest)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	// Documents store a rate's id, not its percentage, so the Tax Summary,
+	// re-exported documents and e-invoices read today's percentage: changing
+	// it on a rate already on documents rewrote their VAT (audit F168). Only
+	// an actual change is refused — the form and a re-imported sheet resend
+	// the unchanged value.
+	if updates.Percentage != nil {
+		var current float64
+		if err := tx.Get(&current, `SELECT percentage FROM taxRates WHERE id = ?`, taxRateID); err != nil {
+			return nil, fmt.Errorf("update_tax_rate fetch_percentage: %w", err)
+		}
+		if math.Abs(*updates.Percentage-current) > 1e-9 {
+			lines, err := taxRateDocumentLineCount(tx, taxRateID)
+			if err != nil {
+				return nil, err
+			}
+			if lines > 0 {
+				return nil, newValidationError(
+					"this tax rate is on %d document lines, so its percentage can't change — create a new tax rate with the new percentage and make it the default",
+					lines,
+				)
+			}
+		}
+	}
+
 	isOne := updates.IsDefault != nil && *updates.IsDefault == 1
 	if isOne {
 		var existing TaxRate
@@ -283,6 +308,34 @@ var taxRateReferencingTables = []taxRateReference{
 	// also ON DELETE SET NULL — the same "a rate vanishing from a live
 	// record is unwanted" reasoning purchase_order_line_items gets above.
 	{"products", "taxRateId"},
+}
+
+// taxRateDocumentLineTables are the document line tables whose VAT is
+// computed from a rate's percentage on every read (reports, exports,
+// e-invoices). A rate on any of them can't change its percentage; a product
+// default or a manual journal line holds no VAT of its own, so it doesn't
+// count here.
+var taxRateDocumentLineTables = []string{"invoiceLineItems", "incoming_invoice_line_items", "purchase_order_line_items"}
+
+func taxRateDocumentLineCount(q sqlGetExecer, taxRateID string) (int64, error) {
+	subqueries := make([]string, len(taxRateDocumentLineTables))
+	args := make([]any, len(taxRateDocumentLineTables))
+	for i, table := range taxRateDocumentLineTables {
+		// Table names come from the package-level slice above, never from input.
+		subqueries[i] = fmt.Sprintf("(SELECT COUNT(*) FROM %s WHERE taxRate = ?)", table)
+		args[i] = taxRateID
+	}
+	var count int64
+	if err := q.Get(&count, "SELECT "+strings.Join(subqueries, " + "), args...); err != nil {
+		return 0, fmt.Errorf("tax_rate_document_line_count: %w", err)
+	}
+	return count, nil
+}
+
+// GetTaxRateDocumentLineCount is how many document lines use a rate — when
+// non-zero its percentage can't change (see UpdateTaxRate).
+func (d *Database) GetTaxRateDocumentLineCount(taxRateID string) (int64, error) {
+	return taxRateDocumentLineCount(d.DB, taxRateID)
 }
 
 func (d *Database) GetTaxRateUsageCount(taxRateID string) (int64, error) {

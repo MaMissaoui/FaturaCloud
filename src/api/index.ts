@@ -907,8 +907,10 @@ export const UpdateTaxRate = (id: string, req: Partial<TaxRate>) =>
   put<TaxRate>(`/tax-rates/${id}`, req);
 export const DeleteTaxRate = (id: string) =>
   del<{ deleted: boolean }>(`/tax-rates/${id}`).then((r) => r.deleted);
+// count: every reference (blocks Delete); documentLines: the document lines
+// using it (locks the percentage, audit F168).
 export const GetTaxRateUsageCount = (id: string) =>
-  get<{ count: number }>(`/tax-rates/${id}/usage-count`).then((r) => r.count);
+  get<{ count: number; documentLines: number }>(`/tax-rates/${id}/usage-count`);
 
 // ---- Payment Terms ----
 

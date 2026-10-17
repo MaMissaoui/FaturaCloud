@@ -84,5 +84,12 @@ func (h *handler) getTaxRateUsageCount(w http.ResponseWriter, r *http.Request) {
 		writeInternalError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]int64{"count": count})
+	// documentLines: the form locks the percentage while it's non-zero,
+	// as UpdateTaxRate refuses to change it then (audit F168).
+	documentLines, err := h.db.GetTaxRateDocumentLineCount(id)
+	if err != nil {
+		writeInternalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int64{"count": count, "documentLines": documentLines})
 }
