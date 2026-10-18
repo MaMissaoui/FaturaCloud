@@ -64,10 +64,13 @@ export const nextOrderNumberAtom = atomWithRefresh(async (get) => {
 // outbound_delivery_line_items.orderLineItemId on every edit (F70). The
 // server only honours an id that already belongs to this order, so sending
 // it on the create path is harmless too.
-type OrderLineItemFormValues = Omit<Partial<OrderLineItem>, "unitPrice"> & {
+export type OrderLineItemFormValues = Omit<Partial<OrderLineItem>, "unitPrice"> & {
   unitPrice?: number;
 };
-type OrderFormValues = Omit<Partial<Order>, "orderDate" | "deliveryDate" | "exchangeRateDate"> & {
+export type OrderFormValues = Omit<
+  Partial<Order>,
+  "orderDate" | "deliveryDate" | "exchangeRateDate"
+> & {
   orderDate?: Dayjs | number;
   deliveryDate?: Dayjs | number | null;
   exchangeRateDate?: Dayjs | number | null;

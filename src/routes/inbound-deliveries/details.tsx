@@ -67,6 +67,7 @@ import {
   updateInboundDeliveryStatusAtom,
   deleteInboundDeliveryAtom,
 } from "src/atoms/inbound-delivery";
+import type { Thenable } from "src/types/form";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -100,7 +101,7 @@ const InboundDeliveryDetails = () => {
   // A finished good isn't purchasable from a vendor — exclude it from the
   // picker. Unclassified products (category null) stay eligible everywhere.
   const purchasableProducts = useMemo(
-    () => products.filter((p: any) => p.category !== "finished"),
+    () => products.filter((p) => p.category !== "finished"),
     [products],
   );
   const setProducts = useSetAtom(setProductsAtom);
@@ -169,7 +170,7 @@ const InboundDeliveryDetails = () => {
         if (cancelled) return;
 
         const outstanding = (lineItems || [])
-          .map((item: any) => ({
+          .map((item) => ({
             purchaseOrderLineItemId: item.id,
             productId: item.productId,
             description: item.description,
@@ -177,9 +178,9 @@ const InboundDeliveryDetails = () => {
             unit: item.unit,
             unitCost: centsToUnits(item.unitPrice ?? 0),
           }))
-          .filter((item: any) => item.quantity > 0);
+          .filter((item) => item.quantity > 0);
 
-        const order: any = find(purchaseOrders, { id: prefillOrderId });
+        const order = find(purchaseOrders, { id: prefillOrderId });
         const orderCurrency = order?.currency ?? organization?.currency ?? "EUR";
         form.setFieldsValue({
           purchaseOrderId: prefillOrderId,
@@ -215,7 +216,7 @@ const InboundDeliveryDetails = () => {
       // purchase-orders/details.tsx.
       form.setFieldsValue({
         ...delivery,
-        currency: (delivery as any).currency ?? organization?.currency ?? "EUR",
+        currency: delivery.currency ?? organization?.currency ?? "EUR",
       });
     }
   }, [delivery, isNew, form, organization]);
@@ -240,12 +241,12 @@ const InboundDeliveryDetails = () => {
   // can be resolved server-side from a linked purchase-order line, so
   // neither is reliably present client-side before that save round-trips.
   const serializedReceiveLines = (
-    delivery && !(delivery as any).then ? (delivery as any).lineItems : []
+    delivery && !(delivery as Thenable).then ? delivery.lineItems : []
   )
-    .filter((l: any) => l.serialized && l.stockEnabled && l.productId)
-    .map((l: any) => ({
+    .filter((l) => l.serialized && l.stockEnabled && l.productId)
+    .map((l) => ({
       lineItemId: l.id,
-      productId: l.productId,
+      productId: l.productId!,
       productName: l.productName ?? l.description,
       quantity: l.quantity,
     }));
@@ -304,9 +305,9 @@ const InboundDeliveryDetails = () => {
 
   const currentStatus =
     statusOverride ??
-    (!isNew && delivery && !(delivery as any).then ? (delivery as any).status : "draft");
+    (!isNew && delivery && !(delivery as Thenable).then ? delivery.status : "draft");
   const deliveryNumber =
-    !isNew && delivery && !(delivery as any).then ? (delivery as any).deliveryNumber : undefined;
+    !isNew && delivery && !(delivery as Thenable).then ? delivery.deliveryNumber : undefined;
   const transitions = isNew ? [] : inboundDeliveryTransitions(currentStatus);
   const isEditable = isNew || currentStatus === "draft";
 
@@ -371,7 +372,7 @@ const InboundDeliveryDetails = () => {
                   // Only cascade on a new receipt — see the identical guard on
                   // src/routes/orders/details.tsx's clientId.
                   if (!isNew) return;
-                  const vendor = find(vendors, { id: vendorId }) as any;
+                  const vendor = find(vendors, { id: vendorId });
                   if (vendor?.defaultCurrency) {
                     form.setFieldValue("currency", vendor.defaultCurrency);
                     prefillExchangeRate(
@@ -401,7 +402,7 @@ const InboundDeliveryDetails = () => {
                   </>
                 )}
               >
-                {map(vendors, (v: any) => (
+                {map(vendors, (v) => (
                   <Option key={v.id} value={v.id}>
                     {v.name}
                   </Option>
@@ -412,7 +413,7 @@ const InboundDeliveryDetails = () => {
           <Col xs={24} md={12} xl={4}>
             <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
               <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
-                {map(purchaseOrders, (o: any) => (
+                {map(purchaseOrders, (o) => (
                   <Option key={o.id} value={o.id}>
                     {o.orderNumber}
                   </Option>
@@ -513,10 +514,10 @@ const InboundDeliveryDetails = () => {
                   const items = formInstance.getFieldValue("lineItems");
                   items[fieldName] = {
                     ...items[fieldName],
-                    description: (product as any).name,
-                    unit: (product as any).unit,
-                    unitCost: centsToUnits((product as any).unitCost ?? 0),
-                    serialized: (product as any).serialized,
+                    description: product.name,
+                    unit: product.unit,
+                    unitCost: centsToUnits(product.unitCost ?? 0),
+                    serialized: product.serialized,
                   };
                   formInstance.setFieldValue("lineItems", [...items]);
                 }
@@ -543,7 +544,7 @@ const InboundDeliveryDetails = () => {
                   {() => {
                     const productId = form.getFieldValue(["lineItems", field.name, "productId"]);
                     if (!productId) return null;
-                    const product: any = find(products, { id: productId });
+                    const product = find(products, { id: productId });
                     if (!product || !product.stockEnabled) return null;
                     return <Tag>{product.stockQuantity}</Tag>;
                   }}

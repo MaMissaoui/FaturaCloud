@@ -44,6 +44,7 @@ import {
   nextDeliveryNumberAtom,
   updateDeliveryStatusAtom,
   deleteDeliveryAtom,
+  type DeliveryFormValues,
 } from "src/atoms/delivery";
 import SerialCaptureModal from "src/components/stock/serial-capture-modal";
 import StatusFlow from "src/components/status-flow";
@@ -55,6 +56,7 @@ import {
   deliveryTransitions,
   type DeliveryStatus,
 } from "src/types/delivery";
+import type { Thenable } from "src/types/form";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -96,7 +98,7 @@ const DeliveryDetails = () => {
   // A component/intermediate isn't sellable — exclude it from the picker.
   // Unclassified products (category null) stay eligible everywhere.
   const sellableProducts = useMemo(
-    () => products.filter((p: any) => p.category !== "component"),
+    () => products.filter((p) => p.category !== "component"),
     [products],
   );
   const setProducts = useSetAtom(setProductsAtom);
@@ -148,7 +150,7 @@ const DeliveryDetails = () => {
       ]);
       if (cancelled) return;
 
-      const lineItems = (orderLineItems as any[])
+      const lineItems = orderLineItems
         .map((item) => ({
           item,
           remaining: item.quantity - (delivered[item.id] ?? 0),
@@ -160,10 +162,10 @@ const DeliveryDetails = () => {
             orderLineItemId: item.id,
             description: item.description,
             quantity: remaining,
-            unit: (product as any)?.unit,
+            unit: product?.unit,
             productId: item.productId,
-            stockEnabled: (product as any)?.stockEnabled,
-            availableStock: (product as any)?.stockQuantity,
+            stockEnabled: product?.stockEnabled,
+            availableStock: product?.stockQuantity,
           };
         });
 
@@ -183,11 +185,11 @@ const DeliveryDetails = () => {
   useEffect(() => {
     if (!isNew && delivery && typeof delivery === "object" && !("then" in delivery)) {
       form.resetFields();
-      form.setFieldsValue({ ...delivery, clientId: (delivery as any).ownClientId });
+      form.setFieldsValue({ ...delivery, clientId: delivery.ownClientId });
     }
   }, [delivery, isNew, form]);
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: DeliveryFormValues) => {
     const created = await setDelivery(values);
     markSaved();
     if (isNew && created) navigate(`/deliveries/${created.id}`);
@@ -203,13 +205,11 @@ const DeliveryDetails = () => {
   // line items (not form state) — an outbound delivery's productId can be
   // resolved server-side from a linked order line, so it isn't reliably
   // present client-side before that save round-trips.
-  const serializedShipLines = (
-    delivery && !(delivery as any).then ? (delivery as any).lineItems : []
-  )
-    .filter((l: any) => l.serialized && l.stockEnabled && l.productId)
-    .map((l: any) => ({
+  const serializedShipLines = (delivery && !(delivery as Thenable).then ? delivery.lineItems : [])
+    .filter((l) => l.serialized && l.stockEnabled && l.productId)
+    .map((l) => ({
       lineItemId: l.id,
-      productId: l.productId,
+      productId: l.productId!,
       productName: l.description,
       quantity: l.quantity,
     }));
@@ -248,9 +248,9 @@ const DeliveryDetails = () => {
     : undefined;
 
   const currentStatus =
-    !isNew && delivery && !(delivery as any).then ? ((delivery as any).status ?? "draft") : "draft";
+    !isNew && delivery && !(delivery as Thenable).then ? (delivery.status ?? "draft") : "draft";
   const deliveryNumber =
-    !isNew && delivery && !(delivery as any).then ? (delivery as any).deliveryNumber : undefined;
+    !isNew && delivery && !(delivery as Thenable).then ? delivery.deliveryNumber : undefined;
 
   // Mirrors the server-side guard in db/delivery.go: line items are frozen
   // once a delivery is shipped/delivered. Header-only fields (tracking
@@ -267,12 +267,11 @@ const DeliveryDetails = () => {
   // order list hasn't loaded that order for some reason.
   const linkedOrder = watchedOrderId ? find(orders, { id: watchedOrderId }) : null;
   const effectiveClientName =
-    (linkedOrder as any)?.clientName ??
-    (delivery && !(delivery as any).then ? (delivery as any).clientName : null);
+    linkedOrder?.clientName ??
+    (delivery && !(delivery as Thenable).then ? delivery.clientName : null);
 
   const siblingDeliveries = useMemo(
-    () =>
-      watchedOrderId ? (allDeliveries as any[]).filter((dv) => dv.orderId === watchedOrderId) : [],
+    () => (watchedOrderId ? allDeliveries.filter((dv) => dv.orderId === watchedOrderId) : []),
     [allDeliveries, watchedOrderId],
   );
 
@@ -333,7 +332,7 @@ const DeliveryDetails = () => {
           <Col xs={24} md={12} xl={6}>
             <Form.Item label={<Trans>Linked order</Trans>} name="orderId">
               <Select allowClear showSearch optionFilterProp="children">
-                {(orders as any[]).map((o: any) => (
+                {orders.map((o) => (
                   <Option key={o.id} value={o.id}>
                     {o.orderNumber}
                   </Option>
@@ -356,7 +355,7 @@ const DeliveryDetails = () => {
                   optionFilterProp="children"
                   placeholder={t`Walk-in / no client`}
                 >
-                  {(clients as any[]).map((c: any) => (
+                  {clients.map((c) => (
                     <Option key={c.id} value={c.id}>
                       {c.name}
                     </Option>
@@ -439,10 +438,9 @@ const DeliveryDetails = () => {
             <Col span={24}>
               <Typography.Text type="secondary">
                 <Trans>
-                  {siblingDeliveries.length} deliveries exist for order{" "}
-                  {(linkedOrder as any)?.orderNumber}:
+                  {siblingDeliveries.length} deliveries exist for order {linkedOrder?.orderNumber}:
                 </Trans>{" "}
-                {siblingDeliveries.map((dv: any, i: number) => (
+                {siblingDeliveries.map((dv, i) => (
                   <span key={dv.id}>
                     {i > 0 && ", "}
                     {dv.id === id ? (
@@ -484,11 +482,11 @@ const DeliveryDetails = () => {
                 const product = productId ? find(products, { id: productId }) : null;
                 lineItems[fieldName] = {
                   ...lineItems[fieldName],
-                  description: (product as any)?.name ?? lineItems[fieldName]?.description,
-                  unit: (product as any)?.unit,
-                  stockEnabled: (product as any)?.stockEnabled,
-                  availableStock: (product as any)?.stockQuantity,
-                  serialized: (product as any)?.serialized,
+                  description: product?.name ?? lineItems[fieldName]?.description,
+                  unit: product?.unit,
+                  stockEnabled: product?.stockEnabled,
+                  availableStock: product?.stockQuantity,
+                  serialized: product?.serialized,
                 };
                 formInstance.setFieldValue("lineItems", [...lineItems]);
               },

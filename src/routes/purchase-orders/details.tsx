@@ -88,6 +88,8 @@ import {
   updatePurchaseOrderStatusAtom,
   deletePurchaseOrderAtom,
 } from "src/atoms/purchase-order";
+import type { InboundDelivery, IncomingInvoice } from "src/types/models";
+import type { LineAmounts, Thenable } from "src/types/form";
 
 // Stable empty value while nothing is loaded (see useFetch).
 const NO_QUANTITIES: Record<string, number> = {};
@@ -120,7 +122,9 @@ const PurchaseOrderDetails = () => {
   // Set when navigating here from the Imports drawer's "New purchase order"
   // action (src/components/imports/form.tsx) — pre-links the order the same
   // way picking it from the Import Select below would.
-  const prefillImportId = isNew ? ((location.state as any)?.importId ?? null) : null;
+  const prefillImportId = isNew
+    ? ((location.state as { importId?: string } | null)?.importId ?? null)
+    : null;
 
   const organization = useAtomValue(organizationAtom);
   // Imports is section-scoped server-side (api/sections.go): a general user
@@ -137,7 +141,7 @@ const PurchaseOrderDetails = () => {
   // A finished good isn't purchasable from a vendor — exclude it from the
   // picker. Unclassified products (category null) stay eligible everywhere.
   const purchasableProducts = useMemo(
-    () => products.filter((p: any) => p.category !== "finished"),
+    () => products.filter((p) => p.category !== "finished"),
     [products],
   );
   const setProducts = useSetAtom(setProductsAtom);
@@ -147,13 +151,13 @@ const PurchaseOrderDetails = () => {
   const inboundDeliveries = useAtomValue(inboundDeliveriesAtom);
   const setInboundDeliveries = useSetAtom(setInboundDeliveriesAtom);
   const linkedReceipts = useMemo(
-    () => inboundDeliveries.filter((rc: any) => rc.purchaseOrderId === id),
+    () => inboundDeliveries.filter((rc) => rc.purchaseOrderId === id),
     [inboundDeliveries, id],
   );
   const incomingInvoices = useAtomValue(incomingInvoicesAtom);
   const setIncomingInvoices = useSetAtom(setIncomingInvoicesAtom);
   const linkedIncomingInvoices = useMemo(
-    () => incomingInvoices.filter((inv: any) => inv.purchaseOrderId === id),
+    () => incomingInvoices.filter((inv) => inv.purchaseOrderId === id),
     [incomingInvoices, id],
   );
   // Read the async atom directly so the component suspends until the real
@@ -243,7 +247,7 @@ const PurchaseOrderDetails = () => {
       // page's other currency fallbacks already do.
       form.setFieldsValue({
         ...order,
-        currency: (order as any).currency ?? organization?.currency ?? "EUR",
+        currency: order.currency ?? organization?.currency ?? "EUR",
       });
     }
   }, [order, isNew, form, organization]);
@@ -253,7 +257,7 @@ const PurchaseOrderDetails = () => {
   // (fetched by the effect above), so this can't rely on initialValues alone.
   useEffect(() => {
     if (!isNew || !prefillImportId) return;
-    const imp = find(imports, { id: prefillImportId }) as any;
+    const imp = find(imports, { id: prefillImportId });
     if (imp?.currency) {
       form.setFieldsValue({
         currency: imp.currency,
@@ -265,9 +269,9 @@ const PurchaseOrderDetails = () => {
 
   const lineItems = Form.useWatch("lineItems", form) ?? [];
   const subTotal = sum(
-    lineItems.map((item: any) => {
-      const qty = parseFloat(item?.quantity ?? 0) || 0;
-      const price = parseFloat(item?.unitPrice ?? 0) || 0;
+    lineItems.map((item: LineAmounts | undefined) => {
+      const qty = parseFloat(String(item?.quantity ?? 0)) || 0;
+      const price = parseFloat(String(item?.unitPrice ?? 0)) || 0;
       return qty * price;
     }),
   );
@@ -276,7 +280,7 @@ const PurchaseOrderDetails = () => {
   const orgCurrency = organization?.currency ?? "EUR";
   const currency =
     watchedCurrency ??
-    (!isNew && order && !(order as any).then ? (order as any).currency : null) ??
+    (!isNew && order && !(order as Thenable).then ? order.currency : null) ??
     orgCurrency;
 
   // Read the form store rather than onFinish's `values`.
@@ -329,9 +333,8 @@ const PurchaseOrderDetails = () => {
     : undefined;
 
   const currentStatus =
-    statusOverride ?? (!isNew && order && !(order as any).then ? (order as any).status : "draft");
-  const orderNumber =
-    !isNew && order && !(order as any).then ? (order as any).orderNumber : undefined;
+    statusOverride ?? (!isNew && order && !(order as Thenable).then ? order.status : "draft");
+  const orderNumber = !isNew && order && !(order as Thenable).then ? order.orderNumber : undefined;
   const transitions = isNew ? [] : purchaseOrderTransitions(currentStatus);
 
   // Re-runs the async detail read after a failed fetch. The null-then-restore
@@ -410,7 +413,7 @@ const PurchaseOrderDetails = () => {
                   // Only cascade on a new order — see the identical guard on
                   // src/routes/orders/details.tsx's clientId.
                   if (!isNew) return;
-                  const vendor = find(vendors, { id: vendorId }) as any;
+                  const vendor = find(vendors, { id: vendorId });
                   if (vendor?.defaultCurrency) {
                     form.setFieldValue("currency", vendor.defaultCurrency);
                     prefillExchangeRate(
@@ -440,7 +443,7 @@ const PurchaseOrderDetails = () => {
                   </>
                 )}
               >
-                {map(vendors, (v: any) => (
+                {map(vendors, (v) => (
                   <Option key={v.id} value={v.id}>
                     {v.name}
                   </Option>
@@ -466,7 +469,7 @@ const PurchaseOrderDetails = () => {
                     // (db/migrations/0066's comment): the order still stores and
                     // freezes its own values once saved.
                     if (!isNew || !newImportId) return;
-                    const imp = find(imports, { id: newImportId }) as any;
+                    const imp = find(imports, { id: newImportId });
                     if (imp?.currency) {
                       form.setFieldsValue({
                         currency: imp.currency,
@@ -478,7 +481,7 @@ const PurchaseOrderDetails = () => {
                     }
                   }}
                 >
-                  {map(imports, (imp: any) => (
+                  {map(imports, (imp) => (
                     <Option key={imp.id} value={imp.id}>
                       {imp.importNumber}
                     </Option>
@@ -585,10 +588,10 @@ const PurchaseOrderDetails = () => {
                   const items = formInstance.getFieldValue("lineItems");
                   items[fieldName] = {
                     ...items[fieldName],
-                    description: (product as any).name,
-                    unit: (product as any).unit,
+                    description: product.name,
+                    unit: product.unit,
                     // Purchases are priced at cost, not at the sale price.
-                    unitPrice: centsToUnits((product as any).unitCost ?? 0),
+                    unitPrice: centsToUnits(product.unitCost ?? 0),
                   };
                   formInstance.setFieldValue("lineItems", [...items]);
                 }
@@ -665,28 +668,33 @@ const PurchaseOrderDetails = () => {
             Invoices and searching for this order number. */}
         {!isNew && linkedReceipts.length > 0 && (
           <Card size="small" title={<Trans>Goods receipts</Trans>} style={{ marginTop: 16 }}>
-            <Table dataSource={linkedReceipts} rowKey="id" size="small" pagination={false}>
-              <Table.Column
+            <Table<InboundDelivery>
+              dataSource={linkedReceipts}
+              rowKey="id"
+              size="small"
+              pagination={false}
+            >
+              <Table.Column<InboundDelivery>
                 title={<Trans>Number</Trans>}
                 key="deliveryNumber"
-                sorter={(a: any, b: any) =>
+                sorter={(a, b) =>
                   String(a.deliveryNumber ?? "").localeCompare(String(b.deliveryNumber ?? ""))
                 }
-                render={(receipt: any) => (
+                render={(receipt: InboundDelivery) => (
                   <Link to={`/inbound-deliveries/${receipt.id}`}>{receipt.deliveryNumber}</Link>
                 )}
               />
-              <Table.Column
+              <Table.Column<InboundDelivery>
                 title={<Trans>Date</Trans>}
                 key="deliveryDate"
-                sorter={(a: any, b: any) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
-                render={(receipt: any) => formatDate(receipt.deliveryDate)}
+                sorter={(a, b) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
+                render={(receipt: InboundDelivery) => formatDate(receipt.deliveryDate)}
               />
-              <Table.Column
+              <Table.Column<InboundDelivery>
                 title={<Trans>Status</Trans>}
                 key="status"
-                sorter={(a: any, b: any) => String(a.status).localeCompare(String(b.status))}
-                render={(receipt: any) => (
+                sorter={(a, b) => String(a.status).localeCompare(String(b.status))}
+                render={(receipt: InboundDelivery) => (
                   <Tag color={inboundDeliveryStatusColor[receipt.status as InboundDeliveryStatus]}>
                     {inboundDeliveryStatusLabel(receipt.status)}
                   </Tag>
@@ -697,30 +705,35 @@ const PurchaseOrderDetails = () => {
         )}
         {!isNew && linkedIncomingInvoices.length > 0 && (
           <Card size="small" title={<Trans>Incoming invoices</Trans>} style={{ marginTop: 16 }}>
-            <Table dataSource={linkedIncomingInvoices} rowKey="id" size="small" pagination={false}>
-              <Table.Column
+            <Table<IncomingInvoice>
+              dataSource={linkedIncomingInvoices}
+              rowKey="id"
+              size="small"
+              pagination={false}
+            >
+              <Table.Column<IncomingInvoice>
                 title={<Trans>Vendor invoice #</Trans>}
                 key="vendorInvoiceNumber"
-                sorter={(a: any, b: any) =>
+                sorter={(a, b) =>
                   String(a.vendorInvoiceNumber ?? "").localeCompare(
                     String(b.vendorInvoiceNumber ?? ""),
                   )
                 }
-                render={(invoice: any) => (
+                render={(invoice: IncomingInvoice) => (
                   <Link to={`/incoming-invoices/${invoice.id}`}>{invoice.vendorInvoiceNumber}</Link>
                 )}
               />
-              <Table.Column
+              <Table.Column<IncomingInvoice>
                 title={<Trans>Date</Trans>}
                 key="date"
-                sorter={(a: any, b: any) => (a.date ?? 0) - (b.date ?? 0)}
-                render={(invoice: any) => formatDate(invoice.date)}
+                sorter={(a, b) => (a.date ?? 0) - (b.date ?? 0)}
+                render={(invoice: IncomingInvoice) => formatDate(invoice.date)}
               />
-              <Table.Column
+              <Table.Column<IncomingInvoice>
                 title={<Trans>State</Trans>}
                 key="state"
-                sorter={(a: any, b: any) => String(a.state).localeCompare(String(b.state))}
-                render={(invoice: any) => (
+                sorter={(a, b) => String(a.state).localeCompare(String(b.state))}
+                render={(invoice: IncomingInvoice) => (
                   <Tag color={incomingInvoiceStateColor[invoice.state as IncomingInvoiceState]}>
                     {incomingInvoiceStateLabel(invoice.state)}
                   </Tag>

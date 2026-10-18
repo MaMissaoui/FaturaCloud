@@ -47,7 +47,7 @@ export const setDeliveriesAtom = atom(null, async (get, set) => {
 
 // The delivery form edits deliveryDate as a dayjs object, not the wire's
 // unix-ms timestamp.
-type DeliveryFormValues = Omit<Partial<Delivery>, "deliveryDate"> & {
+export type DeliveryFormValues = Omit<Partial<Delivery>, "deliveryDate"> & {
   deliveryDate?: Dayjs | number;
   lineItems?: Partial<DeliveryLineItem>[];
 };
