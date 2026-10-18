@@ -3,7 +3,8 @@
 Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, state sets) are in the root `CLAUDE.md`. These are the current rules; the reasoning behind older decisions is in git history.
 
 ## Basics
-- SQLite through `jmoiron/sqlx`, one connection (`db.SetMaxOpenConns(1)`). That serializes every write (it's what makes the `MAX+1` allocations race-free) and means **a `d.DB` read while a `*sqlx.Tx` is open deadlocks**: do every read before `Beginx()`, or read through `tx`.
+- SQLite through `jmoiron/sqlx`. **Every write and transaction goes through one connection, `d.DB`** (`SetMaxOpenConns(1)`). That serializes writes, which is what makes the `MAX+1` allocations race-free, and means **a `d.DB` read while a `*sqlx.Tx` is open deadlocks**: do every read before `Beginx()`, or read through `tx`.
+- **Read pool** (F177): `d.ReadOnly()` is a view on a second pool of `readPoolSize` (3) connections, with the same pragmas plus `query_only(1)`. Its reads run alongside the writer and each other (WAL) and see the last commit. Only heavy, read-only GET handlers use it (see `api/CLAUDE.md`). A write through it fails, so never route a function that writes, even lazily. `Close` closes both pools, so a restore reopens it (`TestRestoreReopensTheReadPool`).
 - Migrations: `db/migrations/*.up.sql`, applied on every startup by golang-migrate. Database file: `/data/sqlite.db` in Docker, `~/Library/Application Support/FaturaCloud/sqlite.db` (macOS) or `~/.config/FaturaCloud/sqlite.db` (Linux) in dev.
 - Every `Create*` sets `req.ID` with `gonanoid.New()` when it's `""`.
 - Money: every line-item `unitPrice`/`unitCost` insert goes through `roundCents` (`db/invoice_totals.go`, half away from zero), never an `int64(x)` cast.

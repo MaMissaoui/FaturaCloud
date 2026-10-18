@@ -510,6 +510,20 @@ Payments are not paged: their only screen, the Cash Book, now asks for inbound p
 
 ### 3.4 — F177: one connection serializes every request (Low-Medium, Confirmed on the Mac)
 
+**Measured on the Pi (2026-10-18), and done.** The measurement used the real `db` package on the production Pi 4. It ran against a temporary copy of the live database (organization Ben Salah: 2,094 invoices, 3,598 payments, 8,943 journal entries), and the copy was deleted afterwards.
+- **Single reads cost:** the Dashboard 548 ms, the loan status 355 ms, payments 292 ms (the inbound filter barely helps: nearly every payment there is inbound), a 50-entry journal page 137 ms, invoices 78 ms.
+- **Behind 12 heavy reads,** a small write waited 1.0 s median and 1.8 s worst. That's a counter sale stuck behind other people's screens.
+- **No index fix:** the big tables are already indexed on what these queries filter by. The time goes into reading and decoding rows in pure-Go SQLite.
+
+So the read pool below was built: `db.ReadOnly()` with 3 query-only connections, used by the heavy GET handlers. Measured on the same copy:
+
+| | Before | After |
+|---|---|---|
+| Write behind 12 heavy reads | 1.0 s median, 1.8 s worst | 0.5 ms median, 0.6 ms worst |
+| Light read behind them | 0.64 s median, 1.6 s worst | 1.0 ms median, 4.5 ms worst |
+| The 12 heavy reads themselves | 3.0 s one after another | 1.3 s in parallel |
+
+
 `db.SetMaxOpenConns(1)` (`db/db.go:50`) puts every read and write through
 one SQLite connection. WAL mode would let reads run alongside the writer,
 but they queue instead. Measured: a 0.4 ms request
@@ -527,6 +541,9 @@ connections) used only by GET handlers that open no transaction.
 that cause the queueing.
 
 ### 3.5 — F183: the chart library (Low, Confirmed)
+
+**Measured (2026-10-18): not worth doing.** Through the proxy, the chart chunk (`makeChartComp`) is 1,464 KB raw and 436 KB gzipped. The Pi serves it pre-compressed from memory in about 0.07 s on the LAN, and since F171 each browser downloads it once per release. Revisit only if a slow device shows the Dashboard parsing it as a problem.
+
 
 `@ant-design/plots` builds a 1.50 MB chunk (451 KB gzipped) for one
 `Column` chart on the Dashboard and four `Bar` charts on the reporting

@@ -24,6 +24,7 @@ Loaded when working under `api/`. `api/router.go` is the authoritative route lis
 - **Tripwires.** Every new route must be classified, or the build fails:
   - `api/cross_org_test.go`: `TestPhaseCRouteCoverage`, `TestDomainRoleRouteCoverage` (`domainRouteRoles`), `TestCreateRouteOrgChecksArePresent` (`createRouteDomainRoles`), `exemptRoutes`;
   - `api/sections_test.go`: `TestSectionRouteCoverage` (`wantSectionRoutes` or `TestSharedRoutesAreUnrestricted`) and `TestSectionRoleAccess`, which pins the role matrix.
+- **Read pool** (F177): the heavy list and report GET handlers (invoices, incoming invoices, payments, journal entries, the dashboard, the summaries, aging, cash reports and loan status, the GL and sales reports, the BOM overview) call `h.db.ReadOnly().GetX(...)`, so a counter sale never queues behind them. A new heavy read-only GET may do the same. Never route a handler that writes or opens a transaction: the pool is `query_only`.
 - **Locking.** The wrappers take one short `dbMu.RLock()` covering both the resolve and the role check (a resolver hits the DB and must not race a restore swap). `withDB` handlers hold the read lock for the whole request. **LibreOffice exports are registered directly on `mux`, not `withDB`, and call `h.orgMember(...)` inline**, so a conversion never runs under the request-long lock. The restore routes call `platformAdmin` inline.
 
 ## Auth and sessions
