@@ -1678,7 +1678,7 @@ msgstr "Cost price"
 msgid "Could not load more activity"
 msgstr "Could not load more activity"
 
-#: src/routes/organizations/index.tsx:520
+#: src/routes/organizations/index.tsx:512
 msgid "Couldn't load organizations"
 msgstr "Couldn't load organizations"
 
@@ -2332,7 +2332,7 @@ msgstr "Delete this user?"
 msgid "Deleted"
 msgstr "Deleted"
 
-#: src/routes/organizations/index.tsx:453
+#: src/routes/organizations/index.tsx:445
 msgid "Deleted {total} record(s)"
 msgstr "Deleted {total} record(s)"
 
@@ -2975,7 +2975,7 @@ msgstr "Exports every posted journal line for the selected fiscal year as a DATE
 msgid "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 msgstr "Exports every posted journal line for the selected fiscal year as a SirenFECAAAAMMJJ.txt file, per the mandated French tax authority format. Requires a 9-digit SIREN in the organization's registration number."
 
-#: src/routes/organizations/index.tsx:279
+#: src/routes/organizations/index.tsx:293
 msgid "Failed to add member"
 msgstr "Failed to add member"
 
@@ -3174,7 +3174,7 @@ msgstr "Failed to load loan status"
 msgid "Failed to load numbering settings"
 msgstr "Failed to load numbering settings"
 
-#: src/routes/organizations/index.tsx:255
+#: src/routes/organizations/index.tsx:269
 msgid "Failed to load organization"
 msgstr "Failed to load organization"
 
@@ -3235,7 +3235,7 @@ msgstr "Failed to record sale"
 msgid "Failed to record stock movement"
 msgstr "Failed to record stock movement"
 
-#: src/routes/organizations/index.tsx:304
+#: src/routes/organizations/index.tsx:318
 msgid "Failed to remove member"
 msgstr "Failed to remove member"
 
@@ -3256,7 +3256,7 @@ msgstr "Failed to save bill of materials"
 msgid "Failed to save numbering settings"
 msgstr "Failed to save numbering settings"
 
-#: src/routes/organizations/index.tsx:411
+#: src/routes/organizations/index.tsx:403
 msgid "Failed to save organization"
 msgstr "Failed to save organization"
 
@@ -3296,7 +3296,7 @@ msgstr "Failed to update incoming invoice state"
 msgid "Failed to update invoice state"
 msgstr "Failed to update invoice state"
 
-#: src/routes/organizations/index.tsx:291
+#: src/routes/organizations/index.tsx:305
 msgid "Failed to update member role"
 msgstr "Failed to update member role"
 
@@ -4423,11 +4423,11 @@ msgstr "Login failed"
 msgid "Logo"
 msgstr "Logo"
 
-#: src/routes/organizations/index.tsx:332
+#: src/routes/organizations/index.tsx:346
 msgid "Logo removal failed"
 msgstr "Logo removal failed"
 
-#: src/routes/organizations/index.tsx:554
+#: src/routes/organizations/index.tsx:546
 msgid "Logo upload failed"
 msgstr "Logo upload failed"
 
@@ -4538,11 +4538,11 @@ msgstr "Matricule Fiscal (MF)"
 msgid "Member"
 msgstr "Member"
 
-#: src/routes/organizations/index.tsx:274
+#: src/routes/organizations/index.tsx:288
 msgid "Member added"
 msgstr "Member added"
 
-#: src/routes/organizations/index.tsx:301
+#: src/routes/organizations/index.tsx:315
 msgid "Member removed"
 msgstr "Member removed"
 
@@ -4796,7 +4796,7 @@ msgstr "New order"
 
 #: src/components/organizations/organization-edit-drawer.tsx:132
 #: src/layouts/base.tsx:951
-#: src/routes/organizations/index.tsx:510
+#: src/routes/organizations/index.tsx:502
 msgid "New organization"
 msgstr "New organization"
 
@@ -5356,7 +5356,7 @@ msgstr "Nothing owed"
 msgid "Nothing paid for {0} days"
 msgstr "Nothing paid for {0} days"
 
-#: src/routes/organizations/index.tsx:454
+#: src/routes/organizations/index.tsx:446
 msgid "Nothing to delete — this organization was empty"
 msgstr "Nothing to delete — this organization was empty"
 
@@ -5628,11 +5628,11 @@ msgstr "Organization data"
 msgid "Organization default"
 msgstr "Organization default"
 
-#: src/routes/organizations/index.tsx:426
+#: src/routes/organizations/index.tsx:418
 msgid "Organization deleted"
 msgstr "Organization deleted"
 
-#: src/routes/organizations/index.tsx:429
+#: src/routes/organizations/index.tsx:421
 msgid "Organization deletion failed"
 msgstr "Organization deletion failed"
 
@@ -5645,7 +5645,7 @@ msgid "Organization updated successfully"
 msgstr "Organization updated successfully"
 
 #: src/layouts/base.tsx:352
-#: src/routes/organizations/index.tsx:500
+#: src/routes/organizations/index.tsx:492
 msgid "Organizations"
 msgstr "Organizations"
 
@@ -6796,7 +6796,7 @@ msgstr "Reserves a serial-number range for whatever gets produced from this ship
 msgid "Reset"
 msgstr "Reset"
 
-#: src/routes/organizations/index.tsx:470
+#: src/routes/organizations/index.tsx:462
 msgid "Reset failed"
 msgstr "Reset failed"
 
@@ -6898,7 +6898,7 @@ msgstr "Retention (days)"
 #: src/routes/incoming-invoices/details.tsx:325
 #: src/routes/invoices/details.tsx:434
 #: src/routes/orders/details.tsx:266
-#: src/routes/organizations/index.tsx:523
+#: src/routes/organizations/index.tsx:515
 #: src/routes/production-orders/details.tsx:289
 #: src/routes/purchase-orders/details.tsx:371
 #: src/routes/reporting/purchases-by-vendor.tsx:95
@@ -7111,7 +7111,7 @@ msgstr "Schedule saved"
 #: src/routes/inbound-deliveries.tsx:92
 #: src/routes/incoming-invoices.tsx:170
 #: src/routes/orders.tsx:94
-#: src/routes/organizations/index.tsx:502
+#: src/routes/organizations/index.tsx:494
 #: src/routes/production-orders.tsx:80
 #: src/routes/products.tsx:623
 #: src/routes/purchase-orders.tsx:93
