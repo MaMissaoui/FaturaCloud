@@ -42,7 +42,7 @@ func buildDeliveryDefaultTemplate() {
 	set("A7", "Deliver To")
 	f.SetCellStyle(sheet, "A7", "A7", styles.bold)
 	set("A8", "{{client.name}}")
-	set("A9", "{{client.street}} {{client.houseNumber}}")
+	set("A9", "{{client.addressLine}}")
 	set("A10", "{{client.postalCode}} {{client.city}}")
 	set("A11", "Shipping address: {{delivery.shippingAddress}}")
 

@@ -417,6 +417,17 @@ func findMarkerRow(f *excelize.File, sheet, marker string) (row int, col int, fo
 	return 0, 0, false, nil
 }
 
+// clientAddressLine is the street line of a document's client block: street
+// and house number when either is set, else the single free-text address the
+// Cash Book's "New customer" form fills (0087). Every built-in layout prints
+// it, so neither kind of client leaves the line blank.
+func clientAddressLine(c Client) string {
+	if street := strings.TrimSpace(derefString(c.Street) + " " + derefString(c.HouseNumber)); street != "" {
+		return street
+	}
+	return strings.TrimSpace(derefString(c.Address))
+}
+
 // buildScalarPlaceholders is the fixed namespace->field allowlist for
 // invoice/organization/client values — a plain map keyed by
 // "namespace.field", not reflection, so an unknown placeholder is a lookup
@@ -492,6 +503,7 @@ func buildScalarPlaceholders(invoice Invoice, org Organization, client Client) m
 		"client.vatin":          derefString(client.Vatin),
 		"client.identityNumber": derefString(client.IdentityNumber),
 		"client.address":        derefString(client.Address),
+		"client.addressLine":    clientAddressLine(client),
 		"client.email":          firstEmail(client.Emails),
 		"client.phone":          derefString(client.Phone),
 		"client.phone2":         derefString(client.Phone2),

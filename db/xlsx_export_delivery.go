@@ -106,6 +106,7 @@ func buildDeliveryScalarPlaceholders(delivery OutboundDelivery, org Organization
 		"client.name":           derefString(client.Name),
 		"client.identityNumber": derefString(client.IdentityNumber),
 		"client.address":        derefString(client.Address),
+		"client.addressLine":    clientAddressLine(client),
 		"client.vatin":          derefString(client.Vatin),
 		"client.email":          firstEmail(client.Emails),
 		"client.phone":          derefString(client.Phone),
