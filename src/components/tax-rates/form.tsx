@@ -33,6 +33,7 @@ import {
   CATEGORIES_REQUIRING_EXEMPTION_REASON,
   useTaxRateCategoryLabels,
 } from "src/utils/tax-rate-categories";
+import type { TaxRateFormValues } from "src/atoms/tax-rate";
 
 const loadableTaxRateAtom = loadable(taxRateAtom);
 
@@ -91,7 +92,7 @@ const TaxRateForm = () => {
     navigate("/settings/tax-rates");
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: TaxRateFormValues) => {
     setSubmitting(true);
     try {
       await setTaxRate(values);

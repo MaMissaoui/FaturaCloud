@@ -28,6 +28,7 @@ import { generateClientCode } from "src/utils/client";
 import { currencies } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import ScrollShadow from "src/components/scroll-shadow";
+import type { VendorFormValues } from "src/atoms/vendor";
 
 const VendorForm = () => {
   const location = useLocation();
@@ -50,7 +51,7 @@ const VendorForm = () => {
 
   const vendor = useMemo(() => {
     if (!vendorId) return null;
-    const v = vendors.find((x: any) => x.id === vendorId);
+    const v = vendors.find((x) => x.id === vendorId);
     if (!v) return null;
     let emails: string[] = [];
     try {
@@ -70,7 +71,7 @@ const VendorForm = () => {
     navigate(location.pathname, { state: { vendorModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: VendorFormValues) => {
     setSubmitting(true);
     try {
       await setVendor(values);

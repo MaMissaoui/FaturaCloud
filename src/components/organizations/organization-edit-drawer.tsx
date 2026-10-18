@@ -38,6 +38,7 @@ import OrganizationDangerZone, {
 import { documentLanguageOptions, documentLayoutOptions } from "src/types/document-layout";
 import { timezoneOptions } from "src/utils/timezones";
 import { inventoryValuationOptions } from "src/types/inventory-valuation";
+import type { Organization } from "src/types/models";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
 
@@ -46,6 +47,18 @@ interface AccountOption {
   label: string;
 }
 
+// The drawer's values: the organization's own fields, with the stamp amount
+// in units and the 0/1 flags as Checkbox booleans until handleSubmit converts
+// them back.
+export type OrganizationFormValues = Omit<
+  Partial<Organization>,
+  "fiscalStampEnabled" | "withholdingTaxEnabled" | "amountInWordsEnabled"
+> & {
+  fiscalStampEnabled?: boolean | number | null;
+  withholdingTaxEnabled?: boolean | number | null;
+  amountInWordsEnabled?: boolean | number | null;
+};
+
 interface OrganizationEditDrawerProps {
   open: boolean;
   isEdit: boolean;
@@ -53,7 +66,7 @@ interface OrganizationEditDrawerProps {
   form: FormInstance;
   submitting: boolean;
   onClose: () => void;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: OrganizationFormValues) => void;
   activeSections: string[];
   onActiveSectionsChange: (keys: string[]) => void;
   hasLogo: boolean;

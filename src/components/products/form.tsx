@@ -47,6 +47,20 @@ import ScrollShadow from "src/components/scroll-shadow";
 import BOMFields from "src/components/products/bom-fields";
 import { productOption } from "src/components/products/product-option";
 import { proposeProductCode } from "src/utils/product-code";
+import type { Product } from "src/types/models";
+
+// The drawer edits price and cost in currency units and the 0/1 flags as
+// Checkbox booleans; handleSubmit converts both back.
+type ProductFormValues = Omit<
+  Partial<Product>,
+  "price" | "unitCost" | "stockEnabled" | "serialized"
+> & {
+  price?: number | null;
+  unitCost?: number | null;
+  stockEnabled?: boolean;
+  serialized?: boolean;
+  bom?: Parameters<typeof ReplaceProductBOM>[1];
+};
 
 const ProductForm = () => {
   const location = useLocation();
@@ -102,7 +116,7 @@ const ProductForm = () => {
 
   const product = useMemo(() => {
     if (!productId) return null;
-    return products.find((p: any) => p.id === productId) ?? null;
+    return products.find((p) => p.id === productId) ?? null;
   }, [products, productId]);
 
   // How many records refer to the product being edited: one with any
@@ -243,7 +257,7 @@ const ProductForm = () => {
   // proposal once it does.
   useEffect(() => {
     if (productId || codeTouched || !nameValue || !catalogLoaded) return;
-    form.setFieldValue("sku", proposeProductCode(nameValue, products as any[]));
+    form.setFieldValue("sku", proposeProductCode(nameValue, products));
   }, [nameValue, productId, codeTouched, catalogLoaded, products, form]);
 
   // Prefill a new product's Base unit of measure from the org's default —
@@ -276,7 +290,7 @@ const ProductForm = () => {
     navigate(location.pathname, { state: { productModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: ProductFormValues) => {
     setSubmitting(true);
     const stockEnabled = values.type === "product" && values.stockEnabled ? 1 : 0;
     // The hidden "unit" field exists to round-trip a *legacy* free-text unit
@@ -702,7 +716,7 @@ const ProductForm = () => {
               <Col xs={24} md={12}>
                 <Form.Item name="taxRateId" label={<Trans>Default tax rate</Trans>}>
                   <Select allowClear placeholder={t`Select tax rate`}>
-                    {taxRates.map((tr: any) => (
+                    {taxRates.map((tr) => (
                       <Select.Option key={tr.id} value={tr.id}>
                         {tr.name} ({tr.percentage}%)
                       </Select.Option>

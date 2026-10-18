@@ -8,6 +8,7 @@ import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 
 import { journalIdAtom, journalAtom, journalsAtom, deleteJournalAtom } from "src/atoms/journal";
+import type { Journal } from "src/types/models";
 
 const JOURNAL_TYPES = ["sales", "purchases", "cash", "bank", "miscellaneous"] as const;
 
@@ -52,7 +53,7 @@ const JournalForm = () => {
     navigate(location.pathname, { state: { journalModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: Partial<Journal>) => {
     setSubmitting(true);
     try {
       await setJournal(values);

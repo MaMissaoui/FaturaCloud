@@ -22,12 +22,12 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { DeleteOutlined, DisconnectOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import get from "lodash/get";
 import map from "lodash/map";
 
 import { GetNextImportNumber, GetImportSummary } from "src/api";
-import type { ImportSummary } from "src/types/models";
+import type { Import, ImportSummary, PurchaseOrder } from "src/types/models";
 import { useFetch } from "src/hooks/useFetch";
 import { importIdAtom, importAtom, importsAtom, deleteImportAtom } from "src/atoms/import";
 import { purchaseOrdersAtom, setPurchaseOrderImportAtom } from "src/atoms/purchase-order";
@@ -59,6 +59,18 @@ const formatPercent = (rate: number, locale: string) =>
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(rate);
+
+// The drawer edits dates as dayjs and the two costs in currency units; the
+// handler converts both before saving.
+type ImportFormValues = Omit<
+  Partial<Import>,
+  "date" | "exchangeRateDate" | "freightCost" | "customsCost"
+> & {
+  date?: Dayjs | number;
+  exchangeRateDate?: Dayjs | number | null;
+  freightCost?: number;
+  customsCost?: number;
+};
 
 const ImportForm = () => {
   const { i18n } = useLingui();
@@ -100,21 +112,20 @@ const ImportForm = () => {
   const isVisible = get(location.state, "importModal", false);
 
   const linkedOrders = useMemo(
-    () => orders.filter((o: any) => o.importId === importId),
+    () => orders.filter((o) => o.importId === importId),
     [orders, importId],
   );
   // Only a PO that isn't already someone else's shipment and hasn't moved
   // past "confirmed" is a sensible attach target — matches the statuses
   // purchaseOrderTransitions still allows moving out of.
   const candidateOrders = useMemo(
-    () =>
-      orders.filter((o: any) => !o.importId && (o.status === "draft" || o.status === "confirmed")),
+    () => orders.filter((o) => !o.importId && (o.status === "draft" || o.status === "confirmed")),
     [orders],
   );
 
   const importRecord = useMemo(() => {
     if (!importId) return null;
-    return imports.find((x: any) => x.id === importId) ?? null;
+    return imports.find((x) => x.id === importId) ?? null;
   }, [imports, importId]);
 
   const watchedCurrency = Form.useWatch("currency", form);
@@ -126,15 +137,17 @@ const ImportForm = () => {
     navigate(location.pathname, { state: { importModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: ImportFormValues) => {
     setSubmitting(true);
     try {
       await setImportRecord({
         ...values,
-        date: values.date?.valueOf ? values.date.valueOf() : values.date,
+        // Dayjs and number both have valueOf, so the fallback is only ever
+        // undefined (or null for the rate date).
+        date: values.date?.valueOf ? values.date.valueOf() : (values.date as undefined),
         exchangeRateDate: values.exchangeRateDate?.valueOf
           ? values.exchangeRateDate.valueOf()
-          : values.exchangeRateDate,
+          : (values.exchangeRateDate as null | undefined),
         freightCost: unitsToCents(values.freightCost ?? 0),
         customsCost: unitsToCents(values.customsCost ?? 0),
       });
@@ -410,7 +423,7 @@ const ImportForm = () => {
                   onChange={setLinkOrderId}
                   notFoundContent={<Trans>No unlinked draft or confirmed purchase orders</Trans>}
                 >
-                  {map(candidateOrders, (o: any) => (
+                  {map(candidateOrders, (o) => (
                     <Option key={o.id} value={o.id}>
                       {o.orderNumber} — {o.vendorName ?? t`No vendor`}
                     </Option>
@@ -426,7 +439,7 @@ const ImportForm = () => {
                 </Button>
               </Space.Compact>
 
-              <Table
+              <Table<PurchaseOrder>
                 size="small"
                 pagination={false}
                 dataSource={linkedOrders}
@@ -435,37 +448,39 @@ const ImportForm = () => {
                   emptyText: <Trans>No purchase orders linked to this shipment yet.</Trans>,
                 }}
               >
-                <Table.Column
+                <Table.Column<PurchaseOrder>
                   title={<Trans>Order #</Trans>}
                   key="orderNumber"
-                  sorter={(a: any, b: any) =>
+                  sorter={(a, b) =>
                     String(a.orderNumber ?? "").localeCompare(String(b.orderNumber ?? ""))
                   }
-                  render={(o: any) => <Link to={`/purchase-orders/${o.id}`}>{o.orderNumber}</Link>}
+                  render={(o: PurchaseOrder) => (
+                    <Link to={`/purchase-orders/${o.id}`}>{o.orderNumber}</Link>
+                  )}
                 />
-                <Table.Column
+                <Table.Column<PurchaseOrder>
                   title={<Trans>Vendor</Trans>}
                   key="vendorName"
-                  sorter={(a: any, b: any) =>
+                  sorter={(a, b) =>
                     String(a.vendorName ?? "").localeCompare(String(b.vendorName ?? ""))
                   }
-                  render={(o: any) => o.vendorName ?? "—"}
+                  render={(o: PurchaseOrder) => o.vendorName ?? "—"}
                 />
-                <Table.Column
+                <Table.Column<PurchaseOrder>
                   title={<Trans>Status</Trans>}
                   key="status"
-                  sorter={(a: any, b: any) => String(a.status).localeCompare(String(b.status))}
-                  render={(o: any) => (
+                  sorter={(a, b) => String(a.status).localeCompare(String(b.status))}
+                  render={(o: PurchaseOrder) => (
                     <Tag color={purchaseOrderStatusColor[o.status as PurchaseOrderStatus]}>
                       {purchaseOrderStatusLabel(o.status)}
                     </Tag>
                   )}
                 />
-                <Table.Column
+                <Table.Column<PurchaseOrder>
                   key="actions"
                   width={40}
                   align="center"
-                  render={(o: any) => (
+                  render={(o: PurchaseOrder) => (
                     <Popconfirm
                       title={<Trans>Unlink this purchase order from the shipment?</Trans>}
                       onConfirm={() => handleUnlinkOrder(o.id)}

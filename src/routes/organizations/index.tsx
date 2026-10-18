@@ -39,7 +39,9 @@ import {
 } from "src/atoms/organization";
 import PageHeader from "src/components/page-header";
 import OrganizationsTable from "src/components/organizations/organizations-table";
-import OrganizationEditDrawer from "src/components/organizations/organization-edit-drawer";
+import OrganizationEditDrawer, {
+  type OrganizationFormValues,
+} from "src/components/organizations/organization-edit-drawer";
 import { usageBreakdown } from "src/components/organizations/usage-breakdown";
 import { normalizeDocumentLanguage, normalizeDocumentLayout } from "src/types/document-layout";
 import { defaultTimezone, normalizeTimezone } from "src/utils/timezones";
@@ -64,18 +66,6 @@ const ACCOUNT_DEFAULT_FIELDS = [
   "defaultStampDutyAccountId",
   "defaultCashRegisterAccountId",
 ] as const;
-
-// The drawer's values: the organization's own fields, with the stamp amount
-// in units and the 0/1 flags as Checkbox booleans until handleSubmit converts
-// them back.
-type OrganizationFormValues = Omit<
-  Partial<Organization>,
-  "fiscalStampEnabled" | "withholdingTaxEnabled" | "amountInWordsEnabled"
-> & {
-  fiscalStampEnabled?: boolean | number | null;
-  withholdingTaxEnabled?: boolean | number | null;
-  amountInWordsEnabled?: boolean | number | null;
-};
 
 const clearedAccountDefaults = (values: Record<string, unknown>): Record<string, string> => {
   const cleared: Record<string, string> = {};

@@ -8,6 +8,7 @@ import { DeleteOutlined } from "@ant-design/icons";
 import get from "lodash/get";
 
 import { accountIdAtom, accountAtom, accountsAtom, deleteAccountAtom } from "src/atoms/account";
+import type { Account } from "src/types/models";
 
 const ACCOUNT_TYPES = ["asset", "liability", "equity", "revenue", "expense"] as const;
 
@@ -63,7 +64,12 @@ const AccountForm = () => {
     navigate(location.pathname, { state: { accountModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (
+    values: Omit<Partial<Account>, "isGroup" | "isActive"> & {
+      isGroup?: boolean | number;
+      isActive?: boolean | number;
+    },
+  ) => {
     setSubmitting(true);
     try {
       await setAccount({

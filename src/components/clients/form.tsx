@@ -28,6 +28,7 @@ import { generateClientCode } from "src/utils/client";
 import { currencies } from "src/utils/currencies";
 import { useCountryOptions } from "src/hooks/useCountryOptions";
 import ScrollShadow from "src/components/scroll-shadow";
+import type { ClientFormValues } from "src/atoms/client";
 
 // Which collapsed panel each field lives in, so a validation error on a
 // hidden field opens its panel (a collapsed field's error is otherwise
@@ -66,7 +67,7 @@ const ClientForm = () => {
 
   const client = useMemo(() => {
     if (!clientId) return null;
-    const c = clients.find((x: any) => x.id === clientId);
+    const c = clients.find((x) => x.id === clientId);
     if (!c) return null;
     let emails: string[] = [];
     try {
@@ -100,7 +101,7 @@ const ClientForm = () => {
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: ClientFormValues) => {
     setSubmitting(true);
     try {
       await setClient(values);
