@@ -45,7 +45,7 @@ func reportingStartDate(r *http.Request, endDate int64) int64 {
 func (h *handler) getRevenueTrend(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	endDate := reportingEndDate(r)
-	rows, err := h.db.GetRevenueByMonth(orgID, reportingStartDate(r, endDate), endDate)
+	rows, err := h.db.ReadOnly().GetRevenueByMonth(orgID, reportingStartDate(r, endDate), endDate)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -56,7 +56,7 @@ func (h *handler) getRevenueTrend(w http.ResponseWriter, r *http.Request) {
 func (h *handler) getSalesByClient(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	endDate := reportingEndDate(r)
-	rows, err := h.db.GetSalesByClient(orgID, reportingStartDate(r, endDate), endDate, 0)
+	rows, err := h.db.ReadOnly().GetSalesByClient(orgID, reportingStartDate(r, endDate), endDate, 0)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -67,7 +67,7 @@ func (h *handler) getSalesByClient(w http.ResponseWriter, r *http.Request) {
 func (h *handler) getSalesByProduct(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	endDate := reportingEndDate(r)
-	rows, err := h.db.GetSalesByProduct(orgID, reportingStartDate(r, endDate), endDate, 0)
+	rows, err := h.db.ReadOnly().GetSalesByProduct(orgID, reportingStartDate(r, endDate), endDate, 0)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -78,7 +78,7 @@ func (h *handler) getSalesByProduct(w http.ResponseWriter, r *http.Request) {
 func (h *handler) getPurchasesByVendor(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	endDate := reportingEndDate(r)
-	rows, err := h.db.GetPurchasesByVendor(orgID, reportingStartDate(r, endDate), endDate, 0)
+	rows, err := h.db.ReadOnly().GetPurchasesByVendor(orgID, reportingStartDate(r, endDate), endDate, 0)
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -89,7 +89,7 @@ func (h *handler) getPurchasesByVendor(w http.ResponseWriter, r *http.Request) {
 func (h *handler) getTaxSummary(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	endDate := reportingEndDate(r)
-	report, err := h.db.GetTaxSummary(orgID, reportingStartDate(r, endDate), endDate)
+	report, err := h.db.ReadOnly().GetTaxSummary(orgID, reportingStartDate(r, endDate), endDate)
 	if err != nil {
 		writeInternalError(w, err)
 		return

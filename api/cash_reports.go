@@ -21,7 +21,7 @@ func (h *handler) getDailyCashMovements(w http.ResponseWriter, r *http.Request) 
 	accountID := r.URL.Query().Get("accountId")
 	startDate := parseInt64Param(r, "startDate")
 	endDate := parseInt64Param(r, "endDate")
-	rows, err := h.db.GetDailyCashMovements(orgID, accountID, startDate, endDate)
+	rows, err := h.db.ReadOnly().GetDailyCashMovements(orgID, accountID, startDate, endDate)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -34,7 +34,7 @@ func (h *handler) getCashMovementDetails(w http.ResponseWriter, r *http.Request)
 	accountID := r.URL.Query().Get("accountId")
 	startDate := parseInt64Param(r, "startDate")
 	endDate := parseInt64Param(r, "endDate")
-	rows, err := h.db.GetCashMovementDetails(orgID, accountID, startDate, endDate)
+	rows, err := h.db.ReadOnly().GetCashMovementDetails(orgID, accountID, startDate, endDate)
 	if err != nil {
 		writeMutationError(w, err)
 		return
@@ -45,7 +45,7 @@ func (h *handler) getCashMovementDetails(w http.ResponseWriter, r *http.Request)
 func (h *handler) getLoanStatus(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
 	clientID := r.URL.Query().Get("clientId")
-	rows, err := h.db.GetLoanStatus(orgID, clientID)
+	rows, err := h.db.ReadOnly().GetLoanStatus(orgID, clientID)
 	if err != nil {
 		writeMutationError(w, err)
 		return

@@ -17,7 +17,7 @@ func (h *handler) listPayments(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, `direction must be "inbound" or "outbound"`)
 		return
 	}
-	payments, err := h.db.GetPayments(orgID, opts)
+	payments, err := h.db.ReadOnly().GetPayments(orgID, opts)
 	if err != nil {
 		writeInternalError(w, err)
 		return
