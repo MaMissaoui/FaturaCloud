@@ -50,7 +50,7 @@ export const unitOfMeasureIdAtom = atom<string | null>(null);
 
 // The settings drawer edits isDefault as a boolean (a Checkbox), not the
 // wire type's number/0-1.
-type UnitOfMeasureFormValues = Omit<Partial<UnitOfMeasure>, "isDefault"> & {
+export type UnitOfMeasureFormValues = Omit<Partial<UnitOfMeasure>, "isDefault"> & {
   isDefault?: boolean | number | null;
 };
 

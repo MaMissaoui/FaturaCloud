@@ -14,6 +14,7 @@ import {
   paymentTermsAtom,
   deletePaymentTermAtom,
 } from "src/atoms/payment-term";
+import type { PaymentTermFormValues } from "src/atoms/payment-term";
 
 const PaymentTermForm = () => {
   const location = useLocation();
@@ -32,7 +33,7 @@ const PaymentTermForm = () => {
 
   const paymentTerm = useMemo(() => {
     if (!paymentTermId) return null;
-    return paymentTerms.find((pt: any) => pt.id === paymentTermId) ?? null;
+    return paymentTerms.find((pt) => pt.id === paymentTermId) ?? null;
   }, [paymentTerms, paymentTermId]);
 
   const handleClose = () => {
@@ -41,7 +42,7 @@ const PaymentTermForm = () => {
     navigate(location.pathname, { state: { paymentTermModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: PaymentTermFormValues) => {
     setSubmitting(true);
     try {
       await setPaymentTerm(values);

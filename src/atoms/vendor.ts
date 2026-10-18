@@ -36,7 +36,7 @@ vendorIdAtom.debugLabel = "vendorIdAtom";
 
 // The vendor form edits emails as a string[] (a Select), not the JSON-string
 // the wire type stores it as.
-type VendorFormValues = Omit<Partial<Vendor>, "emails"> & { emails?: string[] | string };
+export type VendorFormValues = Omit<Partial<Vendor>, "emails"> & { emails?: string[] | string };
 
 export const vendorAtom = atom(
   async (get) => {

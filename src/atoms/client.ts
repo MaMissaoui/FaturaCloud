@@ -36,7 +36,7 @@ clientIdAtom.debugLabel = "clientIdAtom";
 
 // The client form edits emails as a string[] (a Select), not the JSON-string
 // the wire type stores it as.
-type ClientFormValues = Omit<Partial<Client>, "emails"> & { emails?: string[] | string };
+export type ClientFormValues = Omit<Partial<Client>, "emails"> & { emails?: string[] | string };
 
 export const clientAtom = atom(
   async (get) => {

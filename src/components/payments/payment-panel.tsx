@@ -19,7 +19,7 @@ import NumberInput from "src/components/number-input";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import map from "lodash/map";
 
 import {
@@ -118,6 +118,19 @@ interface PaymentPanelProps {
   // UI language the current viewer happens to have selected.
   countryCode?: string | null;
 }
+
+// The record-payment modal: the amount in currency units and the dates as
+// dayjs. Method and account are absent when hidden (Cash Book).
+type PaymentFormValues = {
+  method?: PaymentMethod;
+  bankAccountId?: string;
+  amount: number;
+  exchangeRate?: number | null;
+  exchangeRateDate?: Dayjs | null;
+  date: Dayjs;
+  reference?: string;
+  notes?: string;
+};
 
 const PaymentPanel: React.FC<PaymentPanelProps> = ({
   organizationId,
@@ -250,14 +263,15 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: PaymentFormValues) => {
     setSubmitting(true);
     try {
       // With the Method/account fields hidden (Cash Book), the form values
       // fall back to the same defaults openModal prefilled — see the
       // hideMethodAndAccount prop's doc comment.
       const method = values.method ?? defaultMethod ?? "cash";
-      const bankAccountId = values.bankAccountId ?? defaultBankAccountId;
+      // Required while shown; prefilled from defaultBankAccountId when hidden.
+      const bankAccountId = (values.bankAccountId ?? defaultBankAccountId) as string;
       await CreatePayment({
         organizationId,
         direction,

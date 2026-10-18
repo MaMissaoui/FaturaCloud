@@ -43,7 +43,7 @@ vi.mock("src/atoms/organization", async (importOriginal) => {
 
 import { GetAccounts, GetInvoicePayments, GetPayment, CreatePayment } from "src/api";
 import { myOrgRoleSyncAtom } from "src/atoms/organization";
-import { createStore } from "jotai";
+import { createStore, type WritableAtom } from "jotai";
 
 const payment: Payment = {
   id: "pay_1",
@@ -161,7 +161,8 @@ describe("PaymentPanel", () => {
     vi.mocked(GetPayment).mockResolvedValue(payment);
     vi.mocked(GetAccounts).mockResolvedValue([]);
     const store = createStore();
-    store.set(myOrgRoleSyncAtom as any, role);
+    // The role atom is read-only in the app; the test pins it directly.
+    store.set(myOrgRoleSyncAtom as unknown as WritableAtom<string, [string], void>, role);
 
     await renderWithProviders(
       <PaymentPanel

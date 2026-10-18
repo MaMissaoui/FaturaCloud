@@ -33,7 +33,7 @@ export const paymentTermIdAtom = atom<string | null>(null);
 
 // The settings drawer edits isDefault as a boolean (a Checkbox), not the
 // wire type's number/0-1.
-type PaymentTermFormValues = Omit<Partial<PaymentTerm>, "isDefault"> & {
+export type PaymentTermFormValues = Omit<Partial<PaymentTerm>, "isDefault"> & {
   isDefault?: boolean | number | null;
 };
 

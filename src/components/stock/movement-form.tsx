@@ -6,13 +6,25 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import get from "lodash/get";
-import filter from "lodash/filter";
 
 import { productsAtom } from "src/atoms/product";
 import { createStockMovementAtom } from "src/atoms/stock";
 import { productSerialNumbersAtom, loadProductSerialNumbersAtom } from "src/atoms/serial-number";
 import Section from "src/components/form-section";
 import ScrollShadow from "src/components/scroll-shadow";
+import type { StockMovement } from "src/types/models";
+
+// Quantity is the amount typed (the handler signs it by type) and unitCost is
+// in currency units.
+type MovementFormValues = {
+  productId: string;
+  type: StockMovement["type"];
+  quantity?: number;
+  serialNumbers?: string[];
+  unitCost?: number | null;
+  note?: string;
+  reference?: string;
+};
 
 const MovementForm = () => {
   const location = useLocation();
@@ -25,16 +37,13 @@ const MovementForm = () => {
   const loadSerialNumbers = useSetAtom(loadProductSerialNumbersAtom);
   const [submitting, setSubmitting] = useState(false);
 
-  const trackedProducts = filter(products, (p: any) => p.stockEnabled);
+  const trackedProducts = products.filter((p) => p.stockEnabled);
 
   const selectedProductId = Form.useWatch("productId", form);
   const selectedType = Form.useWatch("type", form);
-  const selectedProduct = products.find((p: any) => p.id === selectedProductId);
+  const selectedProduct = products.find((p) => p.id === selectedProductId);
   const isSerialized = !!selectedProduct?.serialized;
-  const inStockSerials = filter(
-    serialNumbersByProduct[selectedProductId] ?? [],
-    (s: any) => s.inStock,
-  );
+  const inStockSerials = (serialNumbersByProduct[selectedProductId] ?? []).filter((s) => s.inStock);
 
   const isVisible = get(location.state, "movementModal", false);
   const preselectedProductId = get(location.state, "movementProductId", null);
@@ -65,7 +74,7 @@ const MovementForm = () => {
     navigate(location.pathname, { state: { movementModal: false } });
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: MovementFormValues) => {
     setSubmitting(true);
 
     try {
@@ -79,7 +88,7 @@ const MovementForm = () => {
           reference: values.reference || null,
         });
       } else {
-        const product = products.find((p: any) => p.id === values.productId);
+        const product = products.find((p) => p.id === values.productId);
         const rawQty: number = values.quantity ?? 0;
 
         let signedQty: number;
@@ -140,7 +149,7 @@ const MovementForm = () => {
             rules={[{ required: true, message: t`Select a product` }]}
           >
             <Select showSearch optionFilterProp="children" placeholder={t`Select product`}>
-              {trackedProducts.map((p: any) => (
+              {trackedProducts.map((p) => (
                 <Select.Option key={p.id} value={p.id}>
                   {p.name}
                   {p.sku ? ` (${p.sku})` : ""}
@@ -192,7 +201,7 @@ const MovementForm = () => {
                   mode="multiple"
                   showSearch
                   placeholder={t`Select in-stock serial numbers`}
-                  options={inStockSerials.map((s: any) => ({
+                  options={inStockSerials.map((s) => ({
                     value: s.serialNumber,
                     label: s.serialNumber,
                   }))}

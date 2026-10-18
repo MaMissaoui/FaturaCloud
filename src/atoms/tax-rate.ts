@@ -41,7 +41,7 @@ export const taxRateIdAtom = atom<string | null>(null);
 
 // The tax rate form edits percentage as a string (raw input) and isDefault
 // as a boolean (a Checkbox), not the wire type's number/0-1.
-type TaxRateFormValues = Omit<Partial<TaxRate>, "percentage" | "isDefault"> & {
+export type TaxRateFormValues = Omit<Partial<TaxRate>, "percentage" | "isDefault"> & {
   percentage?: string | number;
   isDefault?: boolean | number | null;
 };
