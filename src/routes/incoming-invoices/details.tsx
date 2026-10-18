@@ -77,8 +77,10 @@ import {
   incomingInvoiceAtom,
   updateIncomingInvoiceStateAtom,
   deleteIncomingInvoiceAtom,
+  type IncomingInvoiceLineItemFormValues,
 } from "src/atoms/incoming-invoice";
 import { useFetch } from "src/hooks/useFetch";
+import type { Thenable } from "src/types/form";
 
 // Stable empty value while nothing is loaded (see useFetch).
 const NO_MATCH_LINES: MatchLine[] = [];
@@ -165,13 +167,13 @@ const IncomingInvoiceDetails = () => {
       try {
         const lineItems = await GetPurchaseOrderLineItems(prefillOrderId);
         if (cancelled) return;
-        const order: any = find(purchaseOrders, { id: prefillOrderId });
+        const order = find(purchaseOrders, { id: prefillOrderId });
         const orderCurrency = order?.currency ?? organization?.currency ?? "EUR";
         form.setFieldsValue({
           purchaseOrderId: prefillOrderId,
           vendorId: order?.vendorId,
           currency: orderCurrency,
-          lineItems: (lineItems || []).map((item: any) => ({
+          lineItems: (lineItems || []).map((item) => ({
             purchaseOrderLineItemId: item.id,
             productId: item.productId,
             description: item.description,
@@ -207,12 +209,15 @@ const IncomingInvoiceDetails = () => {
 
   // Watched raw so the useMemo below has a stable dependency — `?? []` here
   // would allocate a new array on every render and defeat the memo.
-  const watchedLineItems = Form.useWatch("lineItems", form);
+  const watchedLineItems = Form.useWatch<IncomingInvoiceLineItemFormValues[] | undefined>(
+    "lineItems",
+    form,
+  );
 
   // Totals must agree with db/invoice_totals.go or every save 409s: line totals
   // summed, then tax rounded once per tax-rate group — not per line.
   const totals = useMemo(() => {
-    const lines = ((watchedLineItems as any[]) ?? []).filter(Boolean);
+    const lines = (watchedLineItems ?? []).filter(Boolean);
     const subTotal = sum(
       lines.map((item) => multiplyDecimal(item?.quantity ?? 0, item?.unitPrice ?? 0)),
     );
@@ -226,7 +231,7 @@ const IncomingInvoiceDetails = () => {
 
     let taxTotal = 0;
     for (const [rateId, groupSubtotal] of Object.entries(groups)) {
-      const rate: any = find(taxRates, { id: rateId });
+      const rate = find(taxRates, { id: rateId });
       if (!rate) continue;
       taxTotal = addDecimal(taxTotal, calculateTax(groupSubtotal, rate.percentage));
     }
@@ -235,13 +240,12 @@ const IncomingInvoiceDetails = () => {
   }, [watchedLineItems, taxRates]);
 
   const currentState =
-    stateOverride ??
-    (!isNew && invoice && !(invoice as any).then ? (invoice as any).state : "draft");
+    stateOverride ?? (!isNew && invoice && !(invoice as Thenable).then ? invoice.state : "draft");
   const watchedCurrency = Form.useWatch("currency", form);
   const orgCurrency = organization?.currency ?? "EUR";
   const currency =
     watchedCurrency ??
-    (!isNew && invoice && !(invoice as any).then ? (invoice as any).currency : null) ??
+    (!isNew && invoice && !(invoice as Thenable).then ? invoice.currency : null) ??
     orgCurrency;
   const blocked = hasBlockingVariance(matchLines);
   const overrideActive = Form.useWatch("matchOverride", form) === true;
@@ -329,7 +333,7 @@ const IncomingInvoiceDetails = () => {
 
   const vendorInvoiceNumber =
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
-      ? (invoice as any).vendorInvoiceNumber
+      ? invoice.vendorInvoiceNumber
       : undefined;
   const money = (units: number) => getFormattedNumber(units, currency, i18n.locale, organization);
 
@@ -365,7 +369,7 @@ const IncomingInvoiceDetails = () => {
                   // Only cascade on a new invoice — see the identical guard on
                   // src/routes/orders/details.tsx's clientId.
                   if (!isNew) return;
-                  const vendor = find(vendors, { id: vendorId }) as any;
+                  const vendor = find(vendors, { id: vendorId });
                   if (vendor?.defaultCurrency) {
                     form.setFieldValue("currency", vendor.defaultCurrency);
                     prefillExchangeRate(
@@ -377,7 +381,7 @@ const IncomingInvoiceDetails = () => {
                   }
                 }}
               >
-                {map(vendors, (v: any) => (
+                {map(vendors, (v) => (
                   <Option key={v.id} value={v.id}>
                     {v.name}
                   </Option>
@@ -397,7 +401,7 @@ const IncomingInvoiceDetails = () => {
           <Col xs={24} md={12} xl={5}>
             <Form.Item label={<Trans>Purchase order</Trans>} name="purchaseOrderId">
               <Select showSearch allowClear optionFilterProp="children" placeholder={t`Optional`}>
-                {map(purchaseOrders, (o: any) => (
+                {map(purchaseOrders, (o) => (
                   <Option key={o.id} value={o.id}>
                     {o.orderNumber}
                   </Option>
@@ -480,9 +484,9 @@ const IncomingInvoiceDetails = () => {
                   const items = formInstance.getFieldValue("lineItems");
                   items[fieldName] = {
                     ...items[fieldName],
-                    description: (product as any).name,
+                    description: product.name,
                     // A bill is priced at cost, not at the product's sale price.
-                    unitPrice: centsToUnits((product as any).unitCost ?? 0),
+                    unitPrice: centsToUnits(product.unitCost ?? 0),
                   };
                   formInstance.setFieldValue("lineItems", [...items]);
                 }
@@ -682,10 +686,10 @@ const IncomingInvoiceDetails = () => {
             documentType="incoming_invoice"
             documentId={id!}
             direction="outbound"
-            vendorId={(invoice as any).vendorId}
-            currency={(invoice as any).currency ?? orgCurrency}
+            vendorId={invoice.vendorId}
+            currency={invoice.currency ?? orgCurrency}
             orgCurrency={orgCurrency}
-            total={unitsToCents((invoice as any).total ?? 0)}
+            total={unitsToCents(invoice.total ?? 0)}
             hasPostedEntry={currentState === "approved" || currentState === "paid"}
             // A payment can mark the bill paid (or a void reopen it)
             // server-side; show the state it now has.

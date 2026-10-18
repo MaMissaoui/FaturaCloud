@@ -61,9 +61,12 @@ import {
   nextOrderNumberAtom,
   updateOrderStatusAtom,
   deleteOrderAtom,
+  type OrderFormValues,
 } from "src/atoms/order";
 import { deliveriesAtom, setDeliveriesAtom } from "src/atoms/delivery";
 import LineItemsTable from "src/components/line-items/table";
+import type { Delivery } from "src/types/models";
+import type { LineAmounts, Thenable } from "src/types/form";
 import StatusFlow from "src/components/status-flow";
 import {
   ORDER_STATUSES,
@@ -109,7 +112,7 @@ const OrderDetails = () => {
   // A component/intermediate isn't sellable — exclude it from the picker.
   // Unclassified products (category null) stay eligible everywhere.
   const sellableProducts = useMemo(
-    () => products.filter((p: any) => p.category !== "component"),
+    () => products.filter((p) => p.category !== "component"),
     [products],
   );
   const setProducts = useSetAtom(setProductsAtom);
@@ -120,7 +123,7 @@ const OrderDetails = () => {
   const deliveries = useAtomValue(deliveriesAtom);
   const setDeliveries = useSetAtom(setDeliveriesAtom);
   const linkedDeliveries = useMemo(
-    () => deliveries.filter((dv: any) => dv.orderId === id),
+    () => deliveries.filter((dv) => dv.orderId === id),
     [deliveries, id],
   );
   // Editing (or deleting) a line item after a delivery already shipped
@@ -130,7 +133,7 @@ const OrderDetails = () => {
   // delivery exists" since Orders has no per-line received-quantity map to
   // check instead.
   const lineItemsFrozen = useMemo(
-    () => linkedDeliveries.some((dv: any) => dv.status !== "cancelled"),
+    () => linkedDeliveries.some((dv) => dv.status !== "cancelled"),
     [linkedDeliveries],
   );
 
@@ -176,21 +179,21 @@ const OrderDetails = () => {
       // purchase-orders/details.tsx.
       form.setFieldsValue({
         ...order,
-        currency: (order as any).currency ?? organization?.currency ?? "EUR",
+        currency: order.currency ?? organization?.currency ?? "EUR",
       });
     }
   }, [order, isNew, form, organization]);
 
   const lineItems = Form.useWatch("lineItems", form) ?? [];
   const subTotal = sum(
-    lineItems.map((item: any) => {
-      const qty = parseFloat(item?.quantity ?? 0) || 0;
-      const price = parseFloat(item?.unitPrice ?? 0) || 0;
+    lineItems.map((item: LineAmounts | undefined) => {
+      const qty = parseFloat(String(item?.quantity ?? 0)) || 0;
+      const price = parseFloat(String(item?.unitPrice ?? 0)) || 0;
       return qty * price;
     }),
   );
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: OrderFormValues) => {
     const created = await setOrder(values);
     markSaved();
     if (isNew && created) navigate(`/orders/${created.id}`);
@@ -223,12 +226,11 @@ const OrderDetails = () => {
   const orgCurrency = organization?.currency ?? "EUR";
   const currency =
     watchedCurrency ??
-    (!isNew && order && !(order as any).then ? (order as any).currency : null) ??
+    (!isNew && order && !(order as Thenable).then ? order.currency : null) ??
     orgCurrency;
 
-  const currentStatus = !isNew && order && !(order as any).then ? (order as any).status : "draft";
-  const orderNumber =
-    !isNew && order && !(order as any).then ? (order as any).orderNumber : undefined;
+  const currentStatus = !isNew && order && !(order as Thenable).then ? order.status : "draft";
+  const orderNumber = !isNew && order && !(order as Thenable).then ? order.orderNumber : undefined;
 
   const transitions = orderTransitions(currentStatus);
 
@@ -305,7 +307,7 @@ const OrderDetails = () => {
                   // currency of an already-saved order just because its client
                   // changed would silently disturb an existing document.
                   if (!isNew) return;
-                  const client = find(clients, { id: clientId }) as any;
+                  const client = find(clients, { id: clientId });
                   if (client?.defaultCurrency) {
                     form.setFieldValue("currency", client.defaultCurrency);
                     prefillExchangeRate(
@@ -335,7 +337,7 @@ const OrderDetails = () => {
                   </>
                 )}
               >
-                {map(clients, (c: any) => (
+                {map(clients, (c) => (
                   <Option key={c.id} value={c.id}>
                     {c.name}
                   </Option>
@@ -441,8 +443,8 @@ const OrderDetails = () => {
                   const lineItems = formInstance.getFieldValue("lineItems");
                   lineItems[fieldName] = {
                     ...lineItems[fieldName],
-                    description: (product as any).name,
-                    unitPrice: centsToUnits((product as any).price ?? 0),
+                    description: product.name,
+                    unitPrice: centsToUnits(product.price ?? 0),
                   };
                   formInstance.setFieldValue("lineItems", [...lineItems]);
                 }
@@ -517,28 +519,33 @@ const OrderDetails = () => {
             documents behind the line items' "Delivered" tags above. */}
         {!isNew && linkedDeliveries.length > 0 && (
           <Card size="small" title={<Trans>Deliveries</Trans>} style={{ marginTop: 16 }}>
-            <Table dataSource={linkedDeliveries} rowKey="id" size="small" pagination={false}>
-              <Table.Column
+            <Table<Delivery>
+              dataSource={linkedDeliveries}
+              rowKey="id"
+              size="small"
+              pagination={false}
+            >
+              <Table.Column<Delivery>
                 title={<Trans>Number</Trans>}
                 key="deliveryNumber"
-                sorter={(a: any, b: any) =>
+                sorter={(a, b) =>
                   String(a.deliveryNumber ?? "").localeCompare(String(b.deliveryNumber ?? ""))
                 }
-                render={(delivery: any) => (
+                render={(delivery: Delivery) => (
                   <Link to={`/deliveries/${delivery.id}`}>{delivery.deliveryNumber}</Link>
                 )}
               />
-              <Table.Column
+              <Table.Column<Delivery>
                 title={<Trans>Date</Trans>}
                 key="deliveryDate"
-                sorter={(a: any, b: any) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
-                render={(delivery: any) => formatDate(delivery.deliveryDate)}
+                sorter={(a, b) => (a.deliveryDate ?? 0) - (b.deliveryDate ?? 0)}
+                render={(delivery: Delivery) => formatDate(delivery.deliveryDate)}
               />
-              <Table.Column
+              <Table.Column<Delivery>
                 title={<Trans>Status</Trans>}
                 key="status"
-                sorter={(a: any, b: any) => String(a.status).localeCompare(String(b.status))}
-                render={(delivery: any) => (
+                sorter={(a, b) => String(a.status).localeCompare(String(b.status))}
+                render={(delivery: Delivery) => (
                   <Tag color={deliveryStatusColor[delivery.status as DeliveryStatus]}>
                     {deliveryStatusLabel(delivery.status)}
                   </Tag>

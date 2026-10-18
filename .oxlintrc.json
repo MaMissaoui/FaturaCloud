@@ -1,17 +1,74 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript"],
+  "plugins": [
+    "react",
+    "typescript"
+  ],
   "env": {
     "browser": true,
     "es2024": true
   },
   "rules": {
-    "typescript/no-explicit-any": "off"
+    "typescript/no-explicit-any": "error"
   },
   "ignorePatterns": [
     "dist/**",
     "node_modules/**",
     "build/**",
     "public/**"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "137",
+        "src/components/accounting/account-form.tsx",
+        "src/components/accounting/journal-form.tsx",
+        "src/components/cash-book/counter.tsx",
+        "src/components/cash-book/loan-register.tsx",
+        "src/components/cash-book/modals.tsx",
+        "src/components/cash-book/search-results.tsx",
+        "src/components/cash-book/shared.tsx",
+        "src/components/cash-book/use-cash-book.ts",
+        "src/components/clients/form.tsx",
+        "src/components/imports/form.tsx",
+        "src/components/invoices/pdf-tunisia.tsx",
+        "src/components/invoices/pdf.tsx",
+        "src/components/organizations/organization-edit-drawer.tsx",
+        "src/components/payment-terms/form.tsx",
+        "src/components/payments/payment-panel.test.tsx",
+        "src/components/payments/payment-panel.tsx",
+        "src/components/products/form.tsx",
+        "src/components/stock/movement-form.tsx",
+        "src/components/tax-rates/form.tsx",
+        "src/components/vendors/form.tsx",
+        "src/layouts/base.tsx",
+        "src/layouts/role-menu.test.ts",
+        "src/layouts/role-menu.ts",
+        "src/main.tsx",
+        "src/routes/accounting/fiscal-periods.tsx",
+        "src/routes/accounting/journal-entries.tsx",
+        "src/routes/accounting/journal-entries/details.tsx",
+        "src/routes/accounting/reports/ap-aging.tsx",
+        "src/routes/accounting/reports/ar-aging.tsx",
+        "src/routes/cash-book.tsx",
+        "src/routes/deliveries.tsx",
+        "src/routes/imports.tsx",
+        "src/routes/inbound-deliveries.tsx",
+        "src/routes/incoming-invoices.tsx",
+        "src/routes/invoices/index.tsx",
+        "src/routes/orders.tsx",
+        "src/routes/organizations/index.tsx",
+        "src/routes/organizations/new.test.tsx",
+        "src/routes/organizations/new.tsx",
+        "src/routes/purchase-orders.tsx",
+        "src/routes/settings/users.tsx",
+        "src/utils/client-search.test.ts",
+        "src/utils/client-search.ts",
+        "src/utils/currencies.tsx"
+      ],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    }
   ]
 }

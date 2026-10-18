@@ -41,10 +41,13 @@ export const setIncomingInvoicesAtom = atom(null, async (get, set) => {
 
 // The incoming invoice form edits dates as dayjs objects and money in
 // display currency units — not the wire shape either field is stored as.
-type IncomingInvoiceLineItemFormValues = Omit<Partial<IncomingInvoiceLineItem>, "unitPrice"> & {
+export type IncomingInvoiceLineItemFormValues = Omit<
+  Partial<IncomingInvoiceLineItem>,
+  "unitPrice"
+> & {
   unitPrice?: number;
 };
-type IncomingInvoiceFormValues = Omit<
+export type IncomingInvoiceFormValues = Omit<
   Partial<IncomingInvoice>,
   "date" | "dueDate" | "exchangeRateDate" | "total" | "taxTotal" | "subTotal"
 > & {

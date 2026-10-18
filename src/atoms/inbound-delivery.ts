@@ -55,10 +55,13 @@ export const nextInboundDeliveryNumberAtom = atomWithRefresh(async (get) => {
 // The goods-receipt form edits dates as dayjs objects and line item
 // unitCost in display currency units — not the wire shape either field is
 // stored as.
-type InboundDeliveryLineItemFormValues = Omit<Partial<InboundDeliveryLineItem>, "unitCost"> & {
+export type InboundDeliveryLineItemFormValues = Omit<
+  Partial<InboundDeliveryLineItem>,
+  "unitCost"
+> & {
   unitCost?: number | null;
 };
-type InboundDeliveryFormValues = Omit<
+export type InboundDeliveryFormValues = Omit<
   Partial<InboundDelivery>,
   "deliveryDate" | "exchangeRateDate"
 > & {

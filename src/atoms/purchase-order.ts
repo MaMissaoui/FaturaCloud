@@ -58,10 +58,10 @@ export const nextPurchaseOrderNumberAtom = atomWithRefresh(async (get) => {
 // The purchase order form edits dates as dayjs objects and line item
 // unitPrice in display currency units — not the wire shape either field is
 // stored as.
-type PurchaseOrderLineItemFormValues = Omit<Partial<PurchaseOrderLineItem>, "unitPrice"> & {
+export type PurchaseOrderLineItemFormValues = Omit<Partial<PurchaseOrderLineItem>, "unitPrice"> & {
   unitPrice?: number;
 };
-type PurchaseOrderFormValues = Omit<
+export type PurchaseOrderFormValues = Omit<
   Partial<PurchaseOrder>,
   "orderDate" | "expectedDate" | "exchangeRateDate"
 > & {

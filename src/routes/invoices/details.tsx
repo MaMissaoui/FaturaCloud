@@ -62,6 +62,7 @@ import {
   invoiceAtom,
   deleteInvoiceAtom,
   duplicateInvoiceAtom,
+  type InvoiceFormValues,
 } from "src/atoms/invoice";
 import { organizationAtom, nextInvoiceNumberAtom } from "src/atoms/organization";
 import { taxRatesAtom, setTaxRatesAtom } from "src/atoms/tax-rate";
@@ -84,6 +85,7 @@ import {
   allocateDiscount,
 } from "src/utils/currency";
 import { formatMoneyUnits, numberFormatLocale } from "src/utils/currencies";
+import type { TaxRate } from "src/types/models";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -100,19 +102,27 @@ const loadableInvoiceAtom = loadable(invoiceAtom);
 
 // Groups line items by tax rate and computes each group's tax, after spreading
 // the discount across the groups (see the call site).
+type TaxedLine = { total?: number; taxRate?: string | null };
+
 const groupLineItemsByTaxRate = (
-  lineItems: any[] | undefined,
-  taxRates: any[],
+  lineItems: TaxedLine[] | undefined,
+  taxRates: TaxRate[],
   subTotal: number,
   discountAmount: number,
 ) => {
-  const groups: { [key: string]: { taxRate: any; items: any[]; subtotal: number; tax: number } } =
-    {};
+  const groups: {
+    [key: string]: {
+      taxRate: TaxRate | undefined;
+      items: TaxedLine[];
+      subtotal: number;
+      tax: number;
+    };
+  } = {};
 
   if (lineItems && Array.isArray(lineItems)) {
-    lineItems.forEach((item: any) => {
+    lineItems.forEach((item) => {
       if (isNumber(get(item, "total")) && get(item, "taxRate")) {
-        const taxRateId = get(item, "taxRate");
+        const taxRateId = get(item, "taxRate") as string;
         const taxRate = find(taxRates, { id: taxRateId });
 
         if (!groups[taxRateId]) {
@@ -125,7 +135,7 @@ const groupLineItemsByTaxRate = (
         }
 
         groups[taxRateId].items.push(item);
-        groups[taxRateId].subtotal = addDecimal(groups[taxRateId].subtotal, item.total);
+        groups[taxRateId].subtotal = addDecimal(groups[taxRateId].subtotal, item.total as number);
       }
     });
   }
@@ -160,7 +170,7 @@ const InvoiceDetails: React.FC = () => {
   // A component/intermediate isn't sellable — exclude it from the picker.
   // Unclassified products (category null) stay eligible everywhere.
   const sellableProducts = useMemo(
-    () => products.filter((p: any) => p.category !== "component"),
+    () => products.filter((p) => p.category !== "component"),
     [products],
   );
   const taxRates = useAtomValue(taxRatesAtom);
@@ -257,7 +267,7 @@ const InvoiceDetails: React.FC = () => {
     }
   }, [invoice, isNew, form]);
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: InvoiceFormValues) => {
     const created = await setInvoice({
       ...values,
       subTotal,
@@ -328,20 +338,18 @@ const InvoiceDetails: React.FC = () => {
 
   const currentInvoiceState =
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
-      ? ((invoice as any).state ?? "draft")
+      ? (invoice.state ?? "draft")
       : "draft";
   const invoiceNumber =
     !isNew && invoice && typeof invoice === "object" && !("then" in invoice)
-      ? // The API's field is `number`; `invoiceNumber` never existed, so the
-        // page title showed a blank number before this fallback.
-        ((invoice as any).number ?? (invoice as any).invoiceNumber)
+      ? invoice.number
       : undefined;
 
   // A loan brought forward from the paper register (db/opening_loan.go) is
   // frozen: only collections change it, so the page shows it read-only —
   // no save, delete or export — with a banner saying why.
   const isOpeningLoan =
-    !isNew && !!invoice && typeof invoice === "object" && (invoice as any).origin === "opening";
+    !isNew && !!invoice && typeof invoice === "object" && invoice.origin === "opening";
 
   // Footer action groups — built as arrays and filtered before being handed
   // to <Space split>, so a group that's conditionally empty (e.g. every
@@ -488,7 +496,7 @@ const InvoiceDetails: React.FC = () => {
                       }}
                       onChange={(clientId) => {
                         if (isNew) {
-                          const selectedClient = clients.find((c: any) => c.id === clientId);
+                          const selectedClient = clients.find((c) => c.id === clientId);
 
                           // The number preview follows the client's code.
                           setPreviewClientCode(selectedClient?.code || "");
@@ -521,7 +529,7 @@ const InvoiceDetails: React.FC = () => {
                         </>
                       )}
                     >
-                      {map(clients, (client: any) => (
+                      {map(clients, (client) => (
                         <Select.Option value={client.id} key={client.id}>
                           {get(client, "name", "-")}
                         </Select.Option>
@@ -571,7 +579,7 @@ const InvoiceDetails: React.FC = () => {
                         </>
                       )}
                     >
-                      {map(paymentTerms, (pt: any) => (
+                      {map(paymentTerms, (pt) => (
                         <Option key={pt.id} value={pt.name}>
                           {pt.name}
                         </Option>
@@ -812,15 +820,13 @@ const InvoiceDetails: React.FC = () => {
                               if (product) {
                                 const lineItems = formInstance.getFieldValue("lineItems");
                                 const quantity = get(lineItems[fieldName], "quantity") || 1;
-                                const unitPrice = centsToUnits((product as any).price ?? 0);
+                                const unitPrice = centsToUnits(product.price ?? 0);
                                 lineItems[fieldName] = {
                                   ...lineItems[fieldName],
-                                  description: (product as any).name,
+                                  description: product.name,
                                   unitPrice,
                                   total: multiplyDecimal(quantity, unitPrice),
-                                  ...((product as any).taxRateId
-                                    ? { taxRate: (product as any).taxRateId }
-                                    : {}),
+                                  ...(product.taxRateId ? { taxRate: product.taxRateId } : {}),
                                 };
                                 formInstance.setFieldValue("lineItems", [...lineItems]);
                               }
@@ -937,7 +943,7 @@ const InvoiceDetails: React.FC = () => {
                               allowClear
                               placeholder={t`Select tax rate`}
                             >
-                              {map(taxRates, (rate: any) => (
+                              {map(taxRates, (rate) => (
                                 <Option value={rate.id} key={rate.id}>
                                   {rate.name} {rate.percentage}%
                                 </Option>
@@ -1141,10 +1147,10 @@ const InvoiceDetails: React.FC = () => {
               documentType="invoice"
               documentId={id!}
               direction="inbound"
-              clientId={(invoice as any).clientId}
-              currency={(invoice as any).currency ?? orgCurrency}
+              clientId={invoice.clientId}
+              currency={invoice.currency ?? orgCurrency}
               orgCurrency={orgCurrency}
-              total={unitsToCents((invoice as any).total ?? 0)}
+              total={unitsToCents(invoice.total ?? 0)}
               hasPostedEntry={currentInvoiceState === "sent" || currentInvoiceState === "paid"}
               // A payment can mark the invoice paid (or a void reopen it)
               // server-side; refetch only when the state actually moved, so an

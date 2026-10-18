@@ -56,12 +56,12 @@ export const setInvoicesAtom = atom(null, async (get, set) => {
 // The invoice form edits dates as dayjs objects and money (including each
 // line item's unitPrice/total) in display currency units — not the wire
 // shape either field is stored as.
-type InvoiceLineItemFormValues = Omit<Partial<InvoiceLineItem>, "unitPrice"> & {
+export type InvoiceLineItemFormValues = Omit<Partial<InvoiceLineItem>, "unitPrice"> & {
   unitPrice?: number;
   // Display-only computed total (quantity * unitPrice); stripped before save.
   total?: number;
 };
-type InvoiceFormValues = Omit<
+export type InvoiceFormValues = Omit<
   Partial<Invoice>,
   | "date"
   | "dueDate"

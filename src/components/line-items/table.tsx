@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { Button, Form, Input, Select, Table, Typography } from "antd";
 import NumberInput from "src/components/number-input";
-import type { FormInstance } from "antd/es/form";
+import type { FormInstance, Rule } from "antd/es/form";
+import type { Product, TaxRate } from "src/types/models";
 import { DeleteOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
@@ -41,7 +42,10 @@ interface LineItemField {
 // itself is document-specific (invoices renders it inside its Product cell)
 // and stays page-owned via a `kind: "custom"` column that calls useSortable
 // with the same row key — this component only supplies the sortable <tr>.
-const SortableRow = ({ children, ...props }: any) => {
+const SortableRow = ({
+  children,
+  ...props
+}: HTMLAttributes<HTMLTableRowElement> & { "data-row-key": string }) => {
   const { setNodeRef, transform, transition, isDragging } = useSortable({
     id: props["data-row-key"],
   });
@@ -94,17 +98,17 @@ export const ProductSelectCell = ({
 }: {
   fieldName: number;
   form: FormInstance;
-  offered: any[];
-  all?: any[];
+  offered: Product[];
+  all?: Product[];
   disabled?: boolean;
-  rules?: any[];
+  rules?: Rule[];
   onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
   // Label shown once a product is selected (the closed Select / the Product
   // cell). Defaults to the SKU, falling back to the name.
-  optionLabel?: (product: any) => string;
+  optionLabel?: (product: Product) => string;
   // Label shown for each option in the open dropdown. Defaults to the same as
   // optionLabel — pages that want the name visible while searching pass one.
-  dropdownLabel?: (product: any) => string;
+  dropdownLabel?: (product: Product) => string;
 }) => {
   const currentId = Form.useWatch(["lineItems", fieldName, "productId"], form);
   const pool = all ?? offered;
@@ -136,7 +140,7 @@ export const ProductSelectCell = ({
             // Search matches on name (what someone remembers) as well as SKU,
             // even though the option label shows the SKU.
             filterOption={(input, option) => {
-              const p = find(options, { id: option?.value });
+              const p = find(options, { id: option?.value as string | undefined });
               const needle = input.toLowerCase();
               return (
                 !!p &&
@@ -149,7 +153,7 @@ export const ProductSelectCell = ({
             disabled={disabled}
             onChange={(productId) => onSelect?.(productId, fieldName, form)}
           >
-            {map(options, (p: any) => (
+            {map(options, (p) => (
               <Option
                 key={p.id}
                 value={p.id}
@@ -180,14 +184,14 @@ export type LineItemColumn =
   | { kind: "index" }
   | {
       kind: "product";
-      products: any[];
+      products: Product[];
       // Unfiltered product list, used only to resolve the label of a selected
       // product the `products` filter excludes (see ProductSelectCell).
-      allProducts?: any[];
+      allProducts?: Product[];
       // Custom option/selected label; defaults to SKU (falling back to name).
-      optionLabel?: (product: any) => string;
+      optionLabel?: (product: Product) => string;
       // Custom dropdown-option label; defaults to the same as optionLabel.
-      dropdownLabel?: (product: any) => string;
+      dropdownLabel?: (product: Product) => string;
       width?: number;
       required?: boolean;
       onSelect?: (productId: string, fieldName: number, form: FormInstance) => void;
@@ -206,7 +210,7 @@ export type LineItemColumn =
     }
   | { kind: "unit"; placeholder?: string; width?: number }
   | { kind: "unitPrice"; name?: string; label?: ReactNode; width?: number }
-  | { kind: "taxRate"; taxRates: any[]; width?: number }
+  | { kind: "taxRate"; taxRates: TaxRate[]; width?: number }
   | {
       kind: "custom";
       key: string;
@@ -296,7 +300,8 @@ const LineItemsTable = ({
               if (fields.length === 0) return null;
               const items = form.getFieldValue(name) || [];
               const totalQty = items.reduce(
-                (sum: number, item: any) => sum + (Number(item?.quantity) || 0),
+                (sum: number, item: { quantity?: unknown } | undefined) =>
+                  sum + (Number(item?.quantity) || 0),
                 0,
               );
               return (
@@ -481,7 +486,7 @@ const LineItemsTable = ({
                             style={{ width: "100%" }}
                             disabled={disabled}
                           >
-                            {map(col.taxRates, (r: any) => (
+                            {map(col.taxRates, (r) => (
                               <Option key={r.id} value={r.id}>
                                 {r.name}
                               </Option>
