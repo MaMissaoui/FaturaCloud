@@ -14,6 +14,15 @@ import { i18n } from "@lingui/core";
 afterEach(async () => {
   cleanup();
   await new Promise((resolve) => setTimeout(resolve, 0));
+  // A toast still on screen after cleanup came from antd's static message
+  // instance: its own React root, which cleanup can't unmount, so its
+  // auto-close timer fires seconds later — after jsdom is gone if the file
+  // has finished by then. Fail the test that raised it instead of the run.
+  if (document.querySelector(".ant-message")) {
+    throw new Error(
+      "A toast went to antd's static message instance. Mount <MessageBridge /> inside <App> in this test's wrapper (src/components/message-bridge.tsx).",
+    );
+  }
 });
 
 // Real app startup (src/utils/lingui.tsx) does this same synchronous

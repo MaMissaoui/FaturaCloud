@@ -24,6 +24,7 @@ vi.mock("src/utils/timezones", async (importOriginal) => ({
 }));
 
 import { CreateOrganization, GetOrganizations } from "src/api";
+import MessageBridge from "src/components/message-bridge";
 
 async function renderNewOrganization() {
   const store = createStore();
@@ -32,6 +33,7 @@ async function renderNewOrganization() {
       <I18nProvider i18n={i18n}>
         <ConfigProvider>
           <App>
+            <MessageBridge />
             <MemoryRouter initialEntries={["/organizations/new"]}>{children}</MemoryRouter>
           </App>
         </ConfigProvider>

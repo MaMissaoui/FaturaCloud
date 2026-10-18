@@ -8,6 +8,7 @@ import { Provider as JotaiProvider, createStore } from "jotai";
 import type { Atom } from "jotai";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { organizationAtom } from "src/atoms/organization";
+import MessageBridge from "src/components/message-bridge";
 
 // Shared harness for issue #175's component tests — every provider a real
 // page/component under src/routes or src/components can depend on: Jotai
@@ -72,6 +73,7 @@ export async function renderWithProviders(
       <I18nProvider i18n={i18n}>
         <ConfigProvider>
           <App>
+            <MessageBridge />
             <MemoryRouter initialEntries={[route]}>
               <Suspense fallback={null}>
                 <Routes>
