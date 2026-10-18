@@ -112,7 +112,7 @@ const ReceivableAging = () => {
 
       <Row>
         <Col span={24}>
-          <Table
+          <Table<OutstandingInvoiceSummary>
             dataSource={summary?.invoices ?? []}
             rowKey="id"
             loading={loading}
@@ -133,31 +133,31 @@ const ReceivableAging = () => {
               ) : null
             }
           >
-            <Table.Column
+            <Table.Column<OutstandingInvoiceSummary>
               title={<Trans>Invoice</Trans>}
               dataIndex="number"
               key="number"
-              sorter={textSorter((r: any) => r.number)}
+              sorter={textSorter((r: OutstandingInvoiceSummary) => r.number)}
             />
-            <Table.Column
+            <Table.Column<OutstandingInvoiceSummary>
               title={<Trans>Client</Trans>}
               dataIndex="clientName"
               key="clientName"
-              sorter={textSorter((r: any) => r.clientName)}
+              sorter={textSorter((r: OutstandingInvoiceSummary) => r.clientName)}
             />
-            <Table.Column
+            <Table.Column<OutstandingInvoiceSummary>
               title={<Trans>Days overdue</Trans>}
               dataIndex="daysOverdue"
               key="daysOverdue"
               align="right"
-              sorter={numberSorter((r: any) => r.daysOverdue)}
+              sorter={numberSorter((r: OutstandingInvoiceSummary) => r.daysOverdue)}
               render={(days: number) => (days > 0 ? days : "—")}
             />
-            <Table.Column
+            <Table.Column<OutstandingInvoiceSummary>
               title={<Trans>Balance due</Trans>}
               key="total"
               align="right"
-              sorter={moneySorter((r: any) => r.total)}
+              sorter={moneySorter((r: OutstandingInvoiceSummary) => r.total)}
               render={(inv: OutstandingInvoiceSummary) => (
                 <>
                   {money(inv.total)}

@@ -26,7 +26,7 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { DeleteOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import find from "lodash/find";
 import sum from "lodash/sum";
 
@@ -36,7 +36,7 @@ import { journalEntryStatusColor, journalEntryStatusLabel } from "src/types/jour
 import { formatMoneyUnits } from "src/utils/currencies";
 import { GetJournalEntryReversal } from "src/api";
 import { useFetch } from "src/hooks/useFetch";
-import type { JournalEntry } from "src/types/models";
+import type { JournalEntry, JournalLine } from "src/types/models";
 import { accountsAtom, setAccountsAtom } from "src/atoms/account";
 import { journalsAtom, setJournalsAtom } from "src/atoms/journal";
 import { fiscalYearsAtom, setFiscalYearsAtom } from "src/atoms/fiscal-period";
@@ -47,6 +47,8 @@ import {
   postJournalEntryAtom,
   reverseJournalEntryAtom,
   deleteJournalEntryAtom,
+  type JournalEntryFormValues,
+  type JournalLineFormValues,
 } from "src/atoms/journal-entry";
 
 // journalEntryAtom is async; reading it with plain useAtom would suspend to
@@ -114,12 +116,12 @@ const JournalEntryDetails = () => {
   // rejected on save.
   const postableAccounts = accounts.filter((a) => !a.isGroup && a.isActive);
 
-  const lines = Form.useWatch("lines", form) ?? [];
-  const totalDebit = sum(lines.map((l: any) => Number(l?.debit) || 0));
-  const totalCredit = sum(lines.map((l: any) => Number(l?.credit) || 0));
+  const lines = Form.useWatch<JournalLineFormValues[] | undefined>("lines", form) ?? [];
+  const totalDebit = sum(lines.map((l) => Number(l?.debit) || 0));
+  const totalCredit = sum(lines.map((l) => Number(l?.credit) || 0));
   const isBalanced = lines.length > 0 && Math.abs(totalDebit - totalCredit) < 0.005;
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: JournalEntryFormValues) => {
     setSubmitting(true);
     try {
       const created = await setEntry(values);
@@ -142,7 +144,7 @@ const JournalEntryDetails = () => {
     if (success) navigate("/accounting/journal-entries");
   };
 
-  const handleReverse = async (values: any) => {
+  const handleReverse = async (values: { reason: string; date: Dayjs }) => {
     if (!id) return;
     setSubmitting(true);
     const reversal = await reverseEntry({
@@ -442,12 +444,12 @@ const JournalEntryDetails = () => {
         )}
       </Descriptions>
 
-      <Table dataSource={entry.lines} pagination={false} rowKey="id" size="small">
-        <Table.Column
+      <Table<JournalLine> dataSource={entry.lines} pagination={false} rowKey="id" size="small">
+        <Table.Column<JournalLine>
           title={<Trans>Account</Trans>}
           dataIndex="accountId"
           key="accountId"
-          sorter={textSorter((line: any) => {
+          sorter={textSorter((line: JournalLine) => {
             const account = find(accounts, { id: line.accountId });
             return account ? `${account.code} · ${account.name}` : line.accountId;
           })}
@@ -456,27 +458,27 @@ const JournalEntryDetails = () => {
             return account ? `${account.code} · ${account.name}` : accountId;
           }}
         />
-        <Table.Column
+        <Table.Column<JournalLine>
           title={<Trans>Description</Trans>}
           dataIndex="description"
           key="description"
-          sorter={textSorter((line: any) => line.description ?? "")}
+          sorter={textSorter((line: JournalLine) => line.description ?? "")}
           render={(v: string | null) => v ?? "—"}
         />
-        <Table.Column
+        <Table.Column<JournalLine>
           title={<Trans>Debit</Trans>}
           dataIndex="debit"
           key="debit"
           align="right"
-          sorter={moneySorter((line: any) => line.debit)}
+          sorter={moneySorter((line: JournalLine) => line.debit)}
           render={(v: number) => (v ? money(v) : "—")}
         />
-        <Table.Column
+        <Table.Column<JournalLine>
           title={<Trans>Credit</Trans>}
           dataIndex="credit"
           key="credit"
           align="right"
-          sorter={moneySorter((line: any) => line.credit)}
+          sorter={moneySorter((line: JournalLine) => line.credit)}
           render={(v: number) => (v ? money(v) : "—")}
         />
       </Table>

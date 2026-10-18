@@ -689,7 +689,7 @@ const CashBookV1 = () => {
               // default optionFilterProp="children" can't stringify them —
               // search by the customer's own fields instead.
               filterOption={(input, option) => {
-                const c = (clients as any[]).find((x) => x.id === option?.value);
+                const c = clients.find((x) => x.id === option?.value);
                 if (!c) return false;
                 const hay = [
                   c.name,
@@ -709,7 +709,7 @@ const CashBookV1 = () => {
               style={{ width: 260, maxWidth: "calc(100vw - 72px)" }}
               popupMatchSelectWidth={360}
             >
-              {(clients as any[]).map((c) => (
+              {clients.map((c) => (
                 <Option key={c.id} value={c.id} label={c.name}>
                   <div>{c.name}</div>
                   {clientDetailLine(c) && (

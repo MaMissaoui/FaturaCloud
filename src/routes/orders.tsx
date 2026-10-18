@@ -43,7 +43,7 @@ const Orders = () => {
 
   const clientOptions = useMemo(
     () =>
-      (clients as any[]).map((c) => ({
+      clients.map((c) => ({
         value: c.id,
         label: [c.name, c.code ? `· ${c.code}` : c.phone].filter(Boolean).join(" "),
       })),

@@ -91,11 +91,17 @@ export default function SettingsUsers() {
     form.resetFields();
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: {
+    email: string;
+    password?: string;
+    displayName: string;
+    role: string;
+    isActive?: boolean;
+  }) => {
     setSubmitting(true);
     try {
       if (editingId) {
-        const update: any = {
+        const update: Parameters<typeof UpdateUser>[1] = {
           displayName: values.displayName,
           role: values.role,
           isActive: values.isActive ? 1 : 0,
@@ -105,7 +111,8 @@ export default function SettingsUsers() {
       } else {
         await CreateUser({
           email: values.email,
-          password: values.password,
+          // Required when creating (the field's rule).
+          password: values.password!,
           displayName: values.displayName,
           role: values.role,
         });
