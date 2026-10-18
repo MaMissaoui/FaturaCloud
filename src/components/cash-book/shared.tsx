@@ -2,12 +2,34 @@ import { useState, type ReactNode } from "react";
 import { theme, Typography } from "antd";
 import { t } from "@lingui/core/macro";
 import type { CashMovementDetail } from "src/api";
+import type { Client } from "src/types/models";
 
 // A new customer picked in the "New customer" modal below — kept as local
 // draft state, not created via a separate API call, until the whole sale is
 // submitted. This is what makes CreateCashSale's client+invoice+payment
 // creation genuinely atomic (see db/cash_sale.go's CreateCashSale doc
 // comment) rather than a client-creation call followed by a separate sale.
+// The identifying fields the Cash Book shows for a customer, which a saved
+// Client and a NewClientDraft both carry.
+export type CustomerFields = Partial<
+  Pick<
+    Client,
+    | "name"
+    | "code"
+    | "phone"
+    | "phone2"
+    | "phone3"
+    | "identity_number"
+    | "iban"
+    | "address"
+    | "street"
+    | "house_number"
+    | "postal_code"
+    | "city"
+    | "guarantor"
+  >
+>;
+
 export interface NewClientDraft {
   name: string;
   // Mandatory, like the modal field (a walk-in is identified by phone).
@@ -53,7 +75,7 @@ export const movementKindColor = (kind: CashMovementDetail["kind"]) => {
 // show (customer no., phone, CIN, IBAN, address). Shared by the search list
 // and the loan-status customer filter so a cashier can tell two same-named
 // customers apart without leaving the report.
-export const clientDetailLine = (c: any): string => {
+export const clientDetailLine = (c: CustomerFields): string => {
   const address =
     c.address ||
     [
@@ -213,7 +235,10 @@ export const CashBookCustomerRow = ({
 // priority order: the customer number (the organization's own unique key),
 // then the mobile number, then the CIN. IBAN/address/guarantor stay available
 // through the row's title tooltip rather than competing for the one line.
-export const customerIdentifiers = (c: any, highlight: (text: string) => ReactNode): ReactNode => (
+export const customerIdentifiers = (
+  c: CustomerFields,
+  highlight: (text: string) => ReactNode,
+): ReactNode => (
   <>
     {c.code ? (
       <Typography.Text code style={{ fontSize: 12 }}>

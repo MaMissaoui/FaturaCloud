@@ -907,7 +907,7 @@ export default function BaseLayout() {
                     filterOption={(input, option) => {
                       if (!option) return false;
                       // Get the organization name from the option
-                      const organizations = option as any;
+                      const organizations = option as { children?: unknown };
                       const orgName = organizations?.children;
                       return orgName
                         ? String(orgName).toLowerCase().includes(input.toLowerCase())
@@ -961,7 +961,7 @@ export default function BaseLayout() {
                     {/* Children stay the plain name: filterOption above
                     searches String(children). The Test tag is added by
                     optionRender instead. */}
-                    {map(organizations, (organization: any) => (
+                    {map(organizations, (organization) => (
                       <Option key={organization.id} value={organization.id}>
                         {organization.name}
                       </Option>

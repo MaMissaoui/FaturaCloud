@@ -106,7 +106,13 @@ export const isRouteAllowedForRole = (role: string, pathname: string): boolean =
 // filterMenuForRole applies ROLE_MENU to the full sidebar item list. The item
 // objects are JSX-bearing literals, so this returns shallow copies with
 // filtered children rather than mutating them.
-export const filterMenuForRole = (role: string, items: any[]): any[] => {
+// A sidebar entry as far as the filter cares: its key, and a group's children.
+export interface RoleMenuItem {
+  key: string;
+  children?: (RoleMenuItem | null)[];
+}
+
+export const filterMenuForRole = <T extends RoleMenuItem>(role: string, items: T[]): T[] => {
   const allow = ROLE_MENU[role];
   if (!allow) return items;
   return items
@@ -116,7 +122,7 @@ export const filterMenuForRole = (role: string, items: any[]): any[] => {
       if (childAllow == null || !item.children) return item;
       return {
         ...item,
-        children: item.children.filter((c: any) => c && childAllow.includes(c.key)),
+        children: item.children.filter((c) => c && childAllow.includes(c.key)),
       };
     });
 };

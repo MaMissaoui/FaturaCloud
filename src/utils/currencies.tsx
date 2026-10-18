@@ -1,4 +1,5 @@
 import isNumber from "lodash/isNumber";
+import type { Organization } from "src/types/models";
 
 // @ts-expect-error - Intl supportedValuesOf support?
 export const currencies = Intl.supportedValuesOf("currency");
@@ -184,7 +185,7 @@ export const getFormattedNumber = (
   number: number,
   currency: string,
   locale: string,
-  organization: any,
+  organization: Partial<Organization> | null | undefined,
 ) => {
   if (!isNumber(number)) return "-";
 
@@ -203,8 +204,11 @@ export const getFormattedNumber = (
   const effectiveLocale = numberFormatLocale(organization?.country_code) ?? locale;
   return formatMoneyUnits(
     number,
-    effectiveCurrency,
+    // A missing currency lands in formatMoneyUnits' plain-number fallback.
+    effectiveCurrency as string,
     effectiveLocale,
-    organization?.minimum_fraction_digits,
+    // null would mean 0 fraction digits to Intl; unset means the currency's
+    // own, as in formatOrgCents.
+    organization?.minimum_fraction_digits ?? undefined,
   );
 };

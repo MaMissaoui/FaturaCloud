@@ -52,7 +52,7 @@ Don't re-solve these per page:
 
 ## Document detail pages
 
-- **No `any`** (F185): `typescript/no-explicit-any` is on. `.oxlintrc.json`'s override lists the files not yet typed; take a file off once it is typed, and never add one. Form values use the atoms' exported `*FormValues` types, and a watched line's amounts use `LineAmounts` (`src/types/form.ts`).
+- **No `any`** (F185): `typescript/no-explicit-any` is an error everywhere in `src/`, with no exemptions; use the model types, the atoms' exported `*FormValues`, or `unknown`. Form values use the atoms' exported `*FormValues` types, and a watched line's amounts use `LineAmounts` (`src/types/form.ts`).
 - **Shared shell** (F185): `src/hooks/useDocumentForm.ts` (dirty flag via `markDirty` on `onValuesChange`, `markSaved` after a save, Ctrl/Cmd+S, the leave-page warning) and `src/components/document-export-buttons.tsx` (PDF/Excel, disabled while dirty because the server exports saved rows). A new document page uses both.
 - Every export goes to the server template (`Export*Document`); there is no client-side PDF and no live preview. `src/components/invoices/layouts.ts`, `pdf.tsx` and `pdf-tunisia.tsx` are orphaned but kept, which is why `@react-pdf/renderer` stays. Deleting them is an open owner decision. `src/types/document-layout.ts` holds the layout options so the Organizations drawer doesn't import React-PDF.
 - Invoice page: a new invoice's number is a placeholder preview, and the server assigns it (F169). Duplicate sends a blank number. Discount uses `allocateDiscount` (`src/utils/currency.ts`, the twin of `validateInvoiceTotals`). Stamp and withholding fields show only when their organization flags are on. A migrated loan (`origin === "opening"`) opens read-only.

@@ -99,7 +99,7 @@ const CustomerSearchResults = ({ cb }: { cb: CashBookState }) => {
             aria-label={t`Search results`}
             style={{ marginBottom: hiddenResultCount > 0 ? 4 : 16 }}
           >
-            {visibleSearchResults.map((client: any, index: number) => {
+            {visibleSearchResults.map((client, index) => {
               const openLoan = openLoanByClient.get(client.id) ?? 0;
               return (
                 <CashBookCustomerRow
@@ -108,7 +108,8 @@ const CustomerSearchResults = ({ cb }: { cb: CashBookState }) => {
                   active={index === activeResultIndex}
                   ariaLabel={resultAriaLabel(client)}
                   title={clientDetailLine(client)}
-                  name={highlight(client.name, needle)}
+                  // A client saved through the API may have no name.
+                  name={highlight(client.name ?? "", needle)}
                   meta={customerIdentifiers(client, (text) => highlight(text, needle))}
                   outstanding={openLoan}
                   moneyText={money(openLoan)}

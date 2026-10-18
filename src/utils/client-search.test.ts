@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { searchClients } from "./client-search";
+import { searchClients, type SearchableClient } from "./client-search";
 
-type C = Record<string, any>;
+type C = SearchableClient;
 
 const c = (over: Partial<C>): C => ({ id: over.name ?? "x", name: "x", ...over });
 

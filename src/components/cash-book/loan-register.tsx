@@ -24,7 +24,7 @@ import type { Client, Payment } from "src/types/models";
 import PaymentProductsCell from "src/components/payments/payment-products-cell";
 import { paymentRowMethodLabel } from "src/types/payment";
 import Slip from "src/components/cash-book/slip";
-import { customerIdentifiers } from "src/components/cash-book/shared";
+import { customerIdentifiers, type CustomerFields } from "src/components/cash-book/shared";
 import {
   buildLoanRegister,
   filterLoanRegister,
@@ -36,7 +36,7 @@ import type { CashBookState } from "src/components/cash-book/use-cash-book";
 
 const figure = { fontVariantNumeric: "tabular-nums" as const, whiteSpace: "nowrap" as const };
 
-const matches = (c: RegisterCustomer, client: any, needle: string) =>
+const matches = (c: RegisterCustomer, client: CustomerFields | undefined, needle: string) =>
   !needle ||
   [
     c.clientName,
@@ -154,7 +154,7 @@ const CustomerDetail = ({
     downloadingPaymentsExcel,
   } = cb;
   const c = customer;
-  const details: any = client ?? {};
+  const details: CustomerFields = client ?? {};
   const total = (label: ReactNode, value: string, big?: boolean) => (
     <div>
       <Typography.Text type="secondary" style={{ fontSize: 13 }}>
