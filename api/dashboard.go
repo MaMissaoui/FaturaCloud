@@ -46,7 +46,7 @@ func (h *handler) getDashboard(w http.ResponseWriter, r *http.Request) {
 		opts.CashRegister = roleCanUseSection(role, sectionCashbook)
 		opts.LoanFollowUp = roleCanUseSection(role, sectionSales) || roleCanUseSection(role, sectionAccounting)
 	}
-	data, err := h.db.GetDashboardData(orgID, startDate, endDate, opts)
+	data, err := h.db.ReadOnly().GetDashboardData(orgID, startDate, endDate, opts)
 	if err != nil {
 		writeInternalError(w, err)
 		return

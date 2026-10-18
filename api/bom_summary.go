@@ -12,7 +12,7 @@ import (
 // product's parts cost and buildable units. 409 when the organization has
 // master data summaries switched off.
 func (h *handler) getBOMOverview(w http.ResponseWriter, r *http.Request) {
-	overview, err := h.db.GetBOMOverview(r.PathValue("orgId"))
+	overview, err := h.db.ReadOnly().GetBOMOverview(r.PathValue("orgId"))
 	if err != nil {
 		if verr, ok := err.(*db.ValidationError); ok {
 			writeError(w, http.StatusConflict, verr.Error())

@@ -20,7 +20,7 @@ type outstandingDocument struct {
 // listOutstandingInvoices returns the sent invoices with a balance, from the
 // same query as the receivable aging report and the Dashboard.
 func (h *handler) listOutstandingInvoices(w http.ResponseWriter, r *http.Request) {
-	aging, err := h.db.GetReceivableAging(r.PathValue("orgId"))
+	aging, err := h.db.ReadOnly().GetReceivableAging(r.PathValue("orgId"))
 	if err != nil {
 		writeInternalError(w, err)
 		return
@@ -35,7 +35,7 @@ func (h *handler) listOutstandingInvoices(w http.ResponseWriter, r *http.Request
 // listOutstandingIncomingInvoices is the payables mirror: approved bills with
 // a balance, from the payable aging report's query.
 func (h *handler) listOutstandingIncomingInvoices(w http.ResponseWriter, r *http.Request) {
-	aging, err := h.db.GetPayableAging(r.PathValue("orgId"))
+	aging, err := h.db.ReadOnly().GetPayableAging(r.PathValue("orgId"))
 	if err != nil {
 		writeInternalError(w, err)
 		return

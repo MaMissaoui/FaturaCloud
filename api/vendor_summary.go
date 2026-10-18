@@ -10,7 +10,7 @@ import (
 
 func (h *handler) getVendorSummaries(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	summaries, err := h.db.GetVendorSummaries(orgID)
+	summaries, err := h.db.ReadOnly().GetVendorSummaries(orgID)
 	if err != nil {
 		if verr, ok := err.(*db.ValidationError); ok {
 			writeError(w, http.StatusConflict, verr.Error())

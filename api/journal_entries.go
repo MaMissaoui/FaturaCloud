@@ -17,7 +17,7 @@ func (h *handler) listJournalEntries(w http.ResponseWriter, r *http.Request) {
 		SortField: q.Get("sort"),
 		SortDesc:  q.Get("order") == "desc",
 	}
-	entries, total, err := h.db.GetJournalEntries(orgID, opts)
+	entries, total, err := h.db.ReadOnly().GetJournalEntries(orgID, opts)
 	if err != nil {
 		writeInternalError(w, err)
 		return

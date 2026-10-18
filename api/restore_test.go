@@ -201,3 +201,64 @@ func TestRestoreDatabase_ConcurrentWithReads(t *testing.T) {
 	close(stop)
 	wg.Wait()
 }
+
+// TestRestoreReopensTheReadPool pins audit F177's read pool to restore: the
+// heavy GET handlers read through db.ReadOnly(), so a restore must reopen
+// that pool on the restored file too, not leave it reading the old one.
+func TestRestoreReopensTheReadPool(t *testing.T) {
+	mux, database, dbPath, _ := newTestRouter(t)
+	seedUser(t, database, "test-admin", "admin", 1)
+	token := mintTestJWT(t, "test-admin", "admin")
+	if _, err := database.CreateOrganization(db.CreateOrganizationRequest{ID: "org-rp", Name: strPtr("ACME")}); err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	if _, err := database.AddOrganizationUser("org-rp", "test-admin", "admin"); err != nil {
+		t.Fatalf("AddOrganizationUser: %v", err)
+	}
+	if _, err := database.DB.Exec(`INSERT INTO clients (id, organizationId, name) VALUES ('cl-rp', 'org-rp', 'Client')`); err != nil {
+		t.Fatalf("insert client: %v", err)
+	}
+	if _, err := database.DB.Exec(`INSERT INTO invoices (id, organizationId, clientId, number, state, date, subTotal, taxTotal, total) VALUES ('inv-rp', 'org-rp', 'cl-rp', 'RP-1', 'draft', 1700000000000, 0, 0, 0)`); err != nil {
+		t.Fatalf("insert invoice: %v", err)
+	}
+
+	backupPath := filepath.Join(filepath.Dir(dbPath), "backup.db")
+	if err := database.Backup(backupPath); err != nil {
+		t.Fatalf("Backup: %v", err)
+	}
+	backupBytes, err := os.ReadFile(backupPath)
+	if err != nil {
+		t.Fatalf("read backup: %v", err)
+	}
+	if _, err := database.DB.Exec(`DELETE FROM invoices WHERE id = 'inv-rp'`); err != nil {
+		t.Fatalf("delete invoice: %v", err)
+	}
+
+	countInvoices := func() string {
+		req := httptest.NewRequest(http.MethodGet, "/api/organizations/org-rp/invoices", nil)
+		authRequest(req, token)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET invoices: %d %s", rec.Code, rec.Body.String())
+		}
+		return rec.Body.String()
+	}
+	if got := countInvoices(); bytes.Contains([]byte(got), []byte("RP-1")) {
+		t.Fatalf("before restore the deleted invoice is still listed: %s", got)
+	}
+
+	body, contentType := multipartDatabaseUpload(t, "backup.db", backupBytes)
+	req := httptest.NewRequest(http.MethodPost, "/api/restore", body)
+	req.Header.Set("Content-Type", contentType)
+	authRequest(req, token)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("restore: %d %s", rec.Code, rec.Body.String())
+	}
+
+	if got := countInvoices(); !bytes.Contains([]byte(got), []byte("RP-1")) {
+		t.Fatalf("after restore the routed invoice list doesn't show the restored invoice: %s", got)
+	}
+}

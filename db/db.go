@@ -15,11 +15,19 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// Database holds the SQLite connection pool.
+// Database holds the SQLite connections: DB, the single connection every
+// write and transaction goes through, and reads, a small read-only pool the
+// heavy list and report reads use through ReadOnly (audit F177).
 type Database struct {
 	DB     *sqlx.DB
 	DBPath string
+	reads  *sqlx.DB
 }
+
+// readPoolSize is how many connections the read-only pool may open. The
+// production Pi 4 has four cores and SQLite here is pure Go, so CPU-bound:
+// three readers leave the writer a core.
+const readPoolSize = 3
 
 // NewDatabase opens (or creates) the SQLite database at dbPath, runs all
 // pending migrations and returns a ready-to-use Database.
@@ -34,14 +42,14 @@ func NewDatabase(dbPath string) (*Database, error) {
 	// deployment (a Raspberry Pi on an SD card). temp_store=MEMORY keeps the
 	// planner's many temp B-tree sorts in RAM; cache_size is in KiB (negative
 	// = KiB) and mmap_size in bytes.
-	dsn := dbPath + "?_pragma=foreign_keys(1)" +
+	pragmas := "?_pragma=foreign_keys(1)" +
 		"&_pragma=journal_mode(WAL)" +
 		"&_pragma=busy_timeout(5000)" +
 		"&_pragma=synchronous(NORMAL)" +
 		"&_pragma=temp_store(MEMORY)" +
 		"&_pragma=cache_size(-64000)" +
 		"&_pragma=mmap_size(268435456)"
-	db, err := sqlx.Open("sqlite", dsn)
+	db, err := sqlx.Open("sqlite", dbPath+pragmas)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
@@ -58,7 +66,38 @@ func NewDatabase(dbPath string) (*Database, error) {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
+	// The read pool opens after the migrations, on the same file and with the
+	// same pragmas plus query_only, so a write through it fails at once
+	// instead of slipping past the single writer. In WAL mode its readers run
+	// alongside the writer and each other, so a counter sale no longer waits
+	// behind someone's Dashboard.
+	reads, err := sqlx.Open("sqlite", dbPath+pragmas+"&_pragma=query_only(1)")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("open read pool: %w", err)
+	}
+	reads.SetMaxOpenConns(readPoolSize)
+	if err := reads.Ping(); err != nil {
+		reads.Close()
+		db.Close()
+		return nil, fmt.Errorf("ping read pool: %w", err)
+	}
+	d.reads = reads
+
 	return d, nil
+}
+
+// ReadOnly returns a view of the database whose DB is the read-only pool. It
+// is for heavy GET handlers that only read and open no transaction: their
+// reads then run beside the writer instead of queueing on its single
+// connection. Anything that writes, or reads inside a transaction, keeps using
+// the Database itself; a write through the view fails (query_only). Never
+// Close the view.
+func (d *Database) ReadOnly() *Database {
+	if d.reads == nil {
+		return d
+	}
+	return &Database{DB: d.reads, DBPath: d.DBPath}
 }
 
 // BackupFileMode is the mode of every file the app writes into the backups
@@ -87,6 +126,12 @@ func (d *Database) Backup(destPath string) error {
 
 // Close shuts down the connection pool.
 func (d *Database) Close() error {
+	if d.reads != nil {
+		if err := d.reads.Close(); err != nil {
+			d.DB.Close()
+			return err
+		}
+	}
 	return d.DB.Close()
 }
 

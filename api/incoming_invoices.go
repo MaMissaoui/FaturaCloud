@@ -9,7 +9,7 @@ import (
 
 func (h *handler) listIncomingInvoices(w http.ResponseWriter, r *http.Request) {
 	orgID := r.PathValue("orgId")
-	rows, err := h.db.GetIncomingInvoices(orgID)
+	rows, err := h.db.ReadOnly().GetIncomingInvoices(orgID)
 	if err != nil {
 		writeInternalError(w, err)
 		return
