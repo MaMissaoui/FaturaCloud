@@ -78,6 +78,20 @@ const clearedAccountDefaults = (values: Record<string, unknown>): Record<string,
   return cleared;
 };
 
+// Checkbox valuePropName="checked" emits a boolean; the API stores these
+// flags as 0/1 like every other boolean column (isDefault, isGroup, ...) —
+// same conversion src/atoms/tax-rate.ts uses. Used on create and update
+// alike, so a flag ticked in the New drawer is saved too.
+const invoiceFlags = (values: OrganizationFormValues) => {
+  const toWire = (v: boolean | number | null | undefined) =>
+    typeof v === "boolean" ? (v ? 1 : 0) : v;
+  return {
+    fiscalStampEnabled: toWire(values.fiscalStampEnabled),
+    withholdingTaxEnabled: toWire(values.withholdingTaxEnabled),
+    amountInWordsEnabled: toWire(values.amountInWordsEnabled),
+  };
+};
+
 export default function Organizations() {
   useLingui();
   const { message } = App.useApp();
@@ -355,27 +369,7 @@ export default function Organizations() {
             values.defaultFiscalStampAmount != null
               ? unitsToCents(values.defaultFiscalStampAmount)
               : undefined,
-          // Checkbox valuePropName="checked" emits a boolean; the API
-          // stores these as 0/1 like every other boolean column (isDefault,
-          // isGroup, ...) — same conversion src/atoms/tax-rate.ts uses.
-          fiscalStampEnabled:
-            typeof values.fiscalStampEnabled === "boolean"
-              ? values.fiscalStampEnabled
-                ? 1
-                : 0
-              : values.fiscalStampEnabled,
-          withholdingTaxEnabled:
-            typeof values.withholdingTaxEnabled === "boolean"
-              ? values.withholdingTaxEnabled
-                ? 1
-                : 0
-              : values.withholdingTaxEnabled,
-          amountInWordsEnabled:
-            typeof values.amountInWordsEnabled === "boolean"
-              ? values.amountInWordsEnabled
-                ? 1
-                : 0
-              : values.amountInWordsEnabled,
+          ...invoiceFlags(values),
         });
         // Logo upload/removal and delete already reload the active
         // organization when they touch the currently-selected org (see
@@ -386,10 +380,8 @@ export default function Organizations() {
         if (editingId === organizationId) reloadActiveOrganization();
       } else {
         const newOrg = await CreateOrganization({
-          // The create request has no fiscal-stamp, withholding or
-          // amount-in-words fields, so the server ignores those checkboxes'
-          // booleans here; they are set by a later edit.
           ...(values as Partial<Organization>),
+          ...invoiceFlags(values),
           id: nanoid(),
           currency: values.currency || "EUR",
           minimum_fraction_digits: values.minimum_fraction_digits ?? 2,

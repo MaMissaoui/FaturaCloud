@@ -107,3 +107,30 @@ func TestCreateOrganizationStoresDocumentLayout(t *testing.T) {
 		t.Fatalf("expected documentLayout \"tunisia\", got %v", org.DocumentLayout)
 	}
 }
+
+// TestCreateOrganizationStoresInvoiceFlags guards the create path for the
+// invoice feature flags: a checkbox ticked in the New Organization drawer
+// must reach the stored row, and an unset one stays off.
+func TestCreateOrganizationStoresInvoiceFlags(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	one := int64(1)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{
+		ID:                   "org-flags",
+		FiscalStampEnabled:   &one,
+		AmountInWordsEnabled: &one,
+	})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	got := func(v *int64) any {
+		if v == nil {
+			return nil
+		}
+		return *v
+	}
+	if got(org.FiscalStampEnabled) != int64(1) || got(org.AmountInWordsEnabled) != int64(1) || got(org.WithholdingTaxEnabled) != int64(0) {
+		t.Fatalf("flags = fiscalStamp %v, amountInWords %v, withholding %v; want 1, 1, 0",
+			got(org.FiscalStampEnabled), got(org.AmountInWordsEnabled), got(org.WithholdingTaxEnabled))
+	}
+}

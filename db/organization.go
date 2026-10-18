@@ -275,6 +275,13 @@ type CreateOrganizationRequest struct {
 	InventoryValuation  *string `json:"inventoryValuation"`
 	IsTest              *bool   `json:"isTest"`
 	MasterDataSummaries *bool   `json:"masterDataSummaries"`
+
+	// The invoice feature flags, 0/1 like UpdateOrganizationRequest's, so a
+	// checkbox ticked in the New Organization drawer isn't dropped. Unset
+	// means off.
+	FiscalStampEnabled    *int64 `json:"fiscalStampEnabled"`
+	WithholdingTaxEnabled *int64 `json:"withholdingTaxEnabled"`
+	AmountInWordsEnabled  *int64 `json:"amountInWordsEnabled"`
 }
 
 // UpdateOrganizationRequest is the payload for updating an organization.
@@ -479,8 +486,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			minimum_fraction_digits, due_days, overdueCharge,
 			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code,
-			documentLayout, documentLanguage, timezone, inventoryValuation, isTest, masterDataSummaries
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			documentLayout, documentLanguage, timezone, inventoryValuation, isTest, masterDataSummaries,
+			fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
@@ -489,6 +497,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		req.DocumentLayout, req.DocumentLanguage, req.Timezone, req.InventoryValuation,
 		req.IsTest != nil && *req.IsTest,
 		req.MasterDataSummaries == nil || *req.MasterDataSummaries,
+		req.FiscalStampEnabled != nil && *req.FiscalStampEnabled != 0,
+		req.WithholdingTaxEnabled != nil && *req.WithholdingTaxEnabled != 0,
+		req.AmountInWordsEnabled != nil && *req.AmountInWordsEnabled != 0,
 	); err != nil {
 		return nil, fmt.Errorf("create_organization: %w", err)
 	}
