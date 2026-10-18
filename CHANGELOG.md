@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.70.0] - 2026-10-18
+
+Migration `0109` runs at startup.
+
+### Removed
+- The unused `timeEntries`, `projects` and `tags` tables, left over from the desktop app this project was forked from. No code used them, and production had no rows in any of them (#532).
+
 ## [3.69.0] - 2026-10-17
 
 Migration `0108` runs at startup. It fails if an organization already has two orders, purchase orders, deliveries, goods receipts or production orders with the same number. Production had none at the 2026-10-17 check, so re-run that check before deploying.
