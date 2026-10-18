@@ -121,7 +121,7 @@ const JournalEntries = () => {
 
       <Row style={{ marginTop: 16 }}>
         <Col span={24}>
-          <Table
+          <Table<JournalEntry>
             dataSource={entries}
             pagination={{
               current: paging.page,
@@ -133,7 +133,7 @@ const JournalEntries = () => {
             onChange={handleTableChange}
             rowKey="id"
             loading={loading}
-            onRow={(record: any) => ({
+            onRow={(record: JournalEntry) => ({
               onClick: () => navigate(`/accounting/journal-entries/${record.id}`),
               onKeyDown: (e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -145,7 +145,7 @@ const JournalEntries = () => {
               tabIndex: 0,
             })}
           >
-            <Table.Column
+            <Table.Column<JournalEntry>
               title={<Trans>Entry #</Trans>}
               dataIndex="entryNumber"
               key="entryNumber"
@@ -154,7 +154,7 @@ const JournalEntries = () => {
               sortOrder={sortOrderFor("entryNumber")}
               render={(n: number | null) => n ?? "—"}
             />
-            <Table.Column
+            <Table.Column<JournalEntry>
               title={<Trans>Date</Trans>}
               dataIndex="date"
               key="date"
@@ -165,7 +165,7 @@ const JournalEntries = () => {
               sortDirections={["descend", "ascend"]}
               render={(v: number) => formatDate(v)}
             />
-            <Table.Column
+            <Table.Column<JournalEntry>
               title={<Trans>Journal</Trans>}
               dataIndex="journalId"
               key="journal"
@@ -176,12 +176,12 @@ const JournalEntries = () => {
                 return journal ? journal.name : "—";
               }}
             />
-            <Table.Column
+            <Table.Column<JournalEntry>
               title={<Trans>Description</Trans>}
               key="description"
               sorter
               sortOrder={sortOrderFor("description")}
-              render={(entry: any) => (
+              render={(entry: JournalEntry) => (
                 <Link
                   to={`/accounting/journal-entries/${entry.id}`}
                   onClick={(e) => e.stopPropagation()}
@@ -190,7 +190,7 @@ const JournalEntries = () => {
                 </Link>
               )}
             />
-            <Table.Column
+            <Table.Column<JournalEntry>
               title={<Trans>Reference</Trans>}
               dataIndex="reference"
               key="reference"
@@ -198,7 +198,7 @@ const JournalEntries = () => {
               sortOrder={sortOrderFor("reference")}
               render={(v: string | null) => v ?? "—"}
             />
-            <Table.Column
+            <Table.Column<JournalEntry>
               title={<Trans>Status</Trans>}
               dataIndex="status"
               key="status"

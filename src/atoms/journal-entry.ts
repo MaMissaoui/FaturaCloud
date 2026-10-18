@@ -67,11 +67,11 @@ export const setJournalEntriesAtom = atom(null, async (get, set) => {
 // The journal entry form edits date as a dayjs object and each line's
 // debit/credit in display currency units — not the wire shape either field
 // is stored as.
-type JournalLineFormValues = Omit<Partial<JournalLine>, "debit" | "credit"> & {
+export type JournalLineFormValues = Omit<Partial<JournalLine>, "debit" | "credit"> & {
   debit?: number;
   credit?: number;
 };
-type JournalEntryFormValues = Omit<Partial<JournalEntry>, "date"> & {
+export type JournalEntryFormValues = Omit<Partial<JournalEntry>, "date"> & {
   date?: Dayjs | number;
   lines?: JournalLineFormValues[];
 };

@@ -77,7 +77,7 @@ const Imports = () => {
 
   const vendorOptions = useMemo(
     () =>
-      (vendors as any[]).map((v) => ({
+      vendors.map((v) => ({
         value: v.id,
         label: [v.name, v.code ? `· ${v.code}` : v.phone].filter(Boolean).join(" "),
       })),

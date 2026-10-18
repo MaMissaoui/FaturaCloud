@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Account } from "src/types/models";
+import type { Account, Organization } from "src/types/models";
 import { Alert, App, Button, Form } from "antd";
 import { useAtom, useSetAtom } from "jotai";
 import { ApartmentOutlined } from "@ant-design/icons";
@@ -65,6 +65,18 @@ const ACCOUNT_DEFAULT_FIELDS = [
   "defaultCashRegisterAccountId",
 ] as const;
 
+// The drawer's values: the organization's own fields, with the stamp amount
+// in units and the 0/1 flags as Checkbox booleans until handleSubmit converts
+// them back.
+type OrganizationFormValues = Omit<
+  Partial<Organization>,
+  "fiscalStampEnabled" | "withholdingTaxEnabled" | "amountInWordsEnabled"
+> & {
+  fiscalStampEnabled?: boolean | number | null;
+  withholdingTaxEnabled?: boolean | number | null;
+  amountInWordsEnabled?: boolean | number | null;
+};
+
 const clearedAccountDefaults = (values: Record<string, unknown>): Record<string, string> => {
   const cleared: Record<string, string> = {};
   for (const field of ACCOUNT_DEFAULT_FIELDS) {
@@ -81,7 +93,7 @@ export default function Organizations() {
   const { message } = App.useApp();
   const [form] = Form.useForm();
 
-  const [orgs, setOrgs] = useState<any[]>([]);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   // A failed list fetch used to leave the table silently empty while loading
   // cleared (the old try/finally had no catch, so the rejection was
@@ -333,7 +345,7 @@ export default function Organizations() {
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: OrganizationFormValues) => {
     setSubmitting(true);
     try {
       if (editingId) {
@@ -384,7 +396,10 @@ export default function Organizations() {
         if (editingId === organizationId) reloadActiveOrganization();
       } else {
         const newOrg = await CreateOrganization({
-          ...values,
+          // The create request has no fiscal-stamp, withholding or
+          // amount-in-words fields, so the server ignores those checkboxes'
+          // booleans here; they are set by a later edit.
+          ...(values as Partial<Organization>),
           id: nanoid(),
           currency: values.currency || "EUR",
           minimum_fraction_digits: values.minimum_fraction_digits ?? 2,

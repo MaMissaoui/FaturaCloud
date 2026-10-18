@@ -20,7 +20,7 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import { CalendarOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 
 import {
   fiscalYearsAtom,
@@ -37,6 +37,9 @@ import PageHeader from "src/components/page-header";
 import { useDatePickerFormat } from "src/utils/date";
 import { dateSorter, textSorter } from "src/utils/sort";
 import { useLoadOnPath } from "src/hooks/useLoadOnPath";
+
+// The year and period modals both ask for a name and a date range.
+type RangeFormValues = { name: string; range: [Dayjs, Dayjs] };
 
 const FiscalPeriods = () => {
   useLingui();
@@ -66,7 +69,7 @@ const FiscalPeriods = () => {
 
   const loading = useLoadOnPath("/accounting/fiscal-periods", () => setFiscalYears());
 
-  const handleCreateYear = async (values: any) => {
+  const handleCreateYear = async (values: RangeFormValues) => {
     setYearSubmitting(true);
     const created = await createFiscalYear({
       name: values.name,
@@ -80,7 +83,7 @@ const FiscalPeriods = () => {
     }
   };
 
-  const handleCreatePeriod = async (values: any) => {
+  const handleCreatePeriod = async (values: RangeFormValues) => {
     if (!periodModalYearId) return;
     setPeriodSubmitting(true);
     const created = await createFiscalPeriod({

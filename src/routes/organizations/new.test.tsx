@@ -51,7 +51,7 @@ describe("NewOrganization", () => {
     vi.clearAllMocks();
     vi.mocked(GetOrganizations).mockResolvedValue([]);
     vi.mocked(CreateOrganization).mockImplementation(
-      async (req: any) => ({ ...req, id: req.id ?? "org_new" }) as never,
+      async (req) => ({ ...req, id: req.id ?? "org_new" }) as never,
     );
   });
 

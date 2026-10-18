@@ -93,7 +93,7 @@ const Invoices = () => {
 
   const clientOptions = useMemo(
     () =>
-      (clients as any[]).map((c) => ({
+      clients.map((c) => ({
         value: c.id,
         label: [c.name, c.code ? `· ${c.code}` : c.phone].filter(Boolean).join(" "),
       })),
@@ -226,7 +226,7 @@ const Invoices = () => {
                 </span>
               </Popconfirm>
             ),
-            onClick: (e: any) => e.domEvent.stopPropagation(),
+            onClick: (e: { domEvent: { stopPropagation(): void } }) => e.domEvent.stopPropagation(),
           },
         ]
       : []),

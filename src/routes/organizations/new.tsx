@@ -19,6 +19,7 @@ import {
 } from "src/atoms/organization";
 import { logoutAtom } from "src/atoms/session";
 import { CreateOrganization } from "src/api";
+import type { Organization } from "src/types/models";
 import { countries } from "src/utils/countries";
 import { getDefaultFractionDigits } from "src/utils/currencies";
 import { message } from "src/utils/message";
@@ -56,7 +57,7 @@ const NewOrganization = () => {
   // would navigate to the settings screen even when nothing was created.
   // Keeping the error here lets it stay on the form and surface the reason,
   // the same shape the organizations list's edit drawer uses.
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: Partial<Organization>) => {
     setSubmitting(true);
     try {
       const newOrg = await CreateOrganization({
