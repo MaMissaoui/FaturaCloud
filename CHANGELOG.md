@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.71.0] - 2026-10-18
+
+No migrations: the schema stays at `0109`, so rolling back to 3.70.0 is just the image tag.
+
+### Changed
+- Heavy screens no longer hold up a sale. The Dashboard, payments, the loan status, journal entries and the reports now read through a separate pool of read-only database connections, while writes still go through the single writer. On a copy of the production database on the Pi, a write queued behind twelve heavy reads went from about 1 s (1.8 s worst) to under 1 ms (#534).
+- The image runs on Debian 13 (trixie) instead of Debian 12, which is on long-term support only since June 2026. PDF export was checked in both layouts. The one visible difference: on the Tunisia layout, bold headers and totals now print in the same font as the body instead of a serif, closer to what Excel shows for the same file (#536).
+- Internal: the document detail pages and the line-items table are fully typed, and the linter now refuses new uses of `any` (#537). A test-only race that occasionally failed CI is fixed (#535).
+
 ## [3.70.0] - 2026-10-18
 
 Migration `0109` runs at startup.
