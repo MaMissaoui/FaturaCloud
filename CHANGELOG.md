@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.71.1] - 2026-10-18
+
+No migrations: the schema stays at `0109`, so rolling back to 3.71.0 is just the image tag.
+
+### Fixed
+- Every client's address line prints on documents. A client added from the Cash Book's quick "New customer" form has only a free-text address, which five of the six client layouts left blank, while the Tunisia invoice left the street of a client added from Clients blank. All six layouts now print the street and house number, and fall back to the free-text address. A client with both now shows the street on the Tunisia invoice too (#539).
+- In Organizations → New, ticking "Show amount in words" is saved. The setting used to stay off until the organization was edited, because creating an organization ignored it, along with the fiscal stamp and withholding flags (#543).
+- The Cash Book search no longer crashes on a matched client with no name, which only an API-created client can be (#542).
+- One amount formatter showed amounts without trailing decimals for an organization with no decimal-places setting ("1 250,5 DT" instead of "1 250,500 DT") (#542).
+
+### Changed
+- Internal: the rest of the frontend is typed, and the linter now refuses `any` everywhere, with no exemptions (#540, #541, #542).
+
 ## [3.71.0] - 2026-10-18
 
 No migrations: the schema stays at `0109`, so rolling back to 3.70.0 is just the image tag.
