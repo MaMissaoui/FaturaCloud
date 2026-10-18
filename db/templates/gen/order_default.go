@@ -42,7 +42,7 @@ func buildOrderDefaultTemplate() {
 	set("A7", "Bill To")
 	f.SetCellStyle(sheet, "A7", "A7", styles.bold)
 	set("A8", "{{client.name}}")
-	set("A9", "{{client.street}} {{client.houseNumber}}")
+	set("A9", "{{client.addressLine}}")
 	set("A10", "{{client.postalCode}} {{client.city}}")
 	set("A11", "Matricule fiscal: {{client.vatin}}")
 

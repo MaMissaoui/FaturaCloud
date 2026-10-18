@@ -12,7 +12,7 @@ func buildOrderTunisiaTemplate() {
 		date:      "Date : {{order.orderDate}}",
 		partyName: "{{client.name}}",
 		partyFields: []string{
-			"{{client.street}} {{client.houseNumber}}",
+			"{{client.addressLine}}",
 			"{{client.postalCode}} {{client.city}}",
 			"Tel: {{client.phone}}",
 			"CIN: {{client.identityNumber}}",
@@ -62,6 +62,7 @@ var orderFieldRefs = []fieldRef{
 	{"Header", "{{client.vatin}}", "Customer VAT number"},
 	{"Header", "{{client.identityNumber}}", "Customer national ID / CIN number"},
 	{"Header", "{{client.address}}", "Customer single-line address"},
+	{"Header", "{{client.addressLine}}", "Customer street and house number, or the single-line address when there is no street"},
 	{"Header", "{{client.email}}", "Customer email"},
 	{"Header", "{{client.phone}}", "Customer phone"},
 	{"Header", "{{client.phone2}}", "Customer phone 2"},
