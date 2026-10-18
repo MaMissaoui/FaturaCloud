@@ -99,7 +99,7 @@ docker run -p 8080:8080 -v ./data:/data fatura-cloud
 - Stages:
   1. **frontend** (node:24-alpine, the LTS line: Node 25 dropped corepack): `corepack enable` (pnpm from `packageManager`; `npm install -g pnpm` fails on arm64), then `pnpm install --frozen-lockfile` and `pnpm build`.
   2. **backend** (golang:1.26-alpine): embeds `dist/` (`//go:embed all:dist`).
-  3. **runtime** (debian:bookworm-slim): the binary plus `libreoffice-calc fonts-liberation fonts-dejavu-core`, running as `1000:1000`.
+  3. **runtime** (debian:trixie-slim): the binary plus `libreoffice-calc fonts-liberation fonts-dejavu-core`, running as `1000:1000`.
 - `--build-arg VERSION=<tag>` sets `GET /api/version` and the Sentry release; compose passes `VERSION` (default `dev`).
 - `GET /api/healthz` backs the HEALTHCHECK. On SIGTERM, in-flight requests get 25 s and the background loops stop through `api.NewRouterContext`; compose sets `stop_grace_period: 30s`.
 - CI builds the `backend` target on every PR. `.github/workflows/runtime-image.yml` runs the whole image (health, PDF conversion, graceful stop) on image changes, weekly and on demand. Dependabot updates weekly.

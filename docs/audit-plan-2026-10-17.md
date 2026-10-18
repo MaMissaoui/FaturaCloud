@@ -704,6 +704,8 @@ The move to `debian:trixie-slim` is a deliberate change of its own:
 
 `runtime-image.yml` then checks it every week. Dependabot proposes digest updates within bookworm, but not the suite change.
 
+**Done (2026-10-18).** The runtime is `debian:trixie-slim` (13.7): LibreOffice 25.2.3, `fonts-liberation` 2.1.5, `fonts-dejavu-core` 2.37. A real invoice exported to PDF from the running container in both layouts and was compared with the same invoice from the bookworm v3.70.0 image. The pages match, except that the template's bold styles, which name no font, now render in the body font rather than a serif, which is closer to Excel. The image is 793 MB against 763 MB. Health, `/api/version` and graceful stop pass.
+
 ### 5.2 — F181: ops and CI cluster (Low, Code read)
 
 - **No health check.** There's no `HEALTHCHECK`, no `/healthz`, and the
@@ -854,7 +856,7 @@ rounding cases (half-cent VAT, a discount, a free line).
   TND (0.46%). Landed-cost and production rounding residuals are documented
   as expected; whether they explain this much was not checked. Audit Moto
   is now contaminated by F167's probe, so re-seed before investigating.
-- **Debian bookworm's support window** (F181) was not verified.
+- **Debian bookworm's support window** (F181): moot since the move to trixie (2026-10-18).
 - **Excel-template exports at volume:** each PDF export starts a LibreOffice
   process with no concurrency limit (`db/pdf_convert.go`); several at once
   on the Pi were not tried.
