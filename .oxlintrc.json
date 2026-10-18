@@ -16,29 +16,5 @@
     "node_modules/**",
     "build/**",
     "public/**"
-  ],
-  "overrides": [
-    {
-      "files": [
-        "src/components/cash-book/counter.tsx",
-        "src/components/cash-book/loan-register.tsx",
-        "src/components/cash-book/modals.tsx",
-        "src/components/cash-book/search-results.tsx",
-        "src/components/cash-book/shared.tsx",
-        "src/components/cash-book/use-cash-book.ts",
-        "src/components/invoices/pdf-tunisia.tsx",
-        "src/components/invoices/pdf.tsx",
-        "src/layouts/base.tsx",
-        "src/layouts/role-menu.test.ts",
-        "src/layouts/role-menu.ts",
-        "src/main.tsx",
-        "src/utils/client-search.test.ts",
-        "src/utils/client-search.ts",
-        "src/utils/currencies.tsx"
-      ],
-      "rules": {
-        "typescript/no-explicit-any": "off"
-      }
-    }
   ]
 }

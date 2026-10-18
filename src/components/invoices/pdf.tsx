@@ -5,6 +5,14 @@ import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/render
 import { getFormattedNumber } from "src/utils/currencies";
 import { formatDate } from "src/utils/date";
 import { formatAddress } from "src/utils/address";
+import type { Client, Invoice, InvoiceLineItem, Organization, TaxRate } from "src/types/models";
+import type { I18n } from "@lingui/core";
+
+// What this renderer reads. It predates the server templates and is kept
+// orphaned (src/CLAUDE.md), so a few fields are from that era.
+type PdfLineItem = InvoiceLineItem & { total: number };
+type PdfInvoice = Invoice & { lineItems?: PdfLineItem[] };
+type PdfOrganization = Organization & { logo?: string | null; bic?: string | null };
 
 const FONT = "Helvetica";
 const FONT_BOLD = "Helvetica-Bold";
@@ -147,23 +155,29 @@ const InvoicePDF = ({
   i18n,
   qrCodeDataUri,
 }: {
-  invoice: any;
-  client: any;
-  organization: any;
-  taxRates: any;
-  i18n: any;
+  invoice: PdfInvoice;
+  client: Client;
+  organization: PdfOrganization;
+  taxRates: TaxRate[];
+  i18n: I18n;
   qrCodeDataUri?: string | null;
 }) => {
   const dateFormat = organization?.date_format;
   // Group line items by tax rate and calculate tax for each group
   const taxGroups = (() => {
-    const groups: { [key: string]: { taxRate: any; items: any[]; subtotal: number; tax: number } } =
-      {};
+    const groups: {
+      [key: string]: {
+        taxRate: TaxRate | null | undefined;
+        items: PdfLineItem[];
+        subtotal: number;
+        tax: number;
+      };
+    } = {};
 
-    invoice.lineItems?.forEach((item: any) => {
+    invoice.lineItems?.forEach((item) => {
       if (item.total) {
         const taxRateId = item.taxRate || "no-tax";
-        const taxRate = item.taxRate ? taxRates?.find((rate: any) => rate.id === taxRateId) : null;
+        const taxRate = item.taxRate ? taxRates?.find((rate) => rate.id === taxRateId) : null;
 
         if (!groups[taxRateId]) {
           groups[taxRateId] = {
@@ -291,8 +305,8 @@ const InvoicePDF = ({
                 <Trans>Total</Trans>
               </Text>
             </View>
-            {invoice.lineItems?.map((lineItem: any, index: number) => {
-              const taxRate = taxRates?.find((rate: any) => rate.id === lineItem.taxRate);
+            {invoice.lineItems?.map((lineItem, index) => {
+              const taxRate = taxRates?.find((rate) => rate.id === lineItem.taxRate);
               return (
                 <View
                   key={lineItem.id ?? index}

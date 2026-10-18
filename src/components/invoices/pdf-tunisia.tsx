@@ -5,6 +5,14 @@ import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/render
 import { getFormattedNumber } from "src/utils/currencies";
 import { formatDate } from "src/utils/date";
 import { formatAddress } from "src/utils/address";
+import type { Client, Invoice, InvoiceLineItem, Organization, TaxRate } from "src/types/models";
+import type { I18n } from "@lingui/core";
+
+// What this renderer reads. It predates the server templates and is kept
+// orphaned (src/CLAUDE.md), so a few fields are from that era.
+type PdfLineItem = InvoiceLineItem & { total: number };
+type PdfInvoice = Invoice & { lineItems?: PdfLineItem[] };
+type PdfOrganization = Organization & { logo?: string | null; bic?: string | null };
 
 // A plain, text-first layout modeled on how Tunisian invoicing tools
 // commonly present the two figures a Tunisian buyer/seller pair actually
@@ -110,11 +118,11 @@ const InvoicePDFTunisia = ({
   taxRates,
   i18n,
 }: {
-  invoice: any;
-  client: any;
-  organization: any;
-  taxRates: any;
-  i18n: any;
+  invoice: PdfInvoice;
+  client: Client;
+  organization: PdfOrganization;
+  taxRates: TaxRate[];
+  i18n: I18n;
   qrCodeDataUri?: string | null;
 }) => {
   const dateFormat = organization?.date_format;
@@ -124,11 +132,13 @@ const InvoicePDFTunisia = ({
   // rendering (colors, which fields show) diverge enough that a shared
   // "taxGroups" util would need to carry layout-specific options anyway.
   const taxGroups = (() => {
-    const groups: { [key: string]: { taxRate: any; subtotal: number; tax: number } } = {};
-    invoice.lineItems?.forEach((item: any) => {
+    const groups: {
+      [key: string]: { taxRate: TaxRate | null | undefined; subtotal: number; tax: number };
+    } = {};
+    invoice.lineItems?.forEach((item) => {
       if (!item.total) return;
       const taxRateId = item.taxRate || "no-tax";
-      const taxRate = item.taxRate ? taxRates?.find((rate: any) => rate.id === taxRateId) : null;
+      const taxRate = item.taxRate ? taxRates?.find((rate) => rate.id === taxRateId) : null;
       if (!groups[taxRateId]) {
         groups[taxRateId] = { taxRate, subtotal: 0, tax: 0 };
       }
@@ -209,8 +219,8 @@ const InvoicePDFTunisia = ({
                 <Trans>Total excl. tax</Trans>
               </Text>
             </View>
-            {invoice.lineItems?.map((lineItem: any, index: number) => {
-              const taxRate = taxRates?.find((rate: any) => rate.id === lineItem.taxRate);
+            {invoice.lineItems?.map((lineItem, index) => {
+              const taxRate = taxRates?.find((rate) => rate.id === lineItem.taxRate);
               return (
                 <View key={lineItem.id ?? index} style={styles.tableRow}>
                   <Text style={[styles.tableCol, styles.colDescription]}>

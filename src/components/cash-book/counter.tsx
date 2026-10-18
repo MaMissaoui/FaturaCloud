@@ -34,6 +34,7 @@ import {
   customerIdentifiers,
   movementKindColor,
   movementKindLabel,
+  type CustomerFields,
 } from "src/components/cash-book/shared";
 import type { CashBookState } from "src/components/cash-book/use-cash-book";
 import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
@@ -187,7 +188,7 @@ const CustomerCard = ({ cb }: { cb: CashBookState }) => {
   // show the first few and let the cashier expand the rest.
   const [showAll, setShowAll] = useState(false);
   const shownLines = showAll ? openLines : openLines.slice(0, SLIPS_SHOWN);
-  const details: any = selectedClient ?? newClientDraft ?? {};
+  const details: CustomerFields = selectedClient ?? newClientDraft ?? {};
   return (
     <Card
       size="small"

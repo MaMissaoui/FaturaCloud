@@ -207,7 +207,7 @@ describe("filterMenuForRole", () => {
 
   it("drops groups outside the allow-list and prunes children within them", () => {
     const filtered = filterMenuForRole("general", items);
-    expect(filtered.map((i: any) => i.key)).toEqual([
+    expect(filtered.map((i) => i.key)).toEqual([
       "dashboard",
       "group-sales",
       "group-purchasing",
@@ -215,29 +215,29 @@ describe("filterMenuForRole", () => {
       "group-reporting",
     ]);
     expect(
-      filtered.find((i: any) => i.key === "group-purchasing").children.map((c: any) => c.key),
+      filtered.find((i) => i.key === "group-purchasing")!.children!.map((c) => c!.key),
     ).toEqual(["purchase-orders", "inbound-deliveries"]);
     expect(
-      filtered.find((i: any) => i.key === "group-masterdata").children.map((c: any) => c.key),
+      filtered.find((i) => i.key === "group-masterdata")!.children!.map((c) => c!.key),
     ).toEqual(["clients", "vendors", "products"]);
     // A null group value keeps every child.
-    expect(filtered.find((i: any) => i.key === "group-sales").children).toHaveLength(3);
+    expect(filtered.find((i) => i.key === "group-sales")!.children!).toHaveLength(3);
   });
 
   it("keeps only the domain group and shared master data for a domain role", () => {
     const filtered = filterMenuForRole("sales", items);
-    expect(filtered.map((i: any) => i.key)).toEqual([
+    expect(filtered.map((i) => i.key)).toEqual([
       "dashboard",
       "group-sales",
       "group-masterdata",
       "group-reporting",
     ]);
     expect(
-      filtered.find((i: any) => i.key === "group-masterdata").children.map((c: any) => c.key),
+      filtered.find((i) => i.key === "group-masterdata")!.children!.map((c) => c!.key),
     ).toEqual(["clients", "products"]);
-    expect(
-      filtered.find((i: any) => i.key === "group-reporting").children.map((c: any) => c.key),
-    ).toEqual(["revenue-trend"]);
+    expect(filtered.find((i) => i.key === "group-reporting")!.children!.map((c) => c!.key)).toEqual(
+      ["revenue-trend"],
+    );
   });
 });
 

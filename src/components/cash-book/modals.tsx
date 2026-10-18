@@ -143,13 +143,11 @@ const CashBookModals = ({ cb }: { cb: CashBookState }) => {
             rules={[{ required: true, message: t`This field is required!` }]}
           >
             <Select showSearch optionFilterProp="children">
-              {(withdrawDestination === "expense" ? expenseAccounts : bankAccounts).map(
-                (a: any) => (
-                  <Option key={a.id} value={a.id}>
-                    {a.code} — {a.name}
-                  </Option>
-                ),
-              )}
+              {(withdrawDestination === "expense" ? expenseAccounts : bankAccounts).map((a) => (
+                <Option key={a.id} value={a.id}>
+                  {a.code} — {a.name}
+                </Option>
+              ))}
             </Select>
           </Form.Item>
           <Form.Item label={t`Note`} name="note">

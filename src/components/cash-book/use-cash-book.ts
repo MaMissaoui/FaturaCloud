@@ -80,6 +80,24 @@ export interface CashBookExportScope {
   register?: LoanRegisterFilter;
 }
 
+// The Cash Book's form values. Amounts are as typed, in currency units, and
+// go through toNumber and unitsToCents.
+type WithdrawFormValues = {
+  counterAccountType: "bank" | "expense";
+  counterAccountId: string;
+  amount?: number | string;
+  note?: string;
+};
+type NewClientFormValues = Omit<NewClientDraft, "phone"> & { phone?: string };
+type SaleFormValues = {
+  date: Dayjs;
+  lineItems?: SaleLineInput[];
+  amountReceived?: number | string;
+  paymentMethod?: string;
+  reference?: string;
+};
+type PayLineFormValues = { amount?: number | string; reference?: string };
+
 export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptions = {}) => {
   const { i18n } = useLingui();
   const { message, modal } = App.useApp();
@@ -100,7 +118,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // F158).
   const sellableProducts = useMemo(
     () =>
-      (products as any[]).filter(
+      products.filter(
         (p) => p.category !== "component" && !(p.stockEnabled === 1 && p.serialized === 1),
       ),
     [products],
@@ -208,7 +226,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   useEffect(() => {
     if (!organizationId) return;
     GetAccounts(organizationId)
-      .then((accts) => setAccounts((accts as any[]).filter((a) => !a.isGroup)))
+      .then((accts) => setAccounts(accts.filter((a) => !a.isGroup)))
       .catch((error) => console.error("Failed to fetch accounts:", error));
   }, [organizationId]);
 
@@ -324,8 +342,8 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // (or the loan-report filter) when one is selected, newest first (GetPayments
   // already orders by date DESC).
   const clientNameById = useMemo(() => {
-    const names = new Map<string, string>();
-    for (const c of clients as any[]) names.set(c.id, c.name);
+    const names = new Map<string, string | null>();
+    for (const c of clients) names.set(c.id, c.name);
     return names;
   }, [clients]);
   const paymentHistory = useMemo(() => {
@@ -395,11 +413,8 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
       }
     };
 
-  const bankAccounts = useMemo(() => accounts.filter((a: any) => a.type === "asset"), [accounts]);
-  const expenseAccounts = useMemo(
-    () => accounts.filter((a: any) => a.type === "expense"),
-    [accounts],
-  );
+  const bankAccounts = useMemo(() => accounts.filter((a) => a.type === "asset"), [accounts]);
+  const expenseAccounts = useMemo(() => accounts.filter((a) => a.type === "expense"), [accounts]);
   const withdrawDestination = Form.useWatch("counterAccountType", withdrawForm);
 
   const openWithdrawModal = () => {
@@ -416,7 +431,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     setWithdrawModalOpen(true);
   };
 
-  const handleWithdrawSubmit = async (values: any) => {
+  const handleWithdrawSubmit = async (values: WithdrawFormValues) => {
     if (!organizationId || !registerAccountId || !isToday) return;
     setWithdrawSubmitting(true);
     try {
@@ -480,7 +495,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
 
   const needle = search.trim().toLowerCase();
   const searchResults = useMemo(
-    () => searchClients(clients as any[], needle, openLoanByClient),
+    () => searchClients(clients, needle, openLoanByClient),
     [clients, needle, openLoanByClient],
   );
 
@@ -520,7 +535,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
 
   // A row's accessible name: the same facts the row shows, rather than the
   // browser deriving it from the whole cell.
-  const resultAriaLabel = (c: any): string => {
+  const resultAriaLabel = (c: Client): string => {
     const outstanding = openLoanByClient.get(c.id) ?? 0;
     return [
       c.name,
@@ -539,15 +554,13 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     setNewClientModalOpen(true);
   };
 
-  const handleNewClientSubmit = (values: any) => {
+  const handleNewClientSubmit = (values: NewClientFormValues) => {
     const phone = values.phone?.trim();
     // Client-side duplicate-phone check — the primary UX path. The server
     // repeats this check inside CreateCashSale as a backstop (see its doc
     // comment); this is what avoids splitting a returning walk-in
     // customer's history across two client records.
-    const existingByPhone = phone
-      ? (clients as any[]).find((c) => c.phone && c.phone === phone)
-      : null;
+    const existingByPhone = phone ? clients.find((c) => c.phone && c.phone === phone) : null;
     if (existingByPhone) {
       modal.confirm({
         title: t`A customer with this phone number already exists`,
@@ -566,7 +579,8 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     setLoanStatusClientId("");
     setNewClientDraft({
       name: values.name,
-      phone,
+      // Required by the modal's rule.
+      phone: phone as string,
       phone2: values.phone2?.trim() || undefined,
       phone3: values.phone3?.trim() || undefined,
       address: values.address?.trim() || undefined,
@@ -608,7 +622,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   const currency = organization?.currency || "EUR";
   const money = (cents: number) => formatOrgCents(cents, organization, i18n.locale);
 
-  const handleSubmitSale = async (values: any) => {
+  const handleSubmitSale = async (values: SaleFormValues) => {
     if (!organizationId || !isToday) return;
     if (!selectedClient && !newClientDraft) {
       message.error(t`Pick or create a customer first`);
@@ -635,7 +649,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     }
 
     const soldProductIds = uniq(
-      (values.lineItems || []).map((item: any) => item.productId).filter(Boolean),
+      (values.lineItems || []).map((item) => item.productId).filter(Boolean),
     ) as string[];
     setSubmitting(true);
     let result: Awaited<ReturnType<typeof CreateCashSale>>;
@@ -715,7 +729,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // Records the payment against the one loan line, server-side in a single
   // transaction that also moves the invoice to "paid" once its whole balance
   // clears (db/cash_sale_payment.go) — no follow-up state call from here.
-  const handlePayLineSubmit = async (values: any) => {
+  const handlePayLineSubmit = async (values: PayLineFormValues) => {
     if (!payingLine) return;
     setPayingSubmitting(true);
     try {
@@ -750,7 +764,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // prefill the line's description, tax rate and gross (tax-inclusive)
   // price. Shared by every layout's line-items table.
   const onProductSelect = (productId: string, fieldName: number, formInstance: FormInstance) => {
-    const product = find(products, { id: productId }) as any;
+    const product = find(products, { id: productId });
     if (product?.stockEnabled === 1 && (product.stockQuantity ?? 0) <= 0) {
       // Never blocks the sale (a decision: the counter keeps
       // selling when the records are off) — stock just

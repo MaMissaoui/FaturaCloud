@@ -4,7 +4,19 @@
 // order is the point: a cashier types a few characters and expects the right
 // person first, but the underlying list arrives name-alphabetical, which puts
 // a customer with no debt above the one who owes.
-export function searchClients<T extends Record<string, any>>(
+// The fields the search reads; a Client has them all.
+export type SearchableClient = {
+  id: string;
+  name?: string | null;
+  code?: string | null;
+  phone?: string | null;
+  phone2?: string | null;
+  phone3?: string | null;
+  identity_number?: string | null;
+  iban?: string | null;
+};
+
+export function searchClients<T extends SearchableClient>(
   clients: T[],
   needle: string,
   outstandingByClient: Map<string, number>,
