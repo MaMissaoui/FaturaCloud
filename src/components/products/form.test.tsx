@@ -64,6 +64,7 @@ import {
   ReplaceProductBOM,
   UpdateProduct,
 } from "src/api";
+import MessageBridge from "src/components/message-bridge";
 
 const finishedProduct: Product = {
   id: "p1",
@@ -117,6 +118,7 @@ async function renderProductForm(
       <I18nProvider i18n={i18n}>
         <ConfigProvider>
           <App>
+            <MessageBridge />
             <MemoryRouter initialEntries={[{ pathname: "/products", state }]}>
               {children}
             </MemoryRouter>

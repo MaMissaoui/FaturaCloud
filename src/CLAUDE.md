@@ -8,6 +8,7 @@ Loaded when working under `src/`. Project-wide invariants are in the root `CLAUD
 - **Never use module-level atoms for local state inside a Modal or Drawer**: the mask gets orphaned and freezes the UI. Use `useState`. A list page's filter atom (e.g. `searchAtom`) is fine.
 - **Writable atoms rethrow after toasting a failed save**, so the drawer or page's `handleSubmit` keeps the form open and its dirty flag set (`incomingInvoiceAtom` returns a boolean instead). A new writable atom does the same.
 - `organizationAtom` returns `null` without fetching while `currentUserAtom` is null; it would otherwise cache a logged-out 401. Component tests that pick an organization must also set `currentUserAtom` (see `src/routes/invoices/details.test.tsx`). `myOrgRoleAtom` is keyed on the user too.
+- Toasts go through `src/utils/message.ts`, fed by `<MessageBridge />` (`src/components/message-bridge.tsx`) mounted first inside antd's `<App>`. A component test's wrapper mounts it too (`renderWithProviders` does): `vitest.setup.ts` fails a test whose toast reached antd's static instance, whose timer would otherwise fire after jsdom teardown and fail a green run.
 - `logoutAtom` (`src/atoms/session.ts`) is the only way to sign out. It clears the user, the organizations and the remembered organization, but only if the same user is still current. Callers navigate to `/login` first.
 - `isPlatformAdminAtom` gates only Backup, Users and Countries. Org-scoped admin UI uses `isOrgAdminAtom`, and GL Export uses `isOrgAdminOrAccountingAtom`.
 

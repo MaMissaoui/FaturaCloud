@@ -29,7 +29,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 
 import { localeAtom, themeAtom } from "src/atoms/generic";
 import { dynamicActivate } from "src/utils/lingui";
-import { setThemedMessage } from "src/utils/message";
+import MessageBridge from "src/components/message-bridge";
 
 import { organizationIdAtom, organizationAtom, setOrganizationsAtom } from "src/atoms/organization";
 import { setActiveCountriesAtom } from "src/atoms/country";
@@ -111,19 +111,6 @@ const DevTools =
   import.meta.env.DEV && import.meta.env.VITE_JOTAI_DEVTOOLS_ENABLED === "true"
     ? lazy(() => import("jotai-devtools").then((module) => ({ default: module.DevTools })))
     : () => null;
-
-// antd's static message.* API can't read the ConfigProvider theme, so
-// toasts render light-styled even in dark mode. App.useApp() is the fix,
-// but most callers are Jotai atom write functions (plain functions, can't
-// call hooks) — so this bridges the themed instance out to a module those
-// atoms can import instead. See src/utils/message.ts.
-const MessageBridge = () => {
-  const { message } = AntApp.useApp();
-  useEffect(() => {
-    setThemedMessage(message);
-  }, [message]);
-  return null;
-};
 
 // loadable() resolves synchronously instead of suspending — AppContent
 // renders ConfigProvider itself, above the <Suspense> boundary around

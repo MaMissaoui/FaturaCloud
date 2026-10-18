@@ -3,12 +3,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { App } from "antd";
 import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
+import MessageBridge from "src/components/message-bridge";
 import DocumentExportButtons from "./document-export-buttons";
 
 const renderButtons = (isDirty: boolean, exportDocument: (f: "pdf" | "xlsx") => Promise<unknown>) =>
   render(
     <I18nProvider i18n={i18n}>
       <App>
+        <MessageBridge />
         <DocumentExportButtons isDirty={isDirty} exportDocument={exportDocument} />
       </App>
     </I18nProvider>,
