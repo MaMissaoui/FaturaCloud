@@ -12,6 +12,11 @@ F190 or later.
   plan agent, no edits) against a brief listing ten security areas, the
   binding exclusion lists and the product decisions.
 - A separate pass by the authoring model over the same areas.
+- A second, independent OpenCode sweep (`opencode-go/kimi-k2.7-code`, same
+  brief, run on `main` without this document). It reported seven items.
+  One is F192, found independently. The other six were dismissed (see
+  "Explicitly excluded") or are already on the watch list. It did not find
+  F190, F191, F193 or F194.
 - Every finding below was checked against the code by the authoring model.
   Of OpenCode's eight, three were dismissed or moved to the watch list on
   evidence (`TRUSTED_PROXIES`, API `Cache-Control`, the template vector; see
@@ -193,7 +198,9 @@ own profile, for up to 60 s. It has 7 callers (the six document exports in
 `api/report_export.go`) and no semaphore, pool or per-user limit anywhere. The export routes sit outside `withDB` on
 purpose, so nothing else serializes them. This was the 2026-10-17 watch
 list's "Excel-template exports at volume" entry. It is a finding now
-because any member can reach it.
+because any member can reach it. Both OpenCode sweeps raised it
+independently (the second rated it High; Medium here until the Pi's
+limit is measured).
 
 **Attack.** A member with any export route (for example `sales` on invoice
 PDFs, `cashbook` on the daily movement export) fires a few dozen PDF exports
@@ -273,6 +280,8 @@ WAL, SHM and temp files in one place. Have `deploy.md` create `./data` as 0750.
   `xl/vbaProject.bin` or a connection part was not converted. Uploading a
   template needs an org-wide role. If it's ever tested, use a real `.xlsx`
   as the link target and a listener reachable over IPv6 from the container.
+  The second sweep rated this High from the code alone; without a
+  conversion that shows LibreOffice acting on such a part, it stays here.
 - **A pixel-bomb logo.** The logo upload checks the sniffed type and a 2 MB
   cap, not the dimensions. A 2 MB PNG can decode to gigabytes, and
   LibreOffice decodes it on every export that places `{{organization.logo}}`.
@@ -325,6 +334,18 @@ WAL, SHM and temp files in one place. Have `deploy.md` create `./data` as 0750.
   `eval` in `src/`.
 - **CI workflows**: no `pull_request_target`, no untrusted event text in
   `run:` steps; the Sentry token is a BuildKit secret.
+- **Formula injection in the FEC export** (raised by the second sweep). The
+  2026-09-19 audit verified Excel-formula injection clean. FEC is a
+  regulated file read by tax tools, and prefixing a `'` would change the
+  values it must carry.
+- **Unbounded list endpoints** (second sweep): F176 (2026-10-17).
+- **No `permissions:` block in `ci.yml` and `runtime-image.yml`** (second
+  sweep). The repository's default workflow token is read-only
+  (`default_workflow_permissions: read`, checked with `gh api`), and it
+  can't approve pull requests.
+- **Unpinned `apt-get install` versions in the Dockerfile** (second sweep).
+  The base image is digest-pinned. Pinning Debian package versions would
+  also hold back their security updates.
 - Everything the earlier documents exclude.
 
 ## Not covered
