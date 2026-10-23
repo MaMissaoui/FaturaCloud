@@ -16,6 +16,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
 ## Organization columns
 - **Three-state nullable fields:** in `UpdateOrganization`, omitted keeps, `""` clears, a value sets. Text columns do this with `COALESCE(?, column)`. The `default*AccountId` columns have foreign keys, so `UpdateOrganization` builds their SET clauses in Go (column names from a Go literal, never from the request). The frontend must send `""` explicitly to clear, because antd's `allowClear` sets `undefined`, which `JSON.stringify` drops.
 - `PUT /api/organizations/{id}` is membership-level; organization settings are not admin-gated.
+- Each non-empty `default*AccountId` must be the organization's own account (`requireSameOrg`, F193); a missing one is a 409.
 - Logo: a BLOB, read and written only through `/api/organizations/{id}/logo` (`GetOrganizationLogo`/`SetOrganizationLogo`, which also decodes the legacy data-URI text format). `db.Organization` has no logo field, and reads use the explicit `organizationColumns` list so a multi-MB BLOB is never loaded; `HasLogo` (`length(logo) > 0`) tells the frontend whether to fetch it.
 - `brandColor`: only values from the curated `brandColorPalette` (`normalizeBrandColor`, 409 otherwise); `""` = default.
 - `isTest` (`0099`): a visible marker only; nothing on the server reads it. seed-demo sets it.
@@ -93,6 +94,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
 - `journal_lines`: `CHECK ((debit = 0) <> (credit = 0))`, so a group that nets to zero (0% tax, a free line) emits no row. `debit`/`credit` are always functional-currency cents; `currency`/`foreignAmount`/`exchangeRate` are a shadow. `clientId`/`vendorId` are typed FKs, at most one set.
 - **`allocateAndFinalizeEntryTx` is the single posting choke point** (manual, auto, payments, closing). It checks balance, refuses a closed fiscal year, and allocates `entryNumber` as `MAX+1` over numbered entries. Posted entries are never edited or deleted, only reversed (`reverseEntryTx`, `WHERE status = 'posted'` plus `RowsAffected`). Migration `0059`'s partial unique index allows one live posted entry per `(sourceDocumentType, sourceDocumentId)`. A second entry for the same document needs its own source type (e.g. `invoice_cogs`, `invoice_opening`).
 - `findPostedEntryForSourceDocumentTx` is re-checked inside the transaction by every state-change path. `DeleteJournalEntry` deletes `AND status = 'draft'` only.
+- **A manual entry never names a source document** (F191): `CreateJournalEntryRequest` has no source fields, because a live posted entry naming a document makes its automatic posting skip. Only automatic postings set them. The lookup and `0059`'s index are still global, not per organization.
 - `db/gl_posting.go`:
   - `postAutoEntryTx` creates and posts in one step.
   - Invoice and bill entries: one line per account and per tax rate, with AR/AP as the remainder so the entry balances with no plug. `UpdateInvoiceState`/`UpdateIncomingInvoiceState` post or reverse by whether the new state needs GL presence.
@@ -122,7 +124,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
   - no availability check (stock may go negative);
   - serialized products and non-positive quantities are refused.
 
-  While the stock-out stands, `DeleteInvoice` and financial edits are refused, and `DeleteStockMovement` refuses its rows. Sales from before `0094` never move stock.
+  While the stock-out stands, `DeleteInvoice` and financial edits are refused, and `DeleteStockMovement` refuses its rows. Sales from before `0094` never move stock. `postedInvoiceStockTx` counts only the invoice's own organization's movements: a manual movement's client-chosen id is its `sourceDocumentId`, so another organization's could otherwise name the sale (F196).
 - `db/cash_sale_payment.go`, `CreateCashSalePayment` (`0090`): one payment per invoice line (`payment_applications.invoiceLineItemId`), capped at that line's outstanding and re-checked in the transaction. When it clears the invoice, the invoice turns `paid`. Any sent or paid invoice of the organization qualifies (F150, by decision); foreign currency is refused. Line outstanding comes from `allocateInvoiceLines` (`db/dashboard.go`): line amount = total weighted by net value (a free line weighs nothing), and invoice-level payments are spread by amount via `allocateCapped`, so paying one line never moves another (`TestAllocateInvoiceLinesSettlingALineLeavesTheOthersAlone`). AR still settles per invoice.
 - `db/opening_loan.go` (`0097`): migrated paper loans are invoices with `origin = 'opening'`, carrying the original sale date, no tax and no stock.
   - An open loan posts Dr AR / Cr Retained Earnings for its outstanding, dated the cutover (`invoice_opening`). A settled one posts nothing.
@@ -139,7 +141,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
   - The 20,000-row cap (`checkImportRowCount`) applies here too.
 - `db/cash_movement.go` (`0080`): money leaving the register (bank deposit or expense), one Dr counter / Cr register entry. `counterAccountType` is checked against the account. There is no balance floor; an over-withdrawal shows, it isn't refused.
 - Reports:
-  - `GetDailyCashMovements` buckets per line in Go (`strftime` can't follow DST).
+  - `GetDailyCashMovements` buckets per line in Go (`strftime` can't follow DST). It builds one row per day, so a range over 10 years is a 409 (`maxDailyCashMovementSpanMs`, F190).
   - `GetCashMovementDetails` takes `Kind` from the payment's position in the invoice's history, not its current state. Voided payments are excluded.
   - `db/loan_register.go` is the Go twin of `src/components/cash-book/loan-register-model.ts`. `LoanStaleAfterDays` (60) must equal the screen's `STALE_AFTER_DAYS`.
   - `GetLoanStatus` lists loans. A loan cleared by one invoice-level payment is a documented gap (`LoanStatusRow`).
