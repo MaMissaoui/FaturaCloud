@@ -1,6 +1,10 @@
 package db
 
-import "testing"
+import (
+	"errors"
+	"math"
+	"testing"
+)
 
 func TestGetProfitAndLoss(t *testing.T) {
 	t.Parallel()
@@ -629,6 +633,55 @@ func TestGetDailyCashMovementsRejectsInvertedRange(t *testing.T) {
 	_, err := d.GetDailyCashMovements(fx.orgID, register.ID, fx.date, fx.date-86400000)
 	if err == nil {
 		t.Fatal("expected an endDate before startDate to be rejected")
+	}
+}
+
+// One row per day means an unbounded range is an allocation the caller
+// picks (audit F190): anything over 10 years is refused before a row is
+// built, including ranges whose naive end-start would overflow.
+func TestGetDailyCashMovementsRejectsAnOverlongRange(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-daily-cash-overlong")
+	register, _, _ := cashMovementTestAccounts(t, d, fx.orgID)
+	const day = int64(86400000)
+
+	for _, tc := range []struct {
+		name       string
+		start, end int64
+	}{
+		{"eleven years", fx.date, fx.date + 11*366*day},
+		{"to the end of int64", -1, math.MaxInt64},
+		{"from the start of int64", math.MinInt64, 0},
+	} {
+		_, err := d.GetDailyCashMovements(fx.orgID, register.ID, tc.start, tc.end)
+		var verr *ValidationError
+		if !errors.As(err, &verr) {
+			t.Errorf("%s: expected a ValidationError, got %v", tc.name, err)
+		}
+	}
+
+	// A range near the top of int64 can't exceed the cap; it must return
+	// without panicking or looping.
+	if _, err := d.GetDailyCashMovements(fx.orgID, register.ID, math.MaxInt64-day, math.MaxInt64); err != nil {
+		t.Logf("range at the top of int64: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name     string
+		end      int64
+		wantRows int
+	}{
+		{"one day", fx.date, 1},
+		{"one year", fx.date + 364*day, 365},
+	} {
+		rows, err := d.GetDailyCashMovements(fx.orgID, register.ID, fx.date, tc.end)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if len(rows) != tc.wantRows {
+			t.Errorf("%s: %d rows, want %d", tc.name, len(rows), tc.wantRows)
+		}
 	}
 }
 

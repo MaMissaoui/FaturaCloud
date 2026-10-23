@@ -2,9 +2,14 @@ package db
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
+
+// maxDailyCashMovementSpanMs bounds GetDailyCashMovements' range: 10 years
+// plus slack for leap days, far beyond any range the screens ask for.
+const maxDailyCashMovementSpanMs = int64(3653) * 24 * 60 * 60 * 1000
 
 // TrialBalanceRow is one account's posted debit/credit totals — computed on
 // read from journal_lines, never stored, the same "compute, don't cache"
@@ -406,12 +411,21 @@ type DailyCashMovementRow struct {
 // calendar days, one day legitimately shows cash in and a later day shows
 // the offsetting cash out for a transaction that net never happened; that's
 // correct ledger history, not a bug in this report.
+//
+// The span is capped at maxDailyCashMovementSpanMs: the report builds one
+// row per day, so an unbounded range let one request allocate gigabytes
+// (audit F190).
 func (d *Database) GetDailyCashMovements(organizationID, accountID string, startDate, endDate int64) ([]DailyCashMovementRow, error) {
 	if _, err := d.resolveCashReportAccount(organizationID, accountID); err != nil {
 		return nil, err
 	}
 	if endDate < startDate {
 		return nil, newValidationError("endDate must not be before startDate")
+	}
+	// Written so neither side overflows: endDate-startDate wraps negative
+	// for a range spanning most of int64.
+	if startDate <= math.MaxInt64-maxDailyCashMovementSpanMs && endDate > startDate+maxDailyCashMovementSpanMs {
+		return nil, newValidationError("the date range can't be longer than 10 years")
 	}
 	loc, err := organizationLocation(d.DB, organizationID)
 	if err != nil {
