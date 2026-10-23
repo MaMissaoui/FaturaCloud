@@ -221,6 +221,16 @@ same-organization case, refuse a client-chosen movement id that equals an
 existing document's id, or ignore client ids for stock movements (an owner
 decision: `Create*` taking a client id is a repo-wide convention).
 
+**Other consumers of `sourceDocumentId`, checked.** The product summary's
+joins (`db/product_summary.go:200-204`) already match on the movement's
+organization, and the serialized shipment, receipt and production lookups
+(`db/delivery.go:630`, `db/inbound_delivery.go:722`,
+`db/production_order.go:642`) pin a `productId`, which is
+organization-specific. Left as they are: `DeleteStockMovement`'s
+cash-sale check (`db/stock.go:460`, which only blocks the planting
+organization's own movement) and the global `stock_movement` GL lookup
+(`db/stock.go:445`), which F191's second step scopes.
+
 ---
 
 ## Phase 2 — resource limits
