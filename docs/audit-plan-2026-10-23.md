@@ -24,7 +24,7 @@ F190 or later.
   Medium).
 - Probes, all throwaway:
   - a `db` test (deleted afterwards, never committed) reproducing F190,
-    F191 and F193 on a scratch database;
+    F191, F193 and F196 on a scratch database;
   - the released `ghcr.io/mamissaoui/fatura-cloud:3.70.0` image, used to
     convert a crafted workbook with the same `soffice` arguments as
     `db/pdf_convert.go` (formula vector) and to start the server on a
@@ -57,14 +57,15 @@ Labels:
 
 ## Severity overview
 
-| #    | Finding                                                                                 | Area               | Severity | Label     | Phase |
-| ---- | --------------------------------------------------------------------------------------- | ------------------ | -------- | --------- | ----- |
-| F190 | One Daily Cash Movements request with a wide date range exhausts the server's memory    | Denial of service  | High     | Confirmed | 1     |
-| F191 | A manual journal entry can claim any document and stop its posting, in any organization | Ledger integrity   | Medium   | Confirmed | 1     |
-| F192 | PDF exports start any number of LibreOffice processes at once                           | Denial of service  | Medium   | Code read | 2     |
-| F193 | The organization's default GL accounts accept another organization's account            | Cross-organization | Low      | Confirmed | 1     |
-| F194 | Anyone who knows an email can keep that account locked out of password sign-in          | Authentication     | Low      | Code read | 2     |
-| F195 | The live database is created world-readable                                             | Ops                | Low      | Confirmed | 3     |
+| #    | Finding                                                                                  | Area               | Severity | Label     | Phase |
+| ---- | ---------------------------------------------------------------------------------------- | ------------------ | -------- | --------- | ----- |
+| F190 | One Daily Cash Movements request with a wide date range exhausts the server's memory     | Denial of service  | High     | Confirmed | 1     |
+| F191 | A manual journal entry can claim any document and stop its posting, in any organization  | Ledger integrity   | Medium   | Confirmed | 1     |
+| F192 | PDF exports start any number of LibreOffice processes at once                            | Denial of service  | Medium   | Code read | 2     |
+| F193 | The organization's default GL accounts accept another organization's account             | Cross-organization | Low      | Confirmed | 1     |
+| F194 | Anyone who knows an email can keep that account locked out of password sign-in           | Authentication     | Low      | Code read | 2     |
+| F195 | The live database is created world-readable                                              | Ops                | Low      | Confirmed | 3     |
+| F196 | A stock movement named after another organization's sale moves that organization's stock | Cross-organization | Medium   | Confirmed | 1     |
 
 No earlier finding was found to have regressed. OpenCode's sweep checked
 F167, F168, F169, F170, F173, F174, F175, F178, F179, F181 and F182 against
@@ -153,8 +154,9 @@ Then add `organizationId` to `findPostedEntryForSourceDocumentTx` and to
 `0059`'s index in a new migration, after a production query confirms no
 entry already names a document of another organization (Phase 0 style).
 `CreateJournalEntryRequest` is the only request type carrying these fields,
-and journal entries have no update route, so the first step closes the
-entry point.
+and journal entries have no update route, so the first step closes this
+entry point. It is not the only client-chosen `sourceDocumentId`: a manual
+stock movement's is its request `id` (F196).
 
 ### 1.3 — F193: the default GL accounts accept another organization's account (Low, Confirmed)
 
@@ -184,6 +186,40 @@ in A's reports and activity history (`db/audit_changes.go:72`).
 before building the SET clause, outside any transaction. Extend
 `TestCreateAccountRejectsCrossOrgReferences`'s family in
 `db/org_ownership_test.go`.
+
+### 1.4 — F196: a stock movement named after another organization's sale (Medium, Confirmed)
+
+Found while checking whether F191's first step closes every path. Added
+after the rest of this document.
+
+**What happens.** `POST /api/stock-movements` (`api/router.go:593`, any
+member through `requireOrgMember`) accepts an `id` in the body.
+`CreateStockMovement` uses it as the batch's `sourceDocumentId`
+(`db/stock.go:263`), and for a non-serialized product also as the row's
+primary key. Invoice ids live in another table, so nothing stops it from
+equalling a Cash Book sale's id. A sale's posted stock is then summed by
+`sourceDocumentId` alone (`postedInvoiceStockTx`, `db/invoice_stock.go:141`),
+with no organization filter.
+
+**Probe.** Org B sells 2 washers at the counter. A member of org A creates a
+manual "in" movement of 7 of A's own washers with `id` set to B's sale id.
+The server then reports B's sale as standing at −2 of B's washer and +7 of
+A's. When B cancels the sale, it puts back exactly what it thinks the sale
+moved: +2 of B's washer and **−7 of A's washer, as a movement inside org
+B**. A's stock drops from 12 to 5 through B's action.
+
+**Attack.** It needs B's sale id (21 characters, not guessable), the same
+precondition as F191's cross-organization case. The impact is a write into
+another organization's stock and a foreign product's movement in the
+victim's books. In the same organization, a member can also attach a
+manual movement to their own sale, which the sale's cancellation then
+reverses, and `DeleteStockMovement` refuses to delete
+(`db/stock.go:460`).
+
+**Fix.** Scope `postedInvoiceStockTx` to the invoice's organization. For the
+same-organization case, refuse a client-chosen movement id that equals an
+existing document's id, or ignore client ids for stock movements (an owner
+decision: `Create*` taking a client id is a repo-wide convention).
 
 ---
 
@@ -352,7 +388,7 @@ WAL, SHM and temp files in one place. Have `deploy.md` create `./data` as 0750.
 
 - **The Raspberry Pi.** F190's and F192's limits were measured or reasoned
   on a Mac, not on the Pi.
-- **The routes end to end over HTTP.** F190, F191 and F193 were reproduced
+- **The routes end to end over HTTP.** F190, F191, F193 and F196 were reproduced
   at the `db` layer; the route wrappers and sections were read, not called.
 - **The template parts and the logo bomb** on the watch list.
 - **A live SSO sign-in** and the restore path, as before.
@@ -372,6 +408,8 @@ Beyond the per-phase gates:
   the index migration.
 - **F193:** `UpdateOrganization(A, {defaultArAccountId: <B's account>})` is a
   `ValidationError`; A's own account and `""` (clear) still work.
+- **F196:** a movement in org A named after org B's sale leaves A's stock
+  untouched when B cancels, and org B holds no movement of A's product.
 - **F192:** in the runtime image, 20 simultaneous PDF exports leave at most
   the configured number of `soffice` processes, the rest get a 503, and
   other requests stay responsive.
