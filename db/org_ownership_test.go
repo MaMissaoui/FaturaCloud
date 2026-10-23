@@ -748,3 +748,54 @@ func TestCreatePaymentRejectsCrossOrgReferences(t *testing.T) {
 		t.Fatalf("expected a fully self-consistent org-b payment to succeed, got: %v", err)
 	}
 }
+
+// TestUpdateOrganizationRejectsCrossOrgDefaultAccounts covers the
+// default*AccountId columns (audit F193): the foreign key only proved the
+// account existed, so an organization's AR, cash register or any other
+// default could point at another organization's account, and its postings
+// then locked that account in its owner's chart.
+func TestUpdateOrganizationRejectsCrossOrgDefaultAccounts(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-defaults-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-a: %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-defaults-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization org-b: %v", err)
+	}
+	ownAR, otherAR := *orgA.DefaultArAccountID, *orgB.DefaultArAccountID
+
+	if _, err := d.UpdateOrganization(orgA.ID, UpdateOrganizationRequest{DefaultArAccountID: &otherAR}); err == nil {
+		t.Fatal("expected org-a's default AR account pointing at org-b's account to be rejected")
+	} else {
+		requireValidationError(t, err, "different organization")
+	}
+	missing := "no-such-account"
+	if _, err := d.UpdateOrganization(orgA.ID, UpdateOrganizationRequest{DefaultCashRegisterAccountID: &missing}); err == nil {
+		t.Fatal("expected a default account that doesn't exist to be rejected")
+	} else {
+		requireValidationError(t, err, "account not found")
+	}
+	if org, err := d.GetOrganization(orgA.ID); err != nil || *org.DefaultArAccountID != ownAR {
+		t.Fatalf("a refused update must leave the default untouched, err=%v", err)
+	}
+
+	// Its own account still sets, "" still clears, and an omitted field is
+	// left alone.
+	if _, err := d.UpdateOrganization(orgA.ID, UpdateOrganizationRequest{DefaultArAccountID: &ownAR}); err != nil {
+		t.Fatalf("setting org-a's own AR account: %v", err)
+	}
+	clear := ""
+	org, err := d.UpdateOrganization(orgA.ID, UpdateOrganizationRequest{DefaultCashAccountID: &clear})
+	if err != nil {
+		t.Fatalf("clearing the default cash account: %v", err)
+	}
+	if org.DefaultCashAccountID != nil {
+		t.Fatalf("default cash account = %v, want cleared", *org.DefaultCashAccountID)
+	}
+	if org.DefaultArAccountID == nil || *org.DefaultArAccountID != ownAR {
+		t.Fatal("an omitted default must keep its value")
+	}
+}

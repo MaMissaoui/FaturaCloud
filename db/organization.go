@@ -609,6 +609,16 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		case *f.value == "":
 			accountSet.WriteString(",\n\t\t     " + f.column + " = NULL")
 		default:
+			// The foreign key only proves the account exists; like every
+			// other account reference, it must be this organization's own
+			// (audit F193).
+			account, err := d.GetAccount(*f.value)
+			if err != nil {
+				return nil, newValidationError("%s: account not found", f.column)
+			}
+			if err := requireSameOrg(organizationID, account.OrganizationID, f.column); err != nil {
+				return nil, err
+			}
 			accountSet.WriteString(",\n\t\t     " + f.column + " = ?")
 			accountArgs = append(accountArgs, *f.value)
 		}

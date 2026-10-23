@@ -68,16 +68,14 @@ type CreateJournalLineRequest struct {
 // entry — always starts as a draft (status='draft', no entryNumber). Posting
 // is a separate step (PostJournalEntry).
 type CreateJournalEntryRequest struct {
-	ID                 string                     `json:"id"`
-	OrganizationID     string                     `json:"organizationId"`
-	JournalID          string                     `json:"journalId"`
-	Date               int64                      `json:"date"`
-	Reference          *string                    `json:"reference"`
-	Description        string                     `json:"description"`
-	SourceDocumentType *string                    `json:"sourceDocumentType"`
-	SourceDocumentID   *string                    `json:"sourceDocumentId"`
-	CreatedBy          *string                    `json:"createdBy"`
-	Lines              []CreateJournalLineRequest `json:"lines"`
+	ID             string                     `json:"id"`
+	OrganizationID string                     `json:"organizationId"`
+	JournalID      string                     `json:"journalId"`
+	Date           int64                      `json:"date"`
+	Reference      *string                    `json:"reference"`
+	Description    string                     `json:"description"`
+	CreatedBy      *string                    `json:"createdBy"`
+	Lines          []CreateJournalLineRequest `json:"lines"`
 }
 
 // JournalEntryListOptions narrows and pages GetJournalEntries. Limit 0
@@ -300,12 +298,16 @@ func (d *Database) CreateJournalEntry(req CreateJournalEntryRequest) (*JournalEn
 		return nil, err
 	}
 
+	// A manual entry never names a source document: those columns belong to
+	// automatic postings, which skip a document that already has a live
+	// posted entry. Taking them from the request let an entry stop any
+	// document's posting (audit F191).
 	if _, err := tx.Exec(
 		`INSERT INTO journal_entries
-		   (id, organizationId, journalId, fiscalYearId, fiscalPeriodId, date, reference, description, sourceDocumentType, sourceDocumentId, createdBy)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		   (id, organizationId, journalId, fiscalYearId, fiscalPeriodId, date, reference, description, createdBy)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.OrganizationID, req.JournalID, fiscalYearID, fiscalPeriodID, req.Date, req.Reference, req.Description,
-		req.SourceDocumentType, req.SourceDocumentID, req.CreatedBy,
+		req.CreatedBy,
 	); err != nil {
 		return nil, fmt.Errorf("create_journal_entry insert: %w", err)
 	}
