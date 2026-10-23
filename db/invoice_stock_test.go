@@ -418,3 +418,51 @@ func TestCashSaleStateChangeWithStockPostedDoesNotRevalidateProducts(t *testing.
 		t.Fatalf("stock = %v, want 2 (nothing moves on sent -> paid)", got)
 	}
 }
+
+// A manual movement takes its id from the request and uses it as its
+// sourceDocumentId. One created in another organization with a Cash Book
+// sale's id must not count as that sale's stock: cancelling the sale used to
+// insert a movement for the other organization's product (audit F196).
+func TestCashSaleIgnoresAnotherOrganizationsMovementNamingIt(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fxA := newCashStockFixture(t, d, "org-cash-stock-claim-a", false)
+	fxB := newCashStockFixture(t, d, "org-cash-stock-claim-b", false)
+	requireFiscalYearCoveringNow(t, d, fxA.orgID)
+	requireFiscalYearCoveringNow(t, d, fxB.orgID)
+	for _, fx := range []cashStockFixture{fxA, fxB} {
+		if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+			OrganizationID: fx.orgID, ProductID: fx.washer.ID, Type: "in", Quantity: 5, UnitCost: ptr(int64(60000)),
+		}); err != nil {
+			t.Fatalf("CreateStockMovement: %v", err)
+		}
+	}
+	sale, err := fxB.sellWasher(t, d, 2)
+	if err != nil {
+		t.Fatalf("CreateCashSale: %v", err)
+	}
+	if _, err := d.CreateStockMovement(CreateStockMovementRequest{
+		ID: sale.Invoice.ID, OrganizationID: fxA.orgID, ProductID: fxA.washer.ID,
+		Type: "in", Quantity: 7, UnitCost: ptr(int64(60000)),
+	}); err != nil {
+		t.Fatalf("org-a movement: %v", err)
+	}
+
+	if _, err := d.UpdateInvoiceState(sale.Invoice.ID, "cancelled"); err != nil {
+		t.Fatalf("UpdateInvoiceState(cancelled): %v", err)
+	}
+	if got := stockOf(t, d, fxA.washer.ID); got != 12 {
+		t.Fatalf("org-a stock after org-b's cancel = %v, want 12 (untouched)", got)
+	}
+	if got := stockOf(t, d, fxB.washer.ID); got != 5 {
+		t.Fatalf("org-b stock after cancel = %v, want 5", got)
+	}
+	var foreign int
+	if err := d.DB.Get(&foreign, `SELECT COUNT(*) FROM stockMovements WHERE organizationId = ? AND productId = ?`,
+		fxB.orgID, fxA.washer.ID); err != nil {
+		t.Fatal(err)
+	}
+	if foreign != 0 {
+		t.Fatalf("org-b holds %d movements of org-a's product", foreign)
+	}
+}

@@ -133,6 +133,11 @@ func (d *Database) planInvoiceStockOut(organizationID string, lines []deliverySt
 // currently stand at, per product (negative while its stock-out stands),
 // dropping products that net to zero. Read inside the caller's transaction,
 // so the post/reverse decision is made from the same connection that writes.
+//
+// Only the invoice's own organization's movements count. A manual movement
+// takes its id from the request and uses it as its sourceDocumentId, so
+// without that filter another organization's movement could name this sale,
+// and cancelling the sale then moved that organization's stock.
 func postedInvoiceStockTx(exec sqlSelectExecer, invoiceID string) (map[string]float64, error) {
 	var rows []struct {
 		ProductID string  `db:"productId"`
@@ -140,7 +145,9 @@ func postedInvoiceStockTx(exec sqlSelectExecer, invoiceID string) (map[string]fl
 	}
 	if err := exec.Select(&rows, `
 		SELECT productId, SUM(quantity) AS net FROM stockMovements
-		WHERE sourceDocumentId = ? GROUP BY productId`, invoiceID,
+		WHERE sourceDocumentId = ?
+		  AND organizationId = (SELECT organizationId FROM invoices WHERE id = ?)
+		GROUP BY productId`, invoiceID, invoiceID,
 	); err != nil {
 		return nil, fmt.Errorf("posted_invoice_stock: %w", err)
 	}
