@@ -13,8 +13,10 @@ F190 or later.
   binding exclusion lists and the product decisions.
 - A separate pass by the authoring model over the same areas.
 - Every finding below was checked against the code by the authoring model.
-  Three of OpenCode's findings were dropped or downgraded on evidence (see
-  "Explicitly excluded").
+  Of OpenCode's eight, three were dismissed or moved to the watch list on
+  evidence (`TRUSTED_PROXIES`, API `Cache-Control`, the template vector; see
+  "Explicitly excluded"), and two were downgraded (F191 from High, F193 from
+  Medium).
 - Probes, all throwaway:
   - a `db` test (deleted afterwards, never committed) reproducing F190,
     F191 and F193 on a scratch database;
@@ -58,11 +60,13 @@ Labels:
 | F193 | The organization's default GL accounts accept another organization's account            | Cross-organization | Low      | Confirmed | 1     |
 | F194 | Anyone who knows an email can keep that account locked out of password sign-in          | Authentication     | Low      | Code read | 2     |
 | F195 | The live database is created world-readable                                             | Ops                | Low      | Confirmed | 3     |
-| F196 | Production accepts a weak first-admin password                                          | Ops                | Low      | Code read | 3     |
 
-No earlier finding has regressed. F167, F168, F169, F170, F173, F174, F175,
-F178, F179, F181 and F182 were each checked against the code and are in
-place.
+No earlier finding was found to have regressed. OpenCode's sweep checked
+F167, F168, F169, F170, F173, F174, F175, F178, F179, F181 and F182 against
+the code; the authoring model spot-checked F167 (`productReferencingTables`
+guard), F169 and F174 (migrations `0106`–`0108`), F173 (`openXLSX` limits)
+and F175 (renewal constants) and found them in place. The others rest on
+OpenCode's read.
 
 ---
 
@@ -143,6 +147,9 @@ entries (tag them `json:"-"` on the request, or clear them in the handler).
 Then add `organizationId` to `findPostedEntryForSourceDocumentTx` and to
 `0059`'s index in a new migration, after a production query confirms no
 entry already names a document of another organization (Phase 0 style).
+`CreateJournalEntryRequest` is the only request type carrying these fields,
+and journal entries have no update route, so the first step closes the
+entry point.
 
 ### 1.3 — F193: the default GL accounts accept another organization's account (Low, Confirmed)
 
@@ -181,8 +188,9 @@ before building the SET clause, outside any transaction. Extend
 
 **What happens.** Every PDF export calls `ConvertXLSXToPDF`
 (`db/pdf_convert.go:35`), which starts its own `soffice` process with its
-own profile, for up to 60 s. There are 9 call sites and no semaphore, pool
-or per-user limit anywhere. The export routes sit outside `withDB` on
+own profile, for up to 60 s. It has 7 callers (the six document exports in
+`api/document_templates.go` and the report exports in
+`api/report_export.go`) and no semaphore, pool or per-user limit anywhere. The export routes sit outside `withDB` on
 purpose, so nothing else serializes them. This was the 2026-10-17 watch
 list's "Excel-template exports at volume" entry. It is a finding now
 because any member can reach it.
@@ -207,8 +215,9 @@ bad attempts a minute for a victim's email, from a single IP, keep the
 victim's own correct sign-ins at 429.
 
 **Impact.** Limited where users sign in through SSO, which doesn't use this
-path. The 2026-09-19 audit relied on the per-email bucket against password
-guessing, so dropping it isn't the answer.
+path. The 2026-09-19 audit (F110) relied on the per-email bucket against
+password guessing, so dropping it isn't the answer. No earlier document
+weighs the lockout side of it.
 
 **Fix (options for the owner).** Count only failures in the per-email
 bucket, and let a correct password through for an IP that hasn't itself
@@ -224,6 +233,8 @@ add it to the exclusions.
 **What happens.** SQLite creates `sqlite.db`, `-wal` and `-shm` with the
 process umask (`0022` in the image). Only backups are restricted
 (`BackupFileMode` 0640, `db/db.go:110`; the backups directory is 0750).
+F15 (2026-07-12) fixed the same problem for backups and the config file
+only; the live database was not part of it.
 
 **Probe.** The 3.70.0 image started on a scratch `/data` creates
 `sqlite.db`, `sqlite.db-wal` and `sqlite.db-shm` as **0644**, next to a
@@ -234,25 +245,24 @@ directory's mode. `deploy.md` creates `./data` without setting one. On a
 host where `./data` is world-traversable, any local account or process
 reads every organization's data and the password hashes.
 
-**Fix.** Chmod the database files to 0640 after opening, the same mode and
-reason as `BackupFileMode` (a group ACL grant for the backup user must keep
-working, so not 0600), and have `deploy.md` create `./data` as 0750.
+**Fix.** The database files should end up 0640, the same mode and reason
+as `BackupFileMode` (a group ACL grant for the backup user must keep
+working, so not 0600). SQLite recreates `-wal` and `-shm` on every start,
+so either chmod all three after opening on every startup, or set the
+process umask to `0027` early in `main.go`, which covers the database,
+WAL, SHM and temp files in one place. Have `deploy.md` create `./data` as 0750.
 
-### 3.2 — F196: production accepts a weak first-admin password (Low, Code read)
+### Hardening notes, not findings
 
-**What happens.** In production (`/data` exists), `main.go` refuses an unset
-`ADMIN_PASSWORD` (`main.go:80-86`) but accepts any value, including
-`admin` itself, the default. `JWT_SECRET` gets a length check
-(`main.go:73`); the password gets none. It matters only on a first start
-(`EnsureFirstAdmin` seeds only an empty `users` table).
-
-**Fix.** Refuse `ADMIN_PASSWORD` equal to the default or shorter than the
-password rule the app applies elsewhere, the same way `JWT_SECRET` is
-checked.
-
-Hardening, not a finding: the runtime image chowns `/app` to the user it
-runs as, so a compromised process could replace its own binary. Root-owned
-`/app` with the binary read-only to `fatura` costs nothing.
+- **`ADMIN_PASSWORD`:** in production `main.go` refuses an unset value
+  (`main.go:80-86`) but accepts any other, including `admin`, the default.
+  The 2026-07-12 audit judged these startup guards sound, and the value only
+  matters on a first start (`EnsureFirstAdmin` seeds an empty `users` table
+  only), so this is a hardening note: refusing the default value costs one
+  line.
+- **The binary's owner:** the runtime image chowns `/app` to the user it
+  runs as, so a compromised process could replace its own binary. A
+  root-owned `/app` with the binary read-only to `fatura` costs nothing.
 
 ---
 
@@ -348,4 +358,3 @@ Beyond the per-phase gates:
   don't stop a correct sign-in from another.
 - **F195:** a fresh container's `sqlite.db`, `-wal` and `-shm` are 0640;
   backups and restore still work, and the backup user still reads backups.
-- **F196:** production refuses `ADMIN_PASSWORD=admin` at startup.
