@@ -38,7 +38,7 @@ func TestReceiptWithImportAllocatesLandedCostToInventory(t *testing.T) {
 
 	receipt := fx.receive(t, d, "GR-0001", 10)
 
-	entry, err := d.FindPostedEntryForSourceDocument("inbound_delivery", receipt.ID)
+	entry, err := d.postedEntryForSourceDocument("inbound_delivery", receipt.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestCancelReceiptWithImportReversesLandedCostEntry(t *testing.T) {
 		t.Fatalf("UpdateInboundDeliveryStatus(cancelled): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("inbound_delivery", receipt.ID)
+	entry, err := d.postedEntryForSourceDocument("inbound_delivery", receipt.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}

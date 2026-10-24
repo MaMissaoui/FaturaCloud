@@ -377,7 +377,11 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 	// rather than let it drift; the invoice must be cancelled (which
 	// reverses the entry) before a financial edit, then re-sent to re-post.
 	if invoiceUpdateTouchesGLFields(updates) {
-		entry, err := d.FindPostedEntryForSourceDocument("invoice", invoiceID)
+		stored, err := d.GetInvoice(invoiceID)
+		if err != nil {
+			return nil, fmt.Errorf("update_invoice fetch current for posted-entry check: %w", err)
+		}
+		entry, err := d.FindPostedEntryForSourceDocument(stored.OrganizationID, "invoice", invoiceID)
 		if err != nil {
 			return nil, err
 		}
@@ -612,7 +616,7 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 	if isOpeningLoan(invoice) {
 		return d.updateOpeningLoanState(invoice, state)
 	}
-	existingEntry, err := d.FindPostedEntryForSourceDocument("invoice", invoiceID)
+	existingEntry, err := d.FindPostedEntryForSourceDocument(invoice.OrganizationID, "invoice", invoiceID)
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +704,7 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 	// read, which shares the connection with the writes that follow and so
 	// closes the race two concurrent identical state changes would otherwise
 	// hit (both seeing "no entry", both posting).
-	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, "invoice", invoiceID)
+	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, invoice.OrganizationID, "invoice", invoiceID)
 	if err != nil {
 		return nil, err
 	}
@@ -766,7 +770,7 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 	if current.State == "paid" {
 		return false, newValidationError("cannot delete a paid invoice — cancel it instead")
 	}
-	if entry, err := d.FindPostedEntryForSourceDocument("invoice", invoiceID); err != nil {
+	if entry, err := d.FindPostedEntryForSourceDocument(current.OrganizationID, "invoice", invoiceID); err != nil {
 		return false, err
 	} else if entry != nil {
 		return false, newValidationError("cannot delete an invoice with a posted GL entry — cancel it instead")
@@ -800,7 +804,7 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 	if liveState == "paid" {
 		return false, newValidationError("cannot delete a paid invoice — cancel it instead")
 	}
-	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, "invoice", invoiceID)
+	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, current.OrganizationID, "invoice", invoiceID)
 	if err != nil {
 		return false, err
 	}

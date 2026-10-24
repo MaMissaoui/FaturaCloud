@@ -516,7 +516,7 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 		if err != nil {
 			return nil, err
 		}
-		existingCOGSEntry, err = d.FindPostedEntryForSourceDocument("outbound_delivery", current.ID)
+		existingCOGSEntry, err = d.FindPostedEntryForSourceDocument(current.OrganizationID, "outbound_delivery", current.ID)
 		if err != nil {
 			return nil, err
 		}

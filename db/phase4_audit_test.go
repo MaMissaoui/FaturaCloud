@@ -164,7 +164,7 @@ func TestCancelCompletedProductionOrderReversesItsPostedEntry(t *testing.T) {
 		t.Fatalf("UpdateProductionOrderStatus(completed): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("production_order", order.ID)
+	entry, err := d.postedEntryForSourceDocument("production_order", order.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -379,7 +379,7 @@ func TestCancelDraftProductionOrderTouchesNothingElse(t *testing.T) {
 		t.Fatalf("cancelling a draft moved component stock: %v -> %v",
 			componentBefore.StockQuantity, componentAfter.StockQuantity)
 	}
-	entry, err := d.FindPostedEntryForSourceDocument("production_order", order.ID)
+	entry, err := d.postedEntryForSourceDocument("production_order", order.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}

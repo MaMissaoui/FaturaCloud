@@ -34,7 +34,7 @@ F190 or later.
 
 Production was not read. No code was changed.
 
-**Status (2026-10-24):** Phase 1 (F190, F191's first step, F193, F196) merged in #546. F192 and F195 fixed in the Phase 2–3 PR. Open: F191's second step (needs a production query first), F194's rule (owner decision). F196's same-organization case: the API now ignores a client-sent movement id.
+**Status (2026-10-24):** Phase 1 (F190, F191's first step, F193, F196) merged in #546. F192 and F195 fixed in the Phase 2–3 PR. F191's second step (organization-scoped lookup, migration `0110`) is built; the read-only production query for existing claims must run before it is deployed, since the code doesn't repair a claim already made. Open: F194's rule (owner decision). F196's same-organization case: the API now ignores a client-sent movement id.
 
 Labels:
 

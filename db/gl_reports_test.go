@@ -87,7 +87,7 @@ func TestGetTrialBalanceScopedToFiscalYear(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateFiscalYear (other): %v", err)
 	}
-	entry2, err := d.FindPostedEntryForSourceDocument("invoice", inv2.ID)
+	entry2, err := d.postedEntryForSourceDocument("invoice", inv2.ID)
 	if err != nil || entry2 == nil {
 		t.Fatalf("FindPostedEntryForSourceDocument(inv2): entry=%v err=%v", entry2, err)
 	}

@@ -1033,7 +1033,7 @@ func (d *Database) UndoLoanImportBatch(batchID string) (*LoanImportUndoResult, e
 		return nil, fmt.Errorf("undo_loan_import invoices: %w", err)
 	}
 	for _, id := range invoiceIDs {
-		entry, err := findPostedEntryForSourceDocumentTx(tx, openingLoanSourceType, id)
+		entry, err := findPostedEntryForSourceDocumentTx(tx, batch.OrganizationID, openingLoanSourceType, id)
 		if err != nil {
 			return nil, err
 		}

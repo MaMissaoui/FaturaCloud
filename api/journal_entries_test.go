@@ -95,7 +95,7 @@ func TestCreateJournalEntry_IgnoresSourceDocument(t *testing.T) {
 	if _, err := database.UpdateInvoiceState(invoice.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(sent): %v", err)
 	}
-	posted, err := database.FindPostedEntryForSourceDocument("invoice", invoice.ID)
+	posted, err := database.FindPostedEntryForSourceDocument(invoice.OrganizationID, "invoice", invoice.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}

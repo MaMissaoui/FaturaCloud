@@ -231,7 +231,7 @@ func reverseInvoiceStockOutTx(tx *sqlx.Tx, invoice *Invoice, posted map[string]f
 	if err := recomputeAverageCostForTx(tx, touched); err != nil {
 		return err
 	}
-	entry, err := findPostedEntryForSourceDocumentTx(tx, invoiceCOGSSourceType, invoice.ID)
+	entry, err := findPostedEntryForSourceDocumentTx(tx, invoice.OrganizationID, invoiceCOGSSourceType, invoice.ID)
 	if err != nil {
 		return err
 	}

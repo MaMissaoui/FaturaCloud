@@ -158,7 +158,7 @@ func TestQuantityOnlyReceiptPostsNoGRNIAndBillIsExpensed(t *testing.T) {
 	}
 
 	receipt := fx.receive(t, d, "GR-0001", 10)
-	entry, err := d.FindPostedEntryForSourceDocument("inbound_delivery", receipt.ID)
+	entry, err := d.postedEntryForSourceDocument("inbound_delivery", receipt.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestQuantityOnlyReceiptPostsNoGRNIAndBillIsExpensed(t *testing.T) {
 	if _, err := d.UpdateIncomingInvoiceState(bill.ID, "approved"); err != nil {
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
-	billEntry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", bill.ID)
+	billEntry, err := d.postedEntryForSourceDocument("incoming_invoice", bill.ID)
 	if err != nil || billEntry == nil {
 		t.Fatalf("expected a posted bill entry, err=%v entry=%v", err, billEntry)
 	}

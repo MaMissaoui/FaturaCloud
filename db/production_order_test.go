@@ -177,7 +177,7 @@ func TestUpdateProductionOrderStatusCompleteExactDivision(t *testing.T) {
 		t.Errorf("finished unitCost = %v, want 20000 (200.00)", *finished.UnitCost)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("production_order", order.ID)
+	entry, err := d.postedEntryForSourceDocument("production_order", order.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestUpdateProductionOrderStatusCompletePostsRoundingResidual(t *testing.T) 
 		t.Fatalf("finished unitCost = %v, want 2 (0.02)", *finished.UnitCost)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("production_order", order.ID)
+	entry, err := d.postedEntryForSourceDocument("production_order", order.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
