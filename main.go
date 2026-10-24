@@ -37,6 +37,7 @@ func main() {
 		os.Exit(healthcheck(os.Getenv("PORT")))
 	}
 
+	restrictFileModes()
 	setupLogging(os.Getenv("LOG_LEVEL"), os.Getenv("LOG_FORMAT"))
 	slog.Info("FaturaCloud starting", "version", version)
 

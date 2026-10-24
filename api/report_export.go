@@ -121,11 +121,7 @@ func streamReportExport(w http.ResponseWriter, r *http.Request, xlsxBytes []byte
 
 	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), xlsxBytes)
 	if err != nil {
-		if errors.Is(err, db.ErrPDFConversionUnavailable) {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writePDFConversionError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")

@@ -50,6 +50,7 @@ const clients = await GetClients(organizationId)  // GET /api/organizations/{id}
   - `compressAPIResponses` (`compress.go`) wraps **outside** `api.RequestLogger`, never inside, or the activity history loses created ids (`TestServerHandlerKeepsActivityHistory`).
   - `static.go` serves the embedded `dist/`. Hashed `/assets/*` are immutable for a year (a missing one is a 404, never the SPA shell); everything else is `no-cache` with an ETag.
   - `securityHeaders` sets the CSP: same-origin, no `wasm-unsafe-eval`, no blob/data fetches.
+  - `restrictFileModes` (`umask_unix.go`) sets umask `0027` first thing, so the database, WAL and SHM are 0640 like backups (F195).
 - `Dockerfile`: node → golang → debian (see Docker). `docker-compose.yml`: one service, `/data` volume. `docker-compose.oidc.yml`: the OIDC overlay (`docs/oidc-sso.md`).
 - `cmd/seed-demo/`: demo data through the real API.
 - `docs/`: `logging.md` (reading the server log on the Pi), `oidc-sso.md`, `inventory-cogs-integration.md` (the GRNI/COGS design), and the audit plans (`audit-plan-*.md`).

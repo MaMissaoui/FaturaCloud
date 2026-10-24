@@ -38,6 +38,7 @@ non-root user (uid:gid `1000:1000`):
 
 ```bash
 mkdir -p ./data
+chmod 750 ./data
 sudo chown -R 1000:1000 ./data
 ```
 

@@ -21,9 +21,22 @@ import (
 // again. XLSX export works regardless either way.
 var ErrPDFConversionUnavailable = errors.New("PDF conversion is not available on this server (LibreOffice not installed)")
 
+// ErrPDFConversionBusy means every conversion slot stayed taken for
+// pdfSlotWait. The caller answers 503 so the user can retry.
+var ErrPDFConversionBusy = errors.New("the server is busy converting other PDFs — try again in a moment")
+
 // pdfConvertTimeout bounds a single soffice invocation — a malformed or
 // pathological input must not hang the request indefinitely.
 const pdfConvertTimeout = 60 * time.Second
+
+// Each soffice process takes hundreds of MB, so conversions share a fixed
+// number of slots: without them, a few dozen simultaneous exports ran the
+// Raspberry Pi out of memory for every organization (audit F192). A request
+// waits up to pdfSlotWait for a slot, then gets ErrPDFConversionBusy.
+var (
+	pdfConvertSlots = make(chan struct{}, 2)
+	pdfSlotWait     = 20 * time.Second
+)
 
 // ConvertXLSXToPDF shells out to `soffice --headless --convert-to pdf`.
 // Each call gets its own temp work directory and LibreOffice user-profile
@@ -33,6 +46,17 @@ const pdfConvertTimeout = 60 * time.Second
 // collide/hang, which would matter under concurrent exports from different
 // organizations.
 func ConvertXLSXToPDF(ctx context.Context, xlsxBytes []byte) ([]byte, error) {
+	wait := time.NewTimer(pdfSlotWait)
+	defer wait.Stop()
+	select {
+	case pdfConvertSlots <- struct{}{}:
+		defer func() { <-pdfConvertSlots }()
+	case <-wait.C:
+		return nil, ErrPDFConversionBusy
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
 	sofficePath, err := exec.LookPath("soffice")
 	if err != nil {
 		return nil, ErrPDFConversionUnavailable
