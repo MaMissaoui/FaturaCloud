@@ -34,7 +34,7 @@ F190 or later.
 
 Production was not read. No code was changed.
 
-**Status (2026-10-24):** Phase 1 (F190, F191's first step, F193, F196) merged in #546. F192 and F195 fixed in the Phase 2–3 PR. F191's second step (organization-scoped lookup, migration `0110`) is built; the read-only production query for existing claims must run before it is deployed, since the code doesn't repair a claim already made. Open: F194's rule (owner decision). F196's same-organization case: the API now ignores a client-sent movement id.
+**Status (2026-10-24):** Phase 1 (F190, F191's first step, F193, F196) merged in #546. F192 and F195 fixed in the Phase 2–3 PR. F191's second step (organization-scoped lookup, migration `0110`) merged in #551. The read-only production check ran on 2026-10-24 against a copy of the schema-0109 database: no manual entry names a source document, no entry names another organization's document, no document is named in two organizations, and no organization's default account belongs to another organization, so nothing needed repair. F194: accepted by the owner (option b), see the exclusions. F196's same-organization case: the API now ignores a client-sent movement id.
 
 Labels:
 
@@ -340,6 +340,13 @@ WAL, SHM and temp files in one place. Have `deploy.md` create `./data` as 0750.
 
 ## Explicitly excluded: do not re-raise
 
+- **F194, the per-email login lockout.** Accepted by the owner on
+  2026-10-24: the per-email bucket stays as it is, the defense against
+  distributed password guessing (F110). Someone who knows an email can hold
+  that account's password sign-in at 429 for as long as they keep sending
+  attempts. SSO sign-in is unaffected. Don't re-raise unless password
+  sign-in becomes the main path for many users.
+
 - **`WEBSERVICE`/`FILTERXML` and `file://` lookups in an uploaded template.**
   Converted in the 3.70.0 image (LibreOffice from Debian trixie): the
   `WEBSERVICE` cells came out as `Err:540` (LibreOffice's "external content
@@ -425,7 +432,5 @@ Beyond the per-phase gates:
 - **F192:** in the runtime image, 20 simultaneous PDF exports leave at most
   the configured number of `soffice` processes, the rest get a 503, and
   other requests stay responsive.
-- **F194:** with the chosen rule, 10 bad attempts for an email from one IP
-  don't stop a correct sign-in from another.
 - **F195:** a fresh container's `sqlite.db`, `-wal` and `-shm` are 0640;
   backups and restore still work, and the backup user still reads backups.
