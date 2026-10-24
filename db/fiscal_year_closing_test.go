@@ -28,7 +28,7 @@ func TestCloseFiscalYearZeroesRevenueAndExpenseIntoRetainedEarnings(t *testing.T
 		t.Fatal("expected ClosedAt to be set")
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("closing", fyID)
+	entry, err := d.postedEntryForSourceDocument("closing", fyID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted closing entry, err=%v entry=%v", err, entry)
 	}
@@ -86,7 +86,7 @@ func TestCloseFiscalYearSucceedsAfterAccountDeactivated(t *testing.T) {
 		t.Fatalf("status = %q, want closed", closed.Status)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("closing", fyID)
+	entry, err := d.postedEntryForSourceDocument("closing", fyID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted closing entry, err=%v entry=%v", err, entry)
 	}
@@ -193,7 +193,7 @@ func TestCloseFiscalYearWithNoActivityPostsNoEntry(t *testing.T) {
 		t.Fatalf("status = %q, want closed", closed.Status)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("closing", fyID)
+	entry, err := d.postedEntryForSourceDocument("closing", fyID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}

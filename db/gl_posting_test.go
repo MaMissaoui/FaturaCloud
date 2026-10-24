@@ -149,7 +149,7 @@ func TestInvoiceSentPostsBalancedGLEntry(t *testing.T) {
 		t.Fatalf("UpdateInvoiceState(sent): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestInvoiceStateBounceBackReversesGLEntry(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(sent): %v", err)
 	}
-	original, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	original, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil || original == nil {
 		t.Fatalf("expected a posted entry after sent, err=%v entry=%v", err, original)
 	}
@@ -216,7 +216,7 @@ func TestInvoiceStateBounceBackReversesGLEntry(t *testing.T) {
 		t.Fatalf("UpdateInvoiceState(draft): %v", err)
 	}
 
-	stillLive, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	stillLive, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestInvoiceDraftDirectlyToPaidPosts(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(inv.ID, "paid"); err != nil {
 		t.Fatalf("UpdateInvoiceState(paid): %v", err)
 	}
-	entry, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry after draft->paid, err=%v entry=%v", err, entry)
 	}
@@ -322,7 +322,7 @@ func TestIncomingInvoiceApprovedPostsBalancedGLEntry(t *testing.T) {
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", bill.ID)
+	entry, err := d.postedEntryForSourceDocument("incoming_invoice", bill.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
 	}
@@ -365,7 +365,7 @@ func TestZeroTotalInvoiceSkipsGLPosting(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(sent): %v", err)
 	}
-	entry, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestInvoiceWithZeroPercentTaxRateSkipsZeroTaxLine(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(sent): %v", err)
 	}
-	entry, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
 	}
@@ -454,7 +454,7 @@ func TestInvoiceDiscountPostsReducedRevenueAndTax(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(sent): %v", err)
 	}
-	entry, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: entry=%v err=%v", entry, err)
 	}
@@ -474,5 +474,55 @@ func TestInvoiceDiscountPostsReducedRevenueAndTax(t *testing.T) {
 	_, taxCredit := sumLines(lines, fx.outputTaxAccountID)
 	if taxCredit != 18000 {
 		t.Fatalf("output tax credit = %d, want 18000", taxCredit)
+	}
+}
+
+// F191: a live entry in another organization naming this invoice neither
+// stops the invoice posting nor gets reversed by its state changes.
+func TestInvoicePostingIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fxA := newGLPostingTestFixture(t, d, "org-claim-a")
+	fxB := newGLPostingTestFixture(t, d, "org-claim-b")
+	invA := fxA.createInvoice(t, d, "inv-claim-a", 1, 1000)
+	invB := fxB.createInvoice(t, d, "inv-claim-b", 2, 1000)
+
+	if _, err := d.UpdateInvoiceState(invA.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(org-a sent): %v", err)
+	}
+	claim, err := d.FindPostedEntryForSourceDocument(fxA.orgID, "invoice", invA.ID)
+	if err != nil || claim == nil {
+		t.Fatalf("org-a entry: entry=%v err=%v", claim, err)
+	}
+	// Retag org A's live entry as org B's invoice, as a manual entry could
+	// before F191's first step.
+	if _, err := d.DB.Exec(`UPDATE journal_entries SET sourceDocumentId = ? WHERE id = ?`, invB.ID, claim.ID); err != nil {
+		t.Fatalf("retag: %v", err)
+	}
+
+	if _, err := d.UpdateInvoiceState(invB.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(org-b sent): %v", err)
+	}
+	entry, err := d.FindPostedEntryForSourceDocument(fxB.orgID, "invoice", invB.ID)
+	if err != nil || entry == nil {
+		t.Fatalf("org-b entry: entry=%v err=%v", entry, err)
+	}
+	lines, err := d.GetJournalEntryLines(entry.ID)
+	if err != nil {
+		t.Fatalf("GetJournalEntryLines: %v", err)
+	}
+	if debit, _ := sumLines(lines, fxB.arAccountID); debit != invB.Total {
+		t.Fatalf("org-b AR debit = %d, want %d", debit, invB.Total)
+	}
+
+	if _, err := d.UpdateInvoiceState(invB.ID, "draft"); err != nil {
+		t.Fatalf("UpdateInvoiceState(org-b draft): %v", err)
+	}
+	var status string
+	if err := d.DB.Get(&status, `SELECT status FROM journal_entries WHERE id = ?`, claim.ID); err != nil {
+		t.Fatal(err)
+	}
+	if status != "posted" {
+		t.Fatalf("org-a entry status after org-b's draft = %q, want posted", status)
 	}
 }

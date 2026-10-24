@@ -152,7 +152,7 @@ func TestGoodsReceiptPostsGRNIAccrual(t *testing.T) {
 	fx := newGRNITestFixture(t, d, "org-grni-accrue", 10, 250) // 10 units @ 2.50 = 2500 cents
 	receipt := fx.receive(t, d, "GR-0001", 10)
 
-	entry, err := d.FindPostedEntryForSourceDocument("inbound_delivery", receipt.ID)
+	entry, err := d.postedEntryForSourceDocument("inbound_delivery", receipt.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestUncostedGoodsReceiptPostsNoGRNIEntry(t *testing.T) {
 		t.Fatalf("UpdateInboundDeliveryStatus(received): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("inbound_delivery", received.ID)
+	entry, err := d.postedEntryForSourceDocument("inbound_delivery", received.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -247,7 +247,7 @@ func TestCancelReceivedReceiptReversesGRNIAccrual(t *testing.T) {
 	fx := newGRNITestFixture(t, d, "org-grni-cancel", 10, 250)
 	receipt := fx.receive(t, d, "GR-0001", 10)
 
-	original, err := d.FindPostedEntryForSourceDocument("inbound_delivery", receipt.ID)
+	original, err := d.postedEntryForSourceDocument("inbound_delivery", receipt.ID)
 	if err != nil || original == nil {
 		t.Fatalf("expected a posted GRNI entry, err=%v entry=%v", err, original)
 	}
@@ -256,7 +256,7 @@ func TestCancelReceivedReceiptReversesGRNIAccrual(t *testing.T) {
 		t.Fatalf("UpdateInboundDeliveryStatus(cancelled): %v", err)
 	}
 
-	stillLive, err := d.FindPostedEntryForSourceDocument("inbound_delivery", receipt.ID)
+	stillLive, err := d.postedEntryForSourceDocument("inbound_delivery", receipt.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -381,7 +381,7 @@ func TestBillForStockEnabledProductWithNoPOLinkCapitalizesToInventory(t *testing
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("incoming_invoice", inv.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
 	}
@@ -413,7 +413,7 @@ func TestBillMatchingReceiptClearsGRNIWithNoNetInventoryLine(t *testing.T) {
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("incoming_invoice", inv.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
 	}
@@ -464,7 +464,7 @@ func TestBillAboveReceiptCostPostsPositiveInventoryVariance(t *testing.T) {
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("incoming_invoice", inv.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
 	}
@@ -505,7 +505,7 @@ func TestBillBelowReceiptCostPostsNegativeInventoryVariance(t *testing.T) {
 		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", inv.ID)
+	entry, err := d.postedEntryForSourceDocument("incoming_invoice", inv.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry, err=%v entry=%v", err, entry)
 	}
@@ -549,7 +549,7 @@ func TestPartialBillingAcrossTwoBillsClearsGRNIProportionally(t *testing.T) {
 	if _, err := d.UpdateIncomingInvoiceState(first.ID, "approved"); err != nil {
 		t.Fatalf("UpdateIncomingInvoiceState(approved) first: %v", err)
 	}
-	firstEntry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", first.ID)
+	firstEntry, err := d.postedEntryForSourceDocument("incoming_invoice", first.ID)
 	if err != nil || firstEntry == nil {
 		t.Fatalf("expected a posted entry for the first bill, err=%v entry=%v", err, firstEntry)
 	}
@@ -563,7 +563,7 @@ func TestPartialBillingAcrossTwoBillsClearsGRNIProportionally(t *testing.T) {
 	if _, err := d.UpdateIncomingInvoiceState(second.ID, "approved"); err != nil {
 		t.Fatalf("UpdateIncomingInvoiceState(approved) second: %v", err)
 	}
-	secondEntry, err := d.FindPostedEntryForSourceDocument("incoming_invoice", second.ID)
+	secondEntry, err := d.postedEntryForSourceDocument("incoming_invoice", second.ID)
 	if err != nil || secondEntry == nil {
 		t.Fatalf("expected a posted entry for the second bill, err=%v entry=%v", err, secondEntry)
 	}
@@ -595,7 +595,7 @@ func TestShipmentPostsCOGSAtWeightedAverage(t *testing.T) {
 
 	delivery := fx.ship(t, d, "DEL-0001", 4)
 
-	entry, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	entry, err := d.postedEntryForSourceDocument("outbound_delivery", delivery.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, entry)
 	}
@@ -664,7 +664,7 @@ func TestShipmentPostsCOGSAtSpecificSerialCostNotAverage(t *testing.T) {
 		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	entry, err := d.postedEntryForSourceDocument("outbound_delivery", delivery.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, entry)
 	}
@@ -735,7 +735,7 @@ func TestShipmentFallsBackToAverageCostForUncostedSerial(t *testing.T) {
 		t.Fatalf("UpdateDeliveryStatus(shipped): %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	entry, err := d.postedEntryForSourceDocument("outbound_delivery", delivery.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, entry)
 	}
@@ -825,7 +825,7 @@ func TestCancelShippedDeliveryReversesCOGS(t *testing.T) {
 	fx.receive(t, d, "GR-0001", 10)
 	delivery := fx.ship(t, d, "DEL-0001", 4)
 
-	original, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	original, err := d.postedEntryForSourceDocument("outbound_delivery", delivery.ID)
 	if err != nil || original == nil {
 		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, original)
 	}
@@ -834,7 +834,7 @@ func TestCancelShippedDeliveryReversesCOGS(t *testing.T) {
 		t.Fatalf("UpdateDeliveryStatus(cancelled): %v", err)
 	}
 
-	stillLive, err := d.FindPostedEntryForSourceDocument("outbound_delivery", delivery.ID)
+	stillLive, err := d.postedEntryForSourceDocument("outbound_delivery", delivery.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -895,7 +895,7 @@ func TestManualStockAdjustmentPostsSignedInventoryLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateStockMovement (increase): %v", err)
 	}
-	incEntry, err := d.FindPostedEntryForSourceDocument("stock_movement", increase.Movements[0].ID)
+	incEntry, err := d.postedEntryForSourceDocument("stock_movement", increase.Movements[0].ID)
 	if err != nil || incEntry == nil {
 		t.Fatalf("expected a posted adjustment entry, err=%v entry=%v", err, incEntry)
 	}
@@ -920,7 +920,7 @@ func TestManualStockAdjustmentPostsSignedInventoryLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateStockMovement (decrease): %v", err)
 	}
-	decEntry, err := d.FindPostedEntryForSourceDocument("stock_movement", decrease.Movements[0].ID)
+	decEntry, err := d.postedEntryForSourceDocument("stock_movement", decrease.Movements[0].ID)
 	if err != nil || decEntry == nil {
 		t.Fatalf("expected a posted adjustment entry, err=%v entry=%v", err, decEntry)
 	}
@@ -964,7 +964,7 @@ func TestUncostedStockAdjustmentWithNoAveragePostsNoEntry(t *testing.T) {
 		t.Fatalf("CreateStockMovement: %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("stock_movement", result.Movements[0].ID)
+	entry, err := d.postedEntryForSourceDocument("stock_movement", result.Movements[0].ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -1028,7 +1028,7 @@ func TestZeroValueStockAdjustmentPostsNoEntry(t *testing.T) {
 		t.Fatalf("CreateStockMovement: %v", err)
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("stock_movement", result.Movements[0].ID)
+	entry, err := d.postedEntryForSourceDocument("stock_movement", result.Movements[0].ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}

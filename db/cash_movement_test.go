@@ -29,7 +29,7 @@ func TestCreateCashMovementBankDeposit(t *testing.T) {
 		t.Fatal("expected a linked journal entry")
 	}
 
-	entry, err := d.FindPostedEntryForSourceDocument("cash_movement", result.CashMovement.ID)
+	entry, err := d.postedEntryForSourceDocument("cash_movement", result.CashMovement.ID)
 	if err != nil || entry == nil {
 		t.Fatalf("expected a posted entry for the cash movement, err=%v entry=%v", err, entry)
 	}

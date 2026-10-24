@@ -94,7 +94,7 @@ func TestCashSaleMovesStockAndFollowsInvoiceState(t *testing.T) {
 	if got := stockOf(t, d, fx.washer.ID); got != 3 {
 		t.Fatalf("stock after sale = %v, want 3", got)
 	}
-	cogs, err := d.FindPostedEntryForSourceDocument(invoiceCOGSSourceType, invoiceID)
+	cogs, err := d.postedEntryForSourceDocument(invoiceCOGSSourceType, invoiceID)
 	if err != nil || cogs == nil {
 		t.Fatalf("expected a posted COGS entry, err=%v entry=%v", err, cogs)
 	}
@@ -115,7 +115,7 @@ func TestCashSaleMovesStockAndFollowsInvoiceState(t *testing.T) {
 	if got := stockOf(t, d, fx.washer.ID); got != 5 {
 		t.Fatalf("stock after cancel = %v, want 5", got)
 	}
-	if entry, err := d.FindPostedEntryForSourceDocument(invoiceCOGSSourceType, invoiceID); err != nil || entry != nil {
+	if entry, err := d.postedEntryForSourceDocument(invoiceCOGSSourceType, invoiceID); err != nil || entry != nil {
 		t.Fatalf("expected the COGS entry to be reversed, err=%v entry=%v", err, entry)
 	}
 	// Cancelled again is a no-op, not a second restore.
@@ -132,7 +132,7 @@ func TestCashSaleMovesStockAndFollowsInvoiceState(t *testing.T) {
 	if got := stockOf(t, d, fx.washer.ID); got != 3 {
 		t.Fatalf("stock after re-send = %v, want 3", got)
 	}
-	if entry, err := d.FindPostedEntryForSourceDocument(invoiceCOGSSourceType, invoiceID); err != nil || entry == nil {
+	if entry, err := d.postedEntryForSourceDocument(invoiceCOGSSourceType, invoiceID); err != nil || entry == nil {
 		t.Fatalf("expected a fresh COGS entry after re-send, err=%v entry=%v", err, entry)
 	}
 	// sent -> paid needs stock out in both states: nothing moves.
@@ -171,7 +171,7 @@ func TestCashSaleQuantityOnlyAllowsNegativeStockAndPostsNoCOGS(t *testing.T) {
 	if got := stockOf(t, d, fx.washer.ID); got != -3 {
 		t.Fatalf("stock = %v, want -3", got)
 	}
-	if entry, err := d.FindPostedEntryForSourceDocument(invoiceCOGSSourceType, sale.Invoice.ID); err != nil || entry != nil {
+	if entry, err := d.postedEntryForSourceDocument(invoiceCOGSSourceType, sale.Invoice.ID); err != nil || entry != nil {
 		t.Fatalf("expected no COGS entry in quantity-only mode, err=%v entry=%v", err, entry)
 	}
 

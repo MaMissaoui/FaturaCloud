@@ -29,11 +29,11 @@ func TestCreateCashSaleFullCashSaleMarksInvoicePaid(t *testing.T) {
 		t.Fatal("expected a payment to have been recorded")
 	}
 
-	invEntry, err := d.FindPostedEntryForSourceDocument("invoice", result.Invoice.ID)
+	invEntry, err := d.postedEntryForSourceDocument("invoice", result.Invoice.ID)
 	if err != nil || invEntry == nil {
 		t.Fatalf("expected a posted entry for the invoice, err=%v entry=%v", err, invEntry)
 	}
-	payEntry, err := d.FindPostedEntryForSourceDocument("payment", result.Payment.ID)
+	payEntry, err := d.postedEntryForSourceDocument("payment", result.Payment.ID)
 	if err != nil || payEntry == nil {
 		t.Fatalf("expected a posted entry for the payment, err=%v entry=%v", err, payEntry)
 	}
@@ -130,7 +130,7 @@ func TestCreateCashSaleZeroPaymentLoanSaleHasNoPayment(t *testing.T) {
 		t.Fatal("expected no payment to be created for a zero-upfront loan sale")
 	}
 
-	invEntry, err := d.FindPostedEntryForSourceDocument("invoice", result.Invoice.ID)
+	invEntry, err := d.postedEntryForSourceDocument("invoice", result.Invoice.ID)
 	if err != nil || invEntry == nil {
 		t.Fatalf("expected the invoice's own entry to still be posted, err=%v entry=%v", err, invEntry)
 	}
@@ -293,7 +293,7 @@ func TestCreateCashSaleZeroTotalSkipsGLPosting(t *testing.T) {
 	if result.Invoice.State != "paid" {
 		t.Fatalf("invoice state = %q, want paid (nothing owed)", result.Invoice.State)
 	}
-	entry, err := d.FindPostedEntryForSourceDocument("invoice", result.Invoice.ID)
+	entry, err := d.postedEntryForSourceDocument("invoice", result.Invoice.ID)
 	if err != nil {
 		t.Fatalf("FindPostedEntryForSourceDocument: %v", err)
 	}
@@ -712,7 +712,7 @@ func TestCreateCashSaleDefaultsToRegisterAccountNotBank(t *testing.T) {
 	// carry it on the payments row — this is the number the register
 	// balance/report is built from (GetAccountBalance), so a mismatch here
 	// is exactly the production bug F101 names.
-	payEntry, err := d.FindPostedEntryForSourceDocument("payment", result.Payment.ID)
+	payEntry, err := d.postedEntryForSourceDocument("payment", result.Payment.ID)
 	if err != nil || payEntry == nil {
 		t.Fatalf("expected a posted entry for the payment, err=%v entry=%v", err, payEntry)
 	}

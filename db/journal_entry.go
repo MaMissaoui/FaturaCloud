@@ -198,8 +198,13 @@ func (d *Database) GetJournalEntryLines(entryID string) ([]JournalLine, error) {
 // must not read back as "the current posted entry for this document", or
 // idempotent posting (design decision #8) would wrongly skip re-posting the
 // next time the document's state changes.
-func (d *Database) FindPostedEntryForSourceDocument(sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
-	return findPostedEntryForSourceDocumentTx(d.DB, sourceDocumentType, sourceDocumentID)
+//
+// The lookup is scoped to organizationID, the document's own organization:
+// unscoped, an entry another organization had tagged with the document's id
+// stopped the document posting and was reversed by its state changes (audit
+// F191).
+func (d *Database) FindPostedEntryForSourceDocument(organizationID, sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
+	return findPostedEntryForSourceDocumentTx(d.DB, organizationID, sourceDocumentType, sourceDocumentID)
 }
 
 // findPostedEntryForSourceDocumentTx is the tx-capable twin of
@@ -209,13 +214,14 @@ func (d *Database) FindPostedEntryForSourceDocument(sourceDocumentType, sourceDo
 // the check to be race-free under SetMaxOpenConns(1) must open their
 // transaction first and pass tx here, re-checking after acquiring the
 // connection that will do the write — not before.
-func findPostedEntryForSourceDocumentTx(exec sqlGetExecer, sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
+func findPostedEntryForSourceDocumentTx(exec sqlGetExecer, organizationID, sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
 	var entry JournalEntry
 	err := exec.Get(&entry,
 		`SELECT * FROM journal_entries
-		 WHERE sourceDocumentType = ? AND sourceDocumentId = ? AND status = 'posted' AND reversalOfEntryId IS NULL
+		 WHERE organizationId = ? AND sourceDocumentType = ? AND sourceDocumentId = ?
+		   AND status = 'posted' AND reversalOfEntryId IS NULL
 		 LIMIT 1`,
-		sourceDocumentType, sourceDocumentID,
+		organizationID, sourceDocumentType, sourceDocumentID,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

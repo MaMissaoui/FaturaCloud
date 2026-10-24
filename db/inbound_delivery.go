@@ -529,7 +529,7 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		if err != nil {
 			return nil, err
 		}
-		existingGRNIEntry, err = d.FindPostedEntryForSourceDocument("inbound_delivery", current.ID)
+		existingGRNIEntry, err = d.FindPostedEntryForSourceDocument(current.OrganizationID, "inbound_delivery", current.ID)
 		if err != nil {
 			return nil, err
 		}

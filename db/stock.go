@@ -423,12 +423,13 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 // desync stockQuantity/average cost from a document that still claims it happened.
 func (d *Database) DeleteStockMovement(movementID string) (bool, error) {
 	var m struct {
+		OrganizationID   string  `db:"organizationId"`
 		ProductID        string  `db:"productId"`
 		Reference        *string `db:"reference"`
 		SourceDocumentID *string `db:"sourceDocumentId"`
 	}
 	if err := d.DB.Get(&m,
-		`SELECT productId, reference, sourceDocumentId FROM stockMovements WHERE id = ?`, movementID,
+		`SELECT organizationId, productId, reference, sourceDocumentId FROM stockMovements WHERE id = ?`, movementID,
 	); err != nil {
 		return false, fmt.Errorf("delete_stock_movement lookup: %w", err)
 	}
@@ -442,7 +443,7 @@ func (d *Database) DeleteStockMovement(movementID string) (bool, error) {
 	// allocateAndFinalizeEntryTx immutability means there's no undo path
 	// for a manual adjustment once posted — record an offsetting one instead.
 	if m.SourceDocumentID != nil {
-		entry, err := d.FindPostedEntryForSourceDocument("stock_movement", *m.SourceDocumentID)
+		entry, err := d.FindPostedEntryForSourceDocument(m.OrganizationID, "stock_movement", *m.SourceDocumentID)
 		if err != nil {
 			return false, err
 		}

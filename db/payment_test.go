@@ -151,7 +151,7 @@ func TestCreatePaymentForeignCurrencyRealizesGain(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(sent): %v", err)
 	}
-	original, err := d.FindPostedEntryForSourceDocument("invoice", inv.ID)
+	original, err := d.postedEntryForSourceDocument("invoice", inv.ID)
 	if err != nil || original == nil {
 		t.Fatalf("expected a posted entry, err=%v entry=%v", err, original)
 	}
