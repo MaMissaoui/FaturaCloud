@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.72.0] - 2026-10-24
+
+No migrations: the schema stays at `0109`, so rolling back to 3.71.1 is just the image tag. This release carries the fixes from the 2026-10-23 security audit (`docs/audit-plan-2026-10-23.md`, #545).
+
+### Security
+- The Daily Cash Movements report refuses a range longer than 10 years. The report builds one row per day, so a single request with a huge range could exhaust the server's memory and take it down for every organization (F190, #546).
+- A manual journal entry no longer accepts a source document. Naming an invoice there stopped the invoice's own receivable and revenue from ever posting, in the same organization or, with its id, another one. Old clients that still send the fields keep working; the fields are ignored (F191, #546).
+- An organization's default GL accounts must be its own. Setting one to another organization's account was accepted and locked that account in its owner's chart (F193, #546).
+- A Cash Book sale counts only its own organization's stock movements, and the server always picks a stock movement's id. A movement given a sale's id could be counted as the sale's, so cancelling the sale moved stock that wasn't its own, in another organization too (F196, #546, #549).
+- PDF exports share two LibreOffice slots. A request that can't get one within 20 seconds gets a "busy, try again" answer instead of starting another process, so a burst of exports can no longer run the server out of memory (F192, #548).
+- The live database and its WAL and SHM files are created readable by the app's user and group only (0640, like backups), instead of by every account on the host (F195, #548). On a bind-mounted host, `deploy.md` now creates `./data` as 0750.
+- Go 1.26.10 (CI) and 1.27.3 (image) fix a certificate-verification advisory, and excelize moves to a commit that fixes four advisories in reading uploaded workbooks: a row-number loop, a fatal stack overflow on circular formulas, and two crashes on malformed encrypted files. No tagged excelize release has those fixes yet (#547).
+
 ## [3.71.1] - 2026-10-18
 
 No migrations: the schema stays at `0109`, so rolling back to 3.71.0 is just the image tag.
