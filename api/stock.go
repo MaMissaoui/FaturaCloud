@@ -41,6 +41,10 @@ func (h *handler) createStockMovement(w http.ResponseWriter, r *http.Request) {
 	if err := decodeJSON(w, r, &req); err != nil {
 		return
 	}
+	// The id is always the server's: a movement's id is also its batch's
+	// sourceDocumentId, so a chosen one could name an existing document,
+	// such as a Cash Book sale whose stock is summed by that id (audit F196).
+	req.ID = ""
 	if !h.requireOrgMember(w, r, req.OrganizationID) {
 		return
 	}

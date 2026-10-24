@@ -49,7 +49,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
 
 ## Stock and cost
 - `stockMovements.quantity` is a signed delta and `products.stockQuantity` = `SUM(quantity)`, recomputed in the same transaction (`insertStockMovementRowTx`/`recomputeStockQuantityTx`). Never update it directly.
-- `stockMovements.sourceDocumentId` (the document row id, never the free-text `reference`) is how a cancellation finds exactly the movements it must reverse. A manual movement's batch id is its own `req.ID`.
+- `stockMovements.sourceDocumentId` (the document row id, never the free-text `reference`) is how a cancellation finds exactly the movements it must reverse. A manual movement's batch id is its own `req.ID`, which `POST /api/stock-movements` always leaves to the server (F196).
 - `products.unitCost` is a weighted average replayed from movements with `math/big` (`recomputeAverageCostTx`, `db/product_cost.go`, ordered `createdAt, rowid`). Costed inflows move it; uncosted inflows and all outflows don't. Cancelling a receipt doesn't restore the old average. A product with no costed inflow keeps its typed cost.
 - **Inventory valuation** (`0093`, `db/inventory_valuation.go`): `perpetual` (default; `normalizeInventoryValuation`) or `quantity_only`. Every inventory posting path checks `isQuantityOnlyInventory` before `resolveMovementCost`. Under `quantity_only`, GRNI, COGS, adjustment and production entries post nothing, components need no cost (the output gets a nil `unitCost`, never 0), and `resolvePurchaseAccount` expenses stock bill lines. `checkInventoryValuationSwitch` compares normalized values:
   - either direction is refused once anything is posted to Inventory;
