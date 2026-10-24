@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -67,5 +68,25 @@ func TestDecodeJSON_NormalBodyAccepted(t *testing.T) {
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected 201 for a valid ~1MiB body, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// A busy conversion pool (audit F192) and a missing LibreOffice are both a
+// 503 the user can retry; any other conversion failure stays a 500.
+func TestWritePDFConversionError(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		err  error
+		want int
+	}{
+		{db.ErrPDFConversionBusy, http.StatusServiceUnavailable},
+		{db.ErrPDFConversionUnavailable, http.StatusServiceUnavailable},
+		{errors.New("soffice failed"), http.StatusInternalServerError},
+	} {
+		rec := httptest.NewRecorder()
+		writePDFConversionError(rec, tc.err)
+		if rec.Code != tc.want {
+			t.Errorf("%v: status %d, want %d", tc.err, rec.Code, tc.want)
+		}
 	}
 }

@@ -247,11 +247,7 @@ func (h *handler) exportInvoiceDocument(w http.ResponseWriter, r *http.Request) 
 
 	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
 	if err != nil {
-		if errors.Is(err, db.ErrPDFConversionUnavailable) {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writePDFConversionError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
@@ -300,11 +296,7 @@ func (h *handler) exportPurchaseOrderDocument(w http.ResponseWriter, r *http.Req
 
 	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
 	if err != nil {
-		if errors.Is(err, db.ErrPDFConversionUnavailable) {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writePDFConversionError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
@@ -354,11 +346,7 @@ func (h *handler) exportIncomingInvoiceDocument(w http.ResponseWriter, r *http.R
 
 	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
 	if err != nil {
-		if errors.Is(err, db.ErrPDFConversionUnavailable) {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writePDFConversionError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
@@ -407,11 +395,7 @@ func (h *handler) exportDeliveryDocument(w http.ResponseWriter, r *http.Request)
 
 	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
 	if err != nil {
-		if errors.Is(err, db.ErrPDFConversionUnavailable) {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writePDFConversionError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
@@ -460,11 +444,7 @@ func (h *handler) exportInboundDeliveryDocument(w http.ResponseWriter, r *http.R
 
 	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
 	if err != nil {
-		if errors.Is(err, db.ErrPDFConversionUnavailable) {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writePDFConversionError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")
@@ -512,11 +492,7 @@ func (h *handler) exportOrderDocument(w http.ResponseWriter, r *http.Request) {
 
 	pdfBytes, err := db.ConvertXLSXToPDF(r.Context(), filled)
 	if err != nil {
-		if errors.Is(err, db.ErrPDFConversionUnavailable) {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		writeInternalError(w, err)
+		writePDFConversionError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")

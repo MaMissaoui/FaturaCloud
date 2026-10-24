@@ -76,6 +76,17 @@ func writeDBError(w http.ResponseWriter, err error, notFoundMsg string) {
 	writeInternalError(w, err)
 }
 
+// writePDFConversionError answers a failed ConvertXLSXToPDF: 503 when
+// LibreOffice is missing or every conversion slot is busy (audit F192), so
+// the user can retry; 500 for anything else.
+func writePDFConversionError(w http.ResponseWriter, err error) {
+	if errors.Is(err, db.ErrPDFConversionUnavailable) || errors.Is(err, db.ErrPDFConversionBusy) {
+		writeError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+	writeInternalError(w, err)
+}
+
 // writeInternalError returns a generic 500 to the client, instead of leaking
 // driver/schema details from err.Error(), and hands the real error to the
 // request's log line (api/request_log.go) — logged with its route, user and
