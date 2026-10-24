@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.73.0] - 2026-10-24
+
+Migration `0110` rebuilds one index: the schema moves from `0109` to `0110`. 3.72.0 can't start on a `0110` database, so a rollback means restoring a backup taken before the upgrade.
+
+### Security
+- A document's posted journal entry is looked up only in the document's own organization, and the one-live-entry rule is per organization. An entry another organization had tagged with a document's id stopped that document posting and was reversed when the document changed state (F191, second step, #551). A production check found no such entry.
+
 ## [3.72.0] - 2026-10-24
 
 No migrations: the schema stays at `0109`, so rolling back to 3.71.1 is just the image tag. This release carries the fixes from the 2026-10-23 security audit (`docs/audit-plan-2026-10-23.md`, #545).
