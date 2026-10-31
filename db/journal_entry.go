@@ -189,20 +189,19 @@ func (d *Database) GetJournalEntryLines(entryID string) ([]JournalLine, error) {
 	return lines, nil
 }
 
-// FindPostedEntryForSourceDocument returns the live posted entry for a given
-// source document, or nil if none exists — the same idiom as looking up
-// stockMovements rows by sourceDocumentId. Reversal entries are excluded via
-// reversalOfEntryId IS NOT NULL even though they carry the same
-// sourceDocumentType/sourceDocumentId for traceability: after a reversal,
-// the original flips to status='reversed' and the reversal entry itself
-// must not read back as "the current posted entry for this document", or
-// idempotent posting (design decision #8) would wrongly skip re-posting the
-// next time the document's state changes.
+// FindPostedEntryForSourceDocument returns the given organization's live
+// posted entry for a source document, or nil if none exists (F191) — the
+// same idiom as looking up stockMovements rows by sourceDocumentId. Reversal
+// entries are excluded via reversalOfEntryId IS NOT NULL even though they
+// carry the same sourceDocumentType/sourceDocumentId for traceability: after
+// a reversal, the original flips to status='reversed' and the reversal entry
+// itself must not read back as "the current posted entry for this document",
+// or idempotent posting (design decision #8) would wrongly skip re-posting
+// the next time the document's state changes.
 //
-// The lookup is scoped to organizationID, the document's own organization:
-// unscoped, an entry another organization had tagged with the document's id
-// stopped the document posting and was reversed by its state changes (audit
-// F191).
+// organizationID is the document's own organization: unscoped, an entry
+// another organization had tagged with the document's id stopped the
+// document posting and was reversed by its state changes (audit F191).
 func (d *Database) FindPostedEntryForSourceDocument(organizationID, sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
 	return findPostedEntryForSourceDocumentTx(d.DB, organizationID, sourceDocumentType, sourceDocumentID)
 }

@@ -300,6 +300,7 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		if err != nil {
 			return nil, fmt.Errorf("update_incoming_invoice fetch current for posted-entry check: %w", err)
 		}
+		incomingInvoiceOrgID = stored.OrganizationID
 		entry, err := d.FindPostedEntryForSourceDocument(stored.OrganizationID, "incoming_invoice", id)
 		if err != nil {
 			return nil, err
@@ -413,6 +414,21 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		return nil, fmt.Errorf("update_incoming_invoice begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// F191 follow-up: the pre-tx posted-entry guard above runs before Beginx,
+	// so a concurrent PATCH .../state could approve the bill and post an entry
+	// in the gap. Re-check through tx — which holds the only connection under
+	// SetMaxOpenConns(1) — before any financial field is rewritten, so the
+	// entry can never be left describing stale line items.
+	if incomingInvoiceUpdateTouchesGLFields(updates) {
+		entry, err := findPostedEntryForSourceDocumentTx(tx, incomingInvoiceOrgID, "incoming_invoice", id)
+		if err != nil {
+			return nil, err
+		}
+		if entry != nil {
+			return nil, newValidationError("cannot change line items, totals, currency, or vendor on a bill with a posted GL entry — cancel it instead")
+		}
+	}
 
 	_, err = tx.Exec(`
 		UPDATE incoming_invoices SET
@@ -638,23 +654,37 @@ func (d *Database) DeleteIncomingInvoice(id string) (bool, error) {
 		return false, newValidationError("cannot delete a bill with a posted GL entry — cancel it instead")
 	}
 
+	// The backstop's journal_entries subquery is scoped to this bill's
+	// organization (F191): unscoped, another organization's live posted entry
+	// naming this bill's id would refuse the delete after the line items had
+	// already been removed.
 	res, err := tx.Exec(`
 		DELETE FROM incoming_invoices
 		WHERE id = ? AND state <> 'paid'
 		  AND NOT EXISTS (
 			SELECT 1 FROM journal_entries
-			WHERE sourceDocumentType = 'incoming_invoice' AND sourceDocumentId = ?
+			WHERE organizationId = ? AND sourceDocumentType = 'incoming_invoice' AND sourceDocumentId = ?
 			  AND status = 'posted' AND reversalOfEntryId IS NULL
-		  )`, id, id)
+		  )`, id, current.OrganizationID, id)
 	if err != nil {
 		return false, fmt.Errorf("delete_incoming_invoice: %w", err)
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("delete_incoming_invoice rows_affected: %w", err)
+	}
+	if n == 0 {
+		// The atomic backstop refused the delete (a concurrent change made
+		// the bill undeletable). Return without committing so the deferred
+		// Rollback leaves the bill untouched.
+		return false, nil
 	}
 
 	if err := tx.Commit(); err != nil {
 		return false, fmt.Errorf("delete_incoming_invoice commit: %w", err)
 	}
-	n, _ := res.RowsAffected()
-	return n > 0, nil
+	return true, nil
 }
 
 // replaceIncomingInvoiceLineItemsTx also enforces issue #189's ownership

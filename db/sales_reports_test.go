@@ -22,7 +22,11 @@ func TestGetRevenueByMonth(t *testing.T) {
 		t.Fatalf("CreateClient: %v", err)
 	}
 
-	now := time.Now()
+	// Mid-month at noon UTC: AddDate(0, ±1, 0) from the 29th–31st normalizes
+	// into the wrong month (Oct 31 − 1 month = Oct 1), and the organization
+	// has no time zone, so its months are UTC months.
+	today := time.Now().UTC()
+	now := time.Date(today.Year(), today.Month(), 15, 12, 0, 0, 0, time.UTC)
 	thisMonth := now.UnixMilli()
 	lastMonth := now.AddDate(0, -1, 0).UnixMilli()
 	nextMonth := now.AddDate(0, 1, 0).UnixMilli()
