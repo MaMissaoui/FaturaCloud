@@ -72,7 +72,7 @@ RUN --mount=type=secret,id=sentry_auth_token \
 # mattn/go-sqlite3, and this app uses modernc.org/sqlite (pure Go, no cgo)
 # instead — see db/db.go. With CGO_ENABLED=0, `go build` cross-compiles for
 # TARGETARCH natively, no QEMU emulation needed here either.
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS backend
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS backend
 WORKDIR /app
 
 COPY go.mod go.sum ./
