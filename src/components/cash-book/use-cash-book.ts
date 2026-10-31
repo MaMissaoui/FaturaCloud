@@ -40,6 +40,11 @@ import type {
   LoanStatusRow,
 } from "src/api";
 import { normalizeInventoryValuation } from "src/types/inventory-valuation";
+import {
+  CASH_BOOK_PAYMENT_METHODS_CASH_AND_BANK,
+  effectiveCashBookMethod,
+  normalizeCashBookPaymentMethods,
+} from "src/types/cash-book-payment-methods";
 import type { Account, Client, Payment, Product } from "src/types/models";
 import { calendarDayMs, useDatePickerFormat } from "src/utils/date";
 import { searchClients } from "src/utils/client-search";
@@ -96,7 +101,11 @@ type SaleFormValues = {
   paymentMethod?: string;
   reference?: string;
 };
-type PayLineFormValues = { amount?: number | string; reference?: string };
+type PayLineFormValues = {
+  amount?: number | string;
+  paymentMethod?: string;
+  reference?: string;
+};
 
 export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptions = {}) => {
   const { i18n } = useLingui();
@@ -163,7 +172,9 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // The organization setting (migration 0111): only cash_and_bank shows the
   // payment-method picker; cash_only always sends "cash" and posts to the
   // register.
-  const cashAndBank = organization?.cashBookPaymentMethods === "cash_and_bank";
+  const cashAndBank =
+    normalizeCashBookPaymentMethods(organization?.cashBookPaymentMethods) ===
+    CASH_BOOK_PAYMENT_METHODS_CASH_AND_BANK;
   const [selectedDate, setSelectedDate] = useState<Dayjs>(() => dayjs());
   const [dailyMovement, setDailyMovement] = useState<DailyCashMovementRow | null>(null);
   const [movementDetails, setMovementDetails] = useState<CashMovementDetail[]>([]);
@@ -644,16 +655,21 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
       unitsToCents(toNumber(values.amountReceived) || 0),
       totalCents,
     );
-    const paymentMethod = cashAndBank ? values.paymentMethod || "cash" : "cash";
-    const bankAccountId =
-      paymentMethod === "cash"
-        ? (organization?.defaultCashRegisterAccountId ?? undefined)
-        : undefined;
-    if (amountReceivedCents > 0 && paymentMethod === "cash" && !bankAccountId) {
-      message.error(
-        t`No cash register account configured — set defaultCashRegisterAccountId in Organization settings → Accounting before recording a sale with an amount received`,
-      );
-      return;
+    const paymentMethod = effectiveCashBookMethod(cashAndBank, values.paymentMethod);
+    const bankAccountId = organization?.defaultCashAccountId;
+    if (amountReceivedCents > 0) {
+      if (paymentMethod === "cash" && !registerAccountId) {
+        message.error(
+          t`No cash register account configured — set defaultCashRegisterAccountId in Organization settings → Accounting before recording a sale with an amount received`,
+        );
+        return;
+      }
+      if (paymentMethod !== "cash" && !bankAccountId) {
+        message.error(
+          t`Set a default bank account in the organization's Accounting settings to take card or transfer payments.`,
+        );
+        return;
+      }
     }
 
     const soldProductIds = uniq(
@@ -672,7 +688,6 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
         total: totalCents,
         amountReceived: amountReceivedCents,
         paymentMethod,
-        bankAccountId,
         reference: values.reference || undefined,
         ...(selectedClient ? { clientId: selectedClient.id } : { newClient: newClientDraft! }),
       };
@@ -685,9 +700,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     } finally {
       setSubmitting(false);
     }
-    message.success(
-      amountReceivedCents >= totalCents ? t`Cash sale recorded` : t`Loan sale recorded`,
-    );
+    message.success(amountReceivedCents >= totalCents ? t`Sale recorded` : t`Loan sale recorded`);
     // The sale is recorded: the counter is free for the next one right away,
     // and the panels refresh in the background, in parallel (audit F172 —
     // they used to be awaited one by one, the whole loan register and payment
@@ -742,12 +755,26 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // clears (db/cash_sale_payment.go) — no follow-up state call from here.
   const handlePayLineSubmit = async (values: PayLineFormValues) => {
     if (!payingLine) return;
+    const paymentMethod = effectiveCashBookMethod(cashAndBank, values.paymentMethod);
+    if (paymentMethod === "cash" && !registerAccountId) {
+      message.error(
+        t`No cash register account configured — set defaultCashRegisterAccountId in Organization settings → Accounting before recording a sale with an amount received`,
+      );
+      return;
+    }
+    if (paymentMethod !== "cash" && !organization?.defaultCashAccountId) {
+      message.error(
+        t`Set a default bank account in the organization's Accounting settings to take card or transfer payments.`,
+      );
+      return;
+    }
     setPayingSubmitting(true);
     try {
       const result = await CreateCashSalePayment(payingLine.invoiceId, {
         invoiceLineItemId: payingLine.lineId,
         amount: unitsToCents(toNumber(values.amount) || 0),
         date: Date.now(),
+        paymentMethod,
         reference: values.reference || undefined,
       });
       message.success(

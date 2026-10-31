@@ -15,6 +15,7 @@ type CreateCashSalePaymentRequest struct {
 	InvoiceLineItemID string  `json:"invoiceLineItemId"`
 	Amount            int64   `json:"amount"`
 	Date              int64   `json:"date"`
+	PaymentMethod     string  `json:"paymentMethod"` // defaults "cash"
 	Reference         *string `json:"reference"`
 	Notes             *string `json:"notes"`
 }
@@ -51,12 +52,13 @@ func lineOutstanding(lines []loanLineRaw, amounts, paid []int64, lineID string) 
 	return 0, false
 }
 
-// CreateCashSalePayment is the Cash Book's loan-settlement write: a cash
-// payment into the organization's register that settles one line of an
-// invoice — any sent or paid invoice of the organization, not only one
-// CreateCashSale made (audit F150: the counter may collect any open
-// receivable, by decision). It exists alongside CreatePayment rather than going through it
-// for three reasons:
+// CreateCashSalePayment is the Cash Book's loan-settlement write: a payment
+// that settles one line of an invoice — any sent or paid invoice of the
+// organization, not only one CreateCashSale made (audit F150: the counter may
+// collect any open receivable, by decision). Cash goes to the register;
+// card/transfer in cash_and_bank goes to the default bank account, using the
+// same resolveCashBookMoneyAccount rule as CreateCashSale. It exists alongside
+// CreatePayment rather than going through it for three reasons:
 //
 //   - It targets a line (payment_applications.invoiceLineItemId, migration
 //     0090), with the amount capped at that line's outstanding balance — the
@@ -64,8 +66,7 @@ func lineOutstanding(lines []loanLineRaw, amounts, paid []int64, lineID string) 
 //     lines' balances must not move.
 //   - It is the cashbook role's write path. POST /api/payments stays an
 //     accounting-tier action (audit F104); this one can only ever receive
-//     cash into the register against a customer invoice, never pay a vendor
-//     or void anything.
+//     money for a customer invoice, never pay a vendor or void anything.
 //   - It moves the invoice to "paid" in the same transaction once its whole
 //     balance clears, instead of a follow-up PATCH …/state from the browser
 //     (which the cashbook role can't make, and which could fail after the
@@ -82,6 +83,12 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 	}
 	if req.Amount <= 0 {
 		return nil, newValidationError("payment amount must be positive")
+	}
+	if req.PaymentMethod == "" {
+		req.PaymentMethod = "cash"
+	}
+	if !paymentMethods[req.PaymentMethod] {
+		return nil, newValidationError("invalid payment method %q", req.PaymentMethod)
 	}
 	if req.Date == 0 {
 		req.Date = time.Now().UnixMilli()
@@ -111,23 +118,9 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 	if err != nil {
 		return nil, fmt.Errorf("create_cash_sale_payment organization: %w", err)
 	}
-	// F101: always the register, never defaultCashAccountId (wired to Bank).
-	if org.DefaultCashRegisterAccountID == nil {
-		return nil, newValidationError(
-			"cannot record payment: organization has no default cash register account configured — set defaultCashRegisterAccountId in the organization's Accounting settings",
-		)
-	}
-	registerAccountID := *org.DefaultCashRegisterAccountID
-	registerAccount, err := d.GetAccount(registerAccountID)
+	moneyAccountID, journalType, err := d.resolveCashBookMoneyAccount(org, req.PaymentMethod)
 	if err != nil {
-		return nil, newValidationError("cash/bank account not found")
-	}
-	if err := requireSameOrg(invoice.OrganizationID, registerAccount.OrganizationID, "cash/bank account"); err != nil {
 		return nil, err
-	}
-	// The register holds the cash: an asset account, never a P&L row.
-	if registerAccount.Type != "asset" {
-		return nil, newValidationError("the %s account must be an asset account", "cash register")
 	}
 	if org.DefaultArAccountID == nil {
 		return nil, newValidationError("cannot post payment: organization has no default AR account configured")
@@ -145,7 +138,7 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 		return nil, newValidationError("amount %d exceeds the line's outstanding balance %d", req.Amount, outstanding)
 	}
 
-	journal, err := getJournalByTypeTx(d.DB, invoice.OrganizationID, "cash")
+	journal, err := getJournalByTypeTx(d.DB, invoice.OrganizationID, journalType)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +151,7 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 		return nil, fmt.Errorf("create_cash_sale_payment application id: %w", err)
 	}
 	glLines := []CreateJournalLineRequest{
-		glLine(registerAccountID, req.Amount, 0, invoice.Currency, req.Amount, nil, false, nil, nil, nil),
+		glLine(moneyAccountID, req.Amount, 0, invoice.Currency, req.Amount, nil, false, nil, nil, nil),
 		glLine(*org.DefaultArAccountID, 0, req.Amount, invoice.Currency, req.Amount, nil, false, &invoice.ClientID, nil, nil),
 	}
 
@@ -208,9 +201,9 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 		INSERT INTO payments (
 			id, organizationId, direction, clientId, bankAccountId,
 			amount, currency, date, method, reference, notes
-		) VALUES (?, ?, 'inbound', ?, ?, ?, ?, ?, 'cash', ?, ?)`,
-		paymentID, invoice.OrganizationID, invoice.ClientID, registerAccountID,
-		req.Amount, invoice.Currency, req.Date, req.Reference, req.Notes,
+		) VALUES (?, ?, 'inbound', ?, ?, ?, ?, ?, ?, ?, ?)`,
+		paymentID, invoice.OrganizationID, invoice.ClientID, moneyAccountID,
+		req.Amount, invoice.Currency, req.Date, req.PaymentMethod, req.Reference, req.Notes,
 	); err != nil {
 		return nil, fmt.Errorf("create_cash_sale_payment insert_payment: %w", err)
 	}

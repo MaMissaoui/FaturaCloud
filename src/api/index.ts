@@ -1665,7 +1665,11 @@ export interface CreateCashSaleRequest {
   total: number;
   amountReceived: number; // 0 for a pure loan sale
   paymentMethod?: string; // defaults "cash"
-  bankAccountId?: string; // defaults to organization.defaultCashAccountId
+  // Kept for compatibility with older callers. The server derives the
+  // destination from paymentMethod and the organization setting: cash goes to
+  // the cash register, card/transfer in cash_and_bank to the bank account.
+  // Sending a different account is a 409.
+  bankAccountId?: string;
   reference?: string;
   notes?: string;
 }
@@ -1685,6 +1689,8 @@ export interface CreateCashSalePaymentRequest {
   invoiceLineItemId: string;
   amount: number;
   date?: number;
+  // defaults "cash"; in cash_and_bank card/transfer settle into the bank
+  paymentMethod?: string;
   reference?: string;
   notes?: string;
 }

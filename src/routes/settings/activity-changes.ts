@@ -2,6 +2,7 @@ import { t } from "@lingui/core/macro";
 
 import type { AuditFieldChange } from "src/api";
 import { roleOptions } from "src/components/organizations/organization-members-panel";
+import { cashBookPaymentMethodsLabel } from "src/types/cash-book-payment-methods";
 
 // How the Activity page shows a recorded field change (db/audit_changes.go):
 // the field's label and its before/after values, formatted for a reader
@@ -471,7 +472,7 @@ export const formatChangeValue = (
     case "organizationRole":
       return roleOptions().find((r) => r.value === value)?.label ?? value;
     case "cashBookPaymentMethods":
-      return value === "cash_and_bank" ? t`Cash, card and transfer` : t`Cash only`;
+      return cashBookPaymentMethodsLabel(value);
   }
   return value;
 };

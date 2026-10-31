@@ -65,13 +65,12 @@ type CreateCashSaleRequest struct {
 	// be less than Total (a deposit) or equal to it (a cash sale).
 	AmountReceived int64  `json:"amountReceived"`
 	PaymentMethod  string `json:"paymentMethod"` // defaults "cash"
-	// BankAccountID is the register/till account the received amount is
-	// debited to for a cash payment. Empty defaults to
-	// organizations.defaultCashRegisterAccountId and 409s if that is unset —
-	// deliberately never organizations.defaultCashAccountId, which every
-	// chart template wires to Bank (see CreateCashSale's doc comment below).
-	// For a card/transfer payment in cash_and_bank mode it is ignored: that
-	// money goes to defaultCashAccountId (the bank account), never the till.
+	// BankAccountID is kept for compatibility with older callers that sent
+	// the register explicitly. It never chooses the destination: the server
+	// derives it from PaymentMethod and the organization setting (cash ->
+	// defaultCashRegisterAccountId; card/transfer in cash_and_bank ->
+	// defaultCashAccountId). A non-empty value that differs from the derived
+	// account is a 409.
 	BankAccountID string  `json:"bankAccountId"`
 	Reference     *string `json:"reference"`
 	Notes         *string `json:"notes"`
@@ -83,6 +82,64 @@ type CashSaleResult struct {
 	Client  *Client  `json:"client"`
 	Invoice *Invoice `json:"invoice"`
 	Payment *Payment `json:"payment"`
+}
+
+// resolveCashBookMoneyAccount is the one rule for where Cash Book money
+// lands, shared by CreateCashSale and CreateCashSalePayment. Cash always
+// goes to the physical register (defaultCashRegisterAccountId, 409 if unset)
+// on the "cash" journal. Card/transfer/check/other money is only allowed in
+// cash_and_bank and goes to defaultCashAccountId (the bank, 409 if unset) on
+// the "bank" journal; it must differ from the register. The destination must
+// be an asset account of the same organization.
+func (d *Database) resolveCashBookMoneyAccount(org *Organization, method string) (accountID string, journalType string, err error) {
+	accountLabel := "cash register"
+	if method == "cash" {
+		// F101: a cash sale must land in the dedicated register/till
+		// account, named by defaultCashRegisterAccountId. It must NOT fall
+		// back to defaultCashAccountId: every chart-of-accounts template
+		// wires the "cash" role to the Bank account (db/account.go), so that
+		// fallback silently credited Bank while the Cash Book screen's
+		// register balance/report watched the till — a real production
+		// report. A register account is a configuration precondition of this
+		// screen, surfaced as a 409 naming the exact column rather than
+		// quietly posting to Bank.
+		if org.DefaultCashRegisterAccountID == nil {
+			return "", "", newValidationError(
+				"cannot record payment: organization has no default cash register account configured — set defaultCashRegisterAccountId in the organization's Accounting settings",
+			)
+		}
+		accountID = *org.DefaultCashRegisterAccountID
+		journalType = "cash"
+	} else {
+		if org.CashBookPaymentMethods != CashBookPaymentMethodsCashAndBank {
+			return "", "", newValidationError("this organization's Cash Book accepts cash only")
+		}
+		if org.DefaultCashAccountID == nil {
+			return "", "", newValidationError(
+				"cannot record a card or transfer payment: organization has no default bank account configured",
+			)
+		}
+		if org.DefaultCashRegisterAccountID != nil && *org.DefaultCashRegisterAccountID == *org.DefaultCashAccountID {
+			return "", "", newValidationError("%s", cashBookBankRegisterMismatch)
+		}
+		accountID = *org.DefaultCashAccountID
+		journalType = "bank"
+		accountLabel = "bank"
+	}
+
+	account, err := d.GetAccount(accountID)
+	if err != nil {
+		return "", "", newValidationError("cash/bank account not found")
+	}
+	if err := requireSameOrg(org.ID, account.OrganizationID, "cash/bank account"); err != nil {
+		return "", "", err
+	}
+	// The destination is where the money physically lands: it must be an
+	// asset account, never a revenue/expense/liability/equity row.
+	if account.Type != "asset" {
+		return "", "", newValidationError("the %s account must be an asset account", accountLabel)
+	}
+	return accountID, journalType, nil
 }
 
 // generateDocumentNumber ports src/utils/invoice.ts's generateInvoiceNumber
@@ -157,58 +214,21 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 	// but cash (migration 0111, default cash_only). A card/transfer payment is
 	// only meaningful when an amount is actually received; with 0 there is no
 	// payment to post and the method stays irrelevant.
-	cashAndBank := normalizeCashBookPaymentMethods(org.CashBookPaymentMethods) == CashBookPaymentMethodsCashAndBank
-	if req.AmountReceived > 0 && req.PaymentMethod != "cash" && !cashAndBank {
-		return nil, newValidationError("this organization's Cash Book accepts cash only")
-	}
-
-	bankAccountID := req.BankAccountID
-	accountLabel := "cash register"
+	var bankAccountID string
+	var settlementJournalType string
 	if req.AmountReceived > 0 {
-		if req.PaymentMethod == "cash" {
-			if bankAccountID == "" {
-				// F101: a cash sale must land in the dedicated register/till
-				// account, named by defaultCashRegisterAccountId. It must NOT
-				// fall back to defaultCashAccountId: every chart-of-accounts
-				// template wires the "cash" role to the Bank account
-				// (db/account.go), so that fallback silently credited Bank
-				// while the Cash Book screen's register balance/report watched
-				// the till — a real production report. A register account is a
-				// configuration precondition of this screen, surfaced as a 409
-				// naming the exact column rather than quietly posting to Bank.
-				if org.DefaultCashRegisterAccountID == nil {
-					return nil, newValidationError(
-						"cannot record payment: organization has no default cash register account configured — set defaultCashRegisterAccountId in the organization's Accounting settings",
-					)
-				}
-				bankAccountID = *org.DefaultCashRegisterAccountID
-			}
-		} else {
-			// cash_and_bank: card, transfer and the other non-cash methods
-			// settle into the bank account, never the physical drawer. An
-			// explicit req.BankAccountID is the register convention the old
-			// counter always sent, so it is not honored here — only the
-			// organization's configured bank account is consistent with this
-			// payment.
-			if org.DefaultCashAccountID == nil {
-				return nil, newValidationError(
-					"cannot record a card or transfer payment: organization has no default bank account configured",
-				)
-			}
-			bankAccountID = *org.DefaultCashAccountID
-			accountLabel = "bank"
-		}
-		bankAccount, err := d.GetAccount(bankAccountID)
+		bankAccountID, settlementJournalType, err = d.resolveCashBookMoneyAccount(org, req.PaymentMethod)
 		if err != nil {
-			return nil, newValidationError("cash/bank account not found")
-		}
-		if err := requireSameOrg(req.OrganizationID, bankAccount.OrganizationID, "cash/bank account"); err != nil {
 			return nil, err
 		}
-		// The destination is where the money physically lands: it must be an
-		// asset account, never a revenue/expense/liability/equity row.
-		if bankAccount.Type != "asset" {
-			return nil, newValidationError("the %s account must be an asset account", accountLabel)
+		// Older callers sent the register explicitly. The destination is now
+		// derived from the method and setting; honoring a different account
+		// would let a card payment land in the till (or a cash payment in the
+		// bank), defeating the setting.
+		if req.BankAccountID != "" && req.BankAccountID != bankAccountID {
+			return nil, newValidationError(
+				"the Cash Book posts cash to the cash register and card or transfer to the bank account; bankAccountId can't change that",
+			)
 		}
 	}
 
@@ -355,11 +375,7 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		if err != nil {
 			return nil, fmt.Errorf("create_cash_sale payment id: %w", err)
 		}
-		journalType := "bank"
-		if req.PaymentMethod == "cash" {
-			journalType = "cash"
-		}
-		settlementJournal, err = getJournalByTypeTx(d.DB, req.OrganizationID, journalType)
+		settlementJournal, err = getJournalByTypeTx(d.DB, req.OrganizationID, settlementJournalType)
 		if err != nil {
 			return nil, err
 		}

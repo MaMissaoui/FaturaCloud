@@ -77,6 +77,20 @@ func newGLPostingTestFixture(t *testing.T, d *Database, orgID string) glPostingT
 		t.Fatalf("CreateProduct: %v", err)
 	}
 
+	// The Cash Book needs a register before it can take any money; wiring the
+	// seeded 1010 Cash account here lets cash-sale/payment tests use the
+	// default without repeating the setup. Tests that need it unset clear it
+	// explicitly (three-state "").
+	register := byCode["1010"]
+	if register.ID == "" {
+		t.Fatal("fixture: no seeded 1010 (Cash) account")
+	}
+	if _, err := d.UpdateOrganization(org.ID, UpdateOrganizationRequest{
+		DefaultCashRegisterAccountID: &register.ID,
+	}); err != nil {
+		t.Fatalf("UpdateOrganization(register): %v", err)
+	}
+
 	return glPostingTestFixture{
 		orgID:              org.ID,
 		clientID:           client.ID,

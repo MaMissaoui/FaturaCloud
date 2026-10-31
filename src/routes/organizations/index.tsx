@@ -46,6 +46,7 @@ import { usageBreakdown } from "src/components/organizations/usage-breakdown";
 import { normalizeDocumentLanguage, normalizeDocumentLayout } from "src/types/document-layout";
 import { defaultTimezone, normalizeTimezone } from "src/utils/timezones";
 import { normalizeInventoryValuation } from "src/types/inventory-valuation";
+import { CASH_BOOK_PAYMENT_METHODS_CASH_ONLY } from "src/types/cash-book-payment-methods";
 import { centsToUnits, unitsToCents } from "src/utils/currency";
 
 // The GL-default account Selects the edit drawer renders. A cleared one has
@@ -196,6 +197,7 @@ export default function Organizations() {
       // where it operates; it stays editable in Formatting.
       timezone: defaultTimezone(),
       masterDataSummaries: true,
+      cashBookPaymentMethods: CASH_BOOK_PAYMENT_METHODS_CASH_ONLY,
     });
     setActiveSections([]);
     setDrawerOpen(true);
