@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.73.1] - 2026-10-31
+
+No migrations: the schema stays at `0110`, so rolling back to 3.73.0 is just the image tag.
+
+### Fixed
+- Deleting an invoice that another organization's journal entry named (the F191 case) deletes it. The delete used to remove the invoice's line items, keep the invoice and answer "not deleted". A bill in the same situation can be deleted too (#557).
+- Editing an invoice's or bill's line items, totals, currency or partner is refused even when a state change posts its entry at the same moment. The check used to run only before the save started (#557).
+- A manual stock movement whose reference matches another organization's shipped delivery or received receipt number can be deleted (#557).
+
 ## [3.73.0] - 2026-10-24
 
 Migration `0110` rebuilds one index: the schema moves from `0109` to `0110`. 3.72.0 can't start on a `0110` database, so a rollback means restoring a backup taken before the upgrade.
