@@ -5,6 +5,22 @@ import (
 	"testing"
 )
 
+func TestCreateCashSaleRefusesNonAssetRegister(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-sale-nonasset")
+
+	_, err := d.CreateCashSale(CreateCashSaleRequest{
+		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+		SubTotal: 1000, TaxTotal: 200, Total: 1200,
+		AmountReceived: 1200, PaymentMethod: "cash", BankAccountID: fx.revenueAccountID,
+	})
+	assertValidationErrorContains(t, err, "the cash register account must be an asset account")
+}
+
 func TestCreateCashSaleFullCashSaleMarksInvoicePaid(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)

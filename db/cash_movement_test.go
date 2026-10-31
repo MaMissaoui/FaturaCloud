@@ -134,6 +134,19 @@ func TestCreateCashMovementWrongCounterAccountTypeRejected(t *testing.T) {
 	}
 }
 
+func TestCreateCashMovementRefusesNonAssetRegister(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-movement-nonasset")
+	_, bank, expense := cashMovementTestAccounts(t, d, fx.orgID)
+
+	_, err := d.CreateCashMovement(CreateCashMovementRequest{
+		OrganizationID: fx.orgID, AccountID: expense.ID, Date: fx.date,
+		CounterAccountType: "bank", CounterAccountID: bank.ID, Amount: 1000,
+	})
+	assertValidationErrorContains(t, err, "the cash register account must be an asset account")
+}
+
 func TestCreateCashMovementInvalidCounterAccountTypeRejected(t *testing.T) {
 	t.Parallel()
 	d := newTestDB(t)

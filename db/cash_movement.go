@@ -99,6 +99,13 @@ func (d *Database) CreateCashMovement(req CreateCashMovementRequest) (*CashMovem
 	if err != nil {
 		return nil, err
 	}
+	// The register is where the cash physically sits: it must be an asset
+	// account. Checked here rather than in resolveCashReportAccount, which
+	// the Daily Cash Movements report and GetAccountBalance also use — those
+	// must keep reporting on any postable account, not just assets.
+	if registerAccount.Type != "asset" {
+		return nil, newValidationError("the %s account must be an asset account", "cash register")
+	}
 
 	counterAccount, err := d.GetAccount(req.CounterAccountID)
 	if err != nil {

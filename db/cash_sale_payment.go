@@ -118,6 +118,17 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 		)
 	}
 	registerAccountID := *org.DefaultCashRegisterAccountID
+	registerAccount, err := d.GetAccount(registerAccountID)
+	if err != nil {
+		return nil, newValidationError("cash/bank account not found")
+	}
+	if err := requireSameOrg(invoice.OrganizationID, registerAccount.OrganizationID, "cash/bank account"); err != nil {
+		return nil, err
+	}
+	// The register holds the cash: an asset account, never a P&L row.
+	if registerAccount.Type != "asset" {
+		return nil, newValidationError("the %s account must be an asset account", "cash register")
+	}
 	if org.DefaultArAccountID == nil {
 		return nil, newValidationError("cannot post payment: organization has no default AR account configured")
 	}
@@ -156,6 +167,31 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 		return nil, fmt.Errorf("create_cash_sale_payment begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Re-verify the invoice's state and receivable entry through the
+	// transaction (db/CLAUDE.md "state changes re-check under the
+	// transaction"): the pre-tx reads above could have raced a cancellation
+	// or a state change that reversed the receivable, and settling a
+	// document with no live AR entry would orphan this payment's line.
+	var live struct {
+		State  string  `db:"state"`
+		Origin *string `db:"origin"`
+	}
+	if err := tx.Get(&live, `SELECT state, origin FROM invoices WHERE id = ?`, invoice.ID); err != nil {
+		return nil, fmt.Errorf("create_cash_sale_payment recheck invoice: %w", err)
+	}
+	if live.State != "sent" && live.State != "paid" {
+		return nil, newValidationError("only a sent invoice can receive a payment")
+	}
+	postedEntry, err := findInvoiceReceivableEntryTx(tx, &Invoice{
+		ID: invoice.ID, OrganizationID: invoice.OrganizationID, Origin: live.Origin,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if postedEntry == nil {
+		return nil, newValidationError("invoice has no posted GL entry — send it first")
+	}
 
 	lines, amounts, paid, err = invoiceLineBalances(tx, invoice.ID)
 	if err != nil {

@@ -82,14 +82,21 @@ func (d *Database) refuseOpeningLoanChange(invoiceID, action string) error {
 // receivable on the books — its sale entry, or for a migrated loan its
 // outstanding-balance entry — which a payment must have to settle against.
 func (d *Database) findInvoiceReceivableEntry(invoice *Invoice) (*JournalEntry, error) {
+	return findInvoiceReceivableEntryTx(d.DB, invoice)
+}
+
+// findInvoiceReceivableEntryTx is the tx-capable twin of
+// findInvoiceReceivableEntry, for callers that must re-verify the entry
+// after Beginx() (CreatePayment, CreateCashSalePayment).
+func findInvoiceReceivableEntryTx(exec sqlGetExecer, invoice *Invoice) (*JournalEntry, error) {
 	if isOpeningLoan(invoice) {
-		return d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		return findPostedEntryForSourceDocumentTx(exec, SourceDocumentRef{
 			OrganizationID: invoice.OrganizationID,
 			Type:           openingLoanSourceType,
 			ID:             invoice.ID,
 		})
 	}
-	return d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+	return findPostedEntryForSourceDocumentTx(exec, SourceDocumentRef{
 		OrganizationID: invoice.OrganizationID,
 		Type:           SourceDocInvoice,
 		ID:             invoice.ID,

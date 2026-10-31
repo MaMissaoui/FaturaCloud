@@ -1,6 +1,8 @@
 package db
 
 import (
+	"errors"
+	"strings"
 	"testing"
 )
 
@@ -336,6 +338,130 @@ func TestCreatePaymentRejectedWithoutPostedEntry(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected payment against a draft (unposted) invoice to be rejected")
 	}
+}
+
+// assertValidationErrorContains reports whether err is a *ValidationError
+// whose message contains want.
+func assertValidationErrorContains(t *testing.T, err error, want string) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected a validation error containing %q, got nil", want)
+	}
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected a *ValidationError containing %q, got %T: %v", want, err, err)
+	}
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("error = %q, want it to contain %q", err.Error(), want)
+	}
+}
+
+func TestCreatePaymentRefusesNonAssetBankAccount(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-pay-nonasset-bank")
+	inv := fx.createInvoice(t, d, "inv-1", 1, 1000)
+
+	_, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: fx.orgID, Direction: "inbound", ClientID: &fx.clientID,
+		BankAccountID: fx.revenueAccountID, Amount: 1200, Currency: "EUR", Date: fx.date, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "invoice", DocumentID: inv.ID, Amount: 1200}},
+	})
+	assertValidationErrorContains(t, err, "the bank/cash account must be an asset account")
+}
+
+func TestCreatePaymentRefusesOtherClientsInvoice(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-pay-other-client")
+	inv := fx.createInvoice(t, d, "inv-1", 1, 1000)
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+	bank := accountByCode(t, d, fx.orgID, "1020")
+	other, err := d.CreateClient(CreateClientRequest{OrganizationID: fx.orgID, Name: ptr("Other Client")})
+	if err != nil {
+		t.Fatalf("CreateClient: %v", err)
+	}
+
+	_, err = d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: fx.orgID, Direction: "inbound", ClientID: &other.ID,
+		BankAccountID: bank.ID, Amount: 1200, Currency: "EUR", Date: fx.date, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "invoice", DocumentID: inv.ID, Amount: 1200}},
+	})
+	assertValidationErrorContains(t, err, "invoice belongs to another client")
+}
+
+func TestCreatePaymentRefusesOtherVendorsBill(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-pay-other-vendor")
+	bill := fx.createIncomingInvoice(t, d, "bill-1", 1, 1000)
+	if _, err := d.UpdateIncomingInvoiceState(bill.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+	bank := accountByCode(t, d, fx.orgID, "1020")
+	other, err := d.CreateVendor(CreateVendorRequest{OrganizationID: fx.orgID, Name: ptr("Other Vendor")})
+	if err != nil {
+		t.Fatalf("CreateVendor: %v", err)
+	}
+
+	_, err = d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: fx.orgID, Direction: "outbound", VendorID: &other.ID,
+		BankAccountID: bank.ID, Amount: 1200, Currency: "EUR", Date: fx.date, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "incoming_invoice", DocumentID: bill.ID, Amount: 1200}},
+	})
+	assertValidationErrorContains(t, err, "bill belongs to another vendor")
+}
+
+func TestCreatePaymentRefusesDuplicateApplication(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-pay-duplicate")
+	inv := fx.createInvoice(t, d, "inv-1", 1, 1000) // total 1200
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+	bank := accountByCode(t, d, fx.orgID, "1020")
+
+	_, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: fx.orgID, Direction: "inbound", ClientID: &fx.clientID,
+		BankAccountID: bank.ID, Amount: 1200, Currency: "EUR", Date: fx.date, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{
+			{DocumentType: "invoice", DocumentID: inv.ID, Amount: 600},
+			{DocumentType: "invoice", DocumentID: inv.ID, Amount: 600},
+		},
+	})
+	assertValidationErrorContains(t, err, "application 2: the same document is applied twice")
+}
+
+func TestCreatePaymentRefusesAmountTooSmallToPost(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-pay-tiny-fx")
+
+	// A USD invoice at 0.01: one cent of USD converts to 0 functional cents.
+	inv, err := d.CreateInvoice(CreateInvoiceRequest{
+		OrganizationID: fx.orgID, Number: "inv-tiny", ClientID: fx.clientID,
+		Date: fx.date, Currency: "USD", ExchangeRate: ptr(0.01),
+		SubTotal: 10000, TaxTotal: 0, Total: 10000,
+		LineItems: []CreateInvoiceLineItemRequest{{Quantity: 1, UnitPrice: 10000, ProductID: &fx.productID}},
+	})
+	if err != nil {
+		t.Fatalf("CreateInvoice: %v", err)
+	}
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+	bank := accountByCode(t, d, fx.orgID, "1020")
+
+	_, err = d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: fx.orgID, Direction: "inbound", ClientID: &fx.clientID,
+		BankAccountID: bank.ID, Amount: 1, Currency: "USD", ExchangeRate: ptr(0.01),
+		Date: fx.date, Method: "bank_transfer",
+		Applications: []CreatePaymentApplicationRequest{{DocumentType: "invoice", DocumentID: inv.ID, Amount: 1}},
+	})
+	assertValidationErrorContains(t, err, "the payment amount is too small to post in the organization's currency")
 }
 
 func TestUpdateInvoiceStateBlockedWhilePaymentOpen(t *testing.T) {

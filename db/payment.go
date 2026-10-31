@@ -368,6 +368,17 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 	if err := requireSameOrg(req.OrganizationID, bankAccount.OrganizationID, "bank/cash account"); err != nil {
 		return nil, err
 	}
+	// Money accounts are assets, never revenue/expense/liability/equity
+	// rows: posting cash into a P&L account corrupts both the balance sheet
+	// and the P&L without any structural error. A group header is never
+	// postable either, and is rejected here with a clear message rather than
+	// only at post time.
+	if bankAccount.Type != "asset" {
+		return nil, newValidationError("the %s account must be an asset account", "bank/cash")
+	}
+	if bankAccount.IsGroup != 0 {
+		return nil, newValidationError("the bank/cash account %q is a group header and cannot be posted to", bankAccount.Name)
+	}
 	if req.ClientID != nil && *req.ClientID != "" {
 		client, err := d.GetClient(*req.ClientID)
 		if err != nil {
@@ -436,7 +447,30 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 	}
 	var overpayChecks []overpayCheck
 
+	// stateChecks re-verifies, inside the transaction below, that each
+	// applied document is still in a state that accepts payment and still
+	// has the posted GL entry the pre-tx checks found. The pre-tx reads are
+	// only a fast rejection: a concurrent state change (a cancellation or a
+	// reversal) between them and the transaction would otherwise let this
+	// payment settle a document that no longer has a receivable/payable.
+	type stateCheck struct {
+		index        int
+		documentType string
+		documentID   string
+	}
+	var stateChecks []stateCheck
+
+	// The UNIQUE(paymentId, documentType, documentId) index would turn a
+	// repeated application into a raw 500 after the INSERT; refuse it up
+	// front with a validation error instead.
+	seenApplications := map[string]bool{}
+
 	for i, app := range req.Applications {
+		applicationKey := app.DocumentType + "\x00" + app.DocumentID
+		if seenApplications[applicationKey] {
+			return nil, newValidationError("application %d: the same document is applied twice", i+1)
+		}
+		seenApplications[applicationKey] = true
 		if app.Amount <= 0 {
 			return nil, newValidationError("application %d: amount must be positive", i+1)
 		}
@@ -451,6 +485,13 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 			}
 			if invoice.OrganizationID != req.OrganizationID {
 				return nil, newValidationError("application %d: invoice belongs to a different organization", i+1)
+			}
+			// The payment's partner must be the document's own partner: the
+			// payments CHECK ties direction to partner, and an AR clearing
+			// line tagged with the wrong client would misattribute the
+			// settlement forever.
+			if req.ClientID == nil || invoice.ClientID != *req.ClientID {
+				return nil, newValidationError("application %d: invoice belongs to another client", i+1)
 			}
 			if invoice.Currency != req.Currency {
 				return nil, newValidationError(
@@ -470,6 +511,7 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 				return nil, newValidationError("application %d: amount %d exceeds remaining balance %d", i+1, app.Amount, remaining)
 			}
 			overpayChecks = append(overpayChecks, overpayCheck{"invoice", invoice.ID, invoice.Total, app.Amount})
+			stateChecks = append(stateChecks, stateCheck{i, "invoice", invoice.ID})
 			if org.DefaultArAccountID == nil {
 				return nil, newValidationError("cannot post payment: organization has no default AR account configured")
 			}
@@ -498,6 +540,9 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 			if bill.OrganizationID != req.OrganizationID {
 				return nil, newValidationError("application %d: incoming invoice belongs to a different organization", i+1)
 			}
+			if req.VendorID == nil || bill.VendorID != *req.VendorID {
+				return nil, newValidationError("application %d: bill belongs to another vendor", i+1)
+			}
 			if bill.Currency != req.Currency {
 				return nil, newValidationError(
 					"application %d: bill currency %q does not match payment currency %q", i+1, bill.Currency, req.Currency,
@@ -520,6 +565,7 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 				return nil, newValidationError("application %d: amount %d exceeds remaining balance %d", i+1, app.Amount, remaining)
 			}
 			overpayChecks = append(overpayChecks, overpayCheck{"incoming_invoice", bill.ID, bill.Total, app.Amount})
+			stateChecks = append(stateChecks, stateCheck{i, "incoming_invoice", bill.ID})
 			if org.DefaultApAccountID == nil {
 				return nil, newValidationError("cannot post payment: organization has no default AP account configured")
 			}
@@ -552,6 +598,20 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 	}
 
 	bankFunctional := convertPayment(req.Amount)
+
+	// journal_lines has CHECK((debit = 0) <> (credit = 0)), so a foreign
+	// amount whose conversion rounds to 0 functional cents would build an
+	// unpostable line and surface as a raw 500. Dropping the line silently
+	// isn't an option either — the entry would no longer balance, and the
+	// bank leg must exist for the cash movement to be recorded.
+	if bankFunctional == 0 && req.Amount > 0 {
+		return nil, newValidationError("the payment amount is too small to post in the organization's currency")
+	}
+	for _, s := range settlements {
+		if s.functional == 0 && s.docCents > 0 {
+			return nil, newValidationError("the payment amount is too small to post in the organization's currency")
+		}
+	}
 
 	var lines []CreateJournalLineRequest
 	var debitSum, creditSum int64
@@ -602,6 +662,58 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 		return nil, fmt.Errorf("create_payment begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// Re-verify each applied document's state and posted entry through the
+	// transaction (db/CLAUDE.md "state changes re-check under the
+	// transaction"): the pre-tx checks are only a fast rejection, and a
+	// concurrent cancellation/reversal between them and this transaction
+	// would otherwise let the payment settle a document with no live
+	// receivable/payable. Same messages as the pre-tx checks.
+	for _, c := range stateChecks {
+		switch c.documentType {
+		case "invoice":
+			var row struct {
+				State  string  `db:"state"`
+				Origin *string `db:"origin"`
+			}
+			if err := tx.Get(&row, `SELECT state, origin FROM invoices WHERE id = ?`, c.documentID); err != nil {
+				return nil, fmt.Errorf("create_payment recheck invoice: %w", err)
+			}
+			if row.State != "sent" && row.State != "paid" {
+				return nil, newValidationError("application %d: invoice has no posted GL entry — send it first", c.index+1)
+			}
+			postedEntry, err := findInvoiceReceivableEntryTx(tx, &Invoice{
+				ID: c.documentID, OrganizationID: req.OrganizationID, Origin: row.Origin,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if postedEntry == nil {
+				return nil, newValidationError("application %d: invoice has no posted GL entry — send it first", c.index+1)
+			}
+		case "incoming_invoice":
+			var row struct {
+				State string `db:"state"`
+			}
+			if err := tx.Get(&row, `SELECT state FROM incoming_invoices WHERE id = ?`, c.documentID); err != nil {
+				return nil, fmt.Errorf("create_payment recheck incoming invoice: %w", err)
+			}
+			if row.State != "approved" && row.State != "paid" {
+				return nil, newValidationError("application %d: bill has no posted GL entry — approve it first", c.index+1)
+			}
+			postedEntry, err := findPostedEntryForSourceDocumentTx(tx, SourceDocumentRef{
+				OrganizationID: req.OrganizationID,
+				Type:           SourceDocIncomingInvoice,
+				ID:             c.documentID,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if postedEntry == nil {
+				return nil, newValidationError("application %d: bill has no posted GL entry — approve it first", c.index+1)
+			}
+		}
+	}
 
 	// F48: re-verify every application's remaining balance against a fresh
 	// in-tx sum — see the overpayCheck comment above. A concurrent payment
