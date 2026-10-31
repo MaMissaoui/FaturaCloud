@@ -99,8 +99,19 @@ const SaleTypeButtons = ({ cb }: { cb: CashBookState }) => {
 // the current layout's tag. The submit button sits on it.
 const SaleSummary = ({ cb }: { cb: CashBookState }) => {
   const { token } = theme.useToken();
-  const { total, amountReceivedWatched, saleMode, money, form, submitting, registerAccountId } = cb;
+  const {
+    total,
+    amountReceivedWatched,
+    saleMode,
+    money,
+    form,
+    submitting,
+    registerAccountId,
+    cashAndBank,
+    paymentMethodWatched,
+  } = cb;
   const received = amountReceivedWatched || 0;
+  const paymentMethod = cashAndBank ? paymentMethodWatched || "cash" : "cash";
   const owes = total > 0 && received < total;
   const change = received > total ? received - total : 0;
   return (
@@ -155,9 +166,11 @@ const SaleSummary = ({ cb }: { cb: CashBookState }) => {
         style={{ marginTop: 16, height: 52, fontSize: 16 }}
         onClick={() => form.submit()}
         loading={submitting}
-        // F101: an amount > 0 posts to the register; with none configured it
-        // can't be recorded. A zero-deposit loan sale is still allowed.
-        disabled={received > 0 && !registerAccountId}
+        // F101: a cash payment posts to the register; with none configured it
+        // can't be recorded. A card/transfer payment in cash_and_bank mode
+        // goes to the bank account, so it doesn't need a register. A
+        // zero-deposit loan sale is still allowed.
+        disabled={received > 0 && paymentMethod === "cash" && !registerAccountId}
       >
         {saleMode === "cash" ? <Trans>Record cash sale</Trans> : <Trans>Record loan sale</Trans>}
       </Button>
@@ -297,6 +310,8 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
     handleSubmitSale,
     dateFormat,
     registerAccountId,
+    cashAndBank,
+    paymentMethodWatched,
     defaultTaxRateId,
     sellableProducts,
     products,
@@ -305,6 +320,7 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
     currency,
     setAmountReceivedTouched,
   } = cb;
+  const paymentMethod = cashAndBank ? paymentMethodWatched || "cash" : "cash";
   return (
     <Form form={form} layout="vertical" onFinish={handleSubmitSale} scrollToFirstError>
       <Card
@@ -332,7 +348,7 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
           </Form.Item>
         }
       >
-        {!registerAccountId && (
+        {paymentMethod === "cash" && !registerAccountId && (
           <Alert
             type="warning"
             showIcon
@@ -390,15 +406,17 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12}>
-                <Form.Item label={t`Payment method`} name="paymentMethod">
-                  <Select size="large">
-                    {PAYMENT_METHODS.map((m) => (
-                      <Option key={m} value={m}>
-                        {paymentMethodLabel(m)}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+                {cashAndBank && (
+                  <Form.Item label={t`Payment method`} name="paymentMethod">
+                    <Select size="large">
+                      {PAYMENT_METHODS.map((m) => (
+                        <Option key={m} value={m}>
+                          {paymentMethodLabel(m)}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                )}
               </Col>
             </Row>
             <Form.Item label={t`Reference`} name="reference" style={{ marginBottom: 0 }}>

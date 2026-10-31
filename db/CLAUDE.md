@@ -21,6 +21,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
 - `brandColor`: only values from the curated `brandColorPalette` (`normalizeBrandColor`, 409 otherwise); `""` = default.
 - `isTest` (`0099`): a visible marker only; nothing on the server reads it. seed-demo sets it.
 - `masterDataSummaries` (`0100`, default on): when off, every summary function returns a 409 so no summary work runs.
+- `cashBookPaymentMethods` (`0111`, default `cash_only`): `cash_and_bank` lets the Cash Book take card/transfer payments, which post to `defaultCashAccountId` (the bank) instead of the register. Anything else reads as `cash_only` (`normalizeCashBookPaymentMethods`).
 - Account defaults: `defaultInventoryAccountId`/`defaultGRNIAccountId`/`defaultCOGSAccountId`/`defaultInventoryAdjustmentAccountId`, `defaultStampDutyAccountId`, `defaultImportCostsPayableAccountId` and `defaultCashRegisterAccountId` (the physical till, distinct from `defaultCashAccountId`, which templates wire to Bank) are nullable; a posting that needs an unset one is a 409, never a 500. **A new `default*AccountId` column goes in both `accountReferencingOrganizationColumns` (`db/account.go`) and `ResetOrganizationData`'s NULL-clear list** (`TestGetAccountUsageCountCoversEveryReference`).
 - `documentLayout` (`0089`): `tunisia` → `embeddedTunisiaTemplates`, anything else → `embeddedDefaultTemplates` (`normalizeDocumentLayout`/`embeddedTemplatesFor`). Never inferred from country after `0089`'s one-time backfill. `fiscalStampEnabled`/`withholdingTaxEnabled` are separate frontend gates, deliberately independent of the layout.
 - `documentLanguage` (`0091`: `en`/`de`/`fr`): language of the amount-in-words line only; `documentLanguageFor` falls back by layout (French for Tunisian, else English), never by country.
@@ -120,6 +121,7 @@ Loaded when working under `db/`. Project-wide invariants (cents, ids, dates, sta
   - Reads happen before `Beginx()`.
   - It is refused in a foreign currency or with no lines.
   - The register is `defaultCashRegisterAccountId` → `defaultCashAccountId` → 409.
+  - Cash goes to the register. Card/transfer money (only when `cashBookPaymentMethods = cash_and_bank`) goes to `defaultCashAccountId` (the bank), never the till, with the `bank` journal; in `cash_only` a non-cash amount received is a 409.
   - `dueDate` = `date`.
   - The sale is `paid` iff `amountReceived == total`.
 - **Cash Book stock** (`0094`, `db/invoice_stock.go`): a `movesStock` invoice's stock follows its state like the GL does (`needsInvoiceStockPresence`). Movements carry `sourceDocumentId` = the invoice. COGS goes under `invoice_cogs`, through `buildCOGSGLLines`, in perpetual only. With no cost basis, `planInvoiceStockOut`'s 409 says to give the product a cost or switch to Quantities only. Owner decisions:

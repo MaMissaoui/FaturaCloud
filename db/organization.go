@@ -46,6 +46,44 @@ func normalizeBrandColor(p *string) (*string, error) {
 	return nil, newValidationError("brand color %q is not one of the supported presets", *p)
 }
 
+// Cash Book payment methods (migration 0111). cash_only is the default: money
+// received at the counter is cash, so it must land in the physical register.
+// cash_and_bank lets card/transfer payments into the organization's default
+// bank account (defaultCashAccountId) instead.
+const (
+	CashBookPaymentMethodsCashOnly    = "cash_only"
+	CashBookPaymentMethodsCashAndBank = "cash_and_bank"
+)
+
+var cashBookPaymentMethods = map[string]bool{
+	CashBookPaymentMethodsCashOnly:    true,
+	CashBookPaymentMethodsCashAndBank: true,
+}
+
+// normalizeCashBookPaymentMethods maps a stored value to the mode actually in
+// effect: anything unknown (including a legacy empty string) is cash_only,
+// the same fail-safe normalization normalizeDocumentLayout applies.
+func normalizeCashBookPaymentMethods(value string) string {
+	if cashBookPaymentMethods[value] {
+		return value
+	}
+	return CashBookPaymentMethodsCashOnly
+}
+
+// validateCashBookPaymentMethods rejects a value outside the two supported
+// modes. A nil pointer (field omitted) passes through unchanged, the same
+// convention as validateDocumentLanguage; the column is NOT NULL, so an
+// explicit "" is refused rather than treated as a clear.
+func validateCashBookPaymentMethods(p *string) error {
+	if p == nil {
+		return nil
+	}
+	if !cashBookPaymentMethods[*p] {
+		return newValidationError("cash book payment methods %q must be cash_only or cash_and_bank", *p)
+	}
+	return nil
+}
+
 // validateDocumentLanguage accepts one of documentLanguages, or "" to clear
 // back to the layout-based fallback. A nil pointer (field omitted) passes
 // through unchanged, the same convention as normalizeBrandColor.
@@ -227,6 +265,11 @@ type Organization struct {
 	// MasterDataSummaries enables the per-client financial summary on the
 	// Clients screen (migration 0100). When false the summary endpoints 409.
 	MasterDataSummaries bool `db:"masterDataSummaries" json:"masterDataSummaries"`
+	// CashBookPaymentMethods is "cash_only" (migration 0111, the default) or
+	// "cash_and_bank": whether the Cash Book accepts card/transfer payments,
+	// which then post to defaultCashAccountId instead of the register. An
+	// unknown stored value reads as cash_only (normalizeCashBookPaymentMethods).
+	CashBookPaymentMethods string `db:"cashBookPaymentMethods" json:"cashBookPaymentMethods"`
 	// HasLogo is computed on read (organizationColumns), not a column: it
 	// lets the frontend skip GET /logo for an organization with none, which
 	// otherwise answered 404 on every page load. Ignored on writes.
@@ -269,12 +312,13 @@ type CreateOrganizationRequest struct {
 
 	// DocumentLayout is accepted on create so a layout picked in the New
 	// Organization drawer isn't silently dropped; NULL means the default.
-	DocumentLayout      *string `json:"documentLayout"`
-	DocumentLanguage    *string `json:"documentLanguage"`
-	Timezone            *string `json:"timezone"`
-	InventoryValuation  *string `json:"inventoryValuation"`
-	IsTest              *bool   `json:"isTest"`
-	MasterDataSummaries *bool   `json:"masterDataSummaries"`
+	DocumentLayout         *string `json:"documentLayout"`
+	DocumentLanguage       *string `json:"documentLanguage"`
+	Timezone               *string `json:"timezone"`
+	InventoryValuation     *string `json:"inventoryValuation"`
+	IsTest                 *bool   `json:"isTest"`
+	MasterDataSummaries    *bool   `json:"masterDataSummaries"`
+	CashBookPaymentMethods *string `json:"cashBookPaymentMethods"`
 
 	// The invoice feature flags, 0/1 like UpdateOrganizationRequest's, so a
 	// checkbox ticked in the New Organization drawer isn't dropped. Unset
@@ -348,6 +392,7 @@ type UpdateOrganizationRequest struct {
 	InventoryValuation        *string `json:"inventoryValuation"`
 	IsTest                    *bool   `json:"isTest"`
 	MasterDataSummaries       *bool   `json:"masterDataSummaries"`
+	CashBookPaymentMethods    *string `json:"cashBookPaymentMethods"`
 }
 
 // organizationColumns is every organizations column except logo, shared by
@@ -373,6 +418,7 @@ const organizationColumns = `id, code, name, country, email, phone, website,
 	       defaultFiscalStampAmount, defaultStampDutyAccountId, documentLayout,
 	       fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled,
 	       documentLanguage, timezone, inventoryValuation, isTest, masterDataSummaries,
+	       cashBookPaymentMethods,
 	       COALESCE(length(logo), 0) > 0 AS hasLogo`
 
 func (d *Database) GetOrganizations() ([]Organization, error) {
@@ -396,6 +442,9 @@ func (d *Database) GetOrganizations() ([]Organization, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get_organizations: %w", err)
 	}
+	for i := range orgs {
+		orgs[i].CashBookPaymentMethods = normalizeCashBookPaymentMethods(orgs[i].CashBookPaymentMethods)
+	}
 	return orgs, nil
 }
 
@@ -408,6 +457,7 @@ func (d *Database) GetOrganization(organizationID string) (*Organization, error)
 	if err != nil {
 		return nil, fmt.Errorf("get_organization: %w", err)
 	}
+	org.CashBookPaymentMethods = normalizeCashBookPaymentMethods(org.CashBookPaymentMethods)
 	return &org, nil
 }
 
@@ -465,6 +515,13 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	if err := validateInventoryValuation(req.InventoryValuation); err != nil {
 		return nil, err
 	}
+	if err := validateCashBookPaymentMethods(req.CashBookPaymentMethods); err != nil {
+		return nil, err
+	}
+	cashBookPaymentMethodsValue := CashBookPaymentMethodsCashOnly
+	if req.CashBookPaymentMethods != nil {
+		cashBookPaymentMethodsValue = *req.CashBookPaymentMethods
+	}
 	if req.InvoiceNumberFormat == nil || strings.TrimSpace(*req.InvoiceNumberFormat) == "" {
 		defaultFormat := DefaultInvoiceNumberFormat
 		req.InvoiceNumberFormat = &defaultFormat
@@ -487,8 +544,9 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 			customerNotes, invoice_number_format, date_format, brandColor,
 			bic, tax_number, street, house_number, postal_code, city, country_code,
 			documentLayout, documentLanguage, timezone, inventoryValuation, isTest, masterDataSummaries,
+			cashBookPaymentMethods,
 			fiscalStampEnabled, withholdingTaxEnabled, amountInWordsEnabled
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.ID, req.Code, req.Name, req.Country, req.Email, req.Phone, req.Website,
 		req.RegistrationNumber, req.Vatin, req.BankName, req.IBAN, req.Currency,
 		req.MinimumFractionDigits, req.DueDays, req.OverdueCharge,
@@ -497,6 +555,7 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 		req.DocumentLayout, req.DocumentLanguage, req.Timezone, req.InventoryValuation,
 		req.IsTest != nil && *req.IsTest,
 		req.MasterDataSummaries == nil || *req.MasterDataSummaries,
+		cashBookPaymentMethodsValue,
 		req.FiscalStampEnabled != nil && *req.FiscalStampEnabled != 0,
 		req.WithholdingTaxEnabled != nil && *req.WithholdingTaxEnabled != 0,
 		req.AmountInWordsEnabled != nil && *req.AmountInWordsEnabled != 0,
@@ -543,6 +602,9 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		return nil, err
 	}
 	if err := validateInventoryValuation(updates.InventoryValuation); err != nil {
+		return nil, err
+	}
+	if err := validateCashBookPaymentMethods(updates.CashBookPaymentMethods); err != nil {
 		return nil, err
 	}
 	if updates.InventoryValuation != nil {
@@ -664,7 +726,8 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		     timezone                  = COALESCE(?, timezone),
 		     inventoryValuation        = COALESCE(?, inventoryValuation),
 		     isTest                    = COALESCE(?, isTest),
-		     masterDataSummaries       = COALESCE(?, masterDataSummaries)` +
+		     masterDataSummaries       = COALESCE(?, masterDataSummaries),
+		     cashBookPaymentMethods    = COALESCE(?, cashBookPaymentMethods)` +
 		accountSet.String() + `
 		 WHERE id = ?`
 
@@ -683,6 +746,7 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 		updates.FiscalStampEnabled, updates.WithholdingTaxEnabled,
 		updates.AmountInWordsEnabled, updates.DocumentLanguage, updates.Timezone,
 		updates.InventoryValuation, updates.IsTest, updates.MasterDataSummaries,
+		updates.CashBookPaymentMethods,
 	}
 	// accountSet's placeholders sit between the COALESCE block and WHERE,
 	// so its args do too.

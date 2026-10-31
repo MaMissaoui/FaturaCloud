@@ -160,6 +160,10 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   // drawer", the same scoped-out-till-session boundary this screen has
   // always had.
   const registerAccountId = organization?.defaultCashRegisterAccountId;
+  // The organization setting (migration 0111): only cash_and_bank shows the
+  // payment-method picker; cash_only always sends "cash" and posts to the
+  // register.
+  const cashAndBank = organization?.cashBookPaymentMethods === "cash_and_bank";
   const [selectedDate, setSelectedDate] = useState<Dayjs>(() => dayjs());
   const [dailyMovement, setDailyMovement] = useState<DailyCashMovementRow | null>(null);
   const [movementDetails, setMovementDetails] = useState<CashMovementDetail[]>([]);
@@ -604,6 +608,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   );
   const { subTotal, taxTotal, total } = sale;
   const amountReceivedWatched = toNumber(Form.useWatch("amountReceived", form));
+  const paymentMethodWatched = Form.useWatch("paymentMethod", form) as string | undefined;
 
   // Defaults the amount field to what each mode naturally means — the full
   // total for a cash sale (kept in sync as line items change, so it's
@@ -628,20 +633,23 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
       message.error(t`Pick or create a customer first`);
       return;
     }
-    // F101: the register/till account is the only correct destination for
-    // money received at the counter — never defaultCashAccountId, which every
-    // chart-of-accounts template wires to Bank. Sent explicitly so a sale
-    // can't silently fall back server-side, and required up front (below)
-    // whenever an amount is actually being recorded so the cashier gets a
-    // clear message instead of a Bank posting. A zero-deposit loan sale has
-    // no payment to post and so doesn't need one.
+    // F101: a cash payment goes to the register/till account, never
+    // defaultCashAccountId, which every chart-of-accounts template wires to
+    // Bank. Card and transfer payments (cash_and_bank mode only) go to the
+    // server's defaultCashAccountId instead, so the register stays the
+    // physical drawer. A zero-deposit loan sale has no payment to post for
+    // either and so doesn't need an account.
     const totalCents = unitsToCents(total);
     const amountReceivedCents = Math.min(
       unitsToCents(toNumber(values.amountReceived) || 0),
       totalCents,
     );
-    const bankAccountId = organization?.defaultCashRegisterAccountId ?? undefined;
-    if (amountReceivedCents > 0 && !bankAccountId) {
+    const paymentMethod = cashAndBank ? values.paymentMethod || "cash" : "cash";
+    const bankAccountId =
+      paymentMethod === "cash"
+        ? (organization?.defaultCashRegisterAccountId ?? undefined)
+        : undefined;
+    if (amountReceivedCents > 0 && paymentMethod === "cash" && !bankAccountId) {
       message.error(
         t`No cash register account configured — set defaultCashRegisterAccountId in Organization settings → Accounting before recording a sale with an amount received`,
       );
@@ -663,7 +671,7 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
         taxTotal: unitsToCents(taxTotal),
         total: totalCents,
         amountReceived: amountReceivedCents,
-        paymentMethod: values.paymentMethod || "cash",
+        paymentMethod,
         bankAccountId,
         reference: values.reference || undefined,
         ...(selectedClient ? { clientId: selectedClient.id } : { newClient: newClientDraft! }),
@@ -823,6 +831,8 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
     submitting,
     form,
     registerAccountId,
+    cashAndBank,
+    paymentMethodWatched,
     selectedDate,
     setSelectedDate,
     dailyMovement,

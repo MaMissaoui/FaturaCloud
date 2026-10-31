@@ -66,10 +66,12 @@ type CreateCashSaleRequest struct {
 	AmountReceived int64  `json:"amountReceived"`
 	PaymentMethod  string `json:"paymentMethod"` // defaults "cash"
 	// BankAccountID is the register/till account the received amount is
-	// debited to. Empty defaults to organizations.defaultCashRegisterAccountId
-	// and 409s if that is unset — deliberately never organizations.
-	// defaultCashAccountId, which every chart template wires to Bank (see
-	// CreateCashSale's doc comment below).
+	// debited to for a cash payment. Empty defaults to
+	// organizations.defaultCashRegisterAccountId and 409s if that is unset —
+	// deliberately never organizations.defaultCashAccountId, which every
+	// chart template wires to Bank (see CreateCashSale's doc comment below).
+	// For a card/transfer payment in cash_and_bank mode it is ignored: that
+	// money goes to defaultCashAccountId (the bank account), never the till.
 	BankAccountID string  `json:"bankAccountId"`
 	Reference     *string `json:"reference"`
 	Notes         *string `json:"notes"`
@@ -151,24 +153,50 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		return nil, fmt.Errorf("create_cash_sale organization: %w", err)
 	}
 
+	// The organization setting decides whether the counter accepts anything
+	// but cash (migration 0111, default cash_only). A card/transfer payment is
+	// only meaningful when an amount is actually received; with 0 there is no
+	// payment to post and the method stays irrelevant.
+	cashAndBank := normalizeCashBookPaymentMethods(org.CashBookPaymentMethods) == CashBookPaymentMethodsCashAndBank
+	if req.AmountReceived > 0 && req.PaymentMethod != "cash" && !cashAndBank {
+		return nil, newValidationError("this organization's Cash Book accepts cash only")
+	}
+
 	bankAccountID := req.BankAccountID
+	accountLabel := "cash register"
 	if req.AmountReceived > 0 {
-		if bankAccountID == "" {
-			// F101: a cash sale must land in the dedicated register/till
-			// account, named by defaultCashRegisterAccountId. It must NOT
-			// fall back to defaultCashAccountId: every chart-of-accounts
-			// template wires the "cash" role to the Bank account
-			// (db/account.go), so that fallback silently credited Bank
-			// while the Cash Book screen's register balance/report watched
-			// the till — a real production report. A register account is a
-			// configuration precondition of this screen, surfaced as a 409
-			// naming the exact column rather than quietly posting to Bank.
-			if org.DefaultCashRegisterAccountID == nil {
+		if req.PaymentMethod == "cash" {
+			if bankAccountID == "" {
+				// F101: a cash sale must land in the dedicated register/till
+				// account, named by defaultCashRegisterAccountId. It must NOT
+				// fall back to defaultCashAccountId: every chart-of-accounts
+				// template wires the "cash" role to the Bank account
+				// (db/account.go), so that fallback silently credited Bank
+				// while the Cash Book screen's register balance/report watched
+				// the till — a real production report. A register account is a
+				// configuration precondition of this screen, surfaced as a 409
+				// naming the exact column rather than quietly posting to Bank.
+				if org.DefaultCashRegisterAccountID == nil {
+					return nil, newValidationError(
+						"cannot record payment: organization has no default cash register account configured — set defaultCashRegisterAccountId in the organization's Accounting settings",
+					)
+				}
+				bankAccountID = *org.DefaultCashRegisterAccountID
+			}
+		} else {
+			// cash_and_bank: card, transfer and the other non-cash methods
+			// settle into the bank account, never the physical drawer. An
+			// explicit req.BankAccountID is the register convention the old
+			// counter always sent, so it is not honored here — only the
+			// organization's configured bank account is consistent with this
+			// payment.
+			if org.DefaultCashAccountID == nil {
 				return nil, newValidationError(
-					"cannot record payment: organization has no default cash register account configured — set defaultCashRegisterAccountId in the organization's Accounting settings",
+					"cannot record a card or transfer payment: organization has no default bank account configured",
 				)
 			}
-			bankAccountID = *org.DefaultCashRegisterAccountID
+			bankAccountID = *org.DefaultCashAccountID
+			accountLabel = "bank"
 		}
 		bankAccount, err := d.GetAccount(bankAccountID)
 		if err != nil {
@@ -177,10 +205,10 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		if err := requireSameOrg(req.OrganizationID, bankAccount.OrganizationID, "cash/bank account"); err != nil {
 			return nil, err
 		}
-		// The register is where the money physically lands: it must be an
+		// The destination is where the money physically lands: it must be an
 		// asset account, never a revenue/expense/liability/equity row.
 		if bankAccount.Type != "asset" {
-			return nil, newValidationError("the %s account must be an asset account", "cash register")
+			return nil, newValidationError("the %s account must be an asset account", accountLabel)
 		}
 	}
 

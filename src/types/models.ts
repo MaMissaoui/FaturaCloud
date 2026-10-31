@@ -313,6 +313,10 @@ export interface Organization {
   // masterDataSummaries enables the per-client financial summary on the
   // Clients screen (migration 0100). When false the summary endpoints 409.
   masterDataSummaries?: boolean;
+  // cashBookPaymentMethods is "cash_only" (migration 0111, the default) or
+  // "cash_and_bank": whether the Cash Book accepts card/transfer payments,
+  // which post to defaultCashAccountId (the bank), not the register.
+  cashBookPaymentMethods?: string;
   // The Cash Book screen's register balance/daily-movements report/cash
   // withdrawal feature — deliberately separate from defaultCashAccountId,
   // which every chart-of-accounts template wires to the Bank account, never
