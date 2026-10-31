@@ -346,11 +346,27 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		normalizeInvoiceLineItemIDs(*updates.LineItems)
 	}
 
+	// The pre-tx checks below each need the stored invoice. They all run
+	// before Beginx(), so one lazily-memoized read serves them all (and a
+	// header-only update still reads nothing).
+	var currentInvoice *Invoice
+	loadCurrent := func() (*Invoice, error) {
+		if currentInvoice != nil {
+			return currentInvoice, nil
+		}
+		inv, err := d.GetInvoice(invoiceID)
+		if err != nil {
+			return nil, err
+		}
+		currentInvoice = inv
+		return inv, nil
+	}
+
 	// Cross-org FK-ownership check (issue #189): a clientId/productId/taxRate
 	// this request is actually setting must belong to the SAME organization
 	// as the invoice being updated, not just exist.
 	if updates.ClientID != nil || updates.LineItems != nil {
-		current, err := d.GetInvoice(invoiceID)
+		current, err := loadCurrent()
 		if err != nil {
 			return nil, fmt.Errorf("update_invoice fetch current for ownership check: %w", err)
 		}
@@ -381,12 +397,16 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 	// rather than let it drift; the invoice must be cancelled (which
 	// reverses the entry) before a financial edit, then re-sent to re-post.
 	if invoiceUpdateTouchesGLFields(updates) {
-		stored, err := d.GetInvoice(invoiceID)
+		stored, err := loadCurrent()
 		if err != nil {
 			return nil, fmt.Errorf("update_invoice fetch current for posted-entry check: %w", err)
 		}
 		invoiceOrgID = stored.OrganizationID
-		entry, err := d.FindPostedEntryForSourceDocument(stored.OrganizationID, "invoice", invoiceID)
+		entry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+			OrganizationID: stored.OrganizationID,
+			Type:           "invoice",
+			ID:             invoiceID,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -431,7 +451,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		subTotal, taxTotal, total, fiscalStampAmount := updates.SubTotal, updates.TaxTotal, updates.Total, updates.FiscalStampAmount
 		discountAmount := updates.DiscountAmount
 		if subTotal == nil || taxTotal == nil || total == nil || fiscalStampAmount == nil || discountAmount == nil {
-			current, err := d.GetInvoice(invoiceID)
+			current, err := loadCurrent()
 			if err != nil {
 				return nil, fmt.Errorf("update_invoice fetch current: %w", err)
 			}
@@ -463,7 +483,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 	var exchangeRate *string
 	exchangeRateSet := 0
 	if updates.Currency != nil || updates.ExchangeRate != nil {
-		current, err := d.GetInvoice(invoiceID)
+		current, err := loadCurrent()
 		if err != nil {
 			return nil, fmt.Errorf("update_invoice fetch current: %w", err)
 		}
@@ -493,7 +513,11 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 	// connection under SetMaxOpenConns(1) — before any financial field is
 	// rewritten, so the entry can never be left describing stale line items.
 	if invoiceUpdateTouchesGLFields(updates) {
-		entry, err := findPostedEntryForSourceDocumentTx(tx, invoiceOrgID, "invoice", invoiceID)
+		entry, err := findPostedEntryForSourceDocumentTx(tx, SourceDocumentRef{
+			OrganizationID: invoiceOrgID,
+			Type:           "invoice",
+			ID:             invoiceID,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -641,7 +665,11 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 	if isOpeningLoan(invoice) {
 		return d.updateOpeningLoanState(invoice, state)
 	}
-	existingEntry, err := d.FindPostedEntryForSourceDocument(invoice.OrganizationID, "invoice", invoiceID)
+	existingEntry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: invoice.OrganizationID,
+		Type:           "invoice",
+		ID:             invoiceID,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -729,7 +757,11 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 	// read, which shares the connection with the writes that follow and so
 	// closes the race two concurrent identical state changes would otherwise
 	// hit (both seeing "no entry", both posting).
-	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, invoice.OrganizationID, "invoice", invoiceID)
+	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, SourceDocumentRef{
+		OrganizationID: invoice.OrganizationID,
+		Type:           "invoice",
+		ID:             invoiceID,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -795,7 +827,11 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 	if current.State == "paid" {
 		return false, newValidationError("cannot delete a paid invoice — cancel it instead")
 	}
-	if entry, err := d.FindPostedEntryForSourceDocument(current.OrganizationID, "invoice", invoiceID); err != nil {
+	if entry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: current.OrganizationID,
+		Type:           "invoice",
+		ID:             invoiceID,
+	}); err != nil {
 		return false, err
 	} else if entry != nil {
 		return false, newValidationError("cannot delete an invoice with a posted GL entry — cancel it instead")
@@ -829,7 +865,11 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 	if liveState == "paid" {
 		return false, newValidationError("cannot delete a paid invoice — cancel it instead")
 	}
-	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, current.OrganizationID, "invoice", invoiceID)
+	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, SourceDocumentRef{
+		OrganizationID: current.OrganizationID,
+		Type:           "invoice",
+		ID:             invoiceID,
+	})
 	if err != nil {
 		return false, err
 	}

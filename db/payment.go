@@ -503,7 +503,11 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 					"application %d: bill currency %q does not match payment currency %q", i+1, bill.Currency, req.Currency,
 				)
 			}
-			if postedEntry, err := d.FindPostedEntryForSourceDocument(bill.OrganizationID, "incoming_invoice", app.DocumentID); err != nil {
+			if postedEntry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+				OrganizationID: bill.OrganizationID,
+				Type:           "incoming_invoice",
+				ID:             app.DocumentID,
+			}); err != nil {
 				return nil, err
 			} else if postedEntry == nil {
 				return nil, newValidationError("application %d: bill has no posted GL entry — approve it first", i+1)

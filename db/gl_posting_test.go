@@ -490,7 +490,11 @@ func TestInvoicePostingIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(invA.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(org-a sent): %v", err)
 	}
-	claim, err := d.FindPostedEntryForSourceDocument(fxA.orgID, "invoice", invA.ID)
+	claim, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: fxA.orgID,
+		Type:           "invoice",
+		ID:             invA.ID,
+	})
 	if err != nil || claim == nil {
 		t.Fatalf("org-a entry: entry=%v err=%v", claim, err)
 	}
@@ -503,7 +507,11 @@ func TestInvoicePostingIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(invB.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(org-b sent): %v", err)
 	}
-	entry, err := d.FindPostedEntryForSourceDocument(fxB.orgID, "invoice", invB.ID)
+	entry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: fxB.orgID,
+		Type:           "invoice",
+		ID:             invB.ID,
+	})
 	if err != nil || entry == nil {
 		t.Fatalf("org-b entry: entry=%v err=%v", entry, err)
 	}
@@ -543,7 +551,11 @@ func TestDeleteInvoiceIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
 	if _, err := d.UpdateInvoiceState(invA.ID, "sent"); err != nil {
 		t.Fatalf("UpdateInvoiceState(org-a sent): %v", err)
 	}
-	claim, err := d.FindPostedEntryForSourceDocument(fxA.orgID, "invoice", invA.ID)
+	claim, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: fxA.orgID,
+		Type:           "invoice",
+		ID:             invA.ID,
+	})
 	if err != nil || claim == nil {
 		t.Fatalf("org-a entry: entry=%v err=%v", claim, err)
 	}
@@ -584,7 +596,11 @@ func TestDeleteIncomingInvoiceIgnoresAnotherOrganizationsEntryNamingIt(t *testin
 	if _, err := d.UpdateIncomingInvoiceState(billA.ID, "approved"); err != nil {
 		t.Fatalf("UpdateIncomingInvoiceState(org-a approved): %v", err)
 	}
-	claim, err := d.FindPostedEntryForSourceDocument(fxA.orgID, "incoming_invoice", billA.ID)
+	claim, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: fxA.orgID,
+		Type:           "incoming_invoice",
+		ID:             billA.ID,
+	})
 	if err != nil || claim == nil {
 		t.Fatalf("org-a entry: entry=%v err=%v", claim, err)
 	}

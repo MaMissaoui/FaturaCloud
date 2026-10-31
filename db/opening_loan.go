@@ -83,9 +83,17 @@ func (d *Database) refuseOpeningLoanChange(invoiceID, action string) error {
 // outstanding-balance entry — which a payment must have to settle against.
 func (d *Database) findInvoiceReceivableEntry(invoice *Invoice) (*JournalEntry, error) {
 	if isOpeningLoan(invoice) {
-		return d.FindPostedEntryForSourceDocument(invoice.OrganizationID, openingLoanSourceType, invoice.ID)
+		return d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+			OrganizationID: invoice.OrganizationID,
+			Type:           openingLoanSourceType,
+			ID:             invoice.ID,
+		})
 	}
-	return d.FindPostedEntryForSourceDocument(invoice.OrganizationID, "invoice", invoice.ID)
+	return d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: invoice.OrganizationID,
+		Type:           "invoice",
+		ID:             invoice.ID,
+	})
 }
 
 // updateOpeningLoanState allows a migrated loan only between sent and paid —

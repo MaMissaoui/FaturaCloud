@@ -472,7 +472,11 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 				return nil, newValidationError("cannot cancel: the finished product no longer exists")
 			}
 		}
-		existingEntry, err = d.FindPostedEntryForSourceDocument(current.OrganizationID, "production_order", current.ID)
+		existingEntry, err = d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+			OrganizationID: current.OrganizationID,
+			Type:           "production_order",
+			ID:             current.ID,
+		})
 		if err != nil {
 			return nil, err
 		}

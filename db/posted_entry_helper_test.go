@@ -14,7 +14,7 @@ func (d *Database) postedEntryForSourceDocument(sourceDocumentType, sourceDocume
 	var entry JournalEntry
 	err := d.DB.Get(&entry,
 		`SELECT * FROM journal_entries
-		 WHERE sourceDocumentType = ? AND sourceDocumentId = ? AND status = 'posted' AND reversalOfEntryId IS NULL
+		 WHERE `+postedEntrySourceDocumentPredicate+`
 		 LIMIT 1`,
 		sourceDocumentType, sourceDocumentID,
 	)
