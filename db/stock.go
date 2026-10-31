@@ -443,7 +443,11 @@ func (d *Database) DeleteStockMovement(movementID string) (bool, error) {
 	// allocateAndFinalizeEntryTx immutability means there's no undo path
 	// for a manual adjustment once posted — record an offsetting one instead.
 	if m.SourceDocumentID != nil {
-		entry, err := d.FindPostedEntryForSourceDocument(m.OrganizationID, "stock_movement", *m.SourceDocumentID)
+		entry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+			OrganizationID: m.OrganizationID,
+			Type:           "stock_movement",
+			ID:             *m.SourceDocumentID,
+		})
 		if err != nil {
 			return false, err
 		}

@@ -262,12 +262,28 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 		normalizeInvoiceLineItemIDs(*updates.LineItems)
 	}
 
+	// The pre-tx checks below each need the stored bill. They all run before
+	// Beginx(), so one lazily-memoized read serves them all (and a
+	// header-only update still reads nothing).
+	var currentIncomingInvoice *IncomingInvoice
+	loadCurrent := func() (*IncomingInvoice, error) {
+		if currentIncomingInvoice != nil {
+			return currentIncomingInvoice, nil
+		}
+		inv, err := d.GetIncomingInvoice(id)
+		if err != nil {
+			return nil, err
+		}
+		currentIncomingInvoice = inv
+		return inv, nil
+	}
+
 	// Cross-org FK-ownership check (issue #189): a vendorId/purchaseOrderId/
 	// productId/taxRate this request is actually setting must belong to the
 	// SAME organization as the bill being updated, not just exist.
 	var incomingInvoiceOrgID string
 	if updates.VendorID != nil || updates.PurchaseOrderID != nil || updates.LineItems != nil {
-		current, err := d.GetIncomingInvoice(id)
+		current, err := loadCurrent()
 		if err != nil {
 			return nil, fmt.Errorf("update_incoming_invoice fetch current for ownership check: %w", err)
 		}
@@ -296,12 +312,16 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 	// these fields, and PUT never re-triggers a re-post, so editing them out
 	// from under a posted entry would leave it silently stale.
 	if incomingInvoiceUpdateTouchesGLFields(updates) {
-		stored, err := d.GetIncomingInvoice(id)
+		stored, err := loadCurrent()
 		if err != nil {
 			return nil, fmt.Errorf("update_incoming_invoice fetch current for posted-entry check: %w", err)
 		}
 		incomingInvoiceOrgID = stored.OrganizationID
-		entry, err := d.FindPostedEntryForSourceDocument(stored.OrganizationID, "incoming_invoice", id)
+		entry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+			OrganizationID: stored.OrganizationID,
+			Type:           "incoming_invoice",
+			ID:             id,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -336,7 +356,7 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 
 		subTotal, taxTotal, total := updates.SubTotal, updates.TaxTotal, updates.Total
 		if subTotal == nil || taxTotal == nil || total == nil {
-			current, err := d.GetIncomingInvoice(id)
+			current, err := loadCurrent()
 			if err != nil {
 				return nil, fmt.Errorf("update_incoming_invoice fetch current: %w", err)
 			}
@@ -368,7 +388,7 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 	// The override flag and its reason must be judged together, using whichever
 	// side this request doesn't supply.
 	if updates.MatchOverride != nil || updates.MatchOverrideReason != nil {
-		current, err := d.GetIncomingInvoice(id)
+		current, err := loadCurrent()
 		if err != nil {
 			return nil, fmt.Errorf("update_incoming_invoice fetch current: %w", err)
 		}
@@ -391,7 +411,7 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 	var exchangeRate *string
 	exchangeRateSet := 0
 	if updates.Currency != nil || updates.ExchangeRate != nil {
-		current, err := d.GetIncomingInvoice(id)
+		current, err := loadCurrent()
 		if err != nil {
 			return nil, fmt.Errorf("update_incoming_invoice fetch current: %w", err)
 		}
@@ -421,7 +441,11 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 	// SetMaxOpenConns(1) — before any financial field is rewritten, so the
 	// entry can never be left describing stale line items.
 	if incomingInvoiceUpdateTouchesGLFields(updates) {
-		entry, err := findPostedEntryForSourceDocumentTx(tx, incomingInvoiceOrgID, "incoming_invoice", id)
+		entry, err := findPostedEntryForSourceDocumentTx(tx, SourceDocumentRef{
+			OrganizationID: incomingInvoiceOrgID,
+			Type:           "incoming_invoice",
+			ID:             id,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -532,7 +556,11 @@ func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoic
 		}
 	}
 
-	existingEntry, err := d.FindPostedEntryForSourceDocument(current.OrganizationID, "incoming_invoice", id)
+	existingEntry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: current.OrganizationID,
+		Type:           "incoming_invoice",
+		ID:             id,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +605,11 @@ func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoic
 	defer tx.Rollback() //nolint:errcheck
 
 	// F48: re-check inside the transaction — see UpdateInvoiceState.
-	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, current.OrganizationID, "incoming_invoice", id)
+	existingEntry, err = findPostedEntryForSourceDocumentTx(tx, SourceDocumentRef{
+		OrganizationID: current.OrganizationID,
+		Type:           "incoming_invoice",
+		ID:             id,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -618,7 +650,11 @@ func (d *Database) DeleteIncomingInvoice(id string) (bool, error) {
 	if current.State == "paid" {
 		return false, newValidationError("cannot delete a paid incoming invoice — cancel it instead")
 	}
-	if entry, err := d.FindPostedEntryForSourceDocument(current.OrganizationID, "incoming_invoice", id); err != nil {
+	if entry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
+		OrganizationID: current.OrganizationID,
+		Type:           "incoming_invoice",
+		ID:             id,
+	}); err != nil {
 		return false, err
 	} else if entry != nil {
 		return false, newValidationError("cannot delete a bill with a posted GL entry — cancel it instead")
@@ -646,7 +682,11 @@ func (d *Database) DeleteIncomingInvoice(id string) (bool, error) {
 	if liveState == "paid" {
 		return false, newValidationError("cannot delete a paid incoming invoice — cancel it instead")
 	}
-	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, current.OrganizationID, "incoming_invoice", id)
+	liveEntry, err := findPostedEntryForSourceDocumentTx(tx, SourceDocumentRef{
+		OrganizationID: current.OrganizationID,
+		Type:           "incoming_invoice",
+		ID:             id,
+	})
 	if err != nil {
 		return false, err
 	}

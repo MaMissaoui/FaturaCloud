@@ -189,6 +189,21 @@ func (d *Database) GetJournalEntryLines(entryID string) ([]JournalLine, error) {
 	return lines, nil
 }
 
+// SourceDocumentRef names the document a journal entry was posted from, in
+// its own organization (F191). Callers must use keyed fields: the type and id
+// are both plain strings, so a positional swap would quietly find nothing.
+type SourceDocumentRef struct {
+	OrganizationID string
+	Type           string // journal_entries.sourceDocumentType, e.g. "invoice", "invoice_cogs"
+	ID             string // journal_entries.sourceDocumentId
+}
+
+// postedEntrySourceDocumentPredicate is the unscoped half of the lookup, shared
+// with the tests' postedEntryForSourceDocument helper so the two queries can't
+// drift apart. The production query prefixes organizationId = ?.
+const postedEntrySourceDocumentPredicate = `sourceDocumentType = ? AND sourceDocumentId = ?
+		   AND status = 'posted' AND reversalOfEntryId IS NULL`
+
 // FindPostedEntryForSourceDocument returns the given organization's live
 // posted entry for a source document, or nil if none exists (F191) — the
 // same idiom as looking up stockMovements rows by sourceDocumentId. Reversal
@@ -199,11 +214,11 @@ func (d *Database) GetJournalEntryLines(entryID string) ([]JournalLine, error) {
 // or idempotent posting (design decision #8) would wrongly skip re-posting
 // the next time the document's state changes.
 //
-// organizationID is the document's own organization: unscoped, an entry
-// another organization had tagged with the document's id stopped the
+// The ref's organization is the document's own organization: unscoped, an
+// entry another organization had tagged with the document's id stopped the
 // document posting and was reversed by its state changes (audit F191).
-func (d *Database) FindPostedEntryForSourceDocument(organizationID, sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
-	return findPostedEntryForSourceDocumentTx(d.DB, organizationID, sourceDocumentType, sourceDocumentID)
+func (d *Database) FindPostedEntryForSourceDocument(ref SourceDocumentRef) (*JournalEntry, error) {
+	return findPostedEntryForSourceDocumentTx(d.DB, ref)
 }
 
 // findPostedEntryForSourceDocumentTx is the tx-capable twin of
@@ -213,14 +228,13 @@ func (d *Database) FindPostedEntryForSourceDocument(organizationID, sourceDocume
 // the check to be race-free under SetMaxOpenConns(1) must open their
 // transaction first and pass tx here, re-checking after acquiring the
 // connection that will do the write — not before.
-func findPostedEntryForSourceDocumentTx(exec sqlGetExecer, organizationID, sourceDocumentType, sourceDocumentID string) (*JournalEntry, error) {
+func findPostedEntryForSourceDocumentTx(exec sqlGetExecer, ref SourceDocumentRef) (*JournalEntry, error) {
 	var entry JournalEntry
 	err := exec.Get(&entry,
 		`SELECT * FROM journal_entries
-		 WHERE organizationId = ? AND sourceDocumentType = ? AND sourceDocumentId = ?
-		   AND status = 'posted' AND reversalOfEntryId IS NULL
+		 WHERE organizationId = ? AND `+postedEntrySourceDocumentPredicate+`
 		 LIMIT 1`,
-		organizationID, sourceDocumentType, sourceDocumentID,
+		ref.OrganizationID, ref.Type, ref.ID,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
