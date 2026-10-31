@@ -34,8 +34,8 @@ import (
 
 // invoiceCOGSSourceType is the journal_entries.sourceDocumentType of a Cash Book
 // sale's COGS entry — distinct from the sale's own "invoice" entry, which
-// the partial unique index on (sourceDocumentType, sourceDocumentId) would
-// otherwise collide with.
+// the partial unique index on (organizationId, sourceDocumentType, sourceDocumentId)
+// would otherwise collide with.
 const invoiceCOGSSourceType = "invoice_cogs"
 
 // invoiceStockQuantityEpsilon: stockQuantity and movement quantities are

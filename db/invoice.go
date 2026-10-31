@@ -370,6 +370,10 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		}
 	}
 
+	// Captured by the pre-tx guard below when it runs, so the in-tx re-check
+	// can reuse the invoice's organization without another d. read.
+	var invoiceOrgID string
+
 	// A posted GL entry was built from the invoice's line items, totals,
 	// currency, and client — editing any of those out from under it would
 	// leave the entry silently wrong (the trial balance would keep the old
@@ -381,6 +385,7 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		if err != nil {
 			return nil, fmt.Errorf("update_invoice fetch current for posted-entry check: %w", err)
 		}
+		invoiceOrgID = stored.OrganizationID
 		entry, err := d.FindPostedEntryForSourceDocument(stored.OrganizationID, "invoice", invoiceID)
 		if err != nil {
 			return nil, err
@@ -481,6 +486,26 @@ func (d *Database) UpdateInvoice(invoiceID string, updates UpdateInvoiceRequest)
 		return nil, fmt.Errorf("update_invoice begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	// F191 follow-up: the pre-tx posted-entry/stock guard above runs before
+	// Beginx, so a concurrent PATCH .../state could post an entry (or take
+	// stock out) in the gap. Re-check through tx — which holds the only
+	// connection under SetMaxOpenConns(1) — before any financial field is
+	// rewritten, so the entry can never be left describing stale line items.
+	if invoiceUpdateTouchesGLFields(updates) {
+		entry, err := findPostedEntryForSourceDocumentTx(tx, invoiceOrgID, "invoice", invoiceID)
+		if err != nil {
+			return nil, err
+		}
+		if entry != nil {
+			return nil, newValidationError("cannot change line items, totals, currency, or client on an invoice with a posted GL entry — cancel it instead")
+		}
+		if postedStock, err := postedInvoiceStockTx(tx, invoiceID); err != nil {
+			return nil, err
+		} else if len(postedStock) > 0 {
+			return nil, newValidationError("cannot change line items, totals, currency, or client on a sale whose stock is taken out — cancel it instead")
+		}
+	}
 
 	// A changed number must be free (audit F169). Only a change is checked:
 	// the form resends the stored number with every save, and an invoice
@@ -821,22 +846,37 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 		return false, fmt.Errorf("delete_invoice items: %w", err)
 	}
 
+	// The backstop's journal_entries subquery is scoped to this invoice's
+	// organization (F191): unscoped, another organization's live posted entry
+	// naming this invoice's id would refuse the delete after the line items
+	// had already been removed.
 	res, err := tx.Exec(`
 		DELETE FROM invoices
 		WHERE id = ? AND state <> 'paid'
 		  AND NOT EXISTS (
 			SELECT 1 FROM journal_entries
-			WHERE sourceDocumentType = 'invoice' AND sourceDocumentId = ?
+			WHERE organizationId = ? AND sourceDocumentType = 'invoice' AND sourceDocumentId = ?
 			  AND status = 'posted' AND reversalOfEntryId IS NULL
-		  )`, invoiceID, invoiceID)
+		  )`, invoiceID, current.OrganizationID, invoiceID)
 	if err != nil {
 		return false, fmt.Errorf("delete_invoice: %w", err)
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("delete_invoice rows_affected: %w", err)
+	}
+	if n == 0 {
+		// The atomic backstop refused the delete (a concurrent change made
+		// the invoice undeletable) after the line items were already
+		// deleted. Return without committing so the deferred Rollback puts
+		// them back, instead of losing them on a commit.
+		return false, nil
 	}
 
 	if err := tx.Commit(); err != nil {
 		return false, fmt.Errorf("delete_invoice commit: %w", err)
 	}
 
-	n, _ := res.RowsAffected()
-	return n > 0, nil
+	return true, nil
 }

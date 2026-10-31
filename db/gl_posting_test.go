@@ -526,3 +526,181 @@ func TestInvoicePostingIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
 		t.Fatalf("org-a entry status after org-b's draft = %q, want posted", status)
 	}
 }
+
+// F191 follow-up: DeleteInvoice's atomic backstop used to look for a live
+// posted entry by sourceDocumentId alone. Another organization's entry
+// retagged with this draft invoice's id made the scoped checks pass and the
+// final DELETE match nothing, yet the transaction still committed — losing
+// the line items while the invoice survived.
+func TestDeleteInvoiceIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fxA := newGLPostingTestFixture(t, d, "org-del-claim-a")
+	fxB := newGLPostingTestFixture(t, d, "org-del-claim-b")
+	invA := fxA.createInvoice(t, d, "inv-del-claim-a", 1, 1000)
+	invB := fxB.createInvoice(t, d, "inv-del-claim-b", 2, 1000)
+
+	if _, err := d.UpdateInvoiceState(invA.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(org-a sent): %v", err)
+	}
+	claim, err := d.FindPostedEntryForSourceDocument(fxA.orgID, "invoice", invA.ID)
+	if err != nil || claim == nil {
+		t.Fatalf("org-a entry: entry=%v err=%v", claim, err)
+	}
+	// Retag org A's live entry as org B's draft invoice.
+	if _, err := d.DB.Exec(`UPDATE journal_entries SET sourceDocumentId = ? WHERE id = ?`, invB.ID, claim.ID); err != nil {
+		t.Fatalf("retag: %v", err)
+	}
+
+	deleted, err := d.DeleteInvoice(invB.ID)
+	if err != nil {
+		t.Fatalf("DeleteInvoice(org-b draft named by org-a's entry): %v", err)
+	}
+	if !deleted {
+		t.Fatal("DeleteInvoice = false, want true")
+	}
+	if _, err := d.GetInvoice(invB.ID); err == nil {
+		t.Fatal("org-b invoice still exists after a successful delete")
+	}
+	items, err := d.GetInvoiceLineItems(invB.ID)
+	if err != nil {
+		t.Fatalf("GetInvoiceLineItems: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("org-b line items still exist after the invoice was deleted: %+v", items)
+	}
+}
+
+// The same backstop exists for bills, with sourceDocumentType
+// "incoming_invoice".
+func TestDeleteIncomingInvoiceIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fxA := newGLPostingTestFixture(t, d, "org-bill-del-claim-a")
+	fxB := newGLPostingTestFixture(t, d, "org-bill-del-claim-b")
+	billA := fxA.createIncomingInvoice(t, d, "bill-del-claim-a", 1, 1000)
+	billB := fxB.createIncomingInvoice(t, d, "bill-del-claim-b", 2, 1000)
+
+	if _, err := d.UpdateIncomingInvoiceState(billA.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(org-a approved): %v", err)
+	}
+	claim, err := d.FindPostedEntryForSourceDocument(fxA.orgID, "incoming_invoice", billA.ID)
+	if err != nil || claim == nil {
+		t.Fatalf("org-a entry: entry=%v err=%v", claim, err)
+	}
+	if _, err := d.DB.Exec(`UPDATE journal_entries SET sourceDocumentId = ? WHERE id = ?`, billB.ID, claim.ID); err != nil {
+		t.Fatalf("retag: %v", err)
+	}
+
+	deleted, err := d.DeleteIncomingInvoice(billB.ID)
+	if err != nil {
+		t.Fatalf("DeleteIncomingInvoice(org-b draft named by org-a's entry): %v", err)
+	}
+	if !deleted {
+		t.Fatal("DeleteIncomingInvoice = false, want true")
+	}
+	if _, err := d.GetIncomingInvoice(billB.ID); err == nil {
+		t.Fatal("org-b bill still exists after a successful delete")
+	}
+	items, err := d.GetIncomingInvoiceLineItems(billB.ID)
+	if err != nil {
+		t.Fatalf("GetIncomingInvoiceLineItems: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("org-b bill line items still exist after the bill was deleted: %+v", items)
+	}
+}
+
+// The organization scoping must not weaken the guard itself: an invoice
+// named by its OWN live posted entry is still refused, and nothing is lost.
+func TestDeleteInvoiceStillRefusedWithItsOwnPostedEntry(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-del-own")
+	inv := fx.createInvoice(t, d, "inv-del-own", 1, 1000)
+
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+
+	_, err := d.DeleteInvoice(inv.ID)
+	if err == nil {
+		t.Fatal("expected deleting an invoice with its own posted GL entry to be refused")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+	if _, err := d.GetInvoice(inv.ID); err != nil {
+		t.Fatalf("invoice should still exist: %v", err)
+	}
+	items, err := d.GetInvoiceLineItems(inv.ID)
+	if err != nil {
+		t.Fatalf("GetInvoiceLineItems: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("invoice line items = %d, want 1 still stored", len(items))
+	}
+}
+
+// DeleteStockMovement's delivery/receipt guards matched deliveryNumber
+// globally. Another organization's shipped delivery numbered like this
+// movement's free-text reference must not block deleting it.
+func TestDeleteStockMovementIgnoresAnotherOrganizationsDeliveryNumber(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-mv-ref-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization(org-a): %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-mv-ref-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization(org-b): %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-mv-ref-a", OrganizationID: orgA.ID, Name: "Widget A", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct(org-a): %v", err)
+	}
+	productB, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-mv-ref-b", OrganizationID: orgB.ID, Name: "Widget B", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct(org-b): %v", err)
+	}
+
+	// An uncosted inflow posts no GL entry, so it stays deletable.
+	created, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: orgA.ID, ProductID: productA.ID, Type: "in", Quantity: 10, Reference: ptr("DN-X-1"),
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement(org-a): %v", err)
+	}
+	if len(created.Movements) != 1 {
+		t.Fatalf("org-a movements = %d, want 1", len(created.Movements))
+	}
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-mv-ref-b", OrganizationID: orgB.ID, DeliveryNumber: "DN-X-1", DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &productB.ID, Description: "Widget B", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery(org-b): %v", err)
+	}
+	// Shipping the delivery would need stock and COGS; the guard only reads
+	// the status, so set it directly.
+	if _, err := d.DB.Exec(`UPDATE outbound_deliveries SET status = 'shipped' WHERE id = ?`, delivery.ID); err != nil {
+		t.Fatalf("mark org-b delivery shipped: %v", err)
+	}
+
+	deleted, err := d.DeleteStockMovement(created.Movements[0].ID)
+	if err != nil {
+		t.Fatalf("DeleteStockMovement(org-a movement referencing org-b's delivery number): %v", err)
+	}
+	if !deleted {
+		t.Fatal("DeleteStockMovement = false, want true")
+	}
+}

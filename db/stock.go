@@ -475,7 +475,8 @@ func (d *Database) DeleteStockMovement(movementID string) (bool, error) {
 	if m.Reference != nil {
 		var deliveryStatus sql.NullString
 		if err := d.DB.Get(&deliveryStatus,
-			`SELECT status FROM outbound_deliveries WHERE deliveryNumber = ?`, *m.Reference,
+			`SELECT status FROM outbound_deliveries WHERE deliveryNumber = ? AND organizationId = ?`,
+			*m.Reference, m.OrganizationID,
 		); err != nil && err != sql.ErrNoRows {
 			return false, fmt.Errorf("delete_stock_movement check_delivery: %w", err)
 		}
@@ -488,7 +489,8 @@ func (d *Database) DeleteStockMovement(movementID string) (bool, error) {
 
 		var receiptStatus sql.NullString
 		if err := d.DB.Get(&receiptStatus,
-			`SELECT status FROM inbound_deliveries WHERE deliveryNumber = ?`, *m.Reference,
+			`SELECT status FROM inbound_deliveries WHERE deliveryNumber = ? AND organizationId = ?`,
+			*m.Reference, m.OrganizationID,
 		); err != nil && err != sql.ErrNoRows {
 			return false, fmt.Errorf("delete_stock_movement check_receipt: %w", err)
 		}
