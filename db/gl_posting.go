@@ -23,7 +23,9 @@ import (
 // postAutoEntryTxEnforcing directly with false.
 func postAutoEntryTx(
 	tx *sqlx.Tx,
-	organizationID, journalID, sourceDocumentType, sourceDocumentID string,
+	organizationID, journalID string,
+	sourceDocumentType SourceDocType,
+	sourceDocumentID string,
 	date int64, reference, description string,
 	lines []CreateJournalLineRequest,
 ) (string, error) {
@@ -41,7 +43,9 @@ func postAutoEntryTx(
 // same flag.
 func postAutoEntryTxEnforcing(
 	tx *sqlx.Tx,
-	organizationID, journalID, sourceDocumentType, sourceDocumentID string,
+	organizationID, journalID string,
+	sourceDocumentType SourceDocType,
+	sourceDocumentID string,
 	date int64, reference, description string,
 	lines []CreateJournalLineRequest,
 	enforceActiveAccounts bool,
@@ -61,7 +65,7 @@ func postAutoEntryTxEnforcing(
 		   (id, organizationId, journalId, fiscalYearId, fiscalPeriodId, date, reference, description, sourceDocumentType, sourceDocumentId)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		entryID, organizationID, journalID, fiscalYearID, fiscalPeriodID, date, reference, description,
-		sourceDocumentType, sourceDocumentID,
+		string(sourceDocumentType), sourceDocumentID,
 	); err != nil {
 		return "", fmt.Errorf("post_auto_entry insert: %w", err)
 	}

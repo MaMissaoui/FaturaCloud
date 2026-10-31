@@ -145,7 +145,7 @@ func (d *Database) CloseFiscalYear(fiscalYearID string) (*FiscalYear, error) {
 		// uncloseable the moment one such account is deactivated, so pass
 		// false. The group/fiscal-year-open/balanced checks still apply.
 		if _, err := postAutoEntryTxEnforcing(
-			tx, year.OrganizationID, journal.ID, "closing", year.ID, year.EndDate, "", description, lines, false,
+			tx, year.OrganizationID, journal.ID, SourceDocClosing, year.ID, year.EndDate, "", description, lines, false,
 		); err != nil {
 			return nil, err
 		}

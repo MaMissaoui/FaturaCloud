@@ -337,7 +337,7 @@ func applyOpeningLoanTx(tx *sqlx.Tx, plan *openingLoanPlan) (string, error) {
 
 	if plan.outstandingGL != nil {
 		if _, err := postAutoEntryTx(
-			tx, req.OrganizationID, plan.outstandingJournalID, string(openingLoanSourceType), invoiceID,
+			tx, req.OrganizationID, plan.outstandingJournalID, openingLoanSourceType, invoiceID,
 			req.CutoverDate, req.Number, "Loan brought forward from the paper register: "+req.Number,
 			plan.outstandingGL,
 		); err != nil {

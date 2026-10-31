@@ -602,7 +602,7 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 
 		if glLines != nil {
 			if _, err := postAutoEntryTx(
-				tx, current.OrganizationID, glJournal.ID, "production_order", current.ID,
+				tx, current.OrganizationID, glJournal.ID, SourceDocProductionOrder, current.ID,
 				current.Date, current.OrderNumber, "Production order "+current.OrderNumber, glLines,
 			); err != nil {
 				return nil, err

@@ -385,7 +385,7 @@ func (d *Database) CreateStockMovement(req CreateStockMovementRequest) (*CreateS
 
 	if glLines != nil {
 		if _, err := postAutoEntryTx(
-			tx, req.OrganizationID, glJournal.ID, "stock_movement", req.ID,
+			tx, req.OrganizationID, glJournal.ID, SourceDocStockMovement, req.ID,
 			time.Now().UnixMilli(), derefString(req.Reference), "Stock adjustment", glLines,
 		); err != nil {
 			return nil, err

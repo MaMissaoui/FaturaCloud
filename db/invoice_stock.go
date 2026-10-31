@@ -186,7 +186,7 @@ func applyInvoiceStockOutTx(tx *sqlx.Tx, invoice *Invoice, plan *invoiceStockPla
 	}
 	if plan.cogsLines != nil {
 		if _, err := postAutoEntryTx(
-			tx, invoice.OrganizationID, plan.cogsJournal.ID, string(invoiceCOGSSourceType), invoice.ID,
+			tx, invoice.OrganizationID, plan.cogsJournal.ID, invoiceCOGSSourceType, invoice.ID,
 			invoice.Date, invoice.Number, label, plan.cogsLines,
 		); err != nil {
 			return err

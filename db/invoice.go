@@ -770,7 +770,7 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 		reference := invoice.Number
 		description := "Invoice " + invoice.Number
 		if _, err := postAutoEntryTx(
-			tx, invoice.OrganizationID, journal.ID, "invoice", invoice.ID, invoice.Date, reference, description, glLines,
+			tx, invoice.OrganizationID, journal.ID, SourceDocInvoice, invoice.ID, invoice.Date, reference, description, glLines,
 		); err != nil {
 			return nil, err
 		}
@@ -887,9 +887,9 @@ func (d *Database) DeleteInvoice(invoiceID string) (bool, error) {
 		WHERE id = ? AND state <> 'paid'
 		  AND NOT EXISTS (
 			SELECT 1 FROM journal_entries
-			WHERE organizationId = ? AND sourceDocumentType = 'invoice' AND sourceDocumentId = ?
+			WHERE organizationId = ? AND sourceDocumentType = ? AND sourceDocumentId = ?
 			  AND status = 'posted' AND reversalOfEntryId IS NULL
-		  )`, invoiceID, current.OrganizationID, invoiceID)
+		  )`, invoiceID, current.OrganizationID, SourceDocInvoice, invoiceID)
 	if err != nil {
 		return false, fmt.Errorf("delete_invoice: %w", err)
 	}

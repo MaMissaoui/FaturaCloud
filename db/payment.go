@@ -653,7 +653,7 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 	}
 
 	description := fmt.Sprintf("Payment %s", req.ID)
-	entryID, err := postAutoEntryTx(tx, req.OrganizationID, journal.ID, "payment", req.ID, req.Date, derefString(req.Reference), description, lines)
+	entryID, err := postAutoEntryTx(tx, req.OrganizationID, journal.ID, SourceDocPayment, req.ID, req.Date, derefString(req.Reference), description, lines)
 	if err != nil {
 		return nil, err
 	}

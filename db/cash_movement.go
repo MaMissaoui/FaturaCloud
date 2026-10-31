@@ -173,7 +173,7 @@ func (d *Database) CreateCashMovement(req CreateCashMovementRequest) (*CashMovem
 	}
 
 	entryID, err := postAutoEntryTx(
-		tx, req.OrganizationID, journal.ID, "cash_movement", movementID, req.Date, "", description, lines,
+		tx, req.OrganizationID, journal.ID, SourceDocCashMovement, movementID, req.Date, "", description, lines,
 	)
 	if err != nil {
 		return nil, err

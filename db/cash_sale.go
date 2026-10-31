@@ -405,7 +405,7 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 
 	if needsGL {
 		if _, err := postAutoEntryTx(
-			tx, req.OrganizationID, saleJournal.ID, "invoice", invoiceID, req.Date, number, "Invoice "+number, saleGLLines,
+			tx, req.OrganizationID, saleJournal.ID, SourceDocInvoice, invoiceID, req.Date, number, "Invoice "+number, saleGLLines,
 		); err != nil {
 			return nil, err
 		}
@@ -442,7 +442,7 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 
 		description := fmt.Sprintf("Payment %s", paymentID)
 		entryID, err := postAutoEntryTx(
-			tx, req.OrganizationID, settlementJournal.ID, "payment", paymentID, req.Date,
+			tx, req.OrganizationID, settlementJournal.ID, SourceDocPayment, paymentID, req.Date,
 			derefString(req.Reference), description, settlementGLLines,
 		)
 		if err != nil {

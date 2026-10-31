@@ -1,6 +1,14 @@
 package db
 
-import "testing"
+import (
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+)
 
 // journalEntryTestFixture sets up the minimum a journal entry needs to post:
 // an organization, a fiscal year covering the test date, a journal, and two
@@ -336,39 +344,146 @@ func TestDeleteJournalEntryOnlyAllowsDraft(t *testing.T) {
 	}
 }
 
-// Every SourceDocType constant must be in the set the ref validator accepts;
-// a new constant that isn't added there would make its lookups 500.
-func TestSourceDocTypeKnownSetCoversEveryConstant(t *testing.T) {
+// Every SourceDocType constant declared in journal_entry.go must be in
+// allSourceDocTypes; a new constant that isn't added there would make its
+// lookups 500. The constants are read from the source, so a hand-copied list
+// can't quietly agree with itself.
+func TestEverySourceDocTypeConstantIsKnown(t *testing.T) {
 	t.Parallel()
-	all := []SourceDocType{
-		SourceDocInvoice,
-		SourceDocInvoiceCOGS,
-		SourceDocInvoiceOpening,
-		SourceDocIncomingInvoice,
-		SourceDocOutboundDelivery,
-		SourceDocInboundDelivery,
-		SourceDocProductionOrder,
-		SourceDocStockMovement,
-		SourceDocClosing,
-		SourceDocPayment,
-		SourceDocCashMovement,
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "journal_entry.go", nil, 0)
+	if err != nil {
+		t.Fatalf("parse journal_entry.go: %v", err)
 	}
-	for _, typ := range all {
-		if !knownSourceDocTypes[typ] {
-			t.Errorf("source doc type %q is missing from knownSourceDocTypes", typ)
+
+	type declaredConst struct {
+		name  string
+		value string
+		pos   token.Position
+	}
+	var declared []declaredConst
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
 		}
-	}
-	for typ := range knownSourceDocTypes {
-		found := false
-		for _, known := range all {
-			if known == typ {
-				found = true
-				break
+		for _, spec := range gen.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			ident, ok := vs.Type.(*ast.Ident)
+			if !ok || ident.Name != "SourceDocType" {
+				continue
+			}
+			for i, name := range vs.Names {
+				if i >= len(vs.Values) {
+					t.Fatalf("%s: SourceDocType const %s has no literal value", fset.Position(name.Pos()), name.Name)
+				}
+				lit, ok := vs.Values[i].(*ast.BasicLit)
+				if !ok || lit.Kind != token.STRING {
+					t.Fatalf("%s: SourceDocType const %s is not a string literal", fset.Position(lit.Pos()), name.Name)
+				}
+				value, err := strconv.Unquote(lit.Value)
+				if err != nil {
+					t.Fatalf("%s: unquote %s value: %v", fset.Position(lit.Pos()), name.Name, err)
+				}
+				declared = append(declared, declaredConst{name: name.Name, value: value, pos: fset.Position(name.Pos())})
 			}
 		}
-		if !found {
-			t.Errorf("knownSourceDocTypes has %q, which the all-constants slice doesn't cover", typ)
+	}
+	if len(declared) == 0 {
+		t.Fatal("found no SourceDocType constants in journal_entry.go")
+	}
+
+	known := make(map[SourceDocType]bool, len(allSourceDocTypes))
+	for _, typ := range allSourceDocTypes {
+		if known[typ] {
+			t.Errorf("allSourceDocTypes has duplicate %q", string(typ))
 		}
+		known[typ] = true
+	}
+
+	for _, c := range declared {
+		if !known[SourceDocType(c.value)] {
+			t.Errorf("%s: SourceDocType const %s = %q is missing from allSourceDocTypes", c.pos, c.name, c.value)
+		}
+	}
+}
+
+// Every writer must pass a SourceDocType constant, not a string literal, so a
+// typo can't drift from the value the lookup side validates. Both the
+// postAutoEntryTx* argument and a SourceDocumentRef's Type field are checked
+// in the AST of every non-test db file.
+func TestSourceDocTypeArgumentsAreConstants(t *testing.T) {
+	t.Parallel()
+
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatalf("glob db/*.go: %v", err)
+	}
+
+	fset := token.NewFileSet()
+	checked := 0
+	for _, path := range files {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+
+		ast.Inspect(file, func(n ast.Node) bool {
+			switch node := n.(type) {
+			case *ast.CallExpr:
+				fun, ok := node.Fun.(*ast.Ident)
+				if !ok {
+					return true
+				}
+				if fun.Name != "postAutoEntryTx" && fun.Name != "postAutoEntryTxEnforcing" {
+					return true
+				}
+				if len(node.Args) < 4 {
+					t.Errorf("%s: %s call has %d arguments, want at least 4",
+						fset.Position(node.Pos()), fun.Name, len(node.Args))
+					return true
+				}
+				arg := node.Args[3]
+				if lit, ok := arg.(*ast.BasicLit); ok {
+					t.Errorf("%s: %s sourceDocumentType argument is a string literal %s; use a SourceDocType constant",
+						fset.Position(lit.Pos()), fun.Name, lit.Value)
+				}
+				checked++
+
+			case *ast.CompositeLit:
+				typ, ok := node.Type.(*ast.Ident)
+				if !ok || typ.Name != "SourceDocumentRef" {
+					return true
+				}
+				for _, elt := range node.Elts {
+					kv, ok := elt.(*ast.KeyValueExpr)
+					if !ok {
+						continue
+					}
+					key, ok := kv.Key.(*ast.Ident)
+					if !ok || key.Name != "Type" {
+						continue
+					}
+					if lit, ok := kv.Value.(*ast.BasicLit); ok {
+						t.Errorf("%s: SourceDocumentRef.Type is a string literal %s; use a SourceDocType constant",
+							fset.Position(lit.Pos()), lit.Value)
+					}
+					checked++
+				}
+			}
+			return true
+		})
+	}
+
+	if checked == 0 {
+		t.Fatal("found no postAutoEntryTx calls or SourceDocumentRef literals to check")
 	}
 }
 

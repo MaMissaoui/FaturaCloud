@@ -191,7 +191,7 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 		return nil, fmt.Errorf("create_cash_sale_payment insert_application: %w", err)
 	}
 	entryID, err := postAutoEntryTx(
-		tx, invoice.OrganizationID, journal.ID, "payment", paymentID, req.Date,
+		tx, invoice.OrganizationID, journal.ID, SourceDocPayment, paymentID, req.Date,
 		derefString(req.Reference), fmt.Sprintf("Payment %s", paymentID), glLines,
 	)
 	if err != nil {

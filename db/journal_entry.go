@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -208,20 +209,26 @@ const (
 	SourceDocCashMovement     SourceDocType = "cash_movement"
 )
 
-// knownSourceDocTypes is the set findPostedEntryForSourceDocumentTx accepts.
-// A typo in a ref is a programming error, not an empty result.
-var knownSourceDocTypes = map[SourceDocType]bool{
-	SourceDocInvoice:          true,
-	SourceDocInvoiceCOGS:      true,
-	SourceDocInvoiceOpening:   true,
-	SourceDocIncomingInvoice:  true,
-	SourceDocOutboundDelivery: true,
-	SourceDocInboundDelivery:  true,
-	SourceDocProductionOrder:  true,
-	SourceDocStockMovement:    true,
-	SourceDocClosing:          true,
-	SourceDocPayment:          true,
-	SourceDocCashMovement:     true,
+// allSourceDocTypes is every type findPostedEntryForSourceDocumentTx accepts.
+// TestEverySourceDocTypeConstantIsKnown keeps it in step with the constants;
+// a typo in a ref is a programming error, not an empty result.
+var allSourceDocTypes = []SourceDocType{
+	SourceDocInvoice,
+	SourceDocInvoiceCOGS,
+	SourceDocInvoiceOpening,
+	SourceDocIncomingInvoice,
+	SourceDocOutboundDelivery,
+	SourceDocInboundDelivery,
+	SourceDocProductionOrder,
+	SourceDocStockMovement,
+	SourceDocClosing,
+	SourceDocPayment,
+	SourceDocCashMovement,
+}
+
+// known reports whether t is one of allSourceDocTypes.
+func (t SourceDocType) known() bool {
+	return slices.Contains(allSourceDocTypes, t)
 }
 
 // SourceDocumentRef names the document a journal entry was posted from, in
@@ -267,7 +274,7 @@ func findPostedEntryForSourceDocumentTx(exec sqlGetExecer, ref SourceDocumentRef
 	if ref.OrganizationID == "" || ref.Type == "" || ref.ID == "" {
 		return nil, fmt.Errorf("find_posted_entry_for_source_document: incomplete reference %+v", ref)
 	}
-	if !knownSourceDocTypes[ref.Type] {
+	if !ref.Type.known() {
 		return nil, fmt.Errorf("find_posted_entry_for_source_document: unknown source document type %q in reference %+v", ref.Type, ref)
 	}
 
