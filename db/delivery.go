@@ -602,7 +602,7 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 		// movement here was ever attempted.
 		if cogsLines != nil {
 			if _, err := postAutoEntryTx(
-				tx, current.OrganizationID, cogsJournal.ID, "outbound_delivery", current.ID,
+				tx, current.OrganizationID, cogsJournal.ID, SourceDocOutboundDelivery, current.ID,
 				current.DeliveryDate, current.DeliveryNumber, "Delivery "+current.DeliveryNumber, cogsLines,
 			); err != nil {
 				return nil, err

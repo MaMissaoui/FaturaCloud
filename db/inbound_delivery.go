@@ -664,7 +664,7 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		// cost basis (grniLines built before the transaction opened, above).
 		if grniLines != nil {
 			if _, err := postAutoEntryTx(
-				tx, current.OrganizationID, grniJournal.ID, "inbound_delivery", current.ID,
+				tx, current.OrganizationID, grniJournal.ID, SourceDocInboundDelivery, current.ID,
 				current.DeliveryDate, current.DeliveryNumber, "Goods receipt "+current.DeliveryNumber, grniLines,
 			); err != nil {
 				return nil, err
