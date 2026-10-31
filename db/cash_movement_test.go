@@ -104,6 +104,11 @@ func TestCreateCashMovementNoRegisterAccountConfiguredRejected(t *testing.T) {
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-movement-noregister")
 	_, bank, _ := cashMovementTestAccounts(t, d, fx.orgID)
+	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
+		DefaultCashRegisterAccountID: ptr(""),
+	}); err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
 
 	_, err := d.CreateCashMovement(CreateCashMovementRequest{
 		OrganizationID: fx.orgID, Date: fx.date, // AccountID omitted, no org default either

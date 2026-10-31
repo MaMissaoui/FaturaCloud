@@ -43,6 +43,7 @@ import PaymentProductsCell, {
   paymentProductsLabel,
 } from "src/components/payments/payment-products-cell";
 import { PAYMENT_METHODS, paymentMethodLabel, paymentRowMethodLabel } from "src/types/payment";
+import { effectiveCashBookMethod } from "src/types/cash-book-payment-methods";
 import { useCashBook } from "src/components/cash-book/use-cash-book";
 import CashBookModals from "src/components/cash-book/modals";
 import CustomerSearchResults from "src/components/cash-book/search-results";
@@ -71,6 +72,7 @@ const CashBookV1 = () => {
   const {
     onProductSelect,
     dateFormat,
+    organization,
     clients,
     products,
     sellableProducts,
@@ -129,7 +131,9 @@ const CashBookV1 = () => {
     openPayment,
     clientName,
   } = cb;
-  const paymentMethod = cashAndBank ? paymentMethodWatched || "cash" : "cash";
+  const paymentMethod = effectiveCashBookMethod(cashAndBank, paymentMethodWatched);
+  const missingSaleAccount =
+    paymentMethod === "cash" ? !registerAccountId : !organization?.defaultCashAccountId;
   // Below md the loan table's pinned "Record payment" goes icon-only, so it
   // doesn't take a third of a phone-width table.
   const compactActions = !Grid.useBreakpoint().md;
@@ -260,6 +264,14 @@ const CashBookV1 = () => {
                 </Trans>
               </Typography.Text>
             )}
+            {paymentMethod !== "cash" && !organization?.defaultCashAccountId && (
+              <Typography.Text type="warning" style={{ display: "block", marginBottom: 12 }}>
+                <Trans>
+                  Set a default bank account in the organization's Accounting settings to take card
+                  or transfer payments.
+                </Trans>
+              </Typography.Text>
+            )}
             <Form form={form} layout="vertical" onFinish={handleSubmitSale} scrollToFirstError>
               <Row gutter={16}>
                 <Col xs={24} md={8}>
@@ -351,7 +363,7 @@ const CashBookV1 = () => {
               </Form.Item>
 
               <Row gutter={16}>
-                <Col xs={24} md={12}>
+                <Col xs={24} md={cashAndBank ? 12 : 24}>
                   <Form.Item
                     label={
                       saleMode === "cash"
@@ -393,8 +405,8 @@ const CashBookV1 = () => {
                     />
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={12}>
-                  {cashAndBank && (
+                {cashAndBank && (
+                  <Col xs={24} md={12}>
                     <Form.Item label={t`Payment method`} name="paymentMethod">
                       <Select>
                         {PAYMENT_METHODS.map((m) => (
@@ -404,8 +416,8 @@ const CashBookV1 = () => {
                         ))}
                       </Select>
                     </Form.Item>
-                  )}
-                </Col>
+                  </Col>
+                )}
               </Row>
               {/* One free-text field for the payment: Reference is what the
               Payment history table and export show, and it becomes the
@@ -464,11 +476,10 @@ const CashBookV1 = () => {
                   loading={submitting}
                   size="large"
                   // F101: an amount > 0 means a payment will post to the
-                  // register; with none configured it can't be recorded.
-                  // A zero-deposit loan sale (amount 0) is still allowed.
-                  disabled={
-                    amountReceivedWatched > 0 && paymentMethod === "cash" && !registerAccountId
-                  }
+                  // register or, for card/transfer in cash_and_bank, the bank;
+                  // with that account unconfigured it can't be recorded. A
+                  // zero-deposit loan sale (amount 0) is still allowed.
+                  disabled={amountReceivedWatched > 0 && missingSaleAccount}
                 >
                   {saleMode === "cash" ? (
                     <Trans>Record cash sale</Trans>

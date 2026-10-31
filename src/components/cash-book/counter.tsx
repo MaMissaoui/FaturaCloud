@@ -38,6 +38,7 @@ import {
 } from "src/components/cash-book/shared";
 import type { CashBookState } from "src/components/cash-book/use-cash-book";
 import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
+import { effectiveCashBookMethod } from "src/types/cash-book-payment-methods";
 import { unitsToCents } from "src/utils/currency";
 
 const { Option } = Select;
@@ -106,12 +107,15 @@ const SaleSummary = ({ cb }: { cb: CashBookState }) => {
     money,
     form,
     submitting,
+    organization,
     registerAccountId,
     cashAndBank,
     paymentMethodWatched,
   } = cb;
   const received = amountReceivedWatched || 0;
-  const paymentMethod = cashAndBank ? paymentMethodWatched || "cash" : "cash";
+  const paymentMethod = effectiveCashBookMethod(cashAndBank, paymentMethodWatched);
+  const missingAccount =
+    paymentMethod === "cash" ? !registerAccountId : !organization?.defaultCashAccountId;
   const owes = total > 0 && received < total;
   const change = received > total ? received - total : 0;
   return (
@@ -166,11 +170,11 @@ const SaleSummary = ({ cb }: { cb: CashBookState }) => {
         style={{ marginTop: 16, height: 52, fontSize: 16 }}
         onClick={() => form.submit()}
         loading={submitting}
-        // F101: a cash payment posts to the register; with none configured it
-        // can't be recorded. A card/transfer payment in cash_and_bank mode
-        // goes to the bank account, so it doesn't need a register. A
-        // zero-deposit loan sale is still allowed.
-        disabled={received > 0 && paymentMethod === "cash" && !registerAccountId}
+        // F101: a cash payment posts to the register and a card/transfer
+        // payment in cash_and_bank posts to the bank; the matching default
+        // account must be configured. A zero-deposit loan sale is still
+        // allowed.
+        disabled={received > 0 && missingAccount}
       >
         {saleMode === "cash" ? <Trans>Record cash sale</Trans> : <Trans>Record loan sale</Trans>}
       </Button>
@@ -309,6 +313,7 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
     form,
     handleSubmitSale,
     dateFormat,
+    organization,
     registerAccountId,
     cashAndBank,
     paymentMethodWatched,
@@ -320,7 +325,7 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
     currency,
     setAmountReceivedTouched,
   } = cb;
-  const paymentMethod = cashAndBank ? paymentMethodWatched || "cash" : "cash";
+  const paymentMethod = effectiveCashBookMethod(cashAndBank, paymentMethodWatched);
   return (
     <Form form={form} layout="vertical" onFinish={handleSubmitSale} scrollToFirstError>
       <Card
@@ -361,6 +366,19 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
             }
           />
         )}
+        {paymentMethod !== "cash" && !organization?.defaultCashAccountId && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={
+              <Trans>
+                Set a default bank account in the organization's Accounting settings to take card or
+                transfer payments.
+              </Trans>
+            }
+          />
+        )}
         <LineItemsTable
           defaultNewRow={{ quantity: 1, taxRate: defaultTaxRateId }}
           columns={[
@@ -382,7 +400,7 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
               <SaleTypeButtons cb={cb} />
             </Form.Item>
             <Row gutter={12}>
-              <Col xs={24} sm={12}>
+              <Col xs={24} sm={cashAndBank ? 12 : 24}>
                 <Form.Item
                   label={
                     saleMode === "cash"
@@ -405,8 +423,8 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
                   />
                 </Form.Item>
               </Col>
-              <Col xs={24} sm={12}>
-                {cashAndBank && (
+              {cashAndBank && (
+                <Col xs={24} sm={12}>
                   <Form.Item label={t`Payment method`} name="paymentMethod">
                     <Select size="large">
                       {PAYMENT_METHODS.map((m) => (
@@ -416,8 +434,8 @@ const SaleForm = ({ cb }: { cb: CashBookState }) => {
                       ))}
                     </Select>
                   </Form.Item>
-                )}
-              </Col>
+                </Col>
+              )}
             </Row>
             <Form.Item label={t`Reference`} name="reference" style={{ marginBottom: 0 }}>
               <Input />

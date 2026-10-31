@@ -4,6 +4,8 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import toNumber from "lodash/toNumber";
 import { unitsToCents } from "src/utils/currency";
+import { PAYMENT_METHODS, paymentMethodLabel } from "src/types/payment";
+import { effectiveCashBookMethod } from "src/types/cash-book-payment-methods";
 import type { CashBookState } from "src/components/cash-book/use-cash-book";
 
 const { Option } = Select;
@@ -32,8 +34,14 @@ const CashBookModals = ({ cb }: { cb: CashBookState }) => {
     handleNewClientSubmit,
     currency,
     money,
+    cashAndBank,
     handlePayLineSubmit,
   } = cb;
+  const payLinePaymentMethod = effectiveCashBookMethod(
+    cashAndBank,
+    Form.useWatch("paymentMethod", payLineForm) as string | undefined,
+  );
+  const payLineBankMissing = payLinePaymentMethod !== "cash" && !organization?.defaultCashAccountId;
 
   return (
     <>
@@ -164,6 +172,7 @@ const CashBookModals = ({ cb }: { cb: CashBookState }) => {
         confirmLoading={payingSubmitting}
         okText={t`Record`}
         cancelText={t`Cancel`}
+        okButtonProps={{ disabled: payLineBankMissing }}
         destroyOnHidden
       >
         {payingLine && (
@@ -205,6 +214,14 @@ const CashBookModals = ({ cb }: { cb: CashBookState }) => {
           </>
         )}
         <Form form={payLineForm} layout="vertical" onFinish={handlePayLineSubmit}>
+          {payLineBankMissing && (
+            <Typography.Text type="warning" style={{ display: "block", marginBottom: 12 }}>
+              <Trans>
+                Set a default bank account in the organization's Accounting settings to take card or
+                transfer payments.
+              </Trans>
+            </Typography.Text>
+          )}
           <Form.Item
             label={t`Amount received (${currency})`}
             name="amount"
@@ -222,6 +239,17 @@ const CashBookModals = ({ cb }: { cb: CashBookState }) => {
           >
             <NumberInput style={{ width: "100%" }} min={0.01} precision={2} autoFocus />
           </Form.Item>
+          {cashAndBank && (
+            <Form.Item label={t`Payment method`} name="paymentMethod">
+              <Select>
+                {PAYMENT_METHODS.map((m) => (
+                  <Option key={m} value={m}>
+                    {paymentMethodLabel(m)}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
           <Form.Item label={t`Reference`} name="reference">
             <Input />
           </Form.Item>

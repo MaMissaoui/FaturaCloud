@@ -64,6 +64,7 @@ Don't re-solve these per page:
 ## Cash Book
 
 - `src/components/cash-book/use-cash-book.ts` (`useCashBook`) holds all state and handlers. `modals.tsx`, `search-results.tsx` and `onProductSelect` are shared. Two layouts, by owner decision: `CashBookV1` (stacked, in `src/routes/cash-book.tsx`) and `cash-book-v2.tsx` (`counter.tsx` plus `loan-register.tsx`). They are switched per browser by `layout-switch.tsx` (disabled mid-sale). Dropping one means deleting its files and the switch; the hook stays.
+- `cashBookPaymentMethods` (migration 0111): in `cash_only` the counter takes cash only; in `cash_and_bank` a card/transfer method posts to the organization's `defaultCashAccountId` (the bank) on the `bank` journal while cash still goes to `defaultCashRegisterAccountId` on the `cash` journal. The method picker (sale and loan-collection forms) shows only in `cash_and_bank`; `effectiveCashBookMethod` (`src/types/cash-book-payment-methods.ts`) is the single fallback rule.
 - Prices are entered **gross**. `sale-assembly.ts` (`assembleSale`, `netCentsFor`) converts each line to net once from its effective tax rate (its own, else `defaultTaxRateId`), and every total derives from it so the payload matches `validateInvoiceTotals` (`sale-assembly.test.ts`, F189).
 - A new customer is a local draft (`NewClientDraft`) sent inside `POST /api/cash-sales`, which keeps the write atomic. Name and phone are required.
 - Sale type defaults to Loan (forgetting to switch leaves a visible balance). The amount only sets the default; `paid` iff the amount reaches the total.

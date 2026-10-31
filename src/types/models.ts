@@ -10,6 +10,8 @@ export type { PurchaseOrderStatus } from "./purchase-order";
 export type { InboundDeliveryStatus } from "./inbound-delivery";
 export type { IncomingInvoiceState, MatchLine, MatchStatus } from "./incoming-invoice";
 export type { Invoice, InvoiceLineItem, InvoiceState } from "./invoice";
+import type { CashBookPaymentMethods } from "./cash-book-payment-methods";
+export type { CashBookPaymentMethods } from "./cash-book-payment-methods";
 
 export interface Product {
   id: string;
@@ -316,7 +318,7 @@ export interface Organization {
   // cashBookPaymentMethods is "cash_only" (migration 0111, the default) or
   // "cash_and_bank": whether the Cash Book accepts card/transfer payments,
   // which post to defaultCashAccountId (the bank), not the register.
-  cashBookPaymentMethods?: string;
+  cashBookPaymentMethods?: CashBookPaymentMethods;
   // The Cash Book screen's register balance/daily-movements report/cash
   // withdrawal feature — deliberately separate from defaultCashAccountId,
   // which every chart-of-accounts template wires to the Bank account, never

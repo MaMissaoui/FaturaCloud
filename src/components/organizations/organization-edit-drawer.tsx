@@ -38,6 +38,7 @@ import OrganizationDangerZone, {
 import { documentLanguageOptions, documentLayoutOptions } from "src/types/document-layout";
 import { timezoneOptions } from "src/utils/timezones";
 import { inventoryValuationOptions } from "src/types/inventory-valuation";
+import { cashBookPaymentMethodsOptions } from "src/types/cash-book-payment-methods";
 import type { Organization } from "src/types/models";
 
 const currencies = compact(uniq(map(countries, "currency_code")));
@@ -669,7 +670,8 @@ export default function OrganizationEditDrawer({
                             <Trans>
                               The organization's Bank account (code 1020 in the default chart),
                               pre-filled as the receiving account when a Cash Book withdrawal is
-                              deposited to the bank.
+                              deposited to the bank. Card and transfer payments at the Cash Book
+                              also post there.
                             </Trans>
                           }
                         >
@@ -715,12 +717,7 @@ export default function OrganizationEditDrawer({
                             </Trans>
                           }
                         >
-                          <Select
-                            options={[
-                              { value: "cash_only", label: t`Cash only` },
-                              { value: "cash_and_bank", label: t`Cash, card and transfer` },
-                            ]}
-                          />
+                          <Select options={cashBookPaymentMethodsOptions()} />
                         </Form.Item>
                       </Col>
                       <Col xs={24}>

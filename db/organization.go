@@ -60,14 +60,23 @@ var cashBookPaymentMethods = map[string]bool{
 	CashBookPaymentMethodsCashAndBank: true,
 }
 
-// normalizeCashBookPaymentMethods maps a stored value to the mode actually in
-// effect: anything unknown (including a legacy empty string) is cash_only,
-// the same fail-safe normalization normalizeDocumentLayout applies.
-func normalizeCashBookPaymentMethods(value string) string {
-	if cashBookPaymentMethods[value] {
-		return value
+// cashBookBankRegisterMismatch is the 409 shared by the Cash Book posting
+// paths and UpdateOrganization: in cash_and_bank the bank account and the
+// register must be different accounts, or card/transfer money would post to
+// the same account as cash and the register report would mix the two.
+const cashBookBankRegisterMismatch = "the default bank account and the cash register must be different accounts to take card or transfer payments"
+
+// validateCashBookAccountPair refuses cash_and_bank when both defaults are
+// set to the same account. Either pointer may be nil (unset) or point at ""
+// (cleared); only two real values can collide.
+func validateCashBookAccountPair(mode string, bankAccountID, registerAccountID *string) error {
+	if mode != CashBookPaymentMethodsCashAndBank || bankAccountID == nil || registerAccountID == nil {
+		return nil
 	}
-	return CashBookPaymentMethodsCashOnly
+	if *bankAccountID != "" && *registerAccountID != "" && *bankAccountID == *registerAccountID {
+		return newValidationError("%s", cashBookBankRegisterMismatch)
+	}
+	return nil
 }
 
 // validateCashBookPaymentMethods rejects a value outside the two supported
@@ -267,8 +276,9 @@ type Organization struct {
 	MasterDataSummaries bool `db:"masterDataSummaries" json:"masterDataSummaries"`
 	// CashBookPaymentMethods is "cash_only" (migration 0111, the default) or
 	// "cash_and_bank": whether the Cash Book accepts card/transfer payments,
-	// which then post to defaultCashAccountId instead of the register. An
-	// unknown stored value reads as cash_only (normalizeCashBookPaymentMethods).
+	// which then post to defaultCashAccountId instead of the register. The
+	// column is NOT NULL DEFAULT 'cash_only' and every write is validated, so
+	// reads don't re-normalize it.
 	CashBookPaymentMethods string `db:"cashBookPaymentMethods" json:"cashBookPaymentMethods"`
 	// HasLogo is computed on read (organizationColumns), not a column: it
 	// lets the frontend skip GET /logo for an organization with none, which
@@ -442,9 +452,6 @@ func (d *Database) GetOrganizations() ([]Organization, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get_organizations: %w", err)
 	}
-	for i := range orgs {
-		orgs[i].CashBookPaymentMethods = normalizeCashBookPaymentMethods(orgs[i].CashBookPaymentMethods)
-	}
 	return orgs, nil
 }
 
@@ -457,7 +464,6 @@ func (d *Database) GetOrganization(organizationID string) (*Organization, error)
 	if err != nil {
 		return nil, fmt.Errorf("get_organization: %w", err)
 	}
-	org.CashBookPaymentMethods = normalizeCashBookPaymentMethods(org.CashBookPaymentMethods)
 	return &org, nil
 }
 
@@ -521,6 +527,12 @@ func (d *Database) CreateOrganization(req CreateOrganizationRequest) (*Organizat
 	cashBookPaymentMethodsValue := CashBookPaymentMethodsCashOnly
 	if req.CashBookPaymentMethods != nil {
 		cashBookPaymentMethodsValue = *req.CashBookPaymentMethods
+	}
+	// CreateOrganizationRequest collects no default account ids yet, so the
+	// resulting pair is always unset here; the guard still documents that a
+	// future create path can't introduce the equal-accounts combination.
+	if err := validateCashBookAccountPair(cashBookPaymentMethodsValue, nil, nil); err != nil {
+		return nil, err
 	}
 	if req.InvoiceNumberFormat == nil || strings.TrimSpace(*req.InvoiceNumberFormat) == "" {
 		defaultFormat := DefaultInvoiceNumberFormat
@@ -683,6 +695,34 @@ func (d *Database) UpdateOrganization(organizationID string, updates UpdateOrgan
 			}
 			accountSet.WriteString(",\n\t\t     " + f.column + " = ?")
 			accountArgs = append(accountArgs, *f.value)
+		}
+	}
+
+	// cash_and_bank needs the bank and the register to be different accounts.
+	// Compute the resulting pair with the same three-state rule the columns
+	// use (omitted keeps, "" clears) before writing, so a selection that
+	// passes validation now can't leave the organization unable to take
+	// card/transfer money.
+	if updates.CashBookPaymentMethods != nil ||
+		updates.DefaultCashAccountID != nil || updates.DefaultCashRegisterAccountID != nil {
+		current, err := d.GetOrganization(organizationID)
+		if err != nil {
+			return nil, err
+		}
+		mode := current.CashBookPaymentMethods
+		if updates.CashBookPaymentMethods != nil {
+			mode = *updates.CashBookPaymentMethods
+		}
+		bankAccountID := current.DefaultCashAccountID
+		if updates.DefaultCashAccountID != nil {
+			bankAccountID = updates.DefaultCashAccountID
+		}
+		registerAccountID := current.DefaultCashRegisterAccountID
+		if updates.DefaultCashRegisterAccountID != nil {
+			registerAccountID = updates.DefaultCashRegisterAccountID
+		}
+		if err := validateCashBookAccountPair(mode, bankAccountID, registerAccountID); err != nil {
+			return nil, err
 		}
 	}
 

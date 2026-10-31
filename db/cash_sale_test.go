@@ -10,13 +10,22 @@ func TestCreateCashSaleRefusesNonAssetRegister(t *testing.T) {
 	d := newTestDB(t)
 	fx := newGLPostingTestFixture(t, d, "org-cash-sale-nonasset")
 
+	// A revenue account can be stored as the register (the ownership check
+	// only proves it belongs to the organization); posting must still refuse
+	// it because the destination has to be an asset.
+	if _, err := d.UpdateOrganization(fx.orgID, UpdateOrganizationRequest{
+		DefaultCashRegisterAccountID: &fx.revenueAccountID,
+	}); err != nil {
+		t.Fatalf("UpdateOrganization: %v", err)
+	}
+
 	_, err := d.CreateCashSale(CreateCashSaleRequest{
 		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
 		LineItems: []CreateInvoiceLineItemRequest{
 			{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
 		},
 		SubTotal: 1000, TaxTotal: 200, Total: 1200,
-		AmountReceived: 1200, PaymentMethod: "cash", BankAccountID: fx.revenueAccountID,
+		AmountReceived: 1200, PaymentMethod: "cash",
 	})
 	assertValidationErrorContains(t, err, "the cash register account must be an asset account")
 }
