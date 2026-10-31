@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.74.2] - 2026-10-31
+
+No migrations: the schema stays at `0111`, so rolling back to 3.74.1 is just the image tag. Dependency updates only, with no change in behavior.
+
+### Changed
+- Runtime image: `debian:trixie-slim` moves to the current digest (#553).
+- Go: `modernc.org/sqlite` 1.61.0 and `go-jose/v4` 4.1.6, plus their indirect updates (#554).
+- Frontend: Lingui 6.10, antd 6.6.7, React Router 8.5, `@sentry/react` 11.8, Vite 8.3.5, Vitest 5.0.5, oxlint 1.89 and oxfmt 0.74 (#555).
+- `@sentry/vite-plugin` moves from 5.4.1 to 11.10.0. The build still deletes every source map, so none ships in the image (#556).
+
 ## [3.74.1] - 2026-10-31
 
 No migrations: the schema stays at `0111`, so rolling back to 3.74.0 is just the image tag.
