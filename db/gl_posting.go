@@ -55,7 +55,7 @@ func postAutoEntryTxEnforcing(
 		return "", fmt.Errorf("post_auto_entry new_id: %w", err)
 	}
 
-	fiscalYearID, fiscalPeriodID, err := resolveFiscalPeriodForDate(tx, organizationID, date)
+	fiscalYearID, fiscalPeriodID, err := resolveFiscalPeriodForDateOpts(tx, organizationID, date, sourceDocumentType == SourceDocClosing)
 	if err != nil {
 		return "", err
 	}

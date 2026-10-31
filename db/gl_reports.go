@@ -136,7 +136,12 @@ func (d *Database) GetProfitAndLoss(organizationID string, startDate, endDate in
 	}
 	rows, err := d.getAccountActivity(
 		organizationID, []string{"revenue", "expense"},
-		" AND je.date >= ? AND je.date <= ?", []any{startDate, endDate},
+		// The fiscal-year closing entry (dated the year's EndDate) zeroes every
+		// revenue/expense account into retained earnings. It belongs in the
+		// Trial Balance and the Balance Sheet's CurrentEarnings, but a P&L over
+		// that year must still show the year's own revenue and expenses.
+		" AND je.date >= ? AND je.date <= ? AND (je.sourceDocumentType IS NULL OR je.sourceDocumentType <> ?)",
+		[]any{startDate, endDate, string(SourceDocClosing)},
 	)
 	if err != nil {
 		return nil, err

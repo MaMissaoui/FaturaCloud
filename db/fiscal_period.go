@@ -162,6 +162,9 @@ func (d *Database) CreateFiscalPeriod(req CreateFiscalPeriodRequest) (*FiscalPer
 	if err := requireSameOrg(req.OrganizationID, year.OrganizationID, "fiscal year"); err != nil {
 		return nil, err
 	}
+	if year.Status == "closed" {
+		return nil, newValidationError("cannot change periods of a closed fiscal year")
+	}
 	if req.StartDate < year.StartDate || req.EndDate > year.EndDate {
 		return nil, newValidationError("fiscal period must fall entirely within its fiscal year's date range")
 	}
@@ -199,11 +202,23 @@ func (d *Database) UpdateFiscalPeriodStatus(fiscalPeriodID, status string) (*Fis
 		return nil, newValidationError("invalid fiscal period status %q", status)
 	}
 
+	period, err := d.GetFiscalPeriod(fiscalPeriodID)
+	if err != nil {
+		return nil, err
+	}
+	year, err := d.GetFiscalYear(period.FiscalYearID)
+	if err != nil {
+		return nil, err
+	}
+	if year.Status == "closed" {
+		return nil, newValidationError("cannot change periods of a closed fiscal year")
+	}
+
 	var closedAt any
 	if status == "closed" {
 		closedAt = time.Now().UnixMilli()
 	}
-	_, err := d.DB.Exec(
+	_, err = d.DB.Exec(
 		`UPDATE fiscal_periods SET status = ?, closedAt = ? WHERE id = ?`,
 		status, closedAt, fiscalPeriodID,
 	)
@@ -220,6 +235,15 @@ func (d *Database) UpdateFiscalPeriodStatus(fiscalPeriodID, status string) (*Fis
 // what turns "no fiscal year set up yet" into a clean 409 instead of a
 // journal entry with a dangling fiscalYearId.
 func resolveFiscalPeriodForDate(exec sqlGetExecer, organizationID string, date int64) (fiscalYearID string, fiscalPeriodID *string, err error) {
+	return resolveFiscalPeriodForDateOpts(exec, organizationID, date, false)
+}
+
+// resolveFiscalPeriodForDateOpts is resolveFiscalPeriodForDate with the
+// closed-period refusal optional. Only the year-end closing entry passes
+// allowClosedPeriod: accountants close every period before the year, and
+// the closing entry (dated the year's last day) must still post, with no
+// period, into the year it closes.
+func resolveFiscalPeriodForDateOpts(exec sqlGetExecer, organizationID string, date int64, allowClosedPeriod bool) (fiscalYearID string, fiscalPeriodID *string, err error) {
 	// F52: ORDER BY startDate DESC makes the choice deterministic (the most
 	// recently started open year wins) even in a data anomaly where
 	// overlapping open years exist despite CreateFiscalYear's guard — e.g.
@@ -267,6 +291,19 @@ func resolveFiscalPeriodForDate(exec sqlGetExecer, organizationID string, date i
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			// A closed period covering this date is a deliberate "no postings
+			// here", not an optional-periods gap: posting into it anyway would
+			// change a period whose figures were already finalized.
+			var closedPeriodExists bool
+			if err := exec.Get(&closedPeriodExists,
+				`SELECT EXISTS(SELECT 1 FROM fiscal_periods WHERE fiscalYearId = ? AND status = 'closed' AND startDate <= ? AND endDate >= ?)`,
+				year.ID, date, date,
+			); err != nil {
+				return "", nil, fmt.Errorf("resolve_fiscal_period_for_date closed_period_check: %w", err)
+			}
+			if closedPeriodExists && !allowClosedPeriod {
+				return "", nil, newValidationError("cannot post: the fiscal period covering this date is closed")
+			}
 			// Periods are optional — a year with none yet still accepts entries.
 			return year.ID, nil, nil
 		}
