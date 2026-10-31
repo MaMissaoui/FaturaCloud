@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.74.0] - 2026-10-31
+
+Migration `0111` adds one organization column: the schema moves from `0110` to `0111`. 3.73.x can't start on a `0111` database, so a rollback means restoring a backup taken before the upgrade.
+
+**After upgrading:** every organization's Cash Book now accepts **cash only**. An organization that takes card or transfer payments at the counter must switch Organization → Accounting → "Cash Book payment methods" to "Cash, card and transfer", and have a default bank account set.
+
+### Added
+- "Cash Book payment methods" organization setting. "Cash only" (the default) refuses any other method at the Cash Book. "Cash, card and transfer" posts card and transfer payments to the organization's bank account, so the cash register only holds the cash in the drawer. Before, card and transfer money was posted to the register (#568).
+
+### Fixed
+- A journal entry posted from a document (a payment, an invoice, a delivery, the year-end closing, …) can no longer be reversed by hand from the Journal; undo it through its document. Reversing a payment's entry left the payment posted and impossible to void, and reversing the closing entry moved a closed year's revenue into the next year (#565).
+- Closing a fiscal period blocks posting into it. Entries used to post into the year with no period, and that period's Trial Balance left them out. Periods of a closed year can't be created or changed. Closing the year after its periods still works (#565).
+- A closed year's Profit and Loss shows its figures; it used to read zero after closing (#565).
+- Payments, cash sales and cash movements must use an asset account for the bank, till or register. A Cash Book user could post a cash movement against any account (#566).
+- A payment's client or vendor must be the one on the invoice or bill it settles (#566).
+- A payment and a change of the invoice's or bill's state at the same moment can no longer leave a payment on a draft or cancelled document (#566).
+- Applying the same document twice in one payment, or a foreign-currency amount too small to post, is a clear error instead of an internal error (#566).
+- The cash movement details and their export list vendor payments made from the register, so they add up to the daily totals (#567).
+- The Cash Book's Record payment form no longer keeps the previous customer's reference (#567).
+- A new Cash Book customer whose phone number is written differently ("+216 55 123 456" and "21655123456") is recognized as an existing customer (#567).
+
+### Changed
+- A document's payments panel loads in one request instead of one per payment (#567).
+
 ## [3.73.3] - 2026-10-31
 
 No migrations: the schema stays at `0110`, so rolling back to 3.73.2 is just the image tag.
