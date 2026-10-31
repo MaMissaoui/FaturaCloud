@@ -248,10 +248,27 @@ func (d *Database) CreateIncomingInvoice(req CreateIncomingInvoiceRequest) (*Inc
 
 // incomingInvoiceUpdateTouchesGLFields mirrors invoiceUpdateTouchesGLFields:
 // whether updates would change anything a posted GL entry was built from.
-func incomingInvoiceUpdateTouchesGLFields(updates UpdateIncomingInvoiceRequest) bool {
+// purchaseOrderId is one of those fields (it decides which order's receipt
+// the bill matches and clears GRNI against), but the bill form resends it
+// unchanged on every save, so it counts only when it actually differs from
+// storedPurchaseOrderID.
+func incomingInvoiceUpdateTouchesGLFields(updates UpdateIncomingInvoiceRequest, storedPurchaseOrderID *string) bool {
 	return updates.LineItems != nil || updates.SubTotal != nil || updates.TaxTotal != nil ||
 		updates.Total != nil || updates.Currency != nil || updates.ExchangeRate != nil ||
-		updates.VendorID != nil
+		updates.VendorID != nil || purchaseOrderIDChanged(storedPurchaseOrderID, updates.PurchaseOrderID)
+}
+
+// purchaseOrderIDChanged reports whether the request would move the bill to
+// another purchase order. A nil update means "keep" (the UPDATE's COALESCE),
+// so it never counts.
+func purchaseOrderIDChanged(stored, next *string) bool {
+	if next == nil {
+		return false
+	}
+	if stored == nil {
+		return true
+	}
+	return *stored != *next
 }
 
 func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoiceRequest) (*IncomingInvoice, error) {
@@ -311,16 +328,15 @@ func (d *Database) UpdateIncomingInvoice(id string, updates UpdateIncomingInvoic
 	// See UpdateInvoice's identical guard: a posted GL entry was built from
 	// these fields, and PUT never re-triggers a re-post, so editing them out
 	// from under a posted entry would leave it silently stale.
-	touchesGL := incomingInvoiceUpdateTouchesGLFields(updates)
+	stored, err := loadCurrent()
+	if err != nil {
+		return nil, fmt.Errorf("update_incoming_invoice fetch current for posted-entry check: %w", err)
+	}
+	touchesGL := incomingInvoiceUpdateTouchesGLFields(updates, stored.PurchaseOrderID)
 	// Built once, before Beginx, from the memoized current read; the in-tx
 	// re-check reuses it rather than recomputing the organization.
 	var glRef SourceDocumentRef
 	if touchesGL {
-		stored, err := loadCurrent()
-		if err != nil {
-			return nil, fmt.Errorf("update_incoming_invoice fetch current for posted-entry check: %w", err)
-		}
-		incomingInvoiceOrgID = stored.OrganizationID
 		glRef = SourceDocumentRef{
 			OrganizationID: stored.OrganizationID,
 			Type:           SourceDocIncomingInvoice,
