@@ -741,3 +741,58 @@ func TestCreateCashSaleDefaultsToRegisterAccountNotBank(t *testing.T) {
 		t.Fatalf("register net debit = %d, want 1200 (Dr register on a cash sale)", registerDebit-registerCredit)
 	}
 }
+
+// TestCreateCashSalePhoneDedupeNormalizesDigits: the same phone written with
+// spaces and a country-code prefix is the same customer. The second sale
+// must see the first client (the existing duplicate-phone message names it)
+// instead of creating a second one.
+func TestCreateCashSalePhoneDedupeNormalizesDigits(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-sale-phone-dedupe")
+	register := accountByCode(t, d, fx.orgID, "1010")
+
+	sale := func(phone string) (*CashSaleResult, error) {
+		return d.CreateCashSale(CreateCashSaleRequest{
+			OrganizationID: fx.orgID, Date: fx.date, Currency: "EUR",
+			NewClient: &CreateClientRequest{Name: ptr("Walk-in Customer"), Phone: &phone},
+			LineItems: []CreateInvoiceLineItemRequest{
+				{Quantity: 1, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+			},
+			SubTotal: 1000, TaxTotal: 200, Total: 1200,
+			AmountReceived: 1200, PaymentMethod: "cash", BankAccountID: register.ID,
+		})
+	}
+
+	first, err := sale("+216 55 123 456")
+	if err != nil {
+		t.Fatalf("first CreateCashSale: %v", err)
+	}
+
+	before, err := d.GetClients(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetClients: %v", err)
+	}
+
+	_, err = sale("21655123456")
+	if err == nil {
+		t.Fatal("second sale with the same phone in another format was accepted")
+	}
+	if !strings.Contains(err.Error(), "a client with this phone number already exists") {
+		t.Fatalf("err = %q, want the existing duplicate-phone message", err.Error())
+	}
+	if !strings.Contains(err.Error(), "Walk-in Customer") {
+		t.Fatalf("err = %q, want it to name the existing client", err.Error())
+	}
+
+	after, err := d.GetClients(fx.orgID)
+	if err != nil {
+		t.Fatalf("GetClients: %v", err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("client count changed from %d to %d: the duplicate was created", len(before), len(after))
+	}
+	if first.Client == nil || first.Client.ID == "" {
+		t.Fatal("first sale did not return its client")
+	}
+}

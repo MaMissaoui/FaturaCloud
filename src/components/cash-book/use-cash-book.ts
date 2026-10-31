@@ -722,6 +722,9 @@ export const useCashBook = ({ scopeLoanStatusToClient = true }: UseCashBookOptio
   };
 
   const openPayment = (row: LoanStatusRow) => {
+    // Reset first: the antd form keeps the previous customer's reference
+    // otherwise, and a stale reference would be recorded with this payment.
+    payLineForm.resetFields();
     payLineForm.setFieldsValue({ amount: centsToUnits(row.outstanding) });
     setPayingLine(row);
   };

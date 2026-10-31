@@ -744,6 +744,13 @@ export interface PaymentApplication {
   createdAt: number;
 }
 
+// GET /api/invoices/{id}/payments and its incoming-invoice twin: the
+// application with the payment it belongs to joined in
+// (db.DocumentPaymentApplication), so the payment history needs one request.
+export interface DocumentPaymentApplication extends PaymentApplication {
+  payment: Payment;
+}
+
 export interface CreatePaymentApplicationRequest {
   documentType: "invoice" | "incoming_invoice";
   documentId: string;

@@ -9,10 +9,6 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
-// ErrFiscalYearInUse is returned by DeleteFiscalYear when journal entries
-// still reference it.
-var ErrFiscalYearInUse = errors.New("fiscal year is still used by one or more journal entries")
-
 // FiscalYear mirrors the fiscal_years table.
 type FiscalYear struct {
 	ID             string `db:"id"             json:"id"`

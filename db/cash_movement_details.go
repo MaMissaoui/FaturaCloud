@@ -26,6 +26,10 @@ import (
 //   - "repayment": any later payment against an invoice that already had
 //     one — collecting an outstanding loan sale's balance.
 //
+// The "out" side is either a cash_movements withdrawal (kind "withdrawal")
+// or an outbound vendor payment made from the register (kind
+// "vendor_payment", with the vendor name and bill number(s)).
+//
 // Voided payments are excluded. GetDailyCashMovements' aggregate sums
 // journal_lines for status IN ('posted','reversed'), so a payment voided
 // on a *later* day still contributes its original amount to the *earlier*
@@ -38,9 +42,10 @@ type CashMovementDetail struct {
 	ID            string  `json:"id"`
 	Date          int64   `json:"date"`
 	Direction     string  `json:"direction"` // "in" | "out"
-	Kind          string  `json:"kind"`      // "sale" | "loan" | "repayment" | "withdrawal"
+	Kind          string  `json:"kind"`      // "sale" | "loan" | "repayment" | "withdrawal" | "vendor_payment"
 	Amount        int64   `json:"amount"`
 	ClientName    *string `json:"clientName"`
+	VendorName    *string `json:"vendorName"`
 	InvoiceID     *string `json:"invoiceId"`
 	InvoiceNumber *string `json:"invoiceNumber"`
 	Note          *string `json:"note"`
@@ -48,11 +53,14 @@ type CashMovementDetail struct {
 
 // GetCashMovementDetails is GetDailyCashMovements' per-transaction drill
 // down for accountID covering the calendar days (in the organization's time
-// zone, orgLocation) that startDate and endDate fall in, inclusive of both. Two sources, merged and sorted by
-// date: inbound payments applied to an invoice (the "in" side — a
-// withdrawal is never an application, see CreateCashMovement) and
-// cash_movements withdrawals (the "out" side, always kind "withdrawal" —
-// cash_movements has no client and no invoice to attach).
+// zone, orgLocation) that startDate and endDate fall in, inclusive of both.
+// Three sources, merged and sorted by date: inbound payments applied to an
+// invoice (the "in" side — a withdrawal is never an application, see
+// CreateCashMovement), cash_movements withdrawals (an "out" row, always
+// kind "withdrawal" — cash_movements has no client and no invoice to
+// attach), and outbound vendor payments paid from this register (an "out"
+// row, kind "vendor_payment", carrying the vendor and the settled
+// bill number(s)).
 //
 // Both endpoints are interpreted as *days*, not as literal instants: each
 // is a calendarDayMs (UTC noon of the picked date, src/routes/cash-book.tsx;
@@ -158,7 +166,41 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 		return nil, fmt.Errorf("get_cash_movement_details withdrawals: %w", err)
 	}
 
-	details := make([]CashMovementDetail, 0, len(payments)+len(withdrawals))
+	type vendorPaymentRow struct {
+		ID             string  `db:"id"`
+		Date           int64   `db:"date"`
+		Amount         int64   `db:"amount"`
+		VendorName     *string `db:"vendorName"`
+		InvoiceNumbers *string `db:"invoiceNumbers"`
+		Reference      *string `db:"reference"`
+		Notes          *string `db:"notes"`
+	}
+	// An outbound payment paid from this register credits it exactly like a
+	// withdrawal, so it belongs in the same "out" list. Only posted
+	// (non-voided) payments count, mirroring the inbound query above.
+	vendorPayments := []vendorPaymentRow{}
+	err = d.DB.Select(&vendorPayments, `
+		SELECT p.id, p.date, p.amount, v.name AS vendorName,
+		       (SELECT GROUP_CONCAT(number, ', ') FROM (
+		            SELECT DISTINCT ii.vendorInvoiceNumber AS number
+		            FROM payment_applications pa
+		            JOIN incoming_invoices ii ON ii.id = pa.documentId
+		            WHERE pa.paymentId = p.id AND pa.documentType = 'incoming_invoice'
+		              AND ii.vendorInvoiceNumber != ''
+		        )) AS invoiceNumbers,
+		       p.reference, p.notes
+		FROM payments p
+		LEFT JOIN vendors v ON v.id = p.vendorId
+		WHERE p.organizationId = ? AND p.direction = 'outbound' AND p.status = 'posted'
+		  AND p.bankAccountId = ? AND p.date >= ? AND p.date < ?
+		ORDER BY p.date ASC`,
+		organizationID, accountID, startMs, endExclusiveMs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get_cash_movement_details vendor_payments: %w", err)
+	}
+
+	details := make([]CashMovementDetail, 0, len(payments)+len(withdrawals)+len(vendorPayments))
 	for _, p := range payments {
 		invoiceID, invoiceNumber := p.InvoiceID, p.InvoiceNumber
 		details = append(details, CashMovementDetail{
@@ -169,6 +211,16 @@ func (d *Database) GetCashMovementDetails(organizationID, accountID string, star
 	for _, w := range withdrawals {
 		details = append(details, CashMovementDetail{
 			ID: w.ID, Date: w.Date, Direction: "out", Kind: "withdrawal", Amount: w.Amount, Note: w.Note,
+		})
+	}
+	for _, p := range vendorPayments {
+		note := p.Reference
+		if note == nil || *note == "" {
+			note = p.Notes
+		}
+		details = append(details, CashMovementDetail{
+			ID: p.ID, Date: p.Date, Direction: "out", Kind: "vendor_payment", Amount: p.Amount,
+			VendorName: p.VendorName, InvoiceNumber: p.InvoiceNumbers, Note: note,
 		})
 	}
 	sort.Slice(details, func(i, j int) bool { return details[i].Date < details[j].Date })

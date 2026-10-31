@@ -204,11 +204,6 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 			req.Amount, outstanding,
 		)
 	}
-	var invoicePaid int64
-	if len(lines) > 0 {
-		invoicePaid = lines[0].InvoicePaid
-	}
-
 	if _, err := tx.Exec(`
 		INSERT INTO payments (
 			id, organizationId, direction, clientId, bankAccountId,
@@ -226,6 +221,13 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 	); err != nil {
 		return nil, fmt.Errorf("create_cash_sale_payment insert_application: %w", err)
 	}
+	// Clearing the balance marks the invoice paid, from the same
+	// non-voided-applications sum every other payment path uses. Both "sent"
+	// and "paid" need the same GL presence (needsInvoiceGLPresence), so this
+	// is a pure state flag change with no posting to bring in line.
+	if err := markPaidIfSettledTx(tx, "invoice", invoice.ID); err != nil {
+		return nil, err
+	}
 	entryID, err := postAutoEntryTx(
 		tx, invoice.OrganizationID, journal.ID, SourceDocPayment, paymentID, req.Date,
 		derefString(req.Reference), fmt.Sprintf("Payment %s", paymentID), glLines,
@@ -235,14 +237,6 @@ func (d *Database) CreateCashSalePayment(req CreateCashSalePaymentRequest) (*Cas
 	}
 	if _, err := tx.Exec(`UPDATE payments SET journalEntryId = ? WHERE id = ?`, entryID, paymentID); err != nil {
 		return nil, fmt.Errorf("create_cash_sale_payment link_entry: %w", err)
-	}
-	// Clearing the balance marks the invoice paid. Both "sent" and "paid"
-	// need the same GL presence (needsInvoiceGLPresence), so this is a pure
-	// state flag change with no posting to bring in line.
-	if invoicePaid+req.Amount >= invoice.Total {
-		if _, err := tx.Exec(`UPDATE invoices SET state = 'paid' WHERE id = ? AND state = 'sent'`, invoice.ID); err != nil {
-			return nil, fmt.Errorf("create_cash_sale_payment mark_paid: %w", err)
-		}
 	}
 
 	if err := tx.Commit(); err != nil {

@@ -499,3 +499,48 @@ func TestUpdateInvoiceStateBlockedWhilePaymentOpen(t *testing.T) {
 		t.Fatalf("UpdateInvoiceState(draft) after void: %v", err)
 	}
 }
+
+// TestGetDocumentPaymentApplicationsJoinsThePayment pins the single-request
+// payment history: each application carries the payment fields the panel
+// reads, so it no longer needs a GetPayment per row.
+func TestGetDocumentPaymentApplicationsJoinsThePayment(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-doc-payment-apps")
+	inv := fx.createInvoice(t, d, "inv-doc-apps", 1, 1000) // total 1200
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+	bank := accountByCode(t, d, fx.orgID, "1020")
+	reference := "REF-JOIN"
+	payment, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: fx.orgID, Direction: "inbound", ClientID: &fx.clientID,
+		BankAccountID: bank.ID, Amount: 1200, Currency: "EUR", Date: fx.date,
+		Method: "bank_transfer", Reference: &reference,
+		Applications: []CreatePaymentApplicationRequest{
+			{DocumentType: "invoice", DocumentID: inv.ID, Amount: 1200},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePayment: %v", err)
+	}
+
+	applications, err := d.GetDocumentPaymentApplications("invoice", inv.ID)
+	if err != nil {
+		t.Fatalf("GetDocumentPaymentApplications: %v", err)
+	}
+	if len(applications) != 1 {
+		t.Fatalf("len(applications) = %d, want 1", len(applications))
+	}
+	app := applications[0]
+	if app.PaymentID != payment.ID || app.Amount != 1200 || app.DocumentType != "invoice" {
+		t.Fatalf("application = %+v, want the invoice application", app)
+	}
+	if app.Payment.ID != payment.ID || app.Payment.Status != "posted" ||
+		app.Payment.Method != "bank_transfer" || app.Payment.Date != fx.date {
+		t.Fatalf("joined payment = %+v, want the created payment", app.Payment)
+	}
+	if app.Payment.Reference == nil || *app.Payment.Reference != reference {
+		t.Fatalf("joined payment reference = %v, want %s", app.Payment.Reference, reference)
+	}
+}

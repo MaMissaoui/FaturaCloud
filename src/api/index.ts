@@ -45,6 +45,7 @@ import type {
   BalanceSheet,
   Payment,
   PaymentApplication,
+  DocumentPaymentApplication,
   PaymentInvoiceDetail,
   CreatePaymentRequest,
 } from "src/types/models";
@@ -1640,9 +1641,9 @@ export const GetPaymentInvoiceLines = (id: string) =>
 export const CreatePayment = (req: CreatePaymentRequest) => post<Payment>("/payments", req);
 export const VoidPayment = (id: string) => post<Payment>(`/payments/${id}/void`, {});
 export const GetInvoicePayments = (id: string) =>
-  get<PaymentApplication[]>(`/invoices/${id}/payments`);
+  get<DocumentPaymentApplication[]>(`/invoices/${id}/payments`);
 export const GetIncomingInvoicePayments = (id: string) =>
-  get<PaymentApplication[]>(`/incoming-invoices/${id}/payments`);
+  get<DocumentPaymentApplication[]>(`/incoming-invoices/${id}/payments`);
 
 // ---- Cash Book ----
 // Cash/loan sales: create-or-reuse a client, create an invoice, and (unless
@@ -1808,9 +1809,10 @@ export interface CashMovementDetail {
   id: string;
   date: number;
   direction: "in" | "out";
-  kind: "sale" | "loan" | "repayment" | "withdrawal";
+  kind: "sale" | "loan" | "repayment" | "withdrawal" | "vendor_payment";
   amount: number;
   clientName: string | null;
+  vendorName: string | null;
   invoiceId: string | null;
   invoiceNumber: string | null;
   note: string | null;

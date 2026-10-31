@@ -543,8 +543,9 @@ const RegisterPanel = ({ cb }: { cb: CashBookState }) => {
                       ellipsis
                       style={{ display: "block", marginTop: 2 }}
                     >
-                      {[row.invoiceNumber, row.clientName ?? row.note].filter(Boolean).join(" ") ||
-                        "—"}
+                      {[row.invoiceNumber, row.clientName ?? row.vendorName ?? row.note]
+                        .filter(Boolean)
+                        .join(" ") || "—"}
                     </Typography.Text>
                   </span>
                   <Typography.Text

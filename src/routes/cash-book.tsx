@@ -622,8 +622,12 @@ const CashBookV1 = () => {
                 <Table.Column
                   title={<Trans>Customer</Trans>}
                   key="clientName"
-                  sorter={textSorter((row: CashMovementDetail) => row.clientName ?? row.note ?? "")}
-                  render={(row: CashMovementDetail) => row.clientName ?? row.note ?? "—"}
+                  sorter={textSorter(
+                    (row: CashMovementDetail) => row.clientName ?? row.vendorName ?? row.note ?? "",
+                  )}
+                  render={(row: CashMovementDetail) =>
+                    row.clientName ?? row.vendorName ?? row.note ?? "—"
+                  }
                 />
                 <Table.Column
                   title={<Trans>Amount</Trans>}

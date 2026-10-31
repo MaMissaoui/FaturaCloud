@@ -56,6 +56,8 @@ export const movementKindLabel = (kind: CashMovementDetail["kind"]) => {
       return t`Loan repayment`;
     case "withdrawal":
       return t`Withdrawal`;
+    case "vendor_payment":
+      return t`Vendor payment`;
   }
 };
 export const movementKindColor = (kind: CashMovementDetail["kind"]) => {
@@ -68,6 +70,8 @@ export const movementKindColor = (kind: CashMovementDetail["kind"]) => {
       return "blue";
     case "withdrawal":
       return "default";
+    case "vendor_payment":
+      return "orange";
   }
 };
 

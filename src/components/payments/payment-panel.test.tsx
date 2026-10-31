@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "src/test-support/render-with-providers";
 import PaymentPanel from "./payment-panel";
-import type { Payment, PaymentApplication } from "src/types/models";
+import type { DocumentPaymentApplication, Payment } from "src/types/models";
 
 // PaymentPanel is the first component-level smoke test (issue #175): it
 // takes only primitive props and fetches its own data via `src/api`
@@ -26,7 +26,6 @@ import type { Payment, PaymentApplication } from "src/types/models";
 vi.mock("src/api", () => ({
   GetInvoicePayments: vi.fn(),
   GetIncomingInvoicePayments: vi.fn(),
-  GetPayment: vi.fn(),
   GetAccounts: vi.fn(),
   CreatePayment: vi.fn(),
   VoidPayment: vi.fn(),
@@ -41,7 +40,7 @@ vi.mock("src/atoms/organization", async (importOriginal) => {
   return { ...actual, myOrgRoleSyncAtom: atom("") };
 });
 
-import { GetAccounts, GetInvoicePayments, GetPayment, CreatePayment } from "src/api";
+import { GetAccounts, GetInvoicePayments, CreatePayment } from "src/api";
 import { myOrgRoleSyncAtom } from "src/atoms/organization";
 import { createStore, type WritableAtom } from "jotai";
 
@@ -66,13 +65,14 @@ const payment: Payment = {
   createdAt: Date.now(),
 };
 
-const application: PaymentApplication = {
+const application: DocumentPaymentApplication = {
   id: "app_1",
   paymentId: "pay_1",
   documentType: "invoice",
   documentId: "inv_1",
   amount: 5000,
   createdAt: Date.now(),
+  payment,
 };
 
 describe("PaymentPanel", () => {
@@ -84,7 +84,6 @@ describe("PaymentPanel", () => {
 
   it("renders without throwing given a mocked payment fetch, and shows the fetched payment", async () => {
     vi.mocked(GetInvoicePayments).mockResolvedValue([application]);
-    vi.mocked(GetPayment).mockResolvedValue(payment);
     vi.mocked(GetAccounts).mockResolvedValue([]);
 
     await renderWithProviders(
@@ -111,7 +110,6 @@ describe("PaymentPanel", () => {
   it("hides Method/account and submits cash into the register account when hideMethodAndAccount is set", async () => {
     vi.clearAllMocks();
     vi.mocked(GetInvoicePayments).mockResolvedValue([]);
-    vi.mocked(GetPayment).mockResolvedValue(payment);
     vi.mocked(GetAccounts).mockResolvedValue([]);
     vi.mocked(CreatePayment).mockResolvedValue(payment);
 
@@ -158,7 +156,6 @@ describe("PaymentPanel", () => {
   ])("offers Record payment/Void to the %s role: %s", async (role, allowed) => {
     vi.clearAllMocks();
     vi.mocked(GetInvoicePayments).mockResolvedValue([application]);
-    vi.mocked(GetPayment).mockResolvedValue(payment);
     vi.mocked(GetAccounts).mockResolvedValue([]);
     const store = createStore();
     // The role atom is read-only in the app; the test pins it directly.
