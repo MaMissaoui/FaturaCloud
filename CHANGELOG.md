@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.73.3] - 2026-10-31
+
+No migrations: the schema stays at `0110`, so rolling back to 3.73.2 is just the image tag.
+
+### Fixed
+- A stock movement made by a production order, delivery or goods receipt can't be deleted on its own, whatever the document's status. A completed production order's movements could be deleted, and so could either half of a cancelled delivery's or receipt's movement pair, which left stock and average cost permanently off. Renaming a delivery no longer lets its movements through. Delivery and receipt movements now record the document they came from (#562).
+- Moving an approved bill to another purchase order is refused, like any other edit to a bill with a posted journal entry. The entry had already cleared GRNI against the old order's receipts (#562).
+
 ## [3.73.2] - 2026-10-31
 
 No migrations: the schema stays at `0110`, so rolling back to 3.73.1 is just the image tag.
