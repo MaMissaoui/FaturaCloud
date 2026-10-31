@@ -531,7 +531,7 @@ func (d *Database) UpdateInboundDeliveryStatus(id, status string, serialNumbers 
 		}
 		existingGRNIEntry, err = d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 			OrganizationID: current.OrganizationID,
-			Type:           "inbound_delivery",
+			Type:           SourceDocInboundDelivery,
 			ID:             current.ID,
 		})
 		if err != nil {

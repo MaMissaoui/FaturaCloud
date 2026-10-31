@@ -505,7 +505,7 @@ func (d *Database) CreatePayment(req CreatePaymentRequest) (*Payment, error) {
 			}
 			if postedEntry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 				OrganizationID: bill.OrganizationID,
-				Type:           "incoming_invoice",
+				Type:           SourceDocIncomingInvoice,
 				ID:             app.DocumentID,
 			}); err != nil {
 				return nil, err

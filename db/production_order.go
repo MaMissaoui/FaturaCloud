@@ -474,7 +474,7 @@ func (d *Database) UpdateProductionOrderStatus(id, status string, serialNumbers 
 		}
 		existingEntry, err = d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 			OrganizationID: current.OrganizationID,
-			Type:           "production_order",
+			Type:           SourceDocProductionOrder,
 			ID:             current.ID,
 		})
 		if err != nil {

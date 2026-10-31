@@ -44,7 +44,7 @@ const OpeningOrigin = "opening"
 // openingLoanSourceType is the journal_entries.sourceDocumentType of a
 // migrated loan's outstanding-balance entry — distinct from "invoice", so
 // UpdateInvoiceState's sale-entry logic never mistakes it for one.
-const openingLoanSourceType = "invoice_opening"
+const openingLoanSourceType = SourceDocInvoiceOpening
 
 // openingLoanExclusion is the SQL predicate the sales analytics, Tax Summary
 // and Dashboard revenue queries add for invoice alias i: a migrated loan is
@@ -91,7 +91,7 @@ func (d *Database) findInvoiceReceivableEntry(invoice *Invoice) (*JournalEntry, 
 	}
 	return d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 		OrganizationID: invoice.OrganizationID,
-		Type:           "invoice",
+		Type:           SourceDocInvoice,
 		ID:             invoice.ID,
 	})
 }
@@ -337,7 +337,7 @@ func applyOpeningLoanTx(tx *sqlx.Tx, plan *openingLoanPlan) (string, error) {
 
 	if plan.outstandingGL != nil {
 		if _, err := postAutoEntryTx(
-			tx, req.OrganizationID, plan.outstandingJournalID, openingLoanSourceType, invoiceID,
+			tx, req.OrganizationID, plan.outstandingJournalID, string(openingLoanSourceType), invoiceID,
 			req.CutoverDate, req.Number, "Loan brought forward from the paper register: "+req.Number,
 			plan.outstandingGL,
 		); err != nil {

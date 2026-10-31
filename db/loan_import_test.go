@@ -265,7 +265,7 @@ func TestLoanImportUndo(t *testing.T) {
 	var posted int
 	if err := d.DB.Get(&posted, `
 		SELECT COUNT(*) FROM journal_entries WHERE organizationId = ? AND sourceDocumentType = ? AND status = 'posted' AND reversalOfEntryId IS NULL`,
-		fx.orgID, openingLoanSourceType); err != nil || posted != 0 {
+		fx.orgID, string(openingLoanSourceType)); err != nil || posted != 0 {
 		t.Fatalf("live opening entries after undo = %d, %v; want 0 (all reversed)", posted, err)
 	}
 	if _, err := d.UndoLoanImportBatch(report.BatchID); err == nil {

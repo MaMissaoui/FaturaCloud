@@ -97,7 +97,7 @@ func TestCreateJournalEntry_IgnoresSourceDocument(t *testing.T) {
 	}
 	posted, err := database.FindPostedEntryForSourceDocument(db.SourceDocumentRef{
 		OrganizationID: invoice.OrganizationID,
-		Type:           "invoice",
+		Type:           db.SourceDocInvoice,
 		ID:             invoice.ID,
 	})
 	if err != nil {

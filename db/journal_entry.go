@@ -189,13 +189,48 @@ func (d *Database) GetJournalEntryLines(entryID string) ([]JournalLine, error) {
 	return lines, nil
 }
 
+// SourceDocType is a journal_entries.sourceDocumentType value. Constants
+// exist for every type the code writes or looks up, so a ref can't drift
+// from what a writer stored.
+type SourceDocType string
+
+const (
+	SourceDocInvoice          SourceDocType = "invoice"
+	SourceDocInvoiceCOGS      SourceDocType = "invoice_cogs"
+	SourceDocInvoiceOpening   SourceDocType = "invoice_opening"
+	SourceDocIncomingInvoice  SourceDocType = "incoming_invoice"
+	SourceDocOutboundDelivery SourceDocType = "outbound_delivery"
+	SourceDocInboundDelivery  SourceDocType = "inbound_delivery"
+	SourceDocProductionOrder  SourceDocType = "production_order"
+	SourceDocStockMovement    SourceDocType = "stock_movement"
+	SourceDocClosing          SourceDocType = "closing"
+	SourceDocPayment          SourceDocType = "payment"
+	SourceDocCashMovement     SourceDocType = "cash_movement"
+)
+
+// knownSourceDocTypes is the set findPostedEntryForSourceDocumentTx accepts.
+// A typo in a ref is a programming error, not an empty result.
+var knownSourceDocTypes = map[SourceDocType]bool{
+	SourceDocInvoice:          true,
+	SourceDocInvoiceCOGS:      true,
+	SourceDocInvoiceOpening:   true,
+	SourceDocIncomingInvoice:  true,
+	SourceDocOutboundDelivery: true,
+	SourceDocInboundDelivery:  true,
+	SourceDocProductionOrder:  true,
+	SourceDocStockMovement:    true,
+	SourceDocClosing:          true,
+	SourceDocPayment:          true,
+	SourceDocCashMovement:     true,
+}
+
 // SourceDocumentRef names the document a journal entry was posted from, in
 // its own organization (F191). Callers must use keyed fields: the type and id
 // are both plain strings, so a positional swap would quietly find nothing.
 type SourceDocumentRef struct {
 	OrganizationID string
-	Type           string // journal_entries.sourceDocumentType, e.g. "invoice", "invoice_cogs"
-	ID             string // journal_entries.sourceDocumentId
+	Type           SourceDocType // journal_entries.sourceDocumentType, e.g. SourceDocInvoice
+	ID             string        // journal_entries.sourceDocumentId
 }
 
 // postedEntrySourceDocumentPredicate is the unscoped half of the lookup, shared
@@ -229,6 +264,13 @@ func (d *Database) FindPostedEntryForSourceDocument(ref SourceDocumentRef) (*Jou
 // transaction first and pass tx here, re-checking after acquiring the
 // connection that will do the write — not before.
 func findPostedEntryForSourceDocumentTx(exec sqlGetExecer, ref SourceDocumentRef) (*JournalEntry, error) {
+	if ref.OrganizationID == "" || ref.Type == "" || ref.ID == "" {
+		return nil, fmt.Errorf("find_posted_entry_for_source_document: incomplete reference %+v", ref)
+	}
+	if !knownSourceDocTypes[ref.Type] {
+		return nil, fmt.Errorf("find_posted_entry_for_source_document: unknown source document type %q in reference %+v", ref.Type, ref)
+	}
+
 	var entry JournalEntry
 	err := exec.Get(&entry,
 		`SELECT * FROM journal_entries

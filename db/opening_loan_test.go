@@ -76,8 +76,8 @@ func TestOpeningLoanPostsOutstandingAgainstRetainedEarnings(t *testing.T) {
 	}
 
 	sourceTypes, lines := openingLoanEntries(t, d, invoice.ID)
-	if len(sourceTypes) != 1 || sourceTypes[0] != openingLoanSourceType {
-		t.Fatalf("entries = %v, want exactly one %q entry", sourceTypes, openingLoanSourceType)
+	if len(sourceTypes) != 1 || sourceTypes[0] != string(openingLoanSourceType) {
+		t.Fatalf("entries = %v, want exactly one %q entry", sourceTypes, string(openingLoanSourceType))
 	}
 	re := retainedEarningsID(t, d, fx.orgID)
 	if len(lines) != 2 ||
@@ -250,7 +250,7 @@ func TestOpeningLoanIsFrozen(t *testing.T) {
 			t.Fatalf("UpdateInvoiceState(%s) = %+v, %v", state, got, err)
 		}
 	}
-	if sourceTypes, _ := openingLoanEntries(t, d, invoice.ID); len(sourceTypes) != 1 || sourceTypes[0] != openingLoanSourceType {
+	if sourceTypes, _ := openingLoanEntries(t, d, invoice.ID); len(sourceTypes) != 1 || sourceTypes[0] != string(openingLoanSourceType) {
 		t.Fatalf("entries after sent<->paid = %v, want only the opening entry", sourceTypes)
 	}
 }
