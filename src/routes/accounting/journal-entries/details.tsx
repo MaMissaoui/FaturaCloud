@@ -17,6 +17,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import NumberInput from "src/components/number-input";
@@ -402,11 +403,27 @@ const JournalEntryDetails = () => {
               </Popconfirm>
             </>
           )}
-          {entry.status === "posted" && (
-            <Button icon={<UndoOutlined />} onClick={() => setReverseModalOpen(true)}>
-              <Trans>Reverse</Trans>
-            </Button>
-          )}
+          {entry.status === "posted" &&
+            (entry.sourceDocumentType ? (
+              // A document-generated entry is only reversed by undoing its
+              // document (void payment, cancel delivery, ...), which also
+              // updates the document's own state — the server refuses it here.
+              <Tooltip
+                title={
+                  <Trans>This entry was posted from a document. Undo it from the document.</Trans>
+                }
+              >
+                <span style={{ display: "inline-block" }}>
+                  <Button icon={<UndoOutlined />} disabled>
+                    <Trans>Reverse</Trans>
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button icon={<UndoOutlined />} onClick={() => setReverseModalOpen(true)}>
+                <Trans>Reverse</Trans>
+              </Button>
+            ))}
         </Space>
       }
     >
