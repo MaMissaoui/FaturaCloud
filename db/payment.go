@@ -71,6 +71,17 @@ type PaymentApplication struct {
 	CreatedAt         int64   `db:"createdAt"    json:"createdAt"`
 }
 
+// DocumentPaymentApplication is one payment application together with the
+// payment it belongs to, for a document's payment history
+// (GET /api/invoices/{id}/payments and the incoming-invoice twin). Embedding
+// flattens the application fields, so the response keeps its previous shape
+// and only gains the payment object; the history panel then needs one
+// request instead of a GetPayment per application.
+type DocumentPaymentApplication struct {
+	PaymentApplication
+	Payment Payment `json:"payment"`
+}
+
 // CreatePaymentApplicationRequest is one line of a CreatePaymentRequest.
 type CreatePaymentApplicationRequest struct {
 	DocumentType string `json:"documentType"`
@@ -282,12 +293,43 @@ func (d *Database) GetPaymentApplications(paymentID string) ([]PaymentApplicatio
 }
 
 // GetDocumentPaymentApplications lists every application (across all
-// payments) recorded against one invoice/incoming invoice, newest first —
-// used by the invoice/bill detail page's payment history.
-func (d *Database) GetDocumentPaymentApplications(documentType, documentID string) ([]PaymentApplication, error) {
-	applications := []PaymentApplication{}
-	err := d.DB.Select(&applications, `
-		SELECT pa.* FROM payment_applications pa
+// payments) recorded against one invoice/incoming invoice, newest first,
+// each with its payment joined in — used by the invoice/bill detail page's
+// payment history.
+func (d *Database) GetDocumentPaymentApplications(documentType, documentID string) ([]DocumentPaymentApplication, error) {
+	type row struct {
+		PaymentApplication
+		PID               string  `db:"p_id"`
+		POrganizationID   string  `db:"p_organizationId"`
+		PDirection        string  `db:"p_direction"`
+		PClientID         *string `db:"p_clientId"`
+		PVendorID         *string `db:"p_vendorId"`
+		PBankAccountID    string  `db:"p_bankAccountId"`
+		PAmount           int64   `db:"p_amount"`
+		PCurrency         string  `db:"p_currency"`
+		PExchangeRate     *string `db:"p_exchangeRate"`
+		PExchangeRateDate *int64  `db:"p_exchangeRateDate"`
+		PDate             int64   `db:"p_date"`
+		PMethod           string  `db:"p_method"`
+		PReference        *string `db:"p_reference"`
+		PNotes            *string `db:"p_notes"`
+		PStatus           string  `db:"p_status"`
+		PJournalEntryID   *string `db:"p_journalEntryId"`
+		PVoidingEntryID   *string `db:"p_voidingEntryId"`
+		PCreatedAt        int64   `db:"p_createdAt"`
+		POrigin           *string `db:"p_origin"`
+	}
+	rows := []row{}
+	err := d.DB.Select(&rows, `
+		SELECT pa.*,
+		       p.id AS p_id, p.organizationId AS p_organizationId, p.direction AS p_direction,
+		       p.clientId AS p_clientId, p.vendorId AS p_vendorId, p.bankAccountId AS p_bankAccountId,
+		       p.amount AS p_amount, p.currency AS p_currency, p.exchangeRate AS p_exchangeRate,
+		       p.exchangeRateDate AS p_exchangeRateDate, p.date AS p_date, p.method AS p_method,
+		       p.reference AS p_reference, p.notes AS p_notes, p.status AS p_status,
+		       p.journalEntryId AS p_journalEntryId, p.voidingEntryId AS p_voidingEntryId,
+		       p.createdAt AS p_createdAt, p.origin AS p_origin
+		FROM payment_applications pa
 		JOIN payments p ON p.id = pa.paymentId
 		WHERE pa.documentType = ? AND pa.documentId = ?
 		ORDER BY pa.createdAt DESC`,
@@ -295,6 +337,21 @@ func (d *Database) GetDocumentPaymentApplications(documentType, documentID strin
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get_document_payment_applications: %w", err)
+	}
+	applications := make([]DocumentPaymentApplication, 0, len(rows))
+	for _, r := range rows {
+		applications = append(applications, DocumentPaymentApplication{
+			PaymentApplication: r.PaymentApplication,
+			Payment: Payment{
+				ID: r.PID, OrganizationID: r.POrganizationID, Direction: r.PDirection,
+				ClientID: r.PClientID, VendorID: r.PVendorID, BankAccountID: r.PBankAccountID,
+				Amount: r.PAmount, Currency: r.PCurrency, ExchangeRate: r.PExchangeRate,
+				ExchangeRateDate: r.PExchangeRateDate, Date: r.PDate, Method: r.PMethod,
+				Reference: r.PReference, Notes: r.PNotes, Status: r.PStatus,
+				JournalEntryID: r.PJournalEntryID, VoidingEntryID: r.PVoidingEntryID,
+				CreatedAt: r.PCreatedAt, Origin: r.POrigin,
+			},
+		})
 	}
 	return applications, nil
 }

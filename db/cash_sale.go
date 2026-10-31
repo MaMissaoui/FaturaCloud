@@ -1,15 +1,44 @@
 package db
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
+
+// findClientByPhone looks for an existing client of organizationID whose
+// phone is the same number as phone under normalizePhone's digit-only
+// comparison (so "+216 55 123 456" and "21655123456" match). It runs either
+// against d.DB before the transaction or against tx afterwards, where the
+// duplicate check is re-run so two simultaneous cash sales can't both
+// create the client.
+func findClientByPhone(exec sqlx.Queryer, organizationID, phone string) (*Client, error) {
+	wanted := normalizePhone(phone)
+	if wanted == "" {
+		return nil, nil
+	}
+	var clients []struct {
+		ID    string  `db:"id"`
+		Name  *string `db:"name"`
+		Phone *string `db:"phone"`
+	}
+	if err := sqlx.Select(exec, &clients,
+		`SELECT id, name, phone FROM clients WHERE organizationId = ? AND phone IS NOT NULL AND phone != ''`,
+		organizationID,
+	); err != nil {
+		return nil, err
+	}
+	for _, c := range clients {
+		if c.Phone != nil && normalizePhone(*c.Phone) == wanted {
+			return &Client{ID: c.ID, Name: c.Name}, nil
+		}
+	}
+	return nil, nil
+}
 
 // CreateCashSaleRequest is the payload for the Cash Book screen's single
 // atomic action: create-or-reuse a client, create an invoice, and (unless
@@ -174,15 +203,11 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 			return nil, newValidationError("a new client needs a name")
 		}
 		if nc.Phone != nil && *nc.Phone != "" {
-			var existing struct {
-				ID   string  `db:"id"`
-				Name *string `db:"name"`
+			existing, err := findClientByPhone(d.DB, req.OrganizationID, *nc.Phone)
+			if err != nil {
+				return nil, fmt.Errorf("create_cash_sale duplicate_phone_check: %w", err)
 			}
-			err := d.DB.Get(&existing,
-				`SELECT id, name FROM clients WHERE organizationId = ? AND phone = ?`,
-				req.OrganizationID, *nc.Phone,
-			)
-			if err == nil {
+			if existing != nil {
 				name := ""
 				if existing.Name != nil {
 					name = *existing.Name
@@ -190,8 +215,6 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 				return nil, newValidationError(
 					"a client with this phone number already exists (%s) — search for them instead of creating a new one", name,
 				)
-			} else if !errors.Is(err, sql.ErrNoRows) {
-				return nil, fmt.Errorf("create_cash_sale duplicate_phone_check: %w", err)
 			}
 		}
 		if nc.ID == "" {
@@ -233,8 +256,6 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		)
 	}
 	req.Currency = orgCurrency
-	var exchangeRate *string
-	foreign := false
 
 	invoiceID, err := gonanoid.New()
 	if err != nil {
@@ -276,7 +297,7 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 
 	invoice := &Invoice{
 		ID: invoiceID, OrganizationID: req.OrganizationID, State: state, ClientID: client.ID,
-		Date: req.Date, Currency: req.Currency, ExchangeRate: exchangeRate,
+		Date: req.Date, Currency: req.Currency, ExchangeRate: nil,
 		Total: req.Total, TaxTotal: req.TaxTotal, SubTotal: req.SubTotal, FiscalStampAmount: 0,
 		MovesStock: 1,
 	}
@@ -315,23 +336,14 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 			return nil, err
 		}
 
-		// Unlike CreatePayment (which can settle a document that was frozen
-		// at a different exchange rate than the payment itself), the invoice
-		// and this payment are both created from the same request and share
-		// req.Currency/exchangeRate by construction — there is no FX plug to
-		// compute, the bank and AR legs are always equal in functional
-		// currency.
+		// A cash sale is always in the organization's own currency (checked
+		// above), so the invoice and this payment share that currency with no
+		// exchange rate and no FX plug: the bank and AR legs are equal in
+		// functional currency.
 		bankFunctional := req.AmountReceived
-		if foreign {
-			r, err := parseExchangeRate(exchangeRate)
-			if err != nil {
-				return nil, err
-			}
-			bankFunctional = convertCents(req.AmountReceived, r)
-		}
 		settlementGLLines = []CreateJournalLineRequest{
-			glLine(bankAccountID, bankFunctional, 0, req.Currency, req.AmountReceived, exchangeRate, foreign, nil, nil, nil),
-			glLine(*org.DefaultArAccountID, 0, bankFunctional, req.Currency, req.AmountReceived, exchangeRate, foreign, &client.ID, nil, nil),
+			glLine(bankAccountID, bankFunctional, 0, req.Currency, req.AmountReceived, nil, false, nil, nil, nil),
+			glLine(*org.DefaultArAccountID, 0, bankFunctional, req.Currency, req.AmountReceived, nil, false, &client.ID, nil, nil),
 		}
 	}
 
@@ -343,18 +355,25 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 
 	if req.NewClient != nil {
 		nc := req.NewClient
-		_, err = tx.Exec(`INSERT INTO clients (
-			id, organizationId, name, code, emails, phone, website,
-			registration_number, vatin, defaultCurrency, street, house_number, postal_code, city,
-			country_code, tax_number, default_buyer_reference, identity_number, iban,
-			phone2, phone3, guarantor, address
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			nc.ID, req.OrganizationID, nc.Name, nc.Code, nc.Emails, nc.Phone, nc.Website,
-			nc.RegistrationNumber, nc.Vatin, nc.DefaultCurrency, nc.Street, nc.HouseNumber, nc.PostalCode, nc.City,
-			nc.CountryCode, nc.TaxNumber, nc.DefaultBuyerReference, nc.IdentityNumber, nc.Iban,
-			nc.Phone2, nc.Phone3, nc.Guarantor, nc.Address,
-		)
-		if err != nil {
+		// Re-run the duplicate-phone check through the transaction: the
+		// pre-transaction read above could have raced another cash sale
+		// for the same new phone, and both would otherwise create a client.
+		if nc.Phone != nil && *nc.Phone != "" {
+			existing, err := findClientByPhone(tx, req.OrganizationID, *nc.Phone)
+			if err != nil {
+				return nil, fmt.Errorf("create_cash_sale duplicate_phone_check: %w", err)
+			}
+			if existing != nil {
+				name := ""
+				if existing.Name != nil {
+					name = *existing.Name
+				}
+				return nil, newValidationError(
+					"a client with this phone number already exists (%s) — search for them instead of creating a new one", name,
+				)
+			}
+		}
+		if err := insertClientTx(tx, *nc); err != nil {
 			return nil, fmt.Errorf("create_cash_sale insert_client: %w", err)
 		}
 	}
@@ -383,7 +402,7 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 			movesStock
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
 		invoiceID, req.OrganizationID, number, state, client.ID, req.Date, req.Date,
-		req.Currency, exchangeRate, nil, nil, nil, req.Total, req.TaxTotal, req.SubTotal,
+		req.Currency, nil, nil, nil, nil, req.Total, req.TaxTotal, req.SubTotal,
 		nil, nil, 0, nil, nil,
 	)
 	if err != nil {
@@ -428,7 +447,7 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 				amount, currency, exchangeRate, date, method, reference, notes
 			) VALUES (?, ?, 'inbound', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			paymentID, req.OrganizationID, client.ID, bankAccountID,
-			req.AmountReceived, req.Currency, exchangeRate, req.Date, req.PaymentMethod, req.Reference, req.Notes,
+			req.AmountReceived, req.Currency, nil, req.Date, req.PaymentMethod, req.Reference, req.Notes,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("create_cash_sale insert_payment: %w", err)

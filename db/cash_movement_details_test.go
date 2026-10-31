@@ -131,6 +131,102 @@ func TestGetCashMovementDetailsIncludesWithdrawals(t *testing.T) {
 	}
 }
 
+// TestGetCashMovementDetailsIncludesOutboundVendorPayment: an outbound vendor
+// payment paid from the register credits it, exactly like a withdrawal, so
+// the details list must include it — and the per-transaction in/out sums
+// must match GetDailyCashMovements' totals for the day, which are read from
+// journal_lines.
+func TestGetCashMovementDetailsIncludesOutboundVendorPayment(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-cash-movement-details-outbound")
+	register := accountByCode(t, d, fx.orgID, "1010")
+	bank := accountByCode(t, d, fx.orgID, "1020")
+
+	// In: a cash sale into the register.
+	if _, err := d.CreateCashSale(CreateCashSaleRequest{
+		OrganizationID: fx.orgID, ClientID: fx.clientID, Date: fx.date, Currency: "EUR",
+		LineItems: []CreateInvoiceLineItemRequest{
+			{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+		},
+		SubTotal: 2000, TaxTotal: 400, Total: 2400,
+		AmountReceived: 2400, PaymentMethod: "cash", BankAccountID: register.ID,
+	}); err != nil {
+		t.Fatalf("CreateCashSale: %v", err)
+	}
+
+	// Out: a withdrawal.
+	note := "Deposit to bank"
+	if _, err := d.CreateCashMovement(CreateCashMovementRequest{
+		OrganizationID: fx.orgID, AccountID: register.ID, Date: fx.date,
+		CounterAccountType: "bank", CounterAccountID: bank.ID, Amount: 300, Note: &note,
+	}); err != nil {
+		t.Fatalf("CreateCashMovement: %v", err)
+	}
+
+	// Out: a vendor bill paid from the register.
+	bill := fx.createIncomingInvoice(t, d, "bill-outbound-1", 1, 1000) // total 1200
+	if _, err := d.UpdateIncomingInvoiceState(bill.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+	reference := "PAY-REF-1"
+	if _, err := d.CreatePayment(CreatePaymentRequest{
+		OrganizationID: fx.orgID, Direction: "outbound", VendorID: &fx.vendorID,
+		BankAccountID: register.ID, Amount: 1200, Currency: "EUR", Date: fx.date,
+		Method: "bank_transfer", Reference: &reference,
+		Applications: []CreatePaymentApplicationRequest{
+			{DocumentType: "incoming_invoice", DocumentID: bill.ID, Amount: 1200},
+		},
+	}); err != nil {
+		t.Fatalf("CreatePayment (outbound): %v", err)
+	}
+
+	details, err := d.GetCashMovementDetails(fx.orgID, register.ID, fx.date, fx.date)
+	if err != nil {
+		t.Fatalf("GetCashMovementDetails: %v", err)
+	}
+	var inSum, outSum int64
+	var vendorRow *CashMovementDetail
+	for i := range details {
+		row := &details[i]
+		if row.Direction == "in" {
+			inSum += row.Amount
+		} else {
+			outSum += row.Amount
+		}
+		if row.Kind == "vendor_payment" {
+			vendorRow = row
+		}
+	}
+	if vendorRow == nil {
+		t.Fatalf("details have no vendor_payment row: %+v", details)
+	}
+	if vendorRow.Direction != "out" || vendorRow.Amount != 1200 {
+		t.Fatalf("vendor payment row = %+v, want direction=out amount=1200", vendorRow)
+	}
+	if vendorRow.VendorName == nil || *vendorRow.VendorName != "Test Vendor" {
+		t.Fatalf("vendor payment name = %v, want Test Vendor", vendorRow.VendorName)
+	}
+	if vendorRow.InvoiceNumber == nil || *vendorRow.InvoiceNumber != bill.VendorInvoiceNumber {
+		t.Fatalf("vendor payment bill number = %v, want %s", vendorRow.InvoiceNumber, bill.VendorInvoiceNumber)
+	}
+	if vendorRow.Note == nil || *vendorRow.Note != reference {
+		t.Fatalf("vendor payment reference = %v, want %s", vendorRow.Note, reference)
+	}
+
+	daily, err := d.GetDailyCashMovements(fx.orgID, register.ID, fx.date, fx.date)
+	if err != nil {
+		t.Fatalf("GetDailyCashMovements: %v", err)
+	}
+	if len(daily) != 1 {
+		t.Fatalf("len(daily) = %d, want 1", len(daily))
+	}
+	if daily[0].In != inSum || daily[0].Out != outSum {
+		t.Fatalf("daily totals in/out = %d/%d, details sum = %d/%d",
+			daily[0].In, daily[0].Out, inSum, outSum)
+	}
+}
+
 // TestGetCashMovementDetailsIncludesNonMidnightMovement is F100's
 // regression test: every caller passes the same UTC-midnight value as both
 // endpoints to mean "this whole day", but a withdrawal/sale is stamped at

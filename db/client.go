@@ -147,11 +147,11 @@ func (d *Database) GetClient(clientID string) (*Client, error) {
 	return &client, nil
 }
 
-func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
-	if req.ID == "" {
-		req.ID, _ = gonanoid.New()
-	}
-	_, err := d.DB.Exec(
+// insertClientTx inserts one client row. CreateClient and CreateCashSale
+// share it so their column lists can't drift apart; req.ID must already be
+// set. The caller wraps the error with its own operation name.
+func insertClientTx(exec sqlExecer, req CreateClientRequest) error {
+	_, err := exec.Exec(
 		`INSERT INTO clients (
 			id, organizationId, name, code, emails, phone, website,
 			registration_number, vatin, defaultCurrency, street, house_number, postal_code, city,
@@ -164,7 +164,14 @@ func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
 		req.CountryCode, req.TaxNumber, req.DefaultBuyerReference, req.IdentityNumber, req.Iban,
 		req.Phone2, req.Phone3, req.Guarantor, req.Address,
 	)
-	if err != nil {
+	return err
+}
+
+func (d *Database) CreateClient(req CreateClientRequest) (*Client, error) {
+	if req.ID == "" {
+		req.ID, _ = gonanoid.New()
+	}
+	if err := insertClientTx(d.DB, req); err != nil {
 		return nil, fmt.Errorf("create_client: %w", err)
 	}
 	return d.GetClient(req.ID)

@@ -242,7 +242,7 @@ func (d *Database) planOpeningLoan(org *Organization, req OpeningLoanRequest) (*
 			// unit price is the gross amount per unit. A split that doesn't
 			// divide exactly leaves the invoice total authoritative: the Loan
 			// status allocates it across lines by their share.
-			unitPrice: int64(math.Round(float64(line.Amount) / line.Quantity)),
+			unitPrice: roundCents(float64(line.Amount) / line.Quantity),
 		})
 		plan.total += line.Amount
 	}

@@ -20,17 +20,15 @@ import { Trans } from "@lingui/react/macro";
 import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react";
 import dayjs, { type Dayjs } from "dayjs";
-import map from "lodash/map";
 
 import {
   GetAccounts,
   GetIncomingInvoicePayments,
   GetInvoicePayments,
-  GetPayment,
   CreatePayment,
   VoidPayment,
 } from "src/api";
-import type { Account, Payment, PaymentApplication } from "src/types/models";
+import type { Account, DocumentPaymentApplication, Payment } from "src/types/models";
 import {
   PAYMENT_METHODS,
   paymentMethodLabel,
@@ -50,7 +48,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 interface PaymentRow {
-  application: PaymentApplication;
+  application: DocumentPaymentApplication;
   payment: Payment;
 }
 
@@ -169,20 +167,16 @@ const PaymentPanel: React.FC<PaymentPanelProps> = ({
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
+      // One request: the endpoint returns each application with its payment
+      // already joined in (db.DocumentPaymentApplication), so there is no
+      // GetPayment per row.
       const applications =
         documentType === "invoice"
           ? await GetInvoicePayments(documentId)
           : await GetIncomingInvoicePayments(documentId);
-      const uniquePaymentIds = [...new Set(map(applications, "paymentId"))];
-      const payments = await Promise.all(uniquePaymentIds.map((id) => GetPayment(id)));
-      const paymentsById = new Map(payments.map((p) => [p.id, p]));
       setRows(
         applications
-          .map((application) => ({
-            application,
-            payment: paymentsById.get(application.paymentId)!,
-          }))
-          .filter((row) => row.payment)
+          .map((application) => ({ application, payment: application.payment }))
           .sort((a, b) => b.payment.date - a.payment.date),
       );
     } catch (error) {

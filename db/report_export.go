@@ -23,6 +23,8 @@ func movementKindLabel(kind string) string {
 		return "Loan repayment"
 	case "withdrawal":
 		return "Withdrawal"
+	case "vendor_payment":
+		return "Vendor payment"
 	default:
 		return kind
 	}
@@ -255,6 +257,8 @@ func (d *Database) GenerateDailyCashMovementsExport(organizationID, accountID st
 		customer := ""
 		if det.ClientName != nil {
 			customer = *det.ClientName
+		} else if det.VendorName != nil {
+			customer = *det.VendorName
 		} else if det.Note != nil {
 			customer = *det.Note
 		}
