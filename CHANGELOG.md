@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.73.2] - 2026-10-31
+
+No migrations: the schema stays at `0110`, so rolling back to 3.73.1 is just the image tag.
+
+### Fixed
+- Deleting a manual stock movement checks the sale, delivery and goods receipt it might belong to inside the delete itself. A delivery shipped or a receipt received while the delete ran could have lost its movement and left stock permanently off (#560).
+
+### Changed
+- Looking up a document's posted journal entry with a missing organization, type or id, or an unknown type, is now a server error instead of quietly finding nothing (#559, #560).
+
 ## [3.73.1] - 2026-10-31
 
 No migrations: the schema stays at `0110`, so rolling back to 3.73.0 is just the image tag.
