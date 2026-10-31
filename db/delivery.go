@@ -581,13 +581,14 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 
 			movementID, _ := gonanoid.New()
 			if err := insertStockMovementTx(tx, CreateStockMovementRequest{
-				ID:             movementID,
-				OrganizationID: current.OrganizationID,
-				ProductID:      line.ProductID,
-				Type:           "out",
-				Quantity:       -line.Quantity,
-				Note:           ptrStr("Delivery " + current.DeliveryNumber),
-				Reference:      &current.DeliveryNumber,
+				ID:               movementID,
+				OrganizationID:   current.OrganizationID,
+				ProductID:        line.ProductID,
+				Type:             "out",
+				Quantity:         -line.Quantity,
+				Note:             ptrStr("Delivery " + current.DeliveryNumber),
+				Reference:        &current.DeliveryNumber,
+				SourceDocumentID: &current.ID,
 			}); err != nil {
 				return nil, fmt.Errorf("update_delivery_status reduce_stock: %w", err)
 			}
@@ -661,13 +662,14 @@ func (d *Database) UpdateDeliveryStatus(id, status string, serialNumbers map[str
 			}
 			movementID, _ := gonanoid.New()
 			if err := insertStockMovementTx(tx, CreateStockMovementRequest{
-				ID:             movementID,
-				OrganizationID: current.OrganizationID,
-				ProductID:      line.ProductID,
-				Type:           "in",
-				Quantity:       line.Quantity,
-				Note:           ptrStr("Delivery " + current.DeliveryNumber + " cancelled"),
-				Reference:      &current.DeliveryNumber,
+				ID:               movementID,
+				OrganizationID:   current.OrganizationID,
+				ProductID:        line.ProductID,
+				Type:             "in",
+				Quantity:         line.Quantity,
+				Note:             ptrStr("Delivery " + current.DeliveryNumber + " cancelled"),
+				Reference:        &current.DeliveryNumber,
+				SourceDocumentID: &current.ID,
 			}); err != nil {
 				return nil, fmt.Errorf("update_delivery_status restore_stock: %w", err)
 			}
