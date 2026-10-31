@@ -104,7 +104,7 @@ RUN CGO_ENABLED=0 GOARCH=$TARGETARCH GOOS=linux go build -ldflags="-X main.versi
 # ~80MB on Alpine, almost entirely libreoffice-calc and its own
 # dependencies — accepted deliberately so PDF export actually works in the
 # shipped image instead of always 503ing.
-FROM debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
+FROM debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 WORKDIR /app
 
 # --no-install-recommends keeps this to libreoffice-calc's own dependency
