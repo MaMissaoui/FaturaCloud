@@ -628,6 +628,20 @@ func (d *Database) UpdateIncomingInvoiceState(id, state string) (*IncomingInvoic
 		return nil, err
 	}
 
+	// Re-check the "payments still applied" guard through the transaction
+	// (same reason as UpdateInvoiceState's in-tx re-check).
+	if !needsGL && existingEntry != nil {
+		paid, err := getDocumentAmountPaidTx(tx, "incoming_invoice", id)
+		if err != nil {
+			return nil, err
+		}
+		if paid > 0 {
+			return nil, newValidationError(
+				"cannot change bill state: payments totaling %d are still applied to this bill — void them first", paid,
+			)
+		}
+	}
+
 	if _, err := tx.Exec(`UPDATE incoming_invoices SET state = ? WHERE id = ?`, state, id); err != nil {
 		return nil, fmt.Errorf("update_incoming_invoice_state exec: %w", err)
 	}

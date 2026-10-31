@@ -761,6 +761,23 @@ func (d *Database) UpdateInvoiceState(invoiceID string, state string) (*Invoice,
 		return nil, err
 	}
 
+	// Re-check the "payments still applied" guard through the transaction,
+	// against the authoritative in-tx entry read: a payment committed
+	// between the pre-tx read and acquiring the connection would otherwise
+	// be missed, and reversing the invoice's entry would orphan that
+	// payment's AR line. Same message as the pre-tx guard.
+	if !needsGL && existingEntry != nil {
+		paid, err := getDocumentAmountPaidTx(tx, "invoice", invoiceID)
+		if err != nil {
+			return nil, err
+		}
+		if paid > 0 {
+			return nil, newValidationError(
+				"cannot change invoice state: payments totaling %d are still applied to this invoice — void them first", paid,
+			)
+		}
+	}
+
 	if _, err := tx.Exec(`UPDATE invoices SET state = ? WHERE id = ?`, state, invoiceID); err != nil {
 		return nil, fmt.Errorf("update_invoice_state exec: %w", err)
 	}

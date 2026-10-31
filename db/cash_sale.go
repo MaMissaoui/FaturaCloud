@@ -148,6 +148,11 @@ func (d *Database) CreateCashSale(req CreateCashSaleRequest) (*CashSaleResult, e
 		if err := requireSameOrg(req.OrganizationID, bankAccount.OrganizationID, "cash/bank account"); err != nil {
 			return nil, err
 		}
+		// The register is where the money physically lands: it must be an
+		// asset account, never a revenue/expense/liability/equity row.
+		if bankAccount.Type != "asset" {
+			return nil, newValidationError("the %s account must be an asset account", "cash register")
+		}
 	}
 
 	// Resolve or validate the client. For a new client this only prepares
