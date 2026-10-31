@@ -335,3 +335,66 @@ func TestDeleteJournalEntryOnlyAllowsDraft(t *testing.T) {
 		t.Fatal("DeleteJournalEntry: expected an error for a posted reversal entry, got nil")
 	}
 }
+
+// Every SourceDocType constant must be in the set the ref validator accepts;
+// a new constant that isn't added there would make its lookups 500.
+func TestSourceDocTypeKnownSetCoversEveryConstant(t *testing.T) {
+	t.Parallel()
+	all := []SourceDocType{
+		SourceDocInvoice,
+		SourceDocInvoiceCOGS,
+		SourceDocInvoiceOpening,
+		SourceDocIncomingInvoice,
+		SourceDocOutboundDelivery,
+		SourceDocInboundDelivery,
+		SourceDocProductionOrder,
+		SourceDocStockMovement,
+		SourceDocClosing,
+		SourceDocPayment,
+		SourceDocCashMovement,
+	}
+	for _, typ := range all {
+		if !knownSourceDocTypes[typ] {
+			t.Errorf("source doc type %q is missing from knownSourceDocTypes", typ)
+		}
+	}
+	for typ := range knownSourceDocTypes {
+		found := false
+		for _, known := range all {
+			if known == typ {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("knownSourceDocTypes has %q, which the all-constants slice doesn't cover", typ)
+		}
+	}
+}
+
+func TestFindPostedEntryRejectsIncompleteOrUnknownReference(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+
+	cases := []struct {
+		name string
+		ref  SourceDocumentRef
+	}{
+		{"missing organization", SourceDocumentRef{Type: SourceDocInvoice, ID: "doc-1"}},
+		{"missing type", SourceDocumentRef{OrganizationID: "org-1", ID: "doc-1"}},
+		{"missing id", SourceDocumentRef{OrganizationID: "org-1", Type: SourceDocInvoice}},
+		{"unknown type", SourceDocumentRef{OrganizationID: "org-1", Type: SourceDocType("not_a_source_document"), ID: "doc-1"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			entry, err := d.FindPostedEntryForSourceDocument(tc.ref)
+			if err == nil {
+				t.Fatalf("FindPostedEntryForSourceDocument(%+v) = %v, nil; want an error", tc.ref, entry)
+			}
+			if entry != nil {
+				t.Fatalf("entry = %+v, want nil on an invalid reference", entry)
+			}
+		})
+	}
+}

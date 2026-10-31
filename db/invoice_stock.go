@@ -36,7 +36,7 @@ import (
 // sale's COGS entry — distinct from the sale's own "invoice" entry, which
 // the partial unique index on (organizationId, sourceDocumentType, sourceDocumentId)
 // would otherwise collide with.
-const invoiceCOGSSourceType = "invoice_cogs"
+const invoiceCOGSSourceType = SourceDocInvoiceCOGS
 
 // invoiceStockQuantityEpsilon: stockQuantity and movement quantities are
 // REAL, so "nothing posted" is a tolerance, the same one UpdateProduct uses.
@@ -186,7 +186,7 @@ func applyInvoiceStockOutTx(tx *sqlx.Tx, invoice *Invoice, plan *invoiceStockPla
 	}
 	if plan.cogsLines != nil {
 		if _, err := postAutoEntryTx(
-			tx, invoice.OrganizationID, plan.cogsJournal.ID, invoiceCOGSSourceType, invoice.ID,
+			tx, invoice.OrganizationID, plan.cogsJournal.ID, string(invoiceCOGSSourceType), invoice.ID,
 			invoice.Date, invoice.Number, label, plan.cogsLines,
 		); err != nil {
 			return err

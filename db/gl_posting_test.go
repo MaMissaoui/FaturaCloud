@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -492,7 +493,7 @@ func TestInvoicePostingIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
 	}
 	claim, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 		OrganizationID: fxA.orgID,
-		Type:           "invoice",
+		Type:           SourceDocInvoice,
 		ID:             invA.ID,
 	})
 	if err != nil || claim == nil {
@@ -509,7 +510,7 @@ func TestInvoicePostingIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
 	}
 	entry, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 		OrganizationID: fxB.orgID,
-		Type:           "invoice",
+		Type:           SourceDocInvoice,
 		ID:             invB.ID,
 	})
 	if err != nil || entry == nil {
@@ -553,7 +554,7 @@ func TestDeleteInvoiceIgnoresAnotherOrganizationsEntryNamingIt(t *testing.T) {
 	}
 	claim, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 		OrganizationID: fxA.orgID,
-		Type:           "invoice",
+		Type:           SourceDocInvoice,
 		ID:             invA.ID,
 	})
 	if err != nil || claim == nil {
@@ -598,7 +599,7 @@ func TestDeleteIncomingInvoiceIgnoresAnotherOrganizationsEntryNamingIt(t *testin
 	}
 	claim, err := d.FindPostedEntryForSourceDocument(SourceDocumentRef{
 		OrganizationID: fxA.orgID,
-		Type:           "incoming_invoice",
+		Type:           SourceDocIncomingInvoice,
 		ID:             billA.ID,
 	})
 	if err != nil || claim == nil {
@@ -718,5 +719,178 @@ func TestDeleteStockMovementIgnoresAnotherOrganizationsDeliveryNumber(t *testing
 	}
 	if !deleted {
 		t.Fatal("DeleteStockMovement = false, want true")
+	}
+}
+
+// The receipt half of the same organization scope: another organization's
+// received goods receipt numbered like this movement's reference must not
+// block deleting it.
+func TestDeleteStockMovementIgnoresAnotherOrganizationsReceiptNumber(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	orgA, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-mv-recv-a"})
+	if err != nil {
+		t.Fatalf("CreateOrganization(org-a): %v", err)
+	}
+	orgB, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-mv-recv-b"})
+	if err != nil {
+		t.Fatalf("CreateOrganization(org-b): %v", err)
+	}
+	productA, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-mv-recv-a", OrganizationID: orgA.ID, Name: "Widget A", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct(org-a): %v", err)
+	}
+
+	created, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: orgA.ID, ProductID: productA.ID, Type: "in", Quantity: 10, Reference: ptr("GR-X-1"),
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement(org-a): %v", err)
+	}
+	if len(created.Movements) != 1 {
+		t.Fatalf("org-a movements = %d, want 1", len(created.Movements))
+	}
+
+	receipt, err := d.CreateInboundDelivery(CreateInboundDeliveryRequest{
+		ID: "recv-mv-ref-b", OrganizationID: orgB.ID, DeliveryNumber: "GR-X-1", DeliveryDate: 1700000000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateInboundDelivery(org-b): %v", err)
+	}
+	// Receiving would need stock and GRNI accounts; the guard only reads the
+	// status, so set it directly.
+	if _, err := d.DB.Exec(`UPDATE inbound_deliveries SET status = 'received' WHERE id = ?`, receipt.ID); err != nil {
+		t.Fatalf("mark org-b receipt received: %v", err)
+	}
+
+	deleted, err := d.DeleteStockMovement(created.Movements[0].ID)
+	if err != nil {
+		t.Fatalf("DeleteStockMovement(org-a movement referencing org-b's receipt number): %v", err)
+	}
+	if !deleted {
+		t.Fatal("DeleteStockMovement = false, want true")
+	}
+}
+
+// The organization scope must not weaken the guard: a shipped delivery in the
+// movement's own organization still refuses the delete. Guards against the
+// EXISTS rewrite inverting the status condition.
+func TestDeleteStockMovementRefusedForItsOwnShippedDelivery(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	org, err := d.CreateOrganization(CreateOrganizationRequest{ID: "org-mv-own-del"})
+	if err != nil {
+		t.Fatalf("CreateOrganization: %v", err)
+	}
+	product, err := d.CreateProduct(CreateProductRequest{
+		ID: "prod-mv-own-del", OrganizationID: org.ID, Name: "Widget", Type: "product", StockEnabled: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateProduct: %v", err)
+	}
+
+	created, err := d.CreateStockMovement(CreateStockMovementRequest{
+		OrganizationID: org.ID, ProductID: product.ID, Type: "in", Quantity: 10, Reference: ptr("DN-OWN-1"),
+	})
+	if err != nil {
+		t.Fatalf("CreateStockMovement: %v", err)
+	}
+	if len(created.Movements) != 1 {
+		t.Fatalf("movements = %d, want 1", len(created.Movements))
+	}
+
+	delivery, err := d.CreateDelivery(CreateDeliveryRequest{
+		ID: "del-mv-own", OrganizationID: org.ID, DeliveryNumber: "DN-OWN-1", DeliveryDate: 1700000000000,
+		LineItems: []CreateDeliveryLineItemRequest{
+			{ProductID: &product.ID, Description: "Widget", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDelivery: %v", err)
+	}
+	if _, err := d.DB.Exec(`UPDATE outbound_deliveries SET status = 'shipped' WHERE id = ?`, delivery.ID); err != nil {
+		t.Fatalf("mark delivery shipped: %v", err)
+	}
+
+	_, err = d.DeleteStockMovement(created.Movements[0].ID)
+	if err == nil {
+		t.Fatal("expected deleting a movement generated by its own shipped delivery to be refused")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+	if !strings.Contains(err.Error(), "generated by delivery") {
+		t.Fatalf("error = %q, want it to name the delivery", err)
+	}
+}
+
+// PUT never re-posts, so the posted-entry guard must still refuse a financial
+// edit on a sent invoice and an approved bill.
+func TestUpdateInvoiceRefusedWithPostedEntry(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-upd-inv-posted")
+	inv := fx.createInvoice(t, d, "inv-upd-posted", 1, 1000)
+
+	if _, err := d.UpdateInvoiceState(inv.ID, "sent"); err != nil {
+		t.Fatalf("UpdateInvoiceState(sent): %v", err)
+	}
+
+	lines := []CreateInvoiceLineItemRequest{
+		{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+	}
+	_, err := d.UpdateInvoice(inv.ID, UpdateInvoiceRequest{LineItems: &lines})
+	if err == nil {
+		t.Fatal("expected updating a sent invoice's line items to be refused")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+	if !strings.Contains(err.Error(), "posted GL entry") {
+		t.Fatalf("error = %q, want it to name the posted GL entry", err)
+	}
+	items, err := d.GetInvoiceLineItems(inv.ID)
+	if err != nil {
+		t.Fatalf("GetInvoiceLineItems: %v", err)
+	}
+	if len(items) != 1 || items[0].Quantity != 1 {
+		t.Fatalf("line items changed despite the refusal: %+v", items)
+	}
+}
+
+func TestUpdateIncomingInvoiceRefusedWithPostedEntry(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	fx := newGLPostingTestFixture(t, d, "org-upd-bill-posted")
+	bill := fx.createIncomingInvoice(t, d, "bill-upd-posted", 1, 1000)
+
+	if _, err := d.UpdateIncomingInvoiceState(bill.ID, "approved"); err != nil {
+		t.Fatalf("UpdateIncomingInvoiceState(approved): %v", err)
+	}
+
+	lines := []CreateInvoiceLineItemRequest{
+		{Quantity: 2, UnitPrice: 1000, TaxRate: &fx.taxRateID, ProductID: &fx.productID},
+	}
+	_, err := d.UpdateIncomingInvoice(bill.ID, UpdateIncomingInvoiceRequest{LineItems: &lines})
+	if err == nil {
+		t.Fatal("expected updating an approved bill's line items to be refused")
+	}
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("expected a *ValidationError, got %T: %v", err, err)
+	}
+	if !strings.Contains(err.Error(), "posted GL entry") {
+		t.Fatalf("error = %q, want it to name the posted GL entry", err)
+	}
+	items, err := d.GetIncomingInvoiceLineItems(bill.ID)
+	if err != nil {
+		t.Fatalf("GetIncomingInvoiceLineItems: %v", err)
+	}
+	if len(items) != 1 || items[0].Quantity != 1 {
+		t.Fatalf("line items changed despite the refusal: %+v", items)
 	}
 }
