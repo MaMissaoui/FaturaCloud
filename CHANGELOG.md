@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.74.1] - 2026-10-31
+
+No migrations: the schema stays at `0111`, so rolling back to 3.74.0 is just the image tag.
+
+### Fixed
+- Loan repayments at the Cash Book follow the "Cash Book payment methods" setting. A card or transfer repayment went to the cash register as cash, even with "Cash, card and transfer" selected. The loan payment form now asks for the method in that mode (#570).
+- Card and transfer payments need a default bank account that is not the cash register. The Cash Book warns when the bank account is missing, and the organization settings refuse the same account for both (#570).
+- The server always posts Cash Book cash to the register and card or transfer to the bank account; a request naming another account is refused (#570).
+- The Cash Book no longer shows an empty column where the payment method would be in "Cash only" mode, and confirms "Sale recorded" instead of "Cash sale recorded" (#570).
+
 ## [3.74.0] - 2026-10-31
 
 Migration `0111` adds one organization column: the schema moves from `0110` to `0111`. 3.73.x can't start on a `0111` database, so a rollback means restoring a backup taken before the upgrade.
