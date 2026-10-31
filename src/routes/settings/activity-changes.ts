@@ -262,6 +262,8 @@ export const fieldLabel = (field: string): string => {
       return t`Test organization`;
     case "masterDataSummaries":
       return t`Master data summaries`;
+    case "cashBookPaymentMethods":
+      return t`Cash Book payment methods`;
     case "orderId":
       return t`Order`;
     case "isDefault":
@@ -468,6 +470,8 @@ export const formatChangeValue = (
       return stateLabel(value);
     case "organizationRole":
       return roleOptions().find((r) => r.value === value)?.label ?? value;
+    case "cashBookPaymentMethods":
+      return value === "cash_and_bank" ? t`Cash, card and transfer` : t`Cash only`;
   }
   return value;
 };

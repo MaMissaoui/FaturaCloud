@@ -84,6 +84,8 @@ const CashBookV1 = () => {
     submitting,
     form,
     registerAccountId,
+    cashAndBank,
+    paymentMethodWatched,
     selectedDate,
     setSelectedDate,
     dailyMovement,
@@ -127,6 +129,7 @@ const CashBookV1 = () => {
     openPayment,
     clientName,
   } = cb;
+  const paymentMethod = cashAndBank ? paymentMethodWatched || "cash" : "cash";
   // Below md the loan table's pinned "Record payment" goes icon-only, so it
   // doesn't take a third of a phone-width table.
   const compactActions = !Grid.useBreakpoint().md;
@@ -243,7 +246,7 @@ const CashBookV1 = () => {
             style={sectionCardStyle}
             styles={sectionCardStyles}
           >
-            {!registerAccountId && (
+            {paymentMethod === "cash" && !registerAccountId && (
               // F101: every sale that receives an amount posts it to the
               // register/till account; with none configured the server now
               // 409s rather than silently crediting Bank. Surface that here
@@ -391,15 +394,17 @@ const CashBookV1 = () => {
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item label={t`Payment method`} name="paymentMethod">
-                    <Select>
-                      {PAYMENT_METHODS.map((m) => (
-                        <Option key={m} value={m}>
-                          {paymentMethodLabel(m)}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
+                  {cashAndBank && (
+                    <Form.Item label={t`Payment method`} name="paymentMethod">
+                      <Select>
+                        {PAYMENT_METHODS.map((m) => (
+                          <Option key={m} value={m}>
+                            {paymentMethodLabel(m)}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  )}
                 </Col>
               </Row>
               {/* One free-text field for the payment: Reference is what the
@@ -461,7 +466,9 @@ const CashBookV1 = () => {
                   // F101: an amount > 0 means a payment will post to the
                   // register; with none configured it can't be recorded.
                   // A zero-deposit loan sale (amount 0) is still allowed.
-                  disabled={amountReceivedWatched > 0 && !registerAccountId}
+                  disabled={
+                    amountReceivedWatched > 0 && paymentMethod === "cash" && !registerAccountId
+                  }
                 >
                   {saleMode === "cash" ? (
                     <Trans>Record cash sale</Trans>

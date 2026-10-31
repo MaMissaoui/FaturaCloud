@@ -704,6 +704,25 @@ export default function OrganizationEditDrawer({
                           />
                         </Form.Item>
                       </Col>
+                      <Col xs={24} md={12}>
+                        <Form.Item
+                          name="cashBookPaymentMethods"
+                          label={<Trans>Cash Book payment methods</Trans>}
+                          extra={
+                            <Trans>
+                              Card and transfer payments are posted to the bank account, not the
+                              cash register.
+                            </Trans>
+                          }
+                        >
+                          <Select
+                            options={[
+                              { value: "cash_only", label: t`Cash only` },
+                              { value: "cash_and_bank", label: t`Cash, card and transfer` },
+                            ]}
+                          />
+                        </Form.Item>
+                      </Col>
                       <Col xs={24}>
                         <Form.Item
                           name="inventoryValuation"
