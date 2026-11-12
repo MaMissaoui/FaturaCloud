@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.74.3] - 2026-11-12
+
+No migrations: the schema stays at `0111`, so rolling back to 3.74.2 only means switching the image tag.
+
+### Changed
+- The language switcher names each language in its own language: Français, English, Deutsch, and FR / EN / DE when collapsed. The flag emoji are gone because Windows shows them as letters (#581).
+- Go 1.26.11 in CI, for GO-2026-6859 in `net/http`. The image already built with Go 1.27.3 (#582).
+
 ## [3.74.2] - 2026-10-31
 
 No migrations: the schema stays at `0111`, so rolling back to 3.74.1 is just the image tag. Dependency updates only, with no change in behavior.
