@@ -1027,15 +1027,17 @@ export default function BaseLayout() {
                   optionLabelProp="label"
                 >
                   {map(locales, (locale) => {
+                    // Each language in its own name (endonym); the collapsed
+                    // control shows the short code. No flag emoji: Windows
+                    // renders them as letters, and a flag isn't a language.
                     const languageMap: Record<string, string> = {
-                      en: "🇺🇸 English (US)",
-                      de: "🇩🇪 German",
-                      fr: "🇫🇷 French",
+                      en: "English",
+                      de: "Deutsch",
+                      fr: "Français",
                     };
                     const languageText = languageMap[locale] || toUpper(locale);
-                    const flagOnly = languageText.split(" ")[0];
                     return (
-                      <Option value={locale} key={locale} label={flagOnly}>
+                      <Option value={locale} key={locale} label={toUpper(locale)}>
                         {languageText}
                       </Option>
                     );
