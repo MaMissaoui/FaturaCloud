@@ -7463,8 +7463,8 @@ msgstr "Sign in to your account"
 msgid "Sign in with SSO"
 msgstr "Sign in with SSO"
 
-#: src/layouts/base.tsx:1059
-#: src/layouts/base.tsx:1060
+#: src/layouts/base.tsx:1061
+#: src/layouts/base.tsx:1062
 #: src/routes/organizations/new.tsx:206
 msgid "Sign out"
 msgstr "Sign out"
