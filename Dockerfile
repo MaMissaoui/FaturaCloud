@@ -72,7 +72,7 @@ RUN --mount=type=secret,id=sentry_auth_token \
 # mattn/go-sqlite3, and this app uses modernc.org/sqlite (pure Go, no cgo)
 # instead — see db/db.go. With CGO_ENABLED=0, `go build` cross-compiles for
 # TARGETARCH natively, no QEMU emulation needed here either.
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS backend
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS backend
 WORKDIR /app
 
 COPY go.mod go.sum ./
@@ -104,7 +104,7 @@ RUN CGO_ENABLED=0 GOARCH=$TARGETARCH GOOS=linux go build -ldflags="-X main.versi
 # ~80MB on Alpine, almost entirely libreoffice-calc and its own
 # dependencies — accepted deliberately so PDF export actually works in the
 # shipped image instead of always 503ing.
-FROM debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
+FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
 WORKDIR /app
 
 # --no-install-recommends keeps this to libreoffice-calc's own dependency
