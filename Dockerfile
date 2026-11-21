@@ -115,7 +115,12 @@ WORKDIR /app
 # without a reasonable substitute installed LibreOffice's fallback can shift
 # column widths enough to visibly misalign a template that looked fine in
 # Excel. fonts-dejavu-core covers the rest as a general-purpose fallback.
+# `upgrade` first: the digest pins the base's own packages to the day it was
+# published, so a Debian security fix (zlib CVE-2026-85091/76844 in v3.74.3)
+# otherwise waited for the next digest bump. The install below already takes
+# whatever the archive has today, so this costs no reproducibility.
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         tzdata \
