@@ -2,6 +2,12 @@
 # a build reproducible — and also what keeps them from ever moving on their
 # own (audit F181). Dependabot proposes the updates as PRs, grouped weekly so
 # they stay few; each still goes through CI and review like any other PR.
+#
+# These are version updates, on a schedule. Security fixes don't wait for
+# it: the repository's Dependabot alerts and security updates open a PR as
+# soon as an advisory lands, and the daily security.yml scan catches what
+# Dependabot doesn't cover (the Go toolchain, the image's OS packages).
+# Policy: CLAUDE.md, Dependencies.
 version: 2
 updates:
   - package-ecosystem: docker
@@ -29,6 +35,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Indirect modules too: golang.org/x/net sat two fixed advisories behind
+    # (GO-2026-6860/6866) because the default updates direct ones only.
+    allow:
+      - dependency-type: all
     groups:
       go-minor-and-patch:
         update-types: ["minor", "patch"]
