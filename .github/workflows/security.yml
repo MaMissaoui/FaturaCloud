@@ -1,0 +1,71 @@
+name: Security scan
+
+# CI scans only when a PR or a merge runs it, so an advisory published
+# against unchanged code went unseen until the next unrelated change. This
+# runs every day on main and fails on any known vulnerability with a fix,
+# in any section: govulncheck's "imported/required but not called" findings
+# count too (CI's go job lets them pass), every npm dependency counts, dev
+# tooling included, and so does the published image's OS layer. A red run
+# here is a security fix to ship the same day (CLAUDE.md, Dependencies).
+on:
+  schedule:
+    - cron: "41 5 * * *" # daily 05:41 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: govulncheck, every section
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 -show verbose ./... | tee govulncheck.txt
+          if grep -qE '^Vulnerability #[0-9]+: GO-' govulncheck.txt; then
+            echo "::error::govulncheck reports vulnerabilities (called, imported or required); upgrade them"
+            exit 1
+          fi
+
+  npm:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm audit, dev tooling included
+        run: pnpm audit --audit-level moderate
+
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      # The image users actually pull. Only fixed vulnerabilities fail the
+      # run: an unfixed Debian CVE has nothing to upgrade to.
+      - name: Trivy scan of the published image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/mamissaoui/fatura-cloud:latest
+          version: v0.76.2
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
