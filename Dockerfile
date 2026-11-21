@@ -18,7 +18,7 @@
 # "version" (packageManager, which corepack reads, stays), so the copy below
 # is byte-identical across releases and the install stays cached until a
 # dependency actually changes.
-FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS manifest
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS manifest
 WORKDIR /app
 COPY package.json ./
 RUN node -e 'const fs = require("fs"); const p = JSON.parse(fs.readFileSync("package.json", "utf8")); delete p.version; fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n")'
@@ -28,7 +28,7 @@ RUN node -e 'const fs = require("fs"); const p = JSON.parse(fs.readFileSync("pac
 # output (static JS/CSS/HTML) is architecture-independent, so building it
 # under arm64 QEMU emulation on a multi-arch buildx run would just be a much
 # slower way to produce the exact same files.
-FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS frontend
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS frontend
 WORKDIR /app
 
 # corepack (bundled with Node up to 24 — Node 25 dropped it, which is why
@@ -72,7 +72,7 @@ RUN --mount=type=secret,id=sentry_auth_token \
 # mattn/go-sqlite3, and this app uses modernc.org/sqlite (pure Go, no cgo)
 # instead — see db/db.go. With CGO_ENABLED=0, `go build` cross-compiles for
 # TARGETARCH natively, no QEMU emulation needed here either.
-FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS backend
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS backend
 WORKDIR /app
 
 COPY go.mod go.sum ./
