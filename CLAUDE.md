@@ -72,6 +72,15 @@ These apply on both sides of the stack; the detail lives in the subdirectory fil
 - **Modal/Drawer forms** never use module-level Jotai atoms for local state — use `useState` (the mask gets orphaned and freezes the UI).
 - **Lint stays at zero warnings.** `pnpm lint` runs `oxlint --deny-warnings`, so CI fails on any new warning — fix it (see `src/CLAUDE.md`'s Data loading section for the `set-state-in-effect` patterns) rather than suppressing it.
 
+## Dependencies and security updates
+Every component stays on its latest available release: Go modules (indirect ones too), npm packages (dev tooling too), the Go toolchain, the Node LTS line, the Docker base images and the pinned Actions. Security comes first:
+- **A security fix ships the same day it is known.** A vulnerability with a fixed version is upgraded, merged, released (patch release) and flagged to the owner for deploy on the day it is found, by Dependabot, `security.yml` or any scan. "Imported but not called" (govulncheck) and dev-only (`pnpm audit`) findings are fixed too, not left for later.
+- **Scanners:** CI's `go` job (govulncheck on the source), CI's `docker` job (govulncheck `-mode=binary` on the binary the image ships), `pnpm audit` in CI, and `.github/workflows/security.yml`, which runs daily and fails on any finding in any section (Go, npm and Trivy on the published image's OS packages). A red `security.yml` run is a security fix to ship.
+- **Toolchain:** the binary is built by the Dockerfile's `golang:` tag, not by `go.mod`. Keep `go.mod`'s `go` line equal to that tag, so CI tests and scans what ships (#582 fixed GO-2026-6859 in `go.mod` while the image kept a vulnerable go1.27.3).
+- **Dependabot PRs don't wait in the queue.** The weekly groups are merged within the week: a green one is merged, and a red one is fixed on main (lint, types, tests) and rebased with `@dependabot rebase`, never pushed to. A major or an exact pin is upgraded by hand in its own PR, and one held back gets its reason written beside it (as for Node's non-LTS majors in `dependabot.yml`).
+- **The govulncheck allowlist** in `ci.yml` is only for a finding with no fixed version anywhere, each with its issue link.
+- **Repository settings:** Dependabot alerts and Dependabot security updates stay enabled (Settings → Code security); they open a fix PR as soon as an advisory lands, outside the weekly schedule.
+
 ## Product decisions not to revisit
 - **Server error messages are English only.** Every `db/*.go` validation message is plain English. The frontend translates only its generic fallback. Accepted as a product decision (`docs/audit-plan-2026-08-09.md`): don't re-flag it or build a translation table without a new decision.
 - **The Cash Book may collect any open invoice** of the organization, not only Cash Book sales (F150). A Cash Book sale takes its own stock out, and stock may go negative. Serialized products are refused at the counter.
@@ -99,7 +108,7 @@ docker run -p 8080:8080 -v ./data:/data fatura-cloud
 ```
 - Stages:
   1. **frontend** (node:24-alpine, the LTS line: Node 25 dropped corepack): `corepack enable` (pnpm from `packageManager`; `npm install -g pnpm` fails on arm64), then `pnpm install --frozen-lockfile` and `pnpm build`.
-  2. **backend** (golang:1.26-alpine): embeds `dist/` (`//go:embed all:dist`).
+  2. **backend** (golang:1.27-alpine, the same version as `go.mod`): embeds `dist/` (`//go:embed all:dist`).
   3. **runtime** (debian:trixie-slim): the binary plus `libreoffice-calc fonts-liberation fonts-dejavu-core`, running as `1000:1000`.
 - `--build-arg VERSION=<tag>` sets `GET /api/version` and the Sentry release; compose passes `VERSION` (default `dev`).
 - `GET /api/healthz` backs the HEALTHCHECK. On SIGTERM, in-flight requests get 25 s and the background loops stop through `api.NewRouterContext`; compose sets `stop_grace_period: 30s`.
