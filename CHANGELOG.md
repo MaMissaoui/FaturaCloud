@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.74.4] - 2026-11-21
+
+No migrations: the schema stays at `0111`, so rolling back to 3.74.3 only means switching the image tag. **Security release: deploy it promptly.**
+
+### Security
+- The image now builds with Go 1.27.4. Every image up to 3.74.3 was built with Go 1.27.3, which is exposed to GO-2026-6859, a remote HTTP/1 crash in `net/http`. 3.74.3 fixed it in `go.mod` only (#584, #587).
+- Every Go module is at its latest release: excelize v2.11.1 (GO-2026-6695), `golang.org/x/net` 0.63.0 (GO-2026-6860, GO-2026-6866) and `golang.org/x/crypto` 0.59.0 (GO-2026-5932) (#578, #587).
+- The runtime image upgrades Debian's packages at build time, which picks up the zlib fix for CVE-2026-85091 and CVE-2026-76844 (#589).
+- Every npm dependency is at its latest release, which clears the glob and minimatch advisories in the build tooling (#588).
+
+### Changed
+- CI scans the binary the image ships, and a daily `security.yml` scans Go, npm and the published image (#589).
+- Dependency rule in `CLAUDE.md`, and audit `docs/audit-plan-2026-11-21.md` (F197–F205) (#589).
+
 ## [3.74.3] - 2026-11-12
 
 No migrations: the schema stays at `0111`, so rolling back to 3.74.2 only means switching the image tag.
