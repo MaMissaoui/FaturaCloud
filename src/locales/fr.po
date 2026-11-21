@@ -561,8 +561,8 @@ msgstr "Action"
 #: src/routes/products.tsx:573
 #: src/routes/settings/activity-changes.ts:27
 #: src/routes/settings/countries.tsx:109
-#: src/routes/settings/users.tsx:236
-#: src/routes/settings/users.tsx:335
+#: src/routes/settings/users.tsx:240
+#: src/routes/settings/users.tsx:339
 msgid "Active"
 msgstr "Actif"
 
@@ -622,8 +622,8 @@ msgid "Adjustment — set count to"
 msgstr "Ajustement — définir le compte à"
 
 #: src/components/organizations/organization-members-panel.tsx:10
-#: src/routes/settings/users.tsx:226
-#: src/routes/settings/users.tsx:362
+#: src/routes/settings/users.tsx:230
+#: src/routes/settings/users.tsx:366
 msgid "Admin"
 msgstr "Administrateur"
 
@@ -1169,7 +1169,7 @@ msgstr "Taxe générale indirecte des îles Canaries"
 #: src/routes/settings/document-templates.tsx:178
 #: src/routes/settings/loan-import.tsx:227
 #: src/routes/settings/loan-import.tsx:436
-#: src/routes/settings/users.tsx:311
+#: src/routes/settings/users.tsx:315
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -1635,7 +1635,7 @@ msgstr "Confirmer"
 msgid "Confirm order"
 msgstr "Confirmer la commande"
 
-#: src/routes/settings/users.tsx:390
+#: src/routes/settings/users.tsx:394
 msgid "Confirm password"
 msgstr "Confirmer le mot de passe"
 
@@ -2284,8 +2284,8 @@ msgstr "Par défaut, le montant total. Saisir un montant supérieur n'enregistre
 #: src/routes/orders/details.tsx:570
 #: src/routes/production-orders/details.tsx:669
 #: src/routes/purchase-orders/details.tsx:758
-#: src/routes/settings/users.tsx:279
-#: src/routes/settings/users.tsx:304
+#: src/routes/settings/users.tsx:283
+#: src/routes/settings/users.tsx:308
 msgid "Delete"
 msgstr "Supprimer"
 
@@ -2342,8 +2342,8 @@ msgstr "Supprimer cette commande d'achat ?"
 msgid "Delete this stock movement? The stock level will be recalculated."
 msgstr "Supprimer ce mouvement de stock ? Le niveau de stock sera recalculé."
 
-#: src/routes/settings/users.tsx:265
-#: src/routes/settings/users.tsx:297
+#: src/routes/settings/users.tsx:269
+#: src/routes/settings/users.tsx:301
 msgid "Delete this user?"
 msgstr "Supprimer cet utilisateur ?"
 
@@ -2795,7 +2795,7 @@ msgstr "Modifier la recette"
 msgid "Edit unit of measure"
 msgstr "Modifier l'unité de mesure"
 
-#: src/routes/settings/users.tsx:287
+#: src/routes/settings/users.tsx:291
 msgid "Edit user"
 msgstr "Modifier l'utilisateur"
 
@@ -2807,8 +2807,8 @@ msgstr "Modifier le fournisseur"
 #: src/components/organizations/organizations-table.tsx:80
 #: src/routes/login.tsx:120
 #: src/routes/login.tsx:121
-#: src/routes/settings/users.tsx:213
-#: src/routes/settings/users.tsx:347
+#: src/routes/settings/users.tsx:217
+#: src/routes/settings/users.tsx:351
 msgid "Email"
 msgstr "Email"
 
@@ -3007,7 +3007,7 @@ msgstr "Échec de la clôture de l'exercice"
 msgid "Failed to delete stock movement"
 msgstr "Échec de la suppression du mouvement de stock"
 
-#: src/routes/settings/users.tsx:135
+#: src/routes/settings/users.tsx:139
 msgid "Failed to delete user"
 msgstr "Échec de la suppression de l'utilisateur"
 
@@ -3225,7 +3225,7 @@ msgstr "Échec du chargement de la planification des sauvegardes"
 #~ msgid "Failed to load this customer's open invoices"
 #~ msgstr "Échec du chargement des factures ouvertes de ce client"
 
-#: src/routes/settings/users.tsx:83
+#: src/routes/settings/users.tsx:87
 msgid "Failed to load user"
 msgstr "Échec du chargement de l'utilisateur"
 
@@ -3287,7 +3287,7 @@ msgstr "Échec de l'enregistrement de l'orientation de la page"
 msgid "Failed to save schedule"
 msgstr "Échec de l'enregistrement de la planification"
 
-#: src/routes/settings/users.tsx:123
+#: src/routes/settings/users.tsx:127
 msgid "Failed to save user"
 msgstr "Échec de l'enregistrement de l'utilisateur"
 
@@ -3335,7 +3335,7 @@ msgstr "Échec de la mise à jour de la commande d'achat"
 msgid "Failed to update purchase order status"
 msgstr "Échec de la mise à jour du statut de la commande d'achat"
 
-#: src/routes/settings/users.tsx:155
+#: src/routes/settings/users.tsx:159
 msgid "Failed to update user"
 msgstr "Échec de la mise à jour de l'utilisateur"
 
@@ -4270,7 +4270,7 @@ msgid "Last 7 days"
 msgstr "7 derniers jours"
 
 #: src/routes/settings/activity-changes.ts:343
-#: src/routes/settings/users.tsx:253
+#: src/routes/settings/users.tsx:257
 msgid "Last login"
 msgstr "Dernière connexion"
 
@@ -4590,8 +4590,8 @@ msgstr "Méthode"
 msgid "Migrated"
 msgstr "Repris"
 
-#: src/routes/settings/users.tsx:381
-#: src/routes/settings/users.tsx:382
+#: src/routes/settings/users.tsx:385
+#: src/routes/settings/users.tsx:386
 msgid "Minimum 6 characters"
 msgstr "Minimum 6 caractères"
 
@@ -4678,8 +4678,8 @@ msgstr "Mouvemente le stock"
 #: src/routes/settings/product-families.tsx:93
 #: src/routes/settings/tax-rates.tsx:112
 #: src/routes/settings/units-of-measure.tsx:109
-#: src/routes/settings/users.tsx:207
-#: src/routes/settings/users.tsx:325
+#: src/routes/settings/users.tsx:211
+#: src/routes/settings/users.tsx:329
 #: src/routes/vendors.tsx:191
 msgid "Name"
 msgstr "Nom"
@@ -4827,7 +4827,7 @@ msgstr "Nouvelle organisation"
 msgid "New Organization"
 msgstr "Nouvelle organisation"
 
-#: src/routes/settings/users.tsx:374
+#: src/routes/settings/users.tsx:378
 msgid "New password (leave blank to keep current)"
 msgstr "Nouveau mot de passe (laisser vide pour conserver l'actuel)"
 
@@ -4887,8 +4887,8 @@ msgstr "Nouveau taux de taxe"
 msgid "New unit of measure"
 msgstr "Nouvelle unité de mesure"
 
-#: src/routes/settings/users.tsx:182
-#: src/routes/settings/users.tsx:287
+#: src/routes/settings/users.tsx:186
+#: src/routes/settings/users.tsx:291
 msgid "New user"
 msgstr "Nouvel utilisateur"
 
@@ -4942,7 +4942,7 @@ msgstr "Prochaine exécution : {nextRunLabel}"
 #: src/routes/purchase-orders/details.tsx:755
 #: src/routes/purchase-orders/details.tsx:782
 #: src/routes/settings/activity-changes.ts:463
-#: src/routes/settings/users.tsx:300
+#: src/routes/settings/users.tsx:304
 msgid "No"
 msgstr "Non"
 
@@ -5869,11 +5869,11 @@ msgstr "Pièces pour une unité"
 
 #: src/routes/login.tsx:132
 #: src/routes/login.tsx:133
-#: src/routes/settings/users.tsx:376
+#: src/routes/settings/users.tsx:380
 msgid "Password"
 msgstr "Mot de passe"
 
-#: src/routes/settings/users.tsx:399
+#: src/routes/settings/users.tsx:403
 msgid "Passwords do not match"
 msgstr "Les mots de passe ne correspondent pas"
 
@@ -6057,7 +6057,7 @@ msgstr "Plateforme"
 msgid "Platform admin"
 msgstr "Administrateur de la plateforme"
 
-#: src/routes/settings/users.tsx:393
+#: src/routes/settings/users.tsx:397
 msgid "Please confirm the password"
 msgstr "Veuillez confirmer le mot de passe"
 
@@ -7024,8 +7024,8 @@ msgstr "Rétabli au modèle par défaut"
 
 #: src/components/organizations/organization-members-panel.tsx:77
 #: src/routes/settings/activity-changes.ts:339
-#: src/routes/settings/users.tsx:219
-#: src/routes/settings/users.tsx:357
+#: src/routes/settings/users.tsx:223
+#: src/routes/settings/users.tsx:361
 msgid "Role"
 msgstr "Rôle"
 
@@ -7111,7 +7111,7 @@ msgstr "Période des ventes"
 #: src/routes/settings/backup.tsx:286
 #: src/routes/settings/document-numbering.tsx:285
 #: src/routes/settings/invoice.tsx:248
-#: src/routes/settings/users.tsx:314
+#: src/routes/settings/users.tsx:318
 msgid "Save"
 msgstr "Enregistrer"
 
@@ -7150,7 +7150,7 @@ msgstr "Planification enregistrée"
 #: src/routes/settings/product-families.tsx:40
 #: src/routes/settings/tax-rates.tsx:55
 #: src/routes/settings/units-of-measure.tsx:45
-#: src/routes/settings/users.tsx:170
+#: src/routes/settings/users.tsx:174
 #: src/routes/vendors.tsx:172
 msgid "Search"
 msgstr "Rechercher"
@@ -8107,7 +8107,7 @@ msgstr "Aujourd'hui"
 #. placeholder {0}: record.displayName
 #. placeholder {0}: row.name
 #: src/routes/settings/countries.tsx:119
-#: src/routes/settings/users.tsx:246
+#: src/routes/settings/users.tsx:250
 msgid "Toggle {0} active"
 msgstr "Basculer l'état actif de {0}"
 
@@ -8480,13 +8480,13 @@ msgstr "Utilisé lorsque ce taux s'applique à une facture fournisseur — un co
 
 #: src/components/organizations/organization-members-panel.tsx:60
 #: src/routes/settings/activity.tsx:111
-#: src/routes/settings/users.tsx:230
-#: src/routes/settings/users.tsx:363
+#: src/routes/settings/users.tsx:234
+#: src/routes/settings/users.tsx:367
 msgid "User"
 msgstr "Utilisateur"
 
 #: src/layouts/base.tsx:372
-#: src/routes/settings/users.tsx:168
+#: src/routes/settings/users.tsx:172
 msgid "Users"
 msgstr "Utilisateurs"
 
@@ -8798,7 +8798,7 @@ msgstr "Taux de retenue à la source"
 #: src/routes/purchase-orders/details.tsx:754
 #: src/routes/purchase-orders/details.tsx:781
 #: src/routes/settings/activity-changes.ts:463
-#: src/routes/settings/users.tsx:299
+#: src/routes/settings/users.tsx:303
 msgid "Yes"
 msgstr "Oui"
 

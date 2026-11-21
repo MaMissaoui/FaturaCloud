@@ -59,8 +59,12 @@ export default function SettingsUsers() {
     return loadUsers(q);
   };
 
+  // Promise callbacks, not loadUsers: oxlint 1.94's set-state-in-effect
+  // rule flags an async function's finally as a synchronous setState.
   useEffect(() => {
-    loadUsers();
+    ListUsers()
+      .then(setUsers)
+      .finally(() => setLoading(false));
   }, []);
 
   const openNew = () => {
