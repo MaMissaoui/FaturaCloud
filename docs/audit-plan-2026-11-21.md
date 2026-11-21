@@ -27,7 +27,7 @@ Numbering continues at **F197**; no document under `docs/` uses F197 or later.
 | ---- | -------------------------------------------------------------- | -------- | ------ |
 | F197 | The shipped binary is built with go1.27.3 (GO-2026-6859)       | High     | Fixed: #584 |
 | F198 | CI scans `go.mod`'s toolchain, not the one that ships          | High     | Fixed: #587 + this PR |
-| F199 | Dependabot alerts and security updates are disabled            | High     | Owner action |
+| F199 | Dependabot alerts and security updates are disabled            | High     | Fixed: enabled 2026-11-21 |
 | F200 | No scan runs between PRs                                       | Medium   | Fixed: this PR |
 | F201 | Fixed Go advisories left in imported/required modules          | Medium   | Fixed: #578 + #587 |
 | F202 | Base-image OS packages wait for a digest bump (zlib, 2 High)   | Medium   | Fixed: this PR |
@@ -68,7 +68,7 @@ whatever `go.mod` says. CLAUDE.md requires the two versions to stay equal.
 public. The only Dependabot activity is the weekly version-update schedule,
 so a published advisory opened no PR and raised no alert.
 
-**Fix (owner, needs admin):** Settings → Code security → enable Dependabot
+**Fixed 2026-11-21:** both enabled by the owner. **Fix (owner, needs admin):** Settings → Code security → enable Dependabot
 alerts and Dependabot security updates, or:
 
 ```bash
