@@ -146,7 +146,7 @@ request id (the **Ref.** column), so the matching log line can be found with
 ## Settings
 
 Both are environment variables of the container. The homelab compose file
-(`apps/fatura-cloud/docker-compose.yml` in homelab-deploy) passes them
+(`apps/fatura-cloud/docker-compose.yml` in the homelab repo) passes them
 through, and its `.env` template sets `LOG_LEVEL` (info unless overridden);
 `LOG_FORMAT` defaults to text.
 
@@ -156,7 +156,7 @@ through, and its `.env` template sets `LOG_LEVEL` (info unless overridden);
 | `LOG_FORMAT` | `text`, `json` | `text` |
 
 To see every request for a while (e.g. while chasing a bug), deploy once
-with debug, from homelab-deploy's `ansible/` folder:
+with debug, from the homelab repo's `ansible/` folder:
 
 ```sh
 ansible-playbook playbooks/deploy.yml -e target_app=fatura-cloud -e fatura_cloud_log_level=debug
